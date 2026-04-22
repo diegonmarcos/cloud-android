@@ -1,0 +1,76 @@
+# ══════════════════════════════════════════════════════════
+# REPO: cloud-android (PUBLIC)
+# https://github.com/diegonmarcos/cloud-android
+# ══════════════════════════════════════════════════════════
+
+# ── Secrets & Credentials (reinforces global gitignore) ──
+# KEEP IN SYNC WITH:
+#   Pre-commit hook: 1_workflows/src/hooks/pre-commit  (blocks even git add -f)
+## Decrypted secrets output
+.secrets
+*.secrets
+**/.secrets
+.secrets.d/
+**/.secrets.d/
+## NOTE: secrets.yaml (+ .new / .draft / .bak variants) are ALLOWED
+## to be tracked — but ONLY when sops-encrypted.
+## Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+## Private keys & certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+!*.keystore.example
+## Auth tokens & credentials
+*.token
+*credentials*.json
+*_token.json
+*_tokens.json
+## Cloud provider configs
+.oci/
+.gcloud/
+## GPG & age
+*.asc
+*.age
+!*.age.pub
+
+# ── Dependencies (managed by shared ~/.node_modules) ──
+node_modules
+.gradle/
+.idea/
+local.properties
+
+# ── Android build outputs ──
+*.apk
+*.aab
+*.dex
+*.ap_
+!**/dist/*.apk
+build/
+out/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ── Nix build artifacts ──
+result
+.result
+**/.direnv/
+
+# ── Repo-specific ──
+*.tmp
+.DS_Store
+
+# ── Generated dist folders (tracked only via symlinks, never raw) ──
+1_workflows/dist/
+2_configs/dist/
+**/dist/.secrets
+**/dist/.secrets.d/

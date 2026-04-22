@@ -1,0 +1,132 @@
+{
+  "owner": {
+    "name": "Diego Marcos",
+    "email": "diegonmarcos@gmail.com",
+    "domain": "diegonmarcos.com",
+    "github": "diegonmarcos"
+  },
+  "repo": {
+    "name": "cloud-android",
+    "description": "Android Parallel Space / Virtual Engine — data-ownership workspace built on the cloud/ declarative framework",
+    "visibility": "public",
+    "url": "https://github.com/diegonmarcos/cloud-android"
+  },
+  "ssh_key": "/home/diego/git/vault/A0_keys/ssh/id_rsa",
+  "engine_folder": "1_workflows",
+
+  "categories": {
+    "aa-eng_": "engine — parallel-space core (hooking, redirection, system-server)",
+    "ab-ui_":  "ui — workspace launcher + in-app UI",
+    "ac-lib_": "library — manifest stubs, shared helpers",
+    "ad-sec_": "security — SQLCipher, integrity, anti-detection",
+    "ae-tool_": "tool — data exporter, Shizuku client, ADB helpers",
+    "ba-bld_": "build — gradle configs, NDK pinning, signing",
+    "bb-tst_": "test — integration tests, device farms"
+  },
+
+  "architecture": {
+    "pillars": [
+      {
+        "name": "hooking-engine",
+        "layer": "java",
+        "tooling": ["Pine", "SandHook", "DexposedBridge"],
+        "owner_solution": "aa-eng_hooking-core",
+        "purpose": "Intercept Android framework calls (ActivityManager, PackageManager, SQLiteDatabase) before they hit the real system."
+      },
+      {
+        "name": "virtual-system-server",
+        "layer": "java",
+        "tooling": ["Dynamic Proxy", "IActivityManager.Stub", "PackageManager proxy"],
+        "owner_solution": "aa-eng_system-server-stubs",
+        "purpose": "Mock Android system services so guest apps believe they are installed in a normal OS."
+      },
+      {
+        "name": "fs-redirector",
+        "layer": "native",
+        "tooling": ["Dobby", "Frida-Gum", "libc open/read/write hooks"],
+        "owner_solution": "aa-eng_fs-redirect-native",
+        "purpose": "Inline-hook libc to rewrite /data/data/<pkg> paths to workspace-owned storage."
+      },
+      {
+        "name": "manifest-stubs",
+        "layer": "java",
+        "tooling": ["PackageParser", "stub Activity/Service pool"],
+        "owner_solution": "ac-lib_manifest-stubs",
+        "purpose": "Pre-declared stub components that swap to guest-app classes at launch via custom ClassLoader."
+      },
+      {
+        "name": "shizuku-fallback",
+        "layer": "adb",
+        "tooling": ["Shizuku API", "user-service"],
+        "owner_solution": "ae-tool_shizuku-client",
+        "purpose": "No-root data extraction path using ADB-granted system privileges."
+      }
+    ],
+    "ndk_version": "r27",
+    "min_sdk": 26,
+    "target_sdk": 35,
+    "supported_abis": ["arm64-v8a", "x86_64"]
+  },
+
+  "devices": {
+    "surface-waydroid": {
+      "type": "waydroid",
+      "host": "localhost",
+      "adb_serial": "emulator-5554",
+      "abi": "x86_64",
+      "android_version": 13,
+      "description": "Waydroid container on Surface Pro 8 (NixOS dev host)",
+      "purpose": "primary dev + CI smoke test"
+    },
+    "pixel-7a": {
+      "type": "hardware",
+      "adb_serial": "",
+      "abi": "arm64-v8a",
+      "android_version": 15,
+      "description": "Pixel 7a (ADB over USB / WiFi)",
+      "purpose": "real-world verification"
+    },
+    "termux-main": {
+      "type": "termux",
+      "host": "termux.local",
+      "ssh_port": 8022,
+      "description": "Termux environment (nix-on-droid managed via unix/bb_flakes_termux)",
+      "purpose": "shell/toolchain host"
+    }
+  },
+
+  "deps": {
+    "install": {
+      "nix_method": "shell",
+      "auto_yes": false
+    },
+    "system": {
+      "git":    { "nix": "git",         "apt": "git",             "desc": "Version control" },
+      "ssh":    { "nix": "openssh",     "apt": "openssh-client",  "desc": "SSH for device deploy" },
+      "jq":     { "nix": "jq",          "apt": "jq",              "desc": "JSON processing (build.json/config.json)" },
+      "sops":   { "nix": "sops",        "apt": null,              "desc": "Secrets decryption (age backend)" },
+      "age":    { "nix": "age",         "apt": null,              "desc": "Age encryption (sops backend)" },
+      "rsync":  { "nix": "rsync",       "apt": "rsync",           "desc": "File sync" },
+      "curl":   { "nix": "curl",        "apt": "curl",            "desc": "HTTP (health checks + GHCR)" },
+      "adb":    { "nix": "android-tools", "apt": "android-tools-adb", "desc": "Android Debug Bridge" },
+      "aapt2":  { "nix": "aapt",        "apt": "aapt",            "desc": "APK packaging" },
+      "apksigner": { "nix": "apksigner","apt": "apksigner",       "desc": "APK v2/v3 signing" },
+      "node":   { "nix": "nodejs_20",   "apt": "nodejs",          "desc": "Node runtime for tooling" }
+    },
+    "android": {
+      "ndk":    "r27",
+      "build_tools": "35.0.0",
+      "platform": "android-35",
+      "gradle": "8.9"
+    },
+    "node": {
+      "required": ["tsx", "typescript"]
+    }
+  },
+
+  "ghcr": {
+    "namespace": "ghcr.io/diegonmarcos",
+    "builder_image": "cloud-android-builder",
+    "builder_tag": "latest"
+  }
+}

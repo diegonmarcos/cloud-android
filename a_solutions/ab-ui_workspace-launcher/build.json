@@ -1,0 +1,32 @@
+{
+  "name": "workspace-launcher",
+  "description": "Host APK — the Parallel Space launcher. Picks which guest app to clone, orchestrates engine boot, surfaces data-export UI.",
+  "category": "ui",
+  "type": "apk",
+  "tech": {
+    "language": "kotlin",
+    "ui": "Jetpack Compose",
+    "min_sdk": 26,
+    "target_sdk": 35,
+    "application_id": "com.diegonmarcos.workspace"
+  },
+  "depends_on": [
+    "hooking-core",
+    "system-server-stubs",
+    "fs-redirect-native",
+    "manifest-stubs",
+    "sqlcipher-wrapper",
+    "data-exporter"
+  ],
+  "build": {
+    "gradle_task": ":app:assembleRelease",
+    "output": "build/outputs/apk/release/workspace-launcher-release.apk"
+  },
+  "sign": {
+    "keystore": "src/workspace.keystore.enc"
+  },
+  "deploy": {
+    "device": "surface-waydroid",
+    "method": "adb-install"
+  }
+}
