@@ -67,7 +67,22 @@ if [ -f "$SRC/modules/gitmodules" ]; then
 fi
 if [ -f "$SRC/gitconfig" ]; then
     cp "$SRC/gitconfig" "$DIST/gitconfig"
-    cp "$SRC/gitconfig" "$CLOUD_ANDROID_ROOT/.gitconfig"
+    # Deploy via .git/config [include] + reconcile shadow keys.
+    _gc_section=""
+    while IFS= read -r line; do
+        case "$line" in
+            \[*\])
+                _gc_section=$(printf '%s' "$line" | sed 's/^\[\([^]]*\)\]$/\1/' | tr '[:upper:]' '[:lower:]')
+                ;;
+            *=*)
+                [ -z "$_gc_section" ] && continue
+                _gc_key=$(printf '%s' "$line" | sed -n 's/^[[:space:]]*\([a-zA-Z][a-zA-Z0-9]*\)[[:space:]]*=.*/\1/p' | tr '[:upper:]' '[:lower:]')
+                [ -n "$_gc_key" ] && git -C "$CLOUD_ANDROID_ROOT" config --local --unset "${_gc_section}.${_gc_key}" 2>/dev/null || true
+                ;;
+        esac
+    done < "$DIST/gitconfig"
+    unset _gc_section _gc_key
+    git -C "$CLOUD_ANDROID_ROOT" config --local include.path ../1_workflows/dist/gitconfig 2>/dev/null || true
 fi
 
 log_info "Workflow build complete. Dist at $DIST"

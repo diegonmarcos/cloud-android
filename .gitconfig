@@ -1,8 +1,0 @@
-[core]
-	hooksPath = 1_workflows/dist/hooks
-[pull]
-	rebase = true
-[submodule]
-	recurse = true
-[alias]
-	sync = !sh 1_workflows/dist/scripts/cloud-android-git-sync.sh
