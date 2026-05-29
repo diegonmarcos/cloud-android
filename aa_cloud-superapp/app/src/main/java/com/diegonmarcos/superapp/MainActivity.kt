@@ -46,10 +46,13 @@ class MainActivity : AppCompatActivity(),
     private var currentSection: String = ""
     private var currentLabel:   String = ""
 
-    /** Re-entrancy guard: drawerTabs.selectTab() fires onTabSelected — when
-     *  the selectTab call originated from goHome/goSection itself we must
-     *  not bounce back into it and clobber state we just set. */
-    private var suppressTabReentry: Boolean = false
+    /** Re-entrancy guards: both drawerTabs.selectTab() AND
+     *  bottomNav.selectedItemId fire their selection listeners. When the
+     *  selection change originated from goHome/goSection itself we must
+     *  not bounce back into it (Material's setSelectedItemId fires the
+     *  listener even on programmatic set → StackOverflowError otherwise). */
+    private var suppressTabReentry:       Boolean = false
+    private var suppressBottomNavReentry: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.i(TAG, "onCreate enter")
@@ -109,6 +112,7 @@ class MainActivity : AppCompatActivity(),
     // ── bottom nav ────────────────────────────────────────────────────────
 
     private fun onBottomNavPicked(item: MenuItem): Boolean {
+        if (suppressBottomNavReentry) return true
         val id = sectionIdForNavId(item.itemId) ?: return false
         if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
         return true
@@ -209,7 +213,9 @@ class MainActivity : AppCompatActivity(),
     private fun syncBottomNav(sectionId: String) {
         val navId = idForSectionId(sectionId) ?: return
         if (bottomNav.selectedItemId != navId) {
+            suppressBottomNavReentry = true
             bottomNav.selectedItemId = navId
+            suppressBottomNavReentry = false
         }
     }
 
