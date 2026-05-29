@@ -3,10 +3,10 @@ package com.diegonmarcos.superapp.mail
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -99,6 +99,18 @@ class MailFoldersFragment : Fragment(R.layout.fragment_mail_folders) {
                     (12 + depth * 20).dp(), row.paddingTop,
                     row.paddingRight,        row.paddingBottom,
                 )
+                // Tap a folder → host swaps the content pane to the
+                // per-folder messages view. Host (MainActivity) implements
+                // MailHost; we don't reach into app/-side R.ids ourselves.
+                row.setOnClickListener {
+                    (activity as? MailHost)?.openMailPage(
+                        pageId = MailPages.MESSAGES,
+                        args = bundleOf(
+                            MailMessagesFragment.ARG_FOLDER_ID   to mb.id,
+                            MailMessagesFragment.ARG_FOLDER_NAME to mb.name,
+                        ),
+                    )
+                }
                 container.addView(row)
                 emit(mb.id, depth + 1)
             }

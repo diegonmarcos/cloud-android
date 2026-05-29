@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bottom nav — high-level access to each section with bottom_nav=true in
-     build.json::ui.sections. WG (bottom_nav=false) lives only in the drawer:
-     BottomNavigationView hard-caps at 5 items, and WG is the natural pick
-     for drawer-only since it's ops-y / rarely opened day-to-day. -->
+<!-- Bottom nav — five high-level buttons. Center slot is the master Home
+     index (replacing Chat, which is drawer-only now). Sections with
+     bottom_nav=false in build.json::ui.sections live only in the drawer:
+     BottomNavigationView hard-caps at 5 items (Material design rule). -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@+id/nav_mail"  android:icon="@drawable/ic_mail"     android:title="@string/section_mail"  />
     <item android:id="@+id/nav_feed"  android:icon="@drawable/ic_rss"      android:title="@string/section_feed"  />
-    <item android:id="@+id/nav_chat"  android:icon="@drawable/ic_chat"     android:title="@string/section_chat"  />
+    <item android:id="@+id/nav_home"  android:icon="@drawable/ic_home"     android:title="@string/section_home"  />
     <item android:id="@+id/nav_cal"   android:icon="@drawable/ic_calendar" android:title="@string/section_cal"   />
     <item android:id="@+id/nav_vault" android:icon="@drawable/ic_vault"    android:title="@string/section_vault" />
 </menu>

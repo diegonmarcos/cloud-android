@@ -87,13 +87,14 @@
   "ui": {
     "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
     "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
+    "_doc_home_index": "The `home` section is the master index — its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
     "sections": [
       { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": true,  "jmap_default_server": "https://jmap.diegonmarcos.com", "drawer_default_children": ["All inboxes", "+ Add account"],
-        "_doc_pages": "Mapping to FairEmail's ~38 user-visible pages. Level-1 chips host the daily-use surfaces; Settings drills into 11 FairEmail FragmentOptions* sub-tabs; More is the overflow for rarely-used / diagnostic pages.",
+        "_doc_pages": "Mapping to FairEmail's ~38 user-visible pages. Level-1 chips host the daily-use surfaces; Settings drills into 11 FairEmail FragmentOptions* sub-tabs; More is the overflow for rarely-used / diagnostic pages. Order: Folders first (operational entry point), then Inbox, then management (Accounts hosts the JMAP login form), then settings & overflow.",
         "pages": [
-          { "id": "inbox",      "label": "Inbox",      "upstream": "FragmentMessages" },
           { "id": "folders",    "label": "Folders",    "upstream": "FragmentFolders" },
-          { "id": "accounts",   "label": "Accounts",   "upstream": "FragmentAccounts" },
+          { "id": "inbox",      "label": "Inbox",      "upstream": "FragmentMessages" },
+          { "id": "accounts",   "label": "Accounts",   "upstream": "FragmentAccounts", "_doc": "Hosts the JMAP login form (server/email/password) — Slice A landing surface. Moved here from the section index per the data-driven nav contract: the section's bottom-nav tap shows a TileGrid; account config is a sub-page, not the index." },
           { "id": "identities", "label": "Identities", "upstream": "FragmentIdentities" },
           { "id": "rules",      "label": "Rules",      "upstream": "FragmentRules" },
           { "id": "answers",    "label": "Answers",    "upstream": "FragmentAnswers" },
@@ -127,13 +128,14 @@
           }
         ] },
       { "id": "feed",  "label": "RSS",      "icon": "ic_rss",      "module": "libs:feed",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All feeds",   "+ Subscribe"]     },
-      { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All servers", "+ Add server"]    },
+      { "id": "home",  "label": "Home",     "icon": "ic_home",     "module": null,         "supports_accounts": false, "bottom_nav": true,  "is_master_index": true, "_doc": "Master index — content is a TileGrid of every other section. Sits at the center of the bottom nav. No own drawer page (the [Home] drawer tab already covers it)." },
       { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All calendars", "+ Add CalDAV"]   },
       { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": true,  "drawer_default_children": ["Passwords", "TOTP", "Generator"] },
+      { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["All servers", "+ Add server"], "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now." },
       { "id": "wg",    "label": "WG",       "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Tunnels", "+ Import"]            },
       { "id": "c3",    "label": "C3",       "icon": "ic_settings", "module": "libs:ops",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Reports", "Stack", "Health", "Workflows"] }
     ],
-    "default_section": "mail"
+    "default_section": "home"
   },
   "deploy": {
     "host": "local",

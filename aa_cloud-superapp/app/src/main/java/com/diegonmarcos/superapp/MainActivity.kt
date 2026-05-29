@@ -9,26 +9,33 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.tabs.TabLayout
 import com.diegonmarcos.superapp.updater.Updater
-import com.diegonmarcos.superapp.mail.MailFragment
-import com.diegonmarcos.superapp.mail.MailDrawerFragment
+import com.diegonmarcos.superapp.mail.MailHost
+import com.diegonmarcos.superapp.mail.MailPages
 
 /**
- * Top-level shell. Drawer is paginated via two tabs:
- *   [Home]                  — all-sections index (HomeDrawerFragment)
- *   [<currentSectionLabel>] — section's own drawer fragment (real UI per
- *                              module; PlaceholderDrawerFragment until the
- *                              section grows one)
+ * Top-level shell.
  *
- * When the user switches sections (bottom nav or drawer item), the second
- * tab's label updates and that tab's fragment is rebuilt from the
- * drawerFragmentFor(...) factory.
+ * Bottom nav: 5 buttons. Center is **Home** (master index). Tap any button
+ * → right pane shows a [TileGridFragment] of that section's sub-pages.
+ *
+ * Drawer: paginated via two tabs — [Home] and [<currentSection>]. Tapping
+ * either drawer tab also lands the right pane on the matching TileGrid:
+ * the tab title is itself a link to the section index, mirroring the
+ * bottom-nav behaviour.
+ *
+ * All navigation taxonomy is read from [Sections], which mirrors
+ * `build.json::ui.sections`. There is no hardcoded list of sections.
  */
-class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListener {
+class MainActivity : AppCompatActivity(),
+    HomeDrawerFragment.NavigationItemListener,
+    TileGridFragment.TileClickListener,
+    MailHost {
 
     private val TAG = "MainActivity"
     private lateinit var drawerLayout: DrawerLayout
@@ -36,16 +43,20 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
     private lateinit var drawerTabs: TabLayout
     private lateinit var drawerPageTabs: TabLayout
 
-    /** Most-recently-opened section. Drives the second drawer tab + content. */
-    private var currentSection: String = "mail"
+    private var currentSection: String = ""
     private var currentLabel:   String = ""
+
+    /** Re-entrancy guard: drawerTabs.selectTab() fires onTabSelected — when
+     *  the selectTab call originated from goHome/goSection itself we must
+     *  not bounce back into it and clobber state we just set. */
+    private var suppressTabReentry: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.i(TAG, "onCreate enter")
         super.onCreate(savedInstanceState)
         try {
             setContentView(R.layout.activity_main)
-            currentLabel = getString(R.string.section_mail)
+            currentLabel = getString(R.string.section_home)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
@@ -62,17 +73,12 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
             drawerLayout.addDrawerListener(toggle)
             toggle.syncState()
 
-            // Drawer tabs: [Home] [<currentSection>]. Second tab text is
-            // updated every time the user opens a section, so the drawer's
-            // "app" page always corresponds to the visible content area.
             drawerTabs.addTab(drawerTabs.newTab().setText(getString(R.string.drawer_tab_home)))
             drawerTabs.addTab(drawerTabs.newTab().setText(currentLabel))
             drawerTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-                override fun onTabSelected(tab: TabLayout.Tab) {
-                    showDrawerPage(if (tab.position == 0) DrawerPage.HOME else DrawerPage.SECTION)
-                }
+                override fun onTabSelected(tab: TabLayout.Tab)   = onDrawerTabPicked(tab.position)
+                override fun onTabReselected(tab: TabLayout.Tab) = onDrawerTabPicked(tab.position)
                 override fun onTabUnselected(tab: TabLayout.Tab) {}
-                override fun onTabReselected(tab: TabLayout.Tab) {}
             })
 
             drawerPageTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -84,11 +90,12 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
                 override fun onTabReselected(tab: TabLayout.Tab) {}
             })
 
-            bottomNav.setOnItemSelectedListener { selectSection(it) }
+            bottomNav.setOnItemSelectedListener { onBottomNavPicked(it) }
 
             if (savedInstanceState == null) {
-                bottomNav.selectedItemId = R.id.nav_mail   // sets currentSection + content
-                showDrawerPage(DrawerPage.HOME)            // start with the index
+                // Default landing per build.json::ui.default_section.
+                val target = Sections.defaultSectionId()
+                bottomNav.selectedItemId = idForSectionId(target) ?: R.id.nav_home
             }
 
             Updater.start(applicationContext)
@@ -99,71 +106,154 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
         }
     }
 
-    // ── section content area (bottom nav + drawer parents) ─────────────────
+    // ── bottom nav ────────────────────────────────────────────────────────
 
-    private fun selectSection(item: MenuItem): Boolean {
-        val (id, labelRes) = when (item.itemId) {
-            R.id.nav_mail  -> "mail"  to R.string.section_mail
-            R.id.nav_feed  -> "feed"  to R.string.section_feed
-            R.id.nav_chat  -> "chat"  to R.string.section_chat
-            R.id.nav_cal   -> "cal"   to R.string.section_cal
-            R.id.nav_vault -> "vault" to R.string.section_vault
-            else -> return false
-        }
-        switchToSection(id, getString(labelRes))
+    private fun onBottomNavPicked(item: MenuItem): Boolean {
+        val id = sectionIdForNavId(item.itemId) ?: return false
+        if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
         return true
     }
 
-    private fun switchToSection(id: String, label: String) {
-        Trace.d(TAG, "switchToSection id=$id label=$label")
+    private fun sectionIdForNavId(navId: Int): String? = when (navId) {
+        R.id.nav_mail  -> "mail"
+        R.id.nav_feed  -> "feed"
+        R.id.nav_home  -> "home"
+        R.id.nav_cal   -> "cal"
+        R.id.nav_vault -> "vault"
+        else -> null
+    }
+
+    private fun idForSectionId(id: String): Int? = when (id) {
+        "mail"  -> R.id.nav_mail
+        "feed"  -> R.id.nav_feed
+        "home"  -> R.id.nav_home
+        "cal"   -> R.id.nav_cal
+        "vault" -> R.id.nav_vault
+        else    -> null
+    }
+
+    // ── drawer tab navigation ─────────────────────────────────────────────
+
+    private fun onDrawerTabPicked(position: Int) {
+        if (suppressTabReentry) return
+        if (position == 0) goHome()
+        else {
+            // The 2nd tab acts as the current-section "home link". Re-tap
+            // also returns the right pane to the section TileGrid.
+            goSection(currentSection.ifEmpty { Sections.defaultSectionId() }, currentLabel)
+        }
+    }
+
+    // ── navigation actions ────────────────────────────────────────────────
+
+    /** Land the right pane on the master Home TileGrid. */
+    private fun goHome() {
+        currentSection = "home"
+        currentLabel = getString(R.string.section_home)
+        supportActionBar?.title = currentLabel
+
+        val tiles = Sections.all()
+            .filter { !it.isMasterIndex }
+            .map { sec ->
+                TileGridFragment.Tile(
+                    id = "section:${sec.id}",
+                    label = sec.label,
+                    iconRes = Sections.iconResFor(this, sec.iconName),
+                )
+            }
+        swapContent(TileGridFragment.newInstance(currentLabel, tiles), clearBackStack = true)
+
+        syncBottomNav("home")
+        syncDrawerTab(0)
+    }
+
+    /** Land the right pane on the given section's TileGrid (or placeholder
+     *  if the section has no declared sub-pages). */
+    private fun goSection(id: String, label: String) {
+        if (id == "home") { goHome(); return }
         currentSection = id
         currentLabel = label
         supportActionBar?.title = label
 
-        // Content area: real fragment per section, placeholder otherwise.
-        val content: Fragment = when (id) {
-            "mail" -> MailFragment.newInstance()
-            else   -> SectionFragment.forSection(id, label)
+        val section = Sections.byId(id)
+        val content: Fragment = when {
+            section == null -> SectionFragment.forSection(id, label)
+            section.pages.isNotEmpty() -> TileGridFragment.newInstance(
+                title = label,
+                tiles = section.pages.map { p ->
+                    TileGridFragment.Tile(
+                        id = "page:${p.id}",
+                        label = p.label,
+                        iconRes = 0,
+                    )
+                },
+            )
+            section.defaultChildren.isNotEmpty() -> TileGridFragment.newInstance(
+                title = label,
+                tiles = section.defaultChildren.mapIndexed { i, lbl ->
+                    TileGridFragment.Tile(
+                        id = "stub:$id:$i",
+                        label = lbl,
+                        iconRes = 0,
+                    )
+                },
+            )
+            else -> SectionFragment.forSection(id, label)
+        }
+        swapContent(content, clearBackStack = true)
+
+        syncBottomNav(id)
+        syncDrawerTab(1)
+    }
+
+    private fun syncBottomNav(sectionId: String) {
+        val navId = idForSectionId(sectionId) ?: return
+        if (bottomNav.selectedItemId != navId) {
+            bottomNav.selectedItemId = navId
+        }
+    }
+
+    private fun syncDrawerTab(index: Int) {
+        if (index == 1) drawerTabs.getTabAt(1)?.text = currentLabel
+        if (drawerTabs.selectedTabPosition != index) {
+            suppressTabReentry = true
+            drawerTabs.getTabAt(index)?.let { drawerTabs.selectTab(it) }
+            suppressTabReentry = false
+        }
+        showDrawerPage(if (index == 0) DrawerPage.HOME else DrawerPage.SECTION)
+    }
+
+    private fun swapContent(content: Fragment, clearBackStack: Boolean) {
+        if (clearBackStack) {
+            supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         }
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, content)
             .runOnCommit { applyChrome(content) }
             .commit()
-
-        // Drawer's second tab label tracks the section.
-        drawerTabs.getTabAt(1)?.text = label
-        // If the user is currently looking at the "section" page in the drawer,
-        // rebuild it for the new section.
-        if (drawerTabs.selectedTabPosition == 1) showDrawerPage(DrawerPage.SECTION)
     }
 
     /**
      * Take-over contract: a content Fragment that implements [ShellOverride]
      * can hide our shell chrome so it renders its own. Default (no interface
-     * implementation) keeps everything visible. See ShellOverride.kt for the
-     * intent + FOSS-app-cherry-pick story.
+     * implementation) keeps everything visible.
      */
     private fun applyChrome(fragment: Fragment) {
         val override = fragment as? ShellOverride
-        val ownsToolbar  = override?.ownsToolbar()  ?: false
-        val ownsBottom   = override?.ownsBottomNav() ?: false
+        val ownsToolbar = override?.ownsToolbar() ?: false
+        val ownsBottom  = override?.ownsBottomNav() ?: false
         findViewById<AppBarLayout>(R.id.app_bar).visibility =
             if (ownsToolbar) View.GONE else View.VISIBLE
         bottomNav.visibility = if (ownsBottom) View.GONE else View.VISIBLE
 
-        // Reclaim the bottom-nav reservation when the section opts for
-        // full-screen content. Default = 56dp margin matches the BottomNav
-        // height; takeover sections get 0 so they paint to the bottom edge.
         val container = findViewById<View>(R.id.fragment_container)
         val lp = container.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
         val dp = resources.displayMetrics.density
         lp.bottomMargin = if (ownsBottom) 0 else (56 * dp).toInt()
         container.layoutParams = lp
-
-        Trace.d(TAG, "applyChrome: ownsToolbar=$ownsToolbar ownsBottom=$ownsBottom (${fragment.javaClass.simpleName})")
     }
 
-    // ── drawer pagination ──────────────────────────────────────────────────
+    // ── drawer pagination (internal pages) ────────────────────────────────
 
     private enum class DrawerPage { HOME, SECTION }
 
@@ -178,7 +268,6 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
             DrawerPage.SECTION -> {
                 val pages = SectionPages.pagesFor(currentSection)
                 if (pages.isEmpty()) {
-                    // No per-app pages → single placeholder, hide the row.
                     drawerPageTabs.visibility = View.GONE
                     supportFragmentManager.beginTransaction()
                         .replace(R.id.drawer_content, PlaceholderDrawerFragment.newInstance(currentLabel))
@@ -193,7 +282,6 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
     }
 
     private fun bindPageTabs(pages: List<SectionPages.Page>) {
-        // Rebuild only when contents change so we don't fire stale onTabSelected.
         val needsRebuild = drawerPageTabs.tabCount != pages.size ||
             (0 until drawerPageTabs.tabCount).any { i ->
                 drawerPageTabs.getTabAt(i)?.text != pages[i].label
@@ -201,22 +289,59 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
         if (!needsRebuild) return
         drawerPageTabs.removeAllTabs()
         for (p in pages) drawerPageTabs.addTab(drawerPageTabs.newTab().setText(p.label), false)
-        // selectTab(0) without firing onTabSelected — we drive the first show
-        // ourselves in showDrawerPage(SECTION).
         drawerPageTabs.getTabAt(0)?.let { drawerPageTabs.selectTab(it) }
     }
 
     private fun showDrawerSectionPage(page: SectionPages.Page) {
-        Trace.d(TAG, "showDrawerSectionPage section=$currentSection page=${page.id}")
         supportFragmentManager.beginTransaction()
             .replace(R.id.drawer_content, page.factory())
             .commitAllowingStateLoss()
     }
 
-    // ── HomeDrawerFragment delegate ───────────────────────────────────────
+    // ── tile click dispatch ──────────────────────────────────────────────
+
+    override fun onTileClicked(tileId: String) {
+        when {
+            tileId.startsWith("section:") -> {
+                val id = tileId.removePrefix("section:")
+                if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
+            }
+            tileId.startsWith("page:") -> {
+                val pid = tileId.removePrefix("page:")
+                val frag = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid }?.factory?.invoke()
+                    ?: return
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, frag)
+                    .runOnCommit { applyChrome(frag) }
+                    .addToBackStack(null)
+                    .commit()
+            }
+            tileId.startsWith("stub:") ->
+                Toast.makeText(this, tileId, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ── MailHost (libs:mail → shell bridge) ──────────────────────────────
+
+    override fun openMailPage(pageId: String, args: Bundle?) {
+        val frag = MailPages.fragmentFor(pageId, args)
+        if (currentSection != "mail") {
+            currentSection = "mail"
+            currentLabel = getString(R.string.section_mail)
+            syncBottomNav("mail")
+            syncDrawerTab(1)
+        }
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, frag)
+            .runOnCommit { applyChrome(frag) }
+            .addToBackStack(null)
+            .commit()
+    }
+
+    // ── HomeDrawerFragment delegate ──────────────────────────────────────
 
     override fun onDrawerItemSelected(item: MenuItem): Boolean {
-        Trace.d(TAG, "drawer item ${item.itemId} ${item.title}")
         drawerLayout.closeDrawer(GravityCompat.START)
         when (item.itemId) {
             R.id.drawer_check_updates -> {
@@ -224,10 +349,10 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
                 Toast.makeText(this, R.string.check_updates_started, Toast.LENGTH_SHORT).show()
             }
             R.id.drawer_wg_tunnels, R.id.drawer_wg_import ->
-                switchToSection("wg", getString(R.string.section_wg))
+                goSection("wg", getString(R.string.section_wg))
             R.id.drawer_c3_reports, R.id.drawer_c3_stack,
             R.id.drawer_c3_health,  R.id.drawer_c3_workflows ->
-                switchToSection("c3", getString(R.string.section_c3))
+                goSection("c3", getString(R.string.section_c3))
             else -> Toast.makeText(this, "drawer → ${item.title}", Toast.LENGTH_SHORT).show()
         }
         return true
@@ -236,6 +361,8 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
     override fun onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
+        } else if (supportFragmentManager.backStackEntryCount > 0) {
+            supportFragmentManager.popBackStack()
         } else {
             @Suppress("DEPRECATION")
             super.onBackPressed()

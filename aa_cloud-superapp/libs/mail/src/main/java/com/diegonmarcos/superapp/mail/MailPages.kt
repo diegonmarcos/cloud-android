@@ -22,7 +22,8 @@ object MailPages {
     const val CONTACTS   = "contacts"
     const val SETTINGS   = "settings"
     const val MORE       = "more"
-    const val MENU       = "menu"   // alias used by drawer's section menu
+    const val MENU       = "menu"      // alias used by drawer's section menu
+    const val MESSAGES   = "messages"  // per-folder list; opened from Folders
 
     // Settings sub-pages (11). Encoded as "label|upstream" so the placeholder
     // can render and route them in one pass.
@@ -52,10 +53,15 @@ object MailPages {
         "EULA|FragmentEula",
     )
 
-    fun fragmentFor(pageId: String): Fragment = when (pageId) {
+    fun fragmentFor(pageId: String): Fragment = fragmentFor(pageId, null)
+
+    /** Variant with optional args (e.g. MESSAGES carries folder_id/name). */
+    fun fragmentFor(pageId: String, args: android.os.Bundle?): Fragment = when (pageId) {
         INBOX      -> MailPagePlaceholder.newInstance("Inbox",      "FragmentMessages")
         FOLDERS    -> MailFoldersFragment.newInstance()
-        ACCOUNTS   -> MailPagePlaceholder.newInstance("Accounts",   "FragmentAccounts")
+        // JMAP login form lives under Accounts now — the section index is a
+        // TileGrid (see app/MainActivity), not a single screen.
+        ACCOUNTS   -> MailFragment.newInstance()
         IDENTITIES -> MailPagePlaceholder.newInstance("Identities", "FragmentIdentities")
         RULES      -> MailPagePlaceholder.newInstance("Rules",      "FragmentRules")
         ANSWERS    -> MailPagePlaceholder.newInstance("Answers",    "FragmentAnswers")
@@ -63,6 +69,10 @@ object MailPages {
         SETTINGS   -> MailPagePlaceholder.newInstance("Settings",   "FragmentOptions", SETTINGS_CHILDREN)
         MORE       -> MailPagePlaceholder.newInstance("More",       "(overflow)",     MORE_CHILDREN)
         MENU       -> MailDrawerFragment.newInstance()
+        MESSAGES   -> MailMessagesFragment.newInstance(
+            folderId   = args?.getString(MailMessagesFragment.ARG_FOLDER_ID)   ?: "",
+            folderName = args?.getString(MailMessagesFragment.ARG_FOLDER_NAME) ?: "(folder)",
+        )
         else       -> MailPagePlaceholder.newInstance(pageId,       "?")
     }
 }

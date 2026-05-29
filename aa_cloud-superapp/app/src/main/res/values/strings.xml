@@ -7,6 +7,7 @@
     <string name="check_updates_started">Checking GHCR for a newer APK…</string>
 
     <!-- Section labels (bottom nav + drawer top-level) -->
+    <string name="section_home">Home</string>
     <string name="section_mail">Mail</string>
     <string name="section_feed">RSS</string>
     <string name="section_chat">Chat</string>
@@ -14,6 +15,9 @@
     <string name="section_vault">Vault</string>
     <string name="section_wg">WG</string>
     <string name="section_c3">C3</string>
+
+    <!-- Tile-grid index -->
+    <string name="tile_grid_empty">No sub-pages yet for this section.</string>
 
     <!-- Drawer 2nd-level placeholders (per build.json::ui.sections.drawer_default_children) -->
     <string name="drawer_mail_all">All inboxes</string>

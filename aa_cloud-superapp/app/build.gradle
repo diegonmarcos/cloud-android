@@ -17,6 +17,13 @@ def shortSha = (System.getenv('GITHUB_SHA')
                    }.standardOutput.asText.get().trim())
                 .take(8)
 
+// Bake build.json::ui.sections into BuildConfig as base64-JSON so Kotlin
+// reads a single source of truth at runtime — no parallel hardcoded list.
+// Base64 sidesteps Java-string-literal escaping for the embedded JSON.
+def uiSectionsJson  = groovy.json.JsonOutput.toJson(buildJson.ui.sections)
+def uiSectionsB64   = uiSectionsJson.bytes.encodeBase64().toString()
+def defaultSection  = buildJson.ui.default_section ?: 'home'
+
 android {
     namespace 'com.diegonmarcos.superapp'
     compileSdk 34
@@ -27,7 +34,9 @@ android {
         targetSdk 34
         versionCode codeFinal
         versionName "${buildJson.android.version_name} (sha-${shortSha})"
-        buildConfigField "String", "GIT_SHORT_SHA", "\"${shortSha}\""
+        buildConfigField "String", "GIT_SHORT_SHA",         "\"${shortSha}\""
+        buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
+        buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

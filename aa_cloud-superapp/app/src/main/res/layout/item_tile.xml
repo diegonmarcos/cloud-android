@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single square tile button: icon on top, label below. Picked up by
+     TileGridFragment which sets the icon/label/click. Uses the M3 outlined-
+     button background via a stateful selectableItemBackground. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="96dp"
+    android:layout_margin="4dp"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="8dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <ImageView
+        android:id="@+id/tile_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginBottom="6dp"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/tile_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textAppearance="?attr/textAppearanceLabelMedium" />
+</LinearLayout>
