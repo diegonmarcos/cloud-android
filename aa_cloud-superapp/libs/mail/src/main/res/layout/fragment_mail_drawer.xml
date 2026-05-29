@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mail section drawer — placeholder layout. Will grow into a dense list of
+     accounts → folders (Inbox / Drafts / Sent / Archive / Spam / Trash …)
+     once Slice B (Mailbox/get) lands. For now: shows the JMAP server from
+     prefs and a static folder list so the drawer-pagination plumbing can
+     be visually verified. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp">
+
+        <TextView
+            android:id="@+id/tv_account_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="8dp"
+            android:background="?attr/colorOutlineVariant" />
+
+        <!-- Placeholder folder list. The labels live in libs:mail strings.xml
+             so they translate uniformly; eventually replaced by a RecyclerView
+             driven by Mailbox/get. -->
+        <TextView style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:gravity="center_vertical" android:text="📥  Inbox" />
+        <TextView style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:gravity="center_vertical" android:text="📝  Drafts" />
+        <TextView style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:gravity="center_vertical" android:text="📤  Sent" />
+        <TextView style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:gravity="center_vertical" android:text="📦  Archive" />
+        <TextView style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:gravity="center_vertical" android:text="🚫  Spam" />
+        <TextView style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:gravity="center_vertical" android:text="🗑  Trash" />
+    </LinearLayout>
+</ScrollView>

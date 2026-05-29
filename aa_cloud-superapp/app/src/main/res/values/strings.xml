@@ -42,4 +42,5 @@
     <!-- Drawer affordances -->
     <string name="drawer_open">Open navigation</string>
     <string name="drawer_close">Close navigation</string>
+    <string name="drawer_tab_home">Home</string>
 </resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawer panel — top: tab toggle between [Home] (all-sections index) and
+     [<currentSection>] (the section module's own drawer fragment, e.g.
+     FairEmail's account/folder tree once libs:mail grows that far).
+     Below: a FragmentContainerView that swaps between the two pages.
+     Width is fixed to 280dp so long account/folder names don't blow up
+     the drawer width. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_panel"
+    android:layout_width="280dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="start"
+    android:background="?attr/colorSurface"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/drawer_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:tabGravity="fill"
+        app:tabMode="fixed" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/drawer_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

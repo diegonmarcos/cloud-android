@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The existing all-sections menu, wrapped as a Fragment view so it can be
+     swapped in/out of the drawer's page container. Dense styling preserved. -->
+<com.google.android.material.navigation.NavigationView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/navigation_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:headerLayout="@layout/nav_header"
+    app:menu="@menu/drawer_menu"
+    app:itemMinHeight="32dp"
+    app:itemHorizontalPadding="8dp"
+    app:itemIconPadding="12dp"
+    app:itemTextAppearance="?attr/textAppearanceBodySmall"
+    app:itemIconSize="20dp"
+    app:subheaderInsetStart="8dp"
+    app:dividerInsetStart="8dp" />
