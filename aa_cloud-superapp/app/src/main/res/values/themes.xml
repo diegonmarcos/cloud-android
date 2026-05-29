@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 3 DayNight (auto light/dark from system) without the
+         framework ActionBar — the layout uses a MaterialToolbar mounted as
+         the support ActionBar via setSupportActionBar(). -->
+    <style name="Theme.Superapp" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>

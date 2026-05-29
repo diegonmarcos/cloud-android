@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background colour for the adaptive launcher icon. Deep teal, looks
+         distinctive in launchers without competing with system theming. -->
+    <color name="ic_launcher_background">#0F4C4C</color>
+</resources>

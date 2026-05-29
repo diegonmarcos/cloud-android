@@ -1,0 +1,89 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Data-driven version code + name. Base from build.json; CI bumps via
+// GITHUB_RUN_NUMBER so every push monotonically increases the version code
+// (Android PackageInstaller refuses updates with non-increasing versionCode).
+def buildJson  = new groovy.json.JsonSlurper().parse(file('../build.json'))
+def runNumber  = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
+def codeBase   = (buildJson.android.version_code as Number).intValue()
+def codeFinal  = codeBase + runNumber
+// Short git sha for the welcome text — visible proof the update worked.
+def shortSha = (System.getenv('GITHUB_SHA')
+                ?: providers.exec {
+                       commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
+                   }.standardOutput.asText.get().trim())
+                .take(8)
+
+android {
+    namespace 'com.diegonmarcos.superapp'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.diegonmarcos.superapp'
+        minSdk 26
+        targetSdk 34
+        versionCode codeFinal
+        versionName "${buildJson.android.version_name} (sha-${shortSha})"
+        buildConfigField "String", "GIT_SHORT_SHA", "\"${shortSha}\""
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildFeatures { buildConfig = true }
+
+    // Stable signing — required for the in-app updater to install update APKs.
+    // The keystore is generated once in CI (cached forever via GHA) and lives at
+    // app/keystores/debug.keystore. If it's missing locally (developer machine
+    // without the cache), fall back to Android's framework default keystore so
+    // local builds still work — they just won't be installable as updates to
+    // CI-signed APKs (and vice versa).
+    signingConfigs {
+        debug {
+            def projectKeystore = file('keystores/debug.keystore')
+            if (projectKeystore.exists()) {
+                storeFile     projectKeystore
+                storePassword 'android'
+                keyAlias      'androiddebugkey'
+                keyPassword   'android'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+    implementation project(':libs:updater')
+    implementation project(':libs:mail')
+    implementation project(':libs:cal')
+    implementation project(':libs:feed')
+    implementation project(':libs:net')
+    implementation project(':libs:ops')
+    implementation project(':libs:vault')
+    implementation project(':libs:chat')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+}

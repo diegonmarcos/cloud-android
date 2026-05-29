@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║ Cloud SuperApp — Universal Build Dispatcher                      ║
+# ║                                                                  ║
+# ║ Modularized monolith Android app. Single APK, gradle multi-module. ║
+# ║ All toolchain (AGP, gradle, kotlin, JDK, android-sdk) comes from   ║
+# ║ flake.nix — never assume host has them.                            ║
+# ║                                                                  ║
+# ║ Commands:                                                        ║
+# ║   build       gradle assembleDebug  → dist/superapp-debug.apk     ║
+# ║   release     gradle assembleRelease (signed if keystore present) ║
+# ║   dev         open IDE / run on connected device (adb)            ║
+# ║   test        gradle test (JVM unit tests)                        ║
+# ║   instrument  gradle connectedAndroidTest (needs device)          ║
+# ║   lint        gradle lint                                         ║
+# ║   clean       gradle clean + rm -rf dist/                         ║
+# ║   shell       enter Nix devShell (gradle + sdk + jdk)             ║
+# ║   ship        build + side-load via adb (USB-connected device)    ║
+# ║   oras-push   push APK as OCI artifact → ghcr (release.ghcr block)║
+# ║   oras-pull   pull APK from ghcr → dist/  [tag=latest]            ║
+# ║   phone-install pull + copy to Android shared storage Download     ║
+# ║   gh-release  attach APK to GitHub Release (release.gh_release)   ║
+# ║                                                                  ║
+# ║ NEVER bypass this script for build operations.                    ║
+# ╚══════════════════════════════════════════════════════════════════╝
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DIST_DIR="$SCRIPT_DIR/dist"
+CMD="${1:-help}"
+
+log()    { printf "[%s] %s\n" "$(date '+%H:%M:%S')" "$1"; }
+errlog() { printf "\033[0;31m[%s] ERROR: %s\033[0m\n" "$(date '+%H:%M:%S')" "$1" >&2; }
+
+# Nix-wrapped invocation: every gradle call goes through `nix develop` so the
+# JDK / AGP / Android SDK are reproducible per the flake. Set BYPASS_NIX=1 to
+# use host tools (only for IDE / dev — never CI).
+in_nix() {
+  if [ "${BYPASS_NIX:-0}" = "1" ]; then
+    "$@"
+  else
+    command -v nix >/dev/null 2>&1 || { errlog "nix not on PATH; install nix or set BYPASS_NIX=1"; exit 1; }
+    nix develop "$SCRIPT_DIR" --command "$@"
+  fi
+}
+
+step_build() {
+  log "Build: superapp (debug APK)"
+  in_nix gradle :app:assembleDebug
+  mkdir -p "$DIST_DIR"
+  cp "$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$DIST_DIR/superapp-debug.apk"
+  log "→ $DIST_DIR/superapp-debug.apk"
+}
+
+step_release() {
+  log "Build: superapp (release APK)"
+  in_nix gradle :app:assembleRelease
+  mkdir -p "$DIST_DIR"
+  cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release.apk" "$DIST_DIR/superapp-release.apk" 2>/dev/null \
+    || cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk" "$DIST_DIR/superapp-release-unsigned.apk"
+  log "→ $DIST_DIR/"
+}
+
+step_dev() {
+  log "Dev: launching on connected device (adb)"
+  command -v adb >/dev/null || in_nix adb devices
+  in_nix gradle :app:installDebug
+  in_nix adb shell am start -n "com.diegonmarcos.superapp/.MainActivity"
+}
+
+step_test()       { log "Test: JVM unit tests"; in_nix gradle test; }
+step_instrument() { log "Test: instrumented (needs device)"; in_nix gradle connectedAndroidTest; }
+step_lint()       { log "Lint"; in_nix gradle lint; }
+step_clean()      { log "Clean"; in_nix gradle clean; rm -rf "$DIST_DIR"; }
+step_shell()      { log "Entering Nix devShell"; exec nix develop "$SCRIPT_DIR"; }
+
+step_ship() {
+  step_build
+  log "Ship: side-loading via adb"
+  in_nix adb install -r "$DIST_DIR/superapp-debug.apk"
+}
+
+# ── data-driven release helpers ────────────────────────────────────────
+# All registry / tag / asset config lives in build.json::release. Nothing
+# hardcoded here — pure interpolation. {sha} and {version_name} are the
+# only template variables.
+_release_var() {
+  in_nix jq -r "$1 // empty" "$SCRIPT_DIR/build.json"
+}
+
+_resolve_template() {
+  # Expand {sha} → GITHUB_SHA[:8] (or git rev-parse --short=8), {version_name} → build.json
+  local tmpl="$1"
+  local sha="${GITHUB_SHA:-$(in_nix git -C "$SCRIPT_DIR" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)}"
+  local ver="$(_release_var '.android.version_name')"
+  echo "${tmpl//\{sha\}/${sha:0:8}}" | sed "s|{version_name}|$ver|g"
+}
+
+step_oras_push() {
+  local enabled registry namespace image media_type artifact
+  enabled="$(_release_var '.release.ghcr.enabled')"
+  [ "$enabled" = "true" ] || { log "oras-push: release.ghcr.enabled=false — skip"; return 0; }
+
+  registry="$(_release_var '.release.ghcr.registry')"
+  namespace="$(_release_var '.release.ghcr.namespace')"
+  image="$(_release_var '.release.ghcr.image')"
+  media_type="$(_release_var '.release.ghcr.media_type')"
+
+  # Prefer release apk if it exists, else debug.
+  if   [ -f "$DIST_DIR/$(_release_var '.release.artifact.release')" ]; then
+    artifact="$DIST_DIR/$(_release_var '.release.artifact.release')"
+  elif [ -f "$DIST_DIR/$(_release_var '.release.artifact.debug')" ]; then
+    artifact="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  else
+    errlog "oras-push: no APK found in $DIST_DIR — run build/release first"; exit 1
+  fi
+
+  # ORAS rejects absolute file paths (artifact name = path → leaks host
+  # filesystem). Push from the artifact's dir using only the basename.
+  local artifact_dir artifact_name
+  artifact_dir="$(dirname "$artifact")"
+  artifact_name="$(basename "$artifact")"
+
+  # Iterate templated tags from build.json (data-driven, NO hardcoded list).
+  local tags
+  tags="$(in_nix jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
+  while IFS= read -r tmpl; do
+    [ -z "$tmpl" ] && continue
+    local tag ref
+    tag="$(_resolve_template "$tmpl")"
+    ref="$registry/$namespace/$image:$tag"
+    log "oras push $ref ← $artifact_name"
+    ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
+        --artifact-type "$media_type" )
+  done <<< "$tags"
+}
+
+step_oras_pull() {
+  # Pull APK from GHCR via curl + OCI HTTP API (no oras binary needed).
+  # Public packages: anonymous bearer token from ghcr.io/token works.
+  # All registry/namespace/image come from build.json::release.ghcr.
+  # Optional 2nd arg: tag (default from release.phone_install.default_tag).
+  local registry namespace image tag
+  registry="$(_release_var '.release.ghcr.registry')"
+  namespace="$(_release_var '.release.ghcr.namespace')"
+  image="$(_release_var '.release.ghcr.image')"
+  tag="${2:-$(_release_var '.release.phone_install.default_tag')}"
+  tag="${tag:-latest}"
+
+  local repo="$namespace/$image"
+  local token manifest digest size asset_title
+  log "oras-pull: $registry/$repo:$tag (via OCI HTTP API)"
+
+  token="$(curl -sf "https://$registry/token?service=$registry&scope=repository:$repo:pull" | jq -r .token)"
+  [ -n "$token" ] && [ "$token" != "null" ] || { errlog "no bearer token"; exit 1; }
+
+  mkdir -p "$DIST_DIR"
+  manifest="$(curl -sfL \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+    "https://$registry/v2/$repo/manifests/$tag")"
+  digest="$(jq -r '.layers[0].digest' <<<"$manifest")"
+  size="$(jq -r '.layers[0].size' <<<"$manifest")"
+  asset_title="$(jq -r '.layers[0].annotations["org.opencontainers.image.title"] // "superapp.apk"' <<<"$manifest")"
+  [ -n "$digest" ] && [ "$digest" != "null" ] || { errlog "manifest has no layers"; exit 1; }
+
+  local out="$DIST_DIR/$asset_title"
+  log "  pulling $digest ($size bytes) → $out"
+  curl -sfL -H "Authorization: Bearer $token" \
+    "https://$registry/v2/$repo/blobs/$digest" -o "$out"
+
+  # Verify digest matches what the manifest claimed.
+  local got_sha
+  got_sha="$(sha256sum "$out" | cut -d' ' -f1)"
+  if [ "sha256:$got_sha" != "$digest" ]; then
+    errlog "digest mismatch — got sha256:$got_sha, expected $digest"
+    exit 1
+  fi
+  log "  ✓ $out (sha256:$got_sha)"
+}
+
+step_phone_install() {
+  # Pull APK + copy to a target dir an Android file manager can see.
+  # target_dir from build.json::release.phone_install; override via PHONE_TARGET env.
+  step_oras_pull "$@"
+
+  local target_dir asset_name src
+  target_dir="${PHONE_TARGET:-$(_release_var '.release.phone_install.target_dir')}"
+  # Expand ~ manually — jq returns the literal "~/...".
+  target_dir="${target_dir/#\~/$HOME}"
+  asset_name="$(_release_var '.release.phone_install.asset_name')"
+
+  src="$(ls -1t "$DIST_DIR"/*.apk 2>/dev/null | head -1)"
+  [ -f "$src" ] || { errlog "no APK in $DIST_DIR — oras-pull failed silently"; exit 1; }
+
+  if [ ! -d "$target_dir" ]; then
+    errlog "phone-install: $target_dir does not exist"
+    errlog "  Termux: run 'termux-setup-storage' on the phone and accept the prompt"
+    errlog "  Other:  set PHONE_TARGET=/path/to/dir env var"
+    exit 1
+  fi
+
+  cp "$src" "$target_dir/$asset_name"
+  log "✓ $target_dir/$asset_name"
+  log "  Open Files app → Download → tap APK → install"
+}
+
+step_gh_release() {
+  local enabled draft prerelease notes asset_tmpl asset
+  enabled="$(_release_var '.release.gh_release.enabled')"
+  [ "$enabled" = "true" ] || { log "gh-release: enabled=false — skip"; return 0; }
+
+  [ -n "${GITHUB_REF_NAME:-}" ] || { errlog "gh-release: GITHUB_REF_NAME unset — must run from a tag context"; exit 1; }
+
+  draft="$(_release_var '.release.gh_release.draft')"
+  prerelease="$(_release_var '.release.gh_release.prerelease')"
+  notes="$(_release_var '.release.gh_release.generate_release_notes')"
+  asset_tmpl="$(_release_var '.release.gh_release.asset_name')"
+  asset="$(_resolve_template "$asset_tmpl")"
+
+  # Stage asset with the requested filename.
+  cp "$DIST_DIR/$(_release_var '.release.artifact.release')" "$DIST_DIR/$asset" 2>/dev/null \
+    || cp "$DIST_DIR/$(_release_var '.release.artifact.debug')" "$DIST_DIR/$asset"
+
+  local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" --title "$GITHUB_REF_NAME")
+  [ "$draft" = "true" ]      && flags+=(--draft)
+  [ "$prerelease" = "true" ] && flags+=(--prerelease)
+  [ "$notes" = "true" ]      && flags+=(--generate-notes)
+
+  log "gh release create $GITHUB_REF_NAME ← $asset"
+  in_nix gh release create "${flags[@]}"
+}
+
+case "$CMD" in
+  build)      step_build ;;
+  release)    step_release ;;
+  dev)        step_dev ;;
+  test)       step_test ;;
+  instrument) step_instrument ;;
+  lint)       step_lint ;;
+  clean)      step_clean ;;
+  shell)      step_shell ;;
+  ship)       step_ship ;;
+  oras-push)    step_oras_push ;;
+  oras-pull)    step_oras_pull "$@" ;;
+  phone-install) step_phone_install "$@" ;;
+  gh-release)   step_gh_release ;;
+  help|*)
+    sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
+    ;;
+esac

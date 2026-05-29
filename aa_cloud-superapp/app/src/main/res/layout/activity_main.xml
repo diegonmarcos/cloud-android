@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ┌───────────────────────────────────────────────────────────────────┐
+     │                            Toolbar  (per-page top buttons)        │
+     ├──────────┬────────────────────────────────────────────────────────┤
+     │ Drawer   │                                                        │
+     │ (left,   │              Section Fragment (mail/feed/…)            │
+     │  collap- │              host = R.id.fragment_container             │
+     │  sible,  │                                                        │
+     │  2-level)│                                                        │
+     ├──────────┴────────────────────────────────────────────────────────┤
+     │              BottomNavigationView (6 section buttons)              │
+     └───────────────────────────────────────────────────────────────────┘
+     The DrawerLayout is the root; CoordinatorLayout sits in its primary
+     content slot; NavigationView sits in the start-edge slot. -->
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:openDrawer="start">
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/app_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fitsSystemWindows="true">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorSurface"
+                app:title="@string/app_name" />
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <!-- Section fragment swap target. Bottom navigation has its own
+             margin so the fragment doesn't draw under it. -->
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginBottom="56dp"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottom_nav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="?attr/colorSurface"
+            app:labelVisibilityMode="labeled"
+            app:menu="@menu/bottom_nav" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <!-- Drawer (left side, collapsible). 2-level menu source: drawer_menu.xml.
+         Header source: nav_header.xml — shows app name + build identifier. -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navigation_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        app:headerLayout="@layout/nav_header"
+        app:menu="@menu/drawer_menu" />
+
+</androidx.drawerlayout.widget.DrawerLayout>

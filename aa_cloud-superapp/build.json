@@ -1,0 +1,148 @@
+{
+  "name": "cloud-superapp",
+  "description": "Diego's Cloud SuperApp — modularized monolith Android app. Single APK, gradle multi-module: app/ (launcher shell) + libs/{core,mail,cal,feed,net,ops,vault,chat}/ (independent feature modules). FairEmail-derived mail with JMAP, CalDAV/Radicale calendar, RSS, WireGuard tunnel, cloud ops dashboard, vault. Build via Nix devShell (gradle + AGP + Android SDK), one APK out.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.superapp",
+    "compile_sdk": 34,
+    "min_sdk": 26,
+    "target_sdk": 34,
+    "version_code": 1,
+    "version_name": "0.1.1-dev"
+  },
+  "toolchain": {
+    "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
+    "agp": "8.5.2",
+    "gradle": "8.7",
+    "kotlin": "1.9.24",
+    "jdk": "17"
+  },
+  "upstreams": {
+    "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 1_workflows/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
+    "mail":  { "tracker": "ea_mail-fairmail",   "repo": "https://github.com/M66B/FairEmail.git",             "license": "GPL-3.0",    "feeds_into": "libs:mail",  "primary_lang": "Java" },
+    "cal":   { "tracker": "ea_cal-davx5",       "repo": "https://github.com/bitfireAT/davx5-ose.git",        "license": "GPL-3.0",    "feeds_into": "libs:cal",   "primary_lang": "Kotlin" },
+    "feed":  { "tracker": "ea_feed-feeder",     "repo": "https://github.com/spacecowboy/Feeder.git",         "license": "GPL-3.0",    "feeds_into": "libs:feed",  "primary_lang": "Kotlin" },
+    "net":   { "tracker": "ea_net-wireguard",   "repo": "https://github.com/WireGuard/wireguard-android.git","license": "Apache-2.0", "feeds_into": "libs:net",   "primary_lang": "Kotlin+C" },
+    "vault": { "tracker": "ea_vault-keepassdx", "repo": "https://github.com/Kunzisoft/KeePassDX.git",        "license": "GPL-3.0",    "feeds_into": "libs:vault", "primary_lang": "Kotlin" },
+    "ops":   { "tracker": null, "repo": null, "license": null, "feeds_into": "libs:ops", "_doc_no_upstream": "ops is a thin c3-api dashboard — no FOSS upstream to fork. Will be original code." },
+    "core":  { "tracker": null, "repo": null, "license": null, "feeds_into": "libs:core", "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) — original code." }
+  },
+  "modules": {
+    "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list. Adding a new feature module = one entry here + mkdir + minimal build.gradle.",
+    "app": {
+      "type": "application",
+      "depends_on": ["libs:core", "libs:updater", "libs:mail", "libs:cal", "libs:feed", "libs:net", "libs:ops", "libs:vault", "libs:chat"],
+      "comment": "Launcher / shell. Hosts navigation to each feature module."
+    },
+    "libs:core": {
+      "type": "library",
+      "depends_on": [],
+      "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
+    },
+    "libs:updater": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, prompts user via PackageInstaller. All knobs in release.auto_update — no hardcoded URLs."
+    },
+    "libs:mail": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "Mail — FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ea_mail-fairmail/."
+    },
+    "libs:cal": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "Calendar/contacts — CalDAV/CardDAV against Radicale (cal.diegonmarcos.com)."
+    },
+    "libs:feed": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "RSS reader + ntfy notifications integration."
+    },
+    "libs:net": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "WireGuard tunnel control. Upstream: github.com/WireGuard/wireguard-android (Apache-2.0)."
+    },
+    "libs:ops": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "Cloud ops dashboard — c3-api, health checks, dagu trigger, container control."
+    },
+    "libs:vault": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "Passwords + TOTP. Could integrate with Vaultwarden (vault.diegonmarcos.com)."
+    },
+    "libs:chat": {
+      "type": "library",
+      "depends_on": ["libs:core"],
+      "comment": "Chat / messaging. Likely integrates with mattermost-bots (chat.diegonmarcos.com) — could fork Mattermost-Mobile / SimpleX / Conversations later."
+    }
+  },
+  "ui": {
+    "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
+    "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
+    "sections": [
+      { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All inboxes", "+ Add account"] },
+      { "id": "feed",  "label": "RSS",      "icon": "ic_rss",      "module": "libs:feed",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All feeds",   "+ Subscribe"]     },
+      { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All servers", "+ Add server"]    },
+      { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All calendars", "+ Add CalDAV"]   },
+      { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": true,  "drawer_default_children": ["Passwords", "TOTP", "Generator"] },
+      { "id": "wg",    "label": "WG",       "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Tunnels", "+ Import"]            },
+      { "id": "c3",    "label": "C3",       "icon": "ic_settings", "module": "libs:ops",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Reports", "Stack", "Health", "Workflows"] }
+    ],
+    "default_section": "mail"
+  },
+  "deploy": {
+    "host": "local",
+    "note": "APK produced in dist/. Side-loadable via adb or shared via Filebrowser."
+  },
+  "release": {
+    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-superapp.yml) invokes those engine commands — no hardcoded registry/tag strings in the workflow.",
+    "artifact": {
+      "_doc": "Path under dist/ to publish. release variant when signed key available, debug otherwise.",
+      "debug":   "Cloud-SuperApp-debug.apk",
+      "release": "Cloud-SuperApp-release.apk"
+    },
+    "ghcr": {
+      "_doc": "ORAS push as an OCI artifact (not a container — APK is a blob). One :latest tag plus per-commit sha + per-version tags. Image renamed from `superapp` to `cloud-superapp` — old package becomes orphan.",
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-superapp",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+    },
+    "gh_release": {
+      "_doc": "GitHub Release attachment. Only fires on tag push matching the pattern, never on main pushes.",
+      "enabled": true,
+      "tag_pattern": "ea_cloud-superapp-v*",
+      "asset_name": "Cloud-SuperApp-{version_name}.apk",
+      "draft": false,
+      "prerelease": true,
+      "generate_release_notes": true
+    },
+    "phone_install": {
+      "_doc": "Targets for build.sh phone-install. Pulls APK from GHCR via curl+OCI HTTP API (no oras dep — works on aarch64 Termux without a Nix shell) and copies to a target dir an Android file manager can see. Override target_dir per environment via PHONE_TARGET env var; default suits Termux/nix-on-droid where ~/storage symlinks to /storage/emulated/0/.",
+      "default_tag": "latest",
+      "target_dir": "~/storage/Download",
+      "asset_name": "Cloud-SuperApp-debug.apk"
+    },
+    "auto_update": {
+      "_doc": "In-app updater config — read at gradle eval time into BuildConfig, then used by libs:updater at runtime. Same registry/namespace/image as release.ghcr (the engine asserts consistency at build time).",
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "_doc_install": "Behavior when an update is available: 'prompt' uses PackageInstaller with a foreground notification — user must accept install per Android security model. 'silent' requires the system updater privilege which only F-Droid Privileged Extension can grant.",
+      "install_mode": "prompt"
+    }
+  }
+}

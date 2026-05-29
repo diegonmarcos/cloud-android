@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+}
+
+// Inject build.json::release into BuildConfig — runtime code uses the same
+// source of truth as build.sh oras-push / phone-install. No hardcoded URLs.
+def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def ghcr = buildJson.release.ghcr
+def au   = buildJson.release.auto_update
+
+android {
+    namespace 'com.diegonmarcos.superapp.updater'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+
+        buildConfigField "String",  "GHCR_REGISTRY",        "\"${ghcr.registry}\""
+        buildConfigField "String",  "GHCR_NAMESPACE",       "\"${ghcr.namespace}\""
+        buildConfigField "String",  "GHCR_IMAGE",           "\"${ghcr.image}\""
+        buildConfigField "String",  "GHCR_MEDIA_TYPE",      "\"${ghcr.media_type}\""
+        buildConfigField "String",  "AUTO_UPDATE_TAG",      "\"${au.tag}\""
+        buildConfigField "long",    "AUTO_UPDATE_INTERVAL_HOURS",  "${au.interval_hours}L"
+        buildConfigField "boolean", "AUTO_UPDATE_ENABLED",         "${au.enabled}"
+        buildConfigField "boolean", "AU_REQUIRE_UNMETERED",        "${au.require_unmetered_network}"
+        buildConfigField "boolean", "AU_REQUIRE_CHARGING",         "${au.require_charging}"
+        buildConfigField "String",  "AU_INSTALL_MODE",             "\"${au.install_mode}\""
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
+}
