@@ -27,4 +27,19 @@
 
     <color name="tile_indigo_bg">#FFE8EAF6</color>
     <color name="tile_indigo_fg">#FF283593</color>
+
+    <!-- ── Cloud SuperApp brand palette (M3) ────────────────────────── -->
+    <!-- Seed = cloud-blue #1565C0. Derived light & dark tokens. -->
+    <color name="cloud_primary">#FF1565C0</color>
+    <color name="cloud_on_primary">#FFFFFFFF</color>
+    <color name="cloud_primary_container">#FFD0E4FF</color>
+    <color name="cloud_on_primary_container">#FF001D36</color>
+    <color name="cloud_secondary">#FF535F70</color>
+    <color name="cloud_secondary_container">#FFD7E3F7</color>
+    <color name="cloud_on_secondary_container">#FF101C2B</color>
+    <color name="cloud_tertiary">#FF6B5778</color>
+    <color name="cloud_tertiary_container">#FFF3DAFF</color>
+
+    <!-- Status / navigation bars stay transparent for the edge-to-edge
+         layout enabled by WindowCompat in MainActivity.onCreate. -->
 </resources>

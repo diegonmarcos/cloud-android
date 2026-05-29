@@ -1,7 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Material 3 DayNight (auto light/dark from system) without the
-         framework ActionBar — the layout uses a MaterialToolbar mounted as
-         the support ActionBar via setSupportActionBar(). -->
-    <style name="Theme.Superapp" parent="Theme.Material3.DayNight.NoActionBar" />
+<!-- Cloud SuperApp theme. Material 3 DayNight (auto light/dark from system)
+     extended with the brand palette in colors.xml. DynamicColors (Android
+     12+) is applied at runtime in App.onCreate so phones with system
+     wallpaper colours get a personalised override; older devices fall
+     back to the static brand colours declared here. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.Superapp" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Brand colour tokens (M3). -->
+        <item name="colorPrimary">@color/cloud_primary</item>
+        <item name="colorOnPrimary">@color/cloud_on_primary</item>
+        <item name="colorPrimaryContainer">@color/cloud_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/cloud_on_primary_container</item>
+        <item name="colorSecondary">@color/cloud_secondary</item>
+        <item name="colorSecondaryContainer">@color/cloud_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/cloud_on_secondary_container</item>
+        <item name="colorTertiary">@color/cloud_tertiary</item>
+        <item name="colorTertiaryContainer">@color/cloud_tertiary_container</item>
+
+        <!-- Edge-to-edge: transparent system bars, content draws beneath
+             them. MainActivity applies WindowInsets to keep the toolbar +
+             bottom-nav from underlapping cutouts / nav gestures. -->
+        <item name="android:statusBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
+        <item name="android:navigationBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds" tools:targetApi="lollipop">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
+    </style>
 </resources>

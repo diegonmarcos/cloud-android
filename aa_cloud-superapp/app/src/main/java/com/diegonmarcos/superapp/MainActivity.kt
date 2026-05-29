@@ -8,6 +8,10 @@ import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -60,11 +64,18 @@ class MainActivity : AppCompatActivity(),
         Trace.i(TAG, "onCreate enter")
         super.onCreate(savedInstanceState)
         try {
+            // Edge-to-edge: content draws beneath the status / nav bars,
+            // we pad the AppBar and BottomNav to keep them visible. The
+            // theme already declares transparent system bars + light-icon
+            // tinting so the bars stay readable.
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+
             setContentView(R.layout.activity_main)
             currentLabel = getString(R.string.section_home)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
+            applyEdgeToEdgeInsets()
 
             drawerLayout = findViewById(R.id.drawer_layout)
             bottomNav = findViewById(R.id.bottom_nav)
@@ -269,6 +280,23 @@ class MainActivity : AppCompatActivity(),
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
             .replace(R.id.fragment_container, content)
             .commit()
+    }
+
+    /** Edge-to-edge insets handler. Pads the AppBar (top inset → status
+     *  bar) and the BottomNav (bottom inset → gesture nav). The
+     *  drawer pulls insets onto its own panel via the framework default. */
+    private fun applyEdgeToEdgeInsets() {
+        val appBar    = findViewById<AppBarLayout>(R.id.app_bar)
+        ViewCompat.setOnApplyWindowInsetsListener(appBar) { v, insets ->
+            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(top = sys.top)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { v, insets ->
+            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(bottom = sys.bottom)
+            insets
+        }
     }
 
     /**

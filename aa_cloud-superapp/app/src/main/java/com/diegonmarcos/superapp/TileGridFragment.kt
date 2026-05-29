@@ -5,6 +5,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.HapticFeedbackConstants
 import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -122,6 +123,7 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
 
         val press = AnimationUtils.loadAnimation(requireContext(), R.anim.tile_press)
         tileView.setOnClickListener { v ->
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             v.startAnimation(press)
             (activity as? TileClickListener)?.onTileClicked(tileId)
         }
