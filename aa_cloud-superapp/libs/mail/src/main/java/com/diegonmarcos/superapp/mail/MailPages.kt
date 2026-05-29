@@ -1,27 +1,68 @@
 package com.diegonmarcos.superapp.mail
 
-import android.os.Bundle
 import androidx.fragment.app.Fragment
 
 /**
- * Page fragments for the Mail section, surfaced as the second drawer-tab row.
- * Each is the placeholder for the FairEmail-equivalent screen that will
- * cherry-pick into the slot.
+ * Factory for the Mail section's pages — mirrors build.json::ui.sections[mail]
+ * .pages[]. Each id resolves to a Fragment placeholder pre-filled with the
+ * page title + the upstream FairEmail class it'll be replaced by.
+ *
+ * Settings / More embed their child list inline so the user can navigate
+ * down into a sub-page from this single placeholder pattern.
  */
-class MailFoldersFragment  : Fragment(R.layout.fragment_mail_folders)
-class MailSettingsFragment : Fragment(R.layout.fragment_mail_settings)
-
-/** Page id constants for libs:mail. Keep in lock-step with build.json. */
 object MailPages {
-    const val MENU     = "menu"
-    const val FOLDERS  = "folders"
-    const val SETTINGS = "settings"
 
-    /** Factory for the section's pages. MainActivity routes through this. */
+    // ── Level-1 page ids (must match build.json) ───────────────────────
+    const val INBOX      = "inbox"
+    const val FOLDERS    = "folders"
+    const val ACCOUNTS   = "accounts"
+    const val IDENTITIES = "identities"
+    const val RULES      = "rules"
+    const val ANSWERS    = "answers"
+    const val CONTACTS   = "contacts"
+    const val SETTINGS   = "settings"
+    const val MORE       = "more"
+    const val MENU       = "menu"   // alias used by drawer's section menu
+
+    // Settings sub-pages (11). Encoded as "label|upstream" so the placeholder
+    // can render and route them in one pass.
+    private val SETTINGS_CHILDREN = arrayOf(
+        "Behavior|FragmentOptionsBehavior",
+        "Display|FragmentOptionsDisplay",
+        "Sync|FragmentOptionsSynchronize",
+        "Notifications|FragmentOptionsNotifications",
+        "Send|FragmentOptionsSend",
+        "Connection|FragmentOptionsConnection",
+        "Encryption|FragmentOptionsEncryption",
+        "Privacy|FragmentOptionsPrivacy",
+        "Integrations|FragmentOptionsIntegrations",
+        "Backup|FragmentOptionsBackup",
+        "Misc|FragmentOptionsMisc",
+    )
+
+    // More overflow (8 diagnostic / power-user pages).
+    private val MORE_CHILDREN = arrayOf(
+        "Order|FragmentOrder",
+        "Operations|FragmentOperations",
+        "Logs|FragmentLogs",
+        "Certificates|FragmentCertificates",
+        "Pro|FragmentPro",
+        "Legend|FragmentLegend",
+        "About|FragmentAbout",
+        "EULA|FragmentEula",
+    )
+
     fun fragmentFor(pageId: String): Fragment = when (pageId) {
-        MENU     -> MailDrawerFragment.newInstance()
-        FOLDERS  -> MailFoldersFragment()
-        SETTINGS -> MailSettingsFragment()
-        else     -> MailDrawerFragment.newInstance()
+        INBOX      -> MailPagePlaceholder.newInstance("Inbox",      "FragmentMessages")
+        FOLDERS    -> MailPagePlaceholder.newInstance("Folders",    "FragmentFolders")
+        ACCOUNTS   -> MailPagePlaceholder.newInstance("Accounts",   "FragmentAccounts")
+        IDENTITIES -> MailPagePlaceholder.newInstance("Identities", "FragmentIdentities")
+        RULES      -> MailPagePlaceholder.newInstance("Rules",      "FragmentRules")
+        ANSWERS    -> MailPagePlaceholder.newInstance("Answers",    "FragmentAnswers")
+        CONTACTS   -> MailPagePlaceholder.newInstance("Contacts",   "FragmentContacts")
+        SETTINGS   -> MailPagePlaceholder.newInstance("Settings",   "FragmentOptions", SETTINGS_CHILDREN)
+        MORE       -> MailPagePlaceholder.newInstance("More",       "(overflow)",     MORE_CHILDREN)
+        MENU       -> MailDrawerFragment.newInstance()
+        else       -> MailPagePlaceholder.newInstance(pageId,       "?")
     }
 }

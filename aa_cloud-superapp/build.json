@@ -88,7 +88,44 @@
     "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
     "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
     "sections": [
-      { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": true,  "jmap_default_server": "https://jmap.diegonmarcos.com", "drawer_default_children": ["All inboxes", "+ Add account"], "pages": [ {"id": "menu", "label": "Menu"}, {"id": "folders", "label": "Folders"}, {"id": "settings", "label": "Settings"} ] },
+      { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": true,  "jmap_default_server": "https://jmap.diegonmarcos.com", "drawer_default_children": ["All inboxes", "+ Add account"],
+        "_doc_pages": "Mapping to FairEmail's ~38 user-visible pages. Level-1 chips host the daily-use surfaces; Settings drills into 11 FairEmail FragmentOptions* sub-tabs; More is the overflow for rarely-used / diagnostic pages.",
+        "pages": [
+          { "id": "inbox",      "label": "Inbox",      "upstream": "FragmentMessages" },
+          { "id": "folders",    "label": "Folders",    "upstream": "FragmentFolders" },
+          { "id": "accounts",   "label": "Accounts",   "upstream": "FragmentAccounts" },
+          { "id": "identities", "label": "Identities", "upstream": "FragmentIdentities" },
+          { "id": "rules",      "label": "Rules",      "upstream": "FragmentRules" },
+          { "id": "answers",    "label": "Answers",    "upstream": "FragmentAnswers" },
+          { "id": "contacts",   "label": "Contacts",   "upstream": "FragmentContacts" },
+          { "id": "settings",   "label": "Settings",   "upstream": "FragmentOptions",
+            "sub_pages": [
+              { "id": "behavior",      "label": "Behavior",      "upstream": "FragmentOptionsBehavior" },
+              { "id": "display",       "label": "Display",       "upstream": "FragmentOptionsDisplay" },
+              { "id": "sync",          "label": "Sync",          "upstream": "FragmentOptionsSynchronize" },
+              { "id": "notifications", "label": "Notifications", "upstream": "FragmentOptionsNotifications" },
+              { "id": "send",          "label": "Send",          "upstream": "FragmentOptionsSend" },
+              { "id": "connection",    "label": "Connection",    "upstream": "FragmentOptionsConnection" },
+              { "id": "encryption",    "label": "Encryption",    "upstream": "FragmentOptionsEncryption" },
+              { "id": "privacy",       "label": "Privacy",       "upstream": "FragmentOptionsPrivacy" },
+              { "id": "integrations",  "label": "Integrations",  "upstream": "FragmentOptionsIntegrations" },
+              { "id": "backup",        "label": "Backup",        "upstream": "FragmentOptionsBackup" },
+              { "id": "misc",          "label": "Misc",          "upstream": "FragmentOptionsMisc" }
+            ]
+          },
+          { "id": "more",       "label": "More",       "_doc": "Overflow menu — rarely-used / diagnostic pages.",
+            "menu": [
+              { "id": "order",        "label": "Order",        "upstream": "FragmentOrder" },
+              { "id": "operations",   "label": "Operations",   "upstream": "FragmentOperations" },
+              { "id": "logs",         "label": "Logs",         "upstream": "FragmentLogs" },
+              { "id": "certificates", "label": "Certificates", "upstream": "FragmentCertificates" },
+              { "id": "pro",          "label": "Pro",          "upstream": "FragmentPro" },
+              { "id": "legend",       "label": "Legend",       "upstream": "FragmentLegend" },
+              { "id": "about",        "label": "About",        "upstream": "FragmentAbout" },
+              { "id": "eula",         "label": "EULA",         "upstream": "FragmentEula" }
+            ]
+          }
+        ] },
       { "id": "feed",  "label": "RSS",      "icon": "ic_rss",      "module": "libs:feed",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All feeds",   "+ Subscribe"]     },
       { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All servers", "+ Add server"]    },
       { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All calendars", "+ Add CalDAV"]   },
