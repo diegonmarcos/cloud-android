@@ -23,8 +23,10 @@ def shortSha = (System.getenv('GITHUB_SHA')
 def uiSectionsJson  = groovy.json.JsonOutput.toJson(buildJson.ui.sections)
 def uiSectionsB64   = uiSectionsJson.bytes.encodeBase64().toString()
 def defaultSection  = buildJson.ui.default_section ?: 'home'
-def uiActionsJson   = groovy.json.JsonOutput.toJson(buildJson.ui.home_actions ?: [])
-def uiActionsB64    = uiActionsJson.bytes.encodeBase64().toString()
+def uiActionsJson    = groovy.json.JsonOutput.toJson(buildJson.ui.home_actions ?: [])
+def uiActionsB64     = uiActionsJson.bytes.encodeBase64().toString()
+def uiSamplesJson    = groovy.json.JsonOutput.toJson(buildJson.ui.page_samples ?: [:])
+def uiSamplesB64     = uiSamplesJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp'
@@ -40,6 +42,7 @@ android {
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         buildConfigField "String", "UI_HOME_ACTIONS_B64",   "\"${uiActionsB64}\""
+        buildConfigField "String", "UI_PAGE_SAMPLES_B64",   "\"${uiSamplesB64}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

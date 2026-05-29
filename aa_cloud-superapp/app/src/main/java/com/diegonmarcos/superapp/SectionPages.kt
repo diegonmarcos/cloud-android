@@ -27,6 +27,6 @@ object SectionPages {
 
     private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when (sectionId) {
         "mail" -> MailPages.fragmentFor(pageId)
-        else   -> SectionFragment.forSection(sectionId, label)
+        else   -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }

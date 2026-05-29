@@ -36,8 +36,11 @@ object Sections {
         val actionType: String,
     )
 
+    data class Sample(val title: String, val subtitle: String)
+
     @Volatile private var cached:        List<Section>? = null
     @Volatile private var cachedActions: List<Action>?  = null
+    @Volatile private var cachedSamples: Map<String, List<Sample>>? = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -110,4 +113,30 @@ object Sections {
     /** Resolve `icon` name from build.json to a drawable res id; 0 if missing. */
     fun iconResFor(ctx: Context, name: String): Int =
         ctx.resources.getIdentifier(name, "drawable", ctx.packageName)
+
+    /** Per-page sample content from build.json::ui.page_samples. Keyed by
+     *  "<section>/<page>". Returns empty list if no samples for that key. */
+    fun pageSamples(key: String): List<Sample> {
+        loadSamples()
+        return cachedSamples?.get(key).orEmpty()
+    }
+
+    private fun loadSamples() {
+        if (cachedSamples != null) return
+        val json = String(Base64.decode(BuildConfig.UI_PAGE_SAMPLES_B64, Base64.NO_WRAP))
+        val obj  = org.json.JSONObject(json)
+        val parsed = mutableMapOf<String, List<Sample>>()
+        val it = obj.keys()
+        while (it.hasNext()) {
+            val k = it.next()
+            val arr = obj.optJSONArray(k) ?: continue
+            val items = mutableListOf<Sample>()
+            for (i in 0 until arr.length()) {
+                val po = arr.getJSONObject(i)
+                items.add(Sample(po.getString("title"), po.optString("subtitle", "")))
+            }
+            parsed[k] = items
+        }
+        cachedSamples = parsed
+    }
 }

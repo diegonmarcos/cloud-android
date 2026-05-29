@@ -194,7 +194,237 @@
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). Extend by adding entries here — never hardcoded in Kotlin.",
     "home_actions": [
       { "id": "check_updates", "label": "Update", "icon": "ic_refresh", "action_type": "check_updates" }
-    ]
+    ],
+    "_doc_page_samples": "Per-page sample content shown by PageContentFragment until the real module fragment lands. Key format: '<section>/<page>'. Each entry is a list of {title, subtitle} rows. Ties to the real CLAUDE.md stack so each section already feels like the user's infra.",
+    "page_samples": {
+      "feed/all": [
+        { "title": "Hacker News",       "subtitle": "Top stories • Y Combinator" },
+        { "title": "Lobste.rs",         "subtitle": "Computing-focused community" },
+        { "title": "Phoronix",          "subtitle": "Linux + open-source hardware" },
+        { "title": "Ars Technica",      "subtitle": "Technology news" },
+        { "title": "/r/selfhosted",     "subtitle": "Reddit • self-hosting" }
+      ],
+      "feed/unread": [
+        { "title": "Rust 1.89 released",        "subtitle": "Hacker News • 2h" },
+        { "title": "WireGuard kernel debate",   "subtitle": "Lobste.rs • 5h" },
+        { "title": "ZFS 2.3 on Linux",          "subtitle": "Phoronix • 8h" }
+      ],
+      "feed/saved": [
+        { "title": "Building Stalwart from source", "subtitle": "blog • saved 3d ago" },
+        { "title": "JMAP push channel design",      "subtitle": "RFC 8620 • saved 1w ago" }
+      ],
+      "feed/subscriptions": [
+        { "title": "Hacker News", "subtitle": "https://news.ycombinator.com/rss" },
+        { "title": "Lobste.rs",   "subtitle": "https://lobste.rs/rss" },
+        { "title": "Phoronix",    "subtitle": "https://phoronix.com/rss.php" }
+      ],
+      "feed/add": [
+        { "title": "Paste an RSS / Atom URL", "subtitle": "Feeder will auto-discover the feed" }
+      ],
+      "feed/settings": [
+        { "title": "Sync interval",  "subtitle": "Every 30 minutes" },
+        { "title": "Notifications",  "subtitle": "On unread" },
+        { "title": "Storage limit",  "subtitle": "Keep last 200 items / feed" }
+      ],
+
+      "cal/day": [
+        { "title": "Standup",   "subtitle": "09:00 — 09:15" },
+        { "title": "Deep work", "subtitle": "10:00 — 12:00" },
+        { "title": "Lunch",     "subtitle": "13:00 — 14:00" },
+        { "title": "Review PRs","subtitle": "16:00 — 17:00" }
+      ],
+      "cal/week": [
+        { "title": "Mon", "subtitle": "3 events" },
+        { "title": "Tue", "subtitle": "2 events" },
+        { "title": "Wed", "subtitle": "5 events" },
+        { "title": "Thu", "subtitle": "4 events" },
+        { "title": "Fri", "subtitle": "2 events" }
+      ],
+      "cal/month": [
+        { "title": "May 2026", "subtitle": "23 events scheduled" },
+        { "title": "Heatmap",  "subtitle": "Densest week: 18 May" }
+      ],
+      "cal/agenda": [
+        { "title": "Today — Standup",         "subtitle": "09:00" },
+        { "title": "Tomorrow — Tech review",  "subtitle": "14:00" },
+        { "title": "Fri — Tickets sync",      "subtitle": "11:30" }
+      ],
+      "cal/calendars": [
+        { "title": "Personal", "subtitle": "cal.diegonmarcos.com/diego/personal" },
+        { "title": "Work",     "subtitle": "cal.diegonmarcos.com/diego/work" },
+        { "title": "Birthdays","subtitle": "cal.diegonmarcos.com/diego/birthdays" }
+      ],
+      "cal/add": [
+        { "title": "Add CalDAV server", "subtitle": "https://cal.diegonmarcos.com" }
+      ],
+      "cal/settings": [
+        { "title": "Default reminder", "subtitle": "15 min before" },
+        { "title": "Week starts on",   "subtitle": "Monday" }
+      ],
+
+      "vault/passwords": [
+        { "title": "github.com",                "subtitle": "diegonmarcos" },
+        { "title": "vault.diegonmarcos.com",    "subtitle": "diego" },
+        { "title": "gitea.diegonmarcos.com",    "subtitle": "diego" },
+        { "title": "auth.diegonmarcos.com",     "subtitle": "diego (Authelia)" }
+      ],
+      "vault/totp": [
+        { "title": "GitHub",      "subtitle": "623 891 • 18s" },
+        { "title": "Vaultwarden", "subtitle": "412 056 • 21s" },
+        { "title": "Authelia",    "subtitle": "778 230 • 09s" }
+      ],
+      "vault/generator": [
+        { "title": "Last generated", "subtitle": "k7-Ph3i9!Bx2Q@vR.j5sN" },
+        { "title": "Length",         "subtitle": "20 chars" },
+        { "title": "Charset",        "subtitle": "alnum + symbols" }
+      ],
+      "vault/identities": [
+        { "title": "Personal", "subtitle": "me@diegonmarcos.com" },
+        { "title": "Work",     "subtitle": "diego@workplace.com" }
+      ],
+      "vault/vaults": [
+        { "title": "Vaultwarden",   "subtitle": "vault.diegonmarcos.com" },
+        { "title": "Local KeePass", "subtitle": "passwords.kdbx" }
+      ],
+      "vault/settings": [
+        { "title": "Auto-lock",     "subtitle": "After 5 minutes" },
+        { "title": "Biometric",     "subtitle": "Enabled" }
+      ],
+
+      "chat/dms": [
+        { "title": "Alice", "subtitle": "see you tomorrow" },
+        { "title": "Bob",   "subtitle": "👍" }
+      ],
+      "chat/channels": [
+        { "title": "#general", "subtitle": "chat.diegonmarcos.com" },
+        { "title": "#ops",     "subtitle": "1 unread" },
+        { "title": "#alerts",  "subtitle": "ntfy bridge" }
+      ],
+      "chat/servers": [
+        { "title": "Mattermost", "subtitle": "chat.diegonmarcos.com" }
+      ],
+      "chat/add": [
+        { "title": "Add Mattermost server", "subtitle": "Enter URL + token" }
+      ],
+      "chat/settings": [
+        { "title": "Notifications", "subtitle": "Mentions + DMs" }
+      ],
+
+      "wg/tunnels": [
+        { "title": "oci-mail",      "subtitle": "10.0.0.3 • Oracle E2 Free" },
+        { "title": "oci-analytics", "subtitle": "10.0.0.4 • Oracle E2 Free" },
+        { "title": "oci-apps",      "subtitle": "10.0.0.6 • Oracle A1.Flex 4-OCPU" },
+        { "title": "gcp-proxy",     "subtitle": "10.0.0.1 • GCP e2-micro Free" }
+      ],
+      "wg/status": [
+        { "title": "Mesh handshake",    "subtitle": "OK • all 4 peers alive" },
+        { "title": "Latency oci-mail",  "subtitle": "27 ms" },
+        { "title": "Latency gcp-proxy", "subtitle": "44 ms" }
+      ],
+      "wg/logs": [
+        { "title": "[INFO] keepalive recv", "subtitle": "from 10.0.0.3" },
+        { "title": "[INFO] handshake done", "subtitle": "with 10.0.0.4" },
+        { "title": "[WARN] reset peer",     "subtitle": "to 10.0.0.6" }
+      ],
+      "wg/add": [
+        { "title": "Import .conf file", "subtitle": "Pick from Downloads" }
+      ],
+      "wg/settings": [
+        { "title": "Always-on VPN", "subtitle": "Enabled" }
+      ],
+
+      "solutions/professional": [
+        { "title": "cv_pdf",   "subtitle": "Résumé PDF generator" },
+        { "title": "cv_web",   "subtitle": "Personal CV site" },
+        { "title": "linktree", "subtitle": "Bio links page" },
+        { "title": "skills_mcp","subtitle": "Skills MCP showcase" }
+      ],
+      "solutions/personal": [
+        { "title": "mymovies",       "subtitle": "Movies watchlist & ratings" },
+        { "title": "mymusic",        "subtitle": "Music dashboard" },
+        { "title": "myphotos",       "subtitle": "Photo gallery" },
+        { "title": "mytrips",        "subtitle": "Travel log" },
+        { "title": "myprofile",      "subtitle": "About me" },
+        { "title": "health_tracker", "subtitle": "Health metrics" }
+      ],
+      "solutions/tools": [
+        { "title": "json-vision",     "subtitle": "JSON visualizer" },
+        { "title": "carto",           "subtitle": "Cartography lab" },
+        { "title": "central_bank",    "subtitle": "Financial tools" },
+        { "title": "market_watch",    "subtitle": "Live markets" },
+        { "title": "leafy",           "subtitle": "Plant-care tracker" }
+      ],
+      "solutions/cloud": [
+        { "title": "myanalytics", "subtitle": "Personal analytics dashboard" },
+        { "title": "mydrive",     "subtitle": "File browser" },
+        { "title": "mymail",      "subtitle": "Webmail dashboard" },
+        { "title": "nexus",       "subtitle": "Service hub" }
+      ],
+      "solutions/other": [
+        { "title": "c_root",            "subtitle": "Cube view portfolio" },
+        { "title": "linktree_mindmap",  "subtitle": "Mindmap variant" },
+        { "title": "myfeed",            "subtitle": "Feed reader" },
+        { "title": "astro",             "subtitle": "Astrology playground (Nuxt)" }
+      ],
+
+      "c3/reports": [
+        { "title": "Cost summary",   "subtitle": "Oracle Free + GCP Free • $0/mo" },
+        { "title": "Health rollup",  "subtitle": "37/37 services up" },
+        { "title": "Weekly digest",  "subtitle": "Generated 2026-05-26" }
+      ],
+      "c3/stack": [
+        { "title": "caddy",        "subtitle": "proxy.diegonmarcos.com • oci-analytics" },
+        { "title": "authelia",     "subtitle": "auth.diegonmarcos.com • gcp-proxy" },
+        { "title": "stalwart",     "subtitle": "mail-stalwart.diegonmarcos.com • oci-mail" },
+        { "title": "vaultwarden",  "subtitle": "vault.diegonmarcos.com • oci-apps" },
+        { "title": "gitea",        "subtitle": "git.diegonmarcos.com • oci-apps" },
+        { "title": "dagu",         "subtitle": "workflows.diegonmarcos.com • oci-analytics" },
+        { "title": "ntfy",         "subtitle": "rss.diegonmarcos.com • oci-apps" }
+      ],
+      "c3/health": [
+        { "title": "Tier-1 critical",        "subtitle": "5/5 alive" },
+        { "title": "Tier-2 important",       "subtitle": "12/12 alive" },
+        { "title": "Tier-3 nice-to-have",    "subtitle": "20/20 alive" }
+      ],
+      "c3/workflows": [
+        { "title": "Daily backup",    "subtitle": "02:00 UTC • last OK 2026-05-29" },
+        { "title": "Cert renewal",    "subtitle": "Weekly • via Caddy" },
+        { "title": "Mail puller",     "subtitle": "Every 15 min" }
+      ],
+      "c3/vms": [
+        { "title": "oci-mail",      "subtitle": "130.110.251.193 • Oracle E2 Free" },
+        { "title": "oci-analytics", "subtitle": "129.151.228.66 • Oracle E2 Free" },
+        { "title": "oci-apps",      "subtitle": "82.70.229.129 • Oracle A1.Flex 4-OCPU" },
+        { "title": "gcp-proxy",     "subtitle": "35.226.147.64 • GCP e2-micro Free" }
+      ],
+      "c3/logs": [
+        { "title": "caddy access",         "subtitle": "GET / 200" },
+        { "title": "stalwart smtp",        "subtitle": "SMTP IN ✓" },
+        { "title": "wireguard handshake",  "subtitle": "all peers OK" }
+      ],
+
+      "mail/inbox": [
+        { "title": "GitHub",        "subtitle": "[PR] Slice C2 message body merged" },
+        { "title": "OCI Free Tier", "subtitle": "Monthly usage summary" },
+        { "title": "Hetzner",       "subtitle": "Invoice 2026-05" }
+      ],
+      "mail/identities": [
+        { "title": "me@diegonmarcos.com",    "subtitle": "Primary • Stalwart" },
+        { "title": "diego@diegonmarcos.com", "subtitle": "Alias" }
+      ],
+      "mail/rules": [
+        { "title": "GitHub notifications → label", "subtitle": "Apply label 'github'" },
+        { "title": "Newsletters → Archive",        "subtitle": "Auto-archive" }
+      ],
+      "mail/answers": [
+        { "title": "Out of office",  "subtitle": "Away until…" },
+        { "title": "Acknowledged",   "subtitle": "Thanks, will reply soon." }
+      ],
+      "mail/contacts": [
+        { "title": "Alice Smith", "subtitle": "alice@example.org" },
+        { "title": "Bob Jones",   "subtitle": "bob@example.org" }
+      ]
+    }
   },
   "deploy": {
     "host": "local",

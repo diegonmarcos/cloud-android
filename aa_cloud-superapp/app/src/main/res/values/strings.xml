@@ -20,6 +20,11 @@
     <!-- Tile-grid index -->
     <string name="tile_grid_empty">No sub-pages yet for this section.</string>
 
+    <!-- PageContentFragment -->
+    <string name="page_default_subtitle">%1$s / %2$s</string>
+    <string name="page_empty_title">Coming soon</string>
+    <string name="page_empty_hint">Backend already wired in your CLAUDE.md stack. UI lands in a follow-up commit.\n\nMissing samples key: %1$s</string>
+
     <!-- Drawer 2nd-level placeholders (per build.json::ui.sections.drawer_default_children) -->
     <string name="drawer_mail_all">All inboxes</string>
     <string name="drawer_mail_add">+ Add account</string>
