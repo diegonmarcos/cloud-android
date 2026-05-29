@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- C3 / Health — live probe table fed from cloud-data
+     (_cloud-data-consolidated.json). Header row + scrollable list of
+     services. Each row shows status dot · name · public URL · auth · VM. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorOnSurface"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+            android:text="@string/c3_health_title" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ProgressBar
+                android:id="@+id/health_loading"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/health_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceLabelMedium" />
+        </LinearLayout>
+
+        <!-- Sticky column header. -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="?attr/colorPrimaryContainer">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="14dp"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:text="●" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
+                    android:layout_marginStart="6dp"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:text="@string/c3_health_col_name" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="5"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:text="@string/c3_health_col_url" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:text="@string/c3_health_col_vm" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:id="@+id/health_table"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

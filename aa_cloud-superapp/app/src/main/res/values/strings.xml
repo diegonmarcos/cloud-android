@@ -26,6 +26,16 @@
     <string name="page_empty_title">Coming soon</string>
     <string name="page_empty_hint">Backend already wired in your CLAUDE.md stack. UI lands in a follow-up commit.\n\nMissing samples key: %1$s</string>
 
+    <!-- C3 / Health probe table -->
+    <string name="c3_health_title">C3 / Health</string>
+    <string name="c3_health_loading">Fetching cloud-data…</string>
+    <string name="c3_health_status">%1$d/%2$d services enabled</string>
+    <string name="c3_health_empty">No services in cloud-data</string>
+    <string name="c3_health_error">Failed: %1$s</string>
+    <string name="c3_health_col_name">Service</string>
+    <string name="c3_health_col_url">Public URL · auth</string>
+    <string name="c3_health_col_vm">VM</string>
+
     <!-- Drawer 2nd-level placeholders (per build.json::ui.sections.drawer_default_children) -->
     <string name="drawer_mail_all">All inboxes</string>
     <string name="drawer_mail_add">+ Add account</string>

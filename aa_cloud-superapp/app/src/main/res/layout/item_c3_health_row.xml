@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One row of the C3/Health probe table. Status dot · service name ·
+     public URL · VM. Auth method shown via subtle subtitle under URL. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/h_status_dot"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/h_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="3"
+        android:layout_marginStart="10dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:textColor="?attr/colorOnSurface"
+        android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="5"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/h_domain"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            android:textColor="?attr/colorOnSurface"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <TextView
+            android:id="@+id/h_auth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:alpha="0.6"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/h_vm"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:alpha="0.7"
+        android:fontFamily="monospace"
+        android:textAppearance="?attr/textAppearanceLabelSmall" />
+</LinearLayout>

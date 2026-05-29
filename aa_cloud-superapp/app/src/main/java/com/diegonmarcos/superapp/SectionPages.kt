@@ -25,8 +25,9 @@ object SectionPages {
         }
     }
 
-    private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when (sectionId) {
-        "mail" -> MailPages.fragmentFor(pageId)
-        else   -> PageContentFragment.newInstance(sectionId, pageId, label)
+    private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when {
+        sectionId == "mail" -> MailPages.fragmentFor(pageId)
+        sectionId == "c3" && pageId == "health" -> C3HealthFragment.newInstance()
+        else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }
