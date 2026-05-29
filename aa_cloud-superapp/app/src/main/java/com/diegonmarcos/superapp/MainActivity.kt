@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import android.os.Bundle
+import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
@@ -109,6 +110,9 @@ class MainActivity : AppCompatActivity(),
             supportFragmentManager.addOnBackStackChangedListener {
                 supportFragmentManager.findFragmentById(R.id.fragment_container)
                     ?.let { applyChrome(it) }
+                // Toolbar's right-side Back action toggles visibility with
+                // the back-stack depth; invalidate to redraw.
+                invalidateOptionsMenu()
             }
 
             Updater.start(applicationContext)
@@ -421,6 +425,29 @@ class MainActivity : AppCompatActivity(),
             else -> Toast.makeText(this, "drawer → ${item.title}", Toast.LENGTH_SHORT).show()
         }
         return true
+    }
+
+    // ── toolbar (right-side Back action) ─────────────────────────────────
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_top, menu)
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.action_back)?.isVisible =
+            supportFragmentManager.backStackEntryCount > 0
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_back) {
+            if (supportFragmentManager.backStackEntryCount > 0) {
+                supportFragmentManager.popBackStack()
+            }
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onBackPressed() {
