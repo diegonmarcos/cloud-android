@@ -1,28 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact drawer header (was 176dp / Material default) → 64dp so the
-     drawer body can host many dense links (accounts, feeds, C3 reports, …). -->
+<!-- Compact drawer header (was 176dp default → 64dp → now 48dp). Title +
+     build identifier on a single tight column so the drawer body can fit
+     many dense links. Each text view uses singleLine + ellipsize end so a
+     too-long build identifier truncates instead of pushing layout. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="64dp"
+    android:layout_height="48dp"
     android:background="?attr/colorPrimaryContainer"
     android:gravity="center_vertical"
     android:orientation="vertical"
     android:paddingHorizontal="12dp"
-    android:paddingVertical="6dp">
+    android:paddingVertical="4dp">
 
     <TextView
         android:id="@+id/nav_header_title"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:singleLine="true"
         android:text="@string/app_name"
         android:textColor="?attr/colorOnPrimaryContainer"
-        android:textAppearance="?attr/textAppearanceTitleMedium" />
+        android:textAppearance="?attr/textAppearanceTitleSmall" />
 
     <!-- Build identifier — set dynamically from BuildConfig in MainActivity. -->
     <TextView
         android:id="@+id/nav_header_build"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:singleLine="true"
         android:textColor="?attr/colorOnPrimaryContainer"
         android:textAppearance="?attr/textAppearanceLabelSmall" />
 </LinearLayout>
