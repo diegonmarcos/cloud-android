@@ -28,5 +28,18 @@
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
         <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
+
+        <!-- BottomNav: branded active indicator using the brand container. -->
+        <item name="bottomNavigationStyle">@style/Widget.CloudSuperApp.BottomNavigationView</item>
+    </style>
+
+    <style name="Widget.CloudSuperApp.BottomNavigationView"
+        parent="Widget.Material3.BottomNavigationView">
+        <item name="itemActiveIndicatorStyle">@style/Widget.CloudSuperApp.BottomNavigationView.ActiveIndicator</item>
+    </style>
+
+    <style name="Widget.CloudSuperApp.BottomNavigationView.ActiveIndicator"
+        parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/cloud_primary_container</item>
     </style>
 </resources>

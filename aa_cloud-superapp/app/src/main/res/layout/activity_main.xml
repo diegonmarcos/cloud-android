@@ -30,13 +30,16 @@
             android:id="@+id/app_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fitsSystemWindows="true">
+            android:fitsSystemWindows="true"
+            app:liftOnScroll="true">
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 android:background="?attr/colorSurface"
+                app:titleCentered="false"
+                app:titleTextAppearance="?attr/textAppearanceTitleLarge"
                 app:title="@string/app_name" />
         </com.google.android.material.appbar.AppBarLayout>
 

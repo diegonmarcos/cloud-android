@@ -396,19 +396,20 @@ class MainActivity : AppCompatActivity(),
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
             tileId.startsWith("stub:") ->
-                Toast.makeText(this, tileId, Toast.LENGTH_SHORT).show()
+                findViewById<View>(R.id.fragment_container).snack(tileId)
         }
     }
 
     /** Action-tile dispatcher — `action_type` values come from
      *  build.json::ui.home_actions[].action_type. */
     private fun dispatchHomeAction(actionType: String) {
+        val anchor = findViewById<View>(R.id.fragment_container)
         when (actionType) {
             "check_updates" -> {
                 Updater.checkNow(applicationContext)
-                Toast.makeText(this, R.string.check_updates_started, Toast.LENGTH_SHORT).show()
+                anchor.snack(R.string.check_updates_started)
             }
-            else -> Toast.makeText(this, "action:$actionType", Toast.LENGTH_SHORT).show()
+            else -> anchor.snack("action:$actionType")
         }
     }
 
