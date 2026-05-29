@@ -49,13 +49,9 @@ class PageContentFragment : Fragment(R.layout.fragment_page_content) {
         val iconRes = Sections.iconResFor(requireContext(), iconName).takeIf { it != 0 }
             ?: R.drawable.ic_settings
 
-        val palette = paletteForContext()
-        val slot = abs("$sectionId/$pageId".hashCode()) % palette.size
-        // palette[slot] is (fg) here since paletteForContext returns fg
-        // colours only; we derive bg by lightening (or pulling the matching
-        // background colour from resources) — easier: pair fg with the
-        // corresponding tile_*_bg via parallel index.
-        val (iconBg, iconFg) = paletteBgFg()[slot]
+        val pairs = paletteBgFg()
+        val slot = abs("$sectionId/$pageId".hashCode()) % pairs.size
+        val (iconBg, iconFg) = pairs[slot]
 
         view.findViewById<FrameLayout>(R.id.pc_icon_bg).background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
