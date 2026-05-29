@@ -199,6 +199,91 @@ class JmapClient(
         listEl.map { it.jsonObject.toEmail() }
     }
 
+    // ── Slice C2 ───────────────────────────────────────────────────────
+
+    data class EmailBody(
+        val id: String,
+        val subject: String,
+        val from: String,
+        val to: String,
+        val cc: String,
+        val receivedAt: String,
+        val text: String,            // plain-text body (parts joined with \n\n)
+        val hasHtml: Boolean,
+    )
+
+    /**
+     * Fetch a single email with its body text. Uses fetchTextBodyValues so
+     * the server returns the textBody parts inlined into bodyValues — saves
+     * a second round-trip. HTML body is *not* fetched (no WebView yet);
+     * `hasHtml` tells the UI a richer view is available.
+     */
+    fun emailBody(session: Session, emailId: String, accountId: String = session.primaryAccountId): Result<EmailBody> = wrap {
+        val payload = buildJsonObject {
+            put("using", buildJsonArray {
+                add("urn:ietf:params:jmap:core")
+                add("urn:ietf:params:jmap:mail")
+            })
+            put("methodCalls", buildJsonArray {
+                addJsonArray {
+                    add("Email/get")
+                    add(buildJsonObject {
+                        put("accountId", accountId)
+                        put("ids", buildJsonArray { add(emailId) })
+                        put("properties", buildJsonArray {
+                            add("id"); add("subject"); add("from"); add("to"); add("cc")
+                            add("receivedAt"); add("textBody"); add("htmlBody"); add("bodyValues")
+                        })
+                        put("fetchTextBodyValues", true)
+                        put("bodyProperties", buildJsonArray {
+                            add("partId"); add("type"); add("size")
+                        })
+                    })
+                    add("g0")
+                }
+            })
+        }
+        val body = httpPost(session.apiUrl, payload.toString())
+        val responses = json.parseToJsonElement(body).jsonObject["methodResponses"]?.jsonArray
+            ?: throw HttpException(200, "no methodResponses")
+        val getResp = responses.firstOrNull()?.jsonArray
+            ?: throw HttpException(200, "empty methodResponses")
+        val list = getResp.getOrNull(1)?.jsonObject?.get("list")?.jsonArray
+            ?: throw HttpException(200, "no .list")
+        val obj = list.firstOrNull()?.jsonObject
+            ?: throw HttpException(200, "no email returned")
+
+        val bodyValues = obj["bodyValues"]?.jsonObject ?: kotlinx.serialization.json.JsonObject(emptyMap())
+        val textBody = obj["textBody"]?.jsonArray ?: kotlinx.serialization.json.JsonArray(emptyList())
+        val htmlBody = obj["htmlBody"]?.jsonArray ?: kotlinx.serialization.json.JsonArray(emptyList())
+
+        val textJoined = textBody.mapNotNull { part ->
+            val pid = part.jsonObject["partId"]?.jsonPrimitive?.content ?: return@mapNotNull null
+            bodyValues[pid]?.jsonObject?.get("value")?.jsonPrimitive?.content
+        }.joinToString("\n\n").ifBlank { "(no plain-text body)" }
+
+        EmailBody(
+            id         = obj["id"]!!.jsonPrimitive.content,
+            subject    = obj["subject"]?.jsonPrimitive?.let { if (it.content == "null") "" else it.content } ?: "",
+            from       = obj["from"]?.let { formatAddrList(it) } ?: "",
+            to         = obj["to"]?.let   { formatAddrList(it) } ?: "",
+            cc         = obj["cc"]?.let   { formatAddrList(it) } ?: "",
+            receivedAt = obj["receivedAt"]?.jsonPrimitive?.let { if (it.content == "null") "" else it.content } ?: "",
+            text       = textJoined,
+            hasHtml    = htmlBody.isNotEmpty(),
+        )
+    }
+
+    private fun formatAddrList(el: kotlinx.serialization.json.JsonElement): String {
+        if (el is kotlinx.serialization.json.JsonNull) return ""
+        return el.jsonArray.joinToString(", ") { item ->
+            val o = item.jsonObject
+            val name = o["name"]?.jsonPrimitive?.let { if (it.content == "null") null else it.content }
+            val addr = o["email"]?.jsonPrimitive?.content ?: ""
+            if (!name.isNullOrBlank()) "$name <$addr>" else addr
+        }
+    }
+
     private fun JsonObject.toEmail(): Email {
         val fromArr = this["from"]?.let { el ->
             if (el is kotlinx.serialization.json.JsonNull) null else el.jsonArray

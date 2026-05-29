@@ -103,6 +103,17 @@ class MailMessagesFragment : Fragment(R.layout.fragment_mail_messages) {
                 if (email.subject.isNotBlank()) email.subject else "(no subject)"
             row.findViewById<TextView>(R.id.tv_msg_preview).text = email.preview
             row.findViewById<TextView>(R.id.tv_msg_date).text = formatDate(email.receivedAt)
+            row.setOnClickListener {
+                (activity as? MailHost)?.openMailPage(
+                    pageId = MailPages.MESSAGE,
+                    args = bundleOf(
+                        MailMessageBodyFragment.ARG_EMAIL_ID to email.id,
+                        MailMessageBodyFragment.ARG_SUBJECT  to email.subject,
+                        MailMessageBodyFragment.ARG_FROM     to email.from,
+                        MailMessageBodyFragment.ARG_DATE     to email.receivedAt,
+                    ),
+                )
+            }
             container.addView(row)
         }
     }

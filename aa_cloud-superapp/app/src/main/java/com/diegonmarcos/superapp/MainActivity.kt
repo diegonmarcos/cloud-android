@@ -10,6 +10,7 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -99,6 +100,15 @@ class MainActivity : AppCompatActivity(),
                 // Default landing per build.json::ui.default_section.
                 val target = Sections.defaultSectionId()
                 bottomNav.selectedItemId = idForSectionId(target) ?: R.id.nav_home
+            }
+
+            // Re-apply chrome after every back-stack change so that the
+            // restored Fragment's ShellOverride takeover (or default) takes
+            // effect — runOnCommit would have worked but it's mutually
+            // exclusive with addToBackStack, so we use the listener instead.
+            supportFragmentManager.addOnBackStackChangedListener {
+                supportFragmentManager.findFragmentById(R.id.fragment_container)
+                    ?.let { applyChrome(it) }
             }
 
             Updater.start(applicationContext)
@@ -196,9 +206,9 @@ class MainActivity : AppCompatActivity(),
                 title = label,
                 tiles = section.pages.map { p ->
                     TileGridFragment.Tile(
-                        id = "page:${p.id}",
-                        label = p.label,
-                        iconRes = 0,
+                        id      = "page:${p.id}",
+                        label   = p.label,
+                        iconRes = p.iconName?.let { Sections.iconResFor(this, it) } ?: 0,
                     )
                 },
             )
@@ -243,9 +253,13 @@ class MainActivity : AppCompatActivity(),
         if (clearBackStack) {
             supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         }
+        // applyChrome before commit — runOnCommit is mutually exclusive with
+        // addToBackStack and we want a single uniform path. The OnBackStack-
+        // ChangedListener installed in onCreate handles re-apply on back.
+        applyChrome(content)
         supportFragmentManager.beginTransaction()
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
             .replace(R.id.fragment_container, content)
-            .runOnCommit { applyChrome(content) }
             .commit()
     }
 
@@ -328,13 +342,11 @@ class MainActivity : AppCompatActivity(),
                 val pid = tileId.removePrefix("page:")
                 val frag = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid }?.factory?.invoke()
                     ?: return
-                // addToBackStack MUST come before runOnCommit — runOnCommit
-                // internally calls disallowAddToBackStack(), so the reverse
-                // order throws IllegalStateException.
+                applyChrome(frag)
                 supportFragmentManager.beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .replace(R.id.fragment_container, frag)
                     .addToBackStack(null)
-                    .runOnCommit { applyChrome(frag) }
                     .commit()
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
@@ -380,13 +392,11 @@ class MainActivity : AppCompatActivity(),
                 ?: SectionFragment.forSection(sectionId, pageId)
         }
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
-        // addToBackStack MUST come before runOnCommit — runOnCommit internally
-        // calls disallowAddToBackStack(), so the reverse order throws
-        // IllegalStateException.
+        applyChrome(frag)
         supportFragmentManager.beginTransaction()
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
             .replace(R.id.fragment_container, frag)
             .addToBackStack(null)
-            .runOnCommit { applyChrome(frag) }
             .commit()
     }
 

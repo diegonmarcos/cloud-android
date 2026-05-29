@@ -1,35 +1,35 @@
 package com.diegonmarcos.superapp
 
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
+import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import kotlin.math.abs
 
 /**
- * Generic "tile grid" — the right-pane view shown when the user taps any
- * bottom-nav button or any drawer tab title. Each tile is a square button
- * with an icon + label that emits a `tileId` string to the host Activity.
+ * Drive-style tile grid. Each tile is a MaterialCardView with a tinted
+ * circular icon container + label below. Background + foreground colours
+ * cycle through a curated palette (see colors.xml), keyed by tile id so
+ * the same tile always lands on the same colour. Click ripple + a quick
+ * "press" scale animation give the grid its tactile feel.
  *
- * Used for:
- *  - Master Home index   — tiles for every section
- *  - Per-section index   — tiles for that section's sub-pages
- *
- * The Activity dispatches `tileId` to the matching navigation action:
- *   "section:<id>"  → switch to that section
- *   "page:<id>"     → swap to that page Fragment (within current section)
- *
- * Tiles encoded as parallel String arrays so the Fragment survives config
- * changes (Bundle restore) without losing state.
+ * Generic API: see [Tile]. The Activity dispatches the tile's id string
+ * to the matching nav action via [TileClickListener].
  */
 class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
 
-    /** Implemented by MainActivity. The id encoding is the caller's contract. */
     fun interface TileClickListener {
         fun onTileClicked(tileId: String)
     }
@@ -56,6 +56,7 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         }
 
         val inflater = LayoutInflater.from(requireContext())
+        val palette  = tilePalette(requireContext())
         val cols = COLS
         var i = 0
         while (i < ids.size) {
@@ -70,23 +71,20 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
             var c = 0
             while (c < cols) {
                 if (i + c < ids.size) {
-                    val tile = inflater.inflate(R.layout.item_tile, row, false)
-                    (tile.layoutParams as LinearLayout.LayoutParams).apply {
+                    val tileView = inflater.inflate(R.layout.item_tile, row, false)
+                    (tileView.layoutParams as LinearLayout.LayoutParams).apply {
                         width  = 0
                         weight = 1f
                     }
-                    tile.findViewById<TextView>(R.id.tile_label).text = labels[i + c]
-                    tile.findViewById<ImageView>(R.id.tile_icon).setImageResource(
-                        icons.getOrNull(i + c)?.takeIf { it != 0 } ?: R.drawable.ic_settings,
+                    bindTile(
+                        tileView    = tileView,
+                        tileId      = ids[i + c],
+                        label       = labels[i + c],
+                        iconRes     = icons.getOrNull(i + c)?.takeIf { it != 0 } ?: R.drawable.ic_settings,
+                        palette     = palette,
                     )
-                    val id = ids[i + c]
-                    tile.setOnClickListener {
-                        (activity as? TileClickListener)?.onTileClicked(id)
-                    }
-                    row.addView(tile)
+                    row.addView(tileView)
                 } else {
-                    // Pad the last row with empty weight=1 spacers so column
-                    // widths match the populated rows.
                     val spacer = View(requireContext())
                     spacer.layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
                     row.addView(spacer)
@@ -97,6 +95,51 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
             i += cols
         }
     }
+
+    /** Wire one tile: tint icon-circle background + icon foreground from the
+     *  palette, set label + click handler with a "press" anim. */
+    private fun bindTile(
+        tileView: View,
+        tileId: String,
+        label: String,
+        @DrawableRes iconRes: Int,
+        palette: List<Pair<Int, Int>>,
+    ) {
+        val slot = abs(tileId.hashCode()) % palette.size
+        val (bg, fg) = palette[slot]
+
+        tileView.findViewById<TextView>(R.id.tile_label).text = label
+
+        val iconBg = tileView.findViewById<FrameLayout>(R.id.tile_icon_bg)
+        iconBg.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(bg)
+        }
+
+        val icon = tileView.findViewById<ImageView>(R.id.tile_icon)
+        icon.setImageResource(iconRes)
+        icon.imageTintList = ColorStateList.valueOf(fg)
+
+        val press = AnimationUtils.loadAnimation(requireContext(), R.anim.tile_press)
+        tileView.setOnClickListener { v ->
+            v.startAnimation(press)
+            (activity as? TileClickListener)?.onTileClicked(tileId)
+        }
+    }
+
+    private fun tilePalette(ctx: android.content.Context): List<Pair<Int, Int>> = listOf(
+        ctx.color(R.color.tile_blue_bg)   to ctx.color(R.color.tile_blue_fg),
+        ctx.color(R.color.tile_green_bg)  to ctx.color(R.color.tile_green_fg),
+        ctx.color(R.color.tile_purple_bg) to ctx.color(R.color.tile_purple_fg),
+        ctx.color(R.color.tile_pink_bg)   to ctx.color(R.color.tile_pink_fg),
+        ctx.color(R.color.tile_orange_bg) to ctx.color(R.color.tile_orange_fg),
+        ctx.color(R.color.tile_teal_bg)   to ctx.color(R.color.tile_teal_fg),
+        ctx.color(R.color.tile_amber_bg)  to ctx.color(R.color.tile_amber_fg),
+        ctx.color(R.color.tile_indigo_bg) to ctx.color(R.color.tile_indigo_fg),
+    )
+
+    @ColorInt
+    private fun android.content.Context.color(id: Int): Int = ContextCompat.getColor(this, id)
 
     companion object {
         private const val COLS = 3

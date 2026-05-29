@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tile palette — 8 pastel/strong colour pairs rotated through the grid
+     so each tile gets a unique colour (Google-Drive-style). The hash of
+     the tile id is used to pick a slot, so the same tile keeps the same
+     colour across launches. -->
+<resources>
+    <color name="tile_blue_bg">#FFE3F2FD</color>
+    <color name="tile_blue_fg">#FF1565C0</color>
+
+    <color name="tile_green_bg">#FFE8F5E9</color>
+    <color name="tile_green_fg">#FF2E7D32</color>
+
+    <color name="tile_purple_bg">#FFEDE7F6</color>
+    <color name="tile_purple_fg">#FF6A1B9A</color>
+
+    <color name="tile_pink_bg">#FFFCE4EC</color>
+    <color name="tile_pink_fg">#FFC2185B</color>
+
+    <color name="tile_orange_bg">#FFFFF3E0</color>
+    <color name="tile_orange_fg">#FFEF6C00</color>
+
+    <color name="tile_teal_bg">#FFE0F2F1</color>
+    <color name="tile_teal_fg">#FF00695C</color>
+
+    <color name="tile_amber_bg">#FFFFF8E1</color>
+    <color name="tile_amber_fg">#FFB28704</color>
+
+    <color name="tile_indigo_bg">#FFE8EAF6</color>
+    <color name="tile_indigo_fg">#FF283593</color>
+</resources>

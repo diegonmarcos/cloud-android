@@ -1,31 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Single square tile button: icon on top, label below. Picked up by
-     TileGridFragment which sets the icon/label/click. Uses the M3 outlined-
-     button background via a stateful selectableItemBackground. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Single tile — MaterialCardView wrapper, centered tinted circular icon
+     + label below. Background + icon tint are applied programmatically
+     from a per-tile colour palette (see TileGridFragment). -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="96dp"
-    android:layout_margin="4dp"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="8dp"
-    android:background="?attr/selectableItemBackground"
+    android:layout_height="128dp"
+    android:layout_margin="6dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainer"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
-    <ImageView
-        android:id="@+id/tile_icon"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_marginBottom="6dp"
-        android:scaleType="fitCenter" />
-
-    <TextView
-        android:id="@+id/tile_label"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
         android:gravity="center"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textAppearance="?attr/textAppearanceLabelMedium" />
-</LinearLayout>
+        android:padding="10dp">
+
+        <FrameLayout
+            android:id="@+id/tile_icon_bg"
+            android:layout_width="56dp"
+            android:layout_height="56dp">
+
+            <ImageView
+                android:id="@+id/tile_icon"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:scaleType="fitCenter" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tile_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="?attr/colorOnSurface"
+            android:textAppearance="?attr/textAppearanceTitleSmall" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

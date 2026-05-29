@@ -24,6 +24,7 @@ object MailPages {
     const val MORE       = "more"
     const val MENU       = "menu"      // alias used by drawer's section menu
     const val MESSAGES   = "messages"  // per-folder list; opened from Folders
+    const val MESSAGE    = "message"   // single-message body; opened from Messages
 
     // Settings sub-pages (11). Encoded as "label|upstream" so the placeholder
     // can render and route them in one pass.
@@ -72,6 +73,12 @@ object MailPages {
         MESSAGES   -> MailMessagesFragment.newInstance(
             folderId   = args?.getString(MailMessagesFragment.ARG_FOLDER_ID)   ?: "",
             folderName = args?.getString(MailMessagesFragment.ARG_FOLDER_NAME) ?: "(folder)",
+        )
+        MESSAGE    -> MailMessageBodyFragment.newInstance(
+            emailId = args?.getString(MailMessageBodyFragment.ARG_EMAIL_ID) ?: "",
+            subject = args?.getString(MailMessageBodyFragment.ARG_SUBJECT)  ?: "",
+            from    = args?.getString(MailMessageBodyFragment.ARG_FROM)     ?: "",
+            date    = args?.getString(MailMessageBodyFragment.ARG_DATE)     ?: "",
         )
         else       -> MailPagePlaceholder.newInstance(pageId,       "?")
     }

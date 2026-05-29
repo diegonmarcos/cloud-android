@@ -25,7 +25,7 @@ object Sections {
         val defaultChildren: List<String>,
     )
 
-    data class Page(val id: String, val label: String)
+    data class Page(val id: String, val label: String, val iconName: String?)
 
     /** App-level action tile shown in the Home master TileGrid below the
      *  section tiles. `actionType` is the dispatcher key in MainActivity. */
@@ -51,7 +51,8 @@ object Sections {
             o.optJSONArray("pages")?.let { pa ->
                 for (j in 0 until pa.length()) {
                     val po = pa.getJSONObject(j)
-                    pages.add(Page(po.getString("id"), po.getString("label")))
+                    val pIcon = po.optString("icon", "").takeIf { it.isNotEmpty() }
+                    pages.add(Page(po.getString("id"), po.getString("label"), pIcon))
                 }
             }
 

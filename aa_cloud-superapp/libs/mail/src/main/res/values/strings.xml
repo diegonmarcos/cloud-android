@@ -34,4 +34,10 @@
         <item quantity="one">%d message</item>
         <item quantity="other">%d messages</item>
     </plurals>
+
+    <!-- Slice C2 — Single message body -->
+    <string name="mail_message_loading">Loading body…</string>
+    <string name="mail_message_login_first">Sign in via Mail → Accounts first.</string>
+    <string name="mail_message_error">Failed: %1$s</string>
+    <string name="mail_message_has_html">HTML body available — text shown</string>
 </resources>
