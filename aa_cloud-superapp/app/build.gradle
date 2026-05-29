@@ -118,4 +118,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
     implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    // EncryptedSharedPreferences for ConfigsPrefs (imported bulk-config
+    // blob). Same alpha pin libs:mail uses for JmapPrefs.
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 }
