@@ -32,6 +32,8 @@
     <string name="drawer_feed_add">+ Subscribe</string>
     <string name="drawer_chat_all">All servers</string>
     <string name="drawer_chat_add">+ Add server</string>
+    <string name="drawer_chat_mattermost">Mattermost</string>
+    <string name="drawer_chat_matrix">Matrix-Bridges</string>
     <string name="drawer_cal_all">All calendars</string>
     <string name="drawer_cal_add">+ Add CalDAV</string>
     <string name="drawer_vault_pw">Passwords</string>

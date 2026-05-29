@@ -156,13 +156,15 @@
           { "id": "vaults",     "label": "Vaults",     "icon": "ic_p_vault_db",      "upstream": "KdxVaults" },
           { "id": "settings",   "label": "Settings",   "icon": "ic_settings",        "upstream": "KdxSettings" }
         ] },
-      { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["All servers", "+ Add server"], "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now.",
+      { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["Mattermost", "Matrix-Bridges", "All servers", "+ Add server"], "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now. Mattermost = chat.diegonmarcos.com (mattermost-bots service); Matrix-Bridges = bridge bots (telegram/whatsapp/signal/IRC ↔ matrix).",
         "pages": [
-          { "id": "dms",      "label": "Direct messages", "icon": "ic_p_chat_dms",      "upstream": "ChatDMs" },
-          { "id": "channels", "label": "Channels",        "icon": "ic_p_chat_channels", "upstream": "ChatChannels" },
-          { "id": "servers",  "label": "Servers",         "icon": "ic_p_chat_servers",  "upstream": "ChatServers" },
-          { "id": "add",      "label": "+ Add server",    "icon": "ic_p_add",           "upstream": "ChatAddServer" },
-          { "id": "settings", "label": "Settings",        "icon": "ic_settings",        "upstream": "ChatSettings" }
+          { "id": "mattermost", "label": "Mattermost",      "icon": "ic_p_chat_mattermost", "upstream": "ChatMattermost", "_doc": "Hooks into mattermost-bots @ chat.diegonmarcos.com" },
+          { "id": "matrix",     "label": "Matrix-Bridges",  "icon": "ic_p_chat_matrix",     "upstream": "ChatMatrix",     "_doc": "Bridge bots — Telegram / WhatsApp / Signal / IRC ↔ Matrix" },
+          { "id": "dms",        "label": "Direct messages", "icon": "ic_p_chat_dms",        "upstream": "ChatDMs" },
+          { "id": "channels",   "label": "Channels",        "icon": "ic_p_chat_channels",   "upstream": "ChatChannels" },
+          { "id": "servers",    "label": "Servers",         "icon": "ic_p_chat_servers",    "upstream": "ChatServers" },
+          { "id": "add",        "label": "+ Add server",    "icon": "ic_p_add",             "upstream": "ChatAddServer" },
+          { "id": "settings",   "label": "Settings",        "icon": "ic_settings",          "upstream": "ChatSettings" }
         ] },
       { "id": "wg",        "label": "WG",        "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Tunnels", "+ Import"],
         "pages": [
@@ -291,6 +293,19 @@
         { "title": "Biometric",     "subtitle": "Enabled" }
       ],
 
+      "chat/mattermost": [
+        { "title": "chat.diegonmarcos.com", "subtitle": "Self-hosted Mattermost • mattermost-bots service" },
+        { "title": "#general",              "subtitle": "Top channel • 2 unread" },
+        { "title": "#alerts",               "subtitle": "Bridged from ntfy" },
+        { "title": "Bot: c3-status",        "subtitle": "Posts daily health digest" }
+      ],
+      "chat/matrix": [
+        { "title": "Telegram bridge",  "subtitle": "mautrix-telegram" },
+        { "title": "WhatsApp bridge",  "subtitle": "mautrix-whatsapp" },
+        { "title": "Signal bridge",    "subtitle": "mautrix-signal" },
+        { "title": "IRC bridge",       "subtitle": "matrix-appservice-irc" },
+        { "title": "Synapse server",   "subtitle": "matrix.diegonmarcos.com (planned)" }
+      ],
       "chat/dms": [
         { "title": "Alice", "subtitle": "see you tomorrow" },
         { "title": "Bob",   "subtitle": "👍" }

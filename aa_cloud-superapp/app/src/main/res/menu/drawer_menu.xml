@@ -26,8 +26,10 @@
     <group android:id="@+id/drawer_group_chat" android:checkableBehavior="single">
         <item android:title="@string/section_chat" android:icon="@drawable/ic_chat">
             <menu>
-                <item android:id="@+id/drawer_chat_all" android:title="@string/drawer_chat_all" />
-                <item android:id="@+id/drawer_chat_add" android:title="@string/drawer_chat_add" />
+                <item android:id="@+id/drawer_chat_mattermost" android:title="@string/drawer_chat_mattermost" />
+                <item android:id="@+id/drawer_chat_matrix"     android:title="@string/drawer_chat_matrix" />
+                <item android:id="@+id/drawer_chat_all"        android:title="@string/drawer_chat_all" />
+                <item android:id="@+id/drawer_chat_add"        android:title="@string/drawer_chat_add" />
             </menu>
         </item>
     </group>

@@ -415,6 +415,10 @@ class MainActivity : AppCompatActivity(),
             }
             R.id.drawer_wg_tunnels, R.id.drawer_wg_import ->
                 goSection("wg", getString(R.string.section_wg))
+            R.id.drawer_chat_mattermost -> openSectionPage("chat", "mattermost", null)
+            R.id.drawer_chat_matrix     -> openSectionPage("chat", "matrix",     null)
+            R.id.drawer_chat_all        -> goSection("chat", getString(R.string.section_chat))
+            R.id.drawer_chat_add        -> openSectionPage("chat", "add", null)
             R.id.drawer_solutions_professional, R.id.drawer_solutions_personal,
             R.id.drawer_solutions_tools,        R.id.drawer_solutions_cloud,
             R.id.drawer_solutions_other ->
