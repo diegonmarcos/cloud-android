@@ -54,7 +54,7 @@ object MailPages {
 
     fun fragmentFor(pageId: String): Fragment = when (pageId) {
         INBOX      -> MailPagePlaceholder.newInstance("Inbox",      "FragmentMessages")
-        FOLDERS    -> MailPagePlaceholder.newInstance("Folders",    "FragmentFolders")
+        FOLDERS    -> MailFoldersFragment.newInstance()
         ACCOUNTS   -> MailPagePlaceholder.newInstance("Accounts",   "FragmentAccounts")
         IDENTITIES -> MailPagePlaceholder.newInstance("Identities", "FragmentIdentities")
         RULES      -> MailPagePlaceholder.newInstance("Rules",      "FragmentRules")

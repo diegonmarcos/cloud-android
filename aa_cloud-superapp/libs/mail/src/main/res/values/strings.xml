@@ -13,4 +13,14 @@
     <string name="mail_session_apiurl">apiUrl</string>
     <string name="mail_session_account">primaryAccountId</string>
     <string name="mail_session_accounts">accounts</string>
+
+    <!-- Slice B — Folders (Mailbox/get) -->
+    <string name="mail_folders_loading">Loading mailboxes…</string>
+    <string name="mail_folders_login_first">Sign in via the Mail tab first.</string>
+    <string name="mail_folders_empty">No mailboxes returned.</string>
+    <string name="mail_folders_error">Failed: %1$s</string>
+    <plurals name="mail_folders_count">
+        <item quantity="one">%d mailbox</item>
+        <item quantity="other">%d mailboxes</item>
+    </plurals>
 </resources>

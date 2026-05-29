@@ -59,11 +59,11 @@ class MailFragment : Fragment() {
             tvSession.text = ""
             viewLifecycleOwner.lifecycleScope.launch {
                 val result = withContext(Dispatchers.IO) {
-                    JmapClient(server).discover(email, password)
+                    JmapClient(server, email, password).discover()
                 }
                 when (result) {
                     is JmapClient.Result.Success -> {
-                        val s = result.session
+                        val s = result.value
                         tvStatus.text = getString(R.string.mail_status_ok, s.primaryAccountId)
                         tvSession.text = buildString {
                             appendLine("${getString(R.string.mail_session_apiurl)}: ${s.apiUrl}")
