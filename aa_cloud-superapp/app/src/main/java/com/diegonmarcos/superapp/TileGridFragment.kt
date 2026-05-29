@@ -113,7 +113,8 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
 
         val iconBg = tileView.findViewById<FrameLayout>(R.id.tile_icon_bg)
         iconBg.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 1000f   // pill effect — looks circular at any aspect
             setColor(bg)
         }
 

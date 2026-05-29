@@ -132,8 +132,12 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
 
         tileView.findViewById<TextView>(R.id.tile_label).text = label
 
+        // Pill-style rectangle (corner radius >> dimensions) so the icon
+        // background looks circular regardless of the tile's aspect ratio —
+        // OVAL distorts into an ellipse when the FrameLayout isn't square.
         tileView.findViewById<FrameLayout>(R.id.tile_icon_bg).background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 1000f
             setColor(bg)
         }
         val icon = tileView.findViewById<ImageView>(R.id.tile_icon)

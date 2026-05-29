@@ -1,34 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact drawer header (was 176dp default → 64dp → now 48dp). Title +
-     build identifier on a single tight column so the drawer body can fit
-     many dense links. Each text view uses singleLine + ellipsize end so a
-     too-long build identifier truncates instead of pushing layout. -->
+<!-- Drawer header — brand-tinted strip with the app name + build identifier.
+     Taller (88dp) so the brand reads at a glance, with the build line
+     muted underneath for diagnostic visibility (set dynamically from
+     BuildConfig in HomeDrawerFragment). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="48dp"
+    android:layout_height="88dp"
     android:background="?attr/colorPrimaryContainer"
     android:gravity="center_vertical"
-    android:orientation="vertical"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="4dp">
+    android:orientation="horizontal"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="8dp">
 
-    <TextView
-        android:id="@+id/nav_header_title"
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="14dp"
+        android:src="@drawable/ic_home"
+        app:tint="?attr/colorOnPrimaryContainer"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:singleLine="true"
-        android:text="@string/app_name"
-        android:textColor="?attr/colorOnPrimaryContainer"
-        android:textAppearance="?attr/textAppearanceTitleSmall" />
+        android:orientation="vertical">
 
-    <!-- Build identifier — set dynamically from BuildConfig in MainActivity. -->
-    <TextView
-        android:id="@+id/nav_header_build"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:singleLine="true"
-        android:textColor="?attr/colorOnPrimaryContainer"
-        android:textAppearance="?attr/textAppearanceLabelSmall" />
+        <TextView
+            android:id="@+id/nav_header_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@string/app_name"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+        <TextView
+            android:id="@+id/nav_header_build"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:alpha="0.7"
+            android:fontFamily="monospace"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+    </LinearLayout>
 </LinearLayout>

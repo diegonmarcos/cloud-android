@@ -60,6 +60,11 @@ class MainActivity : AppCompatActivity(),
     private var suppressTabReentry:       Boolean = false
     private var suppressBottomNavReentry: Boolean = false
 
+    /** Latest gesture/navigation-bar inset captured by the edge-to-edge
+     *  listener — applyChrome adds it to the BottomNav clearance so
+     *  content doesn't slide under the nav bar. */
+    private var bottomSystemInset: Int = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.i(TAG, "onCreate enter")
         super.onCreate(savedInstanceState)
@@ -296,6 +301,12 @@ class MainActivity : AppCompatActivity(),
         ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { v, insets ->
             val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(bottom = sys.bottom)
+            // BottomNav is taller now (56dp + sys.bottom) — push the
+            // fragment_container up by the same amount so the last row
+            // of tiles isn't hidden behind the nav.
+            bottomSystemInset = sys.bottom
+            supportFragmentManager.findFragmentById(R.id.fragment_container)
+                ?.let { applyChrome(it) }
             insets
         }
     }
@@ -316,7 +327,9 @@ class MainActivity : AppCompatActivity(),
         val container = findViewById<View>(R.id.fragment_container)
         val lp = container.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
         val dp = resources.displayMetrics.density
-        lp.bottomMargin = if (ownsBottom) 0 else (56 * dp).toInt()
+        // BottomNav clearance = its 56dp + the gesture-nav inset, so the
+        // tile grid never slides under the nav bar in edge-to-edge mode.
+        lp.bottomMargin = if (ownsBottom) 0 else (56 * dp).toInt() + bottomSystemInset
         container.layoutParams = lp
     }
 

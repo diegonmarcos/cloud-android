@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Single tile — MaterialCardView wrapper, centered tinted circular icon
-     + label below. Background + icon tint are applied programmatically
-     from a per-tile colour palette (see TileGridFragment). -->
+<!-- Single tile — MaterialCardView wrapper, weight-distributed icon + label
+     so BOTH scale together when HomeGroupedFragment shrinks the tile.
+     Label uses autoSizeText (uniform 9–13sp) so it always fits even on
+     short rows. Default 128dp height is only honoured when not used in
+     a weight-based parent (the legacy flat TileGrid). -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -21,30 +23,36 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="10dp">
+        android:padding="6dp">
 
         <FrameLayout
             android:id="@+id/tile_icon_bg"
-            android:layout_width="56dp"
-            android:layout_height="56dp">
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="3"
+            android:layout_gravity="center_horizontal">
 
             <ImageView
                 android:id="@+id/tile_icon"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:layout_gravity="center"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="6dp"
                 android:scaleType="fitCenter" />
         </FrameLayout>
 
         <TextView
             android:id="@+id/tile_label"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_height="0dp"
+            android:layout_weight="2"
+            android:layout_marginTop="2dp"
             android:gravity="center"
             android:maxLines="2"
             android:ellipsize="end"
             android:textColor="?attr/colorOnSurface"
-            android:textAppearance="?attr/textAppearanceTitleSmall" />
+            app:autoSizeTextType="uniform"
+            app:autoSizeMinTextSize="9sp"
+            app:autoSizeMaxTextSize="13sp"
+            app:autoSizeStepGranularity="1sp" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
