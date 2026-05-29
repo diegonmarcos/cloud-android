@@ -422,6 +422,15 @@ class MainActivity : AppCompatActivity(),
                 Updater.checkNow(applicationContext)
                 anchor.snack(R.string.check_updates_started)
             }
+            "import_configs" -> {
+                val frag = ImportConfigsFragment.newInstance()
+                applyChrome(frag)
+                supportFragmentManager.beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.fragment_container, frag)
+                    .addToBackStack(null)
+                    .commit()
+            }
             else -> anchor.snack("action:$actionType")
         }
     }

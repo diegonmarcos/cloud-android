@@ -27,6 +27,10 @@ object CloudData {
         "https://raw.githubusercontent.com/diegonmarcos/cloud-data/main/_cloud-data-consolidated.json"
     private const val CACHE_FILE = "cloud_data_consolidated.json"
 
+    private const val NTFY_TOPICS_URL =
+        "https://raw.githubusercontent.com/diegonmarcos/cloud-data/main/ntfy-api/src/topics.json"
+    private const val NTFY_CACHE_FILE = "ntfy_topics.json"
+
     @Volatile private var memCache: JSONObject? = null
 
     /** Load (and cache) the consolidated.json. `force=true` bypasses the
@@ -37,7 +41,7 @@ object CloudData {
         val cacheFile = File(ctx.cacheDir, CACHE_FILE)
 
         val text = try {
-            fetchFresh().also { cacheFile.writeText(it) }
+            fetchRaw(RAW_URL).also { cacheFile.writeText(it) }
         } catch (t: Throwable) {
             if (cacheFile.exists()) cacheFile.readText()
             else throw t
@@ -48,8 +52,32 @@ object CloudData {
         obj
     }
 
-    private fun fetchFresh(): String {
-        val conn = (URL(RAW_URL).openConnection() as HttpURLConnection).apply {
+    /** Services map: name → service object. */
+    fun services(root: JSONObject): JSONObject =
+        root.optJSONObject("services") ?: JSONObject()
+
+    @Volatile private var memNtfy: List<String>? = null
+
+    /** Fetch the canonical ntfy channel registry (cloud-data/ntfy-api/src/
+     *  topics.json). Same fresh→cache fallback as [load]. */
+    suspend fun loadNtfyTopics(ctx: Context, force: Boolean = false): List<String> = withContext(Dispatchers.IO) {
+        if (!force) memNtfy?.let { return@withContext it }
+
+        val cacheFile = File(ctx.cacheDir, NTFY_CACHE_FILE)
+        val text = try {
+            fetchRaw(NTFY_TOPICS_URL).also { cacheFile.writeText(it) }
+        } catch (t: Throwable) {
+            if (cacheFile.exists()) cacheFile.readText() else throw t
+        }
+        val arr = JSONObject(text).optJSONArray("topics") ?: org.json.JSONArray()
+        val out = mutableListOf<String>()
+        for (i in 0 until arr.length()) out.add(arr.getString(i))
+        memNtfy = out
+        out
+    }
+
+    private fun fetchRaw(url: String): String {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 8_000
             readTimeout = 15_000
@@ -60,11 +88,7 @@ object CloudData {
         val code = conn.responseCode
         val stream = if (code in 200..299) conn.inputStream else conn.errorStream
         val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
-        if (code !in 200..299) throw RuntimeException("cloud-data HTTP $code: ${body.take(200)}")
+        if (code !in 200..299) throw RuntimeException("HTTP $code: ${body.take(200)}")
         return body
     }
-
-    /** Services map: name → service object. */
-    fun services(root: JSONObject): JSONObject =
-        root.optJSONObject("services") ?: JSONObject()
 }

@@ -43,10 +43,22 @@ object Sections {
     data class HomeTile(val id: String, val label: String, val iconName: String)
     data class HomeGroup(val title: String, val tiles: List<HomeTile>)
 
+    /** One row of the WG mesh status table. Live status overlay (handshake
+     *  age / latency / OK) lands later from cloud_url_health.json. */
+    data class MeshPeer(
+        val name: String,
+        val wgIp: String,
+        val endpoint: String,
+        val region: String,
+        val role: String,
+        val vmId: String,
+    )
+
     @Volatile private var cached:        List<Section>?           = null
     @Volatile private var cachedActions: List<Action>?            = null
     @Volatile private var cachedSamples: Map<String, List<Sample>>? = null
     @Volatile private var cachedGroups:  List<HomeGroup>?         = null
+    @Volatile private var cachedMesh:    List<MeshPeer>?          = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -151,6 +163,29 @@ object Sections {
             parsed.add(HomeGroup(o.getString("title"), tiles))
         }
         cachedGroups = parsed
+        return parsed
+    }
+
+    /** build.json::ui.mesh_topology — static WireGuard peer list. */
+    fun meshTopology(): List<MeshPeer> {
+        cachedMesh?.let { return it }
+        val json = String(Base64.decode(BuildConfig.UI_MESH_TOPOLOGY_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        val parsed = mutableListOf<MeshPeer>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            parsed.add(
+                MeshPeer(
+                    name     = o.getString("name"),
+                    wgIp     = o.optString("wg_ip", ""),
+                    endpoint = o.optString("endpoint", ""),
+                    region   = o.optString("region", ""),
+                    role     = o.optString("role", ""),
+                    vmId     = o.optString("vm_id", ""),
+                )
+            )
+        }
+        cachedMesh = parsed
         return parsed
     }
 

@@ -166,10 +166,10 @@
           { "id": "add",        "label": "+ Add server",    "icon": "ic_p_add",             "upstream": "ChatAddServer" },
           { "id": "settings",   "label": "Settings",        "icon": "ic_settings",          "upstream": "ChatSettings" }
         ] },
-      { "id": "wg",        "label": "WG",        "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Tunnels", "+ Import"],
+      { "id": "wg",        "label": "WG",        "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Mesh", "+ Import"],
+        "_doc_merge": "tunnels + status merged into a single `status` (Mesh status) page rendered by C3MeshFragment — a rich peer table (VM · WG-IP · public endpoint · role · live status). The previous Tunnels page is gone; the Mesh table covers both.",
         "pages": [
-          { "id": "tunnels",  "label": "Tunnels",  "icon": "ic_p_wg_tunnels", "upstream": "WgTunnels" },
-          { "id": "status",   "label": "Status",   "icon": "ic_p_wg_status",  "upstream": "WgStatus" },
+          { "id": "status",   "label": "Mesh",     "icon": "ic_p_wg_tunnels", "upstream": "WgMesh" },
           { "id": "logs",     "label": "Logs",     "icon": "ic_p_logs",       "upstream": "WgLogs" },
           { "id": "add",      "label": "+ Import", "icon": "ic_p_add",        "upstream": "WgImport" },
           { "id": "settings", "label": "Settings", "icon": "ic_settings",     "upstream": "WgSettings" }
@@ -195,7 +195,35 @@
     "default_section": "home",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). Extend by adding entries here — never hardcoded in Kotlin.",
     "home_actions": [
-      { "id": "check_updates", "label": "Update", "icon": "ic_refresh", "action_type": "check_updates" }
+      { "id": "check_updates", "label": "Update", "icon": "ic_refresh",  "action_type": "check_updates" },
+      { "id": "import_configs","label": "Import", "icon": "ic_p_import", "action_type": "import_configs" }
+    ],
+    "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",
+    "import_schema": {
+      "wg": {
+        "wg0_private_key":          "AAAA…  (base64 32B)",
+        "wg_public_private_key":    "BBBB…  (base64 32B)"
+      },
+      "mail": {
+        "jmap_url":   "https://jmap.diegonmarcos.com",
+        "imap_url":   "imaps://imap.diegonmarcos.com:993",
+        "smtps_url":  "smtps://smtp.diegonmarcos.com:465",
+        "username":   "me@diegonmarcos.com",
+        "password":   "…sops-decrypted upstream…"
+      },
+      "ssh": {
+        "vault_repo_key": "-----BEGIN OPENSSH PRIVATE KEY-----\\n…\\n-----END OPENSSH PRIVATE KEY-----"
+      },
+      "auth": {
+        "authelia_token": "ey…"
+      }
+    },
+    "_doc_mesh_topology": "WireGuard mesh peers — declarative source of truth shown by C3MeshFragment as a rich table. Live status overlay (handshake / latency / OK) comes from cloud_url_health.json once cargo-ndk lands the Rust binary in jniLibs/. Each peer block: { name, wg_ip, endpoint, region, role }.",
+    "mesh_topology": [
+      { "name": "gcp-proxy",     "wg_ip": "10.0.0.1", "endpoint": "35.226.147.64",    "region": "GCP us-central1-a", "role": "Hub (WG + control)",        "vm_id": "gcp-E2-f_0" },
+      { "name": "oci-mail",      "wg_ip": "10.0.0.3", "endpoint": "130.110.251.193",  "region": "Oracle Frankfurt",  "role": "Mail (Stalwart/Maddy)",     "vm_id": "oci-E2-f_0" },
+      { "name": "oci-analytics", "wg_ip": "10.0.0.4", "endpoint": "129.151.228.66",   "region": "Oracle Frankfurt",  "role": "Public edge (caddy + dagu)", "vm_id": "oci-E2-f_1" },
+      { "name": "oci-apps",      "wg_ip": "10.0.0.6", "endpoint": "82.70.229.129",    "region": "Oracle Frankfurt",  "role": "Apps (20+ services)",       "vm_id": "oci-A1-f_0" }
     ],
     "_doc_home_groups": "Home master view is organised into themed groups (Communication / Infos / Others / C3) with section-titled rows of tiles. Each tile's `id` is either 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), driven by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
@@ -228,7 +256,7 @@
         "title": "C3",
         "tiles": [
           { "id": "page:c3/health",          "label": "Health",           "icon": "ic_p_c3_health" },
-          { "id": "section:wg",              "label": "WG mesh",          "icon": "ic_wg" },
+          { "id": "page:wg/status",          "label": "WG mesh",          "icon": "ic_p_wg_tunnels" },
           { "id": "section:vault",           "label": "Vault",            "icon": "ic_vault" }
         ]
       }
