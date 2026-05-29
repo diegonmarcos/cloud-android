@@ -53,7 +53,10 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix '.debug'
+            // No applicationIdSuffix — this IS the daily app, not a "debug"
+            // variant of a separate release app. Same on-device package
+            // (com.diegonmarcos.superapp) so the in-app updater keeps the
+            // upgrade chain stable.
             debuggable true
         }
         release {
