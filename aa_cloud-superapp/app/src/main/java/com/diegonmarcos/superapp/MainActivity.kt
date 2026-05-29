@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var drawerTabs: TabLayout
+    private lateinit var drawerPageTabs: TabLayout
 
     /** Most-recently-opened section. Drives the second drawer tab + content. */
     private var currentSection: String = "mail"
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
             drawerLayout = findViewById(R.id.drawer_layout)
             bottomNav = findViewById(R.id.bottom_nav)
             drawerTabs = findViewById(R.id.drawer_tabs)
+            drawerPageTabs = findViewById(R.id.drawer_page_tabs)
 
             val toggle = ActionBarDrawerToggle(
                 this, drawerLayout, toolbar,
@@ -68,6 +70,15 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
             drawerTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
                     showDrawerPage(if (tab.position == 0) DrawerPage.HOME else DrawerPage.SECTION)
+                }
+                override fun onTabUnselected(tab: TabLayout.Tab) {}
+                override fun onTabReselected(tab: TabLayout.Tab) {}
+            })
+
+            drawerPageTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab) {
+                    val pages = SectionPages.pagesFor(currentSection)
+                    pages.getOrNull(tab.position)?.let { showDrawerSectionPage(it) }
                 }
                 override fun onTabUnselected(tab: TabLayout.Tab) {}
                 override fun onTabReselected(tab: TabLayout.Tab) {}
@@ -157,20 +168,49 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
     private enum class DrawerPage { HOME, SECTION }
 
     private fun showDrawerPage(page: DrawerPage) {
-        val fragment: Fragment = when (page) {
-            DrawerPage.HOME    -> HomeDrawerFragment.newInstance()
-            DrawerPage.SECTION -> drawerFragmentFor(currentSection, currentLabel)
+        when (page) {
+            DrawerPage.HOME -> {
+                drawerPageTabs.visibility = View.GONE
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.drawer_content, HomeDrawerFragment.newInstance())
+                    .commitAllowingStateLoss()
+            }
+            DrawerPage.SECTION -> {
+                val pages = SectionPages.pagesFor(currentSection)
+                if (pages.isEmpty()) {
+                    // No per-app pages → single placeholder, hide the row.
+                    drawerPageTabs.visibility = View.GONE
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.drawer_content, PlaceholderDrawerFragment.newInstance(currentLabel))
+                        .commitAllowingStateLoss()
+                } else {
+                    bindPageTabs(pages)
+                    drawerPageTabs.visibility = View.VISIBLE
+                    showDrawerSectionPage(pages.first())
+                }
+            }
         }
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.drawer_content, fragment)
-            .commitAllowingStateLoss()
     }
 
-    /** Map section id → its drawer fragment. Each libs:<x>/ module provides
-     *  its own; sections without one fall back to PlaceholderDrawerFragment. */
-    private fun drawerFragmentFor(sectionId: String, label: String): Fragment = when (sectionId) {
-        "mail" -> MailDrawerFragment.newInstance()
-        else   -> PlaceholderDrawerFragment.newInstance(label)
+    private fun bindPageTabs(pages: List<SectionPages.Page>) {
+        // Rebuild only when contents change so we don't fire stale onTabSelected.
+        val needsRebuild = drawerPageTabs.tabCount != pages.size ||
+            (0 until drawerPageTabs.tabCount).any { i ->
+                drawerPageTabs.getTabAt(i)?.text != pages[i].label
+            }
+        if (!needsRebuild) return
+        drawerPageTabs.removeAllTabs()
+        for (p in pages) drawerPageTabs.addTab(drawerPageTabs.newTab().setText(p.label), false)
+        // selectTab(0) without firing onTabSelected — we drive the first show
+        // ourselves in showDrawerPage(SECTION).
+        drawerPageTabs.getTabAt(0)?.let { drawerPageTabs.selectTab(it) }
+    }
+
+    private fun showDrawerSectionPage(page: SectionPages.Page) {
+        Trace.d(TAG, "showDrawerSectionPage section=$currentSection page=${page.id}")
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.drawer_content, page.factory())
+            .commitAllowingStateLoss()
     }
 
     // ── HomeDrawerFragment delegate ───────────────────────────────────────

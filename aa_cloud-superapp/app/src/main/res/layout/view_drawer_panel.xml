@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Drawer panel — top: tab toggle between [Home] (all-sections index) and
-     [<currentSection>] (the section module's own drawer fragment, e.g.
-     FairEmail's account/folder tree once libs:mail grows that far).
-     Below: a FragmentContainerView that swaps between the two pages.
-     Width is fixed to 280dp so long account/folder names don't blow up
-     the drawer width. -->
+<!-- Drawer panel — 3-tier navigation:
+       Row 1  Top tabs:        [Home]  [<currentSection>]
+       Row 2  Pages tabs:      [Menu] [Folders] [Settings] … (hidden on Home)
+       Below  Content:         FragmentContainerView, swaps per page tap
+     Width fixed to 280dp so long account/folder names don't blow up the
+     drawer. Per the user model: each FOSS app exposes its own page set
+     via build.json::ui.sections[X].pages[]. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/drawer_panel"
@@ -21,6 +22,20 @@
         android:layout_height="wrap_content"
         app:tabGravity="fill"
         app:tabMode="fixed" />
+
+    <!-- Row 2 — per-section pages. Visibility = GONE when on Home; VISIBLE
+         when on a section that has build.json::ui.sections[X].pages[]. -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/drawer_page_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceVariant"
+        android:visibility="gone"
+        app:tabMode="scrollable"
+        app:tabContentStart="8dp"
+        app:tabPaddingStart="12dp"
+        app:tabPaddingEnd="12dp"
+        app:tabTextAppearance="?attr/textAppearanceLabelMedium" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/drawer_content"
