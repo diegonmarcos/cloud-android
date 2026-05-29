@@ -44,6 +44,19 @@ in_nix() {
   fi
 }
 
+# Lightweight metadata commands (jq for build.json, git for HEAD sha, etc.)
+# don't need the Android devShell. On hosts where the devShell isn't
+# usable (e.g. aarch64 Termux — the Android SDK derivation is x86-only),
+# prefer the host binary when it's on PATH. Falls back to nix only if
+# the tool genuinely isn't installed.
+prefer_host() {
+  if command -v "$1" >/dev/null 2>&1; then
+    "$@"
+  else
+    in_nix "$@"
+  fi
+}
+
 step_build() {
   log "Build: $(_release_var '.name') (debug APK)"
   in_nix gradle :app:assembleDebug
@@ -87,13 +100,13 @@ step_ship() {
 # hardcoded here — pure interpolation. {sha} and {version_name} are the
 # only template variables.
 _release_var() {
-  in_nix jq -r "$1 // empty" "$SCRIPT_DIR/build.json"
+  prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"
 }
 
 _resolve_template() {
   # Expand {sha} → GITHUB_SHA[:8] (or git rev-parse --short=8), {version_name} → build.json
   local tmpl="$1"
-  local sha="${GITHUB_SHA:-$(in_nix git -C "$SCRIPT_DIR" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)}"
+  local sha="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)}"
   local ver="$(_release_var '.android.version_name')"
   echo "${tmpl//\{sha\}/${sha:0:8}}" | sed "s|{version_name}|$ver|g"
 }
@@ -125,7 +138,7 @@ step_oras_push() {
 
   # Iterate templated tags from build.json (data-driven, NO hardcoded list).
   local tags
-  tags="$(in_nix jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
+  tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
   while IFS= read -r tmpl; do
     [ -z "$tmpl" ] && continue
     local tag ref
