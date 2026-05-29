@@ -8,7 +8,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:headerLayout="@layout/nav_header"
-    app:menu="@menu/drawer_menu"
     app:itemMinHeight="32dp"
     app:itemHorizontalPadding="8dp"
     app:itemIconPadding="12dp"

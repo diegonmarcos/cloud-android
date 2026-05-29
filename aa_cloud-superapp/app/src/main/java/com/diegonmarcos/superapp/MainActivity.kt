@@ -39,7 +39,7 @@ import com.diegonmarcos.superapp.mail.MailPages
  * `build.json::ui.sections`. There is no hardcoded list of sections.
  */
 class MainActivity : AppCompatActivity(),
-    HomeDrawerFragment.NavigationItemListener,
+    HomeDrawerFragment.NavigationListener,
     TileGridFragment.TileClickListener,
     MailHost {
 
@@ -444,31 +444,28 @@ class MainActivity : AppCompatActivity(),
             .commit()
     }
 
-    // ── HomeDrawerFragment delegate ──────────────────────────────────────
+    // ── HomeDrawerFragment delegate (data-driven from Sections) ──────────
 
-    override fun onDrawerItemSelected(item: MenuItem): Boolean {
+    override fun onDrawerSectionSelected(sectionId: String, label: String) {
         drawerLayout.closeDrawer(GravityCompat.START)
-        when (item.itemId) {
-            R.id.drawer_check_updates -> {
-                Updater.checkNow(applicationContext)
-                Toast.makeText(this, R.string.check_updates_started, Toast.LENGTH_SHORT).show()
-            }
-            R.id.drawer_wg_tunnels, R.id.drawer_wg_import ->
-                goSection("wg", getString(R.string.section_wg))
-            R.id.drawer_chat_mattermost -> openSectionPage("chat", "mattermost", null)
-            R.id.drawer_chat_matrix     -> openSectionPage("chat", "matrix",     null)
-            R.id.drawer_chat_all        -> goSection("chat", getString(R.string.section_chat))
-            R.id.drawer_chat_add        -> openSectionPage("chat", "add", null)
-            R.id.drawer_solutions_professional, R.id.drawer_solutions_personal,
-            R.id.drawer_solutions_tools,        R.id.drawer_solutions_cloud,
-            R.id.drawer_solutions_other ->
-                goSection("solutions", getString(R.string.section_solutions))
-            R.id.drawer_c3_reports, R.id.drawer_c3_stack,
-            R.id.drawer_c3_health,  R.id.drawer_c3_workflows ->
-                goSection("c3", getString(R.string.section_c3))
-            else -> Toast.makeText(this, "drawer → ${item.title}", Toast.LENGTH_SHORT).show()
+        goSection(sectionId, label)
+    }
+
+    override fun onDrawerPageSelected(sectionId: String, pageId: String, label: String) {
+        drawerLayout.closeDrawer(GravityCompat.START)
+        // child-N synthetic ids (when a section has no pages[] yet) just
+        // open the section index for now — there's no real page to deep-
+        // link to.
+        if (pageId.startsWith("child-")) {
+            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
+        } else {
+            openSectionPage(sectionId, pageId, null)
         }
-        return true
+    }
+
+    override fun onDrawerActionSelected(actionType: String) {
+        drawerLayout.closeDrawer(GravityCompat.START)
+        dispatchHomeAction(actionType)
     }
 
     // ── toolbar (right-side Back action) ─────────────────────────────────

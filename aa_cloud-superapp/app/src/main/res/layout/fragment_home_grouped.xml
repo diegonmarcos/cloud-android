@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Grouped Home master view. Data source: build.json::ui.home_groups.
-     Each group is rendered as a header row + a 3-column tile grid using
-     the same item_tile + palette as TileGridFragment. Vertical scroll.
-     Last region is the action tiles row (Home actions). -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Grouped Home master view. Auto-scales to fit one screen — no scroll.
+     The Fragment builds groups with weight-distributed tile rows so the
+     whole grid + headers always fit between the AppBar and BottomNav.
+     If the screen is too short the rows shrink uniformly. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/home_grouped_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
-
-    <LinearLayout
-        android:id="@+id/home_grouped_root"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="8dp" />
-</ScrollView>
+    android:orientation="vertical"
+    android:padding="6dp" />
