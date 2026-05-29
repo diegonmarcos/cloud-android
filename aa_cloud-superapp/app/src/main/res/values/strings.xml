@@ -29,6 +29,7 @@
     <!-- C3 / WG Mesh table -->
     <string name="mesh_title">C3 · WG Mesh</string>
     <string name="mesh_status">%1$d peers declared (live overlay pending Rust binary)</string>
+    <string name="mesh_status_multi">%1$d meshes · %2$d peers declared (live overlay pending Rust binary)</string>
     <string name="mesh_col_name">Peer</string>
     <string name="mesh_col_wg_ip">WG IP</string>
     <string name="mesh_col_endpoint_role">Endpoint · role</string>

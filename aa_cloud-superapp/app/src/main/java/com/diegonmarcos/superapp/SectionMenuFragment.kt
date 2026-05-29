@@ -54,13 +54,10 @@ class SectionMenuFragment : Fragment() {
         dispatch[headerId] = Target.Section(section.id, section.label)
 
         if (section.pages.isNotEmpty()) {
+            // Same flattening NavigationView requires — see HomeDrawerFragment.
             for (page in section.pages) {
                 val pageItemId = id++
-                val pageItem = if (page.subPages.isNotEmpty()) {
-                    menu.addSubMenu(groupId, pageItemId, Menu.NONE, page.label).item
-                } else {
-                    menu.add(groupId, pageItemId, Menu.NONE, page.label)
-                }
+                val pageItem = menu.add(groupId, pageItemId, Menu.NONE, page.label)
                 page.iconName?.let {
                     Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
                         ?.let { r -> pageItem.setIcon(r) }
@@ -68,18 +65,15 @@ class SectionMenuFragment : Fragment() {
                 pageItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
                 dispatch[pageItemId] = Target.Page(section.id, page.id, page.label)
 
-                val nested = pageItem.subMenu
-                if (nested != null && page.subPages.isNotEmpty()) {
-                    for (sp in page.subPages) {
-                        val subId = id++
-                        val subItem = nested.add(groupId, subId, Menu.NONE, sp.label)
-                        sp.iconName?.let {
-                            Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
-                                ?.let { r -> subItem.setIcon(r) }
-                        }
-                        subItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-                        dispatch[subId] = Target.Page(section.id, "${page.id}/${sp.id}", sp.label)
+                for (sp in page.subPages) {
+                    val subId = id++
+                    val subItem = menu.add(groupId, subId, Menu.NONE, "    ↳  ${sp.label}")
+                    sp.iconName?.let {
+                        Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
+                            ?.let { r -> subItem.setIcon(r) }
                     }
+                    subItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+                    dispatch[subId] = Target.Page(section.id, "${page.id}/${sp.id}", sp.label)
                 }
             }
         } else {

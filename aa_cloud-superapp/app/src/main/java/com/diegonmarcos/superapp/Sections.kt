@@ -52,22 +52,42 @@ object Sections {
     data class HomeTile(val id: String, val label: String, val iconName: String)
     data class HomeGroup(val title: String, val tiles: List<HomeTile>)
 
-    /** One row of the WG mesh status table. Live status overlay (handshake
-     *  age / latency / OK) lands later from cloud_url_health.json. */
+    /** One row of a WG mesh status table. */
     data class MeshPeer(
         val name: String,
         val wgIp: String,
         val endpoint: String,
         val region: String,
         val role: String,
+        val allowedIps: String,
+        val keepalive: Int,
         val vmId: String,
+    )
+    data class Mesh(
+        val id: String,
+        val label: String,
+        val subnet: String,
+        val port: Int,
+        val mtu: Int,
+        val topology: String,
+        val peers: List<MeshPeer>,
+    )
+
+    data class ServiceInfo(
+        val name: String,
+        val publicUrl: String,
+        val auth: String,
+        val vm: String,
+        val category: String,
+        val enabled: Boolean,
     )
 
     @Volatile private var cached:        List<Section>?           = null
     @Volatile private var cachedActions: List<Action>?            = null
     @Volatile private var cachedSamples: Map<String, List<Sample>>? = null
     @Volatile private var cachedGroups:  List<HomeGroup>?         = null
-    @Volatile private var cachedMesh:    List<MeshPeer>?          = null
+    @Volatile private var cachedMeshes:  List<Mesh>?              = null
+    @Volatile private var cachedSvc:     List<ServiceInfo>?       = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -185,27 +205,69 @@ object Sections {
         return parsed
     }
 
-    /** build.json::ui.mesh_topology — static WireGuard peer list. */
-    fun meshTopology(): List<MeshPeer> {
-        cachedMesh?.let { return it }
-        val json = String(Base64.decode(BuildConfig.UI_MESH_TOPOLOGY_B64, Base64.NO_WRAP))
+    /** build.json::ui.meshes — list of WG meshes (wg-mesh + wg-public). */
+    fun meshes(): List<Mesh> {
+        cachedMeshes?.let { return it }
+        val json = String(Base64.decode(BuildConfig.UI_MESHES_B64, Base64.NO_WRAP))
         val arr = JSONArray(json)
-        val parsed = mutableListOf<MeshPeer>()
+        val out = mutableListOf<Mesh>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            parsed.add(
-                MeshPeer(
-                    name     = o.getString("name"),
-                    wgIp     = o.optString("wg_ip", ""),
-                    endpoint = o.optString("endpoint", ""),
-                    region   = o.optString("region", ""),
-                    role     = o.optString("role", ""),
-                    vmId     = o.optString("vm_id", ""),
+            val peersArr = o.optJSONArray("peers") ?: org.json.JSONArray()
+            val peers = mutableListOf<MeshPeer>()
+            for (j in 0 until peersArr.length()) {
+                val p = peersArr.getJSONObject(j)
+                peers.add(
+                    MeshPeer(
+                        name       = p.getString("name"),
+                        wgIp       = p.optString("wg_ip", ""),
+                        endpoint   = p.optString("endpoint", ""),
+                        region     = p.optString("region", ""),
+                        role       = p.optString("role", ""),
+                        allowedIps = p.optString("allowed_ips", ""),
+                        keepalive  = p.optInt("keepalive", 0),
+                        vmId       = p.optString("vm_id", ""),
+                    )
+                )
+            }
+            out.add(
+                Mesh(
+                    id       = o.getString("id"),
+                    label    = o.getString("label"),
+                    subnet   = o.optString("subnet", ""),
+                    port     = o.optInt("port", 0),
+                    mtu      = o.optInt("mtu", 1420),
+                    topology = o.optString("topology", ""),
+                    peers    = peers,
                 )
             )
         }
-        cachedMesh = parsed
-        return parsed
+        cachedMeshes = out
+        return out
+    }
+
+    /** build.json::ui.services_inventory — static C3/Health source until
+     *  the Rust cloud_url_health binary publishes its JSON. */
+    fun servicesInventory(): List<ServiceInfo> {
+        cachedSvc?.let { return it }
+        val json = String(Base64.decode(BuildConfig.UI_SERVICES_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        val out = mutableListOf<ServiceInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out.add(
+                ServiceInfo(
+                    name      = o.getString("name"),
+                    publicUrl = o.optString("public_url", ""),
+                    auth      = o.optString("auth", ""),
+                    vm        = o.optString("vm", ""),
+                    category  = o.optString("category", ""),
+                    enabled   = o.optBoolean("enabled", true),
+                )
+            )
+        }
+        cachedSvc = out
+        return out
     }
 
     private fun loadSamples() {

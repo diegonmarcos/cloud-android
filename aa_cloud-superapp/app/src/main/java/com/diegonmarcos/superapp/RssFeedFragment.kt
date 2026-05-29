@@ -82,7 +82,16 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
             for (topic in items.sorted()) {
                 val row = inflater.inflate(R.layout.item_rss_topic, container, false)
                 row.findViewById<TextView>(R.id.r_name).text = topic
+                val url = "https://rss.diegonmarcos.com/$topic"
                 row.findViewById<TextView>(R.id.r_url).text  = "rss.diegonmarcos.com/$topic"
+                row.setOnClickListener {
+                    runCatching {
+                        startActivity(android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse(url),
+                        ))
+                    }
+                }
                 container.addView(row)
             }
         }

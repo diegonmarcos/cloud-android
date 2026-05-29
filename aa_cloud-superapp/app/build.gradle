@@ -29,8 +29,10 @@ def uiSamplesJson    = groovy.json.JsonOutput.toJson(buildJson.ui.page_samples ?
 def uiSamplesB64     = uiSamplesJson.bytes.encodeBase64().toString()
 def uiGroupsJson     = groovy.json.JsonOutput.toJson(buildJson.ui.home_groups ?: [])
 def uiGroupsB64      = uiGroupsJson.bytes.encodeBase64().toString()
-def meshJson         = groovy.json.JsonOutput.toJson(buildJson.ui.mesh_topology ?: [])
+def meshJson         = groovy.json.JsonOutput.toJson(buildJson.ui.meshes ?: buildJson.ui.mesh_topology ?: [])
 def meshB64          = meshJson.bytes.encodeBase64().toString()
+def servicesJson     = groovy.json.JsonOutput.toJson(buildJson.ui.services_inventory ?: [])
+def servicesB64      = servicesJson.bytes.encodeBase64().toString()
 def importSchemaJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(buildJson.ui.import_schema ?: [:]))
 def importSchemaB64  = importSchemaJson.bytes.encodeBase64().toString()
 
@@ -50,7 +52,8 @@ android {
         buildConfigField "String", "UI_HOME_ACTIONS_B64",   "\"${uiActionsB64}\""
         buildConfigField "String", "UI_PAGE_SAMPLES_B64",   "\"${uiSamplesB64}\""
         buildConfigField "String", "UI_HOME_GROUPS_B64",    "\"${uiGroupsB64}\""
-        buildConfigField "String", "UI_MESH_TOPOLOGY_B64",  "\"${meshB64}\""
+        buildConfigField "String", "UI_MESHES_B64",         "\"${meshB64}\""
+        buildConfigField "String", "UI_SERVICES_B64",       "\"${servicesB64}\""
         buildConfigField "String", "UI_IMPORT_SCHEMA_B64",  "\"${importSchemaB64}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
