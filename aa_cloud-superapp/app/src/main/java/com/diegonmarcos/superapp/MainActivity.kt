@@ -12,6 +12,7 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationView
 import com.diegonmarcos.superapp.updater.Updater
+import com.diegonmarcos.superapp.mail.MailFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -94,8 +95,14 @@ class MainActivity : AppCompatActivity() {
     private fun switchToSection(id: String, label: String) {
         Trace.d(TAG, "switchToSection id=$id label=$label")
         supportActionBar?.title = label
+        val fragment = when (id) {
+            // Real per-section fragments — replace the placeholder as each
+            // libs:<x>/ module grows real UI. Mail = Slice A (JMAP login).
+            "mail" -> MailFragment.newInstance()
+            else   -> SectionFragment.forSection(id, label)
+        }
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, SectionFragment.forSection(id, label))
+            .replace(R.id.fragment_container, fragment)
             .commit()
     }
 

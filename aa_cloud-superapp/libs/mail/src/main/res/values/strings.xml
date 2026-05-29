@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mail_section_title">Mail (JMAP)</string>
+    <string name="mail_server_hint">JMAP server (https://…)</string>
+    <string name="mail_email_hint">Email address</string>
+    <string name="mail_password_hint">Password</string>
+    <string name="mail_connect">Connect</string>
+    <string name="mail_logout">Sign out</string>
+    <string name="mail_status_connecting">Discovering session…</string>
+    <string name="mail_status_ok">Session OK — account %1$s</string>
+    <string name="mail_status_http">HTTP %1$d — %2$s</string>
+    <string name="mail_status_net">Network error — %1$s</string>
+    <string name="mail_session_apiurl">apiUrl</string>
+    <string name="mail_session_account">primaryAccountId</string>
+    <string name="mail_session_accounts">accounts</string>
+</resources>

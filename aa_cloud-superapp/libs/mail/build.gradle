@@ -1,17 +1,29 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
+
+// Inject build.json::ui.sections[mail].jmap_default_server into BuildConfig
+// so the login screen can pre-fill the discovery URL without any caller
+// passing it in. Data-driven — change the default in build.json, get a
+// rebuilt BuildConfig.JMAP_DEFAULT_SERVER on the next gradle run.
+def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def mailSection = buildJson.ui.sections.find { it.id == 'mail' }
+def jmapDefault = mailSection?.jmap_default_server ?: ''
 
 android {
     namespace 'com.diegonmarcos.superapp.mail'
     compileSdk 34
-
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'
+        buildConfigField "String", "JMAP_DEFAULT_SERVER", "\"${jmapDefault}\""
     }
-
+    buildFeatures {
+        buildConfig = true
+        viewBinding = true
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -22,4 +34,12 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
 }
