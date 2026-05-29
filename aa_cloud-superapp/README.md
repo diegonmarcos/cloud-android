@@ -37,6 +37,31 @@ Phase 0: skeleton — empty modules, "Hello Diego" main screen. Verifies the bui
 
 Upstream FairEmail tracking clone lives at `../ea_mail-fairmail/` (shallow, read-only mirror — `git pull` to surface upstream fixes).
 
+## App take-over contract (minimal-plumbing FOSS-app hosting)
+
+Each section's content Fragment may opt into chrome take-over by implementing
+`com.diegonmarcos.superapp.ShellOverride`:
+
+```kotlin
+class FairEmailFragment : Fragment(), ShellOverride {
+    override fun ownsToolbar(): Boolean   = true   // hides our AppBarLayout
+    override fun ownsBottomNav(): Boolean = true   // hides our BottomNav
+    // …fragment lays out its OWN MaterialToolbar inside its content view
+}
+```
+
+`MainActivity.applyChrome(fragment)` runs after every swap (`runOnCommit`) and
+hides whichever shell elements the fragment claims. The drawer is *always*
+shell-owned (swipe-from-left edge → [Home] tab → return to SuperApp index),
+so even a fully taken-over section keeps a guaranteed way back without
+needing to expose a Home button in its toolbar.
+
+Per-FOSS-app integration cost:
+1. Drop the upstream's main fragment into `libs:<x>/` (rename Activity → Fragment).
+2. Make it implement `ShellOverride` if it already ships its own MaterialToolbar.
+3. Add a `when` branch in `MainActivity.switchToSection` / `drawerFragmentFor`.
+4. Drawer fragment lives in `libs:<x>/` too — wired the same way.
+
 ## License
 
 FairEmail-derived code is GPLv3. Anything we ship that includes `libs:mail/` (which inherits FairEmail's sources) must remain GPLv3. New diego-original modules (`libs:cal`, `libs:feed`, `libs:net`, `libs:ops`, `libs:vault`, `libs:core`, `app/`) can be licensed independently, but for monorepo simplicity we treat the whole APK as GPLv3.

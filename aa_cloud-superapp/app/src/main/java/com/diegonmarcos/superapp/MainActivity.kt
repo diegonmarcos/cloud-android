@@ -2,12 +2,14 @@ package com.diegonmarcos.superapp
 
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.tabs.TabLayout
@@ -114,6 +116,7 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
         }
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, content)
+            .runOnCommit { applyChrome(content) }
             .commit()
 
         // Drawer's second tab label tracks the section.
@@ -121,6 +124,32 @@ class MainActivity : AppCompatActivity(), HomeDrawerFragment.NavigationItemListe
         // If the user is currently looking at the "section" page in the drawer,
         // rebuild it for the new section.
         if (drawerTabs.selectedTabPosition == 1) showDrawerPage(DrawerPage.SECTION)
+    }
+
+    /**
+     * Take-over contract: a content Fragment that implements [ShellOverride]
+     * can hide our shell chrome so it renders its own. Default (no interface
+     * implementation) keeps everything visible. See ShellOverride.kt for the
+     * intent + FOSS-app-cherry-pick story.
+     */
+    private fun applyChrome(fragment: Fragment) {
+        val override = fragment as? ShellOverride
+        val ownsToolbar  = override?.ownsToolbar()  ?: false
+        val ownsBottom   = override?.ownsBottomNav() ?: false
+        findViewById<AppBarLayout>(R.id.app_bar).visibility =
+            if (ownsToolbar) View.GONE else View.VISIBLE
+        bottomNav.visibility = if (ownsBottom) View.GONE else View.VISIBLE
+
+        // Reclaim the bottom-nav reservation when the section opts for
+        // full-screen content. Default = 56dp margin matches the BottomNav
+        // height; takeover sections get 0 so they paint to the bottom edge.
+        val container = findViewById<View>(R.id.fragment_container)
+        val lp = container.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+        val dp = resources.displayMetrics.density
+        lp.bottomMargin = if (ownsBottom) 0 else (56 * dp).toInt()
+        container.layoutParams = lp
+
+        Trace.d(TAG, "applyChrome: ownsToolbar=$ownsToolbar ownsBottom=$ownsBottom (${fragment.javaClass.simpleName})")
     }
 
     // ── drawer pagination ──────────────────────────────────────────────────
