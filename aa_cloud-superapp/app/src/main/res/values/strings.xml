@@ -19,6 +19,7 @@
 
     <!-- Tile-grid index -->
     <string name="tile_grid_empty">No sub-pages yet for this section.</string>
+    <string name="home_group_actions">Actions</string>
 
     <!-- PageContentFragment -->
     <string name="page_default_subtitle">%1$s / %2$s</string>

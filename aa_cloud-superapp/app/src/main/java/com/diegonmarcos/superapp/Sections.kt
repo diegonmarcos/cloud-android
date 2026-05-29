@@ -38,9 +38,15 @@ object Sections {
 
     data class Sample(val title: String, val subtitle: String)
 
-    @Volatile private var cached:        List<Section>? = null
-    @Volatile private var cachedActions: List<Action>?  = null
+    /** A grouped Home tile — `id` is "section:<X>" or "page:<sec>/<page>",
+     *  same format MainActivity.onTileClicked already understands. */
+    data class HomeTile(val id: String, val label: String, val iconName: String)
+    data class HomeGroup(val title: String, val tiles: List<HomeTile>)
+
+    @Volatile private var cached:        List<Section>?           = null
+    @Volatile private var cachedActions: List<Action>?            = null
     @Volatile private var cachedSamples: Map<String, List<Sample>>? = null
+    @Volatile private var cachedGroups:  List<HomeGroup>?         = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -119,6 +125,33 @@ object Sections {
     fun pageSamples(key: String): List<Sample> {
         loadSamples()
         return cachedSamples?.get(key).orEmpty()
+    }
+
+    /** build.json::ui.home_groups — themed Home master view. Empty list
+     *  means the legacy flat all-sections grid is used. */
+    fun homeGroups(): List<HomeGroup> {
+        cachedGroups?.let { return it }
+        val json = String(Base64.decode(BuildConfig.UI_HOME_GROUPS_B64, Base64.NO_WRAP))
+        val arr  = JSONArray(json)
+        val parsed = mutableListOf<HomeGroup>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val tilesArr = o.optJSONArray("tiles") ?: continue
+            val tiles = mutableListOf<HomeTile>()
+            for (j in 0 until tilesArr.length()) {
+                val t = tilesArr.getJSONObject(j)
+                tiles.add(
+                    HomeTile(
+                        id       = t.getString("id"),
+                        label    = t.getString("label"),
+                        iconName = t.optString("icon", "ic_settings"),
+                    )
+                )
+            }
+            parsed.add(HomeGroup(o.getString("title"), tiles))
+        }
+        cachedGroups = parsed
+        return parsed
     }
 
     private fun loadSamples() {

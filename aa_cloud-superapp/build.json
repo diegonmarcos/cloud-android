@@ -197,14 +197,56 @@
     "home_actions": [
       { "id": "check_updates", "label": "Update", "icon": "ic_refresh", "action_type": "check_updates" }
     ],
+    "_doc_home_groups": "Home master view is organised into themed groups (Communication / Infos / Others / C3) with section-titled rows of tiles. Each tile's `id` is either 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), driven by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
+    "home_groups": [
+      {
+        "title": "Communication",
+        "tiles": [
+          { "id": "section:mail",            "label": "Mail",             "icon": "ic_mail" },
+          { "id": "page:chat/matrix",        "label": "Chat-Matrix",      "icon": "ic_p_chat_matrix" },
+          { "id": "page:chat/mattermost",    "label": "Chat-Mattermost",  "icon": "ic_p_chat_mattermost" }
+        ]
+      },
+      {
+        "title": "Infos",
+        "tiles": [
+          { "id": "section:cal",             "label": "Calendars",        "icon": "ic_calendar" },
+          { "id": "section:feed",            "label": "RSS + ntfy",       "icon": "ic_rss" }
+        ]
+      },
+      {
+        "title": "Others",
+        "tiles": [
+          { "id": "page:solutions/professional", "label": "Professional", "icon": "ic_p_sol_pro" },
+          { "id": "page:solutions/personal",     "label": "Personal",     "icon": "ic_p_sol_personal" },
+          { "id": "page:solutions/tools",        "label": "Tools",        "icon": "ic_p_sol_tools" },
+          { "id": "page:solutions/cloud",        "label": "Cloud",        "icon": "ic_p_sol_cloud" },
+          { "id": "page:solutions/other",        "label": "Other",        "icon": "ic_p_sol_other" }
+        ]
+      },
+      {
+        "title": "C3",
+        "tiles": [
+          { "id": "page:c3/health",          "label": "Health",           "icon": "ic_p_c3_health" },
+          { "id": "section:wg",              "label": "WG mesh",          "icon": "ic_wg" },
+          { "id": "section:vault",           "label": "Vault",            "icon": "ic_vault" }
+        ]
+      }
+    ],
     "_doc_page_samples": "Per-page sample content shown by PageContentFragment until the real module fragment lands. Key format: '<section>/<page>'. Each entry is a list of {title, subtitle} rows. Ties to the real CLAUDE.md stack so each section already feels like the user's infra.",
     "page_samples": {
       "feed/all": [
-        { "title": "Hacker News",       "subtitle": "Top stories • Y Combinator" },
-        { "title": "Lobste.rs",         "subtitle": "Computing-focused community" },
-        { "title": "Phoronix",          "subtitle": "Linux + open-source hardware" },
-        { "title": "Ars Technica",      "subtitle": "Technology news" },
-        { "title": "/r/selfhosted",     "subtitle": "Reddit • self-hosting" }
+        { "title": "Hacker News",            "subtitle": "Top stories • Y Combinator" },
+        { "title": "Lobste.rs",              "subtitle": "Computing-focused community" },
+        { "title": "Phoronix",               "subtitle": "Linux + open-source hardware" },
+        { "title": "Ars Technica",           "subtitle": "Technology news" },
+        { "title": "/r/selfhosted",          "subtitle": "Reddit • self-hosting" },
+        { "title": "ntfy: alerts",           "subtitle": "rss.diegonmarcos.com/alerts" },
+        { "title": "ntfy: backup-status",    "subtitle": "rss.diegonmarcos.com/backup-status" },
+        { "title": "ntfy: cert-expiring",    "subtitle": "rss.diegonmarcos.com/cert-expiring" },
+        { "title": "ntfy: health-down",      "subtitle": "rss.diegonmarcos.com/health-down" },
+        { "title": "ntfy: mail-puller",      "subtitle": "rss.diegonmarcos.com/mail-puller" },
+        { "title": "ntfy: gha",              "subtitle": "rss.diegonmarcos.com/gha (planned)" }
       ],
       "feed/unread": [
         { "title": "Rust 1.89 released",        "subtitle": "Hacker News • 2h" },
@@ -326,10 +368,13 @@
       ],
 
       "wg/tunnels": [
-        { "title": "oci-mail",      "subtitle": "10.0.0.3 • Oracle E2 Free" },
-        { "title": "oci-analytics", "subtitle": "10.0.0.4 • Oracle E2 Free" },
-        { "title": "oci-apps",      "subtitle": "10.0.0.6 • Oracle A1.Flex 4-OCPU" },
-        { "title": "gcp-proxy",     "subtitle": "10.0.0.1 • GCP e2-micro Free" }
+        { "title": "gcp-proxy",     "subtitle": "10.0.0.1 • GCP e2-micro Free • WireGuard hub" },
+        { "title": "oci-mail",      "subtitle": "10.0.0.3 • Oracle E2 Free • Stalwart / Maddy / mail-puller" },
+        { "title": "oci-analytics", "subtitle": "10.0.0.4 • Oracle E2 Free • caddy public edge + dagu" },
+        { "title": "oci-apps",      "subtitle": "10.0.0.6 • Oracle A1.Flex 4-OCPU/24GB • 20+ services" },
+        { "title": "Mesh: hub-and-spoke", "subtitle": "wg-mesh on oci-apps; wg-public on gcp-proxy" },
+        { "title": "Public edge",        "subtitle": "oci-analytics — only public ingress (Phase-4)" },
+        { "title": "Handshake check",    "subtitle": "All peers OK • last 30s" }
       ],
       "wg/status": [
         { "title": "Mesh handshake",    "subtitle": "OK • all 4 peers alive" },
@@ -397,9 +442,14 @@
         { "title": "ntfy",         "subtitle": "rss.diegonmarcos.com • oci-apps" }
       ],
       "c3/health": [
-        { "title": "Tier-1 critical",        "subtitle": "5/5 alive" },
-        { "title": "Tier-2 important",       "subtitle": "12/12 alive" },
-        { "title": "Tier-3 nice-to-have",    "subtitle": "20/20 alive" }
+        { "title": "Tier-1 critical",          "subtitle": "5/5 alive" },
+        { "title": "Tier-2 important",         "subtitle": "12/12 alive" },
+        { "title": "Tier-3 nice-to-have",      "subtitle": "20/20 alive" },
+        { "title": "c3-public-api",            "subtitle": "Rust • oci-analytics • api.diegonmarcos.com/c3-api" },
+        { "title": "c3-infra-api",             "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-infra-api" },
+        { "title": "c3-services-api",          "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-services-api" },
+        { "title": "Drift report",             "subtitle": "Topology vs deployed = 0 deltas" },
+        { "title": "Cert horizon",             "subtitle": "Next expiry: 67 days" }
       ],
       "c3/workflows": [
         { "title": "Daily backup",    "subtitle": "02:00 UTC • last OK 2026-05-29" },

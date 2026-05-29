@@ -170,26 +170,30 @@ class MainActivity : AppCompatActivity(),
         currentLabel = getString(R.string.section_home)
         supportActionBar?.title = currentLabel
 
-        val sectionTiles = Sections.all()
-            .filter { !it.isMasterIndex }
-            .map { sec ->
+        // Grouped Home if build.json::ui.home_groups is non-empty; else
+        // fall back to the flat all-sections grid.
+        val content: Fragment = if (Sections.homeGroups().isNotEmpty()) {
+            HomeGroupedFragment.newInstance()
+        } else {
+            val sectionTiles = Sections.all()
+                .filter { !it.isMasterIndex }
+                .map { sec ->
+                    TileGridFragment.Tile(
+                        id      = "section:${sec.id}",
+                        label   = sec.label,
+                        iconRes = Sections.iconResFor(this, sec.iconName),
+                    )
+                }
+            val actionTiles = Sections.homeActions().map { act ->
                 TileGridFragment.Tile(
-                    id      = "section:${sec.id}",
-                    label   = sec.label,
-                    iconRes = Sections.iconResFor(this, sec.iconName),
+                    id      = "action:${act.actionType}",
+                    label   = act.label,
+                    iconRes = Sections.iconResFor(this, act.iconName),
                 )
             }
-        val actionTiles = Sections.homeActions().map { act ->
-            TileGridFragment.Tile(
-                id      = "action:${act.actionType}",
-                label   = act.label,
-                iconRes = Sections.iconResFor(this, act.iconName),
-            )
+            TileGridFragment.newInstance(currentLabel, sectionTiles + actionTiles)
         }
-        swapContent(
-            TileGridFragment.newInstance(currentLabel, sectionTiles + actionTiles),
-            clearBackStack = true,
-        )
+        swapContent(content, clearBackStack = true)
 
         syncBottomNav("home")
         syncDrawerTab(0)
@@ -343,7 +347,15 @@ class MainActivity : AppCompatActivity(),
                 if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
             }
             tileId.startsWith("page:") -> {
-                val pid = tileId.removePrefix("page:")
+                val payload = tileId.removePrefix("page:")
+                // Two forms: "<sectionId>/<pageId>" (deep-link from Home
+                // grouped tiles) or just "<pageId>" (within current section).
+                val parts = payload.split("/", limit = 2)
+                if (parts.size == 2) {
+                    openSectionPage(parts[0], parts[1], null)
+                    return
+                }
+                val pid = parts[0]
                 val frag = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid }?.factory?.invoke()
                     ?: return
                 applyChrome(frag)

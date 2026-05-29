@@ -27,6 +27,8 @@ def uiActionsJson    = groovy.json.JsonOutput.toJson(buildJson.ui.home_actions ?
 def uiActionsB64     = uiActionsJson.bytes.encodeBase64().toString()
 def uiSamplesJson    = groovy.json.JsonOutput.toJson(buildJson.ui.page_samples ?: [:])
 def uiSamplesB64     = uiSamplesJson.bytes.encodeBase64().toString()
+def uiGroupsJson     = groovy.json.JsonOutput.toJson(buildJson.ui.home_groups ?: [])
+def uiGroupsB64      = uiGroupsJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp'
@@ -43,6 +45,7 @@ android {
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         buildConfigField "String", "UI_HOME_ACTIONS_B64",   "\"${uiActionsB64}\""
         buildConfigField "String", "UI_PAGE_SAMPLES_B64",   "\"${uiSamplesB64}\""
+        buildConfigField "String", "UI_HOME_GROUPS_B64",    "\"${uiGroupsB64}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
