@@ -7,7 +7,7 @@
 # ║ flake.nix — never assume host has them.                            ║
 # ║                                                                  ║
 # ║ Commands:                                                        ║
-# ║   build       gradle assembleDebug  → dist/superapp-debug.apk     ║
+# ║   build       gradle assembleDebug → dist/<release.artifact.debug> ║
 # ║   release     gradle assembleRelease (signed if keystore present) ║
 # ║   dev         open IDE / run on connected device (adb)            ║
 # ║   test        gradle test (JVM unit tests)                        ║
@@ -45,19 +45,21 @@ in_nix() {
 }
 
 step_build() {
-  log "Build: superapp (debug APK)"
+  log "Build: $(_release_var '.name') (debug APK)"
   in_nix gradle :app:assembleDebug
   mkdir -p "$DIST_DIR"
-  cp "$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$DIST_DIR/superapp-debug.apk"
-  log "→ $DIST_DIR/superapp-debug.apk"
+  local out="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  cp "$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$out"
+  log "→ $out"
 }
 
 step_release() {
-  log "Build: superapp (release APK)"
+  log "Build: $(_release_var '.name') (release APK)"
   in_nix gradle :app:assembleRelease
   mkdir -p "$DIST_DIR"
-  cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release.apk" "$DIST_DIR/superapp-release.apk" 2>/dev/null \
-    || cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk" "$DIST_DIR/superapp-release-unsigned.apk"
+  local out="$DIST_DIR/$(_release_var '.release.artifact.release')"
+  cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release.apk" "$out" 2>/dev/null \
+    || cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk" "${out%.apk}-unsigned.apk"
   log "→ $DIST_DIR/"
 }
 
@@ -65,7 +67,7 @@ step_dev() {
   log "Dev: launching on connected device (adb)"
   command -v adb >/dev/null || in_nix adb devices
   in_nix gradle :app:installDebug
-  in_nix adb shell am start -n "com.diegonmarcos.superapp/.MainActivity"
+  in_nix adb shell am start -n "$(_release_var '.android.application_id')/com.diegonmarcos.superapp.MainActivity"
 }
 
 step_test()       { log "Test: JVM unit tests"; in_nix gradle test; }
@@ -77,7 +79,7 @@ step_shell()      { log "Entering Nix devShell"; exec nix develop "$SCRIPT_DIR";
 step_ship() {
   step_build
   log "Ship: side-loading via adb"
-  in_nix adb install -r "$DIST_DIR/superapp-debug.apk"
+  in_nix adb install -r "$DIST_DIR/$(_release_var '.release.artifact.debug')"
 }
 
 # ── data-driven release helpers ────────────────────────────────────────

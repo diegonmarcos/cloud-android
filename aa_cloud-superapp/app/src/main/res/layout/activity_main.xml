@@ -60,14 +60,25 @@
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <!-- Drawer (left side, collapsible). 2-level menu source: drawer_menu.xml.
-         Header source: nav_header.xml — shows app name + build identifier. -->
+         Header source: nav_header.xml — shows app name + build identifier.
+         Dense styling: small itemMinHeight (32dp vs default 48dp), reduced
+         horizontal padding (8dp vs default 16dp) and icon padding (12dp vs
+         default 14dp) so many drawer links (accounts, feeds, calendars,
+         tunnels, C3 reports …) fit in a single vertical scroll. -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigation_view"
-        android:layout_width="wrap_content"
+        android:layout_width="260dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/drawer_menu"
+        app:itemMinHeight="32dp"
+        app:itemHorizontalPadding="8dp"
+        app:itemIconPadding="12dp"
+        app:itemTextAppearance="?attr/textAppearanceBodySmall"
+        app:itemIconSize="20dp"
+        app:subheaderInsetStart="8dp"
+        app:dividerInsetStart="8dp" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
