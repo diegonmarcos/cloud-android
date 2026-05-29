@@ -60,6 +60,11 @@ android {
             debuggable true
         }
         release {
+            // Daily-driver app: keep debuggable=true even in release so adb
+            // logcat / debugger always works regardless of which variant the
+            // engine picks. No production-key custody — this is personal
+            // infra, not Play Store distribution.
+            debuggable true
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
