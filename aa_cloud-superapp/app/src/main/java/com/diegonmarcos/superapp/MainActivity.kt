@@ -75,12 +75,13 @@ class MainActivity : AppCompatActivity(),
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
-            applyEdgeToEdgeInsets()
 
             drawerLayout = findViewById(R.id.drawer_layout)
             bottomNav = findViewById(R.id.bottom_nav)
             drawerTabs = findViewById(R.id.drawer_tabs)
             drawerPageTabs = findViewById(R.id.drawer_page_tabs)
+
+            applyEdgeToEdgeInsets()
 
             val toggle = ActionBarDrawerToggle(
                 this, drawerLayout, toolbar,
