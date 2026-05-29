@@ -23,4 +23,15 @@
         <item quantity="one">%d mailbox</item>
         <item quantity="other">%d mailboxes</item>
     </plurals>
+
+    <!-- Slice C — Messages (Email/query + Email/get) -->
+    <string name="mail_messages_loading">Loading messages…</string>
+    <string name="mail_messages_login_first">Sign in via Mail → Accounts first.</string>
+    <string name="mail_messages_no_folder">No folder selected.</string>
+    <string name="mail_messages_empty">No messages in this folder.</string>
+    <string name="mail_messages_error">Failed: %1$s</string>
+    <plurals name="mail_messages_count">
+        <item quantity="one">%d message</item>
+        <item quantity="other">%d messages</item>
+    </plurals>
 </resources>

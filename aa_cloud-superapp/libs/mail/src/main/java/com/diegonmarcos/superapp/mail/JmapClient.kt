@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonArray
+import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
@@ -117,6 +118,106 @@ class JmapClient(
         totalEmails  = this["totalEmails"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
         unreadEmails = this["unreadEmails"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
     )
+
+    // ── Slice C ────────────────────────────────────────────────────────
+
+    data class Email(
+        val id: String,
+        val subject: String,
+        val from: String,
+        val preview: String,
+        val receivedAt: String,    // ISO-8601 UTC, raw from JMAP
+        val hasAttachment: Boolean,
+    )
+
+    /**
+     * Email/query → Email/get back-reference, single round-trip. Returns the
+     * most recent [limit] messages in [mailboxId] ordered by receivedAt desc.
+     * Uses RFC 8620 §3.7 "back-references" (`#ids` resultOf clause) so we
+     * pay one HTTP request for both calls.
+     */
+    fun emails(
+        session: Session,
+        mailboxId: String,
+        limit: Int = 50,
+        accountId: String = session.primaryAccountId,
+    ): Result<List<Email>> = wrap {
+        val payload = buildJsonObject {
+            put("using", buildJsonArray {
+                add("urn:ietf:params:jmap:core")
+                add("urn:ietf:params:jmap:mail")
+            })
+            put("methodCalls", buildJsonArray {
+                addJsonArray {
+                    add("Email/query")
+                    add(buildJsonObject {
+                        put("accountId", accountId)
+                        put("filter", buildJsonObject { put("inMailbox", mailboxId) })
+                        put("sort", buildJsonArray {
+                            addJsonObject {
+                                put("property", "receivedAt")
+                                put("isAscending", false)
+                            }
+                        })
+                        put("limit", limit)
+                    })
+                    add("q0")
+                }
+                addJsonArray {
+                    add("Email/get")
+                    add(buildJsonObject {
+                        put("accountId", accountId)
+                        put("#ids", buildJsonObject {
+                            put("resultOf", "q0")
+                            put("name", "Email/query")
+                            put("path", "/ids")
+                        })
+                        put("properties", buildJsonArray {
+                            add("id"); add("subject"); add("from")
+                            add("preview"); add("receivedAt"); add("hasAttachment")
+                        })
+                    })
+                    add("g0")
+                }
+            })
+        }
+
+        val body = httpPost(session.apiUrl, payload.toString())
+        val responses = json.parseToJsonElement(body).jsonObject["methodResponses"]?.jsonArray
+            ?: throw HttpException(200, "no methodResponses")
+
+        // Pick the Email/get response — order is guaranteed by spec but be
+        // defensive: find by name.
+        val getResp = responses.firstOrNull { resp ->
+            resp.jsonArray.firstOrNull()?.jsonPrimitive?.content == "Email/get"
+        }?.jsonArray
+            ?: throw HttpException(200, "no Email/get in methodResponses")
+
+        val listEl = getResp.getOrNull(1)?.jsonObject?.get("list")?.jsonArray
+            ?: throw HttpException(200, "no .list in Email/get response")
+
+        listEl.map { it.jsonObject.toEmail() }
+    }
+
+    private fun JsonObject.toEmail(): Email {
+        val fromArr = this["from"]?.let { el ->
+            if (el is kotlinx.serialization.json.JsonNull) null else el.jsonArray
+        }
+        val fromStr = fromArr?.joinToString(", ") { el ->
+            val o = el.jsonObject
+            val name = o["name"]?.jsonPrimitive?.let { if (it.content == "null") null else it.content }
+            val addr = o["email"]?.jsonPrimitive?.content ?: ""
+            if (!name.isNullOrBlank()) "$name <$addr>" else addr
+        } ?: ""
+        return Email(
+            id            = this["id"]!!.jsonPrimitive.content,
+            subject       = this["subject"]?.jsonPrimitive?.let { if (it.content == "null") "" else it.content } ?: "",
+            from          = fromStr,
+            preview       = this["preview"]?.jsonPrimitive?.let { if (it.content == "null") "" else it.content } ?: "",
+            receivedAt    = this["receivedAt"]?.jsonPrimitive?.let { if (it.content == "null") "" else it.content } ?: "",
+            hasAttachment = this["hasAttachment"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: false,
+        )
+    }
 
     // ── HTTP plumbing ──────────────────────────────────────────────────
 

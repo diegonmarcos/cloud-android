@@ -272,17 +272,19 @@ class MainActivity : AppCompatActivity(),
                     .commitAllowingStateLoss()
             }
             DrawerPage.SECTION -> {
+                // Drawer's section pane is a flat list of every sub-page
+                // (data-driven from build.json::ui.sections[X].pages[]),
+                // so the chip-row above it is redundant — keep it hidden.
+                drawerPageTabs.visibility = View.GONE
                 val pages = SectionPages.pagesFor(currentSection)
-                if (pages.isEmpty()) {
-                    drawerPageTabs.visibility = View.GONE
-                    supportFragmentManager.beginTransaction()
-                        .replace(R.id.drawer_content, PlaceholderDrawerFragment.newInstance(currentLabel))
-                        .commitAllowingStateLoss()
+                val frag: Fragment = if (pages.isEmpty()) {
+                    PlaceholderDrawerFragment.newInstance(currentLabel)
                 } else {
-                    bindPageTabs(pages)
-                    drawerPageTabs.visibility = View.VISIBLE
-                    showDrawerSectionPage(pages.first())
+                    SectionMenuFragment.newInstance(currentSection)
                 }
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.drawer_content, frag)
+                    .commitAllowingStateLoss()
             }
         }
     }
@@ -316,10 +318,13 @@ class MainActivity : AppCompatActivity(),
                 val pid = tileId.removePrefix("page:")
                 val frag = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid }?.factory?.invoke()
                     ?: return
+                // addToBackStack MUST come before runOnCommit — runOnCommit
+                // internally calls disallowAddToBackStack(), so the reverse
+                // order throws IllegalStateException.
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, frag)
-                    .runOnCommit { applyChrome(frag) }
                     .addToBackStack(null)
+                    .runOnCommit { applyChrome(frag) }
                     .commit()
             }
             tileId.startsWith("stub:") ->
@@ -330,18 +335,35 @@ class MainActivity : AppCompatActivity(),
     // ── MailHost (libs:mail → shell bridge) ──────────────────────────────
 
     override fun openMailPage(pageId: String, args: Bundle?) {
-        val frag = MailPages.fragmentFor(pageId, args)
-        if (currentSection != "mail") {
-            currentSection = "mail"
-            currentLabel = getString(R.string.section_mail)
-            syncBottomNav("mail")
+        openSectionPage("mail", pageId, args)
+    }
+
+    /** Generic section-page navigation — used by drawer menu items and the
+     *  MailHost bridge. The page fragment is resolved via the per-section
+     *  factory in [SectionPages]; mail pages with args (e.g. MESSAGES carrying
+     *  folder_id) go through [MailPages.fragmentFor]. */
+    fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) {
+        if (currentSection != sectionId) {
+            currentSection = sectionId
+            currentLabel = Sections.byId(sectionId)?.label ?: sectionId
+            supportActionBar?.title = currentLabel
+            syncBottomNav(sectionId)
             syncDrawerTab(1)
         }
+        val frag = when (sectionId) {
+            "mail" -> MailPages.fragmentFor(pageId, args)
+            else   -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
+                ?.factory?.invoke()
+                ?: SectionFragment.forSection(sectionId, pageId)
+        }
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+        // addToBackStack MUST come before runOnCommit — runOnCommit internally
+        // calls disallowAddToBackStack(), so the reverse order throws
+        // IllegalStateException.
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, frag)
-            .runOnCommit { applyChrome(frag) }
             .addToBackStack(null)
+            .runOnCommit { applyChrome(frag) }
             .commit()
     }
 
