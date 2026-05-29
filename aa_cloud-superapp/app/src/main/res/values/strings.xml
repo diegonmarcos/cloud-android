@@ -47,6 +47,8 @@
     <string name="import_input_hint">{ "wg": …, "mail": …, "ssh": …, "auth": … }</string>
     <string name="import_save">Save</string>
     <string name="import_clear">Clear</string>
+    <string name="import_from_file">Open file…</string>
+    <string name="import_file_error">Could not read file: %1$s</string>
     <string name="import_saved">Saved %1$d chars to encrypted prefs</string>
     <string name="import_saved_snack">Import saved (encrypted)</string>
     <string name="import_invalid">Invalid JSON: %1$s</string>

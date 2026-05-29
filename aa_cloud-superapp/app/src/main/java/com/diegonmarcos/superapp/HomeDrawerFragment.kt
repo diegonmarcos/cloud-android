@@ -66,25 +66,60 @@ class HomeDrawerFragment : Fragment() {
 
             val sub = sectionItem.subMenu ?: continue
 
-            val entries: List<Triple<String, String, String?>> = if (section.pages.isNotEmpty()) {
-                section.pages.map { Triple(it.id, it.label, it.iconName) }
-            } else {
-                section.defaultChildren.mapIndexed { idx, label ->
-                    Triple("child-$idx", label, null)
-                }
-            }
+            // Two cases: real pages (with possible sub_pages / menu nesting)
+            // OR fallback to drawer_default_children (no sub-level yet).
+            if (section.pages.isNotEmpty()) {
+                for (page in section.pages) {
+                    val pageItemId = id++
+                    // If the page itself has sub_pages, the NavigationView item
+                    // owns a subMenu — clicking the parent header drills to
+                    // the page; clicking a child opens that sub-page.
+                    val pageItem = if (page.subPages.isNotEmpty()) {
+                        sub.addSubMenu(groupId, pageItemId, Menu.NONE, page.label).item
+                    } else {
+                        sub.add(groupId, pageItemId, Menu.NONE, page.label)
+                    }
+                    page.iconName?.let {
+                        Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
+                            ?.let { r -> pageItem.setIcon(r) }
+                    }
+                    pageItem.setOnMenuItemClickListener { mi ->
+                        onItemPicked(mi.itemId); true
+                    }
+                    dispatch[pageItemId] = Target.Page(section.id, page.id, page.label)
 
-            for ((pageId, pageLabel, iconName) in entries) {
-                val pageItemId = id++
-                val pageItem = sub.add(groupId, pageItemId, Menu.NONE, pageLabel)
-                iconName?.let {
-                    Sections.iconResFor(ctx, it).takeIf { res -> res != 0 }
-                        ?.let { res -> pageItem.setIcon(res) }
+                    // 2nd level — sub-pages render under the page header.
+                    val nested = pageItem.subMenu
+                    if (nested != null && page.subPages.isNotEmpty()) {
+                        for (subPage in page.subPages) {
+                            val subItemId = id++
+                            val subItem = nested.add(groupId, subItemId, Menu.NONE, subPage.label)
+                            subPage.iconName?.let {
+                                Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
+                                    ?.let { r -> subItem.setIcon(r) }
+                            }
+                            subItem.setOnMenuItemClickListener { mi ->
+                                onItemPicked(mi.itemId); true
+                            }
+                            // Dispatch as page id "<parentPage>/<subPage>" so the
+                            // host can resolve it (MailPages, future C3 pages).
+                            dispatch[subItemId] = Target.Page(
+                                section.id,
+                                "${page.id}/${subPage.id}",
+                                subPage.label,
+                            )
+                        }
+                    }
                 }
-                pageItem.setOnMenuItemClickListener { mi ->
-                    onItemPicked(mi.itemId); true
+            } else {
+                for ((idx, label) in section.defaultChildren.withIndex()) {
+                    val pageItemId = id++
+                    val pageItem = sub.add(groupId, pageItemId, Menu.NONE, label)
+                    pageItem.setOnMenuItemClickListener { mi ->
+                        onItemPicked(mi.itemId); true
+                    }
+                    dispatch[pageItemId] = Target.Page(section.id, "child-$idx", label)
                 }
-                dispatch[pageItemId] = Target.Page(section.id, pageId, pageLabel)
             }
         }
 

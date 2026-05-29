@@ -25,7 +25,16 @@ object Sections {
         val defaultChildren: List<String>,
     )
 
-    data class Page(val id: String, val label: String, val iconName: String?)
+    data class Page(
+        val id: String,
+        val label: String,
+        val iconName: String?,
+        /** Second-level children. Two sources in build.json::pages[X]:
+         *  `sub_pages` (e.g. mail Settings → 11 FragmentOptions* tabs) or
+         *  `menu` (e.g. mail More → 8 overflow items). Both flatten into
+         *  this single list — the drawer treats them identically. */
+        val subPages: List<Page> = emptyList(),
+    )
 
     /** App-level action tile shown in the Home master TileGrid below the
      *  section tiles. `actionType` is the dispatcher key in MainActivity. */
@@ -73,7 +82,17 @@ object Sections {
                 for (j in 0 until pa.length()) {
                     val po = pa.getJSONObject(j)
                     val pIcon = po.optString("icon", "").takeIf { it.isNotEmpty() }
-                    pages.add(Page(po.getString("id"), po.getString("label"), pIcon))
+                    val subs = mutableListOf<Page>()
+                    // Two equivalent shapes — sub_pages OR menu.
+                    val subArr = po.optJSONArray("sub_pages") ?: po.optJSONArray("menu")
+                    if (subArr != null) {
+                        for (k in 0 until subArr.length()) {
+                            val so = subArr.getJSONObject(k)
+                            val sIcon = so.optString("icon", "").takeIf { it.isNotEmpty() }
+                            subs.add(Page(so.getString("id"), so.getString("label"), sIcon))
+                        }
+                    }
+                    pages.add(Page(po.getString("id"), po.getString("label"), pIcon, subs))
                 }
             }
 

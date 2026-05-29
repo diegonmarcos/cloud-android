@@ -477,13 +477,16 @@ class MainActivity : AppCompatActivity(),
 
     override fun onDrawerPageSelected(sectionId: String, pageId: String, label: String) {
         drawerLayout.closeDrawer(GravityCompat.START)
-        // child-N synthetic ids (when a section has no pages[] yet) just
-        // open the section index for now — there's no real page to deep-
-        // link to.
-        if (pageId.startsWith("child-")) {
-            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
-        } else {
-            openSectionPage(sectionId, pageId, null)
+        when {
+            pageId.startsWith("child-") ->
+                goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
+            // "<parent>/<sub>" compound id from the 2-level drawer. Open the
+            // parent page — most parents already list their sub-pages inline
+            // (e.g. MailPagePlaceholder for Settings shows all 11 sub-tabs).
+            pageId.contains('/') ->
+                openSectionPage(sectionId, pageId.substringBefore('/'), null)
+            else ->
+                openSectionPage(sectionId, pageId, null)
         }
     }
 
