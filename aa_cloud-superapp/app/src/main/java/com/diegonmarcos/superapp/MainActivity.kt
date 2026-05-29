@@ -214,6 +214,7 @@ class MainActivity : AppCompatActivity(),
 
         syncBottomNav("home")
         syncDrawerTab(0)
+        invalidateOptionsMenu()
     }
 
     /** Land the right pane on the given section's TileGrid (or placeholder
@@ -253,6 +254,7 @@ class MainActivity : AppCompatActivity(),
 
         syncBottomNav(id)
         syncDrawerTab(1)
+        invalidateOptionsMenu()
     }
 
     private fun syncBottomNav(sectionId: String) {
@@ -503,8 +505,12 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        // Back is visible whenever there's somewhere "up" to go: either a
+        // real back stack entry, OR the user is sitting on a section index
+        // (Mail / RSS / Calendar / Vault / WG / Solutions / C3 …) which
+        // logically goes back to the Home master grid.
         menu.findItem(R.id.action_back)?.isVisible =
-            supportFragmentManager.backStackEntryCount > 0
+            supportFragmentManager.backStackEntryCount > 0 || currentSection != "home"
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -512,6 +518,8 @@ class MainActivity : AppCompatActivity(),
         if (item.itemId == R.id.action_back) {
             if (supportFragmentManager.backStackEntryCount > 0) {
                 supportFragmentManager.popBackStack()
+            } else if (currentSection != "home") {
+                goHome()
             }
             return true
         }
