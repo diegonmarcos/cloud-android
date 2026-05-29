@@ -1,33 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Drawer's section pane — vertical list of all sub-pages for the current
-     section, mirroring build.json::ui.sections[X].pages[]. Tapping a row
-     opens that page in the right content pane (MainActivity.openSectionPage).
-     Rows added programmatically into `menu_container`. -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Drawer's section pane — site-map navigation for ONE section. Same
+     NavigationView pattern as fragment_home_drawer (whole site), but
+     scoped to the currently-open section. Items are added programma-
+     tically from Sections.byId(sectionId).pages with their sub_pages
+     expanded as a 2nd level. -->
+<com.google.android.material.navigation.NavigationView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/section_navigation_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingVertical="4dp">
-
-        <TextView
-            android:id="@+id/menu_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingHorizontal="12dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="4dp"
-            android:alpha="0.7"
-            android:textAppearance="?attr/textAppearanceLabelSmall" />
-
-        <LinearLayout
-            android:id="@+id/menu_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </LinearLayout>
-</ScrollView>
+    app:itemMinHeight="44dp"
+    app:itemHorizontalPadding="14dp"
+    app:itemIconPadding="14dp"
+    app:itemTextAppearance="?attr/textAppearanceBodyMedium"
+    app:itemIconSize="26dp"
+    app:subheaderInsetStart="8dp"
+    app:dividerInsetStart="8dp" />
