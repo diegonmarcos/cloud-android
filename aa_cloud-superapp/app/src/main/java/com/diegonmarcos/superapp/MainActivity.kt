@@ -156,16 +156,26 @@ class MainActivity : AppCompatActivity(),
         currentLabel = getString(R.string.section_home)
         supportActionBar?.title = currentLabel
 
-        val tiles = Sections.all()
+        val sectionTiles = Sections.all()
             .filter { !it.isMasterIndex }
             .map { sec ->
                 TileGridFragment.Tile(
-                    id = "section:${sec.id}",
-                    label = sec.label,
+                    id      = "section:${sec.id}",
+                    label   = sec.label,
                     iconRes = Sections.iconResFor(this, sec.iconName),
                 )
             }
-        swapContent(TileGridFragment.newInstance(currentLabel, tiles), clearBackStack = true)
+        val actionTiles = Sections.homeActions().map { act ->
+            TileGridFragment.Tile(
+                id      = "action:${act.actionType}",
+                label   = act.label,
+                iconRes = Sections.iconResFor(this, act.iconName),
+            )
+        }
+        swapContent(
+            TileGridFragment.newInstance(currentLabel, sectionTiles + actionTiles),
+            clearBackStack = true,
+        )
 
         syncBottomNav("home")
         syncDrawerTab(0)
@@ -327,8 +337,21 @@ class MainActivity : AppCompatActivity(),
                     .runOnCommit { applyChrome(frag) }
                     .commit()
             }
+            tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
             tileId.startsWith("stub:") ->
                 Toast.makeText(this, tileId, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Action-tile dispatcher — `action_type` values come from
+     *  build.json::ui.home_actions[].action_type. */
+    private fun dispatchHomeAction(actionType: String) {
+        when (actionType) {
+            "check_updates" -> {
+                Updater.checkNow(applicationContext)
+                Toast.makeText(this, R.string.check_updates_started, Toast.LENGTH_SHORT).show()
+            }
+            else -> Toast.makeText(this, "action:$actionType", Toast.LENGTH_SHORT).show()
         }
     }
 

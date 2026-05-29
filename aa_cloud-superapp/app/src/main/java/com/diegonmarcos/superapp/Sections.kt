@@ -27,7 +27,17 @@ object Sections {
 
     data class Page(val id: String, val label: String)
 
-    @Volatile private var cached: List<Section>? = null
+    /** App-level action tile shown in the Home master TileGrid below the
+     *  section tiles. `actionType` is the dispatcher key in MainActivity. */
+    data class Action(
+        val id: String,
+        val label: String,
+        val iconName: String,
+        val actionType: String,
+    )
+
+    @Volatile private var cached:        List<Section>? = null
+    @Volatile private var cachedActions: List<Action>?  = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -75,6 +85,26 @@ object Sections {
     fun byId(id: String): Section? = all().firstOrNull { it.id == id }
 
     fun defaultSectionId(): String = BuildConfig.UI_DEFAULT_SECTION
+
+    fun homeActions(): List<Action> {
+        cachedActions?.let { return it }
+        val json = String(Base64.decode(BuildConfig.UI_HOME_ACTIONS_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        val parsed = mutableListOf<Action>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            parsed.add(
+                Action(
+                    id         = o.getString("id"),
+                    label      = o.getString("label"),
+                    iconName   = o.optString("icon", "ic_settings"),
+                    actionType = o.getString("action_type"),
+                )
+            )
+        }
+        cachedActions = parsed
+        return parsed
+    }
 
     /** Resolve `icon` name from build.json to a drawable res id; 0 if missing. */
     fun iconResFor(ctx: Context, name: String): Int =
