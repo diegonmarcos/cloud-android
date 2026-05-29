@@ -378,6 +378,10 @@ class MainActivity : AppCompatActivity(),
             }
             R.id.drawer_wg_tunnels, R.id.drawer_wg_import ->
                 goSection("wg", getString(R.string.section_wg))
+            R.id.drawer_solutions_professional, R.id.drawer_solutions_personal,
+            R.id.drawer_solutions_tools,        R.id.drawer_solutions_cloud,
+            R.id.drawer_solutions_other ->
+                goSection("solutions", getString(R.string.section_solutions))
             R.id.drawer_c3_reports, R.id.drawer_c3_stack,
             R.id.drawer_c3_health,  R.id.drawer_c3_workflows ->
                 goSection("c3", getString(R.string.section_c3))

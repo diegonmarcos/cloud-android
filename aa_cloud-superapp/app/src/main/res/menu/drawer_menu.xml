@@ -60,6 +60,18 @@
         </item>
     </group>
 
+    <group android:id="@+id/drawer_group_solutions" android:checkableBehavior="single">
+        <item android:title="@string/section_solutions" android:icon="@drawable/ic_solutions">
+            <menu>
+                <item android:id="@+id/drawer_solutions_professional" android:title="@string/drawer_solutions_professional" />
+                <item android:id="@+id/drawer_solutions_personal"     android:title="@string/drawer_solutions_personal" />
+                <item android:id="@+id/drawer_solutions_tools"        android:title="@string/drawer_solutions_tools" />
+                <item android:id="@+id/drawer_solutions_cloud"        android:title="@string/drawer_solutions_cloud" />
+                <item android:id="@+id/drawer_solutions_other"        android:title="@string/drawer_solutions_other" />
+            </menu>
+        </item>
+    </group>
+
     <group android:id="@+id/drawer_group_c3" android:checkableBehavior="single">
         <item android:title="@string/section_c3" android:icon="@drawable/ic_settings">
             <menu>

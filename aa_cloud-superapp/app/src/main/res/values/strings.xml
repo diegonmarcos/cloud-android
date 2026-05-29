@@ -15,6 +15,7 @@
     <string name="section_vault">Vault</string>
     <string name="section_wg">WG</string>
     <string name="section_c3">C3</string>
+    <string name="section_solutions">Solutions</string>
 
     <!-- Tile-grid index -->
     <string name="tile_grid_empty">No sub-pages yet for this section.</string>
@@ -37,6 +38,11 @@
     <string name="drawer_c3_stack">Stack</string>
     <string name="drawer_c3_health">Health</string>
     <string name="drawer_c3_workflows">Workflows</string>
+    <string name="drawer_solutions_professional">Professional</string>
+    <string name="drawer_solutions_personal">Personal</string>
+    <string name="drawer_solutions_tools">Tools</string>
+    <string name="drawer_solutions_cloud">Cloud</string>
+    <string name="drawer_solutions_other">Other</string>
 
     <!-- Per-page top toolbar -->
     <string name="action_search">Search</string>

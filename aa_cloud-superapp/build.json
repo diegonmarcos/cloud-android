@@ -132,8 +132,9 @@
       { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All calendars", "+ Add CalDAV"]   },
       { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": true,  "drawer_default_children": ["Passwords", "TOTP", "Generator"] },
       { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["All servers", "+ Add server"], "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now." },
-      { "id": "wg",    "label": "WG",       "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Tunnels", "+ Import"]            },
-      { "id": "c3",    "label": "C3",       "icon": "ic_settings", "module": "libs:ops",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Reports", "Stack", "Health", "Workflows"] }
+      { "id": "wg",        "label": "WG",        "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Tunnels", "+ Import"]            },
+      { "id": "solutions", "label": "Solutions", "icon": "ic_solutions", "module": null,        "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Professional", "Personal", "Tools", "Cloud", "Other"], "_doc": "Front-end app launcher — categories mirror ~/git/front/ top-level folders (a-Companies/Individual/Portals = Professional; b-* = Personal; c-* = Tools; d-Cloud; e-Others = Other). Sits next to C3 (cloud ops) under the Home master index." },
+      { "id": "c3",        "label": "C3",        "icon": "ic_settings", "module": "libs:ops",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Reports", "Stack", "Health", "Workflows"] }
     ],
     "default_section": "home"
   },
