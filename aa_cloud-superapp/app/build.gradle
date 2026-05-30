@@ -16,6 +16,12 @@ def shortSha = (System.getenv('GITHUB_SHA')
                        commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
                    }.standardOutput.asText.get().trim())
                 .take(8)
+// Build date — UTC, ISO yyyy-MM-dd. Shown after the sha in versionName so
+// you can tell at a glance how stale the installed APK is.
+def buildDate = new java.text.SimpleDateFormat('yyyy-MM-dd').with {
+    setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
+    format(new java.util.Date())
+}
 
 // Bake build.json::ui.sections into BuildConfig as base64-JSON so Kotlin
 // reads a single source of truth at runtime — no parallel hardcoded list.
@@ -45,7 +51,7 @@ android {
         minSdk 26
         targetSdk 34
         versionCode codeFinal
-        versionName "${buildJson.android.version_name} (sha-${shortSha})"
+        versionName "${buildJson.android.version_name} (sha-${shortSha} · ${buildDate})"
         buildConfigField "String", "GIT_SHORT_SHA",         "\"${shortSha}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
