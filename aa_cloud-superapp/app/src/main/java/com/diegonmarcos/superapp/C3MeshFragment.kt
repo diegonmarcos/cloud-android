@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp
 
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,17 +10,23 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 /**
- * C3 · WG Mesh — renders the canonical wg-mesh/v1 snapshot (data/mesh.json,
- * sourced from cloud/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json).
+ * C3 · WG Mesh — renders the canonical wg-mesh/v1 snapshot
+ * (data/mesh.json) grouped by **transport**, matching the user's
+ * mental model of "WG0 vs WG-PUBLIC":
  *
- *   Transports header (wg0 direct UDP + wg0-tcp wstunnel fallback)
- *   Nodes table       (hub / spokes / clients with WG-IP, public IP, role,
- *                      provider/region, OS, key fingerprint, public ports,
- *                      wstunnel flags)
- *   Peers table       (from → to · allowed-ips · keep-alive)
+ *   wg0       UDP/51820 direct                  → VMs (hub + spokes)
+ *   wg0-tcp   wstunnel TCP/443 over WSS         → roaming clients
  *
- * Live status overlay (handshake / latency / OK) arrives when the
- * cargo-ndk Rust binary publishes cloud_url_health.json into jniLibs/.
+ * Each transport card shows:
+ *   • Header  protocol/port + endpoint + primary/fallback + use case
+ *   • Nodes   that use THIS transport (status dot · name · region
+ *              · WG-IP · public IP · public ports · OS)
+ *   • Peers   declared from→to relationships involving any node above
+ *
+ * Per the canonical spec, "wg-public" is NOT a separate WG network —
+ * it's the wstunnel TCP/443 transport of the same wg0 network. The
+ * UI groups by transport so it reads as two networks (which is how
+ * the user perceives them).
  */
 class C3MeshFragment : Fragment(R.layout.fragment_c3_mesh) {
 
@@ -35,74 +42,87 @@ class C3MeshFragment : Fragment(R.layout.fragment_c3_mesh) {
             mesh.nodes.size, mesh.peers.size, mesh.transports.size,
         )
 
-        // ── Transports ────────────────────────────────────────────────
-        if (mesh.transports.isNotEmpty()) {
-            val block = inflater.inflate(R.layout.item_c3_mesh_block, root, false) as LinearLayout
-            block.findViewById<TextView>(R.id.mb_label).text = getString(R.string.mesh_section_transports)
-            block.findViewById<TextView>(R.id.mb_meta).text  =
-                "${mesh.transports.size} transports declared"
-            val list = block.findViewById<LinearLayout>(R.id.mb_peers)
-            for (t in mesh.transports) {
-                val r = LinearLayout(requireContext()).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    )
-                    val pad = (12 * resources.displayMetrics.density).toInt()
-                    setPadding(pad, pad / 2, pad, pad / 2)
-                }
-                addLine(r, "${t.name} · ${t.label}", titleSize = true)
-                addLine(r, "${t.protocol.uppercase()}/${t.port}  →  ${t.endpoint}")
-                addLine(r, buildString {
-                    append(if (t.primary) "primary" else if (t.fallback) "fallback" else "—")
-                    append(" · ").append(t.activePeers).append(" active peers")
-                })
-                if (t.useCase.isNotBlank()) addLine(r, t.useCase, dim = true)
-                list.addView(r)
+        // wstunnel users = clients that go via wg0-tcp (laptop/phone).
+        // Everyone else uses wg0 direct UDP.
+        val tcpNodeNames = mesh.nodes.filter { it.wstunnelClient }.map { it.name }.toSet()
+        val tcpNodes     = mesh.nodes.filter { it.wstunnelClient }
+        val udpNodes     = mesh.nodes.filter { !it.wstunnelClient }
+
+        // Peers map their from-node onto a transport — if from-node is
+        // wstunnel-client, the relationship runs on wg0-tcp. Otherwise wg0.
+        val tcpPeers = mesh.peers.filter { it.from in tcpNodeNames || it.to in tcpNodeNames }
+        val udpPeers = mesh.peers.filterNot { it.from in tcpNodeNames || it.to in tcpNodeNames }
+
+        for (transport in mesh.transports) {
+            val (nodesForT, peersForT) = when (transport.name) {
+                "wg0"     -> udpNodes to udpPeers
+                "wg0-tcp" -> tcpNodes to tcpPeers
+                else      -> mesh.nodes to mesh.peers
             }
-            root.addView(block)
+            renderTransportCard(root, inflater, transport, nodesForT, peersForT)
+        }
+    }
+
+    private fun renderTransportCard(
+        root: LinearLayout,
+        inflater: LayoutInflater,
+        t: Sections.MeshTransport,
+        nodes: List<Sections.MeshNode>,
+        peers: List<Sections.MeshPeer>,
+    ) {
+        val block = inflater.inflate(R.layout.item_c3_mesh_block, root, false) as LinearLayout
+
+        val label = block.findViewById<TextView>(R.id.mb_label)
+        label.text = "${t.name} · ${t.label}"
+
+        val meta = block.findViewById<TextView>(R.id.mb_meta)
+        val role = when {
+            t.primary  -> "primary"
+            t.fallback -> "fallback"
+            else       -> "—"
+        }
+        meta.text = buildString {
+            append(t.protocol.uppercase()).append('/').append(t.port)
+            append("  →  ").append(t.endpoint).append('\n')
+            append(role).append(" · ").append(t.activePeers).append(" active peers · ")
+            append(nodes.size).append(" nodes · ").append(peers.size).append(" peerings\n")
+            if (t.useCase.isNotBlank()) append(t.useCase)
         }
 
-        // ── Nodes ────────────────────────────────────────────────────
-        if (mesh.nodes.isNotEmpty()) {
-            val block = inflater.inflate(R.layout.item_c3_mesh_block, root, false) as LinearLayout
-            block.findViewById<TextView>(R.id.mb_label).text = getString(R.string.mesh_section_nodes)
-            block.findViewById<TextView>(R.id.mb_meta).text  = "${mesh.nodes.size} nodes"
-            val list = block.findViewById<LinearLayout>(R.id.mb_peers)
-            for (node in mesh.nodes) {
+        val list = block.findViewById<LinearLayout>(R.id.mb_peers)
+
+        // ── nodes ────────────────────────────────────────────────────
+        if (nodes.isNotEmpty()) {
+            addSubheader(list, getString(R.string.mesh_section_nodes) + " · ${nodes.size}")
+            for (n in nodes) {
                 val row = inflater.inflate(R.layout.item_c3_mesh_row, list, false)
                 row.findViewById<View>(R.id.m_status_dot).background = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
-                    setColor(when (node.role) {
-                        "hub"    -> 0xFF2E7D32.toInt()
-                        "client" -> 0xFFEF6C00.toInt()
-                        else     -> 0xFF1565C0.toInt()
+                    setColor(when (n.role) {
+                        "hub"    -> 0xFF2E7D32.toInt()    // green
+                        "client" -> 0xFFEF6C00.toInt()    // orange
+                        else     -> 0xFF1565C0.toInt()    // blue
                     })
                 }
-                row.findViewById<TextView>(R.id.m_name).text     = "${node.name} · ${node.role}"
+                row.findViewById<TextView>(R.id.m_name).text     = "${n.name} · ${n.role}"
                 row.findViewById<TextView>(R.id.m_region).text   =
-                    "${node.alias} · ${node.provider}/${node.region}"
-                row.findViewById<TextView>(R.id.m_wg_ip).text    = node.wgIp
-                row.findViewById<TextView>(R.id.m_endpoint).text = node.publicIp
+                    "${n.alias} · ${n.provider}/${n.region}"
+                row.findViewById<TextView>(R.id.m_wg_ip).text    = n.wgIp
+                row.findViewById<TextView>(R.id.m_endpoint).text = n.publicIp
                 row.findViewById<TextView>(R.id.m_role).text     = buildString {
-                    if (node.portsPublic.isNotEmpty()) append(node.portsPublic.joinToString(" "))
-                    if (node.wstunnelServer) append(" · wstunnel↑")
-                    if (node.wstunnelClient) append(" · wstunnel↓")
-                    if (node.os.isNotBlank())  append(" · ").append(node.os)
+                    if (n.portsPublic.isNotEmpty()) append(n.portsPublic.joinToString(" "))
+                    if (n.wstunnelServer) append(" · wstunnel↑")
+                    if (n.wstunnelClient) append(" · wstunnel↓")
+                    if (n.os.isNotBlank()) append(" · ").append(n.os)
                 }
                 list.addView(row)
             }
-            root.addView(block)
         }
 
-        // ── Peers ────────────────────────────────────────────────────
-        if (mesh.peers.isNotEmpty()) {
-            val block = inflater.inflate(R.layout.item_c3_mesh_block, root, false) as LinearLayout
-            block.findViewById<TextView>(R.id.mb_label).text = getString(R.string.mesh_section_peers)
-            block.findViewById<TextView>(R.id.mb_meta).text  = "${mesh.peers.size} declared peerings"
-            val list = block.findViewById<LinearLayout>(R.id.mb_peers)
-            for (p in mesh.peers) {
+        // ── peers ────────────────────────────────────────────────────
+        if (peers.isNotEmpty()) {
+            addSubheader(list, getString(R.string.mesh_section_peers) + " · ${peers.size}")
+            for (p in peers) {
                 val r = LinearLayout(requireContext()).apply {
                     orientation = LinearLayout.VERTICAL
                     layoutParams = LinearLayout.LayoutParams(
@@ -117,8 +137,20 @@ class C3MeshFragment : Fragment(R.layout.fragment_c3_mesh) {
                 addLine(r, "keepalive ${p.keepalive}s", dim = true)
                 list.addView(r)
             }
-            root.addView(block)
         }
+        root.addView(block)
+    }
+
+    private fun addSubheader(host: LinearLayout, text: String) {
+        val tv = TextView(requireContext()).apply {
+            this.text = text
+            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+            setTextColor(resources.getColor(R.color.cloud_primary, requireContext().theme))
+            val pad = (10 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad / 2)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        host.addView(tv)
     }
 
     private fun addLine(host: LinearLayout, text: String, titleSize: Boolean = false, dim: Boolean = false) {
@@ -130,7 +162,7 @@ class C3MeshFragment : Fragment(R.layout.fragment_c3_mesh) {
                 setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             }
             if (dim) alpha = 0.6f
-            typeface = android.graphics.Typeface.MONOSPACE
+            typeface = Typeface.MONOSPACE
         }
         host.addView(tv)
     }
