@@ -147,11 +147,12 @@
           { "id": "add",        "label": "+ Add CalDAV", "icon": "ic_p_add",         "upstream": "DavX5AddAccount" },
           { "id": "settings",   "label": "Settings",   "icon": "ic_settings",        "upstream": "DavX5Settings" }
         ] },
-      { "id": "drive", "label": "Drive",    "icon": "ic_drive",    "module": null,         "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["My files", "Photos", "Recent", "Shared", "Trash"],
-        "_doc": "Unified file storage hub — fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, plus borg/bup backup snapshots. Replaces RSS in the bottom-nav center-right slot.",
+      { "id": "drive", "label": "Drive",    "icon": "ic_drive",    "module": null,         "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["My files", "Photos", "Connections", "Recent", "Shared", "Trash"],
+        "_doc": "Unified file storage hub — fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, borg/bup backup snapshots PLUS external cloud connections (S3 / Google Drive / Workspace / rclone remotes). Replaces RSS in the bottom-nav.",
         "pages": [
           { "id": "files",       "label": "My files",     "icon": "ic_p_folder",       "upstream": "filebrowser" },
           { "id": "photos",      "label": "Photos",       "icon": "ic_p_sol_personal", "upstream": "photoprism" },
+          { "id": "connections", "label": "Connections",  "icon": "ic_p_sol_cloud",    "upstream": "drive-connections" },
           { "id": "recent",      "label": "Recent",       "icon": "ic_p_logs",         "upstream": "filebrowser_recent" },
           { "id": "shared",      "label": "Shared",       "icon": "ic_p_contacts",     "upstream": "filebrowser_shared" },
           { "id": "trash",       "label": "Trash",        "icon": "ic_p_more",         "upstream": "filebrowser_trash" },
@@ -231,6 +232,21 @@
       }
     },
     "_doc_data_snapshots": "C3/Health (public + private services) and C3/Mesh (wg-mesh/v1 snapshot) are NO LONGER hardcoded here — they live in ea_cloud-superapp/data/ as derived snapshots (regenerated via data/regen.sh from cloud-data's _cloud-data-consolidated.json + cloud/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json). app/build.gradle reads those files at bake time and exposes them via BuildConfig.",
+    "_doc_drive_connections": "Listing rendered by Drive · Connections — each external/internal storage backend reachable from the stack. Status today is the declared baseline (planned: live overlay from the cargo-ndk Rust binary).",
+    "drive_connections": [
+      { "name": "MinIO",                 "kind": "s3",                "endpoint": "crawlee_minio:9000",         "auth": "access_key + secret",       "vm": "oci-apps",      "status": "ok",   "scope": "private", "notes": "S3-compatible object store for crawlee runs" },
+      { "name": "Google Drive (me@)",    "kind": "google-drive",      "endpoint": "drive.google.com",            "auth": "oauth2 (google-personal-mcp)","vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Personal Google account via MCP" },
+      { "name": "Google Workspace",      "kind": "google-workspace",  "endpoint": "workspace.google.com",        "auth": "service_account + domain delegation","vm": "oci-apps", "status": "ok",   "scope": "public",  "notes": "Docs/Sheets/Slides/Calendar via google-workspace-mcp" },
+      { "name": "rclone (photoprism)",   "kind": "rclone",            "endpoint": "photoprism_rclone container", "auth": "shared volume",             "vm": "oci-apps",      "status": "ok",   "scope": "private", "notes": "Photoprism originals sync via rclone" },
+      { "name": "Borg backups",          "kind": "borg",              "endpoint": "borg-server:2224",            "auth": "ssh-key",                   "vm": "—",            "status": "ok",   "scope": "private", "notes": "Daily encrypted snapshots" },
+      { "name": "Bup backups",           "kind": "bup",               "endpoint": "bup-server:2223",             "auth": "ssh-key",                   "vm": "—",            "status": "ok",   "scope": "private", "notes": "Dedup-backed redundant snapshots" },
+      { "name": "Filebrowser (HTTP)",    "kind": "http",              "endpoint": "files.diegonmarcos.com",      "auth": "two_factor",                "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Browser-facing file manager" },
+      { "name": "Vaultwarden attachments","kind": "https",            "endpoint": "vault.diegonmarcos.com",      "auth": "two_factor",                "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Attached files inside Bitwarden vault" },
+      { "name": "Photoprism originals",  "kind": "fs-volume",         "endpoint": "/opt/containers/photoprism/originals", "auth": "fs-perms",         "vm": "oci-apps",      "status": "ok",   "scope": "private", "notes": "Read-only bind mount of master library" },
+      { "name": "Hedgedoc uploads",      "kind": "https",             "endpoint": "doc.diegonmarcos.com",        "auth": "two_factor",                "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Markdown attachments uploaded to docs" },
+      { "name": "Gitea LFS",             "kind": "git-lfs",           "endpoint": "git.diegonmarcos.com",        "auth": "two_factor + token",        "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Large file storage attached to repos" },
+      { "name": "Stalwart mail blobs",   "kind": "imap-attachments",  "endpoint": "mail-stalwart.diegonmarcos.com","auth": "imap+jmap",               "vm": "oci-mail",      "status": "ok",   "scope": "public",  "notes": "MIME attachments inside JMAP store" }
+    ],
     "_doc_home_groups": "Home master view is organised into themed groups (Communication / Infos / Others / C3) with section-titled rows of tiles. Each tile's `id` is either 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), driven by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {

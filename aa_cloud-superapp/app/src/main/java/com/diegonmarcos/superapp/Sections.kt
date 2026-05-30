@@ -93,6 +93,18 @@ object Sections {
         val transports: List<MeshTransport>,
     )
 
+    /** One Drive · Connections row — external/internal storage backend. */
+    data class DriveConnection(
+        val name: String,
+        val kind: String,        // s3 | google-drive | rclone | borg | http | …
+        val endpoint: String,
+        val auth: String,
+        val vm: String,
+        val status: String,      // ok | warn | down | unknown
+        val scope: String,       // public | private
+        val notes: String,
+    )
+
     /** One row of the C3/Health public-services table. */
     data class PublicService(
         val name: String,
@@ -121,6 +133,7 @@ object Sections {
     @Volatile private var cachedMesh:     Mesh?                    = null
     @Volatile private var cachedSvcPub:   List<PublicService>?     = null
     @Volatile private var cachedSvcPriv:  List<PrivateService>?    = null
+    @Volatile private var cachedDrive:    List<DriveConnection>?   = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -361,6 +374,32 @@ object Sections {
         }
         cachedSvcPriv = out.sortedBy { it.name }
         return cachedSvcPriv!!
+    }
+
+    /** build.json::ui.drive_connections — declarative list of storage
+     *  backends shown under Drive · Connections. */
+    fun driveConnections(): List<DriveConnection> {
+        cachedDrive?.let { return it }
+        val json = String(Base64.decode(BuildConfig.DRIVE_CONNECTIONS_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        val out = mutableListOf<DriveConnection>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out.add(
+                DriveConnection(
+                    name     = o.optString("name", ""),
+                    kind     = o.optString("kind", ""),
+                    endpoint = o.optString("endpoint", ""),
+                    auth     = o.optString("auth", ""),
+                    vm       = o.optString("vm", "—"),
+                    status   = o.optString("status", "unknown"),
+                    scope    = o.optString("scope", "private"),
+                    notes    = o.optString("notes", ""),
+                )
+            )
+        }
+        cachedDrive = out
+        return out
     }
 
     private fun loadSamples() {

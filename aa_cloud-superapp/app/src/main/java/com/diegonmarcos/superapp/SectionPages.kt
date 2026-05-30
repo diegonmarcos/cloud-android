@@ -26,10 +26,11 @@ object SectionPages {
     }
 
     private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when {
-        sectionId == "mail" -> MailPages.fragmentFor(pageId)
-        sectionId == "c3"   && pageId == "health" -> C3HealthFragment.newInstance()
-        sectionId == "wg"   && pageId == "status" -> C3MeshFragment.newInstance()
-        sectionId == "feed" && pageId == "all"    -> RssFeedFragment.newInstance()
+        sectionId == "mail"  -> MailPages.fragmentFor(pageId)
+        sectionId == "c3"    && pageId == "health"      -> C3HealthFragment.newInstance()
+        sectionId == "wg"    && pageId == "status"      -> C3MeshFragment.newInstance()
+        sectionId == "feed"  && pageId == "all"         -> RssFeedFragment.newInstance()
+        sectionId == "drive" && pageId == "connections" -> DriveConnectionsFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }

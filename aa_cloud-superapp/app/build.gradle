@@ -49,6 +49,8 @@ def svcPrivJson      = svcPrivFile.exists() ? svcPrivFile.text : "[]"
 def svcPrivB64       = svcPrivJson.bytes.encodeBase64().toString()
 def importSchemaJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(buildJson.ui.import_schema ?: [:]))
 def importSchemaB64  = importSchemaJson.bytes.encodeBase64().toString()
+def driveConnsJson   = groovy.json.JsonOutput.toJson(buildJson.ui.drive_connections ?: [])
+def driveConnsB64    = driveConnsJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp'
@@ -70,6 +72,7 @@ android {
         buildConfigField "String", "SERVICES_PUBLIC_B64",   "\"${svcPubB64}\""
         buildConfigField "String", "SERVICES_PRIVATE_B64",  "\"${svcPrivB64}\""
         buildConfigField "String", "UI_IMPORT_SCHEMA_B64",  "\"${importSchemaB64}\""
+        buildConfigField "String", "DRIVE_CONNECTIONS_B64", "\"${driveConnsB64}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

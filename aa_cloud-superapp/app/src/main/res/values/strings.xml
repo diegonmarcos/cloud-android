@@ -47,6 +47,10 @@
     <string name="rss_error">Failed: %1$s</string>
     <string name="rss_group_other">Other</string>
 
+    <!-- Drive · Connections -->
+    <string name="drive_connections_title">Drive · Connections</string>
+    <string name="drive_connections_status">%1$d backends · %2$d public · %3$d private (declared baseline)</string>
+
     <!-- Import configs -->
     <string name="import_title">Import configs</string>
     <string name="import_subtitle">Paste the JSON blob below — keys + URLs are stored encrypted at rest.</string>
