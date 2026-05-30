@@ -127,7 +127,7 @@
             ]
           }
         ] },
-      { "id": "feed",  "label": "RSS",      "icon": "ic_rss",      "module": "libs:feed",  "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All feeds", "+ Subscribe"],
+      { "id": "feed",  "label": "RSS",      "icon": "ic_rss",      "module": "libs:feed",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["All feeds", "+ Subscribe"], "_doc": "RSS / ntfy lives in the drawer only now — Drive took its bottom-nav slot.",
         "pages": [
           { "id": "all",           "label": "All feeds",     "icon": "ic_p_feed_all",      "upstream": "FeederMain" },
           { "id": "unread",        "label": "Unread",        "icon": "ic_p_feed_unread",   "upstream": "FeederUnread" },
@@ -146,6 +146,18 @@
           { "id": "calendars",  "label": "Calendars",  "icon": "ic_p_cal_calendars", "upstream": "DavX5Calendars" },
           { "id": "add",        "label": "+ Add CalDAV", "icon": "ic_p_add",         "upstream": "DavX5AddAccount" },
           { "id": "settings",   "label": "Settings",   "icon": "ic_settings",        "upstream": "DavX5Settings" }
+        ] },
+      { "id": "drive", "label": "Drive",    "icon": "ic_drive",    "module": null,         "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["My files", "Photos", "Recent", "Shared", "Trash"],
+        "_doc": "Unified file storage hub — fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, plus borg/bup backup snapshots. Replaces RSS in the bottom-nav center-right slot.",
+        "pages": [
+          { "id": "files",       "label": "My files",     "icon": "ic_p_folder",       "upstream": "filebrowser" },
+          { "id": "photos",      "label": "Photos",       "icon": "ic_p_sol_personal", "upstream": "photoprism" },
+          { "id": "recent",      "label": "Recent",       "icon": "ic_p_logs",         "upstream": "filebrowser_recent" },
+          { "id": "shared",      "label": "Shared",       "icon": "ic_p_contacts",     "upstream": "filebrowser_shared" },
+          { "id": "trash",       "label": "Trash",        "icon": "ic_p_more",         "upstream": "filebrowser_trash" },
+          { "id": "backups",     "label": "Backups",      "icon": "ic_p_vault_db",     "upstream": "borg-server" },
+          { "id": "upload",      "label": "+ Upload",     "icon": "ic_p_add",          "upstream": "filebrowser_upload" },
+          { "id": "settings",    "label": "Settings",     "icon": "ic_settings",       "upstream": "filebrowser_settings" }
         ] },
       { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": true,  "drawer_default_children": ["Passwords", "TOTP", "Generator"],
         "pages": [
@@ -233,6 +245,7 @@
         "title": "Infos",
         "tiles": [
           { "id": "section:cal",             "label": "Calendars",        "icon": "ic_calendar" },
+          { "id": "section:drive",           "label": "Drive",            "icon": "ic_drive" },
           { "id": "section:feed",            "label": "RSS + ntfy",       "icon": "ic_rss" }
         ]
       },

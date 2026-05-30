@@ -151,18 +151,18 @@ class MainActivity : AppCompatActivity(),
 
     private fun sectionIdForNavId(navId: Int): String? = when (navId) {
         R.id.nav_mail  -> "mail"
-        R.id.nav_feed  -> "feed"
-        R.id.nav_home  -> "home"
         R.id.nav_cal   -> "cal"
+        R.id.nav_home  -> "home"
+        R.id.nav_drive -> "drive"
         R.id.nav_vault -> "vault"
         else -> null
     }
 
     private fun idForSectionId(id: String): Int? = when (id) {
         "mail"  -> R.id.nav_mail
-        "feed"  -> R.id.nav_feed
-        "home"  -> R.id.nav_home
         "cal"   -> R.id.nav_cal
+        "home"  -> R.id.nav_home
+        "drive" -> R.id.nav_drive
         "vault" -> R.id.nav_vault
         else    -> null
     }

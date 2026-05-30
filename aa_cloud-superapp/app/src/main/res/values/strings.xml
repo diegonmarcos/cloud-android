@@ -12,6 +12,7 @@
     <string name="section_feed">RSS</string>
     <string name="section_chat">Chat</string>
     <string name="section_cal">Calendar</string>
+    <string name="section_drive">Drive</string>
     <string name="section_vault">Vault</string>
     <string name="section_wg">WG</string>
     <string name="section_c3">C3</string>

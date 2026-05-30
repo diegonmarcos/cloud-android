@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drive icon — Google-Drive-style triangle composed of three faces. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?attr/colorOnSurface">
+    <path android:fillColor="@android:color/white"
+        android:pathData="M7.71,3.5 L1.15,15 L4.58,21 L11.13,9.5 L7.71,3.5 z M9.27,15 L5.85,21 L18.42,21 L21.85,15 L9.27,15 z M22.85,13.5 L16.29,2 L9.42,2 L15.99,13.5 L22.85,13.5 z" />
+</vector>
