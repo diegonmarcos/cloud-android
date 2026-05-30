@@ -61,11 +61,13 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         val cols = COLS
         var i = 0
         while (i < ids.size) {
-            // weight=1 height=0 — every row gets equal share of grid_container
-            // height, so the icons here match the Home master grid size.
+            // wrap_content row → tile keeps its item_tile.xml fixed height,
+            // ScrollView handles overflow. Auto-fit blew up single-row
+            // sections into giant tiles.
             val row = LinearLayout(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f,
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
                 )
                 orientation = LinearLayout.HORIZONTAL
                 weightSum = cols.toFloat()
@@ -74,11 +76,9 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
             while (c < cols) {
                 if (i + c < ids.size) {
                     val tileView = inflater.inflate(R.layout.item_tile, row, false)
-                    tileView.layoutParams = LinearLayout.LayoutParams(
-                        0, android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1f,
-                    ).apply {
-                        val m = (4 * resources.displayMetrics.density).toInt()
-                        setMargins(m, m, m, m)
+                    (tileView.layoutParams as LinearLayout.LayoutParams).apply {
+                        width  = 0
+                        weight = 1f
                     }
                     bindTile(
                         tileView    = tileView,
