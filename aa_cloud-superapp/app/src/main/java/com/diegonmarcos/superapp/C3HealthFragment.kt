@@ -56,7 +56,12 @@ class C3HealthFragment : Fragment(R.layout.fragment_c3_health) {
             row.findViewById<TextView>(R.id.h_name).text   = svc.name
             row.findViewById<TextView>(R.id.h_domain).text =
                 if (svc.publicUrl.isNotBlank()) "https://${svc.publicUrl}" else "(internal)"
-            row.findViewById<TextView>(R.id.h_auth).text   = svc.auth.ifBlank { "—" }
+            // Auth row carries BOTH auth method AND the private DNS — no
+            // need to widen the table; e.g. "two_factor · gitea:3000".
+            row.findViewById<TextView>(R.id.h_auth).text   = buildString {
+                append(svc.auth.ifBlank { "—" })
+                if (svc.privateDns.isNotBlank()) { append(" · "); append(svc.privateDns) }
+            }
             row.findViewById<TextView>(R.id.h_vm).text     = svc.vm
 
             if (svc.publicUrl.isNotBlank()) {

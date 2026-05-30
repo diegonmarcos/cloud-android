@@ -56,7 +56,11 @@ class HomeDrawerFragment : Fragment() {
         for (section in Sections.all().filter { !it.isMasterIndex }) {
             val groupId = id++
             val sectionItemId = id++
-            val sectionItem = menu.add(groupId, sectionItemId, Menu.NONE, section.label)
+            // CRITICAL: must use addSubMenu so sectionItem.subMenu is non-null;
+            // plain menu.add() returns a leaf MenuItem and sub-children get
+            // skipped silently (the "drawer shows only section headers" bug).
+            val sectionSub = menu.addSubMenu(groupId, sectionItemId, Menu.NONE, section.label)
+            val sectionItem = sectionSub.item
             Sections.iconResFor(ctx, section.iconName).takeIf { it != 0 }
                 ?.let { sectionItem.setIcon(it) }
             sectionItem.setOnMenuItemClickListener { mi ->
@@ -64,7 +68,7 @@ class HomeDrawerFragment : Fragment() {
             }
             dispatch[sectionItemId] = Target.Section(section.id, section.label)
 
-            val sub = sectionItem.subMenu ?: continue
+            val sub = sectionSub
 
             // NavigationView only displays 2 levels (groups + their items);
             // a 3rd-level submenu inside a section's submenu doesn't render.

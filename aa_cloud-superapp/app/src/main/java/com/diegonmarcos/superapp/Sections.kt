@@ -76,6 +76,7 @@ object Sections {
     data class ServiceInfo(
         val name: String,
         val publicUrl: String,
+        val privateDns: String,
         val auth: String,
         val vm: String,
         val category: String,
@@ -257,12 +258,13 @@ object Sections {
             val o = arr.getJSONObject(i)
             out.add(
                 ServiceInfo(
-                    name      = o.getString("name"),
-                    publicUrl = o.optString("public_url", ""),
-                    auth      = o.optString("auth", ""),
-                    vm        = o.optString("vm", ""),
-                    category  = o.optString("category", ""),
-                    enabled   = o.optBoolean("enabled", true),
+                    name       = o.getString("name"),
+                    publicUrl  = o.optString("public_url", ""),
+                    privateDns = o.optString("private_dns", ""),
+                    auth       = o.optString("auth", ""),
+                    vm         = o.optString("vm", ""),
+                    category   = o.optString("category", ""),
+                    enabled    = o.optBoolean("enabled", true),
                 )
             )
         }

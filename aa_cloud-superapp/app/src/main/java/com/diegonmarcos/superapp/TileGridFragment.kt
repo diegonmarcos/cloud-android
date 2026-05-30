@@ -61,10 +61,11 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         val cols = COLS
         var i = 0
         while (i < ids.size) {
+            // weight=1 height=0 — every row gets equal share of grid_container
+            // height, so the icons here match the Home master grid size.
             val row = LinearLayout(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f,
                 )
                 orientation = LinearLayout.HORIZONTAL
                 weightSum = cols.toFloat()
@@ -73,9 +74,11 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
             while (c < cols) {
                 if (i + c < ids.size) {
                     val tileView = inflater.inflate(R.layout.item_tile, row, false)
-                    (tileView.layoutParams as LinearLayout.LayoutParams).apply {
-                        width  = 0
-                        weight = 1f
+                    tileView.layoutParams = LinearLayout.LayoutParams(
+                        0, android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1f,
+                    ).apply {
+                        val m = (4 * resources.displayMetrics.density).toInt()
+                        setMargins(m, m, m, m)
                     }
                     bindTile(
                         tileView    = tileView,
