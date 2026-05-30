@@ -26,10 +26,14 @@
     <string name="page_empty_title">Coming soon</string>
     <string name="page_empty_hint">Backend already wired in your CLAUDE.md stack. UI lands in a follow-up commit.\n\nMissing samples key: %1$s</string>
 
-    <!-- C3 / WG Mesh table -->
+    <!-- C3 / WG Mesh (wg-mesh/v1) -->
     <string name="mesh_title">C3 · WG Mesh</string>
     <string name="mesh_status">%1$d peers declared (live overlay pending Rust binary)</string>
     <string name="mesh_status_multi">%1$d meshes · %2$d peers declared (live overlay pending Rust binary)</string>
+    <string name="mesh_status_v1">%1$d nodes · %2$d peerings · %3$d transports (snapshot wg-mesh/v1)</string>
+    <string name="mesh_section_transports">Transports</string>
+    <string name="mesh_section_nodes">Nodes</string>
+    <string name="mesh_section_peers">Peer relationships</string>
     <string name="mesh_col_name">Peer</string>
     <string name="mesh_col_wg_ip">WG IP</string>
     <string name="mesh_col_endpoint_role">Endpoint · role</string>
@@ -55,10 +59,13 @@
     <string name="import_invalid">Invalid JSON: %1$s</string>
     <string name="import_cleared">Cleared all imported configs</string>
 
-    <!-- C3 / Health probe table -->
+    <!-- C3 / Health (two tables — public + private) -->
     <string name="c3_health_title">C3 / Health</string>
     <string name="c3_health_loading">Fetching cloud-data…</string>
     <string name="c3_health_status">%1$d/%2$d services enabled</string>
+    <string name="c3_health_status_split">%1$d public · %2$d private (snapshot from cloud-data)</string>
+    <string name="c3_health_section_public">🌐 Public — %1$d services</string>
+    <string name="c3_health_section_private">🔒 Private — %1$d services</string>
     <string name="c3_health_empty">No services in cloud-data</string>
     <string name="c3_health_error">Failed: %1$s</string>
     <string name="c3_health_col_name">Service</string>

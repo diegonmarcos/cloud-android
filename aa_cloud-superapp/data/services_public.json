@@ -1,0 +1,322 @@
+[
+  {
+    "name": "code-server",
+    "service": "code-server",
+    "vm": "oci-A1-f_0",
+    "public_url": "ide.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "code-server.app:8443",
+    "port": 8443,
+    "category": "app"
+  },
+  {
+    "name": "etherpad_app",
+    "service": "etherpad",
+    "vm": "oci-A1-f_0",
+    "public_url": "app.diegonmarcos.com/etherpad",
+    "auth": "two_factor",
+    "private_dns": "etherpad.app:3012",
+    "port": 3012,
+    "category": "app"
+  },
+  {
+    "name": "filebrowser_app",
+    "service": "filebrowser",
+    "vm": "oci-A1-f_0",
+    "public_url": "app.diegonmarcos.com/filebrowser",
+    "auth": "two_factor",
+    "private_dns": "filebrowser.app:3015",
+    "port": 3015,
+    "category": "app"
+  },
+  {
+    "name": "google-workspace-mcp",
+    "service": "google-workspace-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/g-workspace",
+    "auth": "none",
+    "private_dns": "g-workspace-mcp.app:3104",
+    "port": 3104,
+    "category": "app"
+  },
+  {
+    "name": "grist_app",
+    "service": "grist",
+    "vm": "oci-A1-f_0",
+    "public_url": "sheets.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "grist.app:3011",
+    "port": 3011,
+    "category": "app"
+  },
+  {
+    "name": "hedgedoc_app",
+    "service": "hedgedoc",
+    "vm": "oci-A1-f_0",
+    "public_url": "app.diegonmarcos.com/hedgedoc",
+    "auth": "two_factor",
+    "private_dns": "hedgedoc.app:3018",
+    "port": 3018,
+    "category": "app"
+  },
+  {
+    "name": "mail-mcp",
+    "service": "mail-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/mail-mcp",
+    "auth": "none",
+    "private_dns": "mail-mcp.app:3103",
+    "port": 3103,
+    "category": "app"
+  },
+  {
+    "name": "mattermost",
+    "service": "mattermost-bots",
+    "vm": "oci-A1-f_0",
+    "public_url": "chat.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "mattermost.app:8065",
+    "port": 8065,
+    "category": "app"
+  },
+  {
+    "name": "mattermost-mcp",
+    "service": "mattermost-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/mattermost-mcp",
+    "auth": "none",
+    "private_dns": "mattermost-mcp.app:3102",
+    "port": 3102,
+    "category": "app"
+  },
+  {
+    "name": "photoprism_app",
+    "service": "photoprism",
+    "vm": "oci-A1-f_0",
+    "public_url": "photos.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "photoprism.app:3013",
+    "port": 3013,
+    "category": "app"
+  },
+  {
+    "name": "radicale",
+    "service": "radicale",
+    "vm": "oci-A1-f_0",
+    "public_url": "cal.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "radicale.app:5232",
+    "port": 5232,
+    "category": "app"
+  },
+  {
+    "name": "snappymail",
+    "service": "snappymail",
+    "vm": "oci-E2-f_0",
+    "public_url": "webmail.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "snappymail.app:8888",
+    "port": 8888,
+    "category": "app"
+  },
+  {
+    "name": "smtp-proxy",
+    "service": "smtp-proxy",
+    "vm": "oci-E2-f_0",
+    "public_url": "smtp.diegonmarcos.com",
+    "auth": "none",
+    "private_dns": "smtp-proxy.app:8080",
+    "port": 8080,
+    "category": "app"
+  },
+  {
+    "name": "stalwart",
+    "service": "stalwart",
+    "vm": "oci-E2-f_0",
+    "public_url": "mail-stalwart.diegonmarcos.com",
+    "auth": "none",
+    "private_dns": "stalwart.app:2443",
+    "port": 2443,
+    "category": "app"
+  },
+  {
+    "name": "vaultwarden",
+    "service": "vaultwarden",
+    "vm": "oci-A1-f_0",
+    "public_url": "vault.diegonmarcos.com",
+    "auth": "none",
+    "private_dns": "vaultwarden.app:8880",
+    "port": 8880,
+    "category": "mic"
+  },
+  {
+    "name": "crawlee_api",
+    "service": "crawlee-cloud",
+    "vm": "oci-A1-f_0",
+    "public_url": "api.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "crawlee.app:3000",
+    "port": 3000,
+    "category": "fin"
+  },
+  {
+    "name": "fincept-server",
+    "service": "fincept-server",
+    "vm": "oci-A1-f_0",
+    "public_url": "fincept-api.diegonmarcos.com",
+    "auth": "default",
+    "private_dns": "fincept-api.app:8340",
+    "port": 8340,
+    "category": "fin"
+  },
+  {
+    "name": "authelia",
+    "service": "authelia",
+    "vm": "gcp-E2-f_0",
+    "public_url": "auth.diegonmarcos.com",
+    "auth": "bypass",
+    "private_dns": "authelia.app:9091",
+    "port": 9091,
+    "category": "sec"
+  },
+  {
+    "name": "c3-infra-api",
+    "service": "c3-infra-api",
+    "vm": "oci-A1-f_0",
+    "public_url": "api.diegonmarcos.com/c3-api",
+    "auth": "two_factor",
+    "private_dns": "c3-infra-api.app:8081",
+    "port": 8081,
+    "category": "sec"
+  },
+  {
+    "name": "c3-infra-mcp",
+    "service": "c3-infra-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/c3-infra-mcp",
+    "auth": "none",
+    "private_dns": "c3-infra-mcp.app:3100",
+    "port": 3100,
+    "category": "sec"
+  },
+  {
+    "name": "c3-services-api",
+    "service": "c3-services-api",
+    "vm": "oci-A1-f_0",
+    "public_url": "api.diegonmarcos.com/services",
+    "auth": "two_factor",
+    "private_dns": "c3-services-api.app:8082",
+    "port": 8082,
+    "category": "obs"
+  },
+  {
+    "name": "c3-services-mcp",
+    "service": "c3-services-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/c3-services-mcp",
+    "auth": "none",
+    "private_dns": "c3-services-mcp.app:3101",
+    "port": 3101,
+    "category": "obs"
+  },
+  {
+    "name": "cloud-cgc-mcp",
+    "service": "cloud-cgc-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/cloud-cgc-mcp",
+    "auth": "none",
+    "private_dns": "cloud-cgc-mcp.app:3105",
+    "port": 3105,
+    "category": "obs"
+  },
+  {
+    "name": "cloud-spec",
+    "service": "cloud-spec",
+    "vm": "oci-A1-f_0",
+    "public_url": "cloud.diegonmarcos.com/spec",
+    "auth": "two_factor",
+    "private_dns": "c3-spec.app:3080",
+    "port": 3080,
+    "category": "tools"
+  },
+  {
+    "name": "dagu",
+    "service": "dagu",
+    "vm": "oci-E2-f_1",
+    "public_url": "workflows.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "dagu.app:8070",
+    "port": 8070,
+    "category": "tools"
+  },
+  {
+    "name": "dbgate",
+    "service": "dbgate",
+    "vm": "oci-A1-f_0",
+    "public_url": "db.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "dbgate.app:8086",
+    "port": 8086,
+    "category": "tools"
+  },
+  {
+    "name": "dozzle",
+    "service": "dozzle",
+    "vm": "oci-E2-f_1",
+    "public_url": "app.diegonmarcos.com/dozzle",
+    "auth": "two_factor",
+    "private_dns": "dozzle.app:9999",
+    "port": 9999,
+    "category": "tools"
+  },
+  {
+    "name": "lgtm_grafana",
+    "service": "lgtm",
+    "vm": "oci-A1-f_0",
+    "public_url": "grafana.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "grafana.app:3200",
+    "port": 3200,
+    "category": "tools"
+  },
+  {
+    "name": "matomo-hybrid",
+    "service": "matomo",
+    "vm": "oci-A1-f_0",
+    "public_url": "analytics.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "matomo.app:8084",
+    "port": 8084,
+    "category": "tools"
+  },
+  {
+    "name": "ntfy",
+    "service": "ntfy",
+    "vm": "oci-A1-f_0",
+    "public_url": "rss.diegonmarcos.com",
+    "auth": "ntfy-3tier",
+    "private_dns": "ntfy.app:8090",
+    "port": 8090,
+    "category": "tools"
+  },
+  {
+    "name": "umami",
+    "service": "umami",
+    "vm": "oci-A1-f_0",
+    "public_url": "analytics.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "umami.app:3006",
+    "port": 3006,
+    "category": "tools"
+  },
+  {
+    "name": "gitea",
+    "service": "gitea",
+    "vm": "oci-A1-f_0",
+    "public_url": "git.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "gitea.app:3002",
+    "port": 3002,
+    "category": "data"
+  }
+]

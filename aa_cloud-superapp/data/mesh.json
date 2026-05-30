@@ -1,0 +1,141 @@
+{
+  "_doc": "Sample / fallback snapshot. In production this file is overwritten at build-prep time by a symlink to ../../../I_cloud-data/cloud-data-wg-mesh-snapshot.json (emitted by 2_configs/src/engines/derive-mesh-snapshot.ts). Schema: wg-mesh/v1.",
+  "_meta": {
+    "generated_at": "2026-05-08T12:00:00Z",
+    "generated_by": "sample-fallback",
+    "schema": "wg-mesh/v1",
+    "snapshot_age_seconds": 0
+  },
+  "nodes": [
+    {
+      "name": "gcp-proxy",
+      "role": "hub",
+      "alias": "gcp-E2-f_0",
+      "public_ip": "35.226.147.64",
+      "wg_ip": "10.0.0.1",
+      "region": "us-central1",
+      "provider": "gcloud",
+      "os": "NixOS 24.11",
+      "public_key_fp": "vV/phXUw…HmDc=",
+      "ports_public": ["tcp/443", "tcp/80", "udp/51820", "tcp/25,465,587,993", "tcp/2200"],
+      "wstunnel_server": true
+    },
+    {
+      "name": "oci-mail",
+      "role": "spoke",
+      "alias": "oci-E2-f_0",
+      "public_ip": "130.110.251.193",
+      "wg_ip": "10.0.0.3",
+      "region": "eu-marseille-1",
+      "provider": "oci",
+      "os": "NixOS 24.11",
+      "public_key_fp": "kJ7…",
+      "ports_public": ["tcp/443", "tcp/22", "tcp/2200", "udp/51820"],
+      "wstunnel_server": false
+    },
+    {
+      "name": "oci-analytics",
+      "role": "spoke",
+      "alias": "oci-E2-f_1",
+      "public_ip": "129.151.228.66",
+      "wg_ip": "10.0.0.4",
+      "region": "eu-marseille-1",
+      "provider": "oci",
+      "os": "NixOS 24.11",
+      "public_key_fp": "Lm9…",
+      "ports_public": ["tcp/443", "tcp/22", "udp/51820"],
+      "wstunnel_server": false
+    },
+    {
+      "name": "oci-apps",
+      "role": "spoke",
+      "alias": "oci-A1-f_0",
+      "public_ip": "82.70.229.129",
+      "wg_ip": "10.0.0.6",
+      "region": "eu-marseille-1",
+      "provider": "oci",
+      "os": "NixOS 24.11",
+      "public_key_fp": "Nq2…",
+      "ports_public": ["tcp/443", "tcp/22", "udp/51820"],
+      "wstunnel_server": false
+    },
+    {
+      "name": "gcp-t4",
+      "role": "spoke",
+      "alias": "gcp-T4-p_0",
+      "public_ip": "34.173.227.250",
+      "wg_ip": "10.0.0.8",
+      "region": "us-central1",
+      "provider": "gcloud",
+      "os": "NixOS 24.11",
+      "public_key_fp": "Pu5…",
+      "ports_public": ["tcp/443", "tcp/22", "udp/51820"],
+      "wstunnel_server": false
+    },
+    {
+      "name": "laptop",
+      "role": "client",
+      "alias": "surface-pro-8",
+      "public_ip": "(dynamic)",
+      "wg_ip": "10.0.0.5",
+      "region": "roaming",
+      "provider": "personal",
+      "os": "NixOS 24.11 (Plasma)",
+      "public_key_fp": "Au8…",
+      "ports_public": [],
+      "wstunnel_client": true
+    }
+  ],
+  "peers": [
+    { "from": "gcp-proxy",     "to": "oci-mail",      "allowed_ips": ["10.0.0.3/32"],  "persistent_keepalive": 25 },
+    { "from": "gcp-proxy",     "to": "oci-analytics", "allowed_ips": ["10.0.0.4/32"],  "persistent_keepalive": 25 },
+    { "from": "gcp-proxy",     "to": "oci-apps",      "allowed_ips": ["10.0.0.6/32"],  "persistent_keepalive": 25 },
+    { "from": "gcp-proxy",     "to": "gcp-t4",        "allowed_ips": ["10.0.0.8/32"],  "persistent_keepalive": 25 },
+    { "from": "gcp-proxy",     "to": "laptop",        "allowed_ips": ["10.0.0.5/32"],  "persistent_keepalive": 25 },
+    { "from": "oci-mail",      "to": "gcp-proxy",     "allowed_ips": ["10.0.0.0/24"],  "persistent_keepalive": 25 },
+    { "from": "oci-analytics", "to": "gcp-proxy",     "allowed_ips": ["10.0.0.0/24"],  "persistent_keepalive": 25 },
+    { "from": "oci-apps",      "to": "gcp-proxy",     "allowed_ips": ["10.0.0.0/24"],  "persistent_keepalive": 25 },
+    { "from": "gcp-t4",        "to": "gcp-proxy",     "allowed_ips": ["10.0.0.0/24"],  "persistent_keepalive": 25 },
+    { "from": "laptop",        "to": "gcp-proxy",     "allowed_ips": ["10.0.0.0/24"],  "persistent_keepalive": 25 }
+  ],
+  "transports": [
+    {
+      "name": "wg0",
+      "label": "WireGuard direct (UDP)",
+      "protocol": "udp",
+      "port": 51820,
+      "endpoint": "35.226.147.64:51820",
+      "primary": true,
+      "fallback": false,
+      "active_peers": 5,
+      "use_case": "Default high-speed path. UDP-friendly networks."
+    },
+    {
+      "name": "wg0-tcp",
+      "label": "WireGuard via wstunnel (TCP/443)",
+      "protocol": "tcp",
+      "port": 443,
+      "endpoint": "wss://vpn.diegonmarcos.com:443",
+      "primary": false,
+      "fallback": true,
+      "active_peers": 1,
+      "use_case": "Hostile networks (airport, hotel) where UDP/51820 is blocked. Looks like normal HTTPS."
+    }
+  ],
+  "routes": [
+    { "src_node": "laptop",         "dst_subnet": "10.0.0.0/24", "via_transport": "wg0",     "comment": "default UDP path" },
+    { "src_node": "laptop",         "dst_subnet": "10.0.0.0/24", "via_transport": "wg0-tcp", "comment": "fallback when UDP blocked" },
+    { "src_node": "oci-mail",       "dst_subnet": "10.0.0.0/24", "via_transport": "wg0" },
+    { "src_node": "oci-analytics",  "dst_subnet": "10.0.0.0/24", "via_transport": "wg0" },
+    { "src_node": "oci-apps",       "dst_subnet": "10.0.0.0/24", "via_transport": "wg0" },
+    { "src_node": "gcp-t4",         "dst_subnet": "10.0.0.0/24", "via_transport": "wg0" }
+  ],
+  "health": {
+    "tls_expiries": [
+      { "host": "mesh.diegonmarcos.com", "expires_at": "2026-08-06T00:00:00Z", "issuer": "Let's Encrypt" },
+      { "host": "vpn.diegonmarcos.com",  "expires_at": "2026-08-06T00:00:00Z", "issuer": "Let's Encrypt" }
+    ],
+    "last_snapshot_at": "2026-05-08T12:00:00Z",
+    "status": "healthy"
+  }
+}
