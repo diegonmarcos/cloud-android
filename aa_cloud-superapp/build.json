@@ -2122,107 +2122,100 @@
       {
         "id": "bbc-world",
         "name": "BBC News · World",
+        "category": "World",
         "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-        "site_url": "https://www.bbc.com/news/world",
-        "category": "World"
-      },
-      {
-        "id": "reuters-top",
-        "name": "Reuters · Top",
-        "url": "https://feeds.reuters.com/reuters/topNews",
-        "site_url": "https://www.reuters.com",
-        "category": "World"
-      },
-      {
-        "id": "ap-top",
-        "name": "AP · Top",
-        "url": "https://apnews.com/index.rss",
-        "site_url": "https://apnews.com",
-        "category": "World"
+        "site_url": "https://www.bbc.com/news/world"
       },
       {
         "id": "guardian-world",
         "name": "Guardian · World",
+        "category": "World",
         "url": "https://www.theguardian.com/world/rss",
-        "site_url": "https://www.theguardian.com/international",
-        "category": "World"
+        "site_url": "https://www.theguardian.com/international"
       },
       {
         "id": "npr-news",
         "name": "NPR News",
+        "category": "World",
         "url": "https://feeds.npr.org/1001/rss.xml",
-        "site_url": "https://www.npr.org",
-        "category": "World"
+        "site_url": "https://www.npr.org"
+      },
+      {
+        "id": "reuters-gn",
+        "name": "Reuters (via Google News)",
+        "category": "World",
+        "url": "https://news.google.com/rss/search?q=site%3Areuters.com&hl=en-US&gl=US",
+        "site_url": "https://www.reuters.com"
+      },
+      {
+        "id": "ap-gn",
+        "name": "AP (via Google News)",
+        "category": "World",
+        "url": "https://news.google.com/rss/search?q=site%3Aapnews.com&hl=en-US&gl=US",
+        "site_url": "https://apnews.com"
       },
       {
         "id": "hn",
         "name": "Hacker News",
+        "category": "Tech",
         "url": "https://hnrss.org/frontpage",
-        "site_url": "https://news.ycombinator.com",
-        "category": "Tech"
+        "site_url": "https://news.ycombinator.com"
       },
       {
         "id": "verge",
         "name": "The Verge",
+        "category": "Tech",
         "url": "https://www.theverge.com/rss/index.xml",
-        "site_url": "https://www.theverge.com",
-        "category": "Tech"
+        "site_url": "https://www.theverge.com"
       },
       {
         "id": "ars",
         "name": "Ars Technica",
+        "category": "Tech",
         "url": "https://feeds.arstechnica.com/arstechnica/index",
-        "site_url": "https://arstechnica.com",
-        "category": "Tech"
+        "site_url": "https://arstechnica.com"
       },
       {
         "id": "techcrunch",
         "name": "TechCrunch",
+        "category": "Tech",
         "url": "https://techcrunch.com/feed/",
-        "site_url": "https://techcrunch.com",
-        "category": "Tech"
+        "site_url": "https://techcrunch.com"
       },
       {
         "id": "wired",
         "name": "Wired",
+        "category": "Tech",
         "url": "https://www.wired.com/feed/rss",
-        "site_url": "https://www.wired.com",
-        "category": "Tech"
+        "site_url": "https://www.wired.com"
       },
       {
         "id": "engadget",
         "name": "Engadget",
+        "category": "Tech",
         "url": "https://www.engadget.com/rss.xml",
-        "site_url": "https://www.engadget.com",
-        "category": "Tech"
-      },
-      {
-        "id": "bloomberg",
-        "name": "Bloomberg · Markets",
-        "url": "https://feeds.bloomberg.com/markets/news.rss",
-        "site_url": "https://www.bloomberg.com/markets",
-        "category": "Finance"
-      },
-      {
-        "id": "ft",
-        "name": "Financial Times",
-        "url": "https://www.ft.com/rss/home",
-        "site_url": "https://www.ft.com",
-        "category": "Finance"
+        "site_url": "https://www.engadget.com"
       },
       {
         "id": "marketwatch",
         "name": "MarketWatch · Top",
+        "category": "Finance",
         "url": "https://feeds.marketwatch.com/marketwatch/topstories",
-        "site_url": "https://www.marketwatch.com",
-        "category": "Finance"
+        "site_url": "https://www.marketwatch.com"
       },
       {
-        "id": "espn",
+        "id": "bloomberg-gn",
+        "name": "Bloomberg (via Google News)",
+        "category": "Finance",
+        "url": "https://news.google.com/rss/search?q=site%3Abloomberg.com&hl=en-US&gl=US",
+        "site_url": "https://www.bloomberg.com"
+      },
+      {
+        "id": "espn-top",
         "name": "ESPN · Top",
+        "category": "Sport",
         "url": "https://www.espn.com/espn/rss/news",
-        "site_url": "https://www.espn.com",
-        "category": "Sport"
+        "site_url": "https://www.espn.com"
       }
     ],
     "mail_accounts": [
