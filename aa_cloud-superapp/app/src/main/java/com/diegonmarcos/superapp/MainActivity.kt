@@ -43,6 +43,7 @@ import com.diegonmarcos.superapp.mail.MailPages
 class MainActivity : AppCompatActivity(),
     HomeDrawerFragment.NavigationListener,
     TileGridFragment.TileClickListener,
+    com.diegonmarcos.superapp.devcontrol.DevControlBridge.ActivityHost,
     MailHost {
 
     private val TAG = "MainActivity"
@@ -834,4 +835,43 @@ class MainActivity : AppCompatActivity(),
             super.onBackPressed()
         }
     }
+
+    // ── DevControlBridge.ActivityHost ────────────────────────────────────
+
+    override fun onResume() {
+        super.onResume()
+        com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
+    }
+
+    override fun onPause() {
+        com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
+        super.onPause()
+    }
+
+    override fun onTileFromServer(target: String) = onTileClicked(target)
+
+    override fun onActionFromServer(actionType: String) {
+        dispatchHomeAction(actionType)
+    }
+
+    override fun firePresetHaptic(preset: String) {
+        val v = bottomNav
+        when (preset) {
+            "tick"          -> Haptics.segmentTick(v)
+            "start"         -> Haptics.gestureStart(v)
+            "end"           -> Haptics.gestureEnd(v)
+            "gemini_stream" -> {
+                Haptics.gestureStart(v)
+                v.postDelayed({ Haptics.segmentTick(v) }, 100)
+                v.postDelayed({ Haptics.segmentTick(v) }, 180)
+                v.postDelayed({ Haptics.gestureEnd(v) }, 260)
+            }
+        }
+    }
+
+    override fun stateSnapshot(): Map<String, String> = mapOf(
+        "section" to currentSection,
+        "label"   to currentLabel,
+        "mode"    to currentMode,
+    )
 }

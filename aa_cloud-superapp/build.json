@@ -1144,6 +1144,11 @@
             "label": "Haptics",
             "icon": "ic_solutions",
             "action": "stub:haptics_playground"
+          },
+          {
+            "id": "dev",
+            "label": "Dev Control",
+            "icon": "ic_settings"
           }
         ]
       },

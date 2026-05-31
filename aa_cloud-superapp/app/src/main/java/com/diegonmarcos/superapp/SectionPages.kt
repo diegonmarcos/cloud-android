@@ -31,6 +31,8 @@ object SectionPages {
         sectionId == "wg"    && pageId == "status"      -> C3MeshFragment.newInstance()
         sectionId == "feed"  && pageId == "all"         -> RssFeedFragment.newInstance()
         sectionId == "drive" && pageId == "connections" -> DriveConnectionsFragment.newInstance()
+        sectionId == "config" && pageId == "dev"        ->
+            com.diegonmarcos.superapp.devcontrol.DevControlFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }

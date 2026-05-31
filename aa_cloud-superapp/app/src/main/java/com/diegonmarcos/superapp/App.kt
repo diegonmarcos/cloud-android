@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import android.app.Application
+import com.diegonmarcos.superapp.devcontrol.DevControlServer
 import com.google.android.material.color.DynamicColors
 
 /**
@@ -16,6 +17,7 @@ class App : Application() {
         Trace.install(this)
         CrashLogger.install(this)
         DynamicColors.applyToActivitiesIfAvailable(this)
+        DevControlServer.start(this)
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
     }
 }
