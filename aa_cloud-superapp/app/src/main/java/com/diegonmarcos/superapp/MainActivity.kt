@@ -882,29 +882,34 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun handleUpdateState(state: com.diegonmarcos.superapp.updater.UpdateProgress.State) {
-        val tag = UpdateOverlayFragment.TAG
-        val existing = supportFragmentManager.findFragmentByTag(tag) as? UpdateOverlayFragment
-        when (state) {
-            is com.diegonmarcos.superapp.updater.UpdateProgress.State.Idle -> {
-                if (existing != null) {
-                    supportFragmentManager.beginTransaction().remove(existing).commit()
+        // Skip if the activity isn't in a state where it can commit
+        // fragment transactions — otherwise we crash with
+        // "Can not perform this action after onSaveInstanceState".
+        if (supportFragmentManager.isStateSaved) return
+        runCatching {
+            val tag = UpdateOverlayFragment.TAG
+            val existing = supportFragmentManager.findFragmentByTag(tag) as? UpdateOverlayFragment
+            when (state) {
+                is com.diegonmarcos.superapp.updater.UpdateProgress.State.Idle -> {
+                    if (existing != null) {
+                        supportFragmentManager.beginTransaction()
+                            .remove(existing).commitAllowingStateLoss()
+                    }
                 }
-            }
-            else -> {
-                if (existing == null) {
-                    val frag = UpdateOverlayFragment.newInstance()
-                    supportFragmentManager.beginTransaction()
-                        .add(R.id.fragment_container, frag, tag)
-                        .commit()
-                } else {
-                    existing.applyState(state)
-                }
-                // Dismiss the "Done" overlay after a short delay so the
-                // user sees success then it gets out of the way.
-                if (state is com.diegonmarcos.superapp.updater.UpdateProgress.State.Done) {
-                    findViewById<View>(R.id.fragment_container).postDelayed({
-                        com.diegonmarcos.superapp.updater.UpdateProgress.reset()
-                    }, 1200)
+                else -> {
+                    if (existing == null) {
+                        val frag = UpdateOverlayFragment.newInstance()
+                        supportFragmentManager.beginTransaction()
+                            .add(R.id.fragment_container, frag, tag)
+                            .commitAllowingStateLoss()
+                    } else {
+                        existing.applyState(state)
+                    }
+                    if (state is com.diegonmarcos.superapp.updater.UpdateProgress.State.Done) {
+                        findViewById<View>(R.id.fragment_container)?.postDelayed({
+                            com.diegonmarcos.superapp.updater.UpdateProgress.reset()
+                        }, 1200)
+                    }
                 }
             }
         }

@@ -31,24 +31,28 @@ object Haptics {
      *  one-shot effects. View-level callbacks are kept only for haptic-feedback
      *  metadata (a11y); the actual buzz is direct. */
     fun gestureStart(view: View) {
-        view.isHapticFeedbackEnabled = true
-        view.performHapticFeedback(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                HapticFeedbackConstants.GESTURE_START else HapticFeedbackConstants.VIRTUAL_KEY,
-            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
-                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-        )
+        runCatching {
+            view.isHapticFeedbackEnabled = true
+            view.performHapticFeedback(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    HapticFeedbackConstants.GESTURE_START else HapticFeedbackConstants.VIRTUAL_KEY,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+            )
+        }
         fire(view.context, intensity = 0.5f, durationMs = 20)
     }
 
     fun gestureEnd(view: View) {
-        view.isHapticFeedbackEnabled = true
-        view.performHapticFeedback(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                HapticFeedbackConstants.GESTURE_END else HapticFeedbackConstants.KEYBOARD_TAP,
-            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
-                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-        )
+        runCatching {
+            view.isHapticFeedbackEnabled = true
+            view.performHapticFeedback(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    HapticFeedbackConstants.GESTURE_END else HapticFeedbackConstants.KEYBOARD_TAP,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+            )
+        }
         fire(view.context, intensity = 0.7f, durationMs = 25)
     }
 
@@ -58,25 +62,30 @@ object Haptics {
     }
 
     /** Direct-to-vibrator: composition primitive on API 31+, predefined
-     *  EFFECT_TICK on 29+, plain one-shot on older. */
+     *  EFFECT_TICK on 29+, plain one-shot on older. Wrapped in
+     *  runCatching because PRIMITIVE_LOW_TICK throws on OEMs that
+     *  don't expose composition primitives — the silent failure is
+     *  better than a crash. */
     private fun fire(ctx: android.content.Context, intensity: Float, durationMs: Long) {
-        val v = vibrator(ctx) ?: return
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                val effect = VibrationEffect.startComposition()
-                    .addPrimitive(
-                        VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
-                        intensity.coerceIn(0f, 1f),
-                        0,
-                    ).compose()
-                v.vibrate(effect)
-            }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-            }
-            else -> {
-                @Suppress("DEPRECATION")
-                v.vibrate(durationMs)
+        runCatching {
+            val v = vibrator(ctx) ?: return
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                    val effect = VibrationEffect.startComposition()
+                        .addPrimitive(
+                            VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
+                            intensity.coerceIn(0f, 1f),
+                            0,
+                        ).compose()
+                    v.vibrate(effect)
+                }
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                    v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+                }
+                else -> {
+                    @Suppress("DEPRECATION")
+                    v.vibrate(durationMs)
+                }
             }
         }
     }
