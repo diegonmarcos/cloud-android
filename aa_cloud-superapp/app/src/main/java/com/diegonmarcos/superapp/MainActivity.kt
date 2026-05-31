@@ -865,11 +865,44 @@ class MainActivity : AppCompatActivity(),
     override fun onResume() {
         super.onResume()
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
+        com.diegonmarcos.superapp.updater.UpdateProgress.setListener { state ->
+            runOnUiThread { handleUpdateState(state) }
+        }
     }
 
     override fun onPause() {
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
+        com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
         super.onPause()
+    }
+
+    private fun handleUpdateState(state: com.diegonmarcos.superapp.updater.UpdateProgress.State) {
+        val tag = UpdateOverlayFragment.TAG
+        val existing = supportFragmentManager.findFragmentByTag(tag) as? UpdateOverlayFragment
+        when (state) {
+            is com.diegonmarcos.superapp.updater.UpdateProgress.State.Idle -> {
+                if (existing != null) {
+                    supportFragmentManager.beginTransaction().remove(existing).commit()
+                }
+            }
+            else -> {
+                if (existing == null) {
+                    val frag = UpdateOverlayFragment.newInstance()
+                    supportFragmentManager.beginTransaction()
+                        .add(R.id.fragment_container, frag, tag)
+                        .commit()
+                } else {
+                    existing.applyState(state)
+                }
+                // Dismiss the "Done" overlay after a short delay so the
+                // user sees success then it gets out of the way.
+                if (state is com.diegonmarcos.superapp.updater.UpdateProgress.State.Done) {
+                    findViewById<View>(R.id.fragment_container).postDelayed({
+                        com.diegonmarcos.superapp.updater.UpdateProgress.reset()
+                    }, 1200)
+                }
+            }
+        }
     }
 
     override fun onTileFromServer(target: String) = onTileClicked(target)

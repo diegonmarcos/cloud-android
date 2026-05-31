@@ -17,6 +17,7 @@ internal class UpdateInstaller(private val context: Context) {
     private val tag = "Updater/Install"
 
     fun install(apk: File) {
+        UpdateProgress.update(UpdateProgress.State.Installing)
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)

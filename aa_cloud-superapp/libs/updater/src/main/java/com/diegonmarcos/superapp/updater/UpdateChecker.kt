@@ -23,24 +23,38 @@ internal class UpdateChecker(private val context: Context) {
 
     /** Returns Update if remote is different; null if already up to date. */
     fun check(): Update? {
-        val token = client.token()
-        val layer = client.manifest(BuildConfig.AUTO_UPDATE_TAG, token)
-        val currentDigest = "sha256:" + currentInstalledApkSha256()
-        if (currentDigest == layer.digest) {
-            Log.i(tag, "current matches remote: $currentDigest")
-            return null
-        }
-        Log.i(tag, "update available: $currentDigest → ${layer.digest}")
+        UpdateProgress.update(UpdateProgress.State.CheckingManifest)
+        try {
+            val token = client.token()
+            val layer = client.manifest(BuildConfig.AUTO_UPDATE_TAG, token)
+            val currentDigest = "sha256:" + currentInstalledApkSha256()
+            if (currentDigest == layer.digest) {
+                Log.i(tag, "current matches remote: $currentDigest")
+                UpdateProgress.reset()
+                return null
+            }
+            Log.i(tag, "update available: $currentDigest → ${layer.digest}")
 
-        val target = File(context.cacheDir, "update-${layer.digest.substringAfter(':').take(12)}.apk")
-        client.blob(layer.digest, token, target)
+            val target = File(context.cacheDir, "update-${layer.digest.substringAfter(':').take(12)}.apk")
+            UpdateProgress.update(UpdateProgress.State.Downloading(0, 0, layer.size))
+            client.blob(layer.digest, token, target) { bytes, total ->
+                val totalKnown = if (total > 0) total else layer.size
+                val pct = if (totalKnown > 0) ((bytes * 100) / totalKnown).toInt().coerceIn(0, 100) else 0
+                UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, totalKnown))
+            }
 
-        val downloadedSha = "sha256:" + sha256(target)
-        if (downloadedSha != layer.digest) {
-            target.delete()
-            error("downloaded digest $downloadedSha != manifest ${layer.digest}")
+            val downloadedSha = "sha256:" + sha256(target)
+            if (downloadedSha != layer.digest) {
+                target.delete()
+                UpdateProgress.update(UpdateProgress.State.Failed(
+                    "digest mismatch: $downloadedSha != ${layer.digest}"))
+                error("downloaded digest $downloadedSha != manifest ${layer.digest}")
+            }
+            return Update(layer.digest, layer.size, layer.title, target)
+        } catch (t: Throwable) {
+            UpdateProgress.update(UpdateProgress.State.Failed(t.message ?: t.toString()))
+            throw t
         }
-        return Update(layer.digest, layer.size, layer.title, target)
     }
 
     /** sha256 of the running APK file. */

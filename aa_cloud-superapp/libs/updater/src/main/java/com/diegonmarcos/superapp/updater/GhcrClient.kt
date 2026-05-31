@@ -55,14 +55,52 @@ internal class GhcrClient(
         }
     }
 
-    /** Streams the blob into [target]. Caller verifies sha256 against [digest]. */
-    fun blob(digest: String, token: String, target: File) {
+    /** Streams the blob into [target]. Caller verifies sha256 against [digest].
+     *  [onProgress] is called periodically with (bytesRead, totalBytes);
+     *  totalBytes may be -1 if the server didn't send Content-Length. */
+    fun blob(
+        digest: String, token: String, target: File,
+        onProgress: ((bytesRead: Long, totalBytes: Long) -> Unit)? = null,
+    ) {
         val url = URL("https://$registry/v2/$repo/blobs/$digest")
         val headers = mapOf("Authorization" to "Bearer $token")
-        openGet(url, headers).use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
+        val conn = openConn(url, headers)
+        if (conn.responseCode !in 200..299) {
+            val msg = conn.errorStream?.bufferedReader()?.readText()
+            throw java.io.IOException("HTTP ${conn.responseCode} for $url: $msg")
+        }
+        val total = conn.contentLengthLong
+        conn.inputStream.use { input ->
+            target.outputStream().use { output ->
+                val buf = ByteArray(64 * 1024)
+                var read: Int
+                var soFar = 0L
+                var lastTick = 0L
+                while (true) {
+                    read = input.read(buf)
+                    if (read < 0) break
+                    output.write(buf, 0, read)
+                    soFar += read
+                    // Throttle callbacks — at most one per 80ms.
+                    val now = System.currentTimeMillis()
+                    if (now - lastTick >= 80) {
+                        onProgress?.invoke(soFar, total)
+                        lastTick = now
+                    }
+                }
+                onProgress?.invoke(soFar, total)
+            }
         }
     }
+
+    private fun openConn(url: URL, headers: Map<String, String>): HttpURLConnection =
+        (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            headers.forEach { (k, v) -> setRequestProperty(k, v) }
+            connectTimeout = 15_000
+            readTimeout = 60_000
+            instanceFollowRedirects = true
+        }
 
     private fun openGet(url: URL, headers: Map<String, String>) =
         (url.openConnection() as HttpURLConnection).apply {
