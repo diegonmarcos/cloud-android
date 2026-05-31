@@ -31,8 +31,20 @@ class Home3DFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
+        // Galaxy backdrop — stars + sweeping comets behind the cube.
+        val galaxy = GalaxyBackdropView(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        }
+        root.addView(galaxy)
+
         val cube = RotatingCubeView(ctx).apply {
-            val sz = dp(280)
+            // Bigger view so the cube's rotated corners don't clip
+            // against the cube view's own bounds. The cube renders
+            // inside this square; we keep the scene oversize.
+            val sz = dp(360)
             layoutParams = FrameLayout.LayoutParams(sz, sz, android.view.Gravity.CENTER)
             // Disable hardware accel for this view so BlurMaskFilter on
             // the glow paint renders correctly (HW pipeline ignores
@@ -115,7 +127,10 @@ class RotatingCubeView @JvmOverloads constructor(
         super.onDraw(canvas)
         val cx = width / 2f
         val cy = height / 2f
-        val scale = Math.min(width, height) / 3.4f
+        // Smaller scale denominator → larger cube; pump it back to ~3.4f
+        // gave clipping at rotated corners. 4.6 keeps the cube safely
+        // inside the 360dp host on every rotation.
+        val scale = Math.min(width, height) / 4.6f
         val perspective = 4.5f
 
         val cyR = Math.cos(rotY.toDouble()).toFloat()

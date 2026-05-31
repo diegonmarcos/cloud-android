@@ -2244,7 +2244,8 @@
           "smtp": 465
         }
       }
-    ]
+    ],
+    "tile_columns": 5
   },
   "deploy": {
     "host": "local",

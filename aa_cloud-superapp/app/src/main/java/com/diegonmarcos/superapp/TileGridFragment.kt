@@ -147,7 +147,9 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
     private fun android.content.Context.color(id: Int): Int = ContextCompat.getColor(this, id)
 
     companion object {
-        private const val COLS = 3
+        // Data-driven from build.json::ui.tile_columns (baked into
+        // BuildConfig at gradle eval). NEVER hardcode this.
+        private val COLS: Int get() = BuildConfig.UI_TILE_COLUMNS
         private const val ARG_TITLE       = "title"
         private const val ARG_TILE_IDS    = "tile_ids"
         private const val ARG_TILE_LABELS = "tile_labels"

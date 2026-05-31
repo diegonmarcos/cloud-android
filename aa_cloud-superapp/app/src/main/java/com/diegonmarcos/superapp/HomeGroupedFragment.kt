@@ -167,7 +167,8 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
     private fun Context.col(id: Int): Int = ContextCompat.getColor(this, id)
 
     companion object {
-        private const val COLS = 3
+        // Data-driven from build.json::ui.tile_columns.
+        private val COLS: Int get() = BuildConfig.UI_TILE_COLUMNS
         fun newInstance() = HomeGroupedFragment()
     }
 }
