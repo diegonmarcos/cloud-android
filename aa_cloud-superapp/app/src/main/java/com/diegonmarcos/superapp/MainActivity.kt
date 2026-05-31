@@ -260,34 +260,24 @@ class MainActivity : AppCompatActivity(),
      * consume the event (return false).
      */
     private fun installHomeLongPressFan() {
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-        var pending: Runnable? = null
-        var firedFor: View? = null
+        // GestureDetector handles long-press timing internally and
+        // doesn't fight BNV's own click dispatcher. We only care
+        // about onLongPress; everything else falls through.
+        val gd = android.view.GestureDetector(this,
+            object : android.view.GestureDetector.SimpleOnGestureListener() {
+                override fun onDown(e: MotionEvent): Boolean = true
+                override fun onLongPress(e: MotionEvent) {
+                    val homeView = findHomeNavView() ?: return
+                    val inHome = e.x in homeView.x..(homeView.x + homeView.width)
+                    if (!inHome) return
+                    homeView.performHapticFeedback(
+                        android.view.HapticFeedbackConstants.LONG_PRESS)
+                    HomeFanMenu.show(homeView) { target -> onTileClicked(target) }
+                }
+            })
         bottomNav.setOnTouchListener { _, ev ->
-            val homeView = findHomeNavView() ?: return@setOnTouchListener false
-            val inHome = ev.x in homeView.x..(homeView.x + homeView.width)
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> if (inHome) {
-                    pending?.let { handler.removeCallbacks(it) }
-                    firedFor = null
-                    val r = Runnable {
-                        if (firedFor == null) {
-                            firedFor = homeView
-                            homeView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                            HomeFanMenu.show(homeView) { target ->
-                                onTileClicked(target)
-                            }
-                        }
-                    }
-                    pending = r
-                    handler.postDelayed(r, 480)
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    pending?.let { handler.removeCallbacks(it) }
-                    pending = null
-                }
-            }
-            false   // never consume — normal tap still fires
+            gd.onTouchEvent(ev)
+            false   // never consume — normal tap path still fires
         }
     }
 
