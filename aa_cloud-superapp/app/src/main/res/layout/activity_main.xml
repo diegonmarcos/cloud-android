@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Vertical LinearLayout — top-down stacking is the GUARANTEE.
-     ConstraintLayout and CoordinatorLayout both produced regressions
-     where the bottom island drifted toward the top; LinearLayout makes
-     positioning purely declarative: AppBar at top, fragment fills the
-     middle (layout_weight=1), bottom island bolted to the bottom. -->
+<!-- Shell = FrameLayout. Three children, each with explicit gravity:
+     - FragmentContainerView (background) MATCH_PARENT with paddings
+       accommodating both islands' heights so content doesn't slide
+       under them.
+     - AppBarLayout (top island)        layout_gravity=top
+     - bottom_nav_island MaterialCardView (bottom island) gravity=bottom
+
+     Why FrameLayout: LinearLayout's weight calculation kept producing
+     regressions where the bottom island vanished. FrameLayout positions
+     children at explicit anchors with NO inter-child sizing math. -->
 <androidx.drawerlayout.widget.DrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -14,73 +19,70 @@
     android:fitsSystemWindows="true"
     tools:openDrawer="start">
 
-    <LinearLayout
+    <FrameLayout
         android:id="@+id/shell_linear"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_gradient_black_purple"
-        android:orientation="vertical">
+        android:background="@drawable/bg_gradient_black_purple">
 
-        <!-- Top island toolbar — AppBarLayout kept so ActionBarDrawerToggle
-             still has an AppBar host. -->
-        <com.google.android.material.appbar.AppBarLayout
-            android:id="@+id/app_bar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            app:elevation="0dp"
-            app:liftOnScroll="false">
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/toolbar_island"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginTop="6dp"
-                app:cardCornerRadius="22dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="@android:color/transparent"
-                app:strokeWidth="0dp">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_liquid_glass" />
-
-                <com.google.android.material.appbar.MaterialToolbar
-                    android:id="@+id/toolbar"
-                    android:layout_width="match_parent"
-                    android:layout_height="?attr/actionBarSize"
-                    android:background="@android:color/transparent"
-                    app:titleCentered="false"
-                    app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-                    app:title="@string/app_name" />
-
-                <com.diegonmarcos.superapp.ShimmerBorderView
-                    android:id="@+id/toolbar_shimmer"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-            </com.google.android.material.card.MaterialCardView>
-        </com.google.android.material.appbar.AppBarLayout>
-
-        <!-- Fragment fills the middle band. layout_weight=1 means
-             "take all remaining vertical space" — the only way the
-             bottom island could collapse upward is if THIS view's
-             measured height collapses, which can't happen with weight=1
-             and height=0dp. -->
+        <!-- Fragment fills the whole shell; paddings carve out room for
+             both islands so content stays clear of them. -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragment_container"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_height="match_parent"
+            android:paddingTop="84dp"
+            android:paddingBottom="92dp"
+            android:clipToPadding="false" />
 
-        <!-- Bottom island — bolted to the bottom of the LinearLayout. -->
+        <!-- Top island toolbar — direct child of the FrameLayout shell,
+             no AppBarLayout wrapper (which is designed for
+             CoordinatorLayout and was claiming full-screen height
+             when nested elsewhere, leaving the shimmer-border drawn
+             as a rectangle around the entire screen). The AppBar
+             provided nothing we use besides being a host for the
+             toolbar — ActionBarDrawerToggle works directly with the
+             toolbar reference. -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/toolbar_island"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="6dp"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:strokeWidth="0dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_liquid_glass" />
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@android:color/transparent"
+                app:titleCentered="false"
+                app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+                app:title="@string/app_name" />
+
+            <com.diegonmarcos.superapp.ShimmerBorderView
+                android:id="@+id/toolbar_shimmer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Bottom island. -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/bottom_nav_island"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_marginBottom="12dp"
@@ -103,7 +105,7 @@
                 app:menu="@menu/bottom_nav" />
 
         </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
+    </FrameLayout>
 
     <include layout="@layout/view_drawer_panel" />
 

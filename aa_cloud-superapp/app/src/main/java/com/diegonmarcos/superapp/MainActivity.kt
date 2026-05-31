@@ -513,7 +513,7 @@ class MainActivity : AppCompatActivity(),
         val override = fragment as? ShellOverride
         val ownsToolbar = override?.ownsToolbar() ?: false
         val ownsBottom  = override?.ownsBottomNav() ?: false
-        findViewById<AppBarLayout>(R.id.app_bar).visibility =
+        findViewById<View>(R.id.toolbar_island).visibility =
             if (ownsToolbar) View.GONE else View.VISIBLE
         // Hide the WHOLE bottom-nav-island card when a fragment owns its
         // own bottom chrome, so the fragment_container's
