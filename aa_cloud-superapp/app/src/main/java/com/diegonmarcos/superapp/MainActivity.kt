@@ -489,31 +489,17 @@ class MainActivity : AppCompatActivity(),
      *  bar) and the BottomNav (bottom inset → gesture nav). The
      *  drawer pulls insets onto its own panel via the framework default. */
     private fun applyEdgeToEdgeInsets() {
-        val appBar    = findViewById<AppBarLayout>(R.id.app_bar)
-        ViewCompat.setOnApplyWindowInsetsListener(appBar) { v, insets ->
+        // Pad the SHELL LinearLayout itself with status-bar inset (top) +
+        // gesture-nav inset (bottom). The LinearLayout then represents
+        // the SAFE AREA — the AppBarLayout sits at the top of it, the
+        // bottom_nav_island sits at the bottom of it. Neither island can
+        // be eaten by a system bar because they're physically constrained
+        // inside the padded region.
+        val shell = findViewById<View>(R.id.shell_linear)
+        ViewCompat.setOnApplyWindowInsetsListener(shell) { v, insets ->
             val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updatePadding(top = sys.top)
-            insets
-        }
-        ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { v, insets ->
-            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updatePadding(bottom = sys.bottom)
+            v.updatePadding(top = sys.top, bottom = sys.bottom)
             bottomSystemInset = sys.bottom
-            insets
-        }
-        // The bottom_nav_island CARD itself ALSO needs a bottom margin
-        // equal to the gesture-nav inset so the card sits inside the
-        // safe area (the inner BNV padding alone doesn't push the card
-        // up off the gesture bar). Apply through the layout params on
-        // the card.
-        val bottomCard = findViewById<View>(R.id.bottom_nav_island)
-        ViewCompat.setOnApplyWindowInsetsListener(bottomCard) { v, insets ->
-            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val baseDp = (12f * resources.displayMetrics.density).toInt()
-            val lp = v.layoutParams as? android.view.ViewGroup.MarginLayoutParams
-                ?: return@setOnApplyWindowInsetsListener insets
-            lp.bottomMargin = baseDp + sys.bottom
-            v.layoutParams = lp
             insets
         }
     }
