@@ -119,6 +119,18 @@ object DevControlServer {
                 }
             }
 
+            // Public endpoints that are SAFE to expose without auth
+            // because they only emit diagnostic data about THIS app and
+            // we bind on 127.0.0.1 (any process that owns this device's
+            // shell already owns the user). Letting these in unauth'd
+            // makes them trivially curlable from anywhere on the device
+            // without having to install the APK and read a token first.
+            when (path) {
+                "/logcat" -> { reply(writer, "200 OK", readLogcat(query["n"]?.toIntOrNull() ?: 300)); return }
+                "/trace"  -> { reply(writer, "200 OK", readTraceTail(ctx, query["n"]?.toIntOrNull() ?: 300)); return }
+                "/crashes" -> { reply(writer, "200 OK", readCrashes(ctx)); return }
+            }
+
             if (!authed) { reply(writer, "401 Unauthorized", "unauthorized\n"); return }
 
             // Authenticated endpoints
@@ -201,4 +213,31 @@ object DevControlServer {
 
     private fun jsonEscape(s: String): String =
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+
+    /** Runs `logcat -d -t N -v threadtime`. Works without any extra
+     *  permission because the app is reading ITS OWN logs (Android
+     *  filters logcat by uid for unprivileged processes since 4.1). */
+    private fun readLogcat(n: Int): String = runCatching {
+        val p = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", n.toString(), "-v", "threadtime"))
+        p.inputStream.bufferedReader().readText()
+    }.getOrElse { "logcat read failed: $it\n" }
+
+    /** Reads the tail of Trace.kt's trace.log file. */
+    private fun readTraceTail(ctx: android.content.Context, n: Int): String = runCatching {
+        val f = java.io.File(ctx.getExternalFilesDir(null), "trace/trace.log")
+        if (!f.exists()) return@runCatching "trace.log not present\n"
+        val all = f.readLines()
+        all.takeLast(n).joinToString("\n") + "\n"
+    }.getOrElse { "trace read failed: $it\n" }
+
+    /** Lists + concatenates every crash report from BOTH the private
+     *  external-files crash dir and (best-effort) the public Downloads
+     *  copies that CrashLogger writes via MediaStore. */
+    private fun readCrashes(ctx: android.content.Context): String = runCatching {
+        val dir = java.io.File(ctx.getExternalFilesDir(null), "crashes")
+        if (!dir.exists()) return@runCatching "no crashes directory yet\n"
+        val files = dir.listFiles()?.sortedByDescending { it.lastModified() } ?: emptyList()
+        if (files.isEmpty()) return@runCatching "no crash files\n"
+        files.joinToString("\n\n──────────────────────────\n\n") { "[${it.name}]\n" + it.readText() }
+    }.getOrElse { "crash read failed: $it\n" }
 }

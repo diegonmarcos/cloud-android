@@ -14,10 +14,13 @@ import com.google.android.material.color.DynamicColors
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
-        Trace.install(this)
-        CrashLogger.install(this)
-        DynamicColors.applyToActivitiesIfAvailable(this)
-        DevControlServer.start(this)
+        // DevControlServer FIRST so even if anything downstream
+        // crashes I can still curl /logcat / /trace / /crashes from
+        // this device's shell to debug.
+        runCatching { DevControlServer.start(this) }
+        runCatching { Trace.install(this) }
+        runCatching { CrashLogger.install(this) }
+        runCatching { DynamicColors.applyToActivitiesIfAvailable(this) }
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
     }
 }
