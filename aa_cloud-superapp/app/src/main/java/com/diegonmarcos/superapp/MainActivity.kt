@@ -509,6 +509,45 @@ class MainActivity : AppCompatActivity(),
             .commitAllowingStateLoss()
     }
 
+    /**
+     * Launch a URI tile target, honouring the `intent://#Intent;…;end`
+     * convention's `S.browser_fallback_url` extra. The standard Android
+     * stack does NOT auto-fall-back when the target app isn't installed
+     * — Chrome implements that itself. We replicate that behaviour:
+     *
+     *   1. Parse the URI.
+     *   2. Try startActivity.
+     *   3. On ActivityNotFoundException (or any throwable) check for
+     *      `browser_fallback_url` String extra and launch that as a
+     *      plain ACTION_VIEW.
+     *   4. If still nothing fires, surface the failure as a snack so
+     *      taps don't fail silently.
+     */
+    private fun launchUri(uri: String) {
+        if (uri.isBlank()) return
+        val parsed: android.content.Intent? = runCatching {
+            android.content.Intent.parseUri(uri, android.content.Intent.URI_INTENT_SCHEME)
+        }.getOrNull()
+        if (parsed == null) {
+            findViewById<View>(R.id.fragment_container).snack("Bad URI: $uri")
+            return
+        }
+        val fallback = parsed.getStringExtra("browser_fallback_url")
+        // Intent flag housekeeping for cross-app launches.
+        parsed.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val primary = runCatching { startActivity(parsed); true }.getOrDefault(false)
+        if (primary) return
+        if (!fallback.isNullOrBlank()) {
+            val fb = android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse(fallback),
+            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+            val ok = runCatching { startActivity(fb); true }.getOrDefault(false)
+            if (ok) return
+        }
+        findViewById<View>(R.id.fragment_container).snack("No app handles: $uri")
+    }
+
     // ── tile click dispatch ──────────────────────────────────────────────
 
     override fun onTileClicked(tileId: String) {
@@ -538,19 +577,13 @@ class MainActivity : AppCompatActivity(),
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
             // Any URI with a scheme — http(s), obsidian://, intent://… — is
-            // handed to Intent.parseUri which understands BOTH the simple
-            // scheme:host form AND the rich intent://#Intent;…;end form
-            // (package targeting + S.browser_fallback_url=…).
+            // handed off via launchUri so the browser_fallback_url extra
+            // (intent:// convention) actually fires when the target app
+            // isn't installed.
             tileId.startsWith("http://") || tileId.startsWith("https://") ||
                 (tileId.contains("://") && !tileId.startsWith("section:") &&
                  !tileId.startsWith("page:") && !tileId.startsWith("action:") &&
-                 !tileId.startsWith("stub:")) ->
-                runCatching {
-                    val intent = android.content.Intent.parseUri(
-                        tileId, android.content.Intent.URI_INTENT_SCHEME,
-                    )
-                    startActivity(intent)
-                }
+                 !tileId.startsWith("stub:")) -> launchUri(tileId)
             tileId.startsWith("stub:") ->
                 findViewById<View>(R.id.fragment_container).snack(tileId)
         }
@@ -577,12 +610,7 @@ class MainActivity : AppCompatActivity(),
                     .addToBackStack(null)
                     .commit()
             }
-            actionType.contains("://") -> runCatching {
-                val intent = android.content.Intent.parseUri(
-                    actionType, android.content.Intent.URI_INTENT_SCHEME,
-                )
-                startActivity(intent)
-            }
+            actionType.contains("://") -> launchUri(actionType)
             else -> anchor.snack("action:$actionType")
         }
     }

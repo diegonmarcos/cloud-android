@@ -377,10 +377,10 @@ class AggregatorStackFragment : Fragment(),
     private fun openUrlOrTarget(target: String) {
         when {
             target.isEmpty() -> Unit
-            target.startsWith("http") || target.contains("://") -> runCatching {
-                val intent = Intent.parseUri(target, Intent.URI_INTENT_SCHEME)
-                startActivity(intent)
-            }
+            // URI-shaped targets bubble up to the activity, which owns the
+            // intent:// parsing + browser_fallback_url handling — same path
+            // tile clicks take, so behaviour is consistent everywhere.
+            target.startsWith("http") || target.contains("://") -> onTileClicked(target)
             else -> onTileClicked(target)
         }
     }

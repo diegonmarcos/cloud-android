@@ -97,8 +97,11 @@ class ShaderBackgroundView @JvmOverloads constructor(
             val id = GLES20.glCreateShader(type)
             GLES20.glShaderSource(id, src)
             GLES20.glCompileShader(id)
+            // GLES20.glGetShaderiv has TWO overloads — (Int, Int, IntBuffer)
+            // and (Int, Int, IntArray, Int). The 3-arg call only resolves
+            // for IntBuffer; the IntArray variant needs the offset.
             val status = IntArray(1)
-            GLES20.glGetShaderiv(id, GLES20.GL_COMPILE_STATUS, status)
+            GLES20.glGetShaderiv(id, GLES20.GL_COMPILE_STATUS, status, 0)
             if (status[0] == 0) {
                 val log = GLES20.glGetShaderInfoLog(id)
                 GLES20.glDeleteShader(id)
