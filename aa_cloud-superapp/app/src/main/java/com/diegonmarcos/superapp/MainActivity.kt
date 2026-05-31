@@ -130,6 +130,10 @@ class MainActivity : AppCompatActivity(),
                 bottomNav.selectedItemId = idForSectionId(target) ?: R.id.nav_home
             }
 
+            // Launcher-icon shortcut (long-press launcher icon) carries a
+            // shortcut_action extra. Same target grammar as tile clicks.
+            handleShortcutIntent(intent)
+
             // Re-apply chrome after every back-stack change so that the
             // restored Fragment's ShellOverride takeover (or default) takes
             // effect — runOnCommit would have worked but it's mutually
@@ -494,12 +498,22 @@ class MainActivity : AppCompatActivity(),
         ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { v, insets ->
             val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(bottom = sys.bottom)
-            // BottomNav is taller now (56dp + sys.bottom) — push the
-            // fragment_container up by the same amount so the last row
-            // of tiles isn't hidden behind the nav.
             bottomSystemInset = sys.bottom
-            supportFragmentManager.findFragmentById(R.id.fragment_container)
-                ?.let { applyChrome(it) }
+            insets
+        }
+        // The bottom_nav_island CARD itself ALSO needs a bottom margin
+        // equal to the gesture-nav inset so the card sits inside the
+        // safe area (the inner BNV padding alone doesn't push the card
+        // up off the gesture bar). Apply through the layout params on
+        // the card.
+        val bottomCard = findViewById<View>(R.id.bottom_nav_island)
+        ViewCompat.setOnApplyWindowInsetsListener(bottomCard) { v, insets ->
+            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val baseDp = (12f * resources.displayMetrics.density).toInt()
+            val lp = v.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+                ?: return@setOnApplyWindowInsetsListener insets
+            lp.bottomMargin = baseDp + sys.bottom
+            v.layoutParams = lp
             insets
         }
     }
@@ -834,6 +848,30 @@ class MainActivity : AppCompatActivity(),
             @Suppress("DEPRECATION")
             super.onBackPressed()
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleShortcutIntent(intent)
+    }
+
+    private fun handleShortcutIntent(intent: android.content.Intent?) {
+        val target = intent?.getStringExtra("shortcut_action") ?: return
+        if (target == "action:open_search") {
+            // No section: just slide up the SearchSheet.
+            supportFragmentManager.beginTransaction()
+                .setCustomAnimations(
+                    R.anim.slide_in_up,  R.anim.fade_out,
+                    R.anim.fade_in,      R.anim.slide_out_down,
+                )
+                .add(R.id.fragment_container, SearchSheetFragment.newInstance(),
+                    SearchSheetFragment.BACK_STACK_TAG)
+                .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
+                .commit()
+        } else {
+            onTileClicked(target)
+        }
+        intent.removeExtra("shortcut_action")
     }
 
     // ── DevControlBridge.ActivityHost ────────────────────────────────────

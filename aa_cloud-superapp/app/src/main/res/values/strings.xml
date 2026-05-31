@@ -120,6 +120,16 @@
     <string name="action_settings">Settings</string>
     <string name="action_back">Back</string>
 
+    <!-- Launcher icon long-press shortcuts -->
+    <string name="shortcut_update_short">Update</string>
+    <string name="shortcut_update_long">Check for app update</string>
+    <string name="shortcut_search_short">Search</string>
+    <string name="shortcut_search_long">Open search</string>
+    <string name="shortcut_import_short">Import</string>
+    <string name="shortcut_import_long">Import configs</string>
+    <string name="shortcut_linktree_short">Linktree</string>
+    <string name="shortcut_linktree_long">Open Linktree</string>
+
     <!-- Drawer affordances -->
     <string name="drawer_open">Open navigation</string>
     <string name="drawer_close">Close navigation</string>
