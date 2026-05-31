@@ -14,6 +14,11 @@
           android:icon="@drawable/ic_mode_apps"
           app:showAsAction="always" />
 
+    <item android:id="@+id/action_search"
+          android:title="@string/action_search"
+          android:icon="@drawable/ic_search"
+          app:showAsAction="always" />
+
     <item android:id="@+id/action_back"
           android:title="@string/action_back"
           android:icon="@drawable/ic_back"

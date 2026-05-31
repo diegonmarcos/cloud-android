@@ -44,29 +44,47 @@
                  even on devices without backdrop-blur support (pre-API 31).
                  MainActivity adds Window.setBackgroundBlurRadius on API 31+
                  to push it the rest of the way toward true glassmorphism. -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/toolbar_island"
+            <!-- FrameLayout host so the ShimmerBorderView can stack on top
+                 of the toolbar_island AND share its bounds exactly. -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:layout_marginEnd="12dp"
-                android:layout_marginTop="6dp"
-                app:cardCornerRadius="22dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="@color/glass_bg"
-                app:strokeWidth="1dp"
-                app:strokeColor="@color/glass_border">
+                android:layout_marginTop="6dp">
 
-                <com.google.android.material.appbar.MaterialToolbar
-                    android:id="@+id/toolbar"
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/toolbar_island"
                     android:layout_width="match_parent"
-                    android:layout_height="?attr/actionBarSize"
-                    android:background="@android:color/transparent"
-                    app:titleCentered="false"
-                    app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-                    app:title="@string/app_name" />
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="22dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@android:color/transparent"
+                    app:strokeWidth="0dp">
 
-            </com.google.android.material.card.MaterialCardView>
+                    <!-- Liquid-glass refractive fill behind the toolbar. -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_liquid_glass" />
+
+                    <com.google.android.material.appbar.MaterialToolbar
+                        android:id="@+id/toolbar"
+                        android:layout_width="match_parent"
+                        android:layout_height="?attr/actionBarSize"
+                        android:background="@android:color/transparent"
+                        app:titleCentered="false"
+                        app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+                        app:title="@string/app_name" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Shimmering neon-violet comet around the toolbar perimeter. -->
+                <com.diegonmarcos.superapp.ShimmerBorderView
+                    android:id="@+id/toolbar_shimmer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </FrameLayout>
         </com.google.android.material.appbar.AppBarLayout>
 
         <!-- Section fragment swap target. Bottom margin reserves space for
@@ -94,9 +112,14 @@
             android:layout_marginBottom="12dp"
             app:cardCornerRadius="24dp"
             app:cardElevation="3dp"
-            app:cardBackgroundColor="@color/glass_bg"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/glass_border">
+            app:cardBackgroundColor="@android:color/transparent"
+            app:strokeWidth="0dp">
+
+            <!-- Liquid-glass refractive fill behind the bottom nav. -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_liquid_glass" />
 
             <com.google.android.material.bottomnavigation.BottomNavigationView
                 android:id="@+id/bottom_nav"

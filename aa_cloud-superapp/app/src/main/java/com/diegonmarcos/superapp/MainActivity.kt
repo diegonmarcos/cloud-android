@@ -247,6 +247,14 @@ class MainActivity : AppCompatActivity(),
     private fun onBottomNavPicked(item: MenuItem): Boolean {
         if (suppressBottomNavReentry) return true
         val id = sectionIdForNavId(item.itemId) ?: return false
+        // Gemini-like haptic gesture: START on press, two LOW_TICK pulses
+        // while the screen swaps, END when it settles. Same pattern
+        // regardless of which nav slot was tapped.
+        val anchor = bottomNav
+        Haptics.gestureStart(anchor)
+        anchor.postDelayed({ Haptics.segmentTick(anchor) }, 100)
+        anchor.postDelayed({ Haptics.segmentTick(anchor) }, 180)
+        anchor.postDelayed({ Haptics.gestureEnd(anchor) }, 260)
         if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
         return true
     }
@@ -666,6 +674,18 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_search) {
+            supportFragmentManager.beginTransaction()
+                .setCustomAnimations(
+                    R.anim.slide_in_up,  R.anim.fade_out,
+                    R.anim.fade_in,      R.anim.slide_out_down,
+                )
+                .add(R.id.fragment_container, SearchSheetFragment.newInstance(),
+                    SearchSheetFragment.BACK_STACK_TAG)
+                .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
+                .commit()
+            return true
+        }
         if (item.itemId == R.id.action_mode_toggle) {
             modePrefs.toggle()
             invalidateOptionsMenu()

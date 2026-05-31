@@ -114,12 +114,12 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
 
         tileView.findViewById<TextView>(R.id.tile_label).text = label
 
-        val iconBg = tileView.findViewById<FrameLayout>(R.id.tile_icon_bg)
-        iconBg.background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 1000f   // pill effect — looks circular at any aspect
-            setColor(bg)
-        }
+        // Icon background is intentionally null now — tile card itself
+        // carries the glass surface (bg_tile_glass) so the icon floats
+        // on it without the legacy coloured-pill behind it. Per-tile
+        // palette is now used to TINT the icon glyph only, giving each
+        // tile a distinct accent against the unified glass body.
+        tileView.findViewById<FrameLayout>(R.id.tile_icon_bg).background = null
 
         val icon = tileView.findViewById<ImageView>(R.id.tile_icon)
         icon.setImageResource(iconRes)
