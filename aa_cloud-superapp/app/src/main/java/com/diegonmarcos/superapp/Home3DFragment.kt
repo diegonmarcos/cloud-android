@@ -37,7 +37,7 @@ class Home3DFragment : Fragment() {
             // Disable hardware accel for this view so BlurMaskFilter on
             // the glow paint renders correctly (HW pipeline ignores
             // BlurMaskFilter on stroked paths).
-            setLayerType(LAYER_TYPE_SOFTWARE, null)
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
         root.addView(cube)
         return root
