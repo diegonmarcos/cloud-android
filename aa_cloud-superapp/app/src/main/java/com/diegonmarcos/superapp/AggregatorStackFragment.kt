@@ -162,6 +162,8 @@ class AggregatorStackFragment : Fragment(),
         "c3_private"         -> embedChild(body, C3HealthFragment.newInstance(C3HealthFragment.SCOPE_PRIVATE))
         "wg_mesh"            -> embedChild(body, C3MeshFragment.newInstance())
         "rss"                -> embedChild(body, RssFeedFragment.newInstance())
+        "news_feeds"         -> embedChild(body, NewsFeedFragment.newInstance())
+        "calendar_month"     -> embedChild(body, CalendarMonthFragment.newInstance())
         "drive_connections"  -> embedChild(body, DriveConnectionsFragment.newInstance())
         "linktree_slide"     -> renderLinktreeSlide(ctx, body, panel.slideId)
         "link_grid"          -> renderLinkGrid(ctx, body, panel.columns, panel.links)
@@ -259,12 +261,31 @@ class AggregatorStackFragment : Fragment(),
     }
 
     private fun renderMailAccounts(ctx: android.content.Context, body: LinearLayout) {
-        // Placeholder seed — replace with JMAP-driven account list once Slice C lands.
-        body.addView(linkRow(ctx, Sections.LinkItem(
-            label = "me@diegonmarcos.com · Stalwart",
-            url   = "section:mail",
-        )))
-        body.addView(caption(ctx, "unread / total counts pending JMAP slice C2"))
+        val accounts = Sections.mailAccounts()
+        if (accounts.isEmpty()) {
+            body.addView(caption(ctx, "No accounts declared. Add via build.json::ui.mail_accounts or the Import flow."))
+            return
+        }
+        for (acct in accounts) {
+            val transport = when (acct.kind) {
+                "jmap"      -> "JMAP"
+                "imap"      -> "IMAP/STARTTLS"
+                "imaps"     -> "IMAPS · SMTPS"
+                "exchange"  -> "Exchange"
+                else        -> acct.kind.uppercase()
+            }
+            val portSuffix = when {
+                acct.imapPort > 0 && acct.smtpPort > 0 -> "  · ${acct.imapPort}/${acct.smtpPort}"
+                acct.imapPort > 0                      -> "  · imap:${acct.imapPort}"
+                acct.smtpPort > 0                      -> "  · smtp:${acct.smtpPort}"
+                else                                   -> ""
+            }
+            body.addView(linkRow(ctx, Sections.LinkItem(
+                label = "${acct.label}  ·  $transport$portSuffix",
+                url   = "section:mail",
+            )))
+        }
+        body.addView(caption(ctx, "Unread / total counts pending JMAP slice C2 + IMAP slice."))
     }
 
     private fun renderChatPlaceholder(

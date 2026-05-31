@@ -291,6 +291,18 @@
             "url": "https://workflows.diegonmarcos.com",
             "icon": "ic_p_c3_workflows"
           }
+        ],
+        "stack_apps": [
+          {
+            "kind": "calendar_month",
+            "title": "Calendar",
+            "subtitle": "Month view · CalDAV sync pending"
+          },
+          {
+            "kind": "news_feeds",
+            "title": "News & RSS",
+            "subtitle": "Curated open channels (not ntfy)"
+          }
         ]
       },
       {
@@ -2030,7 +2042,134 @@
           "subtitle": "bob@example.org"
         }
       ]
-    }
+    },
+    "news_feeds": [
+      {
+        "id": "bbc-world",
+        "name": "BBC News · World",
+        "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "site_url": "https://www.bbc.com/news/world",
+        "category": "World"
+      },
+      {
+        "id": "reuters-top",
+        "name": "Reuters · Top",
+        "url": "https://feeds.reuters.com/reuters/topNews",
+        "site_url": "https://www.reuters.com",
+        "category": "World"
+      },
+      {
+        "id": "ap-top",
+        "name": "AP · Top",
+        "url": "https://apnews.com/index.rss",
+        "site_url": "https://apnews.com",
+        "category": "World"
+      },
+      {
+        "id": "guardian-world",
+        "name": "Guardian · World",
+        "url": "https://www.theguardian.com/world/rss",
+        "site_url": "https://www.theguardian.com/international",
+        "category": "World"
+      },
+      {
+        "id": "npr-news",
+        "name": "NPR News",
+        "url": "https://feeds.npr.org/1001/rss.xml",
+        "site_url": "https://www.npr.org",
+        "category": "World"
+      },
+      {
+        "id": "hn",
+        "name": "Hacker News",
+        "url": "https://hnrss.org/frontpage",
+        "site_url": "https://news.ycombinator.com",
+        "category": "Tech"
+      },
+      {
+        "id": "verge",
+        "name": "The Verge",
+        "url": "https://www.theverge.com/rss/index.xml",
+        "site_url": "https://www.theverge.com",
+        "category": "Tech"
+      },
+      {
+        "id": "ars",
+        "name": "Ars Technica",
+        "url": "https://feeds.arstechnica.com/arstechnica/index",
+        "site_url": "https://arstechnica.com",
+        "category": "Tech"
+      },
+      {
+        "id": "techcrunch",
+        "name": "TechCrunch",
+        "url": "https://techcrunch.com/feed/",
+        "site_url": "https://techcrunch.com",
+        "category": "Tech"
+      },
+      {
+        "id": "wired",
+        "name": "Wired",
+        "url": "https://www.wired.com/feed/rss",
+        "site_url": "https://www.wired.com",
+        "category": "Tech"
+      },
+      {
+        "id": "engadget",
+        "name": "Engadget",
+        "url": "https://www.engadget.com/rss.xml",
+        "site_url": "https://www.engadget.com",
+        "category": "Tech"
+      },
+      {
+        "id": "bloomberg",
+        "name": "Bloomberg · Markets",
+        "url": "https://feeds.bloomberg.com/markets/news.rss",
+        "site_url": "https://www.bloomberg.com/markets",
+        "category": "Finance"
+      },
+      {
+        "id": "ft",
+        "name": "Financial Times",
+        "url": "https://www.ft.com/rss/home",
+        "site_url": "https://www.ft.com",
+        "category": "Finance"
+      },
+      {
+        "id": "marketwatch",
+        "name": "MarketWatch · Top",
+        "url": "https://feeds.marketwatch.com/marketwatch/topstories",
+        "site_url": "https://www.marketwatch.com",
+        "category": "Finance"
+      },
+      {
+        "id": "espn",
+        "name": "ESPN · Top",
+        "url": "https://www.espn.com/espn/rss/news",
+        "site_url": "https://www.espn.com",
+        "category": "Sport"
+      }
+    ],
+    "mail_accounts": [
+      {
+        "id": "me-jmap",
+        "label": "me@diegonmarcos.com",
+        "kind": "jmap",
+        "server": "https://mail.diegonmarcos.com/jmap/session",
+        "user": "me@diegonmarcos.com"
+      },
+      {
+        "id": "imap-example",
+        "label": "Add IMAP account…",
+        "kind": "imaps",
+        "server": "imap.example.com",
+        "user": "",
+        "ports": {
+          "imap": 993,
+          "smtp": 465
+        }
+      }
+    ]
   },
   "deploy": {
     "host": "local",

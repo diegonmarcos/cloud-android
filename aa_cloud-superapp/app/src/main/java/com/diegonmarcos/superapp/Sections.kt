@@ -178,6 +178,32 @@ object Sections {
         val privateDns: String,
         val category: String,
     )
+    /** One declared news / open-RSS feed for the Apps mode of Infos. */
+    data class NewsFeed(
+        val id:       String,
+        val name:     String,
+        val url:      String,   // RSS / Atom feed URL
+        val siteUrl:  String,   // Optional landing page; if blank, falls back to url
+        val category: String,   // World | Tech | Finance | Sport | …
+        val icon:     String,
+    )
+
+    /** One mail account declared in build.json::ui.mail_accounts.
+     *  `kind` picks the transport (jmap | imap | imaps | exchange).
+     *  Today the libs:mail JMAP slice is the only one with full
+     *  transport support; IMAP accounts surface as "open inbox" rows
+     *  until the IMAP slice lands. */
+    data class MailAccount(
+        val id:      String,
+        val label:   String,
+        val kind:    String,    // jmap | imap | imaps | exchange
+        val server:  String,    // JMAP base / IMAP host
+        val user:    String,
+        val imapPort: Int = 0,
+        val smtpPort: Int = 0,
+        val icon:    String = "",
+    )
+
     /** One row of the C3/Health private-services table. */
     data class PrivateService(
         val name: String,
@@ -198,6 +224,8 @@ object Sections {
     @Volatile private var cachedSvcPriv:  List<PrivateService>?    = null
     @Volatile private var cachedDrive:    List<DriveConnection>?   = null
     @Volatile private var cachedLinktree: Map<String, LinktreeSlide>? = null
+    @Volatile private var cachedNews:     List<NewsFeed>?              = null
+    @Volatile private var cachedMail:     List<MailAccount>?           = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -563,6 +591,56 @@ object Sections {
             )
         }
         cachedDrive = out
+        return out
+    }
+
+    /** build.json::ui.news_feeds — curated external RSS / news channels
+     *  rendered by [NewsFeedFragment] under Infos · Apps. Different
+     *  surface from the ntfy channels (those live in [RssFeedFragment]). */
+    fun newsFeeds(): List<NewsFeed> {
+        cachedNews?.let { return it }
+        val json = String(Base64.decode(BuildConfig.NEWS_FEEDS_B64, Base64.NO_WRAP))
+        val arr  = JSONArray(json)
+        val out  = mutableListOf<NewsFeed>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out.add(NewsFeed(
+                id       = o.optString("id", ""),
+                name     = o.optString("name", ""),
+                url      = o.optString("url", ""),
+                siteUrl  = o.optString("site_url", ""),
+                category = o.optString("category", ""),
+                icon     = o.optString("icon", ""),
+            ))
+        }
+        cachedNews = out
+        return out
+    }
+
+    /** build.json::ui.mail_accounts — declared seed accounts (JMAP / IMAP /
+     *  IMAPS / Exchange). The libs:mail JMAP slice is currently the only
+     *  transport with full read/send support; IMAP accounts render as a
+     *  tappable row until the IMAP slice lands. */
+    fun mailAccounts(): List<MailAccount> {
+        cachedMail?.let { return it }
+        val json = String(Base64.decode(BuildConfig.MAIL_ACCOUNTS_B64, Base64.NO_WRAP))
+        val arr  = JSONArray(json)
+        val out  = mutableListOf<MailAccount>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val ports = o.optJSONObject("ports")
+            out.add(MailAccount(
+                id       = o.optString("id", ""),
+                label    = o.optString("label", ""),
+                kind     = o.optString("kind", "jmap"),
+                server   = o.optString("server", ""),
+                user     = o.optString("user", ""),
+                imapPort = ports?.optInt("imap", 0) ?: 0,
+                smtpPort = ports?.optInt("smtp", 0) ?: 0,
+                icon     = o.optString("icon", ""),
+            ))
+        }
+        cachedMail = out
         return out
     }
 
