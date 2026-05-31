@@ -307,17 +307,26 @@ class MainActivity : AppCompatActivity(),
 
     // ── bottom nav ────────────────────────────────────────────────────────
 
+    private val haptHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
     private fun onBottomNavPicked(item: MenuItem): Boolean {
         if (suppressBottomNavReentry) return true
         val id = sectionIdForNavId(item.itemId) ?: return false
-        // Gemini-like haptic gesture: START on press, two LOW_TICK pulses
-        // while the screen swaps, END when it settles. Same pattern
-        // regardless of which nav slot was tapped.
+        // Gemini-like rhythm:
+        //   t=0     press buzz (the click)
+        //   ~250ms  PAUSE (thinking…)
+        //   t=250…490ms: 4 LOW_TICKs at 80ms intervals — "the answer"
+        //   t=560ms end buzz — "answer done"
+        // Posted on Handler(mainLooper) so the runnables persist even if
+        // the listener view goes away mid-transition.
+        haptHandler.removeCallbacksAndMessages(null)
         val anchor = bottomNav
         Haptics.gestureStart(anchor)
-        anchor.postDelayed({ Haptics.segmentTick(anchor) }, 100)
-        anchor.postDelayed({ Haptics.segmentTick(anchor) }, 180)
-        anchor.postDelayed({ Haptics.gestureEnd(anchor) }, 260)
+        haptHandler.postDelayed({ Haptics.segmentTick(anchor) }, 250)
+        haptHandler.postDelayed({ Haptics.segmentTick(anchor) }, 330)
+        haptHandler.postDelayed({ Haptics.segmentTick(anchor) }, 410)
+        haptHandler.postDelayed({ Haptics.segmentTick(anchor) }, 490)
+        haptHandler.postDelayed({ Haptics.gestureEnd(anchor) }, 560)
         if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
         return true
     }

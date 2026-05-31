@@ -12,7 +12,7 @@
     android:layout_width="280dp"
     android:layout_height="match_parent"
     android:layout_gravity="start"
-    android:background="?attr/colorSurface"
+    android:background="@drawable/bg_drawer_glass"
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
