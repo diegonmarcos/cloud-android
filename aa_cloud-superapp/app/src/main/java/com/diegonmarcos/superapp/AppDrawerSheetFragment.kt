@@ -18,10 +18,11 @@ class AppDrawerSheetFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         val root = FrameLayout(ctx).apply {
-            // Solid black so the sheet feels like a separate surface
-            // over the gradient; gradient still bleeds at the top edge
-            // because the slide-in_up animation reveals it from below.
-            setBackgroundColor(0xFF000000.toInt())
+            // Use the same black→purple gradient as the body so the
+            // pull-up "home icons" sheet matches the rest of the app
+            // (user feedback: full-black sheet broke the palette).
+            background = androidx.core.content.ContextCompat.getDrawable(
+                ctx, R.drawable.bg_gradient_black_purple)
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
