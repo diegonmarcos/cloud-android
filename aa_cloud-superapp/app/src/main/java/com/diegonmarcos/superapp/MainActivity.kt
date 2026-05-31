@@ -140,6 +140,7 @@ class MainActivity : AppCompatActivity(),
             }
 
             installNavSwipeGesture()
+            installHomeLongPressFan()
 
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
@@ -242,6 +243,61 @@ class MainActivity : AppCompatActivity(),
         return super.dispatchTouchEvent(ev)
     }
 
+    /**
+     * Long-press of the Home bottom-nav slot opens the [HomeFanMenu] —
+     * a folder-widget-style overlay with two icons (Configs, Tabs).
+     * BottomNavigationView doesn't have a per-item long-press hook,
+     * so we install a touch listener that watches for a press lasting
+     * >500ms inside the home tab's hit-rect and, when it fires, throws
+     * up the fan. The normal tap path still works because we never
+     * consume the event (return false).
+     */
+    private fun installHomeLongPressFan() {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var pending: Runnable? = null
+        var firedFor: View? = null
+        bottomNav.setOnTouchListener { _, ev ->
+            val homeView = findHomeNavView() ?: return@setOnTouchListener false
+            val inHome = ev.x in homeView.x..(homeView.x + homeView.width)
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> if (inHome) {
+                    pending?.let { handler.removeCallbacks(it) }
+                    firedFor = null
+                    val r = Runnable {
+                        if (firedFor == null) {
+                            firedFor = homeView
+                            homeView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                            HomeFanMenu.show(homeView) { target ->
+                                onTileClicked(target)
+                            }
+                        }
+                    }
+                    pending = r
+                    handler.postDelayed(r, 480)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    pending?.let { handler.removeCallbacks(it) }
+                    pending = null
+                }
+            }
+            false   // never consume — normal tap still fires
+        }
+    }
+
+    /** Best-effort hit-test: return the View of the Home menu item
+     *  inside BottomNavigationView, or null if the internal hierarchy
+     *  isn't what we expect. */
+    private fun findHomeNavView(): View? {
+        val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: return null
+        val items = bottomNav.menu
+        for (i in 0 until items.size()) {
+            if (items.getItem(i).itemId == R.id.nav_home) {
+                return menuView.getChildAt(i)
+            }
+        }
+        return null
+    }
+
     // ── bottom nav ────────────────────────────────────────────────────────
 
     private fun onBottomNavPicked(item: MenuItem): Boolean {
@@ -341,8 +397,13 @@ class MainActivity : AppCompatActivity(),
             section.pages.isNotEmpty() -> TileGridFragment.newInstance(
                 title = label,
                 tiles = section.pages.map { p ->
+                    // If the page declares an `action`, the tile id IS
+                    // that action so onTileClicked routes it directly
+                    // (http://, intent://, action:check_updates, stub:…
+                    // — same grammar tiles use). Else: open the sub-page
+                    // via the normal section/page dispatcher.
                     TileGridFragment.Tile(
-                        id      = "page:${p.id}",
+                        id      = if (p.action.isNotBlank()) p.action else "page:${p.id}",
                         label   = p.label,
                         iconRes = p.iconName?.let { Sections.iconResFor(this, it) } ?: 0,
                     )

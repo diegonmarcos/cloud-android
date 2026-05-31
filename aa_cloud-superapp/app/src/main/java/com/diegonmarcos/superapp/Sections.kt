@@ -97,6 +97,14 @@ object Sections {
          *  `menu` (e.g. mail More → 8 overflow items). Both flatten into
          *  this single list — the drawer treats them identically. */
         val subPages: List<Page> = emptyList(),
+        /** Optional click target — when set, tapping this page DOES NOT
+         *  open a sub-fragment but instead dispatches via the same
+         *  grammar [MainActivity.onTileClicked] uses: section: / page: /
+         *  action: / http: / intent:// / stub:. Used by the Config
+         *  section (Update / Import / Linktree are pages with an
+         *  `action` so the section's tile grid behaves like the old
+         *  home_actions array). */
+        val action: String = "",
     )
 
     /** App-level action tile shown in the Home master TileGrid below the
@@ -250,7 +258,13 @@ object Sections {
                             subs.add(Page(so.getString("id"), so.getString("label"), sIcon))
                         }
                     }
-                    pages.add(Page(po.getString("id"), po.getString("label"), pIcon, subs))
+                    pages.add(Page(
+                        id       = po.getString("id"),
+                        label    = po.getString("label"),
+                        iconName = pIcon,
+                        subPages = subs,
+                        action   = po.optString("action", ""),
+                    ))
                 }
             }
 
