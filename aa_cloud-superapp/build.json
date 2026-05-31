@@ -336,6 +336,54 @@
             "label": "CV",
             "icon": "ic_p_sol_pro",
             "target": "page:solutions/professional"
+          },
+          {
+            "id": "maps",
+            "label": "Maps",
+            "icon": "ic_maps",
+            "target": "https://maps.google.com"
+          },
+          {
+            "id": "sheets",
+            "label": "Sheets",
+            "icon": "ic_sheets",
+            "target": "https://docs.google.com/spreadsheets/"
+          },
+          {
+            "id": "notes",
+            "label": "Notes",
+            "icon": "ic_notes",
+            "target": "obsidian://open"
+          },
+          {
+            "id": "ai-chat",
+            "label": "AI-Chat",
+            "icon": "ic_ai_chat",
+            "target": "https://gemini.google.com/app"
+          },
+          {
+            "id": "wallet",
+            "label": "Wallet",
+            "icon": "ic_wallet",
+            "target": "https://wallet.google.com"
+          },
+          {
+            "id": "music",
+            "label": "Music",
+            "icon": "ic_music",
+            "target": "https://tidal.com"
+          },
+          {
+            "id": "photos",
+            "label": "Photos",
+            "icon": "ic_photos",
+            "target": "https://photos.google.com"
+          },
+          {
+            "id": "my-fin",
+            "label": "My-Fin",
+            "icon": "ic_fin",
+            "target": "https://diegonmarcos.github.io/my-fin"
           }
         ]
       },

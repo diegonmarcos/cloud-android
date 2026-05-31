@@ -377,7 +377,7 @@ class AggregatorStackFragment : Fragment(),
     private fun openUrlOrTarget(target: String) {
         when {
             target.isEmpty() -> Unit
-            target.startsWith("http") -> runCatching {
+            target.startsWith("http") || target.contains("://") -> runCatching {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
             }
             else -> onTileClicked(target)

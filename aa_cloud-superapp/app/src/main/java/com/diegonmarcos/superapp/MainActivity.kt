@@ -453,6 +453,19 @@ class MainActivity : AppCompatActivity(),
                     .commit()
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
+            // Any URI with a scheme — http(s), obsidian://, mailto:, …
+            // is handed straight to Intent.ACTION_VIEW so the system picks
+            // the installed handler (browser, Obsidian, Mail …).
+            tileId.startsWith("http://") || tileId.startsWith("https://") ||
+                (tileId.contains("://") && !tileId.startsWith("section:") &&
+                 !tileId.startsWith("page:") && !tileId.startsWith("action:") &&
+                 !tileId.startsWith("stub:")) ->
+                runCatching {
+                    startActivity(android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(tileId),
+                    ))
+                }
             tileId.startsWith("stub:") ->
                 findViewById<View>(R.id.fragment_container).snack(tileId)
         }
