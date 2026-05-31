@@ -41,7 +41,9 @@ object HomeFanMenu {
         val ctx = host.context
         // Per user spec: LEFT = Open Tabs, CENTER = Linktree, RIGHT = Update.
         val items = listOf(
-            "section:tabs"                            to (R.drawable.ic_mode_apps to "Open Tabs"),
+            // page:tabs/all → TabsHostFragment directly (skip the section
+            // wrapper's one-tile grid that just relays into the same page).
+            "page:tabs/all"                           to (R.drawable.ic_mode_apps to "Open Tabs"),
             "https://linktree.diegonmarcos.com/"      to (R.drawable.ic_solutions to "Linktree"),
             "action:check_updates"                    to (R.drawable.ic_refresh   to "Update"),
         )
