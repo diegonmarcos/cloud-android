@@ -1125,13 +1125,13 @@
             "id": "update",
             "label": "Update",
             "icon": "ic_refresh",
-            "action": "check_updates"
+            "action": "action:check_updates"
           },
           {
             "id": "import",
             "label": "Import",
             "icon": "ic_p_import",
-            "action": "import_configs"
+            "action": "action:import_configs"
           },
           {
             "id": "linktree",
