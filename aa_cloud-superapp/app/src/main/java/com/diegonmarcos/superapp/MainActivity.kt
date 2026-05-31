@@ -514,15 +514,13 @@ class MainActivity : AppCompatActivity(),
         val ownsBottom  = override?.ownsBottomNav() ?: false
         findViewById<AppBarLayout>(R.id.app_bar).visibility =
             if (ownsToolbar) View.GONE else View.VISIBLE
-        bottomNav.visibility = if (ownsBottom) View.GONE else View.VISIBLE
-
-        val container = findViewById<View>(R.id.fragment_container)
-        val lp = container.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
-        val dp = resources.displayMetrics.density
-        // BottomNav clearance = its 56dp + the gesture-nav inset, so the
-        // tile grid never slides under the nav bar in edge-to-edge mode.
-        lp.bottomMargin = if (ownsBottom) 0 else (56 * dp).toInt() + bottomSystemInset
-        container.layoutParams = lp
+        // Hide the WHOLE bottom-nav-island card when a fragment owns its
+        // own bottom chrome, so the fragment_container's
+        // bottom_toTopOf constraint collapses to parent.bottom and the
+        // fragment fills the full height (ConstraintLayout handles
+        // GONE views by reducing them to their constrained edge).
+        findViewById<View>(R.id.bottom_nav_island).visibility =
+            if (ownsBottom) View.GONE else View.VISIBLE
     }
 
     // ── drawer pagination (internal pages) ────────────────────────────────

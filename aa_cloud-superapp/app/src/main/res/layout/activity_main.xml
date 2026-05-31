@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ┌───────────────────────────────────────────────────────────────────┐
-     │                            Toolbar  (per-page top buttons)        │
+     │                         Toolbar island (top)                       │
      ├──────────┬────────────────────────────────────────────────────────┤
      │ Drawer   │                                                        │
      │ (left,   │              Section Fragment (mail/feed/…)            │
      │  collap- │              host = R.id.fragment_container             │
-     │  sible,  │                                                        │
-     │  2-level)│                                                        │
+     │  sible)  │                                                        │
      ├──────────┴────────────────────────────────────────────────────────┤
-     │              BottomNavigationView (6 section buttons)              │
+     │                      Bottom-nav island (fixed)                     │
      └───────────────────────────────────────────────────────────────────┘
-     The DrawerLayout is the root; CoordinatorLayout sits in its primary
-     content slot; NavigationView sits in the start-edge slot. -->
+     ConstraintLayout instead of CoordinatorLayout — both islands are
+     FIXED floating elements (no AppBar collapse / scroll-behaviour
+     needed) and explicit constraints prevent the previous regression
+     where the bottom island was sliding to the top. -->
 <androidx.drawerlayout.widget.DrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -22,28 +23,24 @@
     android:fitsSystemWindows="true"
     tools:openDrawer="start">
 
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/bg_gradient_black_purple">
 
-        <!-- Floating "Dynamic Island"-style top bar: pill-shaped card with
-             horizontal + top margins so it visually detaches from the
-             screen edges, matching the bottom nav island. AppBarLayout
-             itself is transparent so only the inner card surface shows. -->
+        <!-- Top "Dynamic Island" toolbar — pinned to the top of the parent
+             (the AppBarLayout wrapper exists so ActionBarDrawerToggle still
+             finds an AppBar host for system-window insets). -->
         <com.google.android.material.appbar.AppBarLayout
             android:id="@+id/app_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:fitsSystemWindows="true"
-            app:liftOnScroll="false">
+            app:elevation="0dp"
+            app:liftOnScroll="false"
+            app:layout_constraintTop_toTopOf="parent">
 
-            <!-- Glass island (linktree $glass-bg / $glass-border / radius-md).
-                 Layered children: glass fill, toolbar, shimmer-on-top — all
-                 inside ONE MaterialCardView so the rounded clip applies to
-                 everything together (the previous outer FrameLayout wrap
-                 was causing a double-bar render). -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/toolbar_island"
                 android:layout_width="match_parent"
@@ -78,35 +75,34 @@
             </com.google.android.material.card.MaterialCardView>
         </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- Section fragment swap target. Bottom margin reserves space for
-             the floating "Dynamic Island" nav below (height ~72dp + 24dp
-             gap so the island doesn't overlap scrolling content). -->
+        <!-- Section fragment swap target. Explicitly constrained between
+             the two islands so it can never overlap or collapse them. -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragment_container"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginBottom="96dp"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+            android:layout_height="0dp"
+            app:layout_constraintTop_toBottomOf="@id/app_bar"
+            app:layout_constraintBottom_toTopOf="@id/bottom_nav_island"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Floating "Dynamic Island"-style nav: pill-shaped card with
-             horizontal + bottom margins so it visually detaches from the
-             screen edges. Card host clips its child to the rounded
-             outline; the BottomNavigationView inside is transparent so
-             only the card surface shows. -->
+        <!-- Bottom "Dynamic Island" nav — pinned to the bottom of the
+             parent (NOT a child of the AppBar; no scroll behaviour). -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/bottom_nav_island"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_marginBottom="12dp"
             app:cardCornerRadius="24dp"
             app:cardElevation="3dp"
             app:cardBackgroundColor="@android:color/transparent"
-            app:strokeWidth="0dp">
+            app:strokeWidth="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- Liquid-glass refractive fill behind the bottom nav. -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -121,13 +117,9 @@
                 app:menu="@menu/bottom_nav" />
 
         </com.google.android.material.card.MaterialCardView>
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- Drawer panel — see view_drawer_panel.xml. Two-tab paginated drawer:
-         [Home] shows the all-sections index (the previous NavigationView
-         content, hosted by HomeDrawerFragment); [<currentSection>] shows
-         that section module's own drawer fragment (e.g. MailDrawerFragment
-         for FairEmail's account+folder tree). -->
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <include layout="@layout/view_drawer_panel" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
