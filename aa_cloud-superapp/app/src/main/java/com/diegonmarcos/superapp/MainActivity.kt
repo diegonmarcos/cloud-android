@@ -123,6 +123,12 @@ class MainActivity : AppCompatActivity(),
             })
 
             bottomNav.setOnItemSelectedListener { onBottomNavPicked(it) }
+            bottomNav.setOnItemReselectedListener {
+                // Re-tap on the slot we're already on → toggle collapse-all
+                // on the active fragment if it implements Collapsible.
+                val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
+                (cur as? Collapsible)?.toggleAllCollapsed()
+            }
 
             if (savedInstanceState == null) {
                 // Default landing per build.json::ui.default_section.

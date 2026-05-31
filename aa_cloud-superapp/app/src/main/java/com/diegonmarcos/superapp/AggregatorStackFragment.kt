@@ -39,11 +39,17 @@ import com.google.android.material.card.MaterialCardView
  * one after the other"). Tap the header chevron to collapse/expand.
  */
 class AggregatorStackFragment : Fragment(),
-    TileGridFragment.TileClickListener {
+    TileGridFragment.TileClickListener,
+    Collapsible {
 
     private val sectionId: String get() = arguments?.getString(ARG_SECTION_ID).orEmpty()
     private val label:     String get() = arguments?.getString(ARG_LABEL).orEmpty()
     private val mode:      String get() = arguments?.getString(ARG_MODE).orEmpty()
+
+    /** Body container + its chevron for every panel we built — used by
+     *  [toggleAllCollapsed] when MainActivity re-taps the bottom nav. */
+    private data class PanelRefs(val body: View, val chevron: View)
+    private val panelRefs = mutableListOf<PanelRefs>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -75,8 +81,23 @@ class AggregatorStackFragment : Fragment(),
             column.addView(emptyHint(ctx, "No panels for ${sec.label} · $mode"))
             return scroll
         }
+        panelRefs.clear()
         for (panel in panels) column.addView(buildPanel(ctx, inflater, panel))
         return scroll
+    }
+
+    /** Called by MainActivity when the user re-taps the bottom-nav slot
+     *  they're already on. Collapses every panel if any is open;
+     *  expands every panel if all are closed. */
+    override fun toggleAllCollapsed(): Boolean {
+        if (panelRefs.isEmpty()) return false
+        val anyOpen = panelRefs.any { it.body.isVisible }
+        val targetVisible = !anyOpen
+        for (ref in panelRefs) {
+            ref.body.isVisible = targetVisible
+            ref.chevron.animate().rotation(if (targetVisible) 90f else 0f).setDuration(180).start()
+        }
+        return true
     }
 
     // ── Panel card (header + collapsable body) ─────────────────────────
@@ -147,6 +168,7 @@ class AggregatorStackFragment : Fragment(),
         if (subtitle != null) outer.addView(subtitle)
         outer.addView(body)
         card.addView(outer)
+        panelRefs.add(PanelRefs(body = body, chevron = chevron))
         return card
     }
 
