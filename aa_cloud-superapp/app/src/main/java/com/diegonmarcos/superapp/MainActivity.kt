@@ -123,9 +123,22 @@ class MainActivity : AppCompatActivity(),
             })
 
             bottomNav.setOnItemSelectedListener { onBottomNavPicked(it) }
-            bottomNav.setOnItemReselectedListener {
-                // Re-tap on the slot we're already on → toggle collapse-all
-                // on the active fragment if it implements Collapsible.
+            bottomNav.setOnItemReselectedListener { item ->
+                // Two situations:
+                //   1. We're VIEWING the same section as the tapped slot →
+                //      it's a true re-tap; ask Collapsible to toggle.
+                //   2. openSectionPage navigated us to a section that
+                //      ISN'T in the bottom nav (tabs, config, …), which
+                //      left BNV's selected id pointing at the OLD slot.
+                //      Tapping that slot again means "take me there for
+                //      real" — invoke the regular select path so Home
+                //      arrow actually takes us home.
+                val tappedSection = sectionIdForNavId(item.itemId)
+                if (tappedSection != null && tappedSection != currentSection) {
+                    if (tappedSection == "home") goHome()
+                    else goSection(tappedSection, Sections.byId(tappedSection)?.label ?: tappedSection)
+                    return@setOnItemReselectedListener
+                }
                 val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
                 (cur as? Collapsible)?.toggleAllCollapsed()
             }
