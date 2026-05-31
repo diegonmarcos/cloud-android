@@ -22,6 +22,13 @@ def buildDate = new java.text.SimpleDateFormat('yyyy-MM-dd').with {
     setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
     format(new java.util.Date())
 }
+// Full build timestamp — date + time with seconds, UTC. Rendered on the
+// SECOND line of the drawer header (separate from versionName which is
+// already long enough on one line).
+def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'").with {
+    setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
+    format(new java.util.Date())
+}
 
 // Bake build.json::ui.sections into BuildConfig as base64-JSON so Kotlin
 // reads a single source of truth at runtime — no parallel hardcoded list.
@@ -74,8 +81,9 @@ android {
         minSdk 26
         targetSdk 34
         versionCode codeFinal
-        versionName "${buildJson.android.version_name} (sha-${shortSha} · ${buildDate})"
+        versionName "${buildJson.android.version_name} (sha-${shortSha})"
         buildConfigField "String", "GIT_SHORT_SHA",         "\"${shortSha}\""
+        buildConfigField "String", "BUILD_TIMESTAMP",       "\"${buildTimestamp}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         buildConfigField "String", "UI_DEFAULT_MODE",       "\"${defaultMode}\""

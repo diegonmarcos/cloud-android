@@ -1,24 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Drawer header — brand-tinted strip with the app name + build identifier.
-     Taller (88dp) so the brand reads at a glance, with the build line
-     muted underneath for diagnostic visibility (set dynamically from
-     BuildConfig in HomeDrawerFragment). -->
+     Build identifier is split across TWO lines: ABI/sha/vc on the first,
+     UTC build timestamp on the second. Clickable: tap triggers
+     check-for-update; long-press copies the full build string to the
+     clipboard. Wiring in HomeDrawerFragment.onViewCreated. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_header_root"
     android:layout_width="match_parent"
-    android:layout_height="88dp"
+    android:layout_height="wrap_content"
     android:background="?attr/colorPrimaryContainer"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:gravity="center_vertical"
+    android:minHeight="96dp"
     android:orientation="horizontal"
     android:paddingHorizontal="16dp"
-    android:paddingVertical="8dp">
+    android:paddingVertical="10dp">
 
     <ImageView
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_marginEnd="14dp"
         android:src="@drawable/ic_home"
-        app:tint="?attr/colorOnPrimaryContainer"
-        xmlns:app="http://schemas.android.com/apk/res-auto" />
+        app:tint="?attr/colorOnPrimaryContainer" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -43,6 +49,18 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:alpha="0.7"
+            android:fontFamily="monospace"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+
+        <TextView
+            android:id="@+id/nav_header_timestamp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:alpha="0.55"
             android:fontFamily="monospace"
             android:textColor="?attr/colorOnPrimaryContainer"
             android:textAppearance="?attr/textAppearanceLabelSmall" />

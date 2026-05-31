@@ -44,9 +44,26 @@ class HomeDrawerFragment : Fragment() {
         val ctx = requireContext()
         val nav = view.findViewById<NavigationView>(R.id.navigation_view)
 
-        nav.getHeaderView(0)
-            ?.findViewById<TextView>(R.id.nav_header_build)?.text =
-            "${BuildConfig.VERSION_NAME}  vc:${BuildConfig.VERSION_CODE}"
+        val header = nav.getHeaderView(0)
+        val buildLine = "${BuildConfig.VERSION_NAME}  vc:${BuildConfig.VERSION_CODE}"
+        val tsLine = BuildConfig.BUILD_TIMESTAMP
+        header?.findViewById<TextView>(R.id.nav_header_build)?.text = buildLine
+        header?.findViewById<TextView>(R.id.nav_header_timestamp)?.text = tsLine
+
+        // Tap on the header strip → trigger the in-app updater check;
+        // long-press → copy the full build descriptor to the clipboard.
+        header?.findViewById<android.view.View>(R.id.nav_header_root)?.apply {
+            setOnClickListener {
+                (activity as? NavigationListener)?.onDrawerActionSelected("check_updates")
+            }
+            setOnLongClickListener {
+                val clip = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                clip?.setPrimaryClip(android.content.ClipData.newPlainText(
+                    "Cloud SuperApp build", "$buildLine\n$tsLine"))
+                android.widget.Toast.makeText(ctx, "Build info copied", android.widget.Toast.LENGTH_SHORT).show()
+                true
+            }
+        }
 
         val menu = nav.menu
         menu.clear()
