@@ -2,27 +2,31 @@ package com.diegonmarcos.superapp
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 
 /**
- * Home — centered 3D rotating cube. Pure visual surface; the
- * activity owns the pull-up gesture that opens the app drawer
- * (see [MainActivity.installNavSwipeGesture]).
+ * Home — solid-face 3D rotating cube, native counterpart to the linktree
+ * `c-cube` CSS scene in front/e-Root/src. Six FrameLayout faces are
+ * translated to ±cubeHalf along their respective axis, parented to a
+ * single perspective FrameLayout whose rotationX/Y is animated.
  *
- * The cube is a custom Canvas view ([RotatingCubeView]) — 8
- * vertices projected through a rotation matrix on each frame,
- * drawn as 12 line edges with the brand violet accent.
+ * No shader backdrop on this surface — the gradient backdrop (window
+ * level) shows through, the cube floats over it. The matrix-rain GL
+ * scene is preserved in [ShaderBackgroundView] but no longer wired
+ * into this fragment (it competed visually with the cube and looked
+ * like noise per user feedback).
+ *
+ * Drag-to-rotate is intentionally NOT ported from the linktree
+ * CubeView.vue — the activity-level swipe handlers (open drawer +
+ * cycle bottom nav) own all touches here.
  */
 class Home3DFragment : Fragment() {
 
@@ -34,126 +38,72 @@ class Home3DFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
-        // Back layer: matrix-rain shader (adapted from front/e-Root).
-        val shader = ShaderBackgroundView(ctx).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
-        }
-        root.addView(shader)
+        val size = dp(220)
+        val half = size / 2
 
-        // Top layer: wireframe cube. Transparent surroundings let the
-        // shader show through.
-        val column = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
+        // Scene host — centred, perspective applied via cameraDistance.
+        val scene = FrameLayout(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(size, size, android.view.Gravity.CENTER)
+            cameraDistance = (resources.displayMetrics.density * 8000f)
         }
-        val cube = RotatingCubeView(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(220), dp(220))
+        // 6 faces — each a coloured-gradient FrameLayout that's then
+        // translated into position via View.translationZ and pre-rotated
+        // so its normal points outward.
+        val faces = listOf(
+            face(ctx, size, 0xFF2D1B69.toInt(), 0xFF4C1D95.toInt()),  // front
+            face(ctx, size, 0xFF1A0033.toInt(), 0xFF312E81.toInt()),  // back
+            face(ctx, size, 0xFF4C1D95.toInt(), 0xFF7C3AED.toInt()),  // right
+            face(ctx, size, 0xFF312E81.toInt(), 0xFF6B21A8.toInt()),  // left
+            face(ctx, size, 0xFF7C3AED.toInt(), 0xFFB794F4.toInt()),  // top
+            face(ctx, size, 0xFF1E1B4B.toInt(), 0xFF4338CA.toInt()),  // bottom
+        )
+        // Front + back: translate ±z
+        faces[0].translationZ = half.toFloat()
+        faces[1].translationZ = -half.toFloat(); faces[1].rotationY = 180f
+        // Right + left: rotate Y ±90 then translate
+        faces[2].rotationY = 90f;  faces[2].translationX = half.toFloat()
+        faces[3].rotationY = -90f; faces[3].translationX = -half.toFloat()
+        // Top + bottom: rotate X ±90 then translate
+        faces[4].rotationX = -90f; faces[4].translationY = -half.toFloat()
+        faces[5].rotationX = 90f;  faces[5].translationY = half.toFloat()
+        for (f in faces) scene.addView(f)
+        root.addView(scene)
+
+        // Continuous slow rotation around both axes — isometric-ish entry.
+        ValueAnimator.ofFloat(0f, 360f).apply {
+            duration = 18_000
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener { va ->
+                val deg = va.animatedValue as Float
+                scene.rotationY = deg
+                scene.rotationX = deg * 0.55f
+            }
+            start()
         }
-        column.addView(cube)
-        root.addView(column)
         return root
+    }
+
+    /** A single cube face — same-size FrameLayout with a linear gradient
+     *  drawable and a 1dp violet stroke so edges read. */
+    private fun face(ctx: Context, size: Int, startColor: Int, endColor: Int): FrameLayout {
+        return FrameLayout(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(size, size, android.view.Gravity.CENTER)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(startColor, endColor),
+            ).apply {
+                cornerRadius = ctx.resources.displayMetrics.density * 8f
+                setStroke(
+                    (ctx.resources.displayMetrics.density * 1f).toInt(),
+                    Color.argb(0x66, 0xB7, 0x94, 0xF4),
+                )
+            }
+        }
     }
 
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()
 
     companion object { fun newInstance() = Home3DFragment() }
-}
-
-/** 3D wireframe cube spinning around the Y + X axes. Pure Canvas — no
- *  Lottie / GL dependency. Vertices live in unit-cube space, get
- *  rotated each frame, then projected to 2D with a simple perspective
- *  divide. */
-class RotatingCubeView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-) : View(context, attrs) {
-
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 4f
-        strokeCap = Paint.Cap.ROUND
-        color = 0xFFB794F4.toInt()  // brand violet
-    }
-    private val accent = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 5f
-        strokeCap = Paint.Cap.ROUND
-        color = 0xFF7C3AED.toInt()  // deeper violet for highlight edges
-    }
-
-    private var rotY = 0f
-    private var rotX = 0f
-
-    private val vertices = arrayOf(
-        floatArrayOf(-1f, -1f, -1f),
-        floatArrayOf( 1f, -1f, -1f),
-        floatArrayOf( 1f,  1f, -1f),
-        floatArrayOf(-1f,  1f, -1f),
-        floatArrayOf(-1f, -1f,  1f),
-        floatArrayOf( 1f, -1f,  1f),
-        floatArrayOf( 1f,  1f,  1f),
-        floatArrayOf(-1f,  1f,  1f),
-    )
-    /** Pairs of vertex indices that share an edge. */
-    private val edges = arrayOf(
-        intArrayOf(0,1), intArrayOf(1,2), intArrayOf(2,3), intArrayOf(3,0),
-        intArrayOf(4,5), intArrayOf(5,6), intArrayOf(6,7), intArrayOf(7,4),
-        intArrayOf(0,4), intArrayOf(1,5), intArrayOf(2,6), intArrayOf(3,7),
-    )
-
-    init {
-        ValueAnimator.ofFloat(0f, (Math.PI * 2f).toFloat()).apply {
-            duration = 6000
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            addUpdateListener { va ->
-                rotY = va.animatedValue as Float
-                rotX = (va.animatedValue as Float) * 0.4f
-                invalidate()
-            }
-            start()
-        }
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val cx = width / 2f
-        val cy = height / 2f
-        val scale = (Math.min(width, height) / 3.5f)
-        val perspective = 4f  // distance from camera in cube units
-
-        val cy_ = Math.cos(rotY.toDouble()).toFloat()
-        val sy_ = Math.sin(rotY.toDouble()).toFloat()
-        val cx_ = Math.cos(rotX.toDouble()).toFloat()
-        val sx_ = Math.sin(rotX.toDouble()).toFloat()
-
-        val projected = vertices.map { v ->
-            val (vx, vy, vz) = Triple(v[0], v[1], v[2])
-            // Y-axis rotation
-            val x1 = vx * cy_ + vz * sy_
-            val z1 = -vx * sy_ + vz * cy_
-            // X-axis rotation
-            val y2 = vy * cx_ - z1 * sx_
-            val z2 = vy * sx_ + z1 * cx_
-            // Perspective
-            val k  = perspective / (perspective + z2)
-            floatArrayOf(cx + x1 * scale * k, cy + y2 * scale * k, z2)
-        }
-
-        for ((i, e) in edges.withIndex()) {
-            val a = projected[e[0]]
-            val b = projected[e[1]]
-            val avgZ = (a[2] + b[2]) / 2f
-            val p = if (avgZ < 0) accent else paint
-            canvas.drawLine(a[0], a[1], b[0], b[1], p)
-        }
-    }
 }
