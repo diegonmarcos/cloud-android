@@ -550,11 +550,18 @@ class MainActivity : AppCompatActivity(),
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         menu.findItem(R.id.action_back)?.isVisible =
             supportFragmentManager.backStackEntryCount > 0 || currentSection != "home"
-        // Mode toggle title reflects the CURRENT mode so the user always
-        // sees what they're in (tapping it flips to the other one).
-        menu.findItem(R.id.action_mode_toggle)?.title =
-            if (currentMode == "admin") getString(R.string.mode_admin)
-            else                        getString(R.string.mode_apps)
+        // Mode toggle: icon-only — gear for Admin, grid (solutions) for Apps.
+        // Title becomes the long-press tooltip so the user can still
+        // discover what the icon means.
+        menu.findItem(R.id.action_mode_toggle)?.let { item ->
+            if (currentMode == "admin") {
+                item.setIcon(R.drawable.ic_settings)
+                item.title = getString(R.string.mode_admin)
+            } else {
+                item.setIcon(R.drawable.ic_solutions)
+                item.title = getString(R.string.mode_apps)
+            }
+        }
         return super.onPrepareOptionsMenu(menu)
     }
 

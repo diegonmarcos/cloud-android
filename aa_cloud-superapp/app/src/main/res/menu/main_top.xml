@@ -5,8 +5,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- Mode toggle: icon-only (title is the long-press tooltip). Icon
+         flips between ic_solutions (Apps) ↔ ic_settings (Admin) in
+         MainActivity.onPrepareOptionsMenu. -->
     <item android:id="@+id/action_mode_toggle"
           android:title="@string/mode_apps"
+          android:icon="@drawable/ic_solutions"
           app:showAsAction="always" />
 
     <item android:id="@+id/action_back"
