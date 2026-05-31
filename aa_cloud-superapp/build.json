@@ -308,7 +308,7 @@
       {
         "id": "suite",
         "label": "Suite",
-        "icon": "ic_solutions",
+        "icon": "ic_suite",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,

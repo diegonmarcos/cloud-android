@@ -8,6 +8,6 @@
     <item android:id="@+id/nav_communication" android:icon="@drawable/ic_chat"        android:title="@string/section_communication" />
     <item android:id="@+id/nav_infos"         android:icon="@drawable/ic_p_logs"      android:title="@string/section_infos" />
     <item android:id="@+id/nav_home"          android:icon="@drawable/ic_home"        android:title="@string/section_home" />
-    <item android:id="@+id/nav_suite"         android:icon="@drawable/ic_solutions"   android:title="@string/section_suite" />
+    <item android:id="@+id/nav_suite"         android:icon="@drawable/ic_suite"       android:title="@string/section_suite" />
     <item android:id="@+id/nav_tools"         android:icon="@drawable/ic_p_sol_tools" android:title="@string/section_tools" />
 </menu>

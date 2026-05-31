@@ -606,15 +606,16 @@ class MainActivity : AppCompatActivity(),
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         menu.findItem(R.id.action_back)?.isVisible =
             supportFragmentManager.backStackEntryCount > 0 || currentSection != "home"
-        // Mode toggle: icon-only — gear for Admin, grid (solutions) for Apps.
-        // Title becomes the long-press tooltip so the user can still
-        // discover what the icon means.
+        // Mode toggle: icon-only — gear (ic_settings) for Admin, 4-square
+        // app drawer (ic_mode_apps) for Apps. Distinct from Suite's
+        // briefcase (ic_suite). Title becomes the long-press tooltip
+        // so the user can still discover what the icon means.
         menu.findItem(R.id.action_mode_toggle)?.let { item ->
             if (currentMode == "admin") {
                 item.setIcon(R.drawable.ic_settings)
                 item.title = getString(R.string.mode_admin)
             } else {
-                item.setIcon(R.drawable.ic_solutions)
+                item.setIcon(R.drawable.ic_mode_apps)
                 item.title = getString(R.string.mode_apps)
             }
         }
