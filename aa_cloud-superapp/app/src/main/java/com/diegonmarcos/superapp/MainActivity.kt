@@ -285,13 +285,19 @@ class MainActivity : AppCompatActivity(),
         bottomNav.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    val homeView = findHomeNavView() ?: return@setOnTouchListener false
+                    val homeView = findHomeNavView()
+                    if (homeView == null) {
+                        Trace.i(TAG, "fan DOWN: no homeView")
+                        return@setOnTouchListener false
+                    }
                     val inHome = ev.x in homeView.x..(homeView.x + homeView.width)
+                    Trace.i(TAG, "fan DOWN x=${ev.x} home=${homeView.x}..${homeView.x + homeView.width} inHome=$inHome")
                     if (!inHome) return@setOnTouchListener false
                     downX = ev.x; downY = ev.y
                     pending?.let { handler.removeCallbacks(it) }
                     fanCtrl = null
                     val newPending = Runnable {
+                        Trace.i(TAG, "fan FIRE — long-press timer reached")
                         homeView.performHapticFeedback(
                             android.view.HapticFeedbackConstants.LONG_PRESS)
                         fanCtrl = HomeFanMenu.show(homeView) { target -> onTileClicked(target) }
@@ -303,10 +309,12 @@ class MainActivity : AppCompatActivity(),
                 MotionEvent.ACTION_MOVE -> {
                     if (fanCtrl != null) {
                         fanCtrl?.updateFinger(ev.rawX, ev.rawY)
-                        true     // consume so BNV doesn't change selection
+                        true
                     } else {
-                        // Cancel long-press if finger drifts before timer fires.
-                        if (Math.abs(ev.x - downX) > 60 || Math.abs(ev.y - downY) > 60) {
+                        // Tolerance bumped 60 → 140px; tap-and-hold has more
+                        // jitter than expected and was cancelling the timer.
+                        if (Math.abs(ev.x - downX) > 140 || Math.abs(ev.y - downY) > 140) {
+                            Trace.i(TAG, "fan MOVE — drift cancel dx=${ev.x - downX} dy=${ev.y - downY}")
                             pending?.let { handler.removeCallbacks(it) }
                             pending = null
                         }
@@ -314,16 +322,16 @@ class MainActivity : AppCompatActivity(),
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    Trace.i(TAG, "fan UP/CANCEL fanCtrl=${fanCtrl != null}")
                     pending?.let { handler.removeCallbacks(it) }
                     pending = null
                     val c = fanCtrl
                     fanCtrl = null
                     if (c != null) {
-                        if (ev.actionMasked == MotionEvent.ACTION_UP) c.commit()
-                        else c.dismiss()
-                        true     // we owned this gesture
+                        if (ev.actionMasked == MotionEvent.ACTION_UP) c.commit() else c.dismiss()
+                        true
                     } else {
-                        false    // normal tap path
+                        false
                     }
                 }
                 else -> false
