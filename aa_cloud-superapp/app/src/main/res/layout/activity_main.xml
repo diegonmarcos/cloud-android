@@ -35,15 +35,16 @@
             android:paddingBottom="92dp"
             android:clipToPadding="false" />
 
-        <!-- Top island toolbar — direct child of the FrameLayout shell,
-             no AppBarLayout wrapper (which is designed for
-             CoordinatorLayout and was claiming full-screen height
-             when nested elsewhere, leaving the shimmer-border drawn
-             as a rectangle around the entire screen). The AppBar
-             provided nothing we use besides being a host for the
-             toolbar — ActionBarDrawerToggle works directly with the
-             toolbar reference. -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- Top island — FrameLayout with the bg_liquid_glass rounded
+             drawable as background. MaterialCardView was producing
+             measure-cycle bugs with match_parent children (View +
+             ShimmerBorderView) inside a wrap_content card; the card
+             would inflate to the full screen and the shimmer would
+             draw around the entire viewport. FrameLayout with a
+             rounded drawable bg avoids all that — wrap_content
+             collapses to its single intrinsic-sized child
+             (MaterialToolbar at ?attr/actionBarSize). -->
+        <FrameLayout
             android:id="@+id/toolbar_island"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -51,15 +52,7 @@
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_marginTop="6dp"
-            app:cardCornerRadius="22dp"
-            app:cardElevation="2dp"
-            app:cardBackgroundColor="@android:color/transparent"
-            app:strokeWidth="0dp">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_liquid_glass" />
+            android:background="@drawable/bg_liquid_glass">
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
@@ -70,15 +63,10 @@
                 app:titleTextAppearance="?attr/textAppearanceTitleLarge"
                 app:title="@string/app_name" />
 
-            <com.diegonmarcos.superapp.ShimmerBorderView
-                android:id="@+id/toolbar_shimmer"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+        </FrameLayout>
 
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Bottom island. -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- Bottom island — same pattern. -->
+        <FrameLayout
             android:id="@+id/bottom_nav_island"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -86,15 +74,7 @@
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_marginBottom="12dp"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="3dp"
-            app:cardBackgroundColor="@android:color/transparent"
-            app:strokeWidth="0dp">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_liquid_glass" />
+            android:background="@drawable/bg_liquid_glass">
 
             <com.google.android.material.bottomnavigation.BottomNavigationView
                 android:id="@+id/bottom_nav"
@@ -104,7 +84,7 @@
                 app:labelVisibilityMode="labeled"
                 app:menu="@menu/bottom_nav" />
 
-        </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
     </FrameLayout>
 
     <include layout="@layout/view_drawer_panel" />
