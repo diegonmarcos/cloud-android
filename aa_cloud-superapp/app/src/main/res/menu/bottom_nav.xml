@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bottom nav — five high-level buttons. Center slot is the master Home
-     index. Sections with bottom_nav=false in build.json::ui.sections live
-     ONLY in the drawer (chat, feed/RSS, wg, solutions, c3).
-     BottomNavigationView hard-caps at 5 items (Material design rule). -->
+<!-- Bottom nav — five aggregator sections. Each is data-driven via
+     build.json::ui.sections[id=…] with is_aggregator=true and
+     tiles_shared / tiles_apps / tiles_admin lists. Content sections
+     (mail, cal, vault, drive, …) are now bottom_nav=false and only
+     reachable via tile clicks (target: section:X / page:X/Y). -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/nav_mail"  android:icon="@drawable/ic_mail"     android:title="@string/section_mail"  />
-    <item android:id="@+id/nav_cal"   android:icon="@drawable/ic_calendar" android:title="@string/section_cal"   />
-    <item android:id="@+id/nav_home"  android:icon="@drawable/ic_home"     android:title="@string/section_home"  />
-    <item android:id="@+id/nav_drive" android:icon="@drawable/ic_drive"    android:title="@string/section_drive" />
-    <item android:id="@+id/nav_vault" android:icon="@drawable/ic_vault"    android:title="@string/section_vault" />
+    <item android:id="@+id/nav_communication" android:icon="@drawable/ic_chat"        android:title="@string/section_communication" />
+    <item android:id="@+id/nav_infos"         android:icon="@drawable/ic_p_logs"      android:title="@string/section_infos" />
+    <item android:id="@+id/nav_home"          android:icon="@drawable/ic_home"        android:title="@string/section_home" />
+    <item android:id="@+id/nav_suite"         android:icon="@drawable/ic_solutions"   android:title="@string/section_suite" />
+    <item android:id="@+id/nav_tools"         android:icon="@drawable/ic_p_sol_tools" android:title="@string/section_tools" />
 </menu>

@@ -8,6 +8,13 @@
 
     <!-- Section labels (bottom nav + drawer top-level) -->
     <string name="section_home">Home</string>
+    <string name="section_communication">Comms</string>
+    <string name="section_infos">Infos</string>
+    <string name="section_suite">Suite</string>
+    <string name="section_tools">Tools</string>
+    <string name="mode_apps">Apps</string>
+    <string name="mode_admin">Admin</string>
+    <string name="mode_toggled">Mode: %1$s</string>
     <string name="section_mail">Mail</string>
     <string name="section_feed">RSS</string>
     <string name="section_chat">Chat</string>

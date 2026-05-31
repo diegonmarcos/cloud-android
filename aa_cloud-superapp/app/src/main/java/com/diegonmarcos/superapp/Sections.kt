@@ -23,6 +23,22 @@ object Sections {
         val isMasterIndex: Boolean,
         val pages: List<Page>,
         val defaultChildren: List<String>,
+        /** Aggregator sections live ONLY in the bottom nav (Communication,
+         *  Infos, Suite, Tools today). Their `tiles*` lists are deep-link
+         *  pointers into real content sections, not pages of their own. */
+        val isAggregator: Boolean = false,
+        val tilesShared: List<AggTile> = emptyList(),
+        val tilesApps:   List<AggTile> = emptyList(),
+        val tilesAdmin:  List<AggTile> = emptyList(),
+    )
+
+    /** One tile in an aggregator section. `target` follows the existing
+     *  onTileClicked grammar — section:X | page:X/Y | action:X. */
+    data class AggTile(
+        val id: String,
+        val label: String,
+        val iconName: String,
+        val target: String,
     )
 
     data class Page(
@@ -172,6 +188,23 @@ object Sections {
             val rawModule = o.optString("module", "")
             val module = rawModule.takeIf { it.isNotEmpty() && it != "null" }
 
+            fun parseTiles(arrName: String): List<AggTile> {
+                val ta = o.optJSONArray(arrName) ?: return emptyList()
+                val out = mutableListOf<AggTile>()
+                for (j in 0 until ta.length()) {
+                    val t = ta.getJSONObject(j)
+                    out.add(
+                        AggTile(
+                            id       = t.getString("id"),
+                            label    = t.getString("label"),
+                            iconName = t.optString("icon", "ic_settings"),
+                            target   = t.optString("target", ""),
+                        )
+                    )
+                }
+                return out
+            }
+
             parsed.add(
                 Section(
                     id              = o.getString("id"),
@@ -182,6 +215,10 @@ object Sections {
                     isMasterIndex   = o.optBoolean("is_master_index", false),
                     pages           = pages,
                     defaultChildren = kids,
+                    isAggregator    = o.optBoolean("is_aggregator", false),
+                    tilesShared     = parseTiles("tiles_shared"),
+                    tilesApps       = parseTiles("tiles_apps"),
+                    tilesAdmin      = parseTiles("tiles_admin"),
                 )
             )
         }
@@ -192,6 +229,17 @@ object Sections {
     fun byId(id: String): Section? = all().firstOrNull { it.id == id }
 
     fun defaultSectionId(): String = BuildConfig.UI_DEFAULT_SECTION
+
+    /** Apps/Admin global toggle default — overridden by ModePrefs at runtime. */
+    fun defaultMode(): String = BuildConfig.UI_DEFAULT_MODE
+
+    /** Aggregator's tiles for the given mode. `tiles_shared` always wins
+     *  if present; otherwise apps/admin-specific list. */
+    fun aggregatorTilesFor(sec: Section, mode: String): List<AggTile> = when {
+        sec.tilesShared.isNotEmpty() -> sec.tilesShared
+        mode == "admin"              -> sec.tilesAdmin
+        else                         -> sec.tilesApps
+    }
 
     fun homeActions(): List<Action> {
         cachedActions?.let { return it }

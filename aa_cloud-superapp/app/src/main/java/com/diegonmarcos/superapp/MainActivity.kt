@@ -65,6 +65,11 @@ class MainActivity : AppCompatActivity(),
      *  content doesn't slide under the nav bar. */
     private var bottomSystemInset: Int = 0
 
+    /** Global UI mode (apps | admin). Hot-swaps which aggregator
+     *  tile-list renders in Communication/Infos/Suite/Tools. */
+    private lateinit var modePrefs: ModePrefs
+    private val currentMode: String get() = modePrefs.mode
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.i(TAG, "onCreate enter")
         super.onCreate(savedInstanceState)
@@ -76,6 +81,7 @@ class MainActivity : AppCompatActivity(),
             WindowCompat.setDecorFitsSystemWindows(window, false)
 
             setContentView(R.layout.activity_main)
+            modePrefs = ModePrefs(this)
             currentLabel = getString(R.string.section_home)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
@@ -150,21 +156,21 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun sectionIdForNavId(navId: Int): String? = when (navId) {
-        R.id.nav_mail  -> "mail"
-        R.id.nav_cal   -> "cal"
-        R.id.nav_home  -> "home"
-        R.id.nav_drive -> "drive"
-        R.id.nav_vault -> "vault"
+        R.id.nav_communication -> "communication"
+        R.id.nav_infos         -> "infos"
+        R.id.nav_home          -> "home"
+        R.id.nav_suite         -> "suite"
+        R.id.nav_tools         -> "tools"
         else -> null
     }
 
     private fun idForSectionId(id: String): Int? = when (id) {
-        "mail"  -> R.id.nav_mail
-        "cal"   -> R.id.nav_cal
-        "home"  -> R.id.nav_home
-        "drive" -> R.id.nav_drive
-        "vault" -> R.id.nav_vault
-        else    -> null
+        "communication" -> R.id.nav_communication
+        "infos"         -> R.id.nav_infos
+        "home"          -> R.id.nav_home
+        "suite"         -> R.id.nav_suite
+        "tools"         -> R.id.nav_tools
+        else            -> null
     }
 
     // ── drawer tab navigation ─────────────────────────────────────────────
@@ -228,6 +234,20 @@ class MainActivity : AppCompatActivity(),
         val section = Sections.byId(id)
         val content: Fragment = when {
             section == null -> SectionFragment.forSection(id, label)
+            // Aggregator: render the deep-link tiles for the current mode.
+            section.isAggregator -> {
+                val aggTiles = Sections.aggregatorTilesFor(section, currentMode).map { t ->
+                    TileGridFragment.Tile(
+                        // The tile id is the TARGET so onTileClicked's existing
+                        // section:/page:/action: grammar handles it directly.
+                        id      = t.target,
+                        label   = t.label,
+                        iconRes = Sections.iconResFor(this, t.iconName),
+                    )
+                }
+                val titleSuffix = if (currentMode == "admin") " · Admin" else " · Apps"
+                TileGridFragment.newInstance(label + titleSuffix, aggTiles)
+            }
             section.pages.isNotEmpty() -> TileGridFragment.newInstance(
                 title = label,
                 tiles = section.pages.map { p ->
@@ -505,16 +525,32 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        // Back is visible whenever there's somewhere "up" to go: either a
-        // real back stack entry, OR the user is sitting on a section index
-        // (Mail / RSS / Calendar / Vault / WG / Solutions / C3 …) which
-        // logically goes back to the Home master grid.
         menu.findItem(R.id.action_back)?.isVisible =
             supportFragmentManager.backStackEntryCount > 0 || currentSection != "home"
+        // Mode toggle title reflects the CURRENT mode so the user always
+        // sees what they're in (tapping it flips to the other one).
+        menu.findItem(R.id.action_mode_toggle)?.title =
+            if (currentMode == "admin") getString(R.string.mode_admin)
+            else                        getString(R.string.mode_apps)
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_mode_toggle) {
+            val next = modePrefs.toggle()
+            invalidateOptionsMenu()
+            // Rebuild current view so aggregator tiles refresh to the new mode.
+            if (currentSection.isNotEmpty()) {
+                val sec = Sections.byId(currentSection)
+                if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
+            }
+            findViewById<View>(R.id.fragment_container).snack(
+                getString(R.string.mode_toggled,
+                    if (next == "admin") getString(R.string.mode_admin)
+                    else                 getString(R.string.mode_apps)),
+            )
+            return true
+        }
         if (item.itemId == R.id.action_back) {
             if (supportFragmentManager.backStackEntryCount > 0) {
                 supportFragmentManager.popBackStack()

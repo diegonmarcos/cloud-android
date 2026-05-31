@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Activity-level toolbar menu. Only entry today is "Back" (right side
-     of the toolbar); MainActivity.onPrepareOptionsMenu toggles it based
-     on backStackEntryCount > 0 so it only appears when there's somewhere
-     to go up to. -->
+<!-- Activity-level toolbar menu. Right side carries the Apps/Admin global
+     mode toggle + a Back arrow that surfaces whenever there's somewhere
+     "up" to go (back-stack > 0 or currentSection != "home"). -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item android:id="@+id/action_mode_toggle"
+          android:title="@string/mode_apps"
+          app:showAsAction="always" />
 
     <item android:id="@+id/action_back"
           android:title="@string/action_back"

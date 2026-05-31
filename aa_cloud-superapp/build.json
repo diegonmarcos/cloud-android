@@ -88,8 +88,54 @@
     "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
     "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
     "_doc_home_index": "The `home` section is the master index — its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
+    "_doc_aggregator_sections": "Aggregator sections are pure NAV — their `tiles` deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each aggregator can declare tiles_shared (same in both modes), tiles_apps (front-end mode), and tiles_admin (back-end mode). The Apps/Admin global toggle (ModePrefs in MainActivity) picks which set renders. The bottom nav hosts exactly these 5 aggregators today: Communication · Infos · HOME · Suite · Tools.",
     "sections": [
-      { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": true,  "jmap_default_server": "https://jmap.diegonmarcos.com", "drawer_default_children": ["All inboxes", "+ Add account"],
+      { "id": "communication", "label": "Communication", "icon": "ic_chat",          "module": null, "bottom_nav": true, "is_aggregator": true,
+        "tiles_shared": [
+          { "id": "mail",        "label": "Mail",            "icon": "ic_mail",              "target": "section:mail" },
+          { "id": "chat-matrix", "label": "Chat-Matrix",     "icon": "ic_p_chat_matrix",     "target": "page:chat/matrix" },
+          { "id": "chat-mm",     "label": "Chat-Mattermost", "icon": "ic_p_chat_mattermost", "target": "page:chat/mattermost" }
+        ] },
+      { "id": "infos",         "label": "Infos",         "icon": "ic_p_logs",        "module": null, "bottom_nav": true, "is_aggregator": true,
+        "tiles_apps": [
+          { "id": "calendar",   "label": "Calendar",       "icon": "ic_calendar",         "target": "section:cal" },
+          { "id": "rss-feeds",  "label": "RSS feeds",      "icon": "ic_rss",              "target": "page:feed/all" }
+        ],
+        "tiles_admin": [
+          { "id": "cal-workflows","label": "Workflows cal","icon": "ic_calendar",         "target": "page:c3/workflows" },
+          { "id": "gha-events",   "label": "GHA events",   "icon": "ic_p_c3_workflows",   "target": "page:c3/gha" },
+          { "id": "dagu-events",  "label": "Dagu events",  "icon": "ic_p_c3_workflows",   "target": "page:c3/dagu" },
+          { "id": "rss-c3",       "label": "C3 ntfy",      "icon": "ic_rss",              "target": "page:feed/all" },
+          { "id": "c3-health",    "label": "C3 health",    "icon": "ic_p_c3_health",      "target": "page:c3/health" },
+          { "id": "wg-mesh",      "label": "WG mesh",      "icon": "ic_wg",               "target": "page:wg/status" }
+        ] },
+      { "id": "suite",         "label": "Suite",         "icon": "ic_solutions",     "module": null, "bottom_nav": true, "is_aggregator": true,
+        "tiles_shared": [
+          { "id": "drive",      "label": "Drive",          "icon": "ic_drive",            "target": "section:drive" },
+          { "id": "vault",      "label": "Vault",          "icon": "ic_vault",            "target": "section:vault" },
+          { "id": "personal",   "label": "Personal",       "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
+          { "id": "cv",         "label": "CV",             "icon": "ic_p_sol_pro",        "target": "page:solutions/professional" }
+        ] },
+      { "id": "tools",         "label": "Tools",         "icon": "ic_p_sol_tools",   "module": null, "bottom_nav": true, "is_aggregator": true,
+        "tiles_apps": [
+          { "id": "linktree",   "label": "Linktree",       "icon": "ic_solutions",        "target": "page:solutions/personal" },
+          { "id": "mymovies",   "label": "Movies",         "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
+          { "id": "mymusic",    "label": "Music",          "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
+          { "id": "mymaps",     "label": "Maps",           "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
+          { "id": "myphotos",   "label": "Photos",         "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
+          { "id": "myanalytics","label": "Analytics",      "icon": "ic_p_sol_cloud",      "target": "page:solutions/cloud" }
+        ],
+        "tiles_admin": [
+          { "id": "c3-health",  "label": "C3 health",      "icon": "ic_p_c3_health",      "target": "page:c3/health" },
+          { "id": "c3-stack",   "label": "C3 stack",       "icon": "ic_p_c3_stack",       "target": "page:c3/stack" },
+          { "id": "wg-mesh",    "label": "WG mesh",        "icon": "ic_wg",               "target": "page:wg/status" },
+          { "id": "vms",        "label": "VMs",            "icon": "ic_p_c3_vms",         "target": "page:c3/vms" },
+          { "id": "workflows",  "label": "Workflows",      "icon": "ic_p_c3_workflows",   "target": "page:c3/workflows" },
+          { "id": "logs",       "label": "Logs",           "icon": "ic_p_logs",           "target": "page:c3/logs" },
+          { "id": "reports",    "label": "Reports",        "icon": "ic_p_c3_reports",     "target": "page:c3/reports" },
+          { "id": "drive-conn", "label": "Drive · Connections","icon": "ic_p_sol_cloud",  "target": "page:drive/connections" }
+        ] },
+      { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": false,  "jmap_default_server": "https://jmap.diegonmarcos.com", "drawer_default_children": ["All inboxes", "+ Add account"],
         "_doc_pages": "Mapping to FairEmail's ~38 user-visible pages. Level-1 chips host the daily-use surfaces; Settings drills into 11 FairEmail FragmentOptions* sub-tabs; More is the overflow for rarely-used / diagnostic pages. Order: Folders first (operational entry point), then Inbox, then management (Accounts hosts the JMAP login form), then settings & overflow.",
         "pages": [
           { "id": "folders",    "label": "Folders",    "icon": "ic_p_folder",     "upstream": "FragmentFolders" },
@@ -137,7 +183,7 @@
           { "id": "settings",      "label": "Settings",      "icon": "ic_settings",        "upstream": "FeederSettings" }
         ] },
       { "id": "home",  "label": "Home",     "icon": "ic_home",     "module": null,         "supports_accounts": false, "bottom_nav": true,  "is_master_index": true, "_doc": "Master index — content is a TileGrid of every other section. Sits at the center of the bottom nav. No own drawer page (the [Home] drawer tab already covers it)." },
-      { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["All calendars", "+ Add CalDAV"],
+      { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": false,  "drawer_default_children": ["All calendars", "+ Add CalDAV"],
         "pages": [
           { "id": "day",        "label": "Day",        "icon": "ic_p_cal_day",       "upstream": "DavX5Day" },
           { "id": "week",       "label": "Week",       "icon": "ic_p_cal_week",      "upstream": "DavX5Week" },
@@ -147,7 +193,7 @@
           { "id": "add",        "label": "+ Add CalDAV", "icon": "ic_p_add",         "upstream": "DavX5AddAccount" },
           { "id": "settings",   "label": "Settings",   "icon": "ic_settings",        "upstream": "DavX5Settings" }
         ] },
-      { "id": "drive", "label": "Drive",    "icon": "ic_drive",    "module": null,         "supports_accounts": true,  "bottom_nav": true,  "drawer_default_children": ["My files", "Photos", "Connections", "Recent", "Shared", "Trash"],
+      { "id": "drive", "label": "Drive",    "icon": "ic_drive",    "module": null,         "supports_accounts": true,  "bottom_nav": false,  "drawer_default_children": ["My files", "Photos", "Connections", "Recent", "Shared", "Trash"],
         "_doc": "Unified file storage hub — fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, borg/bup backup snapshots PLUS external cloud connections (S3 / Google Drive / Workspace / rclone remotes). Replaces RSS in the bottom-nav.",
         "pages": [
           { "id": "files",       "label": "My files",     "icon": "ic_p_folder",       "upstream": "filebrowser" },
@@ -160,7 +206,7 @@
           { "id": "upload",      "label": "+ Upload",     "icon": "ic_p_add",          "upstream": "filebrowser_upload" },
           { "id": "settings",    "label": "Settings",     "icon": "ic_settings",       "upstream": "filebrowser_settings" }
         ] },
-      { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": true,  "drawer_default_children": ["Passwords", "TOTP", "Generator"],
+      { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": false,  "drawer_default_children": ["Passwords", "TOTP", "Generator"],
         "pages": [
           { "id": "passwords",  "label": "Passwords",  "icon": "ic_p_vault_pw",      "upstream": "KdxPasswords" },
           { "id": "totp",       "label": "TOTP",       "icon": "ic_p_vault_totp",    "upstream": "KdxTotp" },
@@ -206,6 +252,8 @@
         ] }
     ],
     "default_section": "home",
+    "default_mode":    "apps",
+    "_doc_modes":      "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). Extend by adding entries here — never hardcoded in Kotlin.",
     "home_actions": [
       { "id": "check_updates", "label": "Update", "icon": "ic_refresh",  "action_type": "check_updates" },
