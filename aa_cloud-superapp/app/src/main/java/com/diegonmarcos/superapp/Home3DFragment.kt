@@ -7,26 +7,22 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
 import android.util.AttributeSet
-import android.view.GestureDetector
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 /**
- * Home — centered 3D rotating cube + hint "↑ pull up for apps". Pull up
- * (vertical drag from anywhere) → opens [AppDrawerSheetFragment] with the
- * full tile grid. The two islands (toolbar + bottom nav) stay live above
- * this fragment; the gradient bleeds through the empty centre.
+ * Home — centered 3D rotating cube. Pure visual surface; the
+ * activity owns the pull-up gesture that opens the app drawer
+ * (see [MainActivity.installNavSwipeGesture]).
  *
- * The cube is a custom Canvas view ([RotatingCubeView]) — 8 vertices
- * projected through a rotation matrix on each frame, drawn as 12 line
- * edges with the brand violet accent.
+ * The cube is a custom Canvas view ([RotatingCubeView]) — 8
+ * vertices projected through a rotation matrix on each frame,
+ * drawn as 12 line edges with the brand violet accent.
  */
 class Home3DFragment : Fragment() {
 
@@ -38,7 +34,6 @@ class Home3DFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
-
         val column = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
@@ -47,52 +42,12 @@ class Home3DFragment : Fragment() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
             )
         }
-
         val cube = RotatingCubeView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(dp(220), dp(220))
         }
-        val hint = TextView(ctx).apply {
-            text = "↑  pull up for apps"
-            setTextColor(0xCCB794F4.toInt())
-            textSize = 13f
-            alpha = 0.7f
-            setPadding(0, dp(24), 0, 0)
-        }
         column.addView(cube)
-        column.addView(hint)
         root.addView(column)
-
-        // Pull-up gesture: anywhere on this fragment swiping upward by
-        // >120dp opens the AppDrawerSheet. Down-flings collapse it.
-        val gesture = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onFling(
-                e1: MotionEvent?, e2: MotionEvent,
-                vX: Float, vY: Float,
-            ): Boolean {
-                if (e1 == null) return false
-                val dy = e2.y - e1.y
-                val velocityThreshold = dp(80).toFloat()
-                if (-dy > velocityThreshold && Math.abs(vY) > 600f) {
-                    openAppDrawer()
-                    return true
-                }
-                return false
-            }
-        })
-        root.setOnTouchListener { _, ev -> gesture.onTouchEvent(ev) }
         return root
-    }
-
-    private fun openAppDrawer() {
-        val act = activity ?: return
-        act.supportFragmentManager.beginTransaction()
-            .setCustomAnimations(
-                R.anim.slide_in_up,  R.anim.fade_out,
-                R.anim.fade_in,      R.anim.slide_out_down,
-            )
-            .add(R.id.fragment_container, AppDrawerSheetFragment.newInstance())
-            .addToBackStack("app_drawer")
-            .commit()
     }
 
     private fun dp(v: Int): Int =

@@ -1,9 +1,7 @@
 package com.diegonmarcos.superapp
 
 import android.os.Bundle
-import android.view.GestureDetector
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -59,26 +57,15 @@ class AppDrawerSheetFragment : Fragment() {
         childFragmentManager.beginTransaction()
             .replace(host.id, TileGridFragment.newInstance(title, sectionTiles + actionTiles))
             .commit()
-
-        // Pull-down to dismiss (closes the sheet via back stack pop).
-        val gesture = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onFling(
-                e1: MotionEvent?, e2: MotionEvent,
-                vX: Float, vY: Float,
-            ): Boolean {
-                if (e1 == null) return false
-                val dy = e2.y - e1.y
-                if (dy > 120 && vY > 600f) {
-                    activity?.supportFragmentManager?.popBackStack("app_drawer",
-                        androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
-                    return true
-                }
-                return false
-            }
-        })
-        root.setOnTouchListener { _, ev -> gesture.onTouchEvent(ev) }
+        // Pull-down dismiss handled by the activity-level gesture detector
+        // — see MainActivity.installNavSwipeGesture.
         return root
     }
 
-    companion object { fun newInstance() = AppDrawerSheetFragment() }
+    companion object {
+        /** Tag used both for the back-stack entry name and for activity-side
+         *  presence detection. Don't rename without updating MainActivity. */
+        const val BACK_STACK_TAG = "app_drawer"
+        fun newInstance() = AppDrawerSheetFragment()
+    }
 }

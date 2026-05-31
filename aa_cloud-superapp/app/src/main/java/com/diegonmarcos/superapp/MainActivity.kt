@@ -155,9 +155,11 @@ class MainActivity : AppCompatActivity(),
 
     private fun installNavSwipeGesture() {
         val edgeIgnorePx = (24f * resources.displayMetrics.density)
-        val screenW = resources.displayMetrics.widthPixels.toFloat()
+        val minSwipePx   = (100f * resources.displayMetrics.density)
         navSwipeGesture = android.view.GestureDetector(this,
             object : android.view.GestureDetector.SimpleOnGestureListener() {
+                override fun onDown(e: android.view.MotionEvent): Boolean = true
+
                 override fun onFling(
                     e1: android.view.MotionEvent?, e2: android.view.MotionEvent,
                     vX: Float, vY: Float,
@@ -165,18 +167,59 @@ class MainActivity : AppCompatActivity(),
                     if (e1 == null) return false
                     val dx = e2.x - e1.x
                     val dy = e2.y - e1.y
-                    // Drawer owns left-edge swipes (open drawer). Bottom nav
-                    // owns its own touch area too. Only treat as nav-cycle
-                    // when the swipe started AWAY from the left edge AND
-                    // is dominantly horizontal AND has real velocity.
+                    val absDx = Math.abs(dx); val absDy = Math.abs(dy)
+
+                    // VERTICAL swipes — open / close the app drawer.
+                    if (absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
+                        return handleVerticalFling(dy)
+                    }
+
+                    // HORIZONTAL swipes — cycle the bottom nav.
+                    // Drawer owns left-edge swipes; ignore those.
                     if (e1.x < edgeIgnorePx) return false
-                    if (Math.abs(dx) < 120f) return false
-                    if (Math.abs(dx) < Math.abs(dy) * 1.4f) return false
+                    if (absDx < minSwipePx) return false
+                    if (absDx < absDy * 1.4f) return false
                     if (Math.abs(vX) < 600f) return false
                     cycleBottomNav(direction = if (dx < 0) +1 else -1)
                     return true
                 }
             })
+    }
+
+    /** Open the app drawer on swipe-up (only while on Home), close it on
+     *  swipe-down. Returns true if the gesture was consumed. */
+    private fun handleVerticalFling(dy: Float): Boolean {
+        val sheetIsUp = supportFragmentManager.findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null ||
+                        supportFragmentManager.backStackEntryCount > 0 &&
+                          (0 until supportFragmentManager.backStackEntryCount).any {
+                              supportFragmentManager.getBackStackEntryAt(it).name ==
+                                  AppDrawerSheetFragment.BACK_STACK_TAG
+                          }
+        return when {
+            dy < 0 && currentSection == "home" && !sheetIsUp -> {
+                openAppDrawerSheet(); true
+            }
+            dy > 0 && sheetIsUp -> {
+                supportFragmentManager.popBackStack(
+                    AppDrawerSheetFragment.BACK_STACK_TAG,
+                    androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
+                )
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun openAppDrawerSheet() {
+        supportFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_up,  R.anim.fade_out,
+                R.anim.fade_in,      R.anim.slide_out_down,
+            )
+            .add(R.id.fragment_container, AppDrawerSheetFragment.newInstance(),
+                 AppDrawerSheetFragment.BACK_STACK_TAG)
+            .addToBackStack(AppDrawerSheetFragment.BACK_STACK_TAG)
+            .commit()
     }
 
     /** Step `direction` positions through the bottom-nav menu, wrapping
