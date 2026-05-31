@@ -276,6 +276,11 @@
             "subtitle": "wg0 UDP direct + wg0-tcp wstunnel"
           },
           {
+            "kind": "drive_connections",
+            "title": "Drive · Connections",
+            "subtitle": "Storage backends declared in build.json"
+          },
+          {
             "kind": "rss",
             "title": "RSS · ntfy channels"
           },
@@ -492,25 +497,6 @@
             "kind": "linktree_slide",
             "title": "Cloud Backend",
             "slide_id": "cloud"
-          },
-          {
-            "kind": "c3_public",
-            "title": "C3 Health · Public",
-            "subtitle": "Live container inventory"
-          },
-          {
-            "kind": "c3_private",
-            "title": "C3 Health · Private",
-            "subtitle": "Internal services"
-          },
-          {
-            "kind": "wg_mesh",
-            "title": "WG Mesh"
-          },
-          {
-            "kind": "drive_connections",
-            "title": "Drive · Connections",
-            "subtitle": "Storage backends declared in build.json"
           }
         ]
       },
