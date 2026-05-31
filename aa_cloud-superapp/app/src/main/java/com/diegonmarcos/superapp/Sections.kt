@@ -435,26 +435,38 @@ object Sections {
      *    5. 0 if even the fallback is missing
      */
     fun iconResFor(ctx: Context, name: String): Int {
-        if (name.isBlank()) return ctx.resources.getIdentifier("ic_link_tile", "drawable", ctx.packageName)
+        // Hot path on every aggregator render — a slide with 50 links calls
+        // this 50× per panel rebuild, so cache by name. Cleared implicitly
+        // on process death; Android resource ids are stable within a process.
+        iconResCache[name]?.let { return it }
         val res = ctx.resources
         val pkg = ctx.packageName
-        // 1. direct
-        res.getIdentifier(name, "drawable", pkg).takeIf { it != 0 }?.let { return it }
-        // 2. svg → ic_<slug>
-        val slug = name.removeSuffix(".svg").replace('-', '_').lowercase()
-        val candidates = mutableListOf("ic_$slug")
-        // 3. trim trailing _<n>
-        var trimmed = slug
-        while (trimmed.matches(Regex(".*_\\d+$"))) {
-            trimmed = trimmed.replace(Regex("_\\d+$"), "")
-            candidates.add("ic_$trimmed")
+        val fallback by lazy { res.getIdentifier("ic_link_tile", "drawable", pkg) }
+
+        val resolved: Int = when {
+            name.isBlank() -> fallback
+            else -> {
+                // 1. direct
+                var hit = res.getIdentifier(name, "drawable", pkg)
+                if (hit == 0) {
+                    // 2. svg → ic_<slug>
+                    val slug = name.removeSuffix(".svg").replace('-', '_').lowercase()
+                    hit = res.getIdentifier("ic_$slug", "drawable", pkg)
+                    // 3. progressively trim trailing _<n>
+                    var trimmed = slug
+                    while (hit == 0 && trailingIndexRe.containsMatchIn(trimmed)) {
+                        trimmed = trailingIndexRe.replace(trimmed, "")
+                        hit = res.getIdentifier("ic_$trimmed", "drawable", pkg)
+                    }
+                }
+                if (hit != 0) hit else fallback
+            }
         }
-        for (c in candidates) {
-            res.getIdentifier(c, "drawable", pkg).takeIf { it != 0 }?.let { return it }
-        }
-        // 4. generic fallback
-        return res.getIdentifier("ic_link_tile", "drawable", pkg)
+        iconResCache[name] = resolved
+        return resolved
     }
+    private val iconResCache = mutableMapOf<String, Int>()
+    private val trailingIndexRe = Regex("_\\d+$")
 
     /** Per-page sample content from build.json::ui.page_samples. Keyed by
      *  "<section>/<page>". Returns empty list if no samples for that key. */
