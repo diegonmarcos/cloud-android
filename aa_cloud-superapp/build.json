@@ -383,7 +383,7 @@
             "id": "my-fin",
             "label": "My-Fin",
             "icon": "ic_fin",
-            "target": "https://diegonmarcos.github.io/my-fin"
+            "target": "https://diegonmarcos.github.io/my-fin/"
           }
         ]
       },
@@ -1143,6 +1143,12 @@
         "label": "Import",
         "icon": "ic_p_import",
         "action_type": "import_configs"
+      },
+      {
+        "id": "linktree",
+        "label": "Linktree",
+        "icon": "ic_solutions",
+        "action_type": "https://linktree.diegonmarcos.com/"
       }
     ],
     "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",

@@ -472,15 +472,18 @@ class MainActivity : AppCompatActivity(),
     }
 
     /** Action-tile dispatcher — `action_type` values come from
-     *  build.json::ui.home_actions[].action_type. */
+     *  build.json::ui.home_actions[].action_type. URL-shaped action_types
+     *  (anything with a `://` separator) hand off to Intent.ACTION_VIEW so
+     *  the system picks the installed handler — same scheme dispatch the
+     *  tile click router uses. */
     private fun dispatchHomeAction(actionType: String) {
         val anchor = findViewById<View>(R.id.fragment_container)
-        when (actionType) {
-            "check_updates" -> {
+        when {
+            actionType == "check_updates" -> {
                 Updater.checkNow(applicationContext)
                 anchor.snack(R.string.check_updates_started)
             }
-            "import_configs" -> {
+            actionType == "import_configs" -> {
                 val frag = ImportConfigsFragment.newInstance()
                 applyChrome(frag)
                 supportFragmentManager.beginTransaction()
@@ -488,6 +491,12 @@ class MainActivity : AppCompatActivity(),
                     .replace(R.id.fragment_container, frag)
                     .addToBackStack(null)
                     .commit()
+            }
+            actionType.contains("://") -> runCatching {
+                startActivity(android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(actionType),
+                ))
             }
             else -> anchor.snack("action:$actionType")
         }
