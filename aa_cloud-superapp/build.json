@@ -335,7 +335,7 @@
             "id": "sheets",
             "label": "Sheets",
             "icon": "ic_sheets",
-            "target": "intent://#Intent;package=com.google.android.apps.docs.editors.sheets;S.browser_fallback_url=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F;end"
+            "target": "app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F"
           },
           {
             "id": "notes",
@@ -347,25 +347,25 @@
             "id": "ai-chat",
             "label": "AI-Chat",
             "icon": "ic_ai_chat",
-            "target": "intent://#Intent;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fgemini.google.com%2Fapp;end"
+            "target": "app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp"
           },
           {
             "id": "wallet",
             "label": "Wallet",
             "icon": "ic_wallet",
-            "target": "intent://#Intent;package=com.google.android.apps.walletnfcrel;S.browser_fallback_url=https%3A%2F%2Fwallet.google.com;end"
+            "target": "app://com.google.android.apps.walletnfcrel?fallback=https%3A%2F%2Fwallet.google.com"
           },
           {
             "id": "music",
             "label": "Music",
             "icon": "ic_music",
-            "target": "intent://#Intent;package=com.aspiro.tidal;S.browser_fallback_url=https%3A%2F%2Ftidal.com;end"
+            "target": "app://com.aspiro.tidal?fallback=https%3A%2F%2Ftidal.com"
           },
           {
             "id": "photos",
             "label": "Photos",
             "icon": "ic_photos",
-            "target": "intent://#Intent;package=com.google.android.apps.photos;S.browser_fallback_url=https%3A%2F%2Fphotos.google.com;end"
+            "target": "app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com"
           },
           {
             "id": "my-fin",

@@ -3,7 +3,9 @@ package com.diegonmarcos.superapp
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
@@ -586,6 +588,34 @@ class MainActivity : AppCompatActivity(),
      */
     private fun launchUri(uri: String) {
         if (uri.isBlank()) return
+
+        // Custom scheme: app://<package>?fallback=<encoded-url>
+        // → open the package's main launcher activity via PackageManager.
+        //   getLaunchIntentForPackage. This actually fires the app's home
+        //   screen (not ACTION_VIEW which most apps don't filter for).
+        //   Falls back to the URL via ACTION_VIEW if the app isn't
+        //   installed.
+        if (uri.startsWith("app://")) {
+            val u = android.net.Uri.parse(uri)
+            val pkg = u.host ?: u.authority
+            val fallback = u.getQueryParameter("fallback")
+            val launch = pkg?.let { packageManager.getLaunchIntentForPackage(it) }
+            if (launch != null) {
+                launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { startActivity(launch); return }
+            }
+            if (!fallback.isNullOrBlank()) {
+                val fb = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(fallback),
+                ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                runCatching { startActivity(fb); return }
+            }
+            findViewById<View>(R.id.fragment_container).snack("App not installed: $pkg")
+            return
+        }
+
+        // http(s), obsidian://, intent://… — Intent.parseUri.
         val parsed: android.content.Intent? = runCatching {
             android.content.Intent.parseUri(uri, android.content.Intent.URI_INTENT_SCHEME)
         }.getOrNull()
@@ -594,7 +624,6 @@ class MainActivity : AppCompatActivity(),
             return
         }
         val fallback = parsed.getStringExtra("browser_fallback_url")
-        // Intent flag housekeeping for cross-app launches.
         parsed.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         val primary = runCatching { startActivity(parsed); true }.getOrDefault(false)
         if (primary) return
