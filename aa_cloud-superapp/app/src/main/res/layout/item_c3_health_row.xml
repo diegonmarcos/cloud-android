@@ -62,11 +62,12 @@
             android:id="@+id/h_private"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:singleLine="true"
             android:ellipsize="middle"
-            android:alpha="0.65"
             android:fontFamily="monospace"
-            android:textAppearance="?attr/textAppearanceLabelSmall" />
+            android:textColor="?attr/colorSecondary"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
     </LinearLayout>
 
     <TextView
