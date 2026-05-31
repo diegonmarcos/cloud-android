@@ -265,25 +265,68 @@ class MainActivity : AppCompatActivity(),
      * up the fan. The normal tap path still works because we never
      * consume the event (return false).
      */
+    /**
+     * iOS-style continuous press-drag-release on the Home slot:
+     *   • Press + hold ≥ 380ms inside the Home tab area → fan opens
+     *   • Without lifting, slide finger over Tabs (left) or Configs (right)
+     *   • Release ON a bubble → fires its action
+     *   • Release elsewhere → dismiss without commit
+     *
+     * BottomNavigationView's own click dispatcher is preserved for short
+     * taps — we only start consuming MotionEvents AFTER the long-press
+     * timer fires (return false until then).
+     */
     private fun installHomeLongPressFan() {
-        // GestureDetector handles long-press timing internally and
-        // doesn't fight BNV's own click dispatcher. We only care
-        // about onLongPress; everything else falls through.
-        val gd = android.view.GestureDetector(this,
-            object : android.view.GestureDetector.SimpleOnGestureListener() {
-                override fun onDown(e: MotionEvent): Boolean = true
-                override fun onLongPress(e: MotionEvent) {
-                    val homeView = findHomeNavView() ?: return
-                    val inHome = e.x in homeView.x..(homeView.x + homeView.width)
-                    if (!inHome) return
-                    homeView.performHapticFeedback(
-                        android.view.HapticFeedbackConstants.LONG_PRESS)
-                    HomeFanMenu.show(homeView) { target -> onTileClicked(target) }
-                }
-            })
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var pending: Runnable? = null
+        var fanCtrl: HomeFanMenu.Controller? = null
+        var downX = 0f; var downY = 0f
+
         bottomNav.setOnTouchListener { _, ev ->
-            gd.onTouchEvent(ev)
-            false   // never consume — normal tap path still fires
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    val homeView = findHomeNavView() ?: return@setOnTouchListener false
+                    val inHome = ev.x in homeView.x..(homeView.x + homeView.width)
+                    if (!inHome) return@setOnTouchListener false
+                    downX = ev.x; downY = ev.y
+                    pending?.let { handler.removeCallbacks(it) }
+                    fanCtrl = null
+                    pending = Runnable {
+                        homeView.performHapticFeedback(
+                            android.view.HapticFeedbackConstants.LONG_PRESS)
+                        fanCtrl = HomeFanMenu.show(homeView) { target -> onTileClicked(target) }
+                    }
+                    handler.postDelayed(pending, 380)
+                    false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (fanCtrl != null) {
+                        fanCtrl?.updateFinger(ev.rawX, ev.rawY)
+                        true     // consume so BNV doesn't change selection
+                    } else {
+                        // Cancel long-press if finger drifts before timer fires.
+                        if (Math.abs(ev.x - downX) > 60 || Math.abs(ev.y - downY) > 60) {
+                            pending?.let { handler.removeCallbacks(it) }
+                            pending = null
+                        }
+                        false
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    pending?.let { handler.removeCallbacks(it) }
+                    pending = null
+                    val c = fanCtrl
+                    fanCtrl = null
+                    if (c != null) {
+                        if (ev.actionMasked == MotionEvent.ACTION_UP) c.commit()
+                        else c.dismiss()
+                        true     // we owned this gesture
+                    } else {
+                        false    // normal tap path
+                    }
+                }
+                else -> false
+            }
         }
     }
 

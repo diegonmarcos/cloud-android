@@ -4,8 +4,6 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
-import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.OvershootInterpolator
@@ -15,115 +13,164 @@ import android.widget.PopupWindow
 import android.widget.TextView
 
 /**
- * Long-press of the Home bottom-nav slot opens this two-icon
- * "folder-widget"-style overlay above the nav. Each icon fans up into
- * place with a small overshoot; tapping (or releasing finger on)
- * either commits its action.
+ * iOS-style folder-action fan menu — long-press the Home bottom-nav
+ * slot, slide finger UP to one of the bubbles without releasing,
+ * lift finger ON the bubble to commit its action.
  *
- *   Configs → section:config
- *   Tabs    → section:tabs
+ *   ╭────────╮  ╭────────╮
+ *   │ Tabs   │  │ Configs│
+ *   ╰────╮ ╭─╯  ╰─╮ ╭────╯
+ *        │ │      │ │
+ *        ╰─╯      ╰─╯
  *
- * Implemented as a PopupWindow anchored to the home tab so it
- * survives configuration / decor changes and disappears on outside
- * tap automatically.
+ * Public surface = [show], which returns a [Controller] the host
+ * activity drives with the raw MotionEvent stream.
  */
 object HomeFanMenu {
 
-    fun show(host: View, onPick: (target: String) -> Unit) {
+    interface Controller {
+        /** Update which bubble is highlighted, based on finger screen position. */
+        fun updateFinger(rawX: Float, rawY: Float)
+        /** Commit the currently-highlighted bubble's action (if any) and dismiss. */
+        fun commit()
+        /** Dismiss without committing. */
+        fun dismiss()
+    }
+
+    fun show(host: View, onPick: (target: String) -> Unit): Controller {
         val ctx = host.context
+        // Per user spec: LEFT = Tabs, RIGHT = Configs.
+        val items = listOf(
+            "section:tabs"   to (R.drawable.ic_mode_apps to "Tabs"),
+            "section:config" to (R.drawable.ic_settings  to "Configs"),
+        )
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
-            isClickable = true; isFocusable = true
-            val pad = dp(ctx, 8); setPadding(pad, pad, pad, pad)
+            isClickable = false; isFocusable = false
+            val pad = dp(ctx, 12); setPadding(pad, pad, pad, pad)
         }
-        val configs = makeBubble(ctx, R.drawable.ic_settings, "Configs") {
-            onPick("section:config")
+        val bubbles = items.map { (target, art) ->
+            val bubble = makeBubble(ctx, art.first, art.second)
+            bubble.tag = target
+            container.addView(bubble)
+            bubble
         }
-        val tabs = makeBubble(ctx, R.drawable.ic_mode_apps, "Tabs") {
-            onPick("section:tabs")
-        }
-        container.addView(configs)
-        container.addView(tabs)
 
         val popup = PopupWindow(
             container,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            true,
+            false,
         ).apply {
-            isOutsideTouchable = true
-            isFocusable = true
-            elevation = dp(ctx, 8).toFloat()
+            isOutsideTouchable = false
+            isFocusable = false
+            isTouchable = false               // do NOT steal touches — main activity drives
+            elevation = dp(ctx, 10).toFloat()
             setBackgroundDrawable(null)
         }
-        val onPickDismiss: (String) -> Unit = { target ->
-            popup.dismiss()
-            onPick(target)
-        }
-        configs.setOnClickListener { onPickDismiss("section:config") }
-        tabs   .setOnClickListener { onPickDismiss("section:tabs") }
 
-        // Anchor above the bottom-nav home slot, biased to the centre.
-        val xOff = host.width / 2 - dp(ctx, 90)
-        val yOff = -dp(ctx, 140)
-        popup.showAsDropDown(host, xOff, yOff, Gravity.TOP)
-        animateIn(configs, fromX = dp(ctx, 30).toFloat(), fromY = dp(ctx, 30).toFloat())
-        animateIn(tabs,    fromX = -dp(ctx, 30).toFloat(), fromY = dp(ctx, 30).toFloat())
+        val xOff = host.width / 2 - dp(ctx, 110)
+        val yOff = -dp(ctx, 150)
+        popup.showAsDropDown(host, xOff, yOff, android.view.Gravity.TOP)
+
+        // Fan-in animation (left bubble flies from down-right, right bubble
+        // flies from down-left — they "open up").
+        animateIn(bubbles[0], fromX = dp(ctx, 60).toFloat())
+        animateIn(bubbles[1], fromX = -dp(ctx, 60).toFloat())
+
+        var highlightedIdx: Int = -1
+
+        return object : Controller {
+            override fun updateFinger(rawX: Float, rawY: Float) {
+                // Find the bubble nearest the finger (screen coords). To
+                // figure each bubble's screen rect we use getLocationOnScreen.
+                var nearest = -1; var nearestD = Float.MAX_VALUE
+                val tmp = IntArray(2)
+                for ((i, b) in bubbles.withIndex()) {
+                    b.getLocationOnScreen(tmp)
+                    val cx = tmp[0] + b.width / 2f
+                    val cy = tmp[1] + b.height / 2f
+                    val dx = rawX - cx; val dy = rawY - cy
+                    val d = dx * dx + dy * dy
+                    // Activation radius (in px²) — only highlight when finger
+                    // is reasonably close (within ~140px of centre).
+                    if (d < 140f * 140f && d < nearestD) {
+                        nearest = i; nearestD = d
+                    }
+                }
+                if (nearest != highlightedIdx) {
+                    highlightedIdx = nearest
+                    for ((i, b) in bubbles.withIndex()) {
+                        val sel = i == highlightedIdx
+                        b.animate()
+                            .scaleX(if (sel) 1.18f else 1f)
+                            .scaleY(if (sel) 1.18f else 1f)
+                            .setDuration(110).start()
+                        ((b.getChildAt(0) as? FrameLayout)?.background as? GradientDrawable)
+                            ?.setColor(if (sel) 0xFF7C3AED.toInt() else 0xFF1A0033.toInt())
+                    }
+                }
+            }
+
+            override fun commit() {
+                val idx = highlightedIdx
+                if (idx in items.indices) {
+                    val target = items[idx].first
+                    onPick(target)
+                }
+                dismiss()
+            }
+
+            override fun dismiss() {
+                runCatching { popup.dismiss() }
+            }
+        }
     }
 
-    private fun makeBubble(
-        ctx: Context, iconRes: Int, label: String, onClick: () -> Unit,
-    ): View {
-        val sz = dp(ctx, 64)
-        val frame = FrameLayout(ctx).apply {
-            layoutParams = FrameLayout.LayoutParams(sz + dp(ctx, 16), sz + dp(ctx, 28))
+    private fun makeBubble(ctx: Context, iconRes: Int, label: String): FrameLayout {
+        val sz = dp(ctx, 68)
+        val cell = FrameLayout(ctx).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(sz + dp(ctx, 14), sz + dp(ctx, 32))
         }
         val bubble = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(0xFF1A0033.toInt())
-                setStroke(2, 0x55B794F4)
+                setStroke(2, 0x99B794F4.toInt())
             }
-            layoutParams = FrameLayout.LayoutParams(sz, sz).apply { setMargins(dp(ctx, 8), 0, 0, 0) }
-            isClickable = true; isFocusable = true
+            layoutParams = FrameLayout.LayoutParams(sz, sz)
         }
         val icon = ImageView(ctx).apply {
             setImageResource(iconRes)
-            imageTintList = android.content.res.ColorStateList.valueOf(0xFFB794F4.toInt())
-            val pad = dp(ctx, 14)
-            setPadding(pad, pad, pad, pad)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+            val pad = dp(ctx, 16); setPadding(pad, pad, pad, pad)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             )
         }
         bubble.addView(icon)
-        bubble.setOnClickListener { onClick() }
-        val text = TextView(ctx).apply {
+        cell.addView(bubble)
+        cell.addView(TextView(ctx).apply {
             text = label
             setTextColor(0xFFFFFFFF.toInt())
             textSize = 11f
-            gravity = Gravity.CENTER_HORIZONTAL
-            val lp = FrameLayout.LayoutParams(
+            gravity = android.view.Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
                 topMargin = sz + dp(ctx, 4)
-                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
             }
-            layoutParams = lp
-        }
-        frame.addView(bubble)
-        frame.addView(text)
-
-        // Place each bubble side-by-side via translation done in animateIn.
-        return frame
+        })
+        return cell
     }
 
-    private fun animateIn(v: View, fromX: Float, fromY: Float) {
-        v.translationX = fromX; v.translationY = fromY; v.alpha = 0f
+    private fun animateIn(v: View, fromX: Float) {
+        v.translationX = fromX; v.translationY = 20f; v.alpha = 0f
         val ax = ObjectAnimator.ofFloat(v, "translationX", fromX, 0f)
-        val ay = ObjectAnimator.ofFloat(v, "translationY", fromY, 0f)
+        val ay = ObjectAnimator.ofFloat(v, "translationY", 20f, 0f)
         val aa = ObjectAnimator.ofFloat(v, "alpha", 0f, 1f)
         AnimatorSet().apply {
             duration = 220
