@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Black → deep-purple vertical gradient. Top of screen is pure black,
+     middle eases through a deep-purple/navy, bottom lands on a darker
+     purple. Sits behind every fragment (CoordinatorLayout background),
+     so transparent content (most pages) shows the gradient through. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#FF000000"
+        android:centerColor="#FF1A0033"
+        android:endColor="#FF2D1B69" />
+</shape>

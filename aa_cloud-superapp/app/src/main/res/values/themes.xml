@@ -18,14 +18,23 @@
         <item name="colorTertiary">@color/cloud_tertiary</item>
         <item name="colorTertiaryContainer">@color/cloud_tertiary_container</item>
 
+        <!-- Black → deep-purple gradient backdrop. Applied at window level
+             so it shows through any transparent fragment area; the
+             CoordinatorLayout also sets it explicitly to cover its
+             children that render their own backgrounds. -->
+        <item name="android:windowBackground">@drawable/bg_gradient_black_purple</item>
+        <item name="android:colorBackground">#FF000000</item>
+
         <!-- Edge-to-edge: transparent system bars, content draws beneath
              them. MainActivity applies WindowInsets to keep the toolbar +
-             bottom-nav from underlapping cutouts / nav gestures. -->
+             bottom-nav from underlapping cutouts / nav gestures. Status &
+             nav icons forced to LIGHT (white) so they read against the
+             dark gradient. -->
         <item name="android:statusBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
         <item name="android:navigationBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds" tools:targetApi="lollipop">true</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
 

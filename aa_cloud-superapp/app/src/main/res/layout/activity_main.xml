@@ -24,7 +24,8 @@
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_gradient_black_purple">
 
         <!-- Floating "Dynamic Island"-style top bar: pill-shaped card with
              horizontal + top margins so it visually detaches from the
