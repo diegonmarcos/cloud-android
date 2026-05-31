@@ -173,8 +173,15 @@ class MainActivity : AppCompatActivity(),
             // so we walk the inflated view tree after layout and null
             // every child view's tooltipText. Same approach also kills
             // any inner Toolbar tooltip pills the MenuItem path missed.
-            bottomNav.post { suppressTooltipsRecursively(bottomNav) }
-            findViewById<View>(R.id.toolbar).post {
+            // BNV / Toolbar can re-create item views on every menu rebind
+            // (label visibility change, theme reapply, mode toggle, …).
+            // Hook a global-layout listener so the tooltip suppression is
+            // re-applied after each layout pass; without this the pills
+            // came back the moment Material rebuilt the menu.
+            bottomNav.viewTreeObserver.addOnGlobalLayoutListener {
+                suppressTooltipsRecursively(bottomNav)
+            }
+            findViewById<View>(R.id.toolbar).viewTreeObserver.addOnGlobalLayoutListener {
                 suppressTooltipsRecursively(findViewById(R.id.toolbar))
             }
 
@@ -381,11 +388,16 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    /** Recursively clear tooltipText on every view under [root]. Used to
-     *  kill the white long-press tooltip pill the framework attaches to
-     *  every BNV item view and toolbar action button. */
+    /** Recursively clear tooltipText AND attach an OnLongClickListener
+     *  that consumes the long-press on every view under [root]. The
+     *  tooltipText-null approach alone isn't enough — BottomNavigation-
+     *  ItemView re-applies the tooltip from its label on layout passes.
+     *  A consumed long-click prevents the framework from ever invoking
+     *  PerformLongClick.run, which is what creates the tooltip pill. */
     private fun suppressTooltipsRecursively(root: View) {
         root.tooltipText = null
+        // Returning true consumes the long-press; system tooltip never fires.
+        root.setOnLongClickListener { true }
         if (root is ViewGroup) {
             for (i in 0 until root.childCount) {
                 suppressTooltipsRecursively(root.getChildAt(i))
