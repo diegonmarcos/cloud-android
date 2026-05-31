@@ -34,6 +34,17 @@ class Home3DFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
+        // Back layer: matrix-rain shader (adapted from front/e-Root).
+        val shader = ShaderBackgroundView(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        }
+        root.addView(shader)
+
+        // Top layer: wireframe cube. Transparent surroundings let the
+        // shader show through.
         val column = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
