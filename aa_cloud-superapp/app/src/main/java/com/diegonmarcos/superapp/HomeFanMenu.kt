@@ -44,13 +44,17 @@ object HomeFanMenu {
             // page:tabs/all → TabsHostFragment directly (skip the section
             // wrapper's one-tile grid that just relays into the same page).
             "page:tabs/all"                           to (R.drawable.ic_mode_apps to "Open Tabs"),
-            "https://linktree.diegonmarcos.com/"      to (R.drawable.ic_solutions to "Linktree"),
+            "https://linktree.diegonmarcos.com/"      to (R.drawable.ic_tree      to "Linktree"),
             "action:check_updates"                    to (R.drawable.ic_refresh   to "Update"),
         )
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             isClickable = false; isFocusable = false
-            val pad = dp(ctx, 12); setPadding(pad, pad, pad, pad)
+            val pad = dp(ctx, 14); setPadding(pad, pad, pad, pad)
+            // Don't clip children — the highlighted bubble scales up 1.25×
+            // and the icon scales up further; clipping would chop the
+            // overflow back into the bubble's bounds.
+            clipChildren = false; clipToPadding = false
         }
         val bubbles = items.map { (target, art) ->
             val bubble = makeBubble(ctx, art.first, art.second)
@@ -119,8 +123,8 @@ object HomeFanMenu {
                     for ((i, b) in bubbles.withIndex()) {
                         val sel = i == highlightedIdx
                         b.animate()
-                            .scaleX(if (sel) 1.18f else 1f)
-                            .scaleY(if (sel) 1.18f else 1f)
+                            .scaleX(if (sel) 1.35f else 1f)
+                            .scaleY(if (sel) 1.35f else 1f)
                             .setDuration(110).start()
                         ((b.getChildAt(0) as? FrameLayout)?.background as? GradientDrawable)
                             ?.setColor(if (sel) 0xFF7C3AED.toInt() else 0xFF1A0033.toInt())
@@ -144,9 +148,14 @@ object HomeFanMenu {
     }
 
     private fun makeBubble(ctx: Context, iconRes: Int, label: String): FrameLayout {
-        val sz = dp(ctx, 68)
+        // Bubble matches the rest of the app's icon size (~40dp). Selection
+        // scale (1.35×) makes it grow to ~54dp — visibly enlarged but small
+        // enough that all three fan items stay readable.
+        val sz = dp(ctx, 40)
         val cell = FrameLayout(ctx).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(sz + dp(ctx, 14), sz + dp(ctx, 32))
+            // Cell wider than bubble so the scale-up doesn't clip horizontally.
+            layoutParams = android.widget.LinearLayout.LayoutParams(sz + dp(ctx, 20), sz + dp(ctx, 26))
+            clipChildren = false; clipToPadding = false
         }
         val bubble = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
@@ -154,12 +163,13 @@ object HomeFanMenu {
                 setColor(0xFF1A0033.toInt())
                 setStroke(2, 0x99B794F4.toInt())
             }
-            layoutParams = FrameLayout.LayoutParams(sz, sz)
+            layoutParams = FrameLayout.LayoutParams(sz, sz, android.view.Gravity.CENTER_HORIZONTAL)
+            clipChildren = false; clipToPadding = false
         }
         val icon = ImageView(ctx).apply {
             setImageResource(iconRes)
             imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
-            val pad = dp(ctx, 16); setPadding(pad, pad, pad, pad)
+            val pad = dp(ctx, 8); setPadding(pad, pad, pad, pad)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
