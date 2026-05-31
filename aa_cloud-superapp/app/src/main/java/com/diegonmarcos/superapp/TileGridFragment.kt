@@ -114,14 +114,11 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
 
         tileView.findViewById<TextView>(R.id.tile_label).text = label
 
-        // Glassy icon coin (mirrors linktree's `.icon` styling — translucent
-        // 135° linear gradient + 1dp white-α-0.2 outer ring). Icon glyph
-        // is tinted near-white-violet (linktree uses `filter: invert(1)`,
-        // which on a dark backdrop is the same brightness) so it pops
-        // against the glass surface.
-        tileView.findViewById<FrameLayout>(R.id.tile_icon_bg).background =
-            androidx.core.content.ContextCompat.getDrawable(
-                requireContext(), R.drawable.bg_icon_glass)
+        // Plain icon — no glass coin behind it. Linktree pattern: the
+        // tile CARD carries the glass surface (bg_tile_glass), the
+        // icon itself is just a small white glyph (filter:invert(1)
+        // equivalent — near-white violet tint here).
+        tileView.findViewById<FrameLayout>(R.id.tile_icon_bg).background = null
 
         val icon = tileView.findViewById<ImageView>(R.id.tile_icon)
         icon.setImageResource(iconRes)

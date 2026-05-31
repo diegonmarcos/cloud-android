@@ -462,8 +462,13 @@ class MainActivity : AppCompatActivity(),
         // addToBackStack and we want a single uniform path. The OnBackStack-
         // ChangedListener installed in onCreate handles re-apply on back.
         applyChrome(content)
+        // Custom slide-fade animation gives the haptic SEGMENT_TICK
+        // pulses something visual to ride on.
         supportFragmentManager.beginTransaction()
-            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+            .setCustomAnimations(
+                R.anim.fade_in,  R.anim.fade_out,
+                R.anim.fade_in,  R.anim.fade_out,
+            )
             .replace(R.id.fragment_container, content)
             .commit()
     }

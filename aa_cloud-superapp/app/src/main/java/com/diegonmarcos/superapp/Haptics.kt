@@ -25,41 +25,59 @@ import android.view.View
  */
 object Haptics {
 
+    /** OEM haptic prefs are often turned OFF by default — performHapticFeedback
+     *  silently no-ops then. We force-fire through the direct Vibrator API
+     *  using composition primitives where available, falling back to short
+     *  one-shot effects. View-level callbacks are kept only for haptic-feedback
+     *  metadata (a11y); the actual buzz is direct. */
     fun gestureStart(view: View) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_START)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-        }
+        view.isHapticFeedbackEnabled = true
+        view.performHapticFeedback(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                HapticFeedbackConstants.GESTURE_START else HapticFeedbackConstants.VIRTUAL_KEY,
+            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+        )
+        fire(view.context, intensity = 0.5f, durationMs = 20)
     }
 
     fun gestureEnd(view: View) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        }
+        view.isHapticFeedbackEnabled = true
+        view.performHapticFeedback(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                HapticFeedbackConstants.GESTURE_END else HapticFeedbackConstants.KEYBOARD_TAP,
+            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+        )
+        fire(view.context, intensity = 0.7f, durationMs = 25)
     }
 
-    /** Subtle in-transit tick — the heartbeat under the fragment swap.
-     *  On API 33+ the system handles it via SEGMENT_TICK; earlier we
-     *  fall back to the predefined or composition primitives. */
+    /** Subtle in-transit tick. */
     fun segmentTick(view: View) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
-            return
-        }
-        val v = vibrator(view.context) ?: return
+        fire(view.context, intensity = 0.3f, durationMs = 15)
+    }
+
+    /** Direct-to-vibrator: composition primitive on API 31+, predefined
+     *  EFFECT_TICK on 29+, plain one-shot on older. */
+    private fun fire(ctx: android.content.Context, intensity: Float, durationMs: Long) {
+        val v = vibrator(ctx) ?: return
         when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> v.vibrate(
-                VibrationEffect.startComposition()
-                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.4f, 0)
-                    .compose()
-            )
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> v.vibrate(
-                VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-            )
-            else -> view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                val effect = VibrationEffect.startComposition()
+                    .addPrimitive(
+                        VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
+                        intensity.coerceIn(0f, 1f),
+                        0,
+                    ).compose()
+                v.vibrate(effect)
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            }
+            else -> {
+                @Suppress("DEPRECATION")
+                v.vibrate(durationMs)
+            }
         }
     }
 

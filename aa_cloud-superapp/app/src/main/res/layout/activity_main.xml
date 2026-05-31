@@ -63,6 +63,15 @@
                 app:titleTextAppearance="?attr/textAppearanceTitleLarge"
                 app:title="@string/app_name" />
 
+            <!-- Neon-violet shimmer comet around the toolbar perimeter.
+                 Explicit actionBarSize height (NOT match_parent) so the
+                 wrap_content FrameLayout doesn't enter a measure cycle
+                 with this child. -->
+            <com.diegonmarcos.superapp.ShimmerBorderView
+                android:id="@+id/toolbar_shimmer"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize" />
+
         </FrameLayout>
 
         <!-- Bottom island — same pattern. -->
