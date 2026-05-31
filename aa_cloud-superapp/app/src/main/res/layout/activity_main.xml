@@ -1,18 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ┌───────────────────────────────────────────────────────────────────┐
-     │                         Toolbar island (top)                       │
-     ├──────────┬────────────────────────────────────────────────────────┤
-     │ Drawer   │                                                        │
-     │ (left,   │              Section Fragment (mail/feed/…)            │
-     │  collap- │              host = R.id.fragment_container             │
-     │  sible)  │                                                        │
-     ├──────────┴────────────────────────────────────────────────────────┤
-     │                      Bottom-nav island (fixed)                     │
-     └───────────────────────────────────────────────────────────────────┘
-     ConstraintLayout instead of CoordinatorLayout — both islands are
-     FIXED floating elements (no AppBar collapse / scroll-behaviour
-     needed) and explicit constraints prevent the previous regression
-     where the bottom island was sliding to the top. -->
+<!-- Vertical LinearLayout — top-down stacking is the GUARANTEE.
+     ConstraintLayout and CoordinatorLayout both produced regressions
+     where the bottom island drifted toward the top; LinearLayout makes
+     positioning purely declarative: AppBar at top, fragment fills the
+     middle (layout_weight=1), bottom island bolted to the bottom. -->
 <androidx.drawerlayout.widget.DrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -23,14 +14,14 @@
     android:fitsSystemWindows="true"
     tools:openDrawer="start">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_gradient_black_purple">
+        android:background="@drawable/bg_gradient_black_purple"
+        android:orientation="vertical">
 
-        <!-- Top "Dynamic Island" toolbar — pinned to the top of the parent
-             (the AppBarLayout wrapper exists so ActionBarDrawerToggle still
-             finds an AppBar host for system-window insets). -->
+        <!-- Top island toolbar — AppBarLayout kept so ActionBarDrawerToggle
+             still has an AppBar host. -->
         <com.google.android.material.appbar.AppBarLayout
             android:id="@+id/app_bar"
             android:layout_width="match_parent"
@@ -38,8 +29,7 @@
             android:background="@android:color/transparent"
             android:fitsSystemWindows="true"
             app:elevation="0dp"
-            app:liftOnScroll="false"
-            app:layout_constraintTop_toTopOf="parent">
+            app:liftOnScroll="false">
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/toolbar_island"
@@ -75,22 +65,21 @@
             </com.google.android.material.card.MaterialCardView>
         </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- Section fragment swap target. Explicitly constrained between
-             the two islands so it can never overlap or collapse them. -->
+        <!-- Fragment fills the middle band. layout_weight=1 means
+             "take all remaining vertical space" — the only way the
+             bottom island could collapse upward is if THIS view's
+             measured height collapses, which can't happen with weight=1
+             and height=0dp. -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/fragment_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layout_constraintTop_toBottomOf="@id/app_bar"
-            app:layout_constraintBottom_toTopOf="@id/bottom_nav_island"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            android:layout_weight="1" />
 
-        <!-- Bottom "Dynamic Island" nav — pinned to the bottom of the
-             parent (NOT a child of the AppBar; no scroll behaviour). -->
+        <!-- Bottom island — bolted to the bottom of the LinearLayout. -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/bottom_nav_island"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
@@ -98,10 +87,7 @@
             app:cardCornerRadius="24dp"
             app:cardElevation="3dp"
             app:cardBackgroundColor="@android:color/transparent"
-            app:strokeWidth="0dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:strokeWidth="0dp">
 
             <View
                 android:layout_width="match_parent"
@@ -117,8 +103,7 @@
                 app:menu="@menu/bottom_nav" />
 
         </com.google.android.material.card.MaterialCardView>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
     <include layout="@layout/view_drawer_panel" />
 
