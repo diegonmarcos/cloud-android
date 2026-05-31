@@ -14,6 +14,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
 import com.diegonmarcos.superapp.Sections
 import java.io.File
 import java.text.DateFormat
@@ -52,14 +53,13 @@ class DevControlFragment : Fragment() {
         }
 
         section(ctx, column, "Release / GHCR") {
-            val u = com.diegonmarcos.superapp.updater.BuildConfig
-            row(ctx, it, "Registry",  u.GHCR_REGISTRY)
-            row(ctx, it, "Namespace", u.GHCR_NAMESPACE)
-            row(ctx, it, "Image",     u.GHCR_IMAGE)
-            row(ctx, it, "Tag",       u.AUTO_UPDATE_TAG)
+            row(ctx, it, "Registry",  UpdBuildConfig.GHCR_REGISTRY)
+            row(ctx, it, "Namespace", UpdBuildConfig.GHCR_NAMESPACE)
+            row(ctx, it, "Image",     UpdBuildConfig.GHCR_IMAGE)
+            row(ctx, it, "Tag",       UpdBuildConfig.AUTO_UPDATE_TAG)
             row(ctx, it, "Full URL",
-                "${u.GHCR_REGISTRY}/${u.GHCR_NAMESPACE}/${u.GHCR_IMAGE}:${u.AUTO_UPDATE_TAG}")
-            row(ctx, it, "Check interval", "${u.AUTO_UPDATE_INTERVAL_HOURS}h")
+                "${UpdBuildConfig.GHCR_REGISTRY}/${UpdBuildConfig.GHCR_NAMESPACE}/${UpdBuildConfig.GHCR_IMAGE}:${UpdBuildConfig.AUTO_UPDATE_TAG}")
+            row(ctx, it, "Check interval", "${UpdBuildConfig.AUTO_UPDATE_INTERVAL_HOURS}h")
         }
 
         section(ctx, column, "APK") {
