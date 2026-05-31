@@ -602,6 +602,20 @@ class MainActivity : AppCompatActivity(),
     private fun launchUri(uri: String) {
         if (uri.isBlank()) return
 
+        // http(s):// → open in OUR internal browser (Tabs section) so the
+        // user can switch between several open pages instead of being
+        // bounced to an external browser. Custom schemes
+        // (obsidian://, app://, intent://, …) still route to the
+        // installed handler below.
+        if (uri.startsWith("http://") || uri.startsWith("https://")) {
+            com.diegonmarcos.superapp.tabs.TabPrefs(this).run {
+                add(uri, uri)
+                setActive(uri)
+            }
+            openSectionPage("tabs", "all", null)
+            return
+        }
+
         // Custom scheme: app://<package>?fallback=<encoded-url>
         // → open the package's main launcher activity via PackageManager.
         //   getLaunchIntentForPackage. This actually fires the app's home

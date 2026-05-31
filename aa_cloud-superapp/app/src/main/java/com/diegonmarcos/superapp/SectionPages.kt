@@ -33,6 +33,8 @@ object SectionPages {
         sectionId == "drive" && pageId == "connections" -> DriveConnectionsFragment.newInstance()
         sectionId == "config" && pageId == "dev"        ->
             com.diegonmarcos.superapp.devcontrol.DevControlFragment.newInstance()
+        sectionId == "tabs"   && pageId == "all"        ->
+            com.diegonmarcos.superapp.tabs.TabsHostFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }
