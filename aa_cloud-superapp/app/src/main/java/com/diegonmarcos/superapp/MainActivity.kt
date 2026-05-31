@@ -291,12 +291,13 @@ class MainActivity : AppCompatActivity(),
                     downX = ev.x; downY = ev.y
                     pending?.let { handler.removeCallbacks(it) }
                     fanCtrl = null
-                    pending = Runnable {
+                    val newPending = Runnable {
                         homeView.performHapticFeedback(
                             android.view.HapticFeedbackConstants.LONG_PRESS)
                         fanCtrl = HomeFanMenu.show(homeView) { target -> onTileClicked(target) }
                     }
-                    handler.postDelayed(pending, 380)
+                    pending = newPending
+                    handler.postDelayed(newPending, 380)
                     false
                 }
                 MotionEvent.ACTION_MOVE -> {
