@@ -38,17 +38,23 @@
             android:fitsSystemWindows="true"
             app:liftOnScroll="false">
 
+            <!-- Glass island (linktree $glass-bg / $glass-border / radius-md).
+                 Low elevation + 1dp stroke gives the "frosted panel" feel
+                 even on devices without backdrop-blur support (pre-API 31).
+                 MainActivity adds Window.setBackgroundBlurRadius on API 31+
+                 to push it the rest of the way toward true glassmorphism. -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/toolbar_island"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginTop="8dp"
-                app:cardCornerRadius="32dp"
-                app:cardElevation="6dp"
-                app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                app:strokeWidth="0dp">
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginTop="6dp"
+                app:cardCornerRadius="22dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/glass_bg"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/glass_border">
 
                 <com.google.android.material.appbar.MaterialToolbar
                     android:id="@+id/toolbar"
@@ -82,13 +88,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="36dp"
-            app:cardElevation="10dp"
-            app:cardBackgroundColor="?attr/colorSurfaceVariant"
-            app:strokeWidth="0dp">
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="3dp"
+            app:cardBackgroundColor="@color/glass_bg"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/glass_border">
 
             <com.google.android.material.bottomnavigation.BottomNavigationView
                 android:id="@+id/bottom_nav"

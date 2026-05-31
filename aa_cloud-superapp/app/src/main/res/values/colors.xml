@@ -42,4 +42,17 @@
 
     <!-- Status / navigation bars stay transparent for the edge-to-edge
          layout enabled by WindowCompat in MainActivity.onCreate. -->
+
+    <!-- ── Glassmorphism tokens (mirror linktree's SCSS) ────────────── -->
+    <!-- linktree/src/scss/abstracts/_variables.scss:
+           $glass-bg:     rgba(255,255,255, 0.08);
+           $glass-border: rgba(255,255,255, 0.18);
+           $glass-blur:   blur(10px);
+         Light variant — used over the page background as a frosted panel.
+         On Android <12 there's no backdrop-filter equivalent; we boost
+         the alpha so the surface stays readable without behind-blur. -->
+    <color name="glass_bg">#33FFFFFF</color>            <!-- alpha 0.20 -->
+    <color name="glass_border">#2EFFFFFF</color>        <!-- alpha 0.18 (linktree) -->
+    <color name="glass_bg_dark">#66000000</color>       <!-- alpha 0.40 — dark overlay -->
+    <color name="glass_border_dark">#33FFFFFF</color>
 </resources>

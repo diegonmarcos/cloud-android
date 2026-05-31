@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity(),
             // theme already declares transparent system bars + light-icon
             // tinting so the bars stay readable.
             WindowCompat.setDecorFitsSystemWindows(window, false)
+            applyWindowBlurIfSupported()
 
             setContentView(R.layout.activity_main)
             modePrefs = ModePrefs(this)
@@ -313,6 +314,23 @@ class MainActivity : AppCompatActivity(),
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
             .replace(R.id.fragment_container, content)
             .commit()
+    }
+
+    /** Glassmorphism: enable window background-blur on API 31+ so the
+     *  translucent island cards (toolbar + bottom nav) frost what's behind
+     *  them. On older Android the layout still renders as a translucent
+     *  rounded panel — just without the blur layer. */
+    private fun applyWindowBlurIfSupported() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            runCatching {
+                window.setBackgroundBlurRadius(40)
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                @Suppress("DEPRECATION")
+                window.attributes = window.attributes.apply {
+                    blurBehindRadius = 20
+                }
+            }
+        }
     }
 
     /** Edge-to-edge insets handler. Pads the AppBar (top inset → status
