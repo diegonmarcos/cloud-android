@@ -47,16 +47,24 @@ class AppDrawerSheetFragment : Fragment() {
         val title = getString(R.string.section_home)
 
         val host = FrameLayout(ctx).apply {
-            id = View.generateViewId()
+            // Stable resource id — required so the FragmentManager can
+            // restore the embedded TileGridFragment after process death.
+            // View.generateViewId() previously crashed on back-press from
+            // a restored stack with "No view found for id 0x1".
+            id = R.id.app_drawer_grid_host
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             )
         }
         root.addView(host)
-        childFragmentManager.beginTransaction()
-            .replace(host.id, TileGridFragment.newInstance(title, sectionTiles + actionTiles))
-            .commit()
+        // Only commit a fresh child on first creation; the FragmentManager
+        // re-attaches the existing TileGridFragment on restore.
+        if (s == null && childFragmentManager.findFragmentById(host.id) == null) {
+            childFragmentManager.beginTransaction()
+                .replace(host.id, TileGridFragment.newInstance(title, sectionTiles + actionTiles))
+                .commit()
+        }
         // Pull-down dismiss handled by the activity-level gesture detector
         // — see MainActivity.installNavSwipeGesture.
         return root

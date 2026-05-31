@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stable view IDs for runtime-built FragmentContainerViews. Using a
+     resource id here (instead of View.generateViewId()) makes the host
+     persistent across process death + activity recreation — fragments
+     committed into these ids restore correctly via FragmentManager. -->
+<resources>
+    <item name="app_drawer_grid_host" type="id" />
+    <item name="stack_embed_0"        type="id" />
+    <item name="stack_embed_1"        type="id" />
+    <item name="stack_embed_2"        type="id" />
+    <item name="stack_embed_3"        type="id" />
+    <item name="stack_embed_4"        type="id" />
+    <item name="stack_embed_5"        type="id" />
+    <item name="stack_embed_6"        type="id" />
+    <item name="stack_embed_7"        type="id" />
+</resources>

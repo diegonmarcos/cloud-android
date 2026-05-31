@@ -82,6 +82,7 @@ class AggregatorStackFragment : Fragment(),
             return scroll
         }
         panelRefs.clear()
+        nextEmbedIdx = 0
         for (panel in panels) column.addView(buildPanel(ctx, inflater, panel))
         return scroll
     }
@@ -197,22 +198,34 @@ class AggregatorStackFragment : Fragment(),
         else                 -> renderPlaceholder(ctx, body, panel)
     }
 
+    /** Round-robin pool of stable host ids. View.generateViewId() crashes
+     *  on FragmentManager restore because the new id won't match the
+     *  saved-state host id. Stable resource ids survive process death. */
+    private val embedHostIds = intArrayOf(
+        R.id.stack_embed_0, R.id.stack_embed_1, R.id.stack_embed_2, R.id.stack_embed_3,
+        R.id.stack_embed_4, R.id.stack_embed_5, R.id.stack_embed_6, R.id.stack_embed_7,
+    )
+    private var nextEmbedIdx = 0
+
     private fun embedChild(body: LinearLayout, frag: Fragment) {
+        val hostId = embedHostIds[nextEmbedIdx % embedHostIds.size]
+        nextEmbedIdx++
         val host = FrameLayout(body.context).apply {
-            id = View.generateViewId()
+            id = hostId
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             )
         }
         body.addView(host)
-        // Use commit (async) instead of commitNow — the parent view tree
-        // isn't attached yet at this point, so commitNow can't find the
-        // host container by id. commit defers to next event-loop tick,
-        // by which time onCreateView has returned and the tree is live.
-        childFragmentManager.beginTransaction()
-            .replace(host.id, frag)
-            .commit()
+        // Only commit when there's nothing already attached at that host
+        // — on restore the FragmentManager re-binds the existing inner
+        // fragment to the same id, so we mustn't overwrite it.
+        if (childFragmentManager.findFragmentById(hostId) == null) {
+            childFragmentManager.beginTransaction()
+                .replace(hostId, frag)
+                .commit()
+        }
     }
 
     private fun renderLinktreeSlide(

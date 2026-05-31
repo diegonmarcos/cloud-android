@@ -361,6 +361,7 @@ class MainActivity : AppCompatActivity(),
 
     /** Land the right pane on the master Home TileGrid. */
     private fun goHome() {
+        Trace.i(TAG, "goHome  bs=${supportFragmentManager.backStackEntryCount}")
         currentSection = "home"
         currentLabel = getString(R.string.section_home)
         supportActionBar?.title = currentLabel
@@ -379,6 +380,7 @@ class MainActivity : AppCompatActivity(),
     /** Land the right pane on the given section's TileGrid (or placeholder
      *  if the section has no declared sub-pages). */
     private fun goSection(id: String, label: String) {
+        Trace.i(TAG, "goSection id=$id label=$label bs=${supportFragmentManager.backStackEntryCount}")
         if (id == "home") { goHome(); return }
         currentSection = id
         currentLabel = label
@@ -664,6 +666,7 @@ class MainActivity : AppCompatActivity(),
     // ── tile click dispatch ──────────────────────────────────────────────
 
     override fun onTileClicked(tileId: String) {
+        Trace.i(TAG, "onTileClicked tileId=$tileId")
         when {
             tileId.startsWith("section:") -> {
                 val id = tileId.removePrefix("section:")
