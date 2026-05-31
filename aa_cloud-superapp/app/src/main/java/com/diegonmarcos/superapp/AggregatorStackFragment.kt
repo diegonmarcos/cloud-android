@@ -252,7 +252,7 @@ class AggregatorStackFragment : Fragment(),
             }
             inner.addView(iv); inner.addView(lbl)
             t.addView(inner)
-            t.setOnClickListener { onTileClicked(tile.target, tile.label) }
+            t.setOnClickListener { onTileClicked(tile.target) }
             grid.addView(t)
         }
         body.addView(grid)
@@ -359,14 +359,14 @@ class AggregatorStackFragment : Fragment(),
             target.startsWith("http") -> runCatching {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
             }
-            else -> onTileClicked(target, target)
+            else -> onTileClicked(target)
         }
     }
 
     /** Forward tile clicks to the activity-level dispatcher (same one
      *  [TileGridFragment] uses for its tile grammar). */
-    override fun onTileClicked(tileId: String, label: String) {
-        (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tileId, label)
+    override fun onTileClicked(tileId: String) {
+        (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tileId)
     }
 
     private fun dp(v: Int): Int =
