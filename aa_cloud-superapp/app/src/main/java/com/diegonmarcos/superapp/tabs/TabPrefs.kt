@@ -13,7 +13,7 @@ import org.json.JSONObject
  */
 class TabPrefs(context: Context) {
 
-    data class Tab(val url: String, val title: String, val ts: Long)
+    data class Tab(val url: String, val title: String, val ts: Long, val previewPath: String = "")
 
     private val sp = context.applicationContext
         .getSharedPreferences("tabs", Context.MODE_PRIVATE)
@@ -26,9 +26,10 @@ class TabPrefs(context: Context) {
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             out.add(Tab(
-                url   = o.optString("url"),
-                title = o.optString("title", o.optString("url")),
-                ts    = o.optLong("ts", 0L),
+                url         = o.optString("url"),
+                title       = o.optString("title", o.optString("url")),
+                ts          = o.optLong("ts", 0L),
+                previewPath = o.optString("preview", ""),
             ))
         }
         return out.sortedByDescending { it.ts }
@@ -51,6 +52,12 @@ class TabPrefs(context: Context) {
         save(list)
     }
 
+    /** Update a tab's preview screenshot path (PNG in cache dir). */
+    fun updatePreview(url: String, path: String) {
+        val list = all().map { if (it.url == url) it.copy(previewPath = path) else it }
+        save(list)
+    }
+
     fun remove(url: String) {
         save(all().filterNot { it.url == url })
     }
@@ -66,9 +73,10 @@ class TabPrefs(context: Context) {
         val arr = JSONArray()
         for (t in tabs) {
             arr.put(JSONObject().apply {
-                put("url",   t.url)
-                put("title", t.title)
-                put("ts",    t.ts)
+                put("url",     t.url)
+                put("title",   t.title)
+                put("ts",      t.ts)
+                put("preview", t.previewPath)
             })
         }
         sp.edit().putString(KEY, arr.toString()).apply()

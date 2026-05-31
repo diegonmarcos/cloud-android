@@ -643,17 +643,23 @@ class MainActivity : AppCompatActivity(),
     private fun launchUri(uri: String) {
         if (uri.isBlank()) return
 
-        // http(s):// → open in OUR internal browser (Tabs section) so the
-        // user can switch between several open pages instead of being
-        // bounced to an external browser. Custom schemes
-        // (obsidian://, app://, intent://, …) still route to the
-        // installed handler below.
+        // http(s):// → open in OUR internal browser (Tabs section) in
+        // DETAIL mode for the tapped URL. Tab is added to TabPrefs
+        // inside TabsHostFragment on creation when ARG_OPEN_URL is
+        // present.
         if (uri.startsWith("http://") || uri.startsWith("https://")) {
-            com.diegonmarcos.superapp.tabs.TabPrefs(this).run {
-                add(uri, uri)
-                setActive(uri)
-            }
-            openSectionPage("tabs", "all", null)
+            currentSection = "tabs"
+            currentLabel = Sections.byId("tabs")?.label ?: "Tabs"
+            supportActionBar?.title = currentLabel
+            syncBottomNav("tabs")
+            val frag = com.diegonmarcos.superapp.tabs.TabsHostFragment.newInstance(uri)
+            applyChrome(frag)
+            supportFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.fade_in, R.anim.fade_out,
+                                      R.anim.fade_in, R.anim.fade_out)
+                .replace(R.id.fragment_container, frag)
+                .addToBackStack(null)
+                .commit()
             return
         }
 
