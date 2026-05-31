@@ -247,14 +247,79 @@ class AggregatorStackFragment : Fragment(),
         columns: List<Sections.LinkColumn>,
         flatLinks: List<Sections.LinkItem>,
     ) {
+        // Sub-section header per column → N-icon grid of links beneath it.
+        // N comes from build.json::ui.tile_columns (data-driven, no hardcode).
+        val cols = BuildConfig.UI_TILE_COLUMNS.coerceAtLeast(1)
         if (columns.isNotEmpty()) {
             for (col in columns) {
                 if (col.header.isNotBlank()) body.addView(colHeader(ctx, col.header, col.headerUrl))
-                for (link in col.links) body.addView(linkRow(ctx, link))
+                addIconGrid(ctx, body, col.links, cols)
             }
         }
-        for (link in flatLinks) body.addView(linkRow(ctx, link))
+        if (flatLinks.isNotEmpty()) addIconGrid(ctx, body, flatLinks, cols)
     }
+
+    /** Add `links` as a wrap-flowing `cols`-column grid of icon tiles to
+     *  `body`. Each row is its own horizontal LinearLayout so the grid
+     *  works with any link count (padding cells fill the final row). */
+    private fun addIconGrid(
+        ctx: android.content.Context,
+        body: LinearLayout,
+        links: List<Sections.LinkItem>,
+        cols: Int,
+    ) {
+        if (links.isEmpty()) return
+        var i = 0
+        while (i < links.size) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            }
+            for (c in 0 until cols) {
+                if (i < links.size) row.addView(linkIconTile(ctx, links[i++]))
+                else                row.addView(spacerTile(ctx))
+            }
+            body.addView(row)
+        }
+    }
+
+    /** Icon + label tile cell (weight = 1 → 1/Nth row width). */
+    private fun linkIconTile(ctx: android.content.Context, link: Sections.LinkItem): View {
+        val cell = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            val padH = dp(4); val padV = dp(8)
+            setPadding(padH, padV, padH, padV)
+            isClickable = true; isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val iv = ImageView(ctx).apply {
+            val resId = Sections.iconResFor(ctx, link.icon)
+            if (resId != 0) setImageResource(resId)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+            val sz = dp(28)
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+        }
+        val lbl = TextView(ctx).apply {
+            text = link.label
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            gravity = android.view.Gravity.CENTER
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(4), 0, 0)
+        }
+        cell.addView(iv); cell.addView(lbl)
+        cell.setOnClickListener { openUrlOrTarget(link.url) }
+        return cell
+    }
+
+    private fun spacerTile(ctx: android.content.Context): View =
+        View(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+        }
 
     private fun renderTileRow(body: LinearLayout, tiles: List<Sections.AggTile>) {
         val ctx = body.context

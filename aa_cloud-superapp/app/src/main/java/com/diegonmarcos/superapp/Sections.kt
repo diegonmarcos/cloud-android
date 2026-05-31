@@ -419,9 +419,42 @@ object Sections {
         return parsed
     }
 
-    /** Resolve `icon` name from build.json to a drawable res id; 0 if missing. */
-    fun iconResFor(ctx: Context, name: String): Int =
-        ctx.resources.getIdentifier(name, "drawable", ctx.packageName)
+    /** Resolve `icon` name from build.json / linktree.json to a drawable
+     *  res id. Handles both flavours:
+     *   - Direct drawable name from build.json — `ic_settings`, `ic_p_c3_health`
+     *   - Tabler/Remix-style svg from linktree.json — `map-pin-2.svg`,
+     *     `device-desktop.svg` → tries `ic_map_pin_2`, then `ic_map_pin`,
+     *     then the generic `ic_link_tile`.
+     *
+     *  Resolution order:
+     *    1. literal name as-is
+     *    2. stripped `.svg`, dashes → underscores, prefixed `ic_`
+     *    3. progressively trimmed trailing `_<n>` suffixes (so
+     *       `ic_map_pin_2` → `ic_map_pin`)
+     *    4. `ic_link_tile` generic fallback
+     *    5. 0 if even the fallback is missing
+     */
+    fun iconResFor(ctx: Context, name: String): Int {
+        if (name.isBlank()) return ctx.resources.getIdentifier("ic_link_tile", "drawable", ctx.packageName)
+        val res = ctx.resources
+        val pkg = ctx.packageName
+        // 1. direct
+        res.getIdentifier(name, "drawable", pkg).takeIf { it != 0 }?.let { return it }
+        // 2. svg → ic_<slug>
+        val slug = name.removeSuffix(".svg").replace('-', '_').lowercase()
+        val candidates = mutableListOf("ic_$slug")
+        // 3. trim trailing _<n>
+        var trimmed = slug
+        while (trimmed.matches(Regex(".*_\\d+$"))) {
+            trimmed = trimmed.replace(Regex("_\\d+$"), "")
+            candidates.add("ic_$trimmed")
+        }
+        for (c in candidates) {
+            res.getIdentifier(c, "drawable", pkg).takeIf { it != 0 }?.let { return it }
+        }
+        // 4. generic fallback
+        return res.getIdentifier("ic_link_tile", "drawable", pkg)
+    }
 
     /** Per-page sample content from build.json::ui.page_samples. Keyed by
      *  "<section>/<page>". Returns empty list if no samples for that key. */
