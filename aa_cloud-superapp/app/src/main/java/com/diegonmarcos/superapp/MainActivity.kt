@@ -234,7 +234,12 @@ class MainActivity : AppCompatActivity(),
         val section = Sections.byId(id)
         val content: Fragment = when {
             section == null -> SectionFragment.forSection(id, label)
-            // Aggregator: render the deep-link tiles for the current mode.
+            // Aggregator: if stack_* is declared for the current mode →
+            // scrollable collapsable-card view. Otherwise fall back to the
+            // tile-grid (still data-driven via tiles_* in build.json).
+            section.isAggregator && Sections.aggregatorIsStack(section, currentMode) ->
+                AggregatorStackFragment.newInstance(section.id, label, currentMode)
+
             section.isAggregator -> {
                 val aggTiles = Sections.aggregatorTilesFor(section, currentMode).map { t ->
                     TileGridFragment.Tile(
@@ -537,18 +542,14 @@ class MainActivity : AppCompatActivity(),
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.action_mode_toggle) {
-            val next = modePrefs.toggle()
+            modePrefs.toggle()
             invalidateOptionsMenu()
-            // Rebuild current view so aggregator tiles refresh to the new mode.
+            // Rebuild current view so aggregator content refreshes to the new
+            // mode. Toolbar label itself IS the feedback — no snackbar/toast.
             if (currentSection.isNotEmpty()) {
                 val sec = Sections.byId(currentSection)
                 if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
             }
-            findViewById<View>(R.id.fragment_container).snack(
-                getString(R.string.mode_toggled,
-                    if (next == "admin") getString(R.string.mode_admin)
-                    else                 getString(R.string.mode_apps)),
-            )
             return true
         }
         if (item.itemId == R.id.action_back) {

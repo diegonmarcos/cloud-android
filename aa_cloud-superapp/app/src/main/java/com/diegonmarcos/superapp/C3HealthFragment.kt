@@ -13,16 +13,22 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 
 /**
- * C3 · Health — two fully separate tables fed from the data/ snapshots:
- *   Public  services  (data/services_public.json,  32 containers today)
- *   Private services  (data/services_private.json, 52 containers today)
+ * C3 · Health — fed from data/services_*.json snapshots
+ * (data/regen.sh derives them from cloud-data's
+ * _cloud-data-consolidated.json).
  *
- * Both come from cloud-data's _cloud-data-consolidated.json via
- * data/regen.sh — the upstream is the single source of truth. Public
- * rows are tappable (opens the URL); private rows are display-only since
- * they're internal compose-network targets.
+ * `scope` controls which tables render:
+ *   - "all"     → both Public and Private (default — standalone page)
+ *   - "public"  → only Public
+ *   - "private" → only Private
+ *
+ * Used standalone (drawer / page:c3/health) AND embedded inside
+ * [AggregatorStackFragment] cards where each card is a single-scope view.
  */
 class C3HealthFragment : Fragment(R.layout.fragment_c3_health) {
+
+    private val scope: String
+        get() = arguments?.getString(ARG_SCOPE) ?: SCOPE_ALL
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -31,14 +37,27 @@ class C3HealthFragment : Fragment(R.layout.fragment_c3_health) {
         val spinner = view.findViewById<ProgressBar>(R.id.health_loading)
         spinner.isVisible = false
 
-        val pub  = Sections.publicServices()
-        val priv = Sections.privateServices()
-        status.text = getString(R.string.c3_health_status_split, pub.size, priv.size)
+        val showPub  = scope == SCOPE_ALL || scope == SCOPE_PUBLIC
+        val showPriv = scope == SCOPE_ALL || scope == SCOPE_PRIVATE
+
+        val pub  = if (showPub)  Sections.publicServices()  else emptyList()
+        val priv = if (showPriv) Sections.privateServices() else emptyList()
+
+        status.text = when (scope) {
+            SCOPE_PUBLIC  -> getString(R.string.c3_health_section_public,  pub.size)
+            SCOPE_PRIVATE -> getString(R.string.c3_health_section_private, priv.size)
+            else          -> getString(R.string.c3_health_status_split, pub.size, priv.size)
+        }
+        // When embedded as a single-scope card the bare status line above
+        // a section header is redundant — hide it.
+        status.isVisible = scope == SCOPE_ALL
 
         val inflater = LayoutInflater.from(requireContext())
 
         if (pub.isNotEmpty()) {
-            addSectionHeader(root, getString(R.string.c3_health_section_public, pub.size))
+            if (scope == SCOPE_ALL) {
+                addSectionHeader(root, getString(R.string.c3_health_section_public, pub.size))
+            }
             for (svc in pub) {
                 val row = inflater.inflate(R.layout.item_c3_health_row, root, false)
                 row.findViewById<View>(R.id.h_status_dot).background = GradientDrawable().apply {
@@ -61,7 +80,9 @@ class C3HealthFragment : Fragment(R.layout.fragment_c3_health) {
         }
 
         if (priv.isNotEmpty()) {
-            addSectionHeader(root, getString(R.string.c3_health_section_private, priv.size))
+            if (scope == SCOPE_ALL) {
+                addSectionHeader(root, getString(R.string.c3_health_section_private, priv.size))
+            }
             for (svc in priv) {
                 val row = inflater.inflate(R.layout.item_c3_health_row, root, false)
                 row.findViewById<View>(R.id.h_status_dot).background = GradientDrawable().apply {
@@ -92,5 +113,15 @@ class C3HealthFragment : Fragment(R.layout.fragment_c3_health) {
         parent.addView(tv)
     }
 
-    companion object { fun newInstance() = C3HealthFragment() }
+    companion object {
+        const val SCOPE_ALL     = "all"
+        const val SCOPE_PUBLIC  = "public"
+        const val SCOPE_PRIVATE = "private"
+        private const val ARG_SCOPE = "scope"
+
+        fun newInstance(scope: String = SCOPE_ALL): C3HealthFragment =
+            C3HealthFragment().apply {
+                arguments = Bundle().apply { putString(ARG_SCOPE, scope) }
+            }
+    }
 }

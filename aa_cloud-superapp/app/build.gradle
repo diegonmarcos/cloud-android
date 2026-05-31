@@ -52,6 +52,12 @@ def importSchemaJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput
 def importSchemaB64  = importSchemaJson.bytes.encodeBase64().toString()
 def driveConnsJson   = groovy.json.JsonOutput.toJson(buildJson.ui.drive_connections ?: [])
 def driveConnsB64    = driveConnsJson.bytes.encodeBase64().toString()
+// Linktree snapshot — drives Tools aggregator (Apps + Admin modes).
+// Source: front/a-Portals/linktree/src/data/personal-tools.json (snapshot
+// committed in data/linktree.json via data/regen.sh).
+def linktreeFile     = file("../data/linktree.json")
+def linktreeJson     = linktreeFile.exists() ? linktreeFile.text : "{\"slides\":[]}"
+def linktreeB64      = linktreeJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp'
@@ -75,6 +81,7 @@ android {
         buildConfigField "String", "SERVICES_PRIVATE_B64",  "\"${svcPrivB64}\""
         buildConfigField "String", "UI_IMPORT_SCHEMA_B64",  "\"${importSchemaB64}\""
         buildConfigField "String", "DRIVE_CONNECTIONS_B64", "\"${driveConnsB64}\""
+        buildConfigField "String", "LINKTREE_JSON_B64",     "\"${linktreeB64}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

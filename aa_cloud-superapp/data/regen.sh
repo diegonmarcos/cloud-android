@@ -25,6 +25,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 
 CONSOLIDATED="${1:-}"
 MESH="${2:-}"
+LINKTREE="${3:-}"
 
 if [ -z "$CONSOLIDATED" ]; then
     for cand in \
@@ -41,19 +42,33 @@ if [ -z "$MESH" ]; then
         [ -f "$cand" ] && { MESH="$cand"; break; }
     done
 fi
+if [ -z "$LINKTREE" ]; then
+    for cand in \
+        "$HOME/git/front/a-Portals/linktree/src/data/personal-tools.json"; do
+        [ -f "$cand" ] && { LINKTREE="$cand"; break; }
+    done
+fi
 
 : "${CONSOLIDATED:?consolidated.json not found; pass as arg 1}"
 : "${MESH:?mesh.json not found; pass as arg 2}"
+: "${LINKTREE:?personal-tools.json not found; pass as arg 3}"
 
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; exit 1; }
 
-echo "→ mesh:        $MESH"
+echo "→ mesh:         $MESH"
 echo "→ consolidated: $CONSOLIDATED"
+echo "→ linktree:     $LINKTREE"
 echo "→ writing into: $HERE/"
 
 # Mesh is a verbatim snapshot (wg-mesh/v1 schema; the APK parser owns
 # the field-set). No transform.
 cp "$MESH" "$HERE/mesh.json"
+
+# Linktree personal-tools.json is the source of truth for what shows
+# under the Tools aggregator (Apps mode = SUITE+LAB+CIRCUS slides;
+# Admin mode = CLOUD slide). Verbatim copy — the APK parser picks
+# which slide to render based on build.json::ui.sections[tools].stack_*.
+cp "$LINKTREE" "$HERE/linktree.json"
 
 # Public services = containers WITH proxy.domain or proxy.parent_domain.
 jq '
@@ -90,7 +105,8 @@ jq '
    }]
 ' "$CONSOLIDATED" > "$HERE/services_private.json"
 
-echo "mesh nodes:      $(jq '.nodes | length' "$HERE/mesh.json")"
-echo "mesh peers:      $(jq '.peers | length' "$HERE/mesh.json")"
-echo "public services: $(jq length    "$HERE/services_public.json")"
-echo "private services: $(jq length   "$HERE/services_private.json")"
+echo "mesh nodes:       $(jq '.nodes | length' "$HERE/mesh.json")"
+echo "mesh peers:       $(jq '.peers | length' "$HERE/mesh.json")"
+echo "public services:  $(jq length    "$HERE/services_public.json")"
+echo "private services: $(jq length    "$HERE/services_private.json")"
+echo "linktree slides:  $(jq '.slides | length' "$HERE/linktree.json")"

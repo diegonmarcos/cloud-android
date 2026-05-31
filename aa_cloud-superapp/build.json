@@ -23,19 +23,71 @@
   },
   "upstreams": {
     "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 1_workflows/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
-    "mail":  { "tracker": "ea_mail-fairmail",   "repo": "https://github.com/M66B/FairEmail.git",             "license": "GPL-3.0",    "feeds_into": "libs:mail",  "primary_lang": "Java" },
-    "cal":   { "tracker": "ea_cal-davx5",       "repo": "https://github.com/bitfireAT/davx5-ose.git",        "license": "GPL-3.0",    "feeds_into": "libs:cal",   "primary_lang": "Kotlin" },
-    "feed":  { "tracker": "ea_feed-feeder",     "repo": "https://github.com/spacecowboy/Feeder.git",         "license": "GPL-3.0",    "feeds_into": "libs:feed",  "primary_lang": "Kotlin" },
-    "net":   { "tracker": "ea_net-wireguard",   "repo": "https://github.com/WireGuard/wireguard-android.git","license": "Apache-2.0", "feeds_into": "libs:net",   "primary_lang": "Kotlin+C" },
-    "vault": { "tracker": "ea_vault-keepassdx", "repo": "https://github.com/Kunzisoft/KeePassDX.git",        "license": "GPL-3.0",    "feeds_into": "libs:vault", "primary_lang": "Kotlin" },
-    "ops":   { "tracker": null, "repo": null, "license": null, "feeds_into": "libs:ops", "_doc_no_upstream": "ops is a thin c3-api dashboard — no FOSS upstream to fork. Will be original code." },
-    "core":  { "tracker": null, "repo": null, "license": null, "feeds_into": "libs:core", "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) — original code." }
+    "mail": {
+      "tracker": "ea_mail-fairmail",
+      "repo": "https://github.com/M66B/FairEmail.git",
+      "license": "GPL-3.0",
+      "feeds_into": "libs:mail",
+      "primary_lang": "Java"
+    },
+    "cal": {
+      "tracker": "ea_cal-davx5",
+      "repo": "https://github.com/bitfireAT/davx5-ose.git",
+      "license": "GPL-3.0",
+      "feeds_into": "libs:cal",
+      "primary_lang": "Kotlin"
+    },
+    "feed": {
+      "tracker": "ea_feed-feeder",
+      "repo": "https://github.com/spacecowboy/Feeder.git",
+      "license": "GPL-3.0",
+      "feeds_into": "libs:feed",
+      "primary_lang": "Kotlin"
+    },
+    "net": {
+      "tracker": "ea_net-wireguard",
+      "repo": "https://github.com/WireGuard/wireguard-android.git",
+      "license": "Apache-2.0",
+      "feeds_into": "libs:net",
+      "primary_lang": "Kotlin+C"
+    },
+    "vault": {
+      "tracker": "ea_vault-keepassdx",
+      "repo": "https://github.com/Kunzisoft/KeePassDX.git",
+      "license": "GPL-3.0",
+      "feeds_into": "libs:vault",
+      "primary_lang": "Kotlin"
+    },
+    "ops": {
+      "tracker": null,
+      "repo": null,
+      "license": null,
+      "feeds_into": "libs:ops",
+      "_doc_no_upstream": "ops is a thin c3-api dashboard — no FOSS upstream to fork. Will be original code."
+    },
+    "core": {
+      "tracker": null,
+      "repo": null,
+      "license": null,
+      "feeds_into": "libs:core",
+      "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) — original code."
+    }
   },
   "modules": {
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list. Adding a new feature module = one entry here + mkdir + minimal build.gradle.",
     "app": {
       "type": "application",
-      "depends_on": ["libs:core", "libs:updater", "libs:mail", "libs:cal", "libs:feed", "libs:net", "libs:ops", "libs:vault", "libs:chat"],
+      "depends_on": [
+        "libs:core",
+        "libs:updater",
+        "libs:mail",
+        "libs:cal",
+        "libs:feed",
+        "libs:net",
+        "libs:ops",
+        "libs:vault",
+        "libs:chat"
+      ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
     "libs:core": {
@@ -45,42 +97,58 @@
     },
     "libs:updater": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, prompts user via PackageInstaller. All knobs in release.auto_update — no hardcoded URLs."
     },
     "libs:mail": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "Mail — FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ea_mail-fairmail/."
     },
     "libs:cal": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "Calendar/contacts — CalDAV/CardDAV against Radicale (cal.diegonmarcos.com)."
     },
     "libs:feed": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "RSS reader + ntfy notifications integration."
     },
     "libs:net": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "WireGuard tunnel control. Upstream: github.com/WireGuard/wireguard-android (Apache-2.0)."
     },
     "libs:ops": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "Cloud ops dashboard — c3-api, health checks, dagu trigger, container control."
     },
     "libs:vault": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "Passwords + TOTP. Could integrate with Vaultwarden (vault.diegonmarcos.com)."
     },
     "libs:chat": {
       "type": "library",
-      "depends_on": ["libs:core"],
+      "depends_on": [
+        "libs:core"
+      ],
       "comment": "Chat / messaging. Likely integrates with mattermost-bots (chat.diegonmarcos.com) — could fork Mattermost-Mobile / SimpleX / Conversations later."
     }
   },
@@ -90,187 +158,945 @@
     "_doc_home_index": "The `home` section is the master index — its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
     "_doc_aggregator_sections": "Aggregator sections are pure NAV — their `tiles` deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each aggregator can declare tiles_shared (same in both modes), tiles_apps (front-end mode), and tiles_admin (back-end mode). The Apps/Admin global toggle (ModePrefs in MainActivity) picks which set renders. The bottom nav hosts exactly these 5 aggregators today: Communication · Infos · HOME · Suite · Tools.",
     "sections": [
-      { "id": "communication", "label": "Communication", "icon": "ic_chat",          "module": null, "bottom_nav": true, "is_aggregator": true,
+      {
+        "id": "communication",
+        "label": "Communication",
+        "icon": "ic_chat",
+        "module": null,
+        "bottom_nav": true,
+        "is_aggregator": true,
         "tiles_shared": [
-          { "id": "mail",        "label": "Mail",            "icon": "ic_mail",              "target": "section:mail" },
-          { "id": "chat-matrix", "label": "Chat-Matrix",     "icon": "ic_p_chat_matrix",     "target": "page:chat/matrix" },
-          { "id": "chat-mm",     "label": "Chat-Mattermost", "icon": "ic_p_chat_mattermost", "target": "page:chat/mattermost" }
-        ] },
-      { "id": "infos",         "label": "Infos",         "icon": "ic_p_logs",        "module": null, "bottom_nav": true, "is_aggregator": true,
+          {
+            "id": "mail",
+            "label": "Mail",
+            "icon": "ic_mail",
+            "target": "section:mail"
+          },
+          {
+            "id": "chat-matrix",
+            "label": "Chat-Matrix",
+            "icon": "ic_p_chat_matrix",
+            "target": "page:chat/matrix"
+          },
+          {
+            "id": "chat-mm",
+            "label": "Chat-Mattermost",
+            "icon": "ic_p_chat_mattermost",
+            "target": "page:chat/mattermost"
+          }
+        ],
+        "stack_shared": [
+          {
+            "kind": "mail_accounts",
+            "title": "Mail · accounts"
+          },
+          {
+            "kind": "chat_matrix",
+            "title": "Chat · Matrix"
+          },
+          {
+            "kind": "chat_mattermost",
+            "title": "Chat · Mattermost"
+          }
+        ]
+      },
+      {
+        "id": "infos",
+        "label": "Infos",
+        "icon": "ic_p_logs",
+        "module": null,
+        "bottom_nav": true,
+        "is_aggregator": true,
         "tiles_apps": [
-          { "id": "calendar",   "label": "Calendar",       "icon": "ic_calendar",         "target": "section:cal" },
-          { "id": "rss-feeds",  "label": "RSS feeds",      "icon": "ic_rss",              "target": "page:feed/all" }
+          {
+            "id": "calendar",
+            "label": "Calendar",
+            "icon": "ic_calendar",
+            "target": "section:cal"
+          },
+          {
+            "id": "rss-feeds",
+            "label": "RSS feeds",
+            "icon": "ic_rss",
+            "target": "page:feed/all"
+          }
         ],
         "tiles_admin": [
-          { "id": "cal-workflows","label": "Workflows cal","icon": "ic_calendar",         "target": "page:c3/workflows" },
-          { "id": "gha-events",   "label": "GHA events",   "icon": "ic_p_c3_workflows",   "target": "page:c3/gha" },
-          { "id": "dagu-events",  "label": "Dagu events",  "icon": "ic_p_c3_workflows",   "target": "page:c3/dagu" },
-          { "id": "rss-c3",       "label": "C3 ntfy",      "icon": "ic_rss",              "target": "page:feed/all" },
-          { "id": "c3-health",    "label": "C3 health",    "icon": "ic_p_c3_health",      "target": "page:c3/health" },
-          { "id": "wg-mesh",      "label": "WG mesh",      "icon": "ic_wg",               "target": "page:wg/status" }
-        ] },
-      { "id": "suite",         "label": "Suite",         "icon": "ic_solutions",     "module": null, "bottom_nav": true, "is_aggregator": true,
+          {
+            "id": "cal-workflows",
+            "label": "Workflows cal",
+            "icon": "ic_calendar",
+            "target": "page:c3/workflows"
+          },
+          {
+            "id": "gha-events",
+            "label": "GHA events",
+            "icon": "ic_p_c3_workflows",
+            "target": "page:c3/gha"
+          },
+          {
+            "id": "dagu-events",
+            "label": "Dagu events",
+            "icon": "ic_p_c3_workflows",
+            "target": "page:c3/dagu"
+          },
+          {
+            "id": "rss-c3",
+            "label": "C3 ntfy",
+            "icon": "ic_rss",
+            "target": "page:feed/all"
+          },
+          {
+            "id": "c3-health",
+            "label": "C3 health",
+            "icon": "ic_p_c3_health",
+            "target": "page:c3/health"
+          },
+          {
+            "id": "wg-mesh",
+            "label": "WG mesh",
+            "icon": "ic_wg",
+            "target": "page:wg/status"
+          }
+        ],
+        "stack_admin": [
+          {
+            "kind": "c3_public",
+            "title": "C3 Health · Public",
+            "subtitle": "Services reachable via Caddy edge"
+          },
+          {
+            "kind": "c3_private",
+            "title": "C3 Health · Private",
+            "subtitle": "Internal compose-network containers"
+          },
+          {
+            "kind": "wg_mesh",
+            "title": "WG Mesh",
+            "subtitle": "wg0 UDP direct + wg0-tcp wstunnel"
+          },
+          {
+            "kind": "rss",
+            "title": "RSS · ntfy channels"
+          },
+          {
+            "kind": "open_link",
+            "title": "GHA · Workflow runs",
+            "url": "https://github.com/diegonmarcos/cloud/actions",
+            "icon": "ic_p_c3_workflows"
+          },
+          {
+            "kind": "open_link",
+            "title": "Dagu · Workflow runs",
+            "url": "https://workflows.diegonmarcos.com",
+            "icon": "ic_p_c3_workflows"
+          }
+        ]
+      },
+      {
+        "id": "suite",
+        "label": "Suite",
+        "icon": "ic_solutions",
+        "module": null,
+        "bottom_nav": true,
+        "is_aggregator": true,
         "tiles_shared": [
-          { "id": "drive",      "label": "Drive",          "icon": "ic_drive",            "target": "section:drive" },
-          { "id": "vault",      "label": "Vault",          "icon": "ic_vault",            "target": "section:vault" },
-          { "id": "personal",   "label": "Personal",       "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
-          { "id": "cv",         "label": "CV",             "icon": "ic_p_sol_pro",        "target": "page:solutions/professional" }
-        ] },
-      { "id": "tools",         "label": "Tools",         "icon": "ic_p_sol_tools",   "module": null, "bottom_nav": true, "is_aggregator": true,
+          {
+            "id": "drive",
+            "label": "Drive",
+            "icon": "ic_drive",
+            "target": "section:drive"
+          },
+          {
+            "id": "vault",
+            "label": "Vault",
+            "icon": "ic_vault",
+            "target": "section:vault"
+          },
+          {
+            "id": "personal",
+            "label": "Personal",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
+          },
+          {
+            "id": "cv",
+            "label": "CV",
+            "icon": "ic_p_sol_pro",
+            "target": "page:solutions/professional"
+          }
+        ]
+      },
+      {
+        "id": "tools",
+        "label": "Tools",
+        "icon": "ic_p_sol_tools",
+        "module": null,
+        "bottom_nav": true,
+        "is_aggregator": true,
         "tiles_apps": [
-          { "id": "linktree",   "label": "Linktree",       "icon": "ic_solutions",        "target": "page:solutions/personal" },
-          { "id": "mymovies",   "label": "Movies",         "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
-          { "id": "mymusic",    "label": "Music",          "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
-          { "id": "mymaps",     "label": "Maps",           "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
-          { "id": "myphotos",   "label": "Photos",         "icon": "ic_p_sol_personal",   "target": "page:solutions/personal" },
-          { "id": "myanalytics","label": "Analytics",      "icon": "ic_p_sol_cloud",      "target": "page:solutions/cloud" }
+          {
+            "id": "linktree",
+            "label": "Linktree",
+            "icon": "ic_solutions",
+            "target": "page:solutions/personal"
+          },
+          {
+            "id": "mymovies",
+            "label": "Movies",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
+          },
+          {
+            "id": "mymusic",
+            "label": "Music",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
+          },
+          {
+            "id": "mymaps",
+            "label": "Maps",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
+          },
+          {
+            "id": "myphotos",
+            "label": "Photos",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
+          },
+          {
+            "id": "myanalytics",
+            "label": "Analytics",
+            "icon": "ic_p_sol_cloud",
+            "target": "page:solutions/cloud"
+          }
         ],
         "tiles_admin": [
-          { "id": "c3-health",  "label": "C3 health",      "icon": "ic_p_c3_health",      "target": "page:c3/health" },
-          { "id": "c3-stack",   "label": "C3 stack",       "icon": "ic_p_c3_stack",       "target": "page:c3/stack" },
-          { "id": "wg-mesh",    "label": "WG mesh",        "icon": "ic_wg",               "target": "page:wg/status" },
-          { "id": "vms",        "label": "VMs",            "icon": "ic_p_c3_vms",         "target": "page:c3/vms" },
-          { "id": "workflows",  "label": "Workflows",      "icon": "ic_p_c3_workflows",   "target": "page:c3/workflows" },
-          { "id": "logs",       "label": "Logs",           "icon": "ic_p_logs",           "target": "page:c3/logs" },
-          { "id": "reports",    "label": "Reports",        "icon": "ic_p_c3_reports",     "target": "page:c3/reports" },
-          { "id": "drive-conn", "label": "Drive · Connections","icon": "ic_p_sol_cloud",  "target": "page:drive/connections" }
-        ] },
-      { "id": "mail",  "label": "Mail",     "icon": "ic_mail",     "module": "libs:mail",  "supports_accounts": true,  "bottom_nav": false,  "jmap_default_server": "https://jmap.diegonmarcos.com", "drawer_default_children": ["All inboxes", "+ Add account"],
+          {
+            "id": "c3-health",
+            "label": "C3 health",
+            "icon": "ic_p_c3_health",
+            "target": "page:c3/health"
+          },
+          {
+            "id": "c3-stack",
+            "label": "C3 stack",
+            "icon": "ic_p_c3_stack",
+            "target": "page:c3/stack"
+          },
+          {
+            "id": "wg-mesh",
+            "label": "WG mesh",
+            "icon": "ic_wg",
+            "target": "page:wg/status"
+          },
+          {
+            "id": "vms",
+            "label": "VMs",
+            "icon": "ic_p_c3_vms",
+            "target": "page:c3/vms"
+          },
+          {
+            "id": "workflows",
+            "label": "Workflows",
+            "icon": "ic_p_c3_workflows",
+            "target": "page:c3/workflows"
+          },
+          {
+            "id": "logs",
+            "label": "Logs",
+            "icon": "ic_p_logs",
+            "target": "page:c3/logs"
+          },
+          {
+            "id": "reports",
+            "label": "Reports",
+            "icon": "ic_p_c3_reports",
+            "target": "page:c3/reports"
+          },
+          {
+            "id": "drive-conn",
+            "label": "Drive · Connections",
+            "icon": "ic_p_sol_cloud",
+            "target": "page:drive/connections"
+          }
+        ],
+        "stack_apps": [
+          {
+            "kind": "linktree_slide",
+            "title": "Suite",
+            "slide_id": "suite"
+          },
+          {
+            "kind": "linktree_slide",
+            "title": "Lab Tools",
+            "slide_id": "lab-tools"
+          },
+          {
+            "kind": "linktree_slide",
+            "title": "Circus",
+            "slide_id": "circus"
+          }
+        ],
+        "stack_admin": [
+          {
+            "kind": "linktree_slide",
+            "title": "Cloud Backend",
+            "slide_id": "cloud"
+          },
+          {
+            "kind": "c3_public",
+            "title": "C3 Health · Public",
+            "subtitle": "Live container inventory"
+          },
+          {
+            "kind": "c3_private",
+            "title": "C3 Health · Private",
+            "subtitle": "Internal services"
+          },
+          {
+            "kind": "wg_mesh",
+            "title": "WG Mesh"
+          },
+          {
+            "kind": "drive_connections",
+            "title": "Drive · Connections",
+            "subtitle": "Storage backends declared in build.json"
+          }
+        ]
+      },
+      {
+        "id": "mail",
+        "label": "Mail",
+        "icon": "ic_mail",
+        "module": "libs:mail",
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "jmap_default_server": "https://jmap.diegonmarcos.com",
+        "drawer_default_children": [
+          "All inboxes",
+          "+ Add account"
+        ],
         "_doc_pages": "Mapping to FairEmail's ~38 user-visible pages. Level-1 chips host the daily-use surfaces; Settings drills into 11 FairEmail FragmentOptions* sub-tabs; More is the overflow for rarely-used / diagnostic pages. Order: Folders first (operational entry point), then Inbox, then management (Accounts hosts the JMAP login form), then settings & overflow.",
         "pages": [
-          { "id": "folders",    "label": "Folders",    "icon": "ic_p_folder",     "upstream": "FragmentFolders" },
-          { "id": "inbox",      "label": "Inbox",      "icon": "ic_p_inbox",      "upstream": "FragmentMessages" },
-          { "id": "accounts",   "label": "Accounts",   "icon": "ic_p_accounts",   "upstream": "FragmentAccounts", "_doc": "Hosts the JMAP login form (server/email/password) — Slice A landing surface. Moved here from the section index per the data-driven nav contract: the section's bottom-nav tap shows a TileGrid; account config is a sub-page, not the index." },
-          { "id": "identities", "label": "Identities", "icon": "ic_p_identities", "upstream": "FragmentIdentities" },
-          { "id": "rules",      "label": "Rules",      "icon": "ic_p_rules",      "upstream": "FragmentRules" },
-          { "id": "answers",    "label": "Answers",    "icon": "ic_p_reply",      "upstream": "FragmentAnswers" },
-          { "id": "contacts",   "label": "Contacts",   "icon": "ic_p_contacts",   "upstream": "FragmentContacts" },
-          { "id": "settings",   "label": "Settings",   "icon": "ic_settings",     "upstream": "FragmentOptions",
+          {
+            "id": "folders",
+            "label": "Folders",
+            "icon": "ic_p_folder",
+            "upstream": "FragmentFolders"
+          },
+          {
+            "id": "inbox",
+            "label": "Inbox",
+            "icon": "ic_p_inbox",
+            "upstream": "FragmentMessages"
+          },
+          {
+            "id": "accounts",
+            "label": "Accounts",
+            "icon": "ic_p_accounts",
+            "upstream": "FragmentAccounts",
+            "_doc": "Hosts the JMAP login form (server/email/password) — Slice A landing surface. Moved here from the section index per the data-driven nav contract: the section's bottom-nav tap shows a TileGrid; account config is a sub-page, not the index."
+          },
+          {
+            "id": "identities",
+            "label": "Identities",
+            "icon": "ic_p_identities",
+            "upstream": "FragmentIdentities"
+          },
+          {
+            "id": "rules",
+            "label": "Rules",
+            "icon": "ic_p_rules",
+            "upstream": "FragmentRules"
+          },
+          {
+            "id": "answers",
+            "label": "Answers",
+            "icon": "ic_p_reply",
+            "upstream": "FragmentAnswers"
+          },
+          {
+            "id": "contacts",
+            "label": "Contacts",
+            "icon": "ic_p_contacts",
+            "upstream": "FragmentContacts"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "FragmentOptions",
             "sub_pages": [
-              { "id": "behavior",      "label": "Behavior",      "upstream": "FragmentOptionsBehavior" },
-              { "id": "display",       "label": "Display",       "upstream": "FragmentOptionsDisplay" },
-              { "id": "sync",          "label": "Sync",          "upstream": "FragmentOptionsSynchronize" },
-              { "id": "notifications", "label": "Notifications", "upstream": "FragmentOptionsNotifications" },
-              { "id": "send",          "label": "Send",          "upstream": "FragmentOptionsSend" },
-              { "id": "connection",    "label": "Connection",    "upstream": "FragmentOptionsConnection" },
-              { "id": "encryption",    "label": "Encryption",    "upstream": "FragmentOptionsEncryption" },
-              { "id": "privacy",       "label": "Privacy",       "upstream": "FragmentOptionsPrivacy" },
-              { "id": "integrations",  "label": "Integrations",  "upstream": "FragmentOptionsIntegrations" },
-              { "id": "backup",        "label": "Backup",        "upstream": "FragmentOptionsBackup" },
-              { "id": "misc",          "label": "Misc",          "upstream": "FragmentOptionsMisc" }
+              {
+                "id": "behavior",
+                "label": "Behavior",
+                "upstream": "FragmentOptionsBehavior"
+              },
+              {
+                "id": "display",
+                "label": "Display",
+                "upstream": "FragmentOptionsDisplay"
+              },
+              {
+                "id": "sync",
+                "label": "Sync",
+                "upstream": "FragmentOptionsSynchronize"
+              },
+              {
+                "id": "notifications",
+                "label": "Notifications",
+                "upstream": "FragmentOptionsNotifications"
+              },
+              {
+                "id": "send",
+                "label": "Send",
+                "upstream": "FragmentOptionsSend"
+              },
+              {
+                "id": "connection",
+                "label": "Connection",
+                "upstream": "FragmentOptionsConnection"
+              },
+              {
+                "id": "encryption",
+                "label": "Encryption",
+                "upstream": "FragmentOptionsEncryption"
+              },
+              {
+                "id": "privacy",
+                "label": "Privacy",
+                "upstream": "FragmentOptionsPrivacy"
+              },
+              {
+                "id": "integrations",
+                "label": "Integrations",
+                "upstream": "FragmentOptionsIntegrations"
+              },
+              {
+                "id": "backup",
+                "label": "Backup",
+                "upstream": "FragmentOptionsBackup"
+              },
+              {
+                "id": "misc",
+                "label": "Misc",
+                "upstream": "FragmentOptionsMisc"
+              }
             ]
           },
-          { "id": "more",       "label": "More",       "icon": "ic_p_more",       "_doc": "Overflow menu — rarely-used / diagnostic pages.",
+          {
+            "id": "more",
+            "label": "More",
+            "icon": "ic_p_more",
+            "_doc": "Overflow menu — rarely-used / diagnostic pages.",
             "menu": [
-              { "id": "order",        "label": "Order",        "upstream": "FragmentOrder" },
-              { "id": "operations",   "label": "Operations",   "upstream": "FragmentOperations" },
-              { "id": "logs",         "label": "Logs",         "upstream": "FragmentLogs" },
-              { "id": "certificates", "label": "Certificates", "upstream": "FragmentCertificates" },
-              { "id": "pro",          "label": "Pro",          "upstream": "FragmentPro" },
-              { "id": "legend",       "label": "Legend",       "upstream": "FragmentLegend" },
-              { "id": "about",        "label": "About",        "upstream": "FragmentAbout" },
-              { "id": "eula",         "label": "EULA",         "upstream": "FragmentEula" }
+              {
+                "id": "order",
+                "label": "Order",
+                "upstream": "FragmentOrder"
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "upstream": "FragmentOperations"
+              },
+              {
+                "id": "logs",
+                "label": "Logs",
+                "upstream": "FragmentLogs"
+              },
+              {
+                "id": "certificates",
+                "label": "Certificates",
+                "upstream": "FragmentCertificates"
+              },
+              {
+                "id": "pro",
+                "label": "Pro",
+                "upstream": "FragmentPro"
+              },
+              {
+                "id": "legend",
+                "label": "Legend",
+                "upstream": "FragmentLegend"
+              },
+              {
+                "id": "about",
+                "label": "About",
+                "upstream": "FragmentAbout"
+              },
+              {
+                "id": "eula",
+                "label": "EULA",
+                "upstream": "FragmentEula"
+              }
             ]
           }
-        ] },
-      { "id": "feed",  "label": "RSS",      "icon": "ic_rss",      "module": "libs:feed",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["All feeds", "+ Subscribe"], "_doc": "RSS / ntfy lives in the drawer only now — Drive took its bottom-nav slot.",
+        ]
+      },
+      {
+        "id": "feed",
+        "label": "RSS",
+        "icon": "ic_rss",
+        "module": "libs:feed",
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "All feeds",
+          "+ Subscribe"
+        ],
+        "_doc": "RSS / ntfy lives in the drawer only now — Drive took its bottom-nav slot.",
         "pages": [
-          { "id": "all",           "label": "All feeds",     "icon": "ic_p_feed_all",      "upstream": "FeederMain" },
-          { "id": "unread",        "label": "Unread",        "icon": "ic_p_feed_unread",   "upstream": "FeederUnread" },
-          { "id": "saved",         "label": "Saved",         "icon": "ic_p_feed_saved",    "upstream": "FeederSaved" },
-          { "id": "subscriptions", "label": "Subscriptions", "icon": "ic_p_feed_subs",     "upstream": "FeederFeeds" },
-          { "id": "add",           "label": "+ Subscribe",   "icon": "ic_p_add",           "upstream": "FeederAdd" },
-          { "id": "settings",      "label": "Settings",      "icon": "ic_settings",        "upstream": "FeederSettings" }
-        ] },
-      { "id": "home",  "label": "Home",     "icon": "ic_home",     "module": null,         "supports_accounts": false, "bottom_nav": true,  "is_master_index": true, "_doc": "Master index — content is a TileGrid of every other section. Sits at the center of the bottom nav. No own drawer page (the [Home] drawer tab already covers it)." },
-      { "id": "cal",   "label": "Calendar", "icon": "ic_calendar", "module": "libs:cal",   "supports_accounts": true,  "bottom_nav": false,  "drawer_default_children": ["All calendars", "+ Add CalDAV"],
+          {
+            "id": "all",
+            "label": "All feeds",
+            "icon": "ic_p_feed_all",
+            "upstream": "FeederMain"
+          },
+          {
+            "id": "unread",
+            "label": "Unread",
+            "icon": "ic_p_feed_unread",
+            "upstream": "FeederUnread"
+          },
+          {
+            "id": "saved",
+            "label": "Saved",
+            "icon": "ic_p_feed_saved",
+            "upstream": "FeederSaved"
+          },
+          {
+            "id": "subscriptions",
+            "label": "Subscriptions",
+            "icon": "ic_p_feed_subs",
+            "upstream": "FeederFeeds"
+          },
+          {
+            "id": "add",
+            "label": "+ Subscribe",
+            "icon": "ic_p_add",
+            "upstream": "FeederAdd"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "FeederSettings"
+          }
+        ]
+      },
+      {
+        "id": "home",
+        "label": "Home",
+        "icon": "ic_home",
+        "module": null,
+        "supports_accounts": false,
+        "bottom_nav": true,
+        "is_master_index": true,
+        "_doc": "Master index — content is a TileGrid of every other section. Sits at the center of the bottom nav. No own drawer page (the [Home] drawer tab already covers it)."
+      },
+      {
+        "id": "cal",
+        "label": "Calendar",
+        "icon": "ic_calendar",
+        "module": "libs:cal",
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "All calendars",
+          "+ Add CalDAV"
+        ],
         "pages": [
-          { "id": "day",        "label": "Day",        "icon": "ic_p_cal_day",       "upstream": "DavX5Day" },
-          { "id": "week",       "label": "Week",       "icon": "ic_p_cal_week",      "upstream": "DavX5Week" },
-          { "id": "month",      "label": "Month",      "icon": "ic_p_cal_month",     "upstream": "DavX5Month" },
-          { "id": "agenda",     "label": "Agenda",     "icon": "ic_p_cal_agenda",    "upstream": "DavX5Agenda" },
-          { "id": "calendars",  "label": "Calendars",  "icon": "ic_p_cal_calendars", "upstream": "DavX5Calendars" },
-          { "id": "add",        "label": "+ Add CalDAV", "icon": "ic_p_add",         "upstream": "DavX5AddAccount" },
-          { "id": "settings",   "label": "Settings",   "icon": "ic_settings",        "upstream": "DavX5Settings" }
-        ] },
-      { "id": "drive", "label": "Drive",    "icon": "ic_drive",    "module": null,         "supports_accounts": true,  "bottom_nav": false,  "drawer_default_children": ["My files", "Photos", "Connections", "Recent", "Shared", "Trash"],
+          {
+            "id": "day",
+            "label": "Day",
+            "icon": "ic_p_cal_day",
+            "upstream": "DavX5Day"
+          },
+          {
+            "id": "week",
+            "label": "Week",
+            "icon": "ic_p_cal_week",
+            "upstream": "DavX5Week"
+          },
+          {
+            "id": "month",
+            "label": "Month",
+            "icon": "ic_p_cal_month",
+            "upstream": "DavX5Month"
+          },
+          {
+            "id": "agenda",
+            "label": "Agenda",
+            "icon": "ic_p_cal_agenda",
+            "upstream": "DavX5Agenda"
+          },
+          {
+            "id": "calendars",
+            "label": "Calendars",
+            "icon": "ic_p_cal_calendars",
+            "upstream": "DavX5Calendars"
+          },
+          {
+            "id": "add",
+            "label": "+ Add CalDAV",
+            "icon": "ic_p_add",
+            "upstream": "DavX5AddAccount"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "DavX5Settings"
+          }
+        ]
+      },
+      {
+        "id": "drive",
+        "label": "Drive",
+        "icon": "ic_drive",
+        "module": null,
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "My files",
+          "Photos",
+          "Connections",
+          "Recent",
+          "Shared",
+          "Trash"
+        ],
         "_doc": "Unified file storage hub — fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, borg/bup backup snapshots PLUS external cloud connections (S3 / Google Drive / Workspace / rclone remotes). Replaces RSS in the bottom-nav.",
         "pages": [
-          { "id": "files",       "label": "My files",     "icon": "ic_p_folder",       "upstream": "filebrowser" },
-          { "id": "photos",      "label": "Photos",       "icon": "ic_p_sol_personal", "upstream": "photoprism" },
-          { "id": "connections", "label": "Connections",  "icon": "ic_p_sol_cloud",    "upstream": "drive-connections" },
-          { "id": "recent",      "label": "Recent",       "icon": "ic_p_logs",         "upstream": "filebrowser_recent" },
-          { "id": "shared",      "label": "Shared",       "icon": "ic_p_contacts",     "upstream": "filebrowser_shared" },
-          { "id": "trash",       "label": "Trash",        "icon": "ic_p_more",         "upstream": "filebrowser_trash" },
-          { "id": "backups",     "label": "Backups",      "icon": "ic_p_vault_db",     "upstream": "borg-server" },
-          { "id": "upload",      "label": "+ Upload",     "icon": "ic_p_add",          "upstream": "filebrowser_upload" },
-          { "id": "settings",    "label": "Settings",     "icon": "ic_settings",       "upstream": "filebrowser_settings" }
-        ] },
-      { "id": "vault", "label": "Vault",    "icon": "ic_vault",    "module": "libs:vault", "supports_accounts": false, "bottom_nav": false,  "drawer_default_children": ["Passwords", "TOTP", "Generator"],
+          {
+            "id": "files",
+            "label": "My files",
+            "icon": "ic_p_folder",
+            "upstream": "filebrowser"
+          },
+          {
+            "id": "photos",
+            "label": "Photos",
+            "icon": "ic_p_sol_personal",
+            "upstream": "photoprism"
+          },
+          {
+            "id": "connections",
+            "label": "Connections",
+            "icon": "ic_p_sol_cloud",
+            "upstream": "drive-connections"
+          },
+          {
+            "id": "recent",
+            "label": "Recent",
+            "icon": "ic_p_logs",
+            "upstream": "filebrowser_recent"
+          },
+          {
+            "id": "shared",
+            "label": "Shared",
+            "icon": "ic_p_contacts",
+            "upstream": "filebrowser_shared"
+          },
+          {
+            "id": "trash",
+            "label": "Trash",
+            "icon": "ic_p_more",
+            "upstream": "filebrowser_trash"
+          },
+          {
+            "id": "backups",
+            "label": "Backups",
+            "icon": "ic_p_vault_db",
+            "upstream": "borg-server"
+          },
+          {
+            "id": "upload",
+            "label": "+ Upload",
+            "icon": "ic_p_add",
+            "upstream": "filebrowser_upload"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "filebrowser_settings"
+          }
+        ]
+      },
+      {
+        "id": "vault",
+        "label": "Vault",
+        "icon": "ic_vault",
+        "module": "libs:vault",
+        "supports_accounts": false,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Passwords",
+          "TOTP",
+          "Generator"
+        ],
         "pages": [
-          { "id": "passwords",  "label": "Passwords",  "icon": "ic_p_vault_pw",      "upstream": "KdxPasswords" },
-          { "id": "totp",       "label": "TOTP",       "icon": "ic_p_vault_totp",    "upstream": "KdxTotp" },
-          { "id": "generator",  "label": "Generator",  "icon": "ic_p_vault_gen",     "upstream": "KdxGenerator" },
-          { "id": "identities", "label": "Identities", "icon": "ic_p_vault_id",      "upstream": "KdxIdentities" },
-          { "id": "vaults",     "label": "Vaults",     "icon": "ic_p_vault_db",      "upstream": "KdxVaults" },
-          { "id": "settings",   "label": "Settings",   "icon": "ic_settings",        "upstream": "KdxSettings" }
-        ] },
-      { "id": "chat",  "label": "Chat",     "icon": "ic_chat",     "module": "libs:chat",  "supports_accounts": true,  "bottom_nav": false, "drawer_default_children": ["Mattermost", "Matrix-Bridges", "All servers", "+ Add server"], "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now. Mattermost = chat.diegonmarcos.com (mattermost-bots service); Matrix-Bridges = bridge bots (telegram/whatsapp/signal/IRC ↔ matrix).",
+          {
+            "id": "passwords",
+            "label": "Passwords",
+            "icon": "ic_p_vault_pw",
+            "upstream": "KdxPasswords"
+          },
+          {
+            "id": "totp",
+            "label": "TOTP",
+            "icon": "ic_p_vault_totp",
+            "upstream": "KdxTotp"
+          },
+          {
+            "id": "generator",
+            "label": "Generator",
+            "icon": "ic_p_vault_gen",
+            "upstream": "KdxGenerator"
+          },
+          {
+            "id": "identities",
+            "label": "Identities",
+            "icon": "ic_p_vault_id",
+            "upstream": "KdxIdentities"
+          },
+          {
+            "id": "vaults",
+            "label": "Vaults",
+            "icon": "ic_p_vault_db",
+            "upstream": "KdxVaults"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "KdxSettings"
+          }
+        ]
+      },
+      {
+        "id": "chat",
+        "label": "Chat",
+        "icon": "ic_chat",
+        "module": "libs:chat",
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Mattermost",
+          "Matrix-Bridges",
+          "All servers",
+          "+ Add server"
+        ],
+        "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now. Mattermost = chat.diegonmarcos.com (mattermost-bots service); Matrix-Bridges = bridge bots (telegram/whatsapp/signal/IRC ↔ matrix).",
         "pages": [
-          { "id": "mattermost", "label": "Mattermost",      "icon": "ic_p_chat_mattermost", "upstream": "ChatMattermost", "_doc": "Hooks into mattermost-bots @ chat.diegonmarcos.com" },
-          { "id": "matrix",     "label": "Matrix-Bridges",  "icon": "ic_p_chat_matrix",     "upstream": "ChatMatrix",     "_doc": "Bridge bots — Telegram / WhatsApp / Signal / IRC ↔ Matrix" },
-          { "id": "dms",        "label": "Direct messages", "icon": "ic_p_chat_dms",        "upstream": "ChatDMs" },
-          { "id": "channels",   "label": "Channels",        "icon": "ic_p_chat_channels",   "upstream": "ChatChannels" },
-          { "id": "servers",    "label": "Servers",         "icon": "ic_p_chat_servers",    "upstream": "ChatServers" },
-          { "id": "add",        "label": "+ Add server",    "icon": "ic_p_add",             "upstream": "ChatAddServer" },
-          { "id": "settings",   "label": "Settings",        "icon": "ic_settings",          "upstream": "ChatSettings" }
-        ] },
-      { "id": "wg",        "label": "WG",        "icon": "ic_wg",       "module": "libs:net",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Mesh", "+ Import"],
+          {
+            "id": "mattermost",
+            "label": "Mattermost",
+            "icon": "ic_p_chat_mattermost",
+            "upstream": "ChatMattermost",
+            "_doc": "Hooks into mattermost-bots @ chat.diegonmarcos.com"
+          },
+          {
+            "id": "matrix",
+            "label": "Matrix-Bridges",
+            "icon": "ic_p_chat_matrix",
+            "upstream": "ChatMatrix",
+            "_doc": "Bridge bots — Telegram / WhatsApp / Signal / IRC ↔ Matrix"
+          },
+          {
+            "id": "dms",
+            "label": "Direct messages",
+            "icon": "ic_p_chat_dms",
+            "upstream": "ChatDMs"
+          },
+          {
+            "id": "channels",
+            "label": "Channels",
+            "icon": "ic_p_chat_channels",
+            "upstream": "ChatChannels"
+          },
+          {
+            "id": "servers",
+            "label": "Servers",
+            "icon": "ic_p_chat_servers",
+            "upstream": "ChatServers"
+          },
+          {
+            "id": "add",
+            "label": "+ Add server",
+            "icon": "ic_p_add",
+            "upstream": "ChatAddServer"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "ChatSettings"
+          }
+        ]
+      },
+      {
+        "id": "wg",
+        "label": "WG",
+        "icon": "ic_wg",
+        "module": "libs:net",
+        "supports_accounts": false,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Mesh",
+          "+ Import"
+        ],
         "_doc_merge": "tunnels + status merged into a single `status` (Mesh status) page rendered by C3MeshFragment — a rich peer table (VM · WG-IP · public endpoint · role · live status). The previous Tunnels page is gone; the Mesh table covers both.",
         "pages": [
-          { "id": "status",   "label": "Mesh",     "icon": "ic_p_wg_tunnels", "upstream": "WgMesh" },
-          { "id": "logs",     "label": "Logs",     "icon": "ic_p_logs",       "upstream": "WgLogs" },
-          { "id": "add",      "label": "+ Import", "icon": "ic_p_add",        "upstream": "WgImport" },
-          { "id": "settings", "label": "Settings", "icon": "ic_settings",     "upstream": "WgSettings" }
-        ] },
-      { "id": "solutions", "label": "Solutions", "icon": "ic_solutions", "module": null,        "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Professional", "Personal", "Tools", "Cloud", "Other"], "_doc": "Front-end app launcher — categories mirror ~/git/front/ top-level folders (a-Companies/Individual/Portals = Professional; b-* = Personal; c-* = Tools; d-Cloud; e-Others = Other). Sits next to C3 (cloud ops) under the Home master index.",
+          {
+            "id": "status",
+            "label": "Mesh",
+            "icon": "ic_p_wg_tunnels",
+            "upstream": "WgMesh"
+          },
+          {
+            "id": "logs",
+            "label": "Logs",
+            "icon": "ic_p_logs",
+            "upstream": "WgLogs"
+          },
+          {
+            "id": "add",
+            "label": "+ Import",
+            "icon": "ic_p_add",
+            "upstream": "WgImport"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "WgSettings"
+          }
+        ]
+      },
+      {
+        "id": "solutions",
+        "label": "Solutions",
+        "icon": "ic_solutions",
+        "module": null,
+        "supports_accounts": false,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Professional",
+          "Personal",
+          "Tools",
+          "Cloud",
+          "Other"
+        ],
+        "_doc": "Front-end app launcher — categories mirror ~/git/front/ top-level folders (a-Companies/Individual/Portals = Professional; b-* = Personal; c-* = Tools; d-Cloud; e-Others = Other). Sits next to C3 (cloud ops) under the Home master index.",
         "pages": [
-          { "id": "professional", "label": "Professional", "icon": "ic_p_sol_pro" },
-          { "id": "personal",     "label": "Personal",     "icon": "ic_p_sol_personal" },
-          { "id": "tools",        "label": "Tools",        "icon": "ic_p_sol_tools" },
-          { "id": "cloud",        "label": "Cloud",        "icon": "ic_p_sol_cloud" },
-          { "id": "other",        "label": "Other",        "icon": "ic_p_sol_other" }
-        ] },
-      { "id": "c3",        "label": "C3",        "icon": "ic_settings", "module": "libs:ops",   "supports_accounts": false, "bottom_nav": false, "drawer_default_children": ["Reports", "Stack", "Health", "Workflows"],
+          {
+            "id": "professional",
+            "label": "Professional",
+            "icon": "ic_p_sol_pro"
+          },
+          {
+            "id": "personal",
+            "label": "Personal",
+            "icon": "ic_p_sol_personal"
+          },
+          {
+            "id": "tools",
+            "label": "Tools",
+            "icon": "ic_p_sol_tools"
+          },
+          {
+            "id": "cloud",
+            "label": "Cloud",
+            "icon": "ic_p_sol_cloud"
+          },
+          {
+            "id": "other",
+            "label": "Other",
+            "icon": "ic_p_sol_other"
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "label": "C3",
+        "icon": "ic_settings",
+        "module": "libs:ops",
+        "supports_accounts": false,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Reports",
+          "Stack",
+          "Health",
+          "Workflows"
+        ],
         "pages": [
-          { "id": "reports",   "label": "Reports",   "icon": "ic_p_c3_reports" },
-          { "id": "stack",     "label": "Stack",     "icon": "ic_p_c3_stack" },
-          { "id": "health",    "label": "Health",    "icon": "ic_p_c3_health" },
-          { "id": "workflows", "label": "Workflows", "icon": "ic_p_c3_workflows" },
-          { "id": "vms",       "label": "VMs",       "icon": "ic_p_c3_vms" },
-          { "id": "logs",      "label": "Logs",      "icon": "ic_p_logs" }
-        ] }
+          {
+            "id": "reports",
+            "label": "Reports",
+            "icon": "ic_p_c3_reports"
+          },
+          {
+            "id": "stack",
+            "label": "Stack",
+            "icon": "ic_p_c3_stack"
+          },
+          {
+            "id": "health",
+            "label": "Health",
+            "icon": "ic_p_c3_health"
+          },
+          {
+            "id": "workflows",
+            "label": "Workflows",
+            "icon": "ic_p_c3_workflows"
+          },
+          {
+            "id": "vms",
+            "label": "VMs",
+            "icon": "ic_p_c3_vms"
+          },
+          {
+            "id": "logs",
+            "label": "Logs",
+            "icon": "ic_p_logs"
+          }
+        ]
+      }
     ],
     "default_section": "home",
-    "default_mode":    "apps",
-    "_doc_modes":      "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
+    "default_mode": "apps",
+    "_doc_modes": "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). Extend by adding entries here — never hardcoded in Kotlin.",
     "home_actions": [
-      { "id": "check_updates", "label": "Update", "icon": "ic_refresh",  "action_type": "check_updates" },
-      { "id": "import_configs","label": "Import", "icon": "ic_p_import", "action_type": "import_configs" }
+      {
+        "id": "check_updates",
+        "label": "Update",
+        "icon": "ic_refresh",
+        "action_type": "check_updates"
+      },
+      {
+        "id": "import_configs",
+        "label": "Import",
+        "icon": "ic_p_import",
+        "action_type": "import_configs"
+      }
     ],
     "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",
     "import_schema": {
       "wg": {
-        "wg0_private_key":          "AAAA…  (base64 32B)",
-        "wg_public_private_key":    "BBBB…  (base64 32B)"
+        "wg0_private_key": "AAAA…  (base64 32B)",
+        "wg_public_private_key": "BBBB…  (base64 32B)"
       },
       "mail": {
-        "jmap_url":   "https://jmap.diegonmarcos.com",
-        "imap_url":   "imaps://imap.diegonmarcos.com:993",
-        "smtps_url":  "smtps://smtp.diegonmarcos.com:465",
-        "username":   "me@diegonmarcos.com",
-        "password":   "…sops-decrypted upstream…"
+        "jmap_url": "https://jmap.diegonmarcos.com",
+        "imap_url": "imaps://imap.diegonmarcos.com:993",
+        "smtps_url": "smtps://smtp.diegonmarcos.com:465",
+        "username": "me@diegonmarcos.com",
+        "password": "…sops-decrypted upstream…"
       },
       "ssh": {
         "vault_repo_key": "-----BEGIN OPENSSH PRIVATE KEY-----\\n…\\n-----END OPENSSH PRIVATE KEY-----"
@@ -282,311 +1108,927 @@
     "_doc_data_snapshots": "C3/Health (public + private services) and C3/Mesh (wg-mesh/v1 snapshot) are NO LONGER hardcoded here — they live in ea_cloud-superapp/data/ as derived snapshots (regenerated via data/regen.sh from cloud-data's _cloud-data-consolidated.json + cloud/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json). app/build.gradle reads those files at bake time and exposes them via BuildConfig.",
     "_doc_drive_connections": "Listing rendered by Drive · Connections — each external/internal storage backend reachable from the stack. Status today is the declared baseline (planned: live overlay from the cargo-ndk Rust binary).",
     "drive_connections": [
-      { "name": "MinIO",                 "kind": "s3",                "endpoint": "crawlee_minio:9000",         "auth": "access_key + secret",       "vm": "oci-apps",      "status": "ok",   "scope": "private", "notes": "S3-compatible object store for crawlee runs" },
-      { "name": "Google Drive (me@)",    "kind": "google-drive",      "endpoint": "drive.google.com",            "auth": "oauth2 (google-personal-mcp)","vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Personal Google account via MCP" },
-      { "name": "Google Workspace",      "kind": "google-workspace",  "endpoint": "workspace.google.com",        "auth": "service_account + domain delegation","vm": "oci-apps", "status": "ok",   "scope": "public",  "notes": "Docs/Sheets/Slides/Calendar via google-workspace-mcp" },
-      { "name": "rclone (photoprism)",   "kind": "rclone",            "endpoint": "photoprism_rclone container", "auth": "shared volume",             "vm": "oci-apps",      "status": "ok",   "scope": "private", "notes": "Photoprism originals sync via rclone" },
-      { "name": "Borg backups",          "kind": "borg",              "endpoint": "borg-server:2224",            "auth": "ssh-key",                   "vm": "—",            "status": "ok",   "scope": "private", "notes": "Daily encrypted snapshots" },
-      { "name": "Bup backups",           "kind": "bup",               "endpoint": "bup-server:2223",             "auth": "ssh-key",                   "vm": "—",            "status": "ok",   "scope": "private", "notes": "Dedup-backed redundant snapshots" },
-      { "name": "Filebrowser (HTTP)",    "kind": "http",              "endpoint": "files.diegonmarcos.com",      "auth": "two_factor",                "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Browser-facing file manager" },
-      { "name": "Vaultwarden attachments","kind": "https",            "endpoint": "vault.diegonmarcos.com",      "auth": "two_factor",                "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Attached files inside Bitwarden vault" },
-      { "name": "Photoprism originals",  "kind": "fs-volume",         "endpoint": "/opt/containers/photoprism/originals", "auth": "fs-perms",         "vm": "oci-apps",      "status": "ok",   "scope": "private", "notes": "Read-only bind mount of master library" },
-      { "name": "Hedgedoc uploads",      "kind": "https",             "endpoint": "doc.diegonmarcos.com",        "auth": "two_factor",                "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Markdown attachments uploaded to docs" },
-      { "name": "Gitea LFS",             "kind": "git-lfs",           "endpoint": "git.diegonmarcos.com",        "auth": "two_factor + token",        "vm": "oci-apps",      "status": "ok",   "scope": "public",  "notes": "Large file storage attached to repos" },
-      { "name": "Stalwart mail blobs",   "kind": "imap-attachments",  "endpoint": "mail-stalwart.diegonmarcos.com","auth": "imap+jmap",               "vm": "oci-mail",      "status": "ok",   "scope": "public",  "notes": "MIME attachments inside JMAP store" }
+      {
+        "name": "MinIO",
+        "kind": "s3",
+        "endpoint": "crawlee_minio:9000",
+        "auth": "access_key + secret",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "private",
+        "notes": "S3-compatible object store for crawlee runs"
+      },
+      {
+        "name": "Google Drive (me@)",
+        "kind": "google-drive",
+        "endpoint": "drive.google.com",
+        "auth": "oauth2 (google-personal-mcp)",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "public",
+        "notes": "Personal Google account via MCP"
+      },
+      {
+        "name": "Google Workspace",
+        "kind": "google-workspace",
+        "endpoint": "workspace.google.com",
+        "auth": "service_account + domain delegation",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "public",
+        "notes": "Docs/Sheets/Slides/Calendar via google-workspace-mcp"
+      },
+      {
+        "name": "rclone (photoprism)",
+        "kind": "rclone",
+        "endpoint": "photoprism_rclone container",
+        "auth": "shared volume",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "private",
+        "notes": "Photoprism originals sync via rclone"
+      },
+      {
+        "name": "Borg backups",
+        "kind": "borg",
+        "endpoint": "borg-server:2224",
+        "auth": "ssh-key",
+        "vm": "—",
+        "status": "ok",
+        "scope": "private",
+        "notes": "Daily encrypted snapshots"
+      },
+      {
+        "name": "Bup backups",
+        "kind": "bup",
+        "endpoint": "bup-server:2223",
+        "auth": "ssh-key",
+        "vm": "—",
+        "status": "ok",
+        "scope": "private",
+        "notes": "Dedup-backed redundant snapshots"
+      },
+      {
+        "name": "Filebrowser (HTTP)",
+        "kind": "http",
+        "endpoint": "files.diegonmarcos.com",
+        "auth": "two_factor",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "public",
+        "notes": "Browser-facing file manager"
+      },
+      {
+        "name": "Vaultwarden attachments",
+        "kind": "https",
+        "endpoint": "vault.diegonmarcos.com",
+        "auth": "two_factor",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "public",
+        "notes": "Attached files inside Bitwarden vault"
+      },
+      {
+        "name": "Photoprism originals",
+        "kind": "fs-volume",
+        "endpoint": "/opt/containers/photoprism/originals",
+        "auth": "fs-perms",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "private",
+        "notes": "Read-only bind mount of master library"
+      },
+      {
+        "name": "Hedgedoc uploads",
+        "kind": "https",
+        "endpoint": "doc.diegonmarcos.com",
+        "auth": "two_factor",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "public",
+        "notes": "Markdown attachments uploaded to docs"
+      },
+      {
+        "name": "Gitea LFS",
+        "kind": "git-lfs",
+        "endpoint": "git.diegonmarcos.com",
+        "auth": "two_factor + token",
+        "vm": "oci-apps",
+        "status": "ok",
+        "scope": "public",
+        "notes": "Large file storage attached to repos"
+      },
+      {
+        "name": "Stalwart mail blobs",
+        "kind": "imap-attachments",
+        "endpoint": "mail-stalwart.diegonmarcos.com",
+        "auth": "imap+jmap",
+        "vm": "oci-mail",
+        "status": "ok",
+        "scope": "public",
+        "notes": "MIME attachments inside JMAP store"
+      }
     ],
     "_doc_home_groups": "Home master view is organised into themed groups (Communication / Infos / Others / C3) with section-titled rows of tiles. Each tile's `id` is either 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), driven by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {
         "title": "Communication",
         "tiles": [
-          { "id": "section:mail",            "label": "Mail",             "icon": "ic_mail" },
-          { "id": "page:chat/matrix",        "label": "Chat-Matrix",      "icon": "ic_p_chat_matrix" },
-          { "id": "page:chat/mattermost",    "label": "Chat-Mattermost",  "icon": "ic_p_chat_mattermost" }
+          {
+            "id": "section:mail",
+            "label": "Mail",
+            "icon": "ic_mail"
+          },
+          {
+            "id": "page:chat/matrix",
+            "label": "Chat-Matrix",
+            "icon": "ic_p_chat_matrix"
+          },
+          {
+            "id": "page:chat/mattermost",
+            "label": "Chat-Mattermost",
+            "icon": "ic_p_chat_mattermost"
+          }
         ]
       },
       {
         "title": "Infos",
         "tiles": [
-          { "id": "section:cal",             "label": "Calendars",        "icon": "ic_calendar" },
-          { "id": "section:drive",           "label": "Drive",            "icon": "ic_drive" },
-          { "id": "section:feed",            "label": "RSS + ntfy",       "icon": "ic_rss" }
+          {
+            "id": "section:cal",
+            "label": "Calendars",
+            "icon": "ic_calendar"
+          },
+          {
+            "id": "section:drive",
+            "label": "Drive",
+            "icon": "ic_drive"
+          },
+          {
+            "id": "section:feed",
+            "label": "RSS + ntfy",
+            "icon": "ic_rss"
+          }
         ]
       },
       {
         "title": "Others",
         "tiles": [
-          { "id": "page:solutions/professional", "label": "Professional", "icon": "ic_p_sol_pro" },
-          { "id": "page:solutions/personal",     "label": "Personal",     "icon": "ic_p_sol_personal" },
-          { "id": "page:solutions/tools",        "label": "Tools",        "icon": "ic_p_sol_tools" },
-          { "id": "page:solutions/cloud",        "label": "Cloud",        "icon": "ic_p_sol_cloud" },
-          { "id": "page:solutions/other",        "label": "Other",        "icon": "ic_p_sol_other" }
+          {
+            "id": "page:solutions/professional",
+            "label": "Professional",
+            "icon": "ic_p_sol_pro"
+          },
+          {
+            "id": "page:solutions/personal",
+            "label": "Personal",
+            "icon": "ic_p_sol_personal"
+          },
+          {
+            "id": "page:solutions/tools",
+            "label": "Tools",
+            "icon": "ic_p_sol_tools"
+          },
+          {
+            "id": "page:solutions/cloud",
+            "label": "Cloud",
+            "icon": "ic_p_sol_cloud"
+          },
+          {
+            "id": "page:solutions/other",
+            "label": "Other",
+            "icon": "ic_p_sol_other"
+          }
         ]
       },
       {
         "title": "C3",
         "tiles": [
-          { "id": "page:c3/health",          "label": "Health",           "icon": "ic_p_c3_health" },
-          { "id": "page:wg/status",          "label": "WG mesh",          "icon": "ic_p_wg_tunnels" },
-          { "id": "section:vault",           "label": "Vault",            "icon": "ic_vault" }
+          {
+            "id": "page:c3/health",
+            "label": "Health",
+            "icon": "ic_p_c3_health"
+          },
+          {
+            "id": "page:wg/status",
+            "label": "WG mesh",
+            "icon": "ic_p_wg_tunnels"
+          },
+          {
+            "id": "section:vault",
+            "label": "Vault",
+            "icon": "ic_vault"
+          }
         ]
       }
     ],
     "_doc_page_samples": "Per-page sample content shown by PageContentFragment until the real module fragment lands. Key format: '<section>/<page>'. Each entry is a list of {title, subtitle} rows. Ties to the real CLAUDE.md stack so each section already feels like the user's infra.",
     "page_samples": {
       "feed/all": [
-        { "title": "Hacker News",            "subtitle": "Top stories • Y Combinator" },
-        { "title": "Lobste.rs",              "subtitle": "Computing-focused community" },
-        { "title": "Phoronix",               "subtitle": "Linux + open-source hardware" },
-        { "title": "Ars Technica",           "subtitle": "Technology news" },
-        { "title": "/r/selfhosted",          "subtitle": "Reddit • self-hosting" },
-        { "title": "ntfy: alerts",           "subtitle": "rss.diegonmarcos.com/alerts" },
-        { "title": "ntfy: backup-status",    "subtitle": "rss.diegonmarcos.com/backup-status" },
-        { "title": "ntfy: cert-expiring",    "subtitle": "rss.diegonmarcos.com/cert-expiring" },
-        { "title": "ntfy: health-down",      "subtitle": "rss.diegonmarcos.com/health-down" },
-        { "title": "ntfy: mail-puller",      "subtitle": "rss.diegonmarcos.com/mail-puller" },
-        { "title": "ntfy: gha",              "subtitle": "rss.diegonmarcos.com/gha (planned)" }
+        {
+          "title": "Hacker News",
+          "subtitle": "Top stories • Y Combinator"
+        },
+        {
+          "title": "Lobste.rs",
+          "subtitle": "Computing-focused community"
+        },
+        {
+          "title": "Phoronix",
+          "subtitle": "Linux + open-source hardware"
+        },
+        {
+          "title": "Ars Technica",
+          "subtitle": "Technology news"
+        },
+        {
+          "title": "/r/selfhosted",
+          "subtitle": "Reddit • self-hosting"
+        },
+        {
+          "title": "ntfy: alerts",
+          "subtitle": "rss.diegonmarcos.com/alerts"
+        },
+        {
+          "title": "ntfy: backup-status",
+          "subtitle": "rss.diegonmarcos.com/backup-status"
+        },
+        {
+          "title": "ntfy: cert-expiring",
+          "subtitle": "rss.diegonmarcos.com/cert-expiring"
+        },
+        {
+          "title": "ntfy: health-down",
+          "subtitle": "rss.diegonmarcos.com/health-down"
+        },
+        {
+          "title": "ntfy: mail-puller",
+          "subtitle": "rss.diegonmarcos.com/mail-puller"
+        },
+        {
+          "title": "ntfy: gha",
+          "subtitle": "rss.diegonmarcos.com/gha (planned)"
+        }
       ],
       "feed/unread": [
-        { "title": "Rust 1.89 released",        "subtitle": "Hacker News • 2h" },
-        { "title": "WireGuard kernel debate",   "subtitle": "Lobste.rs • 5h" },
-        { "title": "ZFS 2.3 on Linux",          "subtitle": "Phoronix • 8h" }
+        {
+          "title": "Rust 1.89 released",
+          "subtitle": "Hacker News • 2h"
+        },
+        {
+          "title": "WireGuard kernel debate",
+          "subtitle": "Lobste.rs • 5h"
+        },
+        {
+          "title": "ZFS 2.3 on Linux",
+          "subtitle": "Phoronix • 8h"
+        }
       ],
       "feed/saved": [
-        { "title": "Building Stalwart from source", "subtitle": "blog • saved 3d ago" },
-        { "title": "JMAP push channel design",      "subtitle": "RFC 8620 • saved 1w ago" }
+        {
+          "title": "Building Stalwart from source",
+          "subtitle": "blog • saved 3d ago"
+        },
+        {
+          "title": "JMAP push channel design",
+          "subtitle": "RFC 8620 • saved 1w ago"
+        }
       ],
       "feed/subscriptions": [
-        { "title": "Hacker News", "subtitle": "https://news.ycombinator.com/rss" },
-        { "title": "Lobste.rs",   "subtitle": "https://lobste.rs/rss" },
-        { "title": "Phoronix",    "subtitle": "https://phoronix.com/rss.php" }
+        {
+          "title": "Hacker News",
+          "subtitle": "https://news.ycombinator.com/rss"
+        },
+        {
+          "title": "Lobste.rs",
+          "subtitle": "https://lobste.rs/rss"
+        },
+        {
+          "title": "Phoronix",
+          "subtitle": "https://phoronix.com/rss.php"
+        }
       ],
       "feed/add": [
-        { "title": "Paste an RSS / Atom URL", "subtitle": "Feeder will auto-discover the feed" }
+        {
+          "title": "Paste an RSS / Atom URL",
+          "subtitle": "Feeder will auto-discover the feed"
+        }
       ],
       "feed/settings": [
-        { "title": "Sync interval",  "subtitle": "Every 30 minutes" },
-        { "title": "Notifications",  "subtitle": "On unread" },
-        { "title": "Storage limit",  "subtitle": "Keep last 200 items / feed" }
+        {
+          "title": "Sync interval",
+          "subtitle": "Every 30 minutes"
+        },
+        {
+          "title": "Notifications",
+          "subtitle": "On unread"
+        },
+        {
+          "title": "Storage limit",
+          "subtitle": "Keep last 200 items / feed"
+        }
       ],
-
       "cal/day": [
-        { "title": "Standup",   "subtitle": "09:00 — 09:15" },
-        { "title": "Deep work", "subtitle": "10:00 — 12:00" },
-        { "title": "Lunch",     "subtitle": "13:00 — 14:00" },
-        { "title": "Review PRs","subtitle": "16:00 — 17:00" }
+        {
+          "title": "Standup",
+          "subtitle": "09:00 — 09:15"
+        },
+        {
+          "title": "Deep work",
+          "subtitle": "10:00 — 12:00"
+        },
+        {
+          "title": "Lunch",
+          "subtitle": "13:00 — 14:00"
+        },
+        {
+          "title": "Review PRs",
+          "subtitle": "16:00 — 17:00"
+        }
       ],
       "cal/week": [
-        { "title": "Mon", "subtitle": "3 events" },
-        { "title": "Tue", "subtitle": "2 events" },
-        { "title": "Wed", "subtitle": "5 events" },
-        { "title": "Thu", "subtitle": "4 events" },
-        { "title": "Fri", "subtitle": "2 events" }
+        {
+          "title": "Mon",
+          "subtitle": "3 events"
+        },
+        {
+          "title": "Tue",
+          "subtitle": "2 events"
+        },
+        {
+          "title": "Wed",
+          "subtitle": "5 events"
+        },
+        {
+          "title": "Thu",
+          "subtitle": "4 events"
+        },
+        {
+          "title": "Fri",
+          "subtitle": "2 events"
+        }
       ],
       "cal/month": [
-        { "title": "May 2026", "subtitle": "23 events scheduled" },
-        { "title": "Heatmap",  "subtitle": "Densest week: 18 May" }
+        {
+          "title": "May 2026",
+          "subtitle": "23 events scheduled"
+        },
+        {
+          "title": "Heatmap",
+          "subtitle": "Densest week: 18 May"
+        }
       ],
       "cal/agenda": [
-        { "title": "Today — Standup",         "subtitle": "09:00" },
-        { "title": "Tomorrow — Tech review",  "subtitle": "14:00" },
-        { "title": "Fri — Tickets sync",      "subtitle": "11:30" }
+        {
+          "title": "Today — Standup",
+          "subtitle": "09:00"
+        },
+        {
+          "title": "Tomorrow — Tech review",
+          "subtitle": "14:00"
+        },
+        {
+          "title": "Fri — Tickets sync",
+          "subtitle": "11:30"
+        }
       ],
       "cal/calendars": [
-        { "title": "Personal", "subtitle": "cal.diegonmarcos.com/diego/personal" },
-        { "title": "Work",     "subtitle": "cal.diegonmarcos.com/diego/work" },
-        { "title": "Birthdays","subtitle": "cal.diegonmarcos.com/diego/birthdays" }
+        {
+          "title": "Personal",
+          "subtitle": "cal.diegonmarcos.com/diego/personal"
+        },
+        {
+          "title": "Work",
+          "subtitle": "cal.diegonmarcos.com/diego/work"
+        },
+        {
+          "title": "Birthdays",
+          "subtitle": "cal.diegonmarcos.com/diego/birthdays"
+        }
       ],
       "cal/add": [
-        { "title": "Add CalDAV server", "subtitle": "https://cal.diegonmarcos.com" }
+        {
+          "title": "Add CalDAV server",
+          "subtitle": "https://cal.diegonmarcos.com"
+        }
       ],
       "cal/settings": [
-        { "title": "Default reminder", "subtitle": "15 min before" },
-        { "title": "Week starts on",   "subtitle": "Monday" }
+        {
+          "title": "Default reminder",
+          "subtitle": "15 min before"
+        },
+        {
+          "title": "Week starts on",
+          "subtitle": "Monday"
+        }
       ],
-
       "vault/passwords": [
-        { "title": "github.com",                "subtitle": "diegonmarcos" },
-        { "title": "vault.diegonmarcos.com",    "subtitle": "diego" },
-        { "title": "gitea.diegonmarcos.com",    "subtitle": "diego" },
-        { "title": "auth.diegonmarcos.com",     "subtitle": "diego (Authelia)" }
+        {
+          "title": "github.com",
+          "subtitle": "diegonmarcos"
+        },
+        {
+          "title": "vault.diegonmarcos.com",
+          "subtitle": "diego"
+        },
+        {
+          "title": "gitea.diegonmarcos.com",
+          "subtitle": "diego"
+        },
+        {
+          "title": "auth.diegonmarcos.com",
+          "subtitle": "diego (Authelia)"
+        }
       ],
       "vault/totp": [
-        { "title": "GitHub",      "subtitle": "623 891 • 18s" },
-        { "title": "Vaultwarden", "subtitle": "412 056 • 21s" },
-        { "title": "Authelia",    "subtitle": "778 230 • 09s" }
+        {
+          "title": "GitHub",
+          "subtitle": "623 891 • 18s"
+        },
+        {
+          "title": "Vaultwarden",
+          "subtitle": "412 056 • 21s"
+        },
+        {
+          "title": "Authelia",
+          "subtitle": "778 230 • 09s"
+        }
       ],
       "vault/generator": [
-        { "title": "Last generated", "subtitle": "k7-Ph3i9!Bx2Q@vR.j5sN" },
-        { "title": "Length",         "subtitle": "20 chars" },
-        { "title": "Charset",        "subtitle": "alnum + symbols" }
+        {
+          "title": "Last generated",
+          "subtitle": "k7-Ph3i9!Bx2Q@vR.j5sN"
+        },
+        {
+          "title": "Length",
+          "subtitle": "20 chars"
+        },
+        {
+          "title": "Charset",
+          "subtitle": "alnum + symbols"
+        }
       ],
       "vault/identities": [
-        { "title": "Personal", "subtitle": "me@diegonmarcos.com" },
-        { "title": "Work",     "subtitle": "diego@workplace.com" }
+        {
+          "title": "Personal",
+          "subtitle": "me@diegonmarcos.com"
+        },
+        {
+          "title": "Work",
+          "subtitle": "diego@workplace.com"
+        }
       ],
       "vault/vaults": [
-        { "title": "Vaultwarden",   "subtitle": "vault.diegonmarcos.com" },
-        { "title": "Local KeePass", "subtitle": "passwords.kdbx" }
+        {
+          "title": "Vaultwarden",
+          "subtitle": "vault.diegonmarcos.com"
+        },
+        {
+          "title": "Local KeePass",
+          "subtitle": "passwords.kdbx"
+        }
       ],
       "vault/settings": [
-        { "title": "Auto-lock",     "subtitle": "After 5 minutes" },
-        { "title": "Biometric",     "subtitle": "Enabled" }
+        {
+          "title": "Auto-lock",
+          "subtitle": "After 5 minutes"
+        },
+        {
+          "title": "Biometric",
+          "subtitle": "Enabled"
+        }
       ],
-
       "chat/mattermost": [
-        { "title": "chat.diegonmarcos.com", "subtitle": "Self-hosted Mattermost • mattermost-bots service" },
-        { "title": "#general",              "subtitle": "Top channel • 2 unread" },
-        { "title": "#alerts",               "subtitle": "Bridged from ntfy" },
-        { "title": "Bot: c3-status",        "subtitle": "Posts daily health digest" }
+        {
+          "title": "chat.diegonmarcos.com",
+          "subtitle": "Self-hosted Mattermost • mattermost-bots service"
+        },
+        {
+          "title": "#general",
+          "subtitle": "Top channel • 2 unread"
+        },
+        {
+          "title": "#alerts",
+          "subtitle": "Bridged from ntfy"
+        },
+        {
+          "title": "Bot: c3-status",
+          "subtitle": "Posts daily health digest"
+        }
       ],
       "chat/matrix": [
-        { "title": "Telegram bridge",  "subtitle": "mautrix-telegram" },
-        { "title": "WhatsApp bridge",  "subtitle": "mautrix-whatsapp" },
-        { "title": "Signal bridge",    "subtitle": "mautrix-signal" },
-        { "title": "IRC bridge",       "subtitle": "matrix-appservice-irc" },
-        { "title": "Synapse server",   "subtitle": "matrix.diegonmarcos.com (planned)" }
+        {
+          "title": "Telegram bridge",
+          "subtitle": "mautrix-telegram"
+        },
+        {
+          "title": "WhatsApp bridge",
+          "subtitle": "mautrix-whatsapp"
+        },
+        {
+          "title": "Signal bridge",
+          "subtitle": "mautrix-signal"
+        },
+        {
+          "title": "IRC bridge",
+          "subtitle": "matrix-appservice-irc"
+        },
+        {
+          "title": "Synapse server",
+          "subtitle": "matrix.diegonmarcos.com (planned)"
+        }
       ],
       "chat/dms": [
-        { "title": "Alice", "subtitle": "see you tomorrow" },
-        { "title": "Bob",   "subtitle": "👍" }
+        {
+          "title": "Alice",
+          "subtitle": "see you tomorrow"
+        },
+        {
+          "title": "Bob",
+          "subtitle": "👍"
+        }
       ],
       "chat/channels": [
-        { "title": "#general", "subtitle": "chat.diegonmarcos.com" },
-        { "title": "#ops",     "subtitle": "1 unread" },
-        { "title": "#alerts",  "subtitle": "ntfy bridge" }
+        {
+          "title": "#general",
+          "subtitle": "chat.diegonmarcos.com"
+        },
+        {
+          "title": "#ops",
+          "subtitle": "1 unread"
+        },
+        {
+          "title": "#alerts",
+          "subtitle": "ntfy bridge"
+        }
       ],
       "chat/servers": [
-        { "title": "Mattermost", "subtitle": "chat.diegonmarcos.com" }
+        {
+          "title": "Mattermost",
+          "subtitle": "chat.diegonmarcos.com"
+        }
       ],
       "chat/add": [
-        { "title": "Add Mattermost server", "subtitle": "Enter URL + token" }
+        {
+          "title": "Add Mattermost server",
+          "subtitle": "Enter URL + token"
+        }
       ],
       "chat/settings": [
-        { "title": "Notifications", "subtitle": "Mentions + DMs" }
+        {
+          "title": "Notifications",
+          "subtitle": "Mentions + DMs"
+        }
       ],
-
       "wg/tunnels": [
-        { "title": "gcp-proxy",     "subtitle": "10.0.0.1 • GCP e2-micro Free • WireGuard hub" },
-        { "title": "oci-mail",      "subtitle": "10.0.0.3 • Oracle E2 Free • Stalwart / Maddy / mail-puller" },
-        { "title": "oci-analytics", "subtitle": "10.0.0.4 • Oracle E2 Free • caddy public edge + dagu" },
-        { "title": "oci-apps",      "subtitle": "10.0.0.6 • Oracle A1.Flex 4-OCPU/24GB • 20+ services" },
-        { "title": "Mesh: hub-and-spoke", "subtitle": "wg-mesh on oci-apps; wg-public on gcp-proxy" },
-        { "title": "Public edge",        "subtitle": "oci-analytics — only public ingress (Phase-4)" },
-        { "title": "Handshake check",    "subtitle": "All peers OK • last 30s" }
+        {
+          "title": "gcp-proxy",
+          "subtitle": "10.0.0.1 • GCP e2-micro Free • WireGuard hub"
+        },
+        {
+          "title": "oci-mail",
+          "subtitle": "10.0.0.3 • Oracle E2 Free • Stalwart / Maddy / mail-puller"
+        },
+        {
+          "title": "oci-analytics",
+          "subtitle": "10.0.0.4 • Oracle E2 Free • caddy public edge + dagu"
+        },
+        {
+          "title": "oci-apps",
+          "subtitle": "10.0.0.6 • Oracle A1.Flex 4-OCPU/24GB • 20+ services"
+        },
+        {
+          "title": "Mesh: hub-and-spoke",
+          "subtitle": "wg-mesh on oci-apps; wg-public on gcp-proxy"
+        },
+        {
+          "title": "Public edge",
+          "subtitle": "oci-analytics — only public ingress (Phase-4)"
+        },
+        {
+          "title": "Handshake check",
+          "subtitle": "All peers OK • last 30s"
+        }
       ],
       "wg/status": [
-        { "title": "Mesh handshake",    "subtitle": "OK • all 4 peers alive" },
-        { "title": "Latency oci-mail",  "subtitle": "27 ms" },
-        { "title": "Latency gcp-proxy", "subtitle": "44 ms" }
+        {
+          "title": "Mesh handshake",
+          "subtitle": "OK • all 4 peers alive"
+        },
+        {
+          "title": "Latency oci-mail",
+          "subtitle": "27 ms"
+        },
+        {
+          "title": "Latency gcp-proxy",
+          "subtitle": "44 ms"
+        }
       ],
       "wg/logs": [
-        { "title": "[INFO] keepalive recv", "subtitle": "from 10.0.0.3" },
-        { "title": "[INFO] handshake done", "subtitle": "with 10.0.0.4" },
-        { "title": "[WARN] reset peer",     "subtitle": "to 10.0.0.6" }
+        {
+          "title": "[INFO] keepalive recv",
+          "subtitle": "from 10.0.0.3"
+        },
+        {
+          "title": "[INFO] handshake done",
+          "subtitle": "with 10.0.0.4"
+        },
+        {
+          "title": "[WARN] reset peer",
+          "subtitle": "to 10.0.0.6"
+        }
       ],
       "wg/add": [
-        { "title": "Import .conf file", "subtitle": "Pick from Downloads" }
+        {
+          "title": "Import .conf file",
+          "subtitle": "Pick from Downloads"
+        }
       ],
       "wg/settings": [
-        { "title": "Always-on VPN", "subtitle": "Enabled" }
+        {
+          "title": "Always-on VPN",
+          "subtitle": "Enabled"
+        }
       ],
-
       "solutions/professional": [
-        { "title": "cv_pdf",   "subtitle": "Résumé PDF generator" },
-        { "title": "cv_web",   "subtitle": "Personal CV site" },
-        { "title": "linktree", "subtitle": "Bio links page" },
-        { "title": "skills_mcp","subtitle": "Skills MCP showcase" }
+        {
+          "title": "cv_pdf",
+          "subtitle": "Résumé PDF generator"
+        },
+        {
+          "title": "cv_web",
+          "subtitle": "Personal CV site"
+        },
+        {
+          "title": "linktree",
+          "subtitle": "Bio links page"
+        },
+        {
+          "title": "skills_mcp",
+          "subtitle": "Skills MCP showcase"
+        }
       ],
       "solutions/personal": [
-        { "title": "mymovies",       "subtitle": "Movies watchlist & ratings" },
-        { "title": "mymusic",        "subtitle": "Music dashboard" },
-        { "title": "myphotos",       "subtitle": "Photo gallery" },
-        { "title": "mytrips",        "subtitle": "Travel log" },
-        { "title": "myprofile",      "subtitle": "About me" },
-        { "title": "health_tracker", "subtitle": "Health metrics" }
+        {
+          "title": "mymovies",
+          "subtitle": "Movies watchlist & ratings"
+        },
+        {
+          "title": "mymusic",
+          "subtitle": "Music dashboard"
+        },
+        {
+          "title": "myphotos",
+          "subtitle": "Photo gallery"
+        },
+        {
+          "title": "mytrips",
+          "subtitle": "Travel log"
+        },
+        {
+          "title": "myprofile",
+          "subtitle": "About me"
+        },
+        {
+          "title": "health_tracker",
+          "subtitle": "Health metrics"
+        }
       ],
       "solutions/tools": [
-        { "title": "json-vision",     "subtitle": "JSON visualizer" },
-        { "title": "carto",           "subtitle": "Cartography lab" },
-        { "title": "central_bank",    "subtitle": "Financial tools" },
-        { "title": "market_watch",    "subtitle": "Live markets" },
-        { "title": "leafy",           "subtitle": "Plant-care tracker" }
+        {
+          "title": "json-vision",
+          "subtitle": "JSON visualizer"
+        },
+        {
+          "title": "carto",
+          "subtitle": "Cartography lab"
+        },
+        {
+          "title": "central_bank",
+          "subtitle": "Financial tools"
+        },
+        {
+          "title": "market_watch",
+          "subtitle": "Live markets"
+        },
+        {
+          "title": "leafy",
+          "subtitle": "Plant-care tracker"
+        }
       ],
       "solutions/cloud": [
-        { "title": "myanalytics", "subtitle": "Personal analytics dashboard" },
-        { "title": "mydrive",     "subtitle": "File browser" },
-        { "title": "mymail",      "subtitle": "Webmail dashboard" },
-        { "title": "nexus",       "subtitle": "Service hub" }
+        {
+          "title": "myanalytics",
+          "subtitle": "Personal analytics dashboard"
+        },
+        {
+          "title": "mydrive",
+          "subtitle": "File browser"
+        },
+        {
+          "title": "mymail",
+          "subtitle": "Webmail dashboard"
+        },
+        {
+          "title": "nexus",
+          "subtitle": "Service hub"
+        }
       ],
       "solutions/other": [
-        { "title": "c_root",            "subtitle": "Cube view portfolio" },
-        { "title": "linktree_mindmap",  "subtitle": "Mindmap variant" },
-        { "title": "myfeed",            "subtitle": "Feed reader" },
-        { "title": "astro",             "subtitle": "Astrology playground (Nuxt)" }
+        {
+          "title": "c_root",
+          "subtitle": "Cube view portfolio"
+        },
+        {
+          "title": "linktree_mindmap",
+          "subtitle": "Mindmap variant"
+        },
+        {
+          "title": "myfeed",
+          "subtitle": "Feed reader"
+        },
+        {
+          "title": "astro",
+          "subtitle": "Astrology playground (Nuxt)"
+        }
       ],
-
       "c3/reports": [
-        { "title": "Cost summary",   "subtitle": "Oracle Free + GCP Free • $0/mo" },
-        { "title": "Health rollup",  "subtitle": "37/37 services up" },
-        { "title": "Weekly digest",  "subtitle": "Generated 2026-05-26" }
+        {
+          "title": "Cost summary",
+          "subtitle": "Oracle Free + GCP Free • $0/mo"
+        },
+        {
+          "title": "Health rollup",
+          "subtitle": "37/37 services up"
+        },
+        {
+          "title": "Weekly digest",
+          "subtitle": "Generated 2026-05-26"
+        }
       ],
       "c3/stack": [
-        { "title": "caddy",        "subtitle": "proxy.diegonmarcos.com • oci-analytics" },
-        { "title": "authelia",     "subtitle": "auth.diegonmarcos.com • gcp-proxy" },
-        { "title": "stalwart",     "subtitle": "mail-stalwart.diegonmarcos.com • oci-mail" },
-        { "title": "vaultwarden",  "subtitle": "vault.diegonmarcos.com • oci-apps" },
-        { "title": "gitea",        "subtitle": "git.diegonmarcos.com • oci-apps" },
-        { "title": "dagu",         "subtitle": "workflows.diegonmarcos.com • oci-analytics" },
-        { "title": "ntfy",         "subtitle": "rss.diegonmarcos.com • oci-apps" }
+        {
+          "title": "caddy",
+          "subtitle": "proxy.diegonmarcos.com • oci-analytics"
+        },
+        {
+          "title": "authelia",
+          "subtitle": "auth.diegonmarcos.com • gcp-proxy"
+        },
+        {
+          "title": "stalwart",
+          "subtitle": "mail-stalwart.diegonmarcos.com • oci-mail"
+        },
+        {
+          "title": "vaultwarden",
+          "subtitle": "vault.diegonmarcos.com • oci-apps"
+        },
+        {
+          "title": "gitea",
+          "subtitle": "git.diegonmarcos.com • oci-apps"
+        },
+        {
+          "title": "dagu",
+          "subtitle": "workflows.diegonmarcos.com • oci-analytics"
+        },
+        {
+          "title": "ntfy",
+          "subtitle": "rss.diegonmarcos.com • oci-apps"
+        }
       ],
       "c3/health": [
-        { "title": "Tier-1 critical",          "subtitle": "5/5 alive" },
-        { "title": "Tier-2 important",         "subtitle": "12/12 alive" },
-        { "title": "Tier-3 nice-to-have",      "subtitle": "20/20 alive" },
-        { "title": "c3-public-api",            "subtitle": "Rust • oci-analytics • api.diegonmarcos.com/c3-api" },
-        { "title": "c3-infra-api",             "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-infra-api" },
-        { "title": "c3-services-api",          "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-services-api" },
-        { "title": "Drift report",             "subtitle": "Topology vs deployed = 0 deltas" },
-        { "title": "Cert horizon",             "subtitle": "Next expiry: 67 days" }
+        {
+          "title": "Tier-1 critical",
+          "subtitle": "5/5 alive"
+        },
+        {
+          "title": "Tier-2 important",
+          "subtitle": "12/12 alive"
+        },
+        {
+          "title": "Tier-3 nice-to-have",
+          "subtitle": "20/20 alive"
+        },
+        {
+          "title": "c3-public-api",
+          "subtitle": "Rust • oci-analytics • api.diegonmarcos.com/c3-api"
+        },
+        {
+          "title": "c3-infra-api",
+          "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-infra-api"
+        },
+        {
+          "title": "c3-services-api",
+          "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-services-api"
+        },
+        {
+          "title": "Drift report",
+          "subtitle": "Topology vs deployed = 0 deltas"
+        },
+        {
+          "title": "Cert horizon",
+          "subtitle": "Next expiry: 67 days"
+        }
       ],
       "c3/workflows": [
-        { "title": "Daily backup",    "subtitle": "02:00 UTC • last OK 2026-05-29" },
-        { "title": "Cert renewal",    "subtitle": "Weekly • via Caddy" },
-        { "title": "Mail puller",     "subtitle": "Every 15 min" }
+        {
+          "title": "Daily backup",
+          "subtitle": "02:00 UTC • last OK 2026-05-29"
+        },
+        {
+          "title": "Cert renewal",
+          "subtitle": "Weekly • via Caddy"
+        },
+        {
+          "title": "Mail puller",
+          "subtitle": "Every 15 min"
+        }
       ],
       "c3/vms": [
-        { "title": "oci-mail",      "subtitle": "130.110.251.193 • Oracle E2 Free" },
-        { "title": "oci-analytics", "subtitle": "129.151.228.66 • Oracle E2 Free" },
-        { "title": "oci-apps",      "subtitle": "82.70.229.129 • Oracle A1.Flex 4-OCPU" },
-        { "title": "gcp-proxy",     "subtitle": "35.226.147.64 • GCP e2-micro Free" }
+        {
+          "title": "oci-mail",
+          "subtitle": "130.110.251.193 • Oracle E2 Free"
+        },
+        {
+          "title": "oci-analytics",
+          "subtitle": "129.151.228.66 • Oracle E2 Free"
+        },
+        {
+          "title": "oci-apps",
+          "subtitle": "82.70.229.129 • Oracle A1.Flex 4-OCPU"
+        },
+        {
+          "title": "gcp-proxy",
+          "subtitle": "35.226.147.64 • GCP e2-micro Free"
+        }
       ],
       "c3/logs": [
-        { "title": "caddy access",         "subtitle": "GET / 200" },
-        { "title": "stalwart smtp",        "subtitle": "SMTP IN ✓" },
-        { "title": "wireguard handshake",  "subtitle": "all peers OK" }
+        {
+          "title": "caddy access",
+          "subtitle": "GET / 200"
+        },
+        {
+          "title": "stalwart smtp",
+          "subtitle": "SMTP IN ✓"
+        },
+        {
+          "title": "wireguard handshake",
+          "subtitle": "all peers OK"
+        }
       ],
-
       "mail/inbox": [
-        { "title": "GitHub",        "subtitle": "[PR] Slice C2 message body merged" },
-        { "title": "OCI Free Tier", "subtitle": "Monthly usage summary" },
-        { "title": "Hetzner",       "subtitle": "Invoice 2026-05" }
+        {
+          "title": "GitHub",
+          "subtitle": "[PR] Slice C2 message body merged"
+        },
+        {
+          "title": "OCI Free Tier",
+          "subtitle": "Monthly usage summary"
+        },
+        {
+          "title": "Hetzner",
+          "subtitle": "Invoice 2026-05"
+        }
       ],
       "mail/identities": [
-        { "title": "me@diegonmarcos.com",    "subtitle": "Primary • Stalwart" },
-        { "title": "diego@diegonmarcos.com", "subtitle": "Alias" }
+        {
+          "title": "me@diegonmarcos.com",
+          "subtitle": "Primary • Stalwart"
+        },
+        {
+          "title": "diego@diegonmarcos.com",
+          "subtitle": "Alias"
+        }
       ],
       "mail/rules": [
-        { "title": "GitHub notifications → label", "subtitle": "Apply label 'github'" },
-        { "title": "Newsletters → Archive",        "subtitle": "Auto-archive" }
+        {
+          "title": "GitHub notifications → label",
+          "subtitle": "Apply label 'github'"
+        },
+        {
+          "title": "Newsletters → Archive",
+          "subtitle": "Auto-archive"
+        }
       ],
       "mail/answers": [
-        { "title": "Out of office",  "subtitle": "Away until…" },
-        { "title": "Acknowledged",   "subtitle": "Thanks, will reply soon." }
+        {
+          "title": "Out of office",
+          "subtitle": "Away until…"
+        },
+        {
+          "title": "Acknowledged",
+          "subtitle": "Thanks, will reply soon."
+        }
       ],
       "mail/contacts": [
-        { "title": "Alice Smith", "subtitle": "alice@example.org" },
-        { "title": "Bob Jones",   "subtitle": "bob@example.org" }
+        {
+          "title": "Alice Smith",
+          "subtitle": "alice@example.org"
+        },
+        {
+          "title": "Bob Jones",
+          "subtitle": "bob@example.org"
+        }
       ]
     }
   },
@@ -598,7 +2040,7 @@
     "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-superapp.yml) invokes those engine commands — no hardcoded registry/tag strings in the workflow.",
     "artifact": {
       "_doc": "Path under dist/ to publish. The `debug` key is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — it is THE app for this stack, not a side-by-side dev variant. The `release` key exists for when a true Play-Store-style release lifecycle lands; the GHA workflow picks debug for main pushes.",
-      "debug":   "Cloud-SuperApp.apk",
+      "debug": "Cloud-SuperApp.apk",
       "release": "Cloud-SuperApp-release.apk"
     },
     "ghcr": {
@@ -608,7 +2050,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-superapp",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "_doc": "GitHub Release attachment. Only fires on tag push matching the pattern, never on main pushes.",

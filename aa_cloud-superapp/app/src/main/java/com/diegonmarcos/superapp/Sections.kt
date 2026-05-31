@@ -30,6 +30,53 @@ object Sections {
         val tilesShared: List<AggTile> = emptyList(),
         val tilesApps:   List<AggTile> = emptyList(),
         val tilesAdmin:  List<AggTile> = emptyList(),
+        /** Per-mode stack panels — vertical scroll of collapsable cards.
+         *  When a stack_* list is non-empty for the active mode, the
+         *  aggregator renders [AggregatorStackFragment] instead of the
+         *  default tile grid. Both can coexist (tiles_apps + stack_admin). */
+        val stackShared: List<StackPanel> = emptyList(),
+        val stackApps:   List<StackPanel> = emptyList(),
+        val stackAdmin:  List<StackPanel> = emptyList(),
+    )
+
+    /** One collapsable card in an [AggregatorStackFragment].
+     *  `kind` dispatches to a body builder in that fragment. Unknown
+     *  kinds fall through to a placeholder card. */
+    data class StackPanel(
+        val kind: String,
+        val title: String,
+        val subtitle: String = "",
+        val collapsed: Boolean = false,
+        /** Used by kind=link_grid (flat) — single column of links. */
+        val links:   List<LinkItem>   = emptyList(),
+        /** Used by kind=link_grid (grouped) — multi-column with header. */
+        val columns: List<LinkColumn> = emptyList(),
+        /** Used by kind=tile_row — nested mini-tiles. */
+        val tiles:   List<AggTile>    = emptyList(),
+        /** Used by kind=linktree_slide — id of slide in data/linktree.json. */
+        val slideId: String = "",
+        /** Used by kind=link / openExternal pointers. */
+        val url: String = "",
+        val iconName: String = "",
+    )
+
+    data class LinkItem(
+        val label: String,
+        val url:   String,
+        val icon:  String = "",
+    )
+
+    data class LinkColumn(
+        val header:    String,
+        val headerUrl: String = "",
+        val links:     List<LinkItem>,
+    )
+
+    /** One slide from data/linktree.json (mirror of personal-tools.json). */
+    data class LinktreeSlide(
+        val id:    String,
+        val title: String,
+        val columns: List<LinkColumn>,
     )
 
     /** One tile in an aggregator section. `target` follows the existing
@@ -150,6 +197,7 @@ object Sections {
     @Volatile private var cachedSvcPub:   List<PublicService>?     = null
     @Volatile private var cachedSvcPriv:  List<PrivateService>?    = null
     @Volatile private var cachedDrive:    List<DriveConnection>?   = null
+    @Volatile private var cachedLinktree: Map<String, LinktreeSlide>? = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -188,19 +236,71 @@ object Sections {
             val rawModule = o.optString("module", "")
             val module = rawModule.takeIf { it.isNotEmpty() && it != "null" }
 
-            fun parseTiles(arrName: String): List<AggTile> {
-                val ta = o.optJSONArray(arrName) ?: return emptyList()
+            fun parseTilesInline(ta: org.json.JSONArray?): List<AggTile> {
+                ta ?: return emptyList()
                 val out = mutableListOf<AggTile>()
                 for (j in 0 until ta.length()) {
                     val t = ta.getJSONObject(j)
                     out.add(
                         AggTile(
-                            id       = t.getString("id"),
+                            id       = t.optString("id", t.optString("label", "")),
                             label    = t.getString("label"),
                             iconName = t.optString("icon", "ic_settings"),
                             target   = t.optString("target", ""),
                         )
                     )
+                }
+                return out
+            }
+
+            fun parseTiles(arrName: String): List<AggTile> =
+                parseTilesInline(o.optJSONArray(arrName))
+
+            fun parseLinks(arr: org.json.JSONArray?): List<LinkItem> {
+                arr ?: return emptyList()
+                val out = mutableListOf<LinkItem>()
+                for (j in 0 until arr.length()) {
+                    val l = arr.getJSONObject(j)
+                    out.add(LinkItem(
+                        label = l.optString("label", ""),
+                        url   = l.optString("url", ""),
+                        icon  = l.optString("icon", ""),
+                    ))
+                }
+                return out
+            }
+
+            fun parseColumns(arr: org.json.JSONArray?): List<LinkColumn> {
+                arr ?: return emptyList()
+                val out = mutableListOf<LinkColumn>()
+                for (j in 0 until arr.length()) {
+                    val c = arr.getJSONObject(j)
+                    out.add(LinkColumn(
+                        header    = c.optString("header", ""),
+                        headerUrl = c.optString("header_url", ""),
+                        links     = parseLinks(c.optJSONArray("links")),
+                    ))
+                }
+                return out
+            }
+
+            fun parseStack(arrName: String): List<StackPanel> {
+                val sa = o.optJSONArray(arrName) ?: return emptyList()
+                val out = mutableListOf<StackPanel>()
+                for (j in 0 until sa.length()) {
+                    val p = sa.getJSONObject(j)
+                    out.add(StackPanel(
+                        kind      = p.optString("kind", "placeholder"),
+                        title     = p.optString("title", ""),
+                        subtitle  = p.optString("subtitle", ""),
+                        collapsed = p.optBoolean("collapsed", false),
+                        links     = parseLinks(p.optJSONArray("links")),
+                        columns   = parseColumns(p.optJSONArray("columns")),
+                        tiles     = parseTilesInline(p.optJSONArray("tiles")),
+                        slideId   = p.optString("slide_id", ""),
+                        url       = p.optString("url", ""),
+                        iconName  = p.optString("icon", ""),
+                    ))
                 }
                 return out
             }
@@ -219,6 +319,9 @@ object Sections {
                     tilesShared     = parseTiles("tiles_shared"),
                     tilesApps       = parseTiles("tiles_apps"),
                     tilesAdmin      = parseTiles("tiles_admin"),
+                    stackShared     = parseStack("stack_shared"),
+                    stackApps       = parseStack("stack_apps"),
+                    stackAdmin      = parseStack("stack_admin"),
                 )
             )
         }
@@ -240,6 +343,19 @@ object Sections {
         mode == "admin"              -> sec.tilesAdmin
         else                         -> sec.tilesApps
     }
+
+    /** Aggregator's stack panels for the given mode. `stack_shared` wins
+     *  if present; otherwise apps/admin-specific list. */
+    fun aggregatorStackFor(sec: Section, mode: String): List<StackPanel> = when {
+        sec.stackShared.isNotEmpty() -> sec.stackShared
+        mode == "admin"              -> sec.stackAdmin
+        else                         -> sec.stackApps
+    }
+
+    /** True iff this aggregator has a non-empty stack for the given mode —
+     *  i.e. render [AggregatorStackFragment] instead of the default tile grid. */
+    fun aggregatorIsStack(sec: Section, mode: String): Boolean =
+        aggregatorStackFor(sec, mode).isNotEmpty()
 
     fun homeActions(): List<Action> {
         cachedActions?.let { return it }
@@ -448,6 +564,54 @@ object Sections {
         }
         cachedDrive = out
         return out
+    }
+
+    /** data/linktree.json — mirror of front/a-Portals/linktree/src/data/
+     *  personal-tools.json. Lookup is by `slide.id` (suite | lab-tools |
+     *  circus | cloud). Used by [StackPanel.kind] = "linktree_slide". */
+    fun linktreeSlide(id: String): LinktreeSlide? {
+        loadLinktree()
+        return cachedLinktree?.get(id)
+    }
+
+    private fun loadLinktree() {
+        if (cachedLinktree != null) return
+        val json = String(Base64.decode(BuildConfig.LINKTREE_JSON_B64, Base64.NO_WRAP))
+        val root = org.json.JSONObject(json)
+        val slides = root.optJSONArray("slides") ?: org.json.JSONArray()
+        val map = mutableMapOf<String, LinktreeSlide>()
+        for (i in 0 until slides.length()) {
+            val s = slides.getJSONObject(i)
+            val cols = mutableListOf<LinkColumn>()
+            val ca = s.optJSONArray("columns") ?: org.json.JSONArray()
+            for (j in 0 until ca.length()) {
+                val c = ca.getJSONObject(j)
+                val links = mutableListOf<LinkItem>()
+                val la = c.optJSONArray("links") ?: org.json.JSONArray()
+                for (k in 0 until la.length()) {
+                    val l = la.getJSONObject(k)
+                    links.add(LinkItem(
+                        label = l.optString("label", ""),
+                        url   = l.optString("url", ""),
+                        icon  = l.optString("icon", ""),
+                    ))
+                }
+                cols.add(LinkColumn(
+                    header    = c.optString("header", ""),
+                    headerUrl = c.optString("header_url", ""),
+                    links     = links,
+                ))
+            }
+            val sid = s.optString("id", "")
+            if (sid.isNotEmpty()) {
+                map[sid] = LinktreeSlide(
+                    id      = sid,
+                    title   = s.optString("title", sid),
+                    columns = cols,
+                )
+            }
+        }
+        cachedLinktree = map
     }
 
     private fun loadSamples() {
