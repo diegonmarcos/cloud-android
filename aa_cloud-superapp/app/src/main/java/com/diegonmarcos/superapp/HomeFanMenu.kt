@@ -39,10 +39,11 @@ object HomeFanMenu {
 
     fun show(host: View, onPick: (target: String) -> Unit): Controller {
         val ctx = host.context
-        // Per user spec: LEFT = Tabs, RIGHT = Configs.
+        // Per user spec: LEFT = Open Tabs, CENTER = Linktree, RIGHT = Update.
         val items = listOf(
-            "section:tabs"   to (R.drawable.ic_mode_apps to "Tabs"),
-            "section:config" to (R.drawable.ic_settings  to "Configs"),
+            "section:tabs"                            to (R.drawable.ic_mode_apps to "Open Tabs"),
+            "https://linktree.diegonmarcos.com/"      to (R.drawable.ic_solutions to "Linktree"),
+            "action:check_updates"                    to (R.drawable.ic_refresh   to "Update"),
         )
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
@@ -69,14 +70,27 @@ object HomeFanMenu {
             setBackgroundDrawable(null)
         }
 
-        val xOff = host.width / 2 - dp(ctx, 110)
-        val yOff = -dp(ctx, 150)
-        popup.showAsDropDown(host, xOff, yOff, android.view.Gravity.TOP)
+        // Measure the container so we know its actual width, then center
+        // horizontally over the host's centre on the screen.
+        container.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        )
+        val containerW = container.measuredWidth
+        val containerH = container.measuredHeight
+        val hostPos = IntArray(2); host.getLocationOnScreen(hostPos)
+        val cx = hostPos[0] + host.width / 2
+        val x  = cx - containerW / 2
+        val y  = hostPos[1] - containerH - dp(ctx, 12)
+        popup.showAtLocation(host, android.view.Gravity.NO_GRAVITY, x, y)
 
-        // Fan-in animation (left bubble flies from down-right, right bubble
-        // flies from down-left — they "open up").
-        animateIn(bubbles[0], fromX = dp(ctx, 60).toFloat())
-        animateIn(bubbles[1], fromX = -dp(ctx, 60).toFloat())
+        // Fan-in animation — outer bubbles fly inward toward the centre.
+        val n = bubbles.size
+        for ((i, b) in bubbles.withIndex()) {
+            val mid = (n - 1) / 2f
+            val fromX = (mid - i) * dp(ctx, 60).toFloat()
+            animateIn(b, fromX = fromX)
+        }
 
         var highlightedIdx: Int = -1
 
