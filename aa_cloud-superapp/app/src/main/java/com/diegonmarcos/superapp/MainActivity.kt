@@ -154,14 +154,15 @@ class MainActivity : AppCompatActivity(),
 
             installNavSwipeGesture()
             installHomeLongPressFan()
-            // Suppress the default long-press tooltip on every BNV item
-            // (user: "remove the title with white background"). Has to
-            // run after the menu is bound + laid out.
-            bottomNav.post {
-                for (i in 0 until bottomNav.menu.size()) {
-                    androidx.core.view.MenuItemCompat.setTooltipText(
-                        bottomNav.menu.getItem(i), null)
-                }
+            // Suppress the default long-press tooltip on every BNV item.
+            // The MenuItem-level setTooltipText doesn't propagate into
+            // BottomNavigationItemView (BNV reads the title directly),
+            // so we walk the inflated view tree after layout and null
+            // every child view's tooltipText. Same approach also kills
+            // any inner Toolbar tooltip pills the MenuItem path missed.
+            bottomNav.post { suppressTooltipsRecursively(bottomNav) }
+            findViewById<View>(R.id.toolbar).post {
+                suppressTooltipsRecursively(findViewById(R.id.toolbar))
             }
 
             Updater.start(applicationContext)
@@ -363,6 +364,18 @@ class MainActivity : AppCompatActivity(),
                     }
                 }
                 else -> false
+            }
+        }
+    }
+
+    /** Recursively clear tooltipText on every view under [root]. Used to
+     *  kill the white long-press tooltip pill the framework attaches to
+     *  every BNV item view and toolbar action button. */
+    private fun suppressTooltipsRecursively(root: View) {
+        root.tooltipText = null
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                suppressTooltipsRecursively(root.getChildAt(i))
             }
         }
     }
