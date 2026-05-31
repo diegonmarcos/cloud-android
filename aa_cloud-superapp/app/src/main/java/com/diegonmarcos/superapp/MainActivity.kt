@@ -282,51 +282,70 @@ class MainActivity : AppCompatActivity(),
         var fanCtrl: HomeFanMenu.Controller? = null
         var downX = 0f; var downY = 0f
 
-        bottomNav.setOnTouchListener { _, ev ->
+        // BNV's inner BottomNavigationItemView captures touches before our
+        // listener on the container fires, so we attach to the Home child
+        // directly. post {} ensures the BNV has laid out its menu views.
+        bottomNav.post {
+            val homeView = findHomeNavView()
+            if (homeView == null) {
+                Trace.w(TAG, "fan install: no homeView — long-press disabled")
+                return@post
+            }
+            Trace.i(TAG, "fan install: attaching listener to home item view")
+            attachHomeFanTouchListener(homeView, handler,
+                getPending = { pending }, setPending = { pending = it },
+                getFanCtrl = { fanCtrl }, setFanCtrl = { fanCtrl = it },
+                getDownX = { downX }, setDownX = { downX = it },
+                getDownY = { downY }, setDownY = { downY = it })
+        }
+    }
+
+    @Suppress("LongParameterList")
+    private fun attachHomeFanTouchListener(
+        homeView: View,
+        handler: android.os.Handler,
+        getPending: () -> Runnable?, setPending: (Runnable?) -> Unit,
+        getFanCtrl: () -> HomeFanMenu.Controller?, setFanCtrl: (HomeFanMenu.Controller?) -> Unit,
+        getDownX: () -> Float, setDownX: (Float) -> Unit,
+        getDownY: () -> Float, setDownY: (Float) -> Unit,
+    ) {
+        homeView.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    val homeView = findHomeNavView()
-                    if (homeView == null) {
-                        Trace.i(TAG, "fan DOWN: no homeView")
-                        return@setOnTouchListener false
-                    }
-                    val inHome = ev.x in homeView.x..(homeView.x + homeView.width)
-                    Trace.i(TAG, "fan DOWN x=${ev.x} home=${homeView.x}..${homeView.x + homeView.width} inHome=$inHome")
-                    if (!inHome) return@setOnTouchListener false
-                    downX = ev.x; downY = ev.y
-                    pending?.let { handler.removeCallbacks(it) }
-                    fanCtrl = null
+                    Trace.i(TAG, "fan DOWN x=${ev.x} y=${ev.y}")
+                    setDownX(ev.x); setDownY(ev.y)
+                    getPending()?.let { handler.removeCallbacks(it) }
+                    setFanCtrl(null)
                     val newPending = Runnable {
                         Trace.i(TAG, "fan FIRE — long-press timer reached")
                         homeView.performHapticFeedback(
                             android.view.HapticFeedbackConstants.LONG_PRESS)
-                        fanCtrl = HomeFanMenu.show(homeView) { target -> onTileClicked(target) }
+                        setFanCtrl(HomeFanMenu.show(homeView) { target -> onTileClicked(target) })
                     }
-                    pending = newPending
+                    setPending(newPending)
                     handler.postDelayed(newPending, 380)
                     false
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    if (fanCtrl != null) {
-                        fanCtrl?.updateFinger(ev.rawX, ev.rawY)
+                    val ctrl = getFanCtrl()
+                    if (ctrl != null) {
+                        ctrl.updateFinger(ev.rawX, ev.rawY)
                         true
                     } else {
-                        // Tolerance bumped 60 → 140px; tap-and-hold has more
-                        // jitter than expected and was cancelling the timer.
-                        if (Math.abs(ev.x - downX) > 140 || Math.abs(ev.y - downY) > 140) {
-                            Trace.i(TAG, "fan MOVE — drift cancel dx=${ev.x - downX} dy=${ev.y - downY}")
-                            pending?.let { handler.removeCallbacks(it) }
-                            pending = null
+                        if (Math.abs(ev.x - getDownX()) > 140 || Math.abs(ev.y - getDownY()) > 140) {
+                            Trace.i(TAG, "fan MOVE — drift cancel dx=${ev.x - getDownX()} dy=${ev.y - getDownY()}")
+                            getPending()?.let { handler.removeCallbacks(it) }
+                            setPending(null)
                         }
                         false
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    Trace.i(TAG, "fan UP/CANCEL fanCtrl=${fanCtrl != null}")
-                    pending?.let { handler.removeCallbacks(it) }
-                    pending = null
-                    val c = fanCtrl
-                    fanCtrl = null
+                    Trace.i(TAG, "fan UP/CANCEL fanCtrl=${getFanCtrl() != null}")
+                    getPending()?.let { handler.removeCallbacks(it) }
+                    setPending(null)
+                    val c = getFanCtrl()
+                    setFanCtrl(null)
                     if (c != null) {
                         if (ev.actionMasked == MotionEvent.ACTION_UP) c.commit() else c.dismiss()
                         true
