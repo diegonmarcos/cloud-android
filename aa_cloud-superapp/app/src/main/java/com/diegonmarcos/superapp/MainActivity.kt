@@ -773,6 +773,16 @@ class MainActivity : AppCompatActivity(),
 
     override fun onDrawerPageSelected(sectionId: String, pageId: String, label: String) {
         drawerLayout.closeDrawer(GravityCompat.START)
+        // If the page declares an `action` in build.json, dispatch via the
+        // same grammar tile clicks use (action: / http: / intent: …) —
+        // otherwise the drawer opens a "Coming soon" placeholder for what
+        // is meant to be an action tile. See Configs ▸ Update.
+        val pageAction = Sections.byId(sectionId)?.pages
+            ?.firstOrNull { it.id == pageId }?.action.orEmpty()
+        if (pageAction.isNotBlank()) {
+            onTileClicked(pageAction)
+            return
+        }
         when {
             pageId.startsWith("child-") ->
                 goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
