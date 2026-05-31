@@ -154,6 +154,15 @@ class MainActivity : AppCompatActivity(),
 
             installNavSwipeGesture()
             installHomeLongPressFan()
+            // Suppress the default long-press tooltip on every BNV item
+            // (user: "remove the title with white background"). Has to
+            // run after the menu is bound + laid out.
+            bottomNav.post {
+                for (i in 0 until bottomNav.menu.size()) {
+                    androidx.core.view.MenuItemCompat.setTooltipText(
+                        bottomNav.menu.getItem(i), null)
+                }
+            }
 
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
@@ -900,6 +909,11 @@ class MainActivity : AppCompatActivity(),
                 item.setIcon(R.drawable.ic_mode_apps)
                 item.title = getString(R.string.mode_apps)
             }
+        }
+        // Kill long-press tooltips on every toolbar action — the white
+        // pill with the title was visual noise (user feedback).
+        for (i in 0 until menu.size()) {
+            androidx.core.view.MenuItemCompat.setTooltipText(menu.getItem(i), null)
         }
         return super.onPrepareOptionsMenu(menu)
     }
