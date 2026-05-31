@@ -53,55 +53,40 @@ class HomeDrawerFragment : Fragment() {
         dispatch.clear()
         var id = MENU_BASE
 
+        // Per-section group keeps NavigationView's automatic divider between
+        // sections AND lets the section title row itself be a tappable
+        // MenuItem (addSubMenu would render it as a non-clickable group
+        // header instead). Pages render as indented siblings within the
+        // same group — visual hierarchy via "    " prefix.
         for (section in Sections.all().filter { !it.isMasterIndex }) {
             val groupId = id++
+
+            // Section title row — tappable, navigates to the section index.
             val sectionItemId = id++
-            // CRITICAL: must use addSubMenu so sectionItem.subMenu is non-null;
-            // plain menu.add() returns a leaf MenuItem and sub-children get
-            // skipped silently (the "drawer shows only section headers" bug).
-            val sectionSub = menu.addSubMenu(groupId, sectionItemId, Menu.NONE, section.label)
-            val sectionItem = sectionSub.item
+            val sectionItem = menu.add(groupId, sectionItemId, Menu.NONE, section.label)
             Sections.iconResFor(ctx, section.iconName).takeIf { it != 0 }
                 ?.let { sectionItem.setIcon(it) }
-            sectionItem.setOnMenuItemClickListener { mi ->
-                onItemPicked(mi.itemId); true
-            }
+            sectionItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
             dispatch[sectionItemId] = Target.Section(section.id, section.label)
 
-            val sub = sectionSub
-
-            // NavigationView only displays 2 levels (groups + their items);
-            // a 3rd-level submenu inside a section's submenu doesn't render.
-            // So we FLATTEN: sub-pages become sibling rows of their parent
-            // page, prefixed with " ↳ " to convey the hierarchy visually.
+            // First-level pages only — section.pages, NOT page.subPages.
+            // Per user request the drawer expands one level deep so the
+            // site map stays scannable.
             if (section.pages.isNotEmpty()) {
                 for (page in section.pages) {
                     val pageItemId = id++
-                    val pageItem = sub.add(groupId, pageItemId, Menu.NONE, page.label)
+                    val pageItem = menu.add(groupId, pageItemId, Menu.NONE, "    ${page.label}")
                     page.iconName?.let {
                         Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
                             ?.let { r -> pageItem.setIcon(r) }
                     }
                     pageItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
                     dispatch[pageItemId] = Target.Page(section.id, page.id, page.label)
-
-                    for (subPage in page.subPages) {
-                        val subItemId = id++
-                        val subItem = sub.add(groupId, subItemId, Menu.NONE, "    ↳  ${subPage.label}")
-                        subPage.iconName?.let {
-                            Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
-                                ?.let { r -> subItem.setIcon(r) }
-                        }
-                        subItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-                        dispatch[subItemId] = Target.Page(
-                            section.id, "${page.id}/${subPage.id}", subPage.label,
-                        )
-                    }
                 }
             } else {
                 for ((idx, label) in section.defaultChildren.withIndex()) {
                     val pageItemId = id++
-                    val pageItem = sub.add(groupId, pageItemId, Menu.NONE, label)
+                    val pageItem = menu.add(groupId, pageItemId, Menu.NONE, "    $label")
                     pageItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
                     dispatch[pageItemId] = Target.Page(section.id, "child-$idx", label)
                 }
