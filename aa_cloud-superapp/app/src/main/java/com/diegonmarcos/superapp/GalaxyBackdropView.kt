@@ -8,7 +8,6 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
 import kotlin.math.absoluteValue
-import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -27,7 +26,6 @@ class GalaxyBackdropView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private data class Star(val x: Float, val y: Float, val r: Float, val phase: Float)
-    private data class Nova(val x: Float, val y: Float, val phase: Float, val period: Float)
     private data class Comet(
         val phase: Float,
         val sx: Float, val sy: Float,   // start [0..1]
@@ -44,14 +42,6 @@ class GalaxyBackdropView @JvmOverloads constructor(
             phase = rng.nextFloat() * (Math.PI * 2f).toFloat(),
         )
     }
-    private val novas = (0..5).map {
-        Nova(
-            x = rng.nextFloat(),
-            y = rng.nextFloat(),
-            phase = rng.nextFloat(),
-            period = 0.18f + rng.nextFloat() * 0.14f,
-        )
-    }
     private val comets = listOf(
         // Each comet travels DIAGONALLY across the full screen.
         Comet(phase = 0.00f, sx = -0.15f, sy = -0.10f, ex = 1.20f, ey = 0.95f, travel = 0.35f),
@@ -61,13 +51,6 @@ class GalaxyBackdropView @JvmOverloads constructor(
 
     private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFFE9D8FD.toInt()
-    }
-    private val novaPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-    private val novaRay = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
     }
     private val cometCore = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -105,42 +88,6 @@ class GalaxyBackdropView @JvmOverloads constructor(
             val twinkle = (sin(time * 12f + s.phase) * 0.4f + 0.6f).absoluteValue
             starPaint.alpha = (twinkle * 220f).toInt().coerceIn(40, 255)
             canvas.drawCircle(s.x * w, s.y * h, s.r, starPaint)
-        }
-
-        // ── blowing supernova stars ────────────────────────────────
-        for (n in novas) {
-            val t = ((time + n.phase) % 1f) / n.period
-            // active during the first stretch of its period
-            if (t > 1f) continue
-            val eased = (sin(t * Math.PI.toFloat()) * 1f)        // 0→1→0 bell
-            val cx = n.x * w; val cy = n.y * h
-            val coreR = 2.5f + eased * 8f
-            val haloR = 6f + eased * 28f
-            // halo: soft violet
-            novaPaint.color = 0xFFB794F4.toInt()
-            novaPaint.alpha = (eased * 120f).toInt()
-            canvas.drawCircle(cx, cy, haloR, novaPaint)
-            // bright core
-            novaPaint.color = 0xFFFFFFFF.toInt()
-            novaPaint.alpha = (eased * 240f).toInt().coerceIn(60, 255)
-            canvas.drawCircle(cx, cy, coreR, novaPaint)
-            // radial rays
-            if (eased > 0.4f) {
-                novaRay.color = 0xFFE9D8FD.toInt()
-                novaRay.alpha = ((eased - 0.4f) * 200f).toInt().coerceIn(0, 255)
-                novaRay.strokeWidth = 1.5f + eased * 1.5f
-                val rayLen = 8f + eased * 22f
-                for (k in 0..5) {
-                    val ang = (k.toFloat() / 6f) * Math.PI.toFloat() * 2f
-                    canvas.drawLine(
-                        cx + cos(ang) * coreR * 1.4f,
-                        cy + sin(ang) * coreR * 1.4f,
-                        cx + cos(ang) * (coreR + rayLen),
-                        cy + sin(ang) * (coreR + rayLen),
-                        novaRay,
-                    )
-                }
-            }
         }
 
         // ── full-diagonal comets ───────────────────────────────────
