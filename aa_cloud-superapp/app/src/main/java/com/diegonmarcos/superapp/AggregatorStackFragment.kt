@@ -378,7 +378,8 @@ class AggregatorStackFragment : Fragment(),
         when {
             target.isEmpty() -> Unit
             target.startsWith("http") || target.contains("://") -> runCatching {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+                val intent = Intent.parseUri(target, Intent.URI_INTENT_SCHEME)
+                startActivity(intent)
             }
             else -> onTileClicked(target)
         }

@@ -326,28 +326,16 @@
             "target": "section:vault"
           },
           {
-            "id": "personal",
-            "label": "Personal",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "cv",
-            "label": "CV",
-            "icon": "ic_p_sol_pro",
-            "target": "page:solutions/professional"
-          },
-          {
             "id": "maps",
             "label": "Maps",
             "icon": "ic_maps",
-            "target": "https://maps.google.com"
+            "target": "intent://#Intent;package=com.google.android.apps.maps;S.browser_fallback_url=https%3A%2F%2Fmaps.google.com;end"
           },
           {
             "id": "sheets",
             "label": "Sheets",
             "icon": "ic_sheets",
-            "target": "https://docs.google.com/spreadsheets/"
+            "target": "intent://#Intent;package=com.google.android.apps.docs.editors.sheets;S.browser_fallback_url=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F;end"
           },
           {
             "id": "notes",
@@ -359,25 +347,25 @@
             "id": "ai-chat",
             "label": "AI-Chat",
             "icon": "ic_ai_chat",
-            "target": "https://gemini.google.com/app"
+            "target": "intent://#Intent;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fgemini.google.com%2Fapp;end"
           },
           {
             "id": "wallet",
             "label": "Wallet",
             "icon": "ic_wallet",
-            "target": "https://wallet.google.com"
+            "target": "intent://#Intent;package=com.google.android.apps.walletnfcrel;S.browser_fallback_url=https%3A%2F%2Fwallet.google.com;end"
           },
           {
             "id": "music",
             "label": "Music",
             "icon": "ic_music",
-            "target": "https://tidal.com"
+            "target": "intent://#Intent;package=com.aspiro.tidal;S.browser_fallback_url=https%3A%2F%2Ftidal.com;end"
           },
           {
             "id": "photos",
             "label": "Photos",
             "icon": "ic_photos",
-            "target": "https://photos.google.com"
+            "target": "intent://#Intent;package=com.google.android.apps.photos;S.browser_fallback_url=https%3A%2F%2Fphotos.google.com;end"
           },
           {
             "id": "my-fin",

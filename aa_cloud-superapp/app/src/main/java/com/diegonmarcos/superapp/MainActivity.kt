@@ -139,12 +139,64 @@ class MainActivity : AppCompatActivity(),
                 invalidateOptionsMenu()
             }
 
+            installNavSwipeGesture()
+
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
         } catch (t: Throwable) {
             Trace.e(TAG, "onCreate FAILED", t)
             throw t
         }
+    }
+
+    // ── swipe-to-cycle bottom nav ────────────────────────────────────────
+
+    private lateinit var navSwipeGesture: android.view.GestureDetector
+
+    private fun installNavSwipeGesture() {
+        val edgeIgnorePx = (24f * resources.displayMetrics.density)
+        val screenW = resources.displayMetrics.widthPixels.toFloat()
+        navSwipeGesture = android.view.GestureDetector(this,
+            object : android.view.GestureDetector.SimpleOnGestureListener() {
+                override fun onFling(
+                    e1: android.view.MotionEvent?, e2: android.view.MotionEvent,
+                    vX: Float, vY: Float,
+                ): Boolean {
+                    if (e1 == null) return false
+                    val dx = e2.x - e1.x
+                    val dy = e2.y - e1.y
+                    // Drawer owns left-edge swipes (open drawer). Bottom nav
+                    // owns its own touch area too. Only treat as nav-cycle
+                    // when the swipe started AWAY from the left edge AND
+                    // is dominantly horizontal AND has real velocity.
+                    if (e1.x < edgeIgnorePx) return false
+                    if (Math.abs(dx) < 120f) return false
+                    if (Math.abs(dx) < Math.abs(dy) * 1.4f) return false
+                    if (Math.abs(vX) < 600f) return false
+                    cycleBottomNav(direction = if (dx < 0) +1 else -1)
+                    return true
+                }
+            })
+    }
+
+    /** Step `direction` positions through the bottom-nav menu, wrapping
+     *  at both ends. +1 = next item (left-swipe), -1 = prev (right-swipe). */
+    private fun cycleBottomNav(direction: Int) {
+        val menu = bottomNav.menu
+        val count = menu.size()
+        if (count <= 1) return
+        var idx = -1
+        for (i in 0 until count) {
+            if (menu.getItem(i).itemId == bottomNav.selectedItemId) { idx = i; break }
+        }
+        if (idx < 0) idx = 0
+        val next = ((idx + direction) % count + count) % count
+        bottomNav.selectedItemId = menu.getItem(next).itemId
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (::navSwipeGesture.isInitialized) navSwipeGesture.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
     }
 
     // ── bottom nav ────────────────────────────────────────────────────────
@@ -194,30 +246,11 @@ class MainActivity : AppCompatActivity(),
         currentLabel = getString(R.string.section_home)
         supportActionBar?.title = currentLabel
 
-        // Grouped Home if build.json::ui.home_groups is non-empty; else
-        // fall back to the flat all-sections grid.
-        val content: Fragment = if (Sections.homeGroups().isNotEmpty()) {
-            HomeGroupedFragment.newInstance()
-        } else {
-            val sectionTiles = Sections.all()
-                .filter { !it.isMasterIndex }
-                .map { sec ->
-                    TileGridFragment.Tile(
-                        id      = "section:${sec.id}",
-                        label   = sec.label,
-                        iconRes = Sections.iconResFor(this, sec.iconName),
-                    )
-                }
-            val actionTiles = Sections.homeActions().map { act ->
-                TileGridFragment.Tile(
-                    id      = "action:${act.actionType}",
-                    label   = act.label,
-                    iconRes = Sections.iconResFor(this, act.iconName),
-                )
-            }
-            TileGridFragment.newInstance(currentLabel, sectionTiles + actionTiles)
-        }
-        swapContent(content, clearBackStack = true)
+        // Home = 3D rotating cube + pull-up hint. The legacy tile grid
+        // (sections + actions) is reachable by pulling UP from this
+        // fragment — see [AppDrawerSheetFragment]. Both islands remain
+        // visible above this surface.
+        swapContent(Home3DFragment.newInstance(), clearBackStack = true)
 
         syncBottomNav("home")
         syncDrawerTab(0)
@@ -453,18 +486,19 @@ class MainActivity : AppCompatActivity(),
                     .commit()
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
-            // Any URI with a scheme — http(s), obsidian://, mailto:, …
-            // is handed straight to Intent.ACTION_VIEW so the system picks
-            // the installed handler (browser, Obsidian, Mail …).
+            // Any URI with a scheme — http(s), obsidian://, intent://… — is
+            // handed to Intent.parseUri which understands BOTH the simple
+            // scheme:host form AND the rich intent://#Intent;…;end form
+            // (package targeting + S.browser_fallback_url=…).
             tileId.startsWith("http://") || tileId.startsWith("https://") ||
                 (tileId.contains("://") && !tileId.startsWith("section:") &&
                  !tileId.startsWith("page:") && !tileId.startsWith("action:") &&
                  !tileId.startsWith("stub:")) ->
                 runCatching {
-                    startActivity(android.content.Intent(
-                        android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse(tileId),
-                    ))
+                    val intent = android.content.Intent.parseUri(
+                        tileId, android.content.Intent.URI_INTENT_SCHEME,
+                    )
+                    startActivity(intent)
                 }
             tileId.startsWith("stub:") ->
                 findViewById<View>(R.id.fragment_container).snack(tileId)
@@ -493,10 +527,10 @@ class MainActivity : AppCompatActivity(),
                     .commit()
             }
             actionType.contains("://") -> runCatching {
-                startActivity(android.content.Intent(
-                    android.content.Intent.ACTION_VIEW,
-                    android.net.Uri.parse(actionType),
-                ))
+                val intent = android.content.Intent.parseUri(
+                    actionType, android.content.Intent.URI_INTENT_SCHEME,
+                )
+                startActivity(intent)
             }
             else -> anchor.snack("action:$actionType")
         }
