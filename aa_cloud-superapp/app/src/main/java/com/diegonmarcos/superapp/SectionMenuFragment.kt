@@ -83,45 +83,40 @@ class SectionMenuFragment : Fragment() {
                 }
             }
             section.isAggregator -> {
-                // Aggregator section (Suite, Tools, Communication, Infos):
-                //  • aggregatorTilesFor → top-level tiles for the mode
-                //    (linktree shortcuts, c3-health, etc.).
-                //  • aggregatorStackFor → each panel; INSIDE each panel
-                //    we drill down so the drawer mirrors the body's
-                //    actual structure:
-                //      - panel.columns (linktree slide multi-column) →
-                //        emit one sub-header per column header + every
-                //        link in the column as an indented child row.
-                //      - panel.links (flattened linktree column or
-                //        plain link_grid) → panel.title sub-header +
-                //        every link as a child row.
-                //      - non-link panels (c3_public, drive_connections,
-                //        rss, …) → just the title row, tap opens the
-                //        section body where that panel lives.
+                // Aggregator section drawer pane shows ONLY the stack
+                // content (the structured panels). Flat aggregatorTiles
+                // are NOT rendered here — they used to surface
+                // c3-health / vms / workflows / drive-connections as
+                // orphan rows with no parent header, which read as
+                // legacy noise. Those shortcuts live in the body's
+                // tile grid; the drawer mirrors the body's PANEL
+                // hierarchy instead.
                 val mode = ModePrefs(ctx).mode
-                for (tile in Sections.aggregatorTilesFor(section, mode)) {
-                    val tileItemId = id++
-                    val tileItem = menu.add(groupId, tileItemId, Menu.NONE, tile.label)
-                    Sections.iconResFor(ctx, tile.iconName).takeIf { r -> r != 0 }
-                        ?.let { r -> tileItem.setIcon(r) }
-                    tileItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-                    dispatch[tileItemId] = Target.Tile(tile.target)
-                }
                 for (panel in Sections.aggregatorStackFor(section, mode)) {
+                    // linktree_slide panels load their actual content
+                    // from data/linktree.json — the StackPanel itself
+                    // only carries slideId. Resolve it here so we
+                    // render the slide's columns + links inside the
+                    // drawer the same way the body renders them.
+                    val resolvedColumns: List<Sections.LinkColumn> = when {
+                        panel.kind == "linktree_slide" ->
+                            Sections.linktreeSlide(panel.slideId)?.columns ?: emptyList()
+                        panel.columns.isNotEmpty() -> panel.columns
+                        else                       -> emptyList()
+                    }
                     when {
-                        panel.columns.isNotEmpty() -> {
-                            // linktree slide with grouped columns. Emit
-                            // each column.header as its own sub-header
-                            // row + the links beneath as indented rows.
-                            for (col in panel.columns) {
+                        resolvedColumns.isNotEmpty() -> {
+                            // Multi-column linktree slide (Suite,
+                            // Lab Tools, Circus, Cloud Backend, …).
+                            // Emit each column header as a section
+                            // sub-header + indented links beneath.
+                            for (col in resolvedColumns) {
                                 if (col.header.isNotBlank()) {
                                     val headId = id++
                                     val headItem = menu.add(groupId, headId, Menu.NONE,
                                         col.header.uppercase())
                                     headItem.setEnabled(false)
-                                    // Disabled menu items stay grey; this
-                                    // is exactly the "section header" feel
-                                    // we want inside the drawer.
+                                    // Disabled = greyed section header.
                                 }
                                 for (link in col.links) {
                                     addLinkRow(menu, ctx, groupId, "    ↳  ${link.label}",
@@ -130,8 +125,8 @@ class SectionMenuFragment : Fragment() {
                             }
                         }
                         panel.links.isNotEmpty() -> {
-                            // Flattened linktree column or inline link_grid.
-                            // panel.title is the section header.
+                            // Flattened linktree column (single
+                            // panel.links list) or inline link_grid.
                             if (panel.title.isNotBlank()) {
                                 val headId = id++
                                 val headItem = menu.add(groupId, headId, Menu.NONE,
@@ -145,8 +140,7 @@ class SectionMenuFragment : Fragment() {
                         }
                         panel.title.isNotBlank() -> {
                             // Non-link panel (c3_public, drive_connections,
-                            // rss, …). Surface the title; tap re-opens
-                            // the section body.
+                            // rss, …). Surface title; tap re-opens body.
                             val panelItemId = id++
                             val panelItem = menu.add(groupId, panelItemId, Menu.NONE, panel.title)
                             Sections.iconResFor(ctx, panel.iconName).takeIf { r -> r != 0 }
