@@ -123,6 +123,10 @@ class AppDrawerSheetFragment : Fragment() {
     }
 
     private fun makeChip(ctx: android.content.Context, label: String, url: String): View {
+        // All chips share the same width so they read as a uniform row
+        // (like Google-Maps' filter chips). Long labels truncate with
+        // ellipsis at the end; short labels left-justify within the pill.
+        val pillWidth = dp(140)
         val pill = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
@@ -131,7 +135,7 @@ class AppDrawerSheetFragment : Fragment() {
             val hpad = dp(12); val vpad = dp(6)
             setPadding(hpad, vpad, hpad, vpad)
             val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                pillWidth,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { marginEnd = dp(8) }
             layoutParams = lp
@@ -149,7 +153,10 @@ class AppDrawerSheetFragment : Fragment() {
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            maxWidth = dp(180)
+            // Take the remaining row width so truncation kicks in at the
+            // pill edge regardless of label length.
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
         pill.setOnClickListener {
             Haptics.tap(it)
