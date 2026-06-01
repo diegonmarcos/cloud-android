@@ -124,9 +124,12 @@ class AppDrawerSheetFragment : Fragment() {
 
     private fun makeChip(ctx: android.content.Context, label: String, url: String): View {
         // All chips share the same width so they read as a uniform row
-        // (like Google-Maps' filter chips). Long labels truncate with
-        // ellipsis at the end; short labels left-justify within the pill.
-        val pillWidth = dp(140)
+        // (like Google-Maps' filter chips). 90dp sized so ~4 fit across
+        // a 412dp average big-phone screen with the row's 12dp horizontal
+        // padding + 8dp inter-chip margin still leaving breathing room.
+        // Icon stays inside the pill; the text label takes the remaining
+        // width and ellipsises long titles.
+        val pillWidth = dp(90)
         val pill = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL

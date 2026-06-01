@@ -42,11 +42,12 @@ object HomeFanMenu {
         // Per user spec: LEFT = Open Tabs, CENTER = Linktree, RIGHT = Update.
         val items = listOf(
             // LEFT — Open Tabs (page:tabs/all goes straight to grid).
-            "page:tabs/all"           to (R.drawable.ic_mode_apps to "Open Tabs"),
+            "page:tabs/all"           to (R.drawable.ic_mode_apps  to "Open Tabs"),
             // CENTER — Home Apps (pulls up the home-sheet icon grid).
-            //   Was Linktree; swapped per user request so the most-used
-            //   home action is the easiest to reach via the fan menu.
-            "action:open_home_apps"   to (R.drawable.ic_tree      to "Home Apps"),
+            //   Distinct icon from Linktree (ic_tree) and from Open Tabs
+            //   (ic_mode_apps); use ic_solutions = 4-dot grid that reads
+            //   as "open the app drawer".
+            "action:open_home_apps"   to (R.drawable.ic_solutions to "Home Apps"),
             // RIGHT — Update.
             "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
         )
