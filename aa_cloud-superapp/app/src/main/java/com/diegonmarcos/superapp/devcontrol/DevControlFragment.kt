@@ -26,6 +26,40 @@ import java.util.Date
  */
 class DevControlFragment : Fragment() {
 
+    /** Standard permission request — wired to the Notifications button
+     *  in the Permissions section. Re-renders the fragment on result so
+     *  the row's ✓ / ✗ updates without a manual refresh. */
+    private val notifPermLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {
+            Toast.makeText(requireContext(),
+                if (it) "Notifications: granted" else "Notifications: denied",
+                Toast.LENGTH_SHORT).show()
+            // Rebuild this fragment so the perm row state refreshes.
+            parentFragmentManager.beginTransaction()
+                .detach(this).commitNow()
+            parentFragmentManager.beginTransaction()
+                .attach(this).commitNow()
+        }
+
+    private fun ctxAny(): Context = requireContext()
+
+    private fun requestNotificationsPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            notifPermLauncher.launch("android.permission.POST_NOTIFICATIONS")
+        } else {
+            Toast.makeText(requireContext(),
+                "Pre-API 33 — notifications granted by default", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openAppSettings() {
+        val intent = android.content.Intent(
+            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            android.net.Uri.fromParts("package", requireContext().packageName, null),
+        )
+        startActivity(intent)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         val scroll = ScrollView(ctx).apply {
@@ -87,12 +121,71 @@ class DevControlFragment : Fragment() {
 
         section(ctx, column, "Storage") {
             val ctxAny = requireContext()
+            val pm = ctxAny.packageManager
+            @Suppress("DEPRECATION")
+            val pkg = pm.getPackageInfo(ctxAny.packageName, 0)
+            val apkBytes  = runCatching { File(pkg.applicationInfo.sourceDir).length() }.getOrDefault(0L)
+            // "Datos" = the app's private data root — includes filesDir,
+            // databases, shared_prefs, and everything else the app
+            // persists outside of cacheDir.
+            val dataDir   = File(pkg.applicationInfo.dataDir)
+            val cacheDir  = ctxAny.cacheDir
+            val cacheBytes = dirSize(cacheDir)
+            // dataDir contains cacheDir; subtract to get pure "data".
+            val dataBytes  = (dirSize(dataDir) - cacheBytes).coerceAtLeast(0L)
+            val totalBytes = apkBytes + dataBytes + cacheBytes
+
+            // Paths first.
             row(ctx, it, "Files dir",   ctxAny.filesDir.absolutePath)
-            row(ctx, it, "Cache dir",   ctxAny.cacheDir.absolutePath)
+            row(ctx, it, "Cache dir",   cacheDir.absolutePath)
+            row(ctx, it, "Data root",   dataDir.absolutePath)
             row(ctx, it, "External",    ctxAny.getExternalFilesDir(null)?.absolutePath ?: "—")
-            row(ctx, it, "Cache size",  sizeStr(dirSize(ctxAny.cacheDir)))
-            row(ctx, it, "Data size",   sizeStr(dirSize(ctxAny.filesDir)))
             row(ctx, it, "Trace log",   sizeStr(File(ctxAny.getExternalFilesDir(null), "trace/trace.log").length()))
+            it.addView(small(ctx, "Breakdown — same buckets Android system settings shows:"))
+            row(ctx, it, "Aplicación",  sizeStr(apkBytes))
+            row(ctx, it, "Datos",       sizeStr(dataBytes))
+            row(ctx, it, "Caché",       sizeStr(cacheBytes))
+            row(ctx, it, "Total",       sizeStr(totalBytes))
+        }
+
+        section(ctx, column, "Permissions") {
+            // Each row: friendly label + runtime grant state. Permissions
+            // declared in AndroidManifest; here we just read the current
+            // grant. Notifications gets a dedicated request button below
+            // — the only one Android lets us trigger from inside the app.
+            val perms = listOf(
+                "Camera"            to android.Manifest.permission.CAMERA,
+                "Microphone"        to android.Manifest.permission.RECORD_AUDIO,
+                "Notifications"     to "android.permission.POST_NOTIFICATIONS",
+                "Location (fine)"   to android.Manifest.permission.ACCESS_FINE_LOCATION,
+                "Location (coarse)" to android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                "Nearby Devices"    to "android.permission.BLUETOOTH_SCAN",
+                "Bluetooth Connect" to "android.permission.BLUETOOTH_CONNECT",
+                "Contacts"          to android.Manifest.permission.READ_CONTACTS,
+                "Music and Audio"   to "android.permission.READ_MEDIA_AUDIO",
+                "Photos and Videos (img)" to "android.permission.READ_MEDIA_IMAGES",
+                "Photos and Videos (vid)" to "android.permission.READ_MEDIA_VIDEO",
+                "SMS"               to android.Manifest.permission.READ_SMS,
+                "Phone"             to android.Manifest.permission.READ_PHONE_STATE,
+            )
+            for ((label, perm) in perms) {
+                val state = runCatching {
+                    androidx.core.content.ContextCompat.checkSelfPermission(ctxAny(), perm) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+                }.getOrDefault(false)
+                row(ctx, it, label, if (state) "✓ Granted" else "✗ Denied")
+            }
+            // Button row: request POST_NOTIFICATIONS via the standard
+            // permission dialog (API 33+). On older Android levels
+            // notifications are granted by default, so we just toast.
+            it.addView(actionButton(ctx, "Request Notifications permission") {
+                requestNotificationsPermission()
+            })
+            // Deeplink to the app's system-settings page so the user can
+            // toggle the other permissions directly from there.
+            it.addView(actionButton(ctx, "Open system app settings") {
+                openAppSettings()
+            })
         }
 
         section(ctx, column, "Sections (from build.json)") {
@@ -183,6 +276,21 @@ class DevControlFragment : Fragment() {
         setTextColor(0x99FFFFFF.toInt())
         setTextAppearance(android.R.style.TextAppearance_Material_Caption)
         setPadding(0, dp(4), 0, dp(4))
+    }
+
+    private fun actionButton(ctx: Context, label: String, onClick: () -> Unit) = TextView(ctx).apply {
+        text = label
+        setTextColor(0xFFFFFFFF.toInt())
+        setBackgroundColor(0xFF7C3AED.toInt())
+        gravity = android.view.Gravity.CENTER
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(8) }
+        layoutParams = lp
+        isClickable = true; isFocusable = true
+        setOnClickListener { onClick() }
     }
 
     private fun copy(ctx: Context, v: String) {
