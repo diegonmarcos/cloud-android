@@ -206,6 +206,12 @@ class MainActivity : AppCompatActivity(),
                     vX: Float, vY: Float,
                 ): Boolean {
                     if (e1 == null) return false
+                    // Drawer (left pane) open → it owns ALL gestures inside
+                    // it (vertical scroll of its menu, horizontal swipe-to-
+                    // close). Don't fight it with cycle-section or
+                    // app-drawer-sheet flings; let DrawerLayout handle
+                    // everything until it's closed again.
+                    if (drawerLayout.isDrawerOpen(GravityCompat.START)) return false
                     val dx = e2.x - e1.x
                     val dy = e2.y - e1.y
                     val absDx = Math.abs(dx); val absDy = Math.abs(dy)

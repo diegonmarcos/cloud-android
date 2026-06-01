@@ -1102,6 +1102,26 @@
         ]
       },
       {
+        "id": "tabs",
+        "label": "Tabs",
+        "icon": "ic_mode_apps",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          {
+            "id": "all",
+            "label": "Open Tabs",
+            "icon": "ic_mode_apps"
+          },
+          {
+            "id": "linktree",
+            "label": "Linktree",
+            "icon": "ic_solutions",
+            "action": "https://linktree.diegonmarcos.com/"
+          }
+        ]
+      },
+      {
         "id": "config",
         "label": "Configs",
         "icon": "ic_settings",
@@ -1126,35 +1146,9 @@
             "action": "action:import_configs"
           },
           {
-            "id": "linktree",
-            "label": "Linktree",
-            "icon": "ic_solutions",
-            "action": "https://linktree.diegonmarcos.com/"
-          },
-          {
-            "id": "haptics",
-            "label": "Haptics",
-            "icon": "ic_solutions",
-            "action": "stub:haptics_playground"
-          },
-          {
             "id": "about",
             "label": "About",
             "icon": "ic_settings"
-          }
-        ]
-      },
-      {
-        "id": "tabs",
-        "label": "Tabs",
-        "icon": "ic_mode_apps",
-        "module": null,
-        "bottom_nav": false,
-        "pages": [
-          {
-            "id": "all",
-            "label": "Open Tabs",
-            "icon": "ic_mode_apps"
           }
         ]
       }
