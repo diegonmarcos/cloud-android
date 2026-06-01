@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Activity-level toolbar menu. Right side carries the Apps/Admin global
-     mode toggle + a Back arrow that surfaces whenever there's somewhere
-     "up" to go (back-stack > 0 or currentSection != "home"). -->
+<!-- Activity-level toolbar menu. The whole toolbar surface ALSO acts as a
+     search trigger — tapping any blank area opens the search sheet
+     (wiring in MainActivity.onCreate). The icons here are visual
+     affordances for the same action + the hierarchical Back. The old
+     Apps/Admin mode toggle moved to the drawer-header identity row. -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-
-    <!-- Mode toggle: icon-only (title is the long-press tooltip). Icon
-         flips between ic_mode_apps (4-square app drawer) ↔ ic_settings
-         (gear) in MainActivity.onPrepareOptionsMenu. Distinct from the
-         Suite section icon (ic_suite — briefcase). -->
-    <item android:id="@+id/action_mode_toggle"
-          android:title="@string/mode_apps"
-          android:icon="@drawable/ic_mode_apps"
-          app:showAsAction="always" />
 
     <item android:id="@+id/action_search"
           android:title="@string/action_search"

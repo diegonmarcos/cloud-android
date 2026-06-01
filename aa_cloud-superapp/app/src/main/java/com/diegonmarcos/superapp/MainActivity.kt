@@ -90,6 +90,16 @@ class MainActivity : AppCompatActivity(),
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
+            // The whole top bar acts as a search bar — tapping any blank
+            // pixel of the toolbar opens the SearchSheet. Action items
+            // (search icon, back) still consume their own taps first.
+            toolbar.setOnClickListener {
+                Haptics.tap(it)
+                openSearchSheet()
+            }
+            // The hamburger / nav-icon space is part of the toolbar; the
+            // ActionBarDrawerToggle handles that itself, so our click
+            // listener never fires there. No special-case needed.
 
             drawerLayout = findViewById(R.id.drawer_layout)
             bottomNav = findViewById(R.id.bottom_nav)
@@ -906,6 +916,22 @@ class MainActivity : AppCompatActivity(),
         dispatchHomeAction(actionType)
     }
 
+    override fun onDrawerModeToggle() {
+        // Flip global Apps↔Admin. Don't close the drawer — the user just
+        // tapped the identity row and may want to see the flip take
+        // effect there, and may keep navigating from the drawer.
+        Haptics.tap(drawerLayout)
+        modePrefs.toggle()
+        // Refresh any visible aggregator so its tiles re-render for the
+        // new mode. Toolbar no longer carries a label, so the drawer text
+        // is now the sole feedback channel (HomeDrawerFragment rebinds
+        // on its own — same-tap flow already calls rebind()).
+        if (currentSection.isNotEmpty()) {
+            val sec = Sections.byId(currentSection)
+            if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
+        }
+    }
+
     // ── toolbar (right-side Back action) ─────────────────────────────────
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -916,44 +942,12 @@ class MainActivity : AppCompatActivity(),
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         menu.findItem(R.id.action_back)?.isVisible =
             supportFragmentManager.backStackEntryCount > 0 || currentSection != "home"
-        // Mode toggle: icon-only — gear (ic_settings) for Admin, 4-square
-        // app drawer (ic_mode_apps) for Apps. Distinct from Suite's
-        // briefcase (ic_suite). Title becomes the long-press tooltip
-        // so the user can still discover what the icon means.
-        menu.findItem(R.id.action_mode_toggle)?.let { item ->
-            if (currentMode == "admin") {
-                item.setIcon(R.drawable.ic_settings)
-                item.title = getString(R.string.mode_admin)
-            } else {
-                item.setIcon(R.drawable.ic_mode_apps)
-                item.title = getString(R.string.mode_apps)
-            }
-        }
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.action_search) {
-            supportFragmentManager.beginTransaction()
-                .setCustomAnimations(
-                    R.anim.slide_in_up,  R.anim.fade_out,
-                    R.anim.fade_in,      R.anim.slide_out_down,
-                )
-                .add(R.id.fragment_container, SearchSheetFragment.newInstance(),
-                    SearchSheetFragment.BACK_STACK_TAG)
-                .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
-                .commit()
-            return true
-        }
-        if (item.itemId == R.id.action_mode_toggle) {
-            modePrefs.toggle()
-            invalidateOptionsMenu()
-            // Rebuild current view so aggregator content refreshes to the new
-            // mode. Toolbar label itself IS the feedback — no snackbar/toast.
-            if (currentSection.isNotEmpty()) {
-                val sec = Sections.byId(currentSection)
-                if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
-            }
+            openSearchSheet()
             return true
         }
         if (item.itemId == R.id.action_back) {
@@ -996,21 +990,26 @@ class MainActivity : AppCompatActivity(),
 
     private fun handleShortcutIntent(intent: android.content.Intent?) {
         val target = intent?.getStringExtra("shortcut_action") ?: return
-        if (target == "action:open_search") {
-            // No section: just slide up the SearchSheet.
-            supportFragmentManager.beginTransaction()
-                .setCustomAnimations(
-                    R.anim.slide_in_up,  R.anim.fade_out,
-                    R.anim.fade_in,      R.anim.slide_out_down,
-                )
-                .add(R.id.fragment_container, SearchSheetFragment.newInstance(),
-                    SearchSheetFragment.BACK_STACK_TAG)
-                .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
-                .commit()
-        } else {
-            onTileClicked(target)
-        }
+        if (target == "action:open_search") openSearchSheet()
+        else onTileClicked(target)
         intent.removeExtra("shortcut_action")
+    }
+
+    /** Single source of truth for "show the search sheet". Used by the
+     *  toolbar search action, the toolbar-surface tap (any blank area of
+     *  the top bar), and the launcher long-press → "Search" shortcut. */
+    private fun openSearchSheet() {
+        // Don't stack multiple SearchSheets if user double-taps.
+        if (supportFragmentManager.findFragmentByTag(SearchSheetFragment.BACK_STACK_TAG) != null) return
+        supportFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_up,  R.anim.fade_out,
+                R.anim.fade_in,      R.anim.slide_out_down,
+            )
+            .add(R.id.fragment_container, SearchSheetFragment.newInstance(),
+                SearchSheetFragment.BACK_STACK_TAG)
+            .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
+            .commit()
     }
 
     // ── DevControlBridge.ActivityHost ────────────────────────────────────

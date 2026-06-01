@@ -26,6 +26,9 @@ class HomeDrawerFragment : Fragment() {
         fun onDrawerSectionSelected(sectionId: String, label: String)
         fun onDrawerPageSelected(sectionId: String, pageId: String, label: String)
         fun onDrawerActionSelected(actionType: String)
+        /** Drawer identity row tap → flip Apps↔Admin globally and refresh
+         *  the visible section so the new mode's tiles render. */
+        fun onDrawerModeToggle()
     }
 
     private sealed class Target {
@@ -62,6 +65,25 @@ class HomeDrawerFragment : Fragment() {
                     "Cloud SuperApp build", "$buildLine\n$tsLine"))
                 android.widget.Toast.makeText(ctx, "Build info copied", android.widget.Toast.LENGTH_SHORT).show()
                 true
+            }
+        }
+
+        // Identity row — "{INITIALS}  |  {Mode}". Tappable to flip mode.
+        // Bound from ProfilePrefs (so the field reflects whatever the user
+        // last typed into Configs → Profile) and ModePrefs.
+        val identity = header?.findViewById<TextView>(R.id.nav_header_identity)
+        identity?.let { tv ->
+            fun rebind() {
+                val profile = ProfilePrefs(ctx)
+                val mode    = ModePrefs(ctx).mode
+                val modeLabel = if (mode == "admin") "Admin" else "Apps"
+                tv.text = "${profile.initials}  |  $modeLabel"
+            }
+            rebind()
+            tv.setOnClickListener {
+                Haptics.tap(it)
+                (activity as? NavigationListener)?.onDrawerModeToggle()
+                rebind()
             }
         }
 

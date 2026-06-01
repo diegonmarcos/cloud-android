@@ -1,68 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Drawer header — brand-tinted strip with the app name + build identifier.
-     Build identifier is split across TWO lines: ABI/sha/vc on the first,
-     UTC build timestamp on the second. Clickable: tap triggers
-     check-for-update; long-press copies the full build string to the
-     clipboard. Wiring in HomeDrawerFragment.onViewCreated. -->
+<!-- Drawer header — brand-tinted strip with:
+       1. App name + build identifier (build/timestamp lines).
+       2. Identity row below — "{INITIALS}  |  {Mode}" — tappable to
+          toggle Apps↔Admin (this is where the old top-right mode
+          toggle used to live).
+     The top half (nav_header_root) triggers check-for-update on tap,
+     long-press copies the full build string. The identity row owns
+     its own click. Both wired in HomeDrawerFragment.onViewCreated. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/nav_header_root"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/colorPrimaryContainer"
-    android:clickable="true"
-    android:focusable="true"
-    android:foreground="?attr/selectableItemBackground"
-    android:gravity="center_vertical"
-    android:minHeight="96dp"
-    android:orientation="horizontal"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="10dp">
-
-    <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginEnd="14dp"
-        android:src="@drawable/ic_home"
-        app:tint="?attr/colorOnPrimaryContainer" />
+    android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/nav_header_root"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="96dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp">
 
-        <TextView
-            android:id="@+id/nav_header_title"
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="14dp"
+            android:src="@drawable/ic_home"
+            app:tint="?attr/colorOnPrimaryContainer" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:text="@string/app_name"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            android:textAppearance="?attr/textAppearanceTitleMedium" />
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/nav_header_build"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:alpha="0.7"
-            android:fontFamily="monospace"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            android:textAppearance="?attr/textAppearanceLabelSmall" />
+            <TextView
+                android:id="@+id/nav_header_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="@string/app_name"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
 
-        <TextView
-            android:id="@+id/nav_header_timestamp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:alpha="0.55"
-            android:fontFamily="monospace"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            android:textAppearance="?attr/textAppearanceLabelSmall" />
+            <TextView
+                android:id="@+id/nav_header_build"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:alpha="0.7"
+                android:fontFamily="monospace"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:textAppearance="?attr/textAppearanceLabelSmall" />
+
+            <TextView
+                android:id="@+id/nav_header_timestamp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:alpha="0.55"
+                android:fontFamily="monospace"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:textAppearance="?attr/textAppearanceLabelSmall" />
+        </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/nav_header_identity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:textColor="?attr/colorOnPrimaryContainer"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:fontFamily="monospace"
+        tools:text="DCM  |  Apps" />
 </LinearLayout>
