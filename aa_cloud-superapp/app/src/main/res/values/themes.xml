@@ -40,6 +40,16 @@
 
         <!-- BottomNav: branded active indicator using the brand container. -->
         <item name="bottomNavigationStyle">@style/Widget.CloudSuperApp.BottomNavigationView</item>
+
+        <!-- System long-press tooltip pill: force-transparent frame. The
+             system TooltipPopup still fires (so a11y / TalkBack still
+             reads the label), but the white/dark rounded-rect background
+             is invisible. This is the framework-level public attr for
+             tooltip surface tinting; combined with night-mode forced in
+             App.onCreate it's the only knob we need — no per-view
+             tooltipText hacks, no long-click listeners, no view-tree
+             walks. -->
+        <item name="android:tooltipFrameBackground" tools:targetApi="o">@drawable/bg_tooltip_transparent</item>
     </style>
 
     <style name="Widget.CloudSuperApp.BottomNavigationView"
