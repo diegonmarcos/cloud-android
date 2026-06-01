@@ -39,7 +39,17 @@ import java.security.MessageDigest
  * Implements [Collapsible] so re-tapping the Tabs bottom-nav slot
  * snaps back to GRID — quick gesture to "see all tabs".
  */
-class TabsHostFragment : Fragment(), Collapsible {
+class TabsHostFragment : Fragment(), Collapsible, com.diegonmarcos.superapp.SuppressHorizontalSwipe {
+
+    /** Activity-level horizontal-fling cycler skips this fragment while
+     *  a WebView is visible, so URL bar gestures / desktop-view-mode
+     *  horizontal scrolls inside the page don't get hijacked into a
+     *  bottom-nav cycle. */
+    override fun suppressHorizontalSwipe(): Boolean = mode is Mode.DETAIL
+
+    /** Desktop-mode toggle — flips WebView UA + width override + initial
+     *  scale. Persists for the lifetime of this fragment only. */
+    private var desktopMode: Boolean = false
 
     private lateinit var prefs: TabPrefs
     private lateinit var rootContainer: FrameLayout
@@ -283,15 +293,28 @@ class TabsHostFragment : Fragment(), Collapsible {
             val m = dp(8); setPadding(m, 0, m, 0)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
+        // Overflow ⋮ — standard browser menu (open external / reload /
+        // view mode toggle / copy URL / share). Placed at the right end
+        // of the bar where every Chromium-derived browser puts it.
+        bar.addView(TextView(ctx).apply {
+            text = "⋮"
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            setTextAppearance(android.R.style.TextAppearance_Material_Title)
+            val pad = dp(8); setPadding(pad, 0, pad, 0)
+            setOnClickListener { v -> showBrowserMenu(v, url) }
+        })
         column.addView(bar)
 
         webView = WebView(ctx).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            settings.userAgentString = settings.userAgentString + " CloudSuperApp/1.0"
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
+            // UA + viewport mode applied here from the persisted-per-
+            // fragment desktopMode flag. Re-applied on every toggle.
+            applyViewMode(this)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
             webViewClient = object : WebViewClient() {
@@ -337,6 +360,77 @@ class TabsHostFragment : Fragment(), Collapsible {
     }
 
     // ── lifecycle ────────────────────────────────────────────────────
+
+    /** Apply the current desktop/mobile flag to the WebView — UA string,
+     *  viewport, and initial zoom. Called once at WebView creation and
+     *  again every time the user toggles via the overflow menu. */
+    private fun applyViewMode(wv: WebView) {
+        val s = wv.settings
+        if (desktopMode) {
+            // Chrome desktop UA — what most servers gate "desktop view" on.
+            s.userAgentString = "Mozilla/5.0 (X11; Linux x86_64) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 CloudSuperApp/1.0"
+            s.useWideViewPort = true
+            s.loadWithOverviewMode = true
+            wv.setInitialScale(1)
+        } else {
+            // Default Android UA — keep the system one so servers serve
+            // their mobile layout. Suffix our app tag for the bot detectors.
+            s.userAgentString = android.webkit.WebSettings.getDefaultUserAgent(requireContext()) +
+                " CloudSuperApp/1.0"
+            s.useWideViewPort = false
+            s.loadWithOverviewMode = false
+            wv.setInitialScale(0)
+        }
+    }
+
+    /** Browser-style overflow menu — Open in external browser / Reload /
+     *  View Desktop ↔ Mobile / Copy URL / Share. Mirrors what Chrome,
+     *  Brave, Samsung Internet, etc. surface from their ⋮ button. */
+    private fun showBrowserMenu(anchor: android.view.View, url: String) {
+        val ctx = anchor.context
+        val pop = android.widget.PopupMenu(ctx, anchor)
+        val mi0 = pop.menu.add(0, 0, 0, "Open in browser…")
+        val mi1 = pop.menu.add(0, 1, 1, "Reload")
+        val mi2 = pop.menu.add(0, 2, 2,
+            if (desktopMode) "View: Mobile" else "View: Desktop")
+        val mi3 = pop.menu.add(0, 3, 3, "Copy URL")
+        val mi4 = pop.menu.add(0, 4, 4, "Share…")
+        pop.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                mi0.itemId -> openInExternalBrowser(url)
+                mi1.itemId -> webView?.reload()
+                mi2.itemId -> {
+                    desktopMode = !desktopMode
+                    webView?.let { applyViewMode(it); it.reload() }
+                }
+                mi3.itemId -> {
+                    val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    clip?.setPrimaryClip(android.content.ClipData.newPlainText("url", url))
+                    android.widget.Toast.makeText(ctx, "URL copied", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                mi4.itemId -> {
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, url)
+                    }
+                    startActivity(android.content.Intent.createChooser(send, "Share URL"))
+                }
+            }
+            true
+        }
+        pop.show()
+    }
+
+    private fun openInExternalBrowser(url: String) {
+        // ACTION_VIEW + chooser → system picker shows Chrome / Brave /
+        // Firefox / Samsung Internet / whatever else is installed.
+        val view = android.content.Intent(
+            android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse(url),
+        )
+        startActivity(android.content.Intent.createChooser(view, "Open with"))
+    }
 
     private fun teardownWebView() {
         webView?.let {

@@ -241,6 +241,13 @@ class MainActivity : AppCompatActivity(),
                     if (absDx < minSwipePx) return false
                     if (absDx < absDy * 1.4f) return false
                     if (Math.abs(vX) < 600f) return false
+                    // Some fragments (WebView in desktop view mode etc.)
+                    // need to own horizontal flings — skip the cycle so
+                    // the inner content can pan freely.
+                    val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
+                    if ((cur as? SuppressHorizontalSwipe)?.suppressHorizontalSwipe() == true) {
+                        return false
+                    }
                     // Horizontal swipe = section change → full Gemini pattern,
                     // matches what tapping the bottom-nav slot would do.
                     fireGeminiPattern()
