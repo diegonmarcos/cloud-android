@@ -63,7 +63,11 @@ class ProfilePrefs(context: Context) {
         private const val K_COMPANY  = "company"
         private const val K_LOCATION = "location"
         private const val K_WEBSITE  = "website"
-        private const val K_TITLES   = "titles"
+        // Bumped after the titles default was updated to include emojis
+        // — existing installs had the old emoji-less value persisted in
+        // the old "titles" key. Renaming the key forces a fresh
+        // fall-through to BuildConfig.UI_PROFILE_TITLES.
+        private const val K_TITLES   = "titles_v2"
         private const val K_PICTURE  = "picture_uri"
         private const val K_BANNER   = "banner_uri"
     }

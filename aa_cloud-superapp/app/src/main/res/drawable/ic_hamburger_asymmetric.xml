@@ -8,13 +8,13 @@
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="?android:attr/textColorPrimary">
-    <!-- Top dash — widest. -->
+    <!-- Top dash — smallest (per user spec). -->
     <path android:fillColor="#000000"
-        android:pathData="M3,6 H21 V8.5 H3 Z" />
-    <!-- Middle dash — medium. -->
+        android:pathData="M9,6 H15 V8.5 H9 Z" />
+    <!-- Middle dash — bigger. -->
     <path android:fillColor="#000000"
-        android:pathData="M5,10.75 H17 V13.25 H5 Z" />
-    <!-- Bottom dash — narrowest. -->
+        android:pathData="M6,10.75 H18 V13.25 H6 Z" />
+    <!-- Bottom dash — largest. -->
     <path android:fillColor="#000000"
-        android:pathData="M7,15.5 H13 V18 H7 Z" />
+        android:pathData="M3,15.5 H21 V18 H3 Z" />
 </vector>

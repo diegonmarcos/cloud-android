@@ -145,12 +145,25 @@ class BusinessCardFragment : Fragment() {
         })
         val qrBmp = qrBitmap(qrUrl, dp(ctx, 220))
         if (qrBmp != null) {
-            qrCard.addView(ImageView(ctx).apply {
+            // Decorative rainbow frame + white inner plate around the QR.
+            // The frame is purely cosmetic; the white plate keeps the
+            // QR's quiet zone intact so readers still scan reliably.
+            val frame = FrameLayout(ctx).apply {
+                background = androidx.core.content.ContextCompat.getDrawable(
+                    ctx, R.drawable.bg_qr_frame)
+                layoutParams = LinearLayout.LayoutParams(
+                    dp(ctx, 244), dp(ctx, 244)
+                ).apply { topMargin = dp(ctx, 6) }
+                val p = dp(ctx, 12); setPadding(p, p, p, p)
+            }
+            frame.addView(ImageView(ctx).apply {
                 setImageBitmap(qrBmp)
-                layoutParams = LinearLayout.LayoutParams(dp(ctx, 220), dp(ctx, 220)).apply {
-                    topMargin = dp(ctx, 6)
-                }
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                )
             })
+            qrCard.addView(frame)
         }
         col.addView(qrCard)
 

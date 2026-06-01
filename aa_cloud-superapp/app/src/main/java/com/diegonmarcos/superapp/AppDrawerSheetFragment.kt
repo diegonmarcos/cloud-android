@@ -37,48 +37,53 @@ class AppDrawerSheetFragment : Fragment() {
             )
         }
 
-        // ── Top spacer (was for the global search bar; now we own the
-        //    search ourselves so the spacer just gives the search bar
-        //    breathing room from the activity toolbar above).
-        root.addView(View(ctx).apply {
+        // ── Search bar — same glassmorphism + shimmer chrome that used
+        //    to wrap the activity toolbar. Reused here as the search
+        //    affordance for Home Apps. Tap → opens SearchSheetFragment.
+        val searchIsland = FrameLayout(ctx).apply {
+            background = androidx.core.content.ContextCompat.getDrawable(
+                ctx, R.drawable.bg_liquid_glass)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(8),
-            )
-        })
-
-        // ── Search bar — moved from the global toolbar into THIS page
-        //    only. Tap to open SearchSheetFragment.
-        val searchBar = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            background = androidx.core.content.ContextCompat.getDrawable(
-                ctx, R.drawable.bg_liquid_glass_pill)
-            val hpad = dp(14); val vpad = dp(10)
-            setPadding(hpad, vpad, hpad, vpad)
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { setMargins(dp(14), 0, dp(14), dp(8)) }
-            layoutParams = lp
+            ).apply { setMargins(dp(12), dp(6), dp(12), dp(10)) }
             isClickable = true; isFocusable = true
         }
-        searchBar.addView(ImageView(ctx).apply {
+        val searchInner = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            val hpad = dp(16); val vpad = dp(12)
+            setPadding(hpad, vpad, hpad, vpad)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        searchInner.addView(ImageView(ctx).apply {
             setImageResource(R.drawable.ic_search)
             imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
             val sz = dp(18)
-            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(10) }
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(12) }
         })
-        searchBar.addView(TextView(ctx).apply {
-            text = "Search apps, pages, links…"
+        searchInner.addView(TextView(ctx).apply {
+            text = "Search"
             setTextColor(0x99FFFFFF.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Body2)
         })
-        searchBar.setOnClickListener {
+        searchIsland.addView(searchInner)
+        // Neon-violet shimmer comet over the search island's perimeter —
+        // same view class the activity toolbar used to host.
+        searchIsland.addView(ShimmerBorderView(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        })
+        searchIsland.setOnClickListener {
             Haptics.tap(it)
             (activity as? SearchOpener)?.openSearchSheet()
         }
-        root.addView(searchBar)
+        root.addView(searchIsland)
 
         // ── Horizontal tabs strip (Google-Maps style chips).
         val tabsStrip = HorizontalScrollView(ctx).apply {

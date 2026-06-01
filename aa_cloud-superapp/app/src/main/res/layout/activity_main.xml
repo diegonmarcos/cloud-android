@@ -51,8 +51,7 @@
             android:layout_gravity="top"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_liquid_glass">
+            android:layout_marginTop="6dp">
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
@@ -90,15 +89,6 @@
                     android:ellipsize="end"
                     tools:text="DCM · Apps" />
             </FrameLayout>
-
-            <!-- Neon-violet shimmer comet around the toolbar perimeter.
-                 Explicit actionBarSize height (NOT match_parent) so the
-                 wrap_content FrameLayout doesn't enter a measure cycle
-                 with this child. -->
-            <com.diegonmarcos.superapp.ShimmerBorderView
-                android:id="@+id/toolbar_shimmer"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize" />
 
         </FrameLayout>
 
