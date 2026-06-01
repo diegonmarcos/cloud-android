@@ -88,6 +88,13 @@
                     android:singleLine="true"
                     android:ellipsize="end"
                     tools:text="DCM · Apps" />
+
+                <!-- Prismatic neon halo around the island perimeter —
+                     full rainbow sweep chasing around the pill. Sized
+                     match_parent so it covers the island exactly. -->
+                <com.diegonmarcos.superapp.PrismaticShimmerView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
             </FrameLayout>
 
         </FrameLayout>
