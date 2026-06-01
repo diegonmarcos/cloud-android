@@ -68,19 +68,24 @@ class HomeDrawerFragment : Fragment() {
             }
         }
 
-        // Identity row — "{INITIALS}  |  {Mode}". Tappable to flip mode.
-        // Bound from ProfilePrefs (so the field reflects whatever the user
-        // last typed into Configs → Profile) and ModePrefs.
+        // User-banner row — avatar (initials) + "{INITIALS}  |  {Mode}".
+        // The whole row is the click target; tap flips Apps↔Admin. Bound
+        // from ProfilePrefs + ModePrefs so it always reflects current
+        // state — works even when the drawer is re-opened after the user
+        // edited Configs → Profile.
+        val userRow  = header?.findViewById<View>(R.id.nav_header_user_row)
+        val avatar   = header?.findViewById<TextView>(R.id.nav_header_avatar)
         val identity = header?.findViewById<TextView>(R.id.nav_header_identity)
-        identity?.let { tv ->
+        if (userRow != null && avatar != null && identity != null) {
             fun rebind() {
                 val profile = ProfilePrefs(ctx)
                 val mode    = ModePrefs(ctx).mode
                 val modeLabel = if (mode == "admin") "Admin" else "Apps"
-                tv.text = "${profile.initials}  |  $modeLabel"
+                avatar.text   = profile.initials
+                identity.text = "${profile.initials}  |  $modeLabel"
             }
             rebind()
-            tv.setOnClickListener {
+            userRow.setOnClickListener {
                 Haptics.tap(it)
                 (activity as? NavigationListener)?.onDrawerModeToggle()
                 rebind()

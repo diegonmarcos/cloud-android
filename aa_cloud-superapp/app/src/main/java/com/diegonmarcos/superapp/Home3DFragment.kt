@@ -1,16 +1,15 @@
 package com.diegonmarcos.superapp
 
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 
@@ -89,8 +88,25 @@ class RotatingCubeView @JvmOverloads constructor(
         color = 0xFF7C3AED.toInt()
     }
 
-    private var rotY = -Math.PI.toFloat() / 5.5f
-    private var rotX =  Math.PI.toFloat() / 7f
+    // Rotation is computed each frame from SystemClock.elapsedRealtime()
+    // — never reset. Previous version used a ValueAnimator looping
+    // 0 → 2π over 16s, then accumulating rotX as `t * 0.4`. At loop end
+    // rotY had advanced 2π (continuous) but rotX had advanced 0.8π —
+    // NOT a multiple of 2π — so the cube visibly snapped back -144° on
+    // X every 16s. Time-based wrap guarantees both axes are always
+    // continuous because we never reset the accumulator.
+    private val rotY0 = -Math.PI.toFloat() / 5.5f
+    private val rotX0 =  Math.PI.toFloat() / 7f
+    private var rotY = rotY0
+    private var rotX = rotX0
+    /** Y full rotation period (ms) — 16s = matches the old feel. */
+    private val periodYMs = 16_000.0
+    /** X period — picked independently. With both axes driven from the
+     *  same epoch and their own period, they always wrap cleanly: at no
+     *  point does either angle skip a value. Different periods give a
+     *  non-repeating wobble that reads as organic rather than mechanical. */
+    private val periodXMs = 23_500.0
+    private val animStartMs = SystemClock.elapsedRealtime()
 
     private val vertices = arrayOf(
         floatArrayOf(-1f, -1f, -1f),
@@ -108,23 +124,16 @@ class RotatingCubeView @JvmOverloads constructor(
         intArrayOf(0,4), intArrayOf(1,5), intArrayOf(2,6), intArrayOf(3,7),
     )
 
-    init {
-        ValueAnimator.ofFloat(0f, (Math.PI * 2f).toFloat()).apply {
-            duration = 16_000
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            addUpdateListener { va ->
-                val t = va.animatedValue as Float
-                rotY = -Math.PI.toFloat() / 5.5f + t
-                rotX =  Math.PI.toFloat() / 7f   + t * 0.4f
-                invalidate()
-            }
-            start()
-        }
-    }
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        // Time since first frame — drives both rotation axes. Reading the
+        // monotonic system clock every frame instead of accumulating in a
+        // ValueAnimator means the loop boundary is invisible: every
+        // angle is reproducible from `elapsed` without any state to
+        // discontinue.
+        val elapsed = (SystemClock.elapsedRealtime() - animStartMs).toDouble()
+        rotY = (rotY0 + (elapsed / periodYMs) * (2.0 * Math.PI)).toFloat()
+        rotX = (rotX0 + (elapsed / periodXMs) * (2.0 * Math.PI)).toFloat()
         val cx = width / 2f
         val cy = height / 2f
         // Smaller scale denominator → larger cube; pump it back to ~3.4f
@@ -160,5 +169,9 @@ class RotatingCubeView @JvmOverloads constructor(
             canvas.drawLine(px[e[0]], py[e[0]], px[e[1]], py[e[1]], sharp)
         }
         for (i in 0..7) canvas.drawCircle(px[i], py[i], 4f, accent)
+        // Schedule the next frame — VSYNC-aligned by the platform. When
+        // the view detaches the framework drops these invalidations, so
+        // there's no leak risk.
+        postInvalidateOnAnimation()
     }
 }

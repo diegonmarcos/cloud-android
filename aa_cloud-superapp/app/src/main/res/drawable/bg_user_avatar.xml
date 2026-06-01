@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Avatar circle used in the drawer-header user banner. Filled with the
+     brand tertiary so it pops against colorSecondaryContainer beneath. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="?attr/colorTertiary" />
+</shape>
