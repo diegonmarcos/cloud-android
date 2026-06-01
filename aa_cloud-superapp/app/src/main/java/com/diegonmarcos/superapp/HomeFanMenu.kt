@@ -44,10 +44,10 @@ object HomeFanMenu {
             // LEFT — Open Tabs (page:tabs/all goes straight to grid).
             "page:tabs/all"           to (R.drawable.ic_mode_apps  to "Open Tabs"),
             // CENTER — Home Apps (pulls up the home-sheet icon grid).
-            //   Distinct icon from Linktree (ic_tree) and from Open Tabs
-            //   (ic_mode_apps); use ic_solutions = 4-dot grid that reads
-            //   as "open the app drawer".
-            "action:open_home_apps"   to (R.drawable.ic_solutions to "Home Apps"),
+            //   ic_home_apps is a dedicated 3×3 dot launcher glyph
+            //   reserved for THIS surface — distinct from ic_mode_apps
+            //   (4 squares), ic_solutions (4 dots), ic_tree, ic_refresh.
+            "action:open_home_apps"   to (R.drawable.ic_home_apps to "Home Apps"),
             // RIGHT — Update.
             "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
         )

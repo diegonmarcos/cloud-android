@@ -743,15 +743,21 @@ class MainActivity : AppCompatActivity(),
                     .commitAllowingStateLoss()
             }
             DrawerPage.SECTION -> {
-                // Drawer's section pane is a flat list of every sub-page
-                // (data-driven from build.json::ui.sections[X].pages[]),
-                // so the chip-row above it is redundant — keep it hidden.
+                // Drawer's section pane is a flat list of:
+                //   • sub-pages (build.json::ui.sections[X].pages[]) for
+                //     regular sections, OR
+                //   • the aggregator's tiles + stack-panel titles for
+                //     aggregator sections (Suite / Tools / Communication
+                //     / Infos), where the page list is empty by design.
+                // The chip-row above it is redundant in both cases.
                 drawerPageTabs.visibility = View.GONE
+                val sec = Sections.byId(currentSection)
                 val pages = SectionPages.pagesFor(currentSection)
-                val frag: Fragment = if (pages.isEmpty()) {
-                    PlaceholderDrawerFragment.newInstance(currentLabel)
-                } else {
-                    SectionMenuFragment.newInstance(currentSection)
+                val isAggregator = sec?.isAggregator == true
+                val frag: Fragment = when {
+                    pages.isNotEmpty() || isAggregator ->
+                        SectionMenuFragment.newInstance(currentSection)
+                    else -> PlaceholderDrawerFragment.newInstance(currentLabel)
                 }
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.drawer_content, frag)
@@ -868,6 +874,12 @@ class MainActivity : AppCompatActivity(),
     override fun onTileClicked(tileId: String) {
         Trace.i(TAG, "onTileClicked tileId=$tileId")
         Haptics.tap(bottomNav)
+        // If the click came from the drawer (SectionMenuFragment tile row,
+        // HomeDrawerFragment action row, etc.) close the drawer first so
+        // the user sees the content surface, not the drawer overlay.
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
         when {
             tileId.startsWith("section:") -> {
                 val id = tileId.removePrefix("section:")

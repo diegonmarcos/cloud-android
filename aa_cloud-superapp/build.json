@@ -1175,7 +1175,7 @@
     "home_drawer_prepend": [
       {
         "label": "Home Apps",
-        "icon": "ic_solutions",
+        "icon": "ic_home_apps",
         "action_type": "open_home_apps"
       }
     ],
