@@ -54,4 +54,16 @@
     <color name="glass_border_dark">#33A78BFA</color>
     <!-- Accent on-island text / icon — bright violet matches the gradient hue. -->
     <color name="island_accent">#FFB794F4</color>
+
+    <!-- ── Drawer header surfaces ───────────────────────────────────── -->
+    <!-- M3 colorPrimaryContainer / colorSecondaryContainer defaults on
+         Material3.DayNight read as light blue / pale purple — neither
+         matches the app's own black→deep-purple body gradient. These
+         drawer-specific tokens replace those defaults so the App + User
+         banners share the same visual family as the body. -->
+    <color name="drawer_banner_app">#FF1A0033</color>     <!-- deep violet/black -->
+    <color name="drawer_banner_user">#FF0E0220</color>    <!-- one shade darker, still violet-tinted -->
+    <color name="drawer_banner_text">#FFE9D8FD</color>    <!-- same lavender used on island accents -->
+    <color name="drawer_avatar">#FF7C3AED</color>         <!-- vibrant violet — matches fan-menu highlight -->
+    <color name="drawer_separator">#55B794F4</color>      <!-- faint violet hairline -->
 </resources>
