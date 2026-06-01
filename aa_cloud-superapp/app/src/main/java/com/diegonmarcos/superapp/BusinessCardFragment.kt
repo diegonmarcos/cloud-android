@@ -143,18 +143,18 @@ class BusinessCardFragment : Fragment() {
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             alpha = 0.7f
         })
+        // 75% smaller thumbnail (was 220dp → 70dp). Tap opens a
+        // full-screen view of the same QR for easier scanning.
         val qrBmp = qrBitmap(qrUrl, dp(ctx, 220))
         if (qrBmp != null) {
-            // Decorative rainbow frame + white inner plate around the QR.
-            // The frame is purely cosmetic; the white plate keeps the
-            // QR's quiet zone intact so readers still scan reliably.
             val frame = FrameLayout(ctx).apply {
                 background = androidx.core.content.ContextCompat.getDrawable(
                     ctx, R.drawable.bg_qr_frame)
                 layoutParams = LinearLayout.LayoutParams(
-                    dp(ctx, 244), dp(ctx, 244)
+                    dp(ctx, 70), dp(ctx, 70)
                 ).apply { topMargin = dp(ctx, 6) }
-                val p = dp(ctx, 12); setPadding(p, p, p, p)
+                val p = dp(ctx, 4); setPadding(p, p, p, p)
+                isClickable = true; isFocusable = true
             }
             frame.addView(ImageView(ctx).apply {
                 setImageBitmap(qrBmp)
@@ -163,6 +163,10 @@ class BusinessCardFragment : Fragment() {
                     FrameLayout.LayoutParams.MATCH_PARENT,
                 )
             })
+            frame.setOnClickListener {
+                Haptics.tap(it)
+                showQrFullScreen(qrUrl)
+            }
             qrCard.addView(frame)
         }
         col.addView(qrCard)
@@ -212,6 +216,38 @@ class BusinessCardFragment : Fragment() {
         val baselineY = size / 2f - (paint.descent() + paint.ascent()) / 2f
         canvas.drawText(initials.ifBlank { "•" }, size / 2f, baselineY, paint)
         return bmp
+    }
+
+    /** Show the QR code full-screen in a tap-to-dismiss dialog. Same
+     *  rainbow frame; the QR itself is regenerated at a larger pixel
+     *  size so reader cameras pick it up cleanly. */
+    private fun showQrFullScreen(qrUrl: String) {
+        val ctx = requireContext()
+        val dialog = android.app.Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val root = FrameLayout(ctx).apply {
+            setBackgroundColor(0xEE000000.toInt())
+            isClickable = true
+            setOnClickListener { dialog.dismiss() }
+        }
+        // Compute display side ~80% of screen min dimension.
+        val side = (ctx.resources.displayMetrics.let { Math.min(it.widthPixels, it.heightPixels) } * 0.8f).toInt()
+        val frame = FrameLayout(ctx).apply {
+            background = androidx.core.content.ContextCompat.getDrawable(
+                ctx, R.drawable.bg_qr_frame)
+            layoutParams = FrameLayout.LayoutParams(side, side, android.view.Gravity.CENTER)
+            val p = dp(ctx, 18); setPadding(p, p, p, p)
+        }
+        val bigQr = qrBitmap(qrUrl, side)
+        frame.addView(ImageView(ctx).apply {
+            if (bigQr != null) setImageBitmap(bigQr)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        })
+        root.addView(frame)
+        dialog.setContentView(root)
+        dialog.show()
     }
 
     /** Encode `text` as a colourful QR code Bitmap. Uses ZXing for the

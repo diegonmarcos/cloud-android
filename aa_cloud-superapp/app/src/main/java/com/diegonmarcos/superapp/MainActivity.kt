@@ -91,6 +91,12 @@ class MainActivity : AppCompatActivity(),
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
+            // Kill the title surface entirely. supportActionBar?.title
+            // is set throughout the codebase (goHome, goSection, …),
+            // so the only reliable way to hide it is at the action-bar
+            // level. The Dynamic Island carries identity instead.
+            supportActionBar?.setDisplayShowTitleEnabled(false)
+            toolbar.title = ""
             // Search trigger has moved INTO AppDrawerSheetFragment (the
             // Home Apps page). The toolbar is now hamburger | island
             // | back only, NOT a global search affordance — no

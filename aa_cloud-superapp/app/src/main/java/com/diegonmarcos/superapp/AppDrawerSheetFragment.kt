@@ -37,26 +37,29 @@ class AppDrawerSheetFragment : Fragment() {
             )
         }
 
-        // ── Search bar — same glassmorphism + shimmer chrome that used
-        //    to wrap the activity toolbar. Reused here as the search
-        //    affordance for Home Apps. Tap → opens SearchSheetFragment.
+        // ── Search bar — glassmorphism + shimmer chrome reused from the
+        //    old activity toolbar. Same fixed-height pattern the original
+        //    toolbar used (?attr/actionBarSize on both children) so the
+        //    wrap_content FrameLayout doesn't enter a measure cycle and
+        //    blow up to fill the whole screen.
+        val barHeight = dp(56)
         val searchIsland = FrameLayout(ctx).apply {
             background = androidx.core.content.ContextCompat.getDrawable(
                 ctx, R.drawable.bg_liquid_glass)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                barHeight,
             ).apply { setMargins(dp(12), dp(6), dp(12), dp(10)) }
             isClickable = true; isFocusable = true
         }
         val searchInner = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            val hpad = dp(16); val vpad = dp(12)
-            setPadding(hpad, vpad, hpad, vpad)
+            val hpad = dp(16)
+            setPadding(hpad, 0, hpad, 0)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
+                barHeight,
             )
         }
         searchInner.addView(ImageView(ctx).apply {
@@ -71,12 +74,10 @@ class AppDrawerSheetFragment : Fragment() {
             setTextAppearance(android.R.style.TextAppearance_Material_Body2)
         })
         searchIsland.addView(searchInner)
-        // Neon-violet shimmer comet over the search island's perimeter —
-        // same view class the activity toolbar used to host.
         searchIsland.addView(ShimmerBorderView(ctx).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
+                barHeight,
             )
         })
         searchIsland.setOnClickListener {
