@@ -135,10 +135,14 @@ class MainActivity : AppCompatActivity(),
                 //      arrow actually takes us home.
                 val tappedSection = sectionIdForNavId(item.itemId)
                 if (tappedSection != null && tappedSection != currentSection) {
+                    // Going to a different section → full Gemini pattern.
+                    fireGeminiPattern()
                     if (tappedSection == "home") goHome()
                     else goSection(tappedSection, Sections.byId(tappedSection)?.label ?: tappedSection)
                     return@setOnItemReselectedListener
                 }
+                // Same-section re-tap (collapse toggle) → light tap haptic.
+                Haptics.tap(bottomNav)
                 val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
                 (cur as? Collapsible)?.toggleAllCollapsed()
             }
@@ -198,7 +202,9 @@ class MainActivity : AppCompatActivity(),
 
                     // VERTICAL swipes — open / close the app drawer.
                     if (absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
-                        return handleVerticalFling(dy)
+                        val consumed = handleVerticalFling(dy)
+                        if (consumed) Haptics.tap(bottomNav)
+                        return consumed
                     }
 
                     // HORIZONTAL swipes — cycle the bottom nav.
@@ -207,6 +213,9 @@ class MainActivity : AppCompatActivity(),
                     if (absDx < minSwipePx) return false
                     if (absDx < absDy * 1.4f) return false
                     if (Math.abs(vX) < 600f) return false
+                    // Horizontal swipe = section change → full Gemini pattern,
+                    // matches what tapping the bottom-nav slot would do.
+                    fireGeminiPattern()
                     cycleBottomNav(direction = if (dx < 0) +1 else -1)
                     return true
                 }
@@ -392,13 +401,20 @@ class MainActivity : AppCompatActivity(),
     private fun onBottomNavPicked(item: MenuItem): Boolean {
         if (suppressBottomNavReentry) return true
         val id = sectionIdForNavId(item.itemId) ?: return false
-        // Gemini-like rhythm:
-        //   t=0     press buzz (the click)
-        //   ~250ms  PAUSE (thinking…)
-        //   t=250…490ms: 4 LOW_TICKs at 80ms intervals — "the answer"
-        //   t=560ms end buzz — "answer done"
-        // Posted on Handler(mainLooper) so the runnables persist even if
-        // the listener view goes away mid-transition.
+        fireGeminiPattern()
+        if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
+        return true
+    }
+
+    /** Gemini-like rhythm for any section-change action (bottom-nav tap,
+     *  bottom-nav re-tap landing on a new section, horizontal swipe):
+     *    t=0     press buzz (the click)
+     *    ~250ms  PAUSE (thinking…)
+     *    t=250…490ms: 4 LOW_TICKs at 80ms intervals — "the answer"
+     *    t=560ms end buzz — "answer done"
+     *  Posted on Handler(mainLooper) so the runnables persist even if the
+     *  listener view goes away mid-transition. */
+    private fun fireGeminiPattern() {
         haptHandler.removeCallbacksAndMessages(null)
         val anchor = bottomNav
         Haptics.gestureStart(anchor)
@@ -407,8 +423,6 @@ class MainActivity : AppCompatActivity(),
         haptHandler.postDelayed({ Haptics.segmentTick(anchor) }, 410)
         haptHandler.postDelayed({ Haptics.segmentTick(anchor) }, 490)
         haptHandler.postDelayed({ Haptics.gestureEnd(anchor) }, 560)
-        if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
-        return true
     }
 
     private fun sectionIdForNavId(navId: Int): String? = when (navId) {
@@ -757,6 +771,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun onTileClicked(tileId: String) {
         Trace.i(TAG, "onTileClicked tileId=$tileId")
+        Haptics.tap(bottomNav)
         when {
             tileId.startsWith("section:") -> {
                 val id = tileId.removePrefix("section:")

@@ -61,6 +61,21 @@ object Haptics {
         fire(view.context, intensity = 0.3f, durationMs = 15)
     }
 
+    /** Lightweight single-tick "press" — for tile clicks and lighter
+     *  gestures where firing the whole gesture-pattern would be too
+     *  heavy and stack up under rapid input. */
+    fun tap(view: View) {
+        runCatching {
+            view.isHapticFeedbackEnabled = true
+            view.performHapticFeedback(
+                HapticFeedbackConstants.VIRTUAL_KEY,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+            )
+        }
+        fire(view.context, intensity = 0.45f, durationMs = 18)
+    }
+
     /** Direct-to-vibrator: composition primitive on API 31+, predefined
      *  EFFECT_TICK on 29+, plain one-shot on older. Wrapped in
      *  runCatching because PRIMITIVE_LOW_TICK throws on OEMs that
