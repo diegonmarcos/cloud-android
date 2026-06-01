@@ -41,11 +41,14 @@ object HomeFanMenu {
         val ctx = host.context
         // Per user spec: LEFT = Open Tabs, CENTER = Linktree, RIGHT = Update.
         val items = listOf(
-            // page:tabs/all → TabsHostFragment directly (skip the section
-            // wrapper's one-tile grid that just relays into the same page).
-            "page:tabs/all"                           to (R.drawable.ic_mode_apps to "Open Tabs"),
-            "https://linktree.diegonmarcos.com/"      to (R.drawable.ic_tree      to "Linktree"),
-            "action:check_updates"                    to (R.drawable.ic_refresh   to "Update"),
+            // LEFT — Open Tabs (page:tabs/all goes straight to grid).
+            "page:tabs/all"           to (R.drawable.ic_mode_apps to "Open Tabs"),
+            // CENTER — Home Apps (pulls up the home-sheet icon grid).
+            //   Was Linktree; swapped per user request so the most-used
+            //   home action is the easiest to reach via the fan menu.
+            "action:open_home_apps"   to (R.drawable.ic_tree      to "Home Apps"),
+            // RIGHT — Update.
+            "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
         )
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL

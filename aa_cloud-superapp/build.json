@@ -1116,7 +1116,7 @@
           {
             "id": "linktree",
             "label": "Linktree",
-            "icon": "ic_solutions",
+            "icon": "ic_tree",
             "action": "https://linktree.diegonmarcos.com/"
           }
         ]
@@ -1168,7 +1168,7 @@
     "home_drawer_prepend": [
       {
         "label": "Home Apps",
-        "icon": "ic_mode_apps",
+        "icon": "ic_tree",
         "action_type": "open_home_apps"
       }
     ],

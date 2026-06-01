@@ -134,28 +134,29 @@ class MainActivity : AppCompatActivity(),
 
             bottomNav.setOnItemSelectedListener { onBottomNavPicked(it) }
             bottomNav.setOnItemReselectedListener { item ->
-                // Two situations:
-                //   1. We're VIEWING the same section as the tapped slot →
-                //      it's a true re-tap; ask Collapsible to toggle.
-                //   2. openSectionPage navigated us to a section that
-                //      ISN'T in the bottom nav (tabs, config, …), which
-                //      left BNV's selected id pointing at the OLD slot.
-                //      Tapping that slot again means "take me there for
-                //      real" — invoke the regular select path so Home
-                //      arrow actually takes us home.
                 val tappedSection = sectionIdForNavId(item.itemId)
-                if (tappedSection != null && tappedSection != currentSection) {
-                    // Going to a different section → full Gemini pattern.
+                Trace.i(TAG, "bnv-reselect: tapped=$tappedSection current=$currentSection")
+                // RULE 1 — Home BNV always returns to the 3D Home screen.
+                //   Even if BNV's selected id "matches" the visible fragment
+                //   (e.g. Tabs/Config left BNV pointing at Home and the
+                //   user is in a non-BNV section), Home means Home.
+                if (tappedSection == "home" && currentSection != "home") {
                     fireGeminiPattern()
-                    if (tappedSection == "home") goHome()
-                    else goSection(tappedSection, Sections.byId(tappedSection)?.label ?: tappedSection)
+                    goHome()
                     return@setOnItemReselectedListener
                 }
-                // Same-section re-tap. Two cases:
-                //  • App-drawer-sheet is up → user expects "Home" to bring
-                //    back the 3D cube. Pop the sheet (and any other
-                //    fragments) until we're back at the section root.
-                //  • Otherwise → ask Collapsible to fold/unfold.
+                // RULE 2 — Other BNV slots with a different currentSection:
+                //   take the user there.
+                if (tappedSection != null && tappedSection != currentSection) {
+                    fireGeminiPattern()
+                    goSection(tappedSection, Sections.byId(tappedSection)?.label ?: tappedSection)
+                    return@setOnItemReselectedListener
+                }
+                // RULE 3 — True same-section re-tap.
+                //   • App-drawer-sheet is up → pop the sheet to expose the
+                //     3D cube underneath.
+                //   • Otherwise → ask the current fragment's Collapsible
+                //     handler to fold/unfold its panels.
                 Haptics.tap(bottomNav)
                 val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
                 if (cur is AppDrawerSheetFragment) {
