@@ -9,7 +9,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/transparent"
     app:headerLayout="@layout/nav_header"
-    app:itemMinHeight="26dp"
+    app:itemMinHeight="22dp"
     app:itemVerticalPadding="0dp"
     app:itemHorizontalPadding="10dp"
     app:itemIconPadding="8dp"
