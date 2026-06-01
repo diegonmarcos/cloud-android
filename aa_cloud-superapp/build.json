@@ -1155,11 +1155,15 @@
     ],
     "default_section": "home",
     "default_mode": "apps",
-    "_doc_profile_default": "Seeds the drawer-header identity row + the Configs/Profile form. User-editable at runtime via ProfileFragment (persisted in ProfilePrefs SharedPreferences); these values are only the FIRST-RUN defaults.",
+    "_doc_profile_default": "Seeds the drawer-header identity row + the Configs/Profile form + the Virtual Business Card. User-editable at runtime via ProfileFragment (persisted in ProfilePrefs SharedPreferences); these values are only the FIRST-RUN defaults. Photo URIs (picture, banner) are NOT seeded — they're picked by the user via the gallery picker in Configs → Profile.",
     "profile_default": {
       "name": "Diego Coelho Marcos",
       "email": "me@diegonmarcos.com",
-      "initials": "DCM"
+      "initials": "DCM",
+      "company": "LEAFY",
+      "location": "Berlin/DE",
+      "website": "linktree.diegonmarcos.com",
+      "titles": "Product Engineering | Venture Capital n' Portfolio Management | Civil Structural Engineer B.Sc. | @BERlin.de"
     },
     "_doc_modes": "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). A URL-shaped action_type is launched via launchUri. Extend by adding entries here — never hardcoded in Kotlin.",

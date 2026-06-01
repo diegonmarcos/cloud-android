@@ -80,6 +80,10 @@ def profileDefault   = buildJson.ui.profile_default ?: [:]
 def profileName      = (profileDefault.name     ?: '').toString()
 def profileEmail     = (profileDefault.email    ?: '').toString()
 def profileInitials  = (profileDefault.initials ?: '').toString()
+def profileCompany   = (profileDefault.company  ?: '').toString()
+def profileLocation  = (profileDefault.location ?: '').toString()
+def profileWebsite   = (profileDefault.website  ?: '').toString()
+def profileTitles    = (profileDefault.titles   ?: '').toString()
 
 android {
     namespace 'com.diegonmarcos.superapp'
@@ -112,6 +116,10 @@ android {
         buildConfigField "String", "UI_PROFILE_NAME",       "\"${profileName}\""
         buildConfigField "String", "UI_PROFILE_EMAIL",      "\"${profileEmail}\""
         buildConfigField "String", "UI_PROFILE_INITIALS",   "\"${profileInitials}\""
+        buildConfigField "String", "UI_PROFILE_COMPANY",    "\"${profileCompany}\""
+        buildConfigField "String", "UI_PROFILE_LOCATION",   "\"${profileLocation}\""
+        buildConfigField "String", "UI_PROFILE_WEBSITE",    "\"${profileWebsite}\""
+        buildConfigField "String", "UI_PROFILE_TITLES",     "\"${profileTitles}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
@@ -181,4 +189,9 @@ dependencies {
     // EncryptedSharedPreferences for ConfigsPrefs (imported bulk-config
     // blob). Same alpha pin libs:mail uses for JmapPrefs.
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+
+    // ZXing core — pure Java QR encoder for the Virtual Business Card.
+    // No camera scanning needed (we only encode), so the core artifact
+    // is enough — no `zxing-android` needed.
+    implementation 'com.google.zxing:core:3.5.3'
 }

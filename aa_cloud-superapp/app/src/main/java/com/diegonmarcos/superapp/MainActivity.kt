@@ -1020,6 +1020,19 @@ class MainActivity : AppCompatActivity(),
         dispatchHomeAction(actionType)
     }
 
+    override fun onDrawerBusinessCardOpen() {
+        // Close the drawer first so the card surface comes into view,
+        // then push BusinessCardFragment onto the content container.
+        drawerLayout.closeDrawer(GravityCompat.START)
+        val frag = BusinessCardFragment.newInstance()
+        applyChrome(frag)
+        supportFragmentManager.beginTransaction()
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+            .replace(R.id.fragment_container, frag)
+            .addToBackStack(null)
+            .commit()
+    }
+
     override fun onDrawerModeToggle() {
         // Flip global Apps↔Admin. Don't close the drawer — the user just
         // tapped the identity row and may want to see the flip take

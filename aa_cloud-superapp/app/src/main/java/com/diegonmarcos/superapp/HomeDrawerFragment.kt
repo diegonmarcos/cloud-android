@@ -26,9 +26,12 @@ class HomeDrawerFragment : Fragment() {
         fun onDrawerSectionSelected(sectionId: String, label: String)
         fun onDrawerPageSelected(sectionId: String, pageId: String, label: String)
         fun onDrawerActionSelected(actionType: String)
-        /** Drawer identity row tap → flip Apps↔Admin globally and refresh
+        /** Drawer swap-icon tap → flip Apps↔Admin globally and refresh
          *  the visible section so the new mode's tiles render. */
         fun onDrawerModeToggle()
+        /** Drawer identity-row tap (anywhere EXCEPT the swap icon) → open
+         *  the Virtual Business Card screen. */
+        fun onDrawerBusinessCardOpen()
     }
 
     private sealed class Target {
@@ -79,6 +82,7 @@ class HomeDrawerFragment : Fragment() {
         val nameTv   = header?.findViewById<TextView>(R.id.nav_header_user_name)
         val emailTv  = header?.findViewById<TextView>(R.id.nav_header_user_email)
         val modeTv   = header?.findViewById<TextView>(R.id.nav_header_user_mode)
+        val swapBtn  = header?.findViewById<android.widget.ImageView>(R.id.nav_header_swap)
         if (userRow != null && avatar != null && nameTv != null && emailTv != null && modeTv != null) {
             fun rebind() {
                 val profile = ProfilePrefs(ctx)
@@ -90,7 +94,15 @@ class HomeDrawerFragment : Fragment() {
                 modeTv.text  = "Mode: $modeLabel"
             }
             rebind()
+            // Tap anywhere EXCEPT the swap icon → open the Virtual
+            // Business Card screen (the swap icon swallows its own taps
+            // via its own listener below).
             userRow.setOnClickListener {
+                Haptics.tap(it)
+                (activity as? NavigationListener)?.onDrawerBusinessCardOpen()
+            }
+            // Swap icon → flip Apps↔Admin. Doesn't propagate to userRow.
+            swapBtn?.setOnClickListener {
                 Haptics.tap(it)
                 (activity as? NavigationListener)?.onDrawerModeToggle()
                 rebind()

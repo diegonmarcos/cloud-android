@@ -28,9 +28,43 @@ class ProfilePrefs(context: Context) {
         get() = sp.getString(K_INITIALS, BuildConfig.UI_PROFILE_INITIALS) ?: BuildConfig.UI_PROFILE_INITIALS
         set(value) { sp.edit().putString(K_INITIALS, value).apply() }
 
+    var company: String
+        get() = sp.getString(K_COMPANY, BuildConfig.UI_PROFILE_COMPANY) ?: BuildConfig.UI_PROFILE_COMPANY
+        set(value) { sp.edit().putString(K_COMPANY, value).apply() }
+
+    var location: String
+        get() = sp.getString(K_LOCATION, BuildConfig.UI_PROFILE_LOCATION) ?: BuildConfig.UI_PROFILE_LOCATION
+        set(value) { sp.edit().putString(K_LOCATION, value).apply() }
+
+    var website: String
+        get() = sp.getString(K_WEBSITE, BuildConfig.UI_PROFILE_WEBSITE) ?: BuildConfig.UI_PROFILE_WEBSITE
+        set(value) { sp.edit().putString(K_WEBSITE, value).apply() }
+
+    var titles: String
+        get() = sp.getString(K_TITLES, BuildConfig.UI_PROFILE_TITLES) ?: BuildConfig.UI_PROFILE_TITLES
+        set(value) { sp.edit().putString(K_TITLES, value).apply() }
+
+    /** Picked from the device gallery via Configs → Profile. Either an
+     *  `android.net.Uri` toString() or empty if the user hasn't picked
+     *  one yet. BusinessCardFragment falls back to a generated avatar
+     *  with initials when this is empty. */
+    var pictureUri: String
+        get() = sp.getString(K_PICTURE, "") ?: ""
+        set(value) { sp.edit().putString(K_PICTURE, value).apply() }
+
+    var bannerUri: String
+        get() = sp.getString(K_BANNER, "") ?: ""
+        set(value) { sp.edit().putString(K_BANNER, value).apply() }
+
     companion object {
         private const val K_NAME     = "name"
         private const val K_EMAIL    = "email"
         private const val K_INITIALS = "initials"
+        private const val K_COMPANY  = "company"
+        private const val K_LOCATION = "location"
+        private const val K_WEBSITE  = "website"
+        private const val K_TITLES   = "titles"
+        private const val K_PICTURE  = "picture_uri"
+        private const val K_BANNER   = "banner_uri"
     }
 }
