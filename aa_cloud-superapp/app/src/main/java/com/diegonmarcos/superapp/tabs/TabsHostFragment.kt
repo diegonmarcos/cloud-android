@@ -361,9 +361,12 @@ class TabsHostFragment : Fragment(), Collapsible, com.diegonmarcos.superapp.Supp
 
     // ── lifecycle ────────────────────────────────────────────────────
 
-    /** Apply the current desktop/mobile flag to the WebView — UA string,
-     *  viewport, and initial zoom. Called once at WebView creation and
-     *  again every time the user toggles via the overflow menu. */
+    /** Apply the current desktop/mobile flag to the WebView. Mobile is
+     *  the default on every new tab session (desktopMode initialises
+     *  to false in the field declaration above). Explicit Android Chrome
+     *  mobile UA — don't trust WebSettings.getDefaultUserAgent() which
+     *  on some Samsung OEM builds advertises desktop-class strings that
+     *  trip server-side viewport sniffers and serve the desktop layout. */
     private fun applyViewMode(wv: WebView) {
         val s = wv.settings
         if (desktopMode) {
@@ -374,10 +377,11 @@ class TabsHostFragment : Fragment(), Collapsible, com.diegonmarcos.superapp.Supp
             s.loadWithOverviewMode = true
             wv.setInitialScale(1)
         } else {
-            // Default Android UA — keep the system one so servers serve
-            // their mobile layout. Suffix our app tag for the bot detectors.
-            s.userAgentString = android.webkit.WebSettings.getDefaultUserAgent(requireContext()) +
-                " CloudSuperApp/1.0"
+            // Explicit Android Chrome mobile UA — same shape Chrome on
+            // a Pixel sends. Servers reliably serve their mobile layout
+            // for this. Suffix our app tag for the bot detectors.
+            s.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 CloudSuperApp/1.0"
             s.useWideViewPort = false
             s.loadWithOverviewMode = false
             wv.setInitialScale(0)
