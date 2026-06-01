@@ -496,7 +496,8 @@
           {
             "kind": "linktree_slide",
             "title": "Cloud Backend",
-            "slide_id": "cloud"
+            "slide_id": "cloud",
+            "flatten_columns": true
           }
         ]
       },

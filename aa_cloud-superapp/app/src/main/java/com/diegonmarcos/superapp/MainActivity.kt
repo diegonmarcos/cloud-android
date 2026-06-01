@@ -957,8 +957,19 @@ class MainActivity : AppCompatActivity(),
             return true
         }
         if (item.itemId == R.id.action_back) {
+            // Hierarchical "up": one tap = one level toward Home.
+            //   • Any fragments on the back stack? → pop them ALL at once
+            //     (the section root is the parent of every nested page,
+            //     so going up from a deep detail lands directly at the
+            //     section's aggregator/grid, not on intermediate pages).
+            //   • Already at a section root (empty back stack)? → Home.
+            //   • Already on Home? → no-op (the icon hides via
+            //     onPrepareOptionsMenu, but defend the path anyway).
             if (supportFragmentManager.backStackEntryCount > 0) {
-                supportFragmentManager.popBackStack()
+                supportFragmentManager.popBackStack(
+                    null,
+                    FragmentManager.POP_BACK_STACK_INCLUSIVE,
+                )
             } else if (currentSection != "home") {
                 goHome()
             }

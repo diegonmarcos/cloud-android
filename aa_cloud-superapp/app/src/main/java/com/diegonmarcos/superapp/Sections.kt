@@ -55,6 +55,11 @@ object Sections {
         val tiles:   List<AggTile>    = emptyList(),
         /** Used by kind=linktree_slide — id of slide in data/linktree.json. */
         val slideId: String = "",
+        /** Used by kind=linktree_slide — when true, each column of the
+         *  referenced slide becomes its OWN top-level collapsible panel
+         *  (header = column name, body = the column's 5-col icon grid)
+         *  instead of nesting all columns inside one parent card. */
+        val flattenColumns: Boolean = false,
         /** Used by kind=link / openExternal pointers. */
         val url: String = "",
         val iconName: String = "",
@@ -332,16 +337,17 @@ object Sections {
                 for (j in 0 until sa.length()) {
                     val p = sa.getJSONObject(j)
                     out.add(StackPanel(
-                        kind      = p.optString("kind", "placeholder"),
-                        title     = p.optString("title", ""),
-                        subtitle  = p.optString("subtitle", ""),
-                        collapsed = p.optBoolean("collapsed", false),
-                        links     = parseLinks(p.optJSONArray("links")),
-                        columns   = parseColumns(p.optJSONArray("columns")),
-                        tiles     = parseTilesInline(p.optJSONArray("tiles")),
-                        slideId   = p.optString("slide_id", ""),
-                        url       = p.optString("url", ""),
-                        iconName  = p.optString("icon", ""),
+                        kind            = p.optString("kind", "placeholder"),
+                        title           = p.optString("title", ""),
+                        subtitle        = p.optString("subtitle", ""),
+                        collapsed       = p.optBoolean("collapsed", false),
+                        links           = parseLinks(p.optJSONArray("links")),
+                        columns         = parseColumns(p.optJSONArray("columns")),
+                        tiles           = parseTilesInline(p.optJSONArray("tiles")),
+                        slideId         = p.optString("slide_id", ""),
+                        flattenColumns  = p.optBoolean("flatten_columns", false),
+                        url             = p.optString("url", ""),
+                        iconName        = p.optString("icon", ""),
                     ))
                 }
                 return out
@@ -387,11 +393,31 @@ object Sections {
     }
 
     /** Aggregator's stack panels for the given mode. `stack_shared` wins
-     *  if present; otherwise apps/admin-specific list. */
-    fun aggregatorStackFor(sec: Section, mode: String): List<StackPanel> = when {
-        sec.stackShared.isNotEmpty() -> sec.stackShared
-        mode == "admin"              -> sec.stackAdmin
-        else                         -> sec.stackApps
+     *  if present; otherwise apps/admin-specific list. Any panel with
+     *  kind=linktree_slide + flatten_columns=true is expanded here into
+     *  one synthetic link_grid panel per slide column, so each column
+     *  reads as a top-level collapsible card. */
+    fun aggregatorStackFor(sec: Section, mode: String): List<StackPanel> {
+        val raw = when {
+            sec.stackShared.isNotEmpty() -> sec.stackShared
+            mode == "admin"              -> sec.stackAdmin
+            else                         -> sec.stackApps
+        }
+        return raw.flatMap { panel ->
+            if (panel.kind == "linktree_slide" && panel.flattenColumns) {
+                val slide = linktreeSlide(panel.slideId) ?: return@flatMap listOf(panel)
+                slide.columns.map { col ->
+                    StackPanel(
+                        kind     = "link_grid",
+                        title    = col.header.ifBlank { panel.title },
+                        subtitle = "",
+                        // Body is a flat list of links — renderLinkGrid will
+                        // emit them as a 5-col icon grid with no sub-header.
+                        links    = col.links,
+                    )
+                }
+            } else listOf(panel)
+        }
     }
 
     /** True iff this aggregator has a non-empty stack for the given mode —
