@@ -159,13 +159,15 @@ class MainActivity : AppCompatActivity(),
                 //     handler to fold/unfold its panels.
                 Haptics.tap(bottomNav)
                 val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
-                if (cur is AppDrawerSheetFragment) {
-                    supportFragmentManager.popBackStack(
-                        AppDrawerSheetFragment.BACK_STACK_TAG,
-                        androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
-                    )
-                } else {
-                    (cur as? Collapsible)?.toggleAllCollapsed()
+                when (cur) {
+                    is AppDrawerSheetFragment, is BusinessCardFragment -> {
+                        // Both are home-overlay fragments — popping
+                        // their back-stack entry restores the 3D cube
+                        // underneath. Use plain pop() so we don't tear
+                        // through other back-stack entries.
+                        supportFragmentManager.popBackStack()
+                    }
+                    else -> (cur as? Collapsible)?.toggleAllCollapsed()
                 }
             }
 

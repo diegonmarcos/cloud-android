@@ -99,17 +99,36 @@ class BusinessCardFragment : Fragment() {
         }
         identity.addView(textRow(ctx, profile.name,
             android.R.style.TextAppearance_Material_Headline))
-        // Titles — render each segment (split on " | ") as its own line
-        // so a long titles string doesn't crowd a single row.
-        for (t in profile.titles.split("|").map { it.trim() }.filter { it.isNotEmpty() }) {
-            identity.addView(textRow(ctx, t,
-                android.R.style.TextAppearance_Material_Body2, alpha = 0.85f))
-        }
+        // Titles — single line, the ASCII "| " separators are part of
+        // the design. wraps on overflow so all four segments stay
+        // visible without being split across stacked rows.
+        identity.addView(TextView(ctx).apply {
+            text = profile.titles
+            setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+            alpha = 0.85f
+            setPadding(0, dp(ctx, 4), 0, 0)
+        })
         identity.addView(spacer(ctx, 6))
-        identity.addView(keyValueRow(ctx, "Company",  profile.company))
-        identity.addView(keyValueRow(ctx, "Location", profile.location))
-        identity.addView(keyValueRow(ctx, "Website",  profile.website,
-            clickUrl = "https://${profile.website.removePrefix("https://").removePrefix("http://")}"))
+        // Plain value rows (no "Company:" / "Location:" / "Website:"
+        // labels — the visual context tells the user what's what).
+        identity.addView(textRow(ctx, profile.company,
+            android.R.style.TextAppearance_Material_Body1))
+        identity.addView(textRow(ctx, profile.location,
+            android.R.style.TextAppearance_Material_Body2, alpha = 0.75f))
+        identity.addView(TextView(ctx).apply {
+            text = profile.website
+            setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+            alpha = 0.85f
+            setPadding(0, dp(ctx, 4), 0, 0)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                val url = "https://${profile.website.removePrefix("https://").removePrefix("http://")}"
+                runCatching {
+                    startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(url)))
+                }
+            }
+        })
         col.addView(identity)
 
         // ── QR code linking to the website ─────────────────────────
@@ -133,12 +152,6 @@ class BusinessCardFragment : Fragment() {
                 }
             })
         }
-        qrCard.addView(TextView(ctx).apply {
-            text = qrUrl
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            alpha = 0.7f
-            setPadding(0, dp(ctx, 6), 0, 0)
-        })
         col.addView(qrCard)
 
         return scroll
@@ -188,16 +201,29 @@ class BusinessCardFragment : Fragment() {
         return bmp
     }
 
-    /** Encode `text` as a QR code Bitmap. Uses ZXing — pure-Java, no
-     *  Android-specific ZXing artifact needed. Returns null if encoding
-     *  fails (empty input, etc.). */
+    /** Encode `text` as a colourful QR code Bitmap. Uses ZXing for the
+     *  matrix; each "on" module gets a hue from a diagonal rainbow
+     *  gradient (HSV cycle across the diagonal), so the QR reads like
+     *  the "geeky rainbow QR" reference images — still high-contrast
+     *  enough to scan since saturation/value stay high.
+     *
+     *  Background stays white. Modules tinted only — never overlap so
+     *  the data integrity is unchanged. */
     private fun qrBitmap(text: String, size: Int): Bitmap? = runCatching {
         if (text.isBlank()) return@runCatching null
         val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val hsv = FloatArray(3).apply { this[1] = 0.85f; this[2] = 0.85f }
         for (x in 0 until size) {
             for (y in 0 until size) {
-                bmp.setPixel(x, y, if (matrix.get(x, y)) Color.BLACK else Color.WHITE)
+                if (matrix.get(x, y)) {
+                    // Hue from 0..360 across the diagonal — same colour
+                    // pattern as a rainbow QR overlay.
+                    hsv[0] = ((x + y).toFloat() / (size * 2) * 360f) % 360f
+                    bmp.setPixel(x, y, Color.HSVToColor(hsv))
+                } else {
+                    bmp.setPixel(x, y, Color.WHITE)
+                }
             }
         }
         bmp
