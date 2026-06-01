@@ -156,17 +156,12 @@ class HomeDrawerFragment : Fragment() {
             }
         }
 
-        val appGroupId = id++
-        for (action in Sections.homeActions()) {
-            val actId = id++
-            val actItem = menu.add(appGroupId, actId, Menu.NONE, action.label)
-            Sections.iconResFor(ctx, action.iconName).takeIf { it != 0 }
-                ?.let { actItem.setIcon(it) }
-            actItem.setOnMenuItemClickListener { mi ->
-                onItemPicked(mi.itemId); true
-            }
-            dispatch[actId] = Target.Action(action.actionType)
-        }
+        // home_actions are NOT rendered here — those belong to the
+        // swipe-up Home Apps grid only (AppDrawerSheetFragment). The
+        // drawer surfaces sections (top) + home_drawer_prepend (very
+        // top, above sections); section-level shortcuts like Linktree
+        // live INSIDE their owning section (Tabs → Linktree page) so
+        // they're not duplicated as standalone drawer rows.
     }
 
     private fun onItemPicked(itemId: Int) {
