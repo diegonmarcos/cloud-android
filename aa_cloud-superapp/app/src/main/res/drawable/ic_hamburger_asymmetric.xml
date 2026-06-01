@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Asymmetric hamburger — three horizontal dashes of decreasing
+     width (Brave-style minimal "menu" glyph). Replaces the default
+     drawer-toggle arrow drawable for the activity toolbar. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/textColorPrimary">
+    <!-- Top dash — widest. -->
+    <path android:fillColor="#000000"
+        android:pathData="M3,6 H21 V8.5 H3 Z" />
+    <!-- Middle dash — medium. -->
+    <path android:fillColor="#000000"
+        android:pathData="M5,10.75 H17 V13.25 H5 Z" />
+    <!-- Bottom dash — narrowest. -->
+    <path android:fillColor="#000000"
+        android:pathData="M7,15.5 H13 V18 H7 Z" />
+</vector>

@@ -44,7 +44,8 @@ class MainActivity : AppCompatActivity(),
     HomeDrawerFragment.NavigationListener,
     TileGridFragment.TileClickListener,
     com.diegonmarcos.superapp.devcontrol.DevControlBridge.ActivityHost,
-    MailHost {
+    MailHost,
+    SearchOpener {
 
     private val TAG = "MainActivity"
     private lateinit var drawerLayout: DrawerLayout
@@ -90,16 +91,10 @@ class MainActivity : AppCompatActivity(),
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
-            // The whole top bar acts as a search bar — tapping any blank
-            // pixel of the toolbar opens the SearchSheet. Action items
-            // (search icon, back) still consume their own taps first.
-            toolbar.setOnClickListener {
-                Haptics.tap(it)
-                openSearchSheet()
-            }
-            // The hamburger / nav-icon space is part of the toolbar; the
-            // ActionBarDrawerToggle handles that itself, so our click
-            // listener never fires there. No special-case needed.
+            // Search trigger has moved INTO AppDrawerSheetFragment (the
+            // Home Apps page). The toolbar is now hamburger | island
+            // | back only, NOT a global search affordance — no
+            // setOnClickListener here.
 
             drawerLayout = findViewById(R.id.drawer_layout)
             bottomNav = findViewById(R.id.bottom_nav)
@@ -114,6 +109,20 @@ class MainActivity : AppCompatActivity(),
             )
             drawerLayout.addDrawerListener(toggle)
             toggle.syncState()
+            // Use our asymmetric 3-dash hamburger glyph instead of the
+            // default animated DrawerArrowDrawable. We still want the
+            // toggle's open/close-drawer behaviour, so we attach a
+            // navigation click that opens the drawer manually.
+            toggle.isDrawerIndicatorEnabled = false
+            toolbar.setNavigationIcon(R.drawable.ic_hamburger_asymmetric)
+            toolbar.setNavigationOnClickListener {
+                Haptics.tap(it)
+                drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
+            }
+            // Bind the central Dynamic Island label — "{INITIALS} · {Mode}".
+            // Updated whenever onPrepareOptionsMenu fires (mode toggle,
+            // back-stack change, drawer open) AND after a profile edit.
+            refreshDynamicIsland()
 
             drawerTabs.addTab(drawerTabs.newTab().setText(getString(R.string.drawer_tab_home)))
             drawerTabs.addTab(drawerTabs.newTab().setText(currentLabel))
@@ -1035,16 +1044,25 @@ class MainActivity : AppCompatActivity(),
             .commit()
     }
 
+    /** Update the toolbar Dynamic Island label — reads from ProfilePrefs
+     *  + ModePrefs. Cheap; called on every state change that might
+     *  affect the displayed values. */
+    private fun refreshDynamicIsland() {
+        val tv = findViewById<android.widget.TextView>(R.id.dynamic_island_label) ?: return
+        val profile = ProfilePrefs(this)
+        val modeLabel = if (modePrefs.mode == "admin") "Admin" else "Apps"
+        tv.text = "${profile.initials} · $modeLabel"
+    }
+
     override fun onDrawerModeToggle() {
         // Flip global Apps↔Admin. Don't close the drawer — the user just
         // tapped the identity row and may want to see the flip take
         // effect there, and may keep navigating from the drawer.
         Haptics.tap(drawerLayout)
         modePrefs.toggle()
+        refreshDynamicIsland()
         // Refresh any visible aggregator so its tiles re-render for the
-        // new mode. Toolbar no longer carries a label, so the drawer text
-        // is now the sole feedback channel (HomeDrawerFragment rebinds
-        // on its own — same-tap flow already calls rebind()).
+        // new mode.
         if (currentSection.isNotEmpty()) {
             val sec = Sections.byId(currentSection)
             if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
@@ -1065,10 +1083,6 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_search) {
-            openSearchSheet()
-            return true
-        }
         if (item.itemId == R.id.action_back) {
             // Hierarchical "up": one tap = one level toward Home.
             //   • Any fragments on the back stack? → pop them ALL at once
@@ -1115,9 +1129,9 @@ class MainActivity : AppCompatActivity(),
     }
 
     /** Single source of truth for "show the search sheet". Used by the
-     *  toolbar search action, the toolbar-surface tap (any blank area of
-     *  the top bar), and the launcher long-press → "Search" shortcut. */
-    private fun openSearchSheet() {
+     *  AppDrawerSheet's in-page search bar (via [SearchOpener]) and the
+     *  launcher long-press → "Search" shortcut. */
+    override fun openSearchSheet() {
         // Don't stack multiple SearchSheets if user double-taps.
         if (supportFragmentManager.findFragmentByTag(SearchSheetFragment.BACK_STACK_TAG) != null) return
         supportFragmentManager.beginTransaction()

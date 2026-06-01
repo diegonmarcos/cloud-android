@@ -37,15 +37,48 @@ class AppDrawerSheetFragment : Fragment() {
             )
         }
 
-        // ── Top spacer — pushes the tab strip + grid clear of the
-        //    activity's top-island search bar. Roughly doubles the
-        //    previous breathing room.
+        // ── Top spacer (was for the global search bar; now we own the
+        //    search ourselves so the spacer just gives the search bar
+        //    breathing room from the activity toolbar above).
         root.addView(View(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(16),
+                dp(8),
             )
         })
+
+        // ── Search bar — moved from the global toolbar into THIS page
+        //    only. Tap to open SearchSheetFragment.
+        val searchBar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            background = androidx.core.content.ContextCompat.getDrawable(
+                ctx, R.drawable.bg_liquid_glass_pill)
+            val hpad = dp(14); val vpad = dp(10)
+            setPadding(hpad, vpad, hpad, vpad)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { setMargins(dp(14), 0, dp(14), dp(8)) }
+            layoutParams = lp
+            isClickable = true; isFocusable = true
+        }
+        searchBar.addView(ImageView(ctx).apply {
+            setImageResource(R.drawable.ic_search)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+            val sz = dp(18)
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(10) }
+        })
+        searchBar.addView(TextView(ctx).apply {
+            text = "Search apps, pages, links…"
+            setTextColor(0x99FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+        })
+        searchBar.setOnClickListener {
+            Haptics.tap(it)
+            (activity as? SearchOpener)?.openSearchSheet()
+        }
+        root.addView(searchBar)
 
         // ── Horizontal tabs strip (Google-Maps style chips).
         val tabsStrip = HorizontalScrollView(ctx).apply {

@@ -60,8 +60,36 @@
                 android:layout_height="?attr/actionBarSize"
                 android:background="@android:color/transparent"
                 app:titleCentered="false"
-                app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-                app:title="@string/app_name" />
+                app:title="" />
+
+            <!-- Apple-style centered "Dynamic Island" pill. Anchored to the
+                 toolbar center via gravity; lives between the hamburger
+                 (left, drawer toggle) and the action items (right, Back).
+                 Half the width / height of where the old search trigger
+                 sat — pure decoration for now, but with a stable id so
+                 future status surfaces (sync state, notifications, etc.)
+                 can swap into it. -->
+            <FrameLayout
+                android:id="@+id/dynamic_island"
+                android:layout_width="120dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_dynamic_island"
+                android:clickable="false"
+                android:focusable="false">
+
+                <TextView
+                    android:id="@+id/dynamic_island_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/island_accent"
+                    android:textSize="11sp"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    tools:text="DCM · Apps" />
+            </FrameLayout>
 
             <!-- Neon-violet shimmer comet around the toolbar perimeter.
                  Explicit actionBarSize height (NOT match_parent) so the

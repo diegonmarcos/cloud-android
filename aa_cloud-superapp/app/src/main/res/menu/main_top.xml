@@ -7,10 +7,9 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <item android:id="@+id/action_search"
-          android:title="@string/action_search"
-          android:icon="@drawable/ic_search"
-          app:showAsAction="always" />
+    <!-- Search action moved INTO the Home Apps page (AppDrawerSheet).
+         The global activity toolbar no longer carries a search icon
+         — toolbar is hamburger | island | back only. -->
 
     <item android:id="@+id/action_back"
           android:title="@string/action_back"
