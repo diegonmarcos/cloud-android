@@ -91,10 +91,14 @@
 
                 <!-- Prismatic neon halo around the island perimeter —
                      full rainbow sweep chasing around the pill. Sized
-                     match_parent so it covers the island exactly. -->
+                     match_parent so it covers the island exactly.
+                     clickable=false so taps pass through to the parent
+                     island FrameLayout's notification-center handler. -->
                 <com.diegonmarcos.superapp.PrismaticShimmerView
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent"
+                    android:clickable="false"
+                    android:focusable="false" />
             </FrameLayout>
 
         </FrameLayout>

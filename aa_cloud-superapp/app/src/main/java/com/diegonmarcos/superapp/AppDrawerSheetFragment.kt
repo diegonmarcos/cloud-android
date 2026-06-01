@@ -62,16 +62,27 @@ class AppDrawerSheetFragment : Fragment() {
                 barHeight,
             )
         }
+        // App icon — LEFT.
         searchInner.addView(ImageView(ctx).apply {
-            setImageResource(R.drawable.ic_search)
-            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
-            val sz = dp(18)
+            setImageResource(R.mipmap.ic_launcher_round)
+            val sz = dp(24)
             layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(12) }
         })
+        // Search placeholder — CENTRE (weighted so it takes the gap).
         searchInner.addView(TextView(ctx).apply {
             text = "Search"
             setTextColor(0x99FFFFFF.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            )
+        })
+        // AI sparkle (Gemini-style 4-point star + accent) — RIGHT.
+        searchInner.addView(ImageView(ctx).apply {
+            setImageResource(R.drawable.ic_ai_sparkle)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+            val sz = dp(20)
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginStart = dp(12) }
         })
         searchIsland.addView(searchInner)
         searchIsland.addView(ShimmerBorderView(ctx).apply {

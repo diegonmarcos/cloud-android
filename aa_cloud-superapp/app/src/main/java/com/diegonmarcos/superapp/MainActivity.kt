@@ -129,6 +129,15 @@ class MainActivity : AppCompatActivity(),
             // Updated whenever onPrepareOptionsMenu fires (mode toggle,
             // back-stack change, drawer open) AND after a profile edit.
             refreshDynamicIsland()
+            // Tap the island → drop down the Notification Centre.
+            findViewById<View>(R.id.dynamic_island)?.apply {
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    Haptics.tap(it)
+                    openNotificationCenter()
+                }
+            }
 
             drawerTabs.addTab(drawerTabs.newTab().setText(getString(R.string.drawer_tab_home)))
             drawerTabs.addTab(drawerTabs.newTab().setText(currentLabel))
@@ -1047,6 +1056,21 @@ class MainActivity : AppCompatActivity(),
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
             .replace(R.id.fragment_container, frag)
             .addToBackStack(null)
+            .commit()
+    }
+
+    /** Slide the Notification Centre down from the top. Reuses the
+     *  search-sheet animation set so transitions stay consistent. */
+    private fun openNotificationCenter() {
+        if (supportFragmentManager.findFragmentByTag(NotificationCenterFragment.BACK_STACK_TAG) != null) return
+        supportFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_up,  R.anim.fade_out,
+                R.anim.fade_in,      R.anim.slide_out_down,
+            )
+            .add(R.id.fragment_container, NotificationCenterFragment.newInstance(),
+                NotificationCenterFragment.BACK_STACK_TAG)
+            .addToBackStack(NotificationCenterFragment.BACK_STACK_TAG)
             .commit()
     }
 

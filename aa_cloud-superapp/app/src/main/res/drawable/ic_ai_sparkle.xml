@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AI sparkle / 4-point star — same shape Google uses on Gemini and
+     AI-search affordances. Compound: a large 4-point star + a small
+     accent star top-right hints at "AI-powered" without being a
+     literal logo. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/textColorPrimary">
+    <!-- Main 4-point star centered roughly at (10, 12). -->
+    <path android:fillColor="#000000"
+        android:pathData="M10,2 L11.5,8.5 L18,10 L11.5,11.5 L10,18 L8.5,11.5 L2,10 L8.5,8.5 Z" />
+    <!-- Small accent star top-right at (19, 5). -->
+    <path android:fillColor="#000000"
+        android:pathData="M19,3 L19.7,5.3 L22,6 L19.7,6.7 L19,9 L18.3,6.7 L16,6 L18.3,5.3 Z" />
+</vector>
