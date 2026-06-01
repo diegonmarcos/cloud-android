@@ -151,10 +151,21 @@ class MainActivity : AppCompatActivity(),
                     else goSection(tappedSection, Sections.byId(tappedSection)?.label ?: tappedSection)
                     return@setOnItemReselectedListener
                 }
-                // Same-section re-tap (collapse toggle) → light tap haptic.
+                // Same-section re-tap. Two cases:
+                //  • App-drawer-sheet is up → user expects "Home" to bring
+                //    back the 3D cube. Pop the sheet (and any other
+                //    fragments) until we're back at the section root.
+                //  • Otherwise → ask Collapsible to fold/unfold.
                 Haptics.tap(bottomNav)
                 val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
-                (cur as? Collapsible)?.toggleAllCollapsed()
+                if (cur is AppDrawerSheetFragment) {
+                    supportFragmentManager.popBackStack(
+                        AppDrawerSheetFragment.BACK_STACK_TAG,
+                        androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
+                    )
+                } else {
+                    (cur as? Collapsible)?.toggleAllCollapsed()
+                }
             }
 
             if (savedInstanceState == null) {
@@ -907,6 +918,12 @@ class MainActivity : AppCompatActivity(),
                     .replace(R.id.fragment_container, frag)
                     .addToBackStack(null)
                     .commit()
+            }
+            // Drawer "Home Apps" entry → open the same pull-up sheet the
+            // home-screen swipe-up gesture shows.
+            actionType == "open_home_apps" -> {
+                if (currentSection != "home") goHome()
+                openAppDrawerSheet()
             }
             actionType.contains("://") -> launchUri(actionType)
             else -> anchor.snack("action:$actionType")

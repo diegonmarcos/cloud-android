@@ -427,23 +427,39 @@ object Sections {
 
     fun homeActions(): List<Action> {
         cachedActions?.let { return it }
-        val json = String(Base64.decode(BuildConfig.UI_HOME_ACTIONS_B64, Base64.NO_WRAP))
+        cachedActions = parseActionsB64(BuildConfig.UI_HOME_ACTIONS_B64)
+        return cachedActions!!
+    }
+
+    /** Drawer prepend list — rendered ABOVE the first section in the
+     *  home drawer (build.json::ui.home_drawer_prepend). Same shape as
+     *  home_actions; the actions dispatch through the same path. */
+    fun homeDrawerPrepend(): List<Action> {
+        cachedPrepend?.let { return it }
+        cachedPrepend = parseActionsB64(BuildConfig.UI_HOME_DRAWER_PREPEND_B64)
+        return cachedPrepend!!
+    }
+
+    private fun parseActionsB64(b64: String): List<Action> {
+        val json = String(Base64.decode(b64, Base64.NO_WRAP))
         val arr = JSONArray(json)
         val parsed = mutableListOf<Action>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             parsed.add(
                 Action(
-                    id         = o.getString("id"),
+                    // home_drawer_prepend entries don't have an `id` field
+                    // (action_type is unique enough); fall back to that.
+                    id         = o.optString("id", o.getString("action_type")),
                     label      = o.getString("label"),
                     iconName   = o.optString("icon", "ic_settings"),
                     actionType = o.getString("action_type"),
                 )
             )
         }
-        cachedActions = parsed
         return parsed
     }
+    private var cachedPrepend: List<Action>? = null
 
     /** Resolve `icon` name from build.json / linktree.json to a drawable
      *  res id. Handles both flavours:

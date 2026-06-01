@@ -102,6 +102,20 @@ class HomeDrawerFragment : Fragment() {
         dispatch.clear()
         var id = MENU_BASE
 
+        // Prepend entries (build.json::ui.home_drawer_prepend) — render
+        // ABOVE the first section so quick-access items (Home Apps sheet,
+        // …) stay above the alphabetical section list. Same dispatch as
+        // home_actions.
+        val prependGroupId = id++
+        for (action in Sections.homeDrawerPrepend()) {
+            val actId = id++
+            val actItem = menu.add(prependGroupId, actId, Menu.NONE, action.label)
+            Sections.iconResFor(ctx, action.iconName).takeIf { it != 0 }
+                ?.let { actItem.setIcon(it) }
+            actItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+            dispatch[actId] = Target.Action(action.actionType)
+        }
+
         // Per-section group keeps NavigationView's automatic divider between
         // sections AND lets the section title row itself be a tappable
         // MenuItem (addSubMenu would render it as a non-clickable group

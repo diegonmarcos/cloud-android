@@ -1164,6 +1164,14 @@
     "_doc_modes": "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). Extend by adding entries here — never hardcoded in Kotlin.",
     "home_actions": [],
+    "_doc_home_drawer_prepend": "Drawer menu entries prepended ABOVE the first section. Same {label, icon, action_type} shape as home_actions; dispatched through MainActivity.dispatchHomeAction. Use for quick-access items that aren't tied to a single section — e.g. opening the swipe-up Home Apps sheet from the drawer too.",
+    "home_drawer_prepend": [
+      {
+        "label": "Home Apps",
+        "icon": "ic_mode_apps",
+        "action_type": "open_home_apps"
+      }
+    ],
     "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",
     "import_schema": {
       "wg": {

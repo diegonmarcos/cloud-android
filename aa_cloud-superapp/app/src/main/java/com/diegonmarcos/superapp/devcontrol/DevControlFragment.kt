@@ -34,12 +34,27 @@ class DevControlFragment : Fragment() {
             Toast.makeText(requireContext(),
                 if (it) "Notifications: granted" else "Notifications: denied",
                 Toast.LENGTH_SHORT).show()
-            // Rebuild this fragment so the perm row state refreshes.
-            parentFragmentManager.beginTransaction()
-                .detach(this).commitNow()
-            parentFragmentManager.beginTransaction()
-                .attach(this).commitNow()
+            rebuildFragment()
         }
+
+    /** Bulk request — wired to the "Request All Permissions" button. */
+    private val allPermsLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val granted = result.count { it.value }
+            val denied  = result.size - granted
+            Toast.makeText(requireContext(),
+                "Permissions: $granted granted, $denied denied", Toast.LENGTH_SHORT).show()
+            rebuildFragment()
+        }
+
+    /** Rebuilds this fragment in place so every Permission row re-reads
+     *  its current grant state. Cheaper than rendering a full diff. */
+    private fun rebuildFragment() {
+        parentFragmentManager.beginTransaction()
+            .detach(this).commitNow()
+        parentFragmentManager.beginTransaction()
+            .attach(this).commitNow()
+    }
 
     private fun ctxAny(): Context = requireContext()
 
@@ -50,6 +65,10 @@ class DevControlFragment : Fragment() {
             Toast.makeText(requireContext(),
                 "Pre-API 33 — notifications granted by default", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun requestAllPermissions(perms: Array<String>) {
+        allPermsLauncher.launch(perms)
     }
 
     private fun openAppSettings() {
@@ -180,6 +199,13 @@ class DevControlFragment : Fragment() {
             // notifications are granted by default, so we just toast.
             it.addView(actionButton(ctx, "Request Notifications permission") {
                 requestNotificationsPermission()
+            })
+            // Bulk request — fires the multi-permission system flow for
+            // every runtime-grantable permission the manifest declares.
+            // Android folds them into 1-N system dialogs depending on
+            // group rules (Location prompts as one group, etc.).
+            it.addView(actionButton(ctx, "Request All Permissions") {
+                requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
             })
             // Deeplink to the app's system-settings page so the user can
             // toggle the other permissions directly from there.
