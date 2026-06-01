@@ -63,4 +63,16 @@
         parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">@color/cloud_primary_container</item>
     </style>
+
+    <!-- Custom dense text style for drawer rows. The default
+         textAppearanceBodyMedium has ~20sp lineHeight which dominates
+         the row height regardless of itemMinHeight. Override with
+         12sp text + 14sp lineHeight + 0 padding so the row collapses
+         to the smallest readable height. -->
+    <style name="TextAppearance.CloudSuperApp.DrawerDense" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textSize">12sp</item>
+        <item name="android:lineHeight">14sp</item>
+        <item name="lineHeight">14sp</item>
+        <item name="android:textColor">#FFE9D8FD</item>
+    </style>
 </resources>
