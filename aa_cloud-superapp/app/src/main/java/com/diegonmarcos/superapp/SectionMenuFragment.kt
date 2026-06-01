@@ -84,14 +84,20 @@ class SectionMenuFragment : Fragment() {
             }
             section.isAggregator -> {
                 // Aggregator section (Suite, Tools, Communication, Infos):
-                //  • Aggregator tiles for the current Apps/Admin mode →
-                //    rendered as tappable rows. Each tile.target uses the
-                //    standard tile grammar so onTileClicked routes it.
-                //  • Stack-panel titles also rendered so the drawer
-                //    surfaces every section of the body (Cloud Backend,
-                //    C3 Health, etc.). Tapping a stack title just opens
-                //    the section's body — no nested expansion in the
-                //    drawer (kept simple; details live in the body).
+                //  • aggregatorTilesFor → top-level tiles for the mode
+                //    (linktree shortcuts, c3-health, etc.).
+                //  • aggregatorStackFor → each panel; INSIDE each panel
+                //    we drill down so the drawer mirrors the body's
+                //    actual structure:
+                //      - panel.columns (linktree slide multi-column) →
+                //        emit one sub-header per column header + every
+                //        link in the column as an indented child row.
+                //      - panel.links (flattened linktree column or
+                //        plain link_grid) → panel.title sub-header +
+                //        every link as a child row.
+                //      - non-link panels (c3_public, drive_connections,
+                //        rss, …) → just the title row, tap opens the
+                //        section body where that panel lives.
                 val mode = ModePrefs(ctx).mode
                 for (tile in Sections.aggregatorTilesFor(section, mode)) {
                     val tileItemId = id++
@@ -102,16 +108,53 @@ class SectionMenuFragment : Fragment() {
                     dispatch[tileItemId] = Target.Tile(tile.target)
                 }
                 for (panel in Sections.aggregatorStackFor(section, mode)) {
-                    if (panel.title.isBlank()) continue
-                    val panelItemId = id++
-                    val panelItem = menu.add(groupId, panelItemId, Menu.NONE, panel.title)
-                    Sections.iconResFor(ctx, panel.iconName).takeIf { r -> r != 0 }
-                        ?.let { r -> panelItem.setIcon(r) }
-                    panelItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-                    // No fine-grained target for a stack panel — re-open
-                    // the section so the user lands on the aggregator
-                    // body where the panel lives.
-                    dispatch[panelItemId] = Target.Section(section.id, section.label)
+                    when {
+                        panel.columns.isNotEmpty() -> {
+                            // linktree slide with grouped columns. Emit
+                            // each column.header as its own sub-header
+                            // row + the links beneath as indented rows.
+                            for (col in panel.columns) {
+                                if (col.header.isNotBlank()) {
+                                    val headId = id++
+                                    val headItem = menu.add(groupId, headId, Menu.NONE,
+                                        col.header.uppercase())
+                                    headItem.setEnabled(false)
+                                    // Disabled menu items stay grey; this
+                                    // is exactly the "section header" feel
+                                    // we want inside the drawer.
+                                }
+                                for (link in col.links) {
+                                    addLinkRow(menu, ctx, groupId, "    ↳  ${link.label}",
+                                        link.icon, link.url, idSupplier = { id++ })
+                                }
+                            }
+                        }
+                        panel.links.isNotEmpty() -> {
+                            // Flattened linktree column or inline link_grid.
+                            // panel.title is the section header.
+                            if (panel.title.isNotBlank()) {
+                                val headId = id++
+                                val headItem = menu.add(groupId, headId, Menu.NONE,
+                                    panel.title.uppercase())
+                                headItem.setEnabled(false)
+                            }
+                            for (link in panel.links) {
+                                addLinkRow(menu, ctx, groupId, "    ↳  ${link.label}",
+                                    link.icon, link.url, idSupplier = { id++ })
+                            }
+                        }
+                        panel.title.isNotBlank() -> {
+                            // Non-link panel (c3_public, drive_connections,
+                            // rss, …). Surface the title; tap re-opens
+                            // the section body.
+                            val panelItemId = id++
+                            val panelItem = menu.add(groupId, panelItemId, Menu.NONE, panel.title)
+                            Sections.iconResFor(ctx, panel.iconName).takeIf { r -> r != 0 }
+                                ?.let { r -> panelItem.setIcon(r) }
+                            panelItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+                            dispatch[panelItemId] = Target.Section(section.id, section.label)
+                        }
+                    }
                 }
             }
             else -> {
@@ -124,6 +167,21 @@ class SectionMenuFragment : Fragment() {
                 }
             }
         }
+    }
+
+    /** Add one indented link row under an aggregator panel's header.
+     *  Icon name comes from linktree.json (tabler/svg-style names —
+     *  iconResFor normalises them). Target is the link's URL. */
+    private fun addLinkRow(
+        menu: Menu, ctx: android.content.Context, groupId: Int,
+        label: String, iconName: String, url: String, idSupplier: () -> Int,
+    ) {
+        val itemId = idSupplier()
+        val item = menu.add(groupId, itemId, Menu.NONE, label)
+        Sections.iconResFor(ctx, iconName).takeIf { r -> r != 0 }
+            ?.let { r -> item.setIcon(r) }
+        item.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+        dispatch[itemId] = Target.Tile(url)
     }
 
     private fun onItemPicked(itemId: Int) {

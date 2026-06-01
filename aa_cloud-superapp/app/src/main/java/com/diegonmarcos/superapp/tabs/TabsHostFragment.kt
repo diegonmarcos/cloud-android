@@ -315,6 +315,9 @@ class TabsHostFragment : Fragment(), Collapsible, com.diegonmarcos.superapp.Supp
             // UA + viewport mode applied here from the persisted-per-
             // fragment desktopMode flag. Re-applied on every toggle.
             applyViewMode(this)
+            com.diegonmarcos.superapp.Trace.i("Tabs",
+                "webview-ua desktopMode=$desktopMode ua='${settings.userAgentString}' " +
+                "wideViewport=${settings.useWideViewPort} url=$url")
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
             webViewClient = object : WebViewClient() {
