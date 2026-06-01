@@ -40,6 +40,18 @@
 
         <!-- BottomNav: branded active indicator using the brand container. -->
         <item name="bottomNavigationStyle">@style/Widget.CloudSuperApp.BottomNavigationView</item>
+
+        <!-- Tooltip frame — fully transparent. android:tooltipFrameBackground
+             is `@hide` so AAPT2 rejects `android:` prefix; the `*android:`
+             escape hatch tells AAPT2 to allow setting private framework
+             attrs (this is the same mechanism AppCompat itself uses for
+             a number of `@hide` system attrs). If your device honours the
+             framework attr the system long-press tooltip pill paints
+             transparent — invisible. If it's an OEM override (Samsung
+             One UI in particular), this is a no-op and the pill stays
+             coloured; we still attach a long-click consumer in
+             MainActivity.installTooltipConsumer as fallback. -->
+        <item name="*android:tooltipFrameBackground">@drawable/bg_tooltip_transparent</item>
     </style>
 
     <style name="Widget.CloudSuperApp.BottomNavigationView"

@@ -68,21 +68,26 @@ class HomeDrawerFragment : Fragment() {
             }
         }
 
-        // User-banner row — avatar (initials) + "{INITIALS}  |  {Mode}".
+        // User-banner row — avatar (initials) + 3 stacked text lines:
+        // [Name]  /  [Email]  /  Mode: {Apps|Admin} + toggle glyph.
         // The whole row is the click target; tap flips Apps↔Admin. Bound
         // from ProfilePrefs + ModePrefs so it always reflects current
         // state — works even when the drawer is re-opened after the user
         // edited Configs → Profile.
         val userRow  = header?.findViewById<View>(R.id.nav_header_user_row)
         val avatar   = header?.findViewById<TextView>(R.id.nav_header_avatar)
-        val identity = header?.findViewById<TextView>(R.id.nav_header_identity)
-        if (userRow != null && avatar != null && identity != null) {
+        val nameTv   = header?.findViewById<TextView>(R.id.nav_header_user_name)
+        val emailTv  = header?.findViewById<TextView>(R.id.nav_header_user_email)
+        val modeTv   = header?.findViewById<TextView>(R.id.nav_header_user_mode)
+        if (userRow != null && avatar != null && nameTv != null && emailTv != null && modeTv != null) {
             fun rebind() {
                 val profile = ProfilePrefs(ctx)
                 val mode    = ModePrefs(ctx).mode
                 val modeLabel = if (mode == "admin") "Admin" else "Apps"
-                avatar.text   = profile.initials
-                identity.text = "${profile.initials}  |  $modeLabel"
+                avatar.text  = profile.initials
+                nameTv.text  = profile.name
+                emailTv.text = profile.email
+                modeTv.text  = "Mode: $modeLabel"
             }
             rebind()
             userRow.setOnClickListener {

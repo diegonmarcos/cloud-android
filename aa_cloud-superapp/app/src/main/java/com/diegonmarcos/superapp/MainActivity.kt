@@ -181,6 +181,7 @@ class MainActivity : AppCompatActivity(),
 
             installNavSwipeGesture()
             installHomeLongPressFan()
+            installTooltipConsumer()
 
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
@@ -394,6 +395,66 @@ class MainActivity : AppCompatActivity(),
                 else -> false
             }
         }
+    }
+
+    /** Fallback for OEMs that ignore android:tooltipFrameBackground in
+     *  the theme (Samsung One UI). For just the BottomNav item views +
+     *  Toolbar action items, register an OnLongClickListener that
+     *  returns true → View.performLongClick() then skips the tooltip
+     *  branch entirely.
+     *
+     *  Why this DOESN'T cause the lag we saw earlier: setting
+     *  OnLongClickListener doesn't make the framework wait the full
+     *  long-press timeout on ACTION_UP — short taps still register
+     *  immediately. The earlier lag came from OnGlobalLayoutListener
+     *  walking the tree on every layout pass, NOT from this listener
+     *  itself. Hooked via OnHierarchyChangeListener so we re-attach
+     *  only on actual structural changes (BNV menu rebind, toolbar
+     *  invalidate) — fires a handful of times, never per-frame. */
+    private fun installTooltipConsumer() {
+        val consumer = View.OnLongClickListener {
+            // Returning true tells the framework the long-press is
+            // handled, so it doesn't fall through to the tooltip path.
+            Trace.i(TAG, "tooltip consumer fired on view id=${it.id}")
+            true
+        }
+        fun applyToChildren(vg: ViewGroup) {
+            for (i in 0 until vg.childCount) {
+                vg.getChildAt(i).setOnLongClickListener(consumer)
+            }
+        }
+        val hookListener = object : ViewGroup.OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent: View?, child: View?) {
+                child?.setOnLongClickListener(consumer)
+                Trace.i(TAG, "tooltip-consumer: child added to ${parent?.javaClass?.simpleName}")
+            }
+            override fun onChildViewRemoved(parent: View?, child: View?) = Unit
+        }
+        // BNV: items live inside the menu view (getChildAt(0)).
+        bottomNav.post {
+            (bottomNav.getChildAt(0) as? ViewGroup)?.let {
+                it.setOnHierarchyChangeListener(hookListener)
+                applyToChildren(it)
+                Trace.i(TAG, "tooltip-consumer: attached to BNV menu view, n=${it.childCount}")
+            }
+        }
+        // Toolbar action items live inside an inner ActionMenuView. We
+        // can't easily reach it before the toolbar inflates the menu, so
+        // attach via the toolbar itself + walk one level deep on each
+        // child-add (the ActionMenuView is itself a direct toolbar child).
+        val toolbar = findViewById<View>(R.id.toolbar) as? ViewGroup ?: return
+        toolbar.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent: View?, child: View?) {
+                child?.setOnLongClickListener(consumer)
+                if (child is ViewGroup) {
+                    child.setOnHierarchyChangeListener(hookListener)
+                    applyToChildren(child)
+                }
+                Trace.i(TAG, "tooltip-consumer: child added to toolbar (${child?.javaClass?.simpleName})")
+            }
+            override fun onChildViewRemoved(parent: View?, child: View?) = Unit
+        })
+        applyToChildren(toolbar)
     }
 
     /** Best-effort hit-test: return the View of the Home menu item
