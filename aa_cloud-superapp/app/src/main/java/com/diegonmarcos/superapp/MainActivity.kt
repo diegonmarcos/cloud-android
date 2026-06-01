@@ -167,7 +167,6 @@ class MainActivity : AppCompatActivity(),
 
             installNavSwipeGesture()
             installHomeLongPressFan()
-            installTooltipKiller()
 
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
@@ -369,40 +368,6 @@ class MainActivity : AppCompatActivity(),
                 }
                 else -> false
             }
-        }
-    }
-
-    /** Kill the system tooltip pill (white background + label) that
-     *  Material's BottomNavigationItemView attaches via TooltipCompat
-     *  when it sets the item title. Achieved by nulling tooltipText on
-     *  every descendant — NO long-click listener (those make every
-     *  click wait the full long-press timeout before committing).
-     *
-     *  Hooked via OnHierarchyChangeListener so we only re-run on actual
-     *  structural changes (BNV rebuilding item views on menu rebind),
-     *  not on every layout pass. */
-    private fun installTooltipKiller() {
-        val killer = object : ViewGroup.OnHierarchyChangeListener {
-            override fun onChildViewAdded(parent: View?, child: View?) {
-                child?.let { nullTooltipsRecursively(it) }
-            }
-            override fun onChildViewRemoved(parent: View?, child: View?) = Unit
-        }
-        fun hook(vg: ViewGroup) {
-            vg.setOnHierarchyChangeListener(killer)
-            nullTooltipsRecursively(vg)
-            for (i in 0 until vg.childCount) {
-                (vg.getChildAt(i) as? ViewGroup)?.let { hook(it) }
-            }
-        }
-        bottomNav.post { hook(bottomNav) }
-        findViewById<View>(R.id.toolbar)?.let { if (it is ViewGroup) it.post { hook(it) } }
-    }
-
-    private fun nullTooltipsRecursively(root: View) {
-        root.tooltipText = null
-        if (root is ViewGroup) {
-            for (i in 0 until root.childCount) nullTooltipsRecursively(root.getChildAt(i))
         }
     }
 
@@ -948,11 +913,6 @@ class MainActivity : AppCompatActivity(),
                 item.setIcon(R.drawable.ic_mode_apps)
                 item.title = getString(R.string.mode_apps)
             }
-        }
-        // Kill long-press tooltips on every toolbar action — the white
-        // pill with the title was visual noise (user feedback).
-        for (i in 0 until menu.size()) {
-            androidx.core.view.MenuItemCompat.setTooltipText(menu.getItem(i), null)
         }
         return super.onPrepareOptionsMenu(menu)
     }
