@@ -23,7 +23,9 @@
         android:id="@+id/shell_linear"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_gradient_black_purple">
+        android:background="@drawable/bg_gradient_black_purple"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
         <!-- Galaxy backdrop — promoted to the shell level so the stars +
              comets fill the WHOLE screen edge-to-edge, including the

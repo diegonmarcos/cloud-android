@@ -739,10 +739,21 @@ class MainActivity : AppCompatActivity(),
         // be eaten by a system bar because they're physically constrained
         // inside the padded region.
         val shell = findViewById<View>(R.id.shell_linear)
+        val galaxy = findViewById<View>(R.id.galaxy_backdrop)
         ViewCompat.setOnApplyWindowInsetsListener(shell) { v, insets ->
             val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(top = sys.top, bottom = sys.bottom)
             bottomSystemInset = sys.bottom
+            // The galaxy view needs to extend INTO the padded inset zones
+            // so the stars / comets fill the status + nav bar area too.
+            // Negative margins push it past the shell's padding boundary;
+            // shell_linear has clipChildren=false + clipToPadding=false so
+            // the overflow renders instead of being chopped.
+            (galaxy?.layoutParams as? android.widget.FrameLayout.LayoutParams)?.also { lp ->
+                lp.topMargin = -sys.top
+                lp.bottomMargin = -sys.bottom
+                galaxy.layoutParams = lp
+            }
             insets
         }
     }
