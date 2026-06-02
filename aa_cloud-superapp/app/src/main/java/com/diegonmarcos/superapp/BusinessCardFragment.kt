@@ -138,13 +138,10 @@ class BusinessCardFragment : Fragment() {
             gravity = android.view.Gravity.CENTER_HORIZONTAL
             setPadding(pad, dp(ctx, 12), pad, dp(ctx, 24))
         }
-        qrCard.addView(TextView(ctx).apply {
-            text = "Scan to visit"
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            alpha = 0.7f
-        })
-        // 75% smaller thumbnail (was 220dp → 70dp). Tap opens a
-        // full-screen view of the same QR for easier scanning.
+        // 75% smaller thumbnail (was 220dp → 70dp). Tap opens the full
+        // QR gallery page (vCard / linktree / landpage / telegram /
+        // whatsapp — same set the web qrcode.html renders), where each
+        // card expands to a full-screen QR on tap.
         val qrBmp = qrBitmap(qrUrl, dp(ctx, 220))
         if (qrBmp != null) {
             val frame = FrameLayout(ctx).apply {
@@ -165,7 +162,7 @@ class BusinessCardFragment : Fragment() {
             })
             frame.setOnClickListener {
                 Haptics.tap(it)
-                showQrFullScreen(qrUrl)
+                showQrGallery()
             }
             qrCard.addView(frame)
         }
@@ -218,35 +215,42 @@ class BusinessCardFragment : Fragment() {
         return bmp
     }
 
-    /** Show the QR code full-screen in a tap-to-dismiss dialog. Same
-     *  rainbow frame; the QR itself is regenerated at a larger pixel
-     *  size so reader cameras pick it up cleanly. */
-    private fun showQrFullScreen(qrUrl: String) {
+    /** Open the full QR-code gallery — same page the linktree site
+     *  serves at linktree.diegonmarcos.com/qrcode.html. Cards are
+     *  data-driven from src/typescript/qrcode/qrcodes.json (the
+     *  single source of truth shared with the web). Tapping a card
+     *  opens the QR full-screen — the gallery page handles that
+     *  modal internally, so the app side stays a thin WebView host. */
+    private fun showQrGallery() {
         val ctx = requireContext()
         val dialog = android.app.Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        val root = FrameLayout(ctx).apply {
-            setBackgroundColor(0xEE000000.toInt())
-            isClickable = true
-            setOnClickListener { dialog.dismiss() }
+        val webView = android.webkit.WebView(ctx).apply {
+            setBackgroundColor(0xFF1A0033.toInt())
+            settings.javaScriptEnabled = true       // qrcode.html fetches qrcodes.json + renders cards
+            settings.domStorageEnabled = true       // SW + cache state
+            settings.loadWithOverviewMode = true
+            settings.useWideViewPort = true
+            // Bounce navigations to the system browser EXCEPT the QR
+            // page itself + its same-origin assets — keeps the app from
+            // becoming a generic browser if the user taps an outbound
+            // link inside the dialog.
+            webViewClient = object : android.webkit.WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: android.webkit.WebView,
+                    req: android.webkit.WebResourceRequest,
+                ): Boolean {
+                    val host = req.url.host ?: return false
+                    if (host == "linktree.diegonmarcos.com") return false
+                    runCatching {
+                        startActivity(android.content.Intent(
+                            android.content.Intent.ACTION_VIEW, req.url))
+                    }
+                    return true
+                }
+            }
+            loadUrl("https://linktree.diegonmarcos.com/qrcode.html")
         }
-        // Compute display side ~80% of screen min dimension.
-        val side = (ctx.resources.displayMetrics.let { Math.min(it.widthPixels, it.heightPixels) } * 0.8f).toInt()
-        val frame = FrameLayout(ctx).apply {
-            background = androidx.core.content.ContextCompat.getDrawable(
-                ctx, R.drawable.bg_qr_frame)
-            layoutParams = FrameLayout.LayoutParams(side, side, android.view.Gravity.CENTER)
-            val p = dp(ctx, 18); setPadding(p, p, p, p)
-        }
-        val bigQr = qrBitmap(qrUrl, side)
-        frame.addView(ImageView(ctx).apply {
-            if (bigQr != null) setImageBitmap(bigQr)
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
-        })
-        root.addView(frame)
-        dialog.setContentView(root)
+        dialog.setContentView(webView)
         dialog.show()
     }
 
