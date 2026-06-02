@@ -114,6 +114,10 @@ class MainActivity : AppCompatActivity(),
             // setOnClickListener here.
 
             drawerLayout = findViewById(R.id.drawer_layout)
+            // DrawerLayout with fitsSystemWindows="true" otherwise paints
+            // a `?attr/colorPrimaryDark` (blue-gray) scrim across the
+            // status-bar area, hiding our galaxy beneath. Force-clear it.
+            drawerLayout.setStatusBarBackground(null)
             bottomNav = findViewById(R.id.bottom_nav)
             drawerTabs = findViewById(R.id.drawer_tabs)
             drawerPageTabs = findViewById(R.id.drawer_page_tabs)
