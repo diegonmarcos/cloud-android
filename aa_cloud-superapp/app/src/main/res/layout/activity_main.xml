@@ -25,6 +25,19 @@
         android:layout_height="match_parent"
         android:background="@drawable/bg_gradient_black_purple">
 
+        <!-- Galaxy backdrop — promoted to the shell level so the stars +
+             comets fill the WHOLE screen edge-to-edge, including the
+             status-bar area where the camera punch-hole + system icons
+             live. On non-home pages most fragments overlay opaque
+             content so the galaxy only peeks through transparent zones
+             (the system bars, fragment-transition fade, etc.). -->
+        <com.diegonmarcos.superapp.GalaxyBackdropView
+            android:id="@+id/galaxy_backdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
+
         <!-- Fragment fills the whole shell; paddings carve out room for
              both islands so content stays clear of them. -->
         <androidx.fragment.app.FragmentContainerView

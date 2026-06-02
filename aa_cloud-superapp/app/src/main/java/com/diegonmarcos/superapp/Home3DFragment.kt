@@ -30,15 +30,9 @@ class Home3DFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
-        // Galaxy backdrop — stars + sweeping comets behind the cube.
-        val galaxy = GalaxyBackdropView(ctx).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
-        }
-        root.addView(galaxy)
-
+        // Galaxy backdrop now lives at the shell level (R.id.galaxy_backdrop
+        // in activity_main.xml) so it extends edge-to-edge into the
+        // status-bar area. Home3DFragment only draws the cube on top.
         val cube = RotatingCubeView(ctx).apply {
             // Bigger view so the cube's rotated corners don't clip
             // against the cube view's own bounds. The cube renders

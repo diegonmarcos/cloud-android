@@ -83,6 +83,17 @@ class MainActivity : AppCompatActivity(),
             // theme already declares transparent system bars + light-icon
             // tinting so the bars stay readable.
             WindowCompat.setDecorFitsSystemWindows(window, false)
+            // Force the status + navigation bars to fully transparent at
+            // runtime — Samsung One UI ignores the theme attributes
+            // (statusBarColor / enforceStatusBarContrast) on some builds
+            // and paints a blue-gray default tint over the supposedly-
+            // transparent surface. Setting these programmatically wins.
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                window.isStatusBarContrastEnforced = false
+                window.isNavigationBarContrastEnforced = false
+            }
             applyWindowBlurIfSupported()
 
             setContentView(R.layout.activity_main)
