@@ -213,23 +213,25 @@ object QrGalleryDialog {
         val given = contact.optString("given", "")
         lines += "N:$family;$given;"
         lines += "FN:${contact.optString("displayName", "$given $family")}"
+        // TYPE values forced UPPERCASE — Samsung Contacts only matches
+        // them case-sensitively (HOME/WORK/PERSONAL/MOBILE etc.) and
+        // drops the field silently otherwise; iOS is lenient.
         contact.optString("email").takeIf { it.isNotEmpty() }?.let {
-            val t = contact.optString("emailType", "personal")
+            val t = contact.optString("emailType", "personal").uppercase()
             lines += "EMAIL;TYPE=$t:$it"
         }
         contact.optString("tel").takeIf { it.isNotEmpty() }?.let {
-            val t = contact.optString("telType", "mobile")
+            val t = contact.optString("telType", "mobile").uppercase()
             lines += "TEL;TYPE=$t:$it"
         }
         contact.optJSONObject("address")?.let { a ->
-            val t = a.optString("type", "home")
-            val adrValue = ";;${a.optString("street")};${a.optString("city")};" +
+            val t = a.optString("type", "home").uppercase()
+            // CHARSET= is vCard 2.1 syntax; RFC 2426 (vCard 3.0) does
+            // NOT define it. Emitting it on a 3.0 property makes strict
+            // parsers (Samsung) reject the whole property. UTF-8 is the
+            // implicit 3.0 encoding — the raw bytes are sufficient.
+            lines += "ADR;TYPE=$t:;;${a.optString("street")};${a.optString("city")};" +
                 "${a.optString("region")};${a.optString("postalCode")};${a.optString("country")}"
-            // RFC 2426 §5.7 — non-ASCII values need CHARSET=UTF-8 or
-            // Apple's QR vCard parser silently drops the field. (The
-            // file-import path sniffs the encoding and doesn't care.)
-            val charsetParam = if (adrValue.any { it.code > 0x7F }) ";CHARSET=UTF-8" else ""
-            lines += "ADR;TYPE=$t$charsetParam:$adrValue"
         }
         val urls = contact.optJSONArray("urls")
         if (urls != null) for (i in 0 until urls.length()) {
