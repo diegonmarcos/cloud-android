@@ -23,6 +23,9 @@ class App : Application() {
         // on the very first inflation.
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         super.onCreate()
+        // Capture process-start time before anything else so About →
+        // Battery & Usage can report the real uptime.
+        AppProcessUptime.initOnce()
         // DevControlServer FIRST so even if anything downstream
         // crashes I can still curl /logcat / /trace / /crashes from
         // this device's shell to debug.

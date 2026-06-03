@@ -71,6 +71,77 @@ class DevControlFragment : Fragment() {
         allPermsLauncher.launch(perms)
     }
 
+    /** Deep-link to the OS's per-app battery usage details. The dedicated
+     *  intent exists on API 33+; older devices land on the generic
+     *  application-details page (where the user can drill down to Battery
+     *  via the visible row). */
+    private fun openBatteryDetails() {
+        runCatching {
+            val intent = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                android.content.Intent(android.provider.Settings.ACTION_BATTERY_USAGE_DETAILS).apply {
+                    data = android.net.Uri.fromParts("package", requireContext().packageName, null)
+                }
+            } else {
+                android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", requireContext().packageName, null),
+                )
+            }
+            startActivity(intent)
+        }
+    }
+
+    /** Open the Usage Access settings list so the user can flip our
+     *  PACKAGE_USAGE_STATS toggle on. After granting, the Screen-on /
+     *  Background rows in the Battery & Usage section start reading
+     *  real numbers instead of "Needs Usage Access". */
+    private fun openUsageAccessSettings() {
+        runCatching {
+            startActivity(android.content.Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+    }
+
+    /** Read per-app foreground + background time from UsageStatsManager.
+     *  Returns (foregroundMs, backgroundMs); both -1 if the user hasn't
+     *  granted PACKAGE_USAGE_STATS. Window = last 7 days. */
+    private fun readUsageStats(ctx: Context): Pair<Long, Long> {
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE)
+            as? android.app.usage.UsageStatsManager ?: return -1L to -1L
+        val now = System.currentTimeMillis()
+        val weekAgo = now - 7L * 24 * 60 * 60 * 1000
+        val stats = runCatching {
+            usm.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_WEEKLY,
+                weekAgo, now,
+            )
+        }.getOrNull() ?: return -1L to -1L
+        if (stats.isEmpty()) return -1L to -1L
+        val me = stats.firstOrNull { it.packageName == ctx.packageName }
+            ?: return 0L to 0L
+        val fg = me.totalTimeInForeground
+        // backgroundTime() is only on API 29+; older versions report 0.
+        val bg = if (android.os.Build.VERSION.SDK_INT >= 29) {
+            runCatching {
+                val m = me.javaClass.getMethod("getTotalTimeForegroundServiceUsed")
+                (m.invoke(me) as? Long) ?: 0L
+            }.getOrDefault(0L)
+        } else 0L
+        return fg to bg
+    }
+
+    private fun fmtDuration(ms: Long): String {
+        if (ms < 0) return "—"
+        val s = ms / 1000
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        return when {
+            h > 0 -> "%d h %02d min".format(h, m)
+            m > 0 -> "%d min %02d s".format(m, sec)
+            else  -> "%d s".format(sec)
+        }
+    }
+
     private fun openAppSettings() {
         val intent = android.content.Intent(
             android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -211,6 +282,61 @@ class DevControlFragment : Fragment() {
             // toggle the other permissions directly from there.
             it.addView(actionButton(ctx, "Open system app settings") {
                 openAppSettings()
+            })
+        }
+
+        section(ctx, column, "Battery & Usage") {
+            // Everything in this block is what the app CAN read about
+            // itself without privileged permissions. Per-app battery mAh
+            // + screen-on / background time split / wakelocks count etc.
+            // live in BatteryStatsManager which is system-only. The
+            // "Open battery usage details" button below jumps to the
+            // OS screen the user pasted from for the full picture.
+            val ctxAny = requireContext()
+            val pkg = ctxAny.packageManager.getPackageInfo(ctxAny.packageName, 0)
+            val myUid = ctxAny.applicationInfo.uid
+
+            // App-side crash count — files in CrashLogger's private dir
+            // (getExternalFilesDir/crashes/crash-<ts>.txt).
+            val crashDir = File(ctxAny.getExternalFilesDir(null), "crashes")
+            val crashes  = crashDir.listFiles { f -> f.name.startsWith("crash-") }?.size ?: 0
+            val mostRecent = crashDir.listFiles { f -> f.name.startsWith("crash-") }
+                ?.maxByOrNull { it.lastModified() }
+            row(ctx, it, "Crash count",  crashes.toString())
+            row(ctx, it, "Last crash",   mostRecent?.let { fmtMillis(it.lastModified()) } ?: "—")
+            row(ctx, it, "Crashes dir",  crashDir.absolutePath)
+
+            // Process uptime since this Application's onCreate.
+            val uptimeMs = android.os.SystemClock.elapsedRealtime() -
+                AppProcessUptime.startedAtElapsed
+            row(ctx, it, "Process uptime", fmtDuration(uptimeMs))
+            row(ctx, it, "First install",  fmtMillis(pkg.firstInstallTime))
+            row(ctx, it, "Last update",    fmtMillis(pkg.lastUpdateTime))
+
+            // Network bytes RX/TX since boot (TrafficStats is per-UID;
+            // resets on reboot). Captures all sockets this UID has used.
+            val rx = android.net.TrafficStats.getUidRxBytes(myUid)
+            val tx = android.net.TrafficStats.getUidTxBytes(myUid)
+            val rxMobile = android.net.TrafficStats.getMobileRxBytes()
+            val txMobile = android.net.TrafficStats.getMobileTxBytes()
+            row(ctx, it, "Net RX (all)",    sizeStr(if (rx < 0) 0L else rx))
+            row(ctx, it, "Net TX (all)",    sizeStr(if (tx < 0) 0L else tx))
+            row(ctx, it, "Mobile RX (UID)", if (rxMobile < 0) "—" else sizeStr(rxMobile))
+            row(ctx, it, "Mobile TX (UID)", if (txMobile < 0) "—" else sizeStr(txMobile))
+
+            // Per-app foreground / background screen time — needs
+            // PACKAGE_USAGE_STATS (Settings.ACTION_USAGE_ACCESS_SETTINGS).
+            val (fgMs, bgMs) = readUsageStats(ctxAny)
+            row(ctx, it, "Screen-on",   if (fgMs < 0) "Needs Usage Access" else fmtDuration(fgMs))
+            row(ctx, it, "Background",  if (bgMs < 0) "Needs Usage Access" else fmtDuration(bgMs))
+            row(ctx, it, "Total used",  if (fgMs < 0 || bgMs < 0) "—" else fmtDuration(fgMs + bgMs))
+            it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only — tap the button below for the full OS report."))
+
+            it.addView(actionButton(ctx, "Open battery usage details") {
+                openBatteryDetails()
+            })
+            it.addView(actionButton(ctx, "Grant Usage Access") {
+                openUsageAccessSettings()
             })
         }
 
