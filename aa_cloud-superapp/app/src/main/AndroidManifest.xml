@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Network for JMAP / CloudData fetch / GHCR in-app updater. -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -22,6 +23,18 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- PACKAGE_USAGE_STATS is a "signature|appop" permission: regular
+         apps can't be auto-granted by the runtime-permission dialog, but
+         declaring it is what makes the app *appear in* Settings → Apps
+         → Special access → Usage access (otherwise the picker filters
+         us out, regardless of Play-Store vs. sideload). Once it's there
+         the user toggles it on, and UsageStatsManager.queryUsageStats
+         starts returning real data for the Battery & Usage screen.
+         tools:ignore suppresses the lint warning about declaring a
+         protected permission — that's exactly what we want here. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".App"
