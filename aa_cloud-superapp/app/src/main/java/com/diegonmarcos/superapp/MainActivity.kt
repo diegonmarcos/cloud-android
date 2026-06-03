@@ -522,7 +522,7 @@ class MainActivity : AppCompatActivity(),
     //
     // The drawer-toggle hamburger sits in the same spot for hours of use
     // and never has anything to "say". Give it a tiny lifelike tic — a
-    // random, short, low-amplitude shake every 6–14 seconds — so the
+    // random, short, low-amplitude shake every 3–5 seconds — so the
     // toolbar feels alive without being annoying. Animation is the
     // ImageButton's transform only (translation + rotation), nothing
     // about hit-test or click handling changes.
@@ -576,8 +576,8 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun postNextJitter(view: View) {
-        // Random 6–14 second pause between tics.
-        val delayMs = 6000L + jitterRng.nextInt(8000)
+        // Random 3–5 second pause between tics.
+        val delayMs = 3000L + jitterRng.nextInt(2000)
         jitterRunnable = Runnable {
             playHamburgerJitter(view)
             postNextJitter(view)
