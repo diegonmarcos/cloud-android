@@ -26,11 +26,13 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 /**
- * Configs → WireGuard — Interface + Peer form bound to [WireGuardPrefs].
- * Auto-saves on every text change. Extra controls: Generate Keypair
- * (fills private + public), Import .conf (parses upstream wg-quick
- * format), Export .conf (writes wg-quick), Connect/Disconnect Switch
- * (drives [GoBackend]).
+ * Configs → WireGuard — Interface + a list of Peers form bound to
+ * [WireGuardPrefs]. Auto-saves on every text change. Extra controls:
+ * Generate Keypair (fills private + public), Import .conf (parses
+ * upstream wg-quick format — multi-peer aware), Export .conf (writes
+ * wg-quick), Connect/Disconnect Switch (drives [GoBackend]). Add Peer
+ * / Remove buttons let the user grow or shrink the peer list at
+ * runtime.
  *
  * Mirrors [ProfileFragment]'s programmatic UI shape — no XML layouts.
  */
@@ -40,13 +42,14 @@ class WireGuardFragment : Fragment() {
     private var goBackend: GoBackend? = null
     private val tunnel by lazy { WgTunnel { prefs.tunnelName.ifBlank { "wg-mesh" } } }
 
-    /** Re-attach to redraw fields after Generate / Import. */
+    /** Re-attach to redraw fields after structural changes (Generate,
+     *  Import, Add Peer, Remove Peer). */
     private fun reattach() {
         parentFragmentManager.beginTransaction().detach(this).commitNow()
         parentFragmentManager.beginTransaction().attach(this).commitNow()
     }
 
-    /** Read an imported .conf into prefs. */
+    /** Read an imported .conf into prefs (multi-peer aware). */
     private val importLauncher: ActivityResultLauncher<String> =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri ?: return@registerForActivityResult
@@ -112,7 +115,7 @@ class WireGuardFragment : Fragment() {
         scroll.addView(col)
 
         col.addView(sectionHeader(ctx, "WireGuard"))
-        col.addView(caption(ctx, "Edit your tunnel — auto-saved on change. Use Generate Keypair to mint a fresh private+public, Import to paste an existing .conf, or Connect to bring the tunnel up."))
+        col.addView(caption(ctx, "Edit your tunnel — auto-saved on change. Use Generate Keypair to mint a fresh private+public, Import to load an existing .conf (multi-peer aware), or Connect to bring the tunnel up."))
 
         col.addView(label(ctx, "Tunnel name (≤15 chars: A-Z a-z 0-9 _ = + . -)"))
         col.addView(field(ctx, prefs.tunnelName) { prefs.tunnelName = it }.apply {
@@ -153,25 +156,12 @@ class WireGuardFragment : Fragment() {
             inputType = InputType.TYPE_CLASS_NUMBER
         })
 
-        // ── Peer ─────────────────────────────────────────────────────
-        col.addView(sectionHeader(ctx, "Peer"))
-
-        col.addView(label(ctx, "Public key"))
-        col.addView(field(ctx, prefs.peerPublicKey) { prefs.peerPublicKey = it })
-
-        col.addView(label(ctx, "Pre-shared key (optional)"))
-        col.addView(field(ctx, prefs.peerPresharedKey) { prefs.peerPresharedKey = it })
-
-        col.addView(label(ctx, "Endpoint (host:port)"))
-        col.addView(field(ctx, prefs.peerEndpoint) { prefs.peerEndpoint = it })
-
-        col.addView(label(ctx, "Allowed IPs (comma-separated)"))
-        col.addView(field(ctx, prefs.peerAllowedIps) { prefs.peerAllowedIps = it })
-
-        col.addView(label(ctx, "Persistent keepalive (seconds, optional)"))
-        col.addView(field(ctx, prefs.peerPersistentKeepalive) { prefs.peerPersistentKeepalive = it }.apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-        })
+        // ── Peers ────────────────────────────────────────────────────
+        val peers = prefs.peers()
+        for ((idx, p) in peers.withIndex()) {
+            col.addView(peerCard(ctx, idx, p, peers))
+        }
+        col.addView(addPeerButton(ctx, peers))
 
         // ── Connect/Disconnect ──────────────────────────────────────
         col.addView(sectionHeader(ctx, "Status"))
@@ -190,6 +180,127 @@ class WireGuardFragment : Fragment() {
     private var interfacePrivateKeyField: EditText? = null
     private var interfacePublicKeyView: TextView? = null
 
+    /**
+     * Renders one peer's full set of fields in a card-like container.
+     * Edits mutate the in-memory `peers` list AND persist on every
+     * keystroke. Remove button cuts the peer and reattaches.
+     */
+    private fun peerCard(
+        ctx: android.content.Context,
+        index: Int,
+        peer: WireGuardPrefs.PeerData,
+        peers: MutableList<WireGuardPrefs.PeerData>,
+    ): View {
+        val card = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(ctx, 10); setPadding(pad, pad, pad, pad)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(ctx, 16) }
+            layoutParams = lp
+            setBackgroundColor(0x22FFFFFF)
+        }
+
+        // Header row: "Peer N — <name>" + Remove button (right).
+        val headerRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        headerRow.addView(TextView(ctx).apply {
+            text = "Peer ${index + 1}"
+            setTextAppearance(android.R.style.TextAppearance_Material_Title)
+            layoutParams = LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        headerRow.addView(TextView(ctx).apply {
+            text = "Remove"
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFFB91C1C.toInt())
+            setPadding(dp(ctx, 10), dp(ctx, 6), dp(ctx, 10), dp(ctx, 6))
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                peers.removeAt(index)
+                prefs.savePeers(peers)
+                toast("Removed peer ${index + 1}")
+                reattach()
+            }
+        })
+        card.addView(headerRow)
+
+        card.addView(label(ctx, "Name (UI label, e.g. gcp-proxy)"))
+        card.addView(peerField(ctx, peer.name, peers, index) { p, v -> p.copy(name = v) })
+
+        card.addView(label(ctx, "Public key"))
+        card.addView(peerField(ctx, peer.publicKey, peers, index) { p, v -> p.copy(publicKey = v) })
+
+        card.addView(label(ctx, "Pre-shared key (optional)"))
+        card.addView(peerField(ctx, peer.presharedKey, peers, index) { p, v -> p.copy(presharedKey = v) })
+
+        card.addView(label(ctx, "Endpoint (host:port)"))
+        card.addView(peerField(ctx, peer.endpoint, peers, index) { p, v -> p.copy(endpoint = v) })
+
+        card.addView(label(ctx, "Allowed IPs (comma-separated)"))
+        card.addView(peerField(ctx, peer.allowedIps, peers, index) { p, v -> p.copy(allowedIps = v) })
+
+        card.addView(label(ctx, "Persistent keepalive (seconds, optional)"))
+        card.addView(peerField(ctx, peer.persistentKeepalive, peers, index) { p, v -> p.copy(persistentKeepalive = v) }.apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+        })
+
+        return card
+    }
+
+    /**
+     * Per-peer EditText. The `mutate` lambda gets the current
+     * [WireGuardPrefs.PeerData] plus the new text value, and returns
+     * an updated copy. The TextWatcher swaps it into the list and
+     * persists on every keystroke.
+     */
+    private fun peerField(
+        ctx: android.content.Context,
+        initial: String,
+        peers: MutableList<WireGuardPrefs.PeerData>,
+        index: Int,
+        mutate: (WireGuardPrefs.PeerData, String) -> WireGuardPrefs.PeerData,
+    ): EditText = EditText(ctx).apply {
+        setText(initial)
+        setSingleLine()
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                if (index < peers.size) {
+                    peers[index] = mutate(peers[index], s?.toString().orEmpty())
+                    prefs.savePeers(peers)
+                }
+            }
+        })
+    }
+
+    private fun addPeerButton(
+        ctx: android.content.Context,
+        peers: MutableList<WireGuardPrefs.PeerData>,
+    ): View = TextView(ctx).apply {
+        text = "+ Add Peer"
+        setTextColor(0xFFFFFFFF.toInt())
+        setBackgroundColor(0xFF059669.toInt())
+        gravity = android.view.Gravity.CENTER
+        setPadding(dp(ctx, 14), dp(ctx, 12), dp(ctx, 14), dp(ctx, 12))
+        isClickable = true; isFocusable = true
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(ctx, 12) }
+        layoutParams = lp
+        setOnClickListener {
+            peers.add(WireGuardPrefs.PeerData.EMPTY)
+            prefs.savePeers(peers)
+            toast("Added empty peer — fill it in")
+            reattach()
+        }
+    }
+
     private fun updatePublicKeyView() {
         interfacePublicKeyView?.text = prefs.derivedInterfacePublicKey()
     }
@@ -203,8 +314,6 @@ class WireGuardFragment : Fragment() {
     }
 
     private fun hydrateFromConfig(cfg: Config) {
-        // Call getters explicitly — Kotlin's `interface` keyword needs
-        // backticks for property access, the explicit form is cleaner.
         val iface = cfg.getInterface()
         prefs.interfacePrivateKey = iface.keyPair.privateKey.toBase64()
         prefs.interfaceAddress    = iface.addresses.joinToString(", ")
@@ -212,12 +321,17 @@ class WireGuardFragment : Fragment() {
         prefs.interfaceListenPort = iface.listenPort.map { it.toString() }.orElse("")
         prefs.interfaceMtu        = iface.mtu.map { it.toString() }.orElse("")
 
-        val peer = cfg.peers.firstOrNull() ?: return
-        prefs.peerPublicKey            = peer.publicKey.toBase64()
-        prefs.peerPresharedKey         = peer.preSharedKey.map { it.toBase64() }.orElse("")
-        prefs.peerEndpoint             = peer.endpoint.map { it.toString() }.orElse("")
-        prefs.peerAllowedIps           = peer.allowedIps.joinToString(", ")
-        prefs.peerPersistentKeepalive  = peer.persistentKeepalive.map { it.toString() }.orElse("")
+        val newPeers = cfg.peers.mapIndexed { i, p ->
+            WireGuardPrefs.PeerData(
+                name                = "peer-${i + 1}",
+                publicKey           = p.publicKey.toBase64(),
+                presharedKey        = p.preSharedKey.map { it.toBase64() }.orElse(""),
+                endpoint            = p.endpoint.map { it.toString() }.orElse(""),
+                allowedIps          = p.allowedIps.joinToString(", "),
+                persistentKeepalive = p.persistentKeepalive.map { it.toString() }.orElse(""),
+            )
+        }
+        prefs.savePeers(newPeers)
     }
 
     private fun requestConnect() {

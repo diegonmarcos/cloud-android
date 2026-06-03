@@ -85,17 +85,19 @@ def profileLocation  = (profileDefault.location ?: '').toString()
 def profileWebsite   = (profileDefault.website  ?: '').toString()
 def profileTitles    = (profileDefault.titles   ?: '').toString()
 // WireGuard defaults — first-run seed for WireGuardPrefs. User edits at
-// runtime via Configs → WireGuard. Private/public keys, peer pubkey + PSK
-// are NOT seeded — generated, imported, or pasted by the user.
-def wgDefault          = buildJson.ui.wireguard_default ?: [:]
-def wgTunnelName       = (wgDefault.tunnel_name              ?: '').toString()
-def wgIfAddress        = (wgDefault.interface_address        ?: '').toString()
-def wgIfDns            = (wgDefault.interface_dns            ?: '').toString()
-def wgIfListenPort     = (wgDefault.interface_listen_port    ?: '').toString()
-def wgIfMtu            = (wgDefault.interface_mtu            ?: '').toString()
-def wgPeerEndpoint     = (wgDefault.peer_endpoint            ?: '').toString()
-def wgPeerAllowedIps   = (wgDefault.peer_allowed_ips         ?: '').toString()
-def wgPeerKeepalive    = (wgDefault.peer_persistent_keepalive ?: '').toString()
+// runtime via Configs → WireGuard. Private key + peer public/preshared
+// keys are NOT seeded — generated, imported, or pasted by the user.
+// Peers is an array baked as one base64 JSON blob (UI_WG_PEERS_JSON_B64)
+// — WireGuardPrefs parses it at first launch; user can Add/Remove peers
+// at runtime via the form.
+def wgDefault       = buildJson.ui.wireguard_default ?: [:]
+def wgTunnelName    = (wgDefault.tunnel_name              ?: '').toString()
+def wgIfAddress     = (wgDefault.interface_address        ?: '').toString()
+def wgIfDns         = (wgDefault.interface_dns            ?: '').toString()
+def wgIfListenPort  = (wgDefault.interface_listen_port    ?: '').toString()
+def wgIfMtu         = (wgDefault.interface_mtu            ?: '').toString()
+def wgPeersJson     = groovy.json.JsonOutput.toJson(wgDefault.peers ?: [])
+def wgPeersB64      = wgPeersJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp'
@@ -137,9 +139,7 @@ android {
         buildConfigField "String", "UI_WG_INTERFACE_DNS",            "\"${wgIfDns}\""
         buildConfigField "String", "UI_WG_INTERFACE_LISTEN_PORT",    "\"${wgIfListenPort}\""
         buildConfigField "String", "UI_WG_INTERFACE_MTU",            "\"${wgIfMtu}\""
-        buildConfigField "String", "UI_WG_PEER_ENDPOINT",            "\"${wgPeerEndpoint}\""
-        buildConfigField "String", "UI_WG_PEER_ALLOWED_IPS",         "\"${wgPeerAllowedIps}\""
-        buildConfigField "String", "UI_WG_PEER_PERSISTENT_KEEPALIVE","\"${wgPeerKeepalive}\""
+        buildConfigField "String", "UI_WG_PEERS_JSON_B64",           "\"${wgPeersB64}\""
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
