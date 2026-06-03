@@ -1,3 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// libs:net — WireGuard tunnel engine, cherry-picked from
+// github.com/WireGuard/wireguard-android (tunnel/) by `./build.sh sync-net`.
+//
+// Java/Kotlin compile + CMake-driven libwg-go.so build. Upstream's
+// publishing/signing/junit blocks are dropped — we ship the engine in
+// the app APK, not as a Maven artifact.
+//
+// CMakeLists.txt at src/main/cpp/CMakeLists.txt is the slim Cloud-SuperApp
+// version (libwg-go.so only); see comment at the top of that file.
+
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
@@ -6,10 +18,10 @@ plugins {
 android {
     namespace 'com.diegonmarcos.superapp.net'
     compileSdk 34
+    ndkVersion '26.1.10909125'
 
     defaultConfig {
         minSdk 26
-        consumerProguardFiles 'consumer-rules.pro'
     }
 
     compileOptions {
@@ -17,9 +29,49 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+
+    buildTypes {
+        all {
+            externalNativeBuild {
+                cmake {
+                    targets 'libwg-go.so'
+                    arguments "-DGRADLE_USER_HOME=${project.gradle.gradleUserHomeDir}"
+                    arguments '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
+                }
+            }
+        }
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PACKAGE_NAME=com.diegonmarcos.superapp'
+                }
+            }
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PACKAGE_NAME=com.diegonmarcos.superapp.debug'
+                }
+            }
+        }
+    }
+
+    lint {
+        disable += 'LongLogTag'
+        disable += 'NewApi'
+    }
 }
 
 dependencies {
     implementation project(':libs:core')
     implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.annotation:annotation:1.8.2'
+    implementation 'androidx.collection:collection:1.4.4'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 }

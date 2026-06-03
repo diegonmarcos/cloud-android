@@ -21,6 +21,7 @@
 # ║   phone-install pull + copy to Android shared storage Download     ║
 # ║   gh-release  attach APK to GitHub Release (release.gh_release)   ║
 # ║   sync-qrcodes  pull qrcodes.json from front/linktree → assets/    ║
+# ║   sync-net      cherry-pick wireguard-android tunnel/ → libs/net/  ║
 # ║                                                                  ║
 # ║ NEVER bypass this script for build operations.                    ║
 # ╚══════════════════════════════════════════════════════════════════╝
@@ -315,6 +316,72 @@ step_sync_qrcodes() {
   log "  review with: git -C $SCRIPT_DIR diff -- app/src/main/assets/qrcodes/qrcodes.json"
 }
 
+# ─── Sync the WireGuard tunnel engine from ea_net-wireguard ─────────
+# Cherry-picks the embeddable `tunnel/` module of upstream
+# wireguard-android (https://github.com/WireGuard/wireguard-android,
+# Apache-2.0) into libs/net/. The upstream clone lives at
+# ${UNIX_REPO:-$HOME/git/unix}/ea_net-wireguard/ (gitignored per the
+# ea_*-*/ workspace-clone convention); this command copies a fixed
+# include-list into the in-tree gradle module so CI can build the
+# native libwg-go.so + libwg.so + libwg-quick.so without the sibling
+# clone being present.
+#
+# Idempotent — rsync --delete on the destinations, so a fresh upstream
+# pull → one `./build.sh sync-net` → clear `git diff` for review.
+step_sync_net() {
+  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_net-wireguard/tunnel"
+  local dst="$SCRIPT_DIR/libs/net"
+  [ -d "$upstream" ] || { errlog "sync-net: upstream not found: $upstream (clone https://github.com/WireGuard/wireguard-android.git there, or set UNIX_REPO=)"; exit 1; }
+  command -v rsync >/dev/null 2>&1 || { errlog "sync-net: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
+
+  mkdir -p "$dst/src/main/java" "$dst/src/main/cpp"
+
+  # Java sources: package roots com.wireguard.{android.backend,
+  # android.util, config, crypto, util}. Mirror in full EXCEPT the
+  # rooted-Android backend trio:
+  #   • WgQuickBackend.java — depends on the missing wireguard-tools
+  #     submodule + a libwg.so we don't build.
+  #   • RootShell.java      — invokes `su`; only used by WgQuickBackend.
+  #   • ToolsInstaller.java — installs wg/wg-quick binaries to /system;
+  #     also rooted-only.
+  # SuperApp targets unrooted Android via GoBackend only.
+  # Exclude rules MUST come before include rules (rsync uses
+  # first-matching-rule precedence). --delete-excluded so stale copies
+  # of excluded files in the destination get removed (default --delete
+  # treats excluded files as protected on both sides). No local-only
+  # java is kept under this tree, so wiping excluded dest paths is safe.
+  rsync -a --delete --delete-excluded \
+    --exclude="WgQuickBackend.java" \
+    --exclude="RootShell.java" \
+    --exclude="ToolsInstaller.java" \
+    --include="*/" --include="*.java" --exclude="*" \
+    "$upstream/src/main/java/" "$dst/src/main/java/"
+
+  # AndroidManifest declares GoBackend\$VpnService + BIND_VPN_SERVICE.
+  # Manifest-merger pulls it into the app at build time.
+  cp "$upstream/src/main/AndroidManifest.xml" "$dst/src/main/AndroidManifest.xml"
+
+  # Native build chain — only what libwg-go.so needs:
+  #   libwg-go/  (Go userspace + Makefile + go.mod/go.sum)
+  #   ndk-compat (compat shim the Makefile-built Go wrapper links to)
+  # Excludes:
+  #   wireguard-tools/ (empty upstream submodule; rooted-backend only)
+  #   elf-cleaner/     (empty; post-process for libwg.so/libwg-quick.so)
+  #   CMakeLists.txt   (upstream's references the missing dirs — we
+  #                     ship our own slim version, kept verbatim across
+  #                     resyncs, that only builds libwg-go.so).
+  rsync -a --delete \
+    --include="libwg-go/" --include="libwg-go/*" \
+    --include="ndk-compat/" --include="ndk-compat/*" \
+    --exclude="*" \
+    "$upstream/tools/" "$dst/src/main/cpp/"
+
+  log "sync-net: libs/net populated from $(realpath --relative-to="$SCRIPT_DIR" "$upstream" 2>/dev/null || echo "$upstream")"
+  log "  java     : $(find "$dst/src/main/java" -name '*.java' | wc -l) file(s)"
+  log "  cpp/tools: $(find "$dst/src/main/cpp" -type f | wc -l) file(s)"
+  log "  review with: git -C $SCRIPT_DIR status -s -- libs/net/"
+}
+
 case "$CMD" in
   build)      step_build ;;
   release)    step_release ;;
@@ -330,6 +397,7 @@ case "$CMD" in
   phone-install) step_phone_install "$@" ;;
   gh-release)   step_gh_release ;;
   sync-qrcodes) step_sync_qrcodes ;;
+  sync-net)     step_sync_net ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;

@@ -26,7 +26,13 @@
           platformToolsVersion = "35.0.2";
           buildToolsVersions  = [ "34.0.0" ];
           platformVersions    = [ "34" "26" ];
-          includeNDK          = false;  # turn on if WG tunnel or other native libs need it
+          # libs:net (cherry-picked wireguard-android tunnel/) builds
+          # libwg-go.so via CMake → an NDK toolchain Make wrapper around
+          # wireguard-go. ndkVersion in libs/net/build.gradle pins the
+          # exact NDK release; this list keeps it available in the SDK.
+          includeNDK          = true;
+          ndkVersions         = [ "26.1.10909125" ];
+          cmakeVersions       = [ "3.22.1" ];
           includeEmulator     = false;
           includeSystemImages = false;
         };

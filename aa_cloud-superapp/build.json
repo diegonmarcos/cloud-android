@@ -1134,6 +1134,11 @@
             "icon": "ic_settings"
           },
           {
+            "id": "wireguard",
+            "label": "WireGuard",
+            "icon": "ic_wg"
+          },
+          {
             "id": "update",
             "label": "Update",
             "icon": "ic_refresh",
@@ -1164,6 +1169,17 @@
       "location": "Berlin/DE",
       "website": "linktree.diegonmarcos.com",
       "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |"
+    },
+    "_doc_wireguard_default": "Seeds the Configs/WireGuard form on first run. The phone is a mesh spoke; defaults point at the gcp-proxy hub (mesh.json::nodes[0]). User-editable at runtime via WireGuardFragment (persisted in WireGuardPrefs SharedPreferences); these values are only the FIRST-RUN defaults. interface_private_key, interface_public_key, peer_public_key and peer_preshared_key are NOT seeded — generate via the in-app Generate Keypair button, import via a .conf file, or paste manually.",
+    "wireguard_default": {
+      "tunnel_name": "wg-mesh",
+      "interface_address": "10.0.0.10/32",
+      "interface_dns": "10.0.0.3",
+      "interface_listen_port": "",
+      "interface_mtu": "1420",
+      "peer_endpoint": "35.226.147.64:51820",
+      "peer_allowed_ips": "10.0.0.0/24",
+      "peer_persistent_keepalive": "25"
     },
     "_doc_modes": "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). A URL-shaped action_type is launched via launchUri. Extend by adding entries here — never hardcoded in Kotlin.",
