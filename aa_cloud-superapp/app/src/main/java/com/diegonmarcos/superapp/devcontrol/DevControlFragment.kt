@@ -559,9 +559,56 @@ class DevControlFragment : Fragment() {
 
         section(ctx, column, "Dev control HTTP") {
             val prefs = DevControlPrefs(requireContext())
-            row(ctx, it, "Endpoint", "http://127.0.0.1:${prefs.port}")
+            val running = DevControlServer.isRunning()
+            val bound   = DevControlServer.boundHost()
+            val loopback = DevControlServer.isLoopbackOnly()
+            row(ctx, it, "Endpoint", "http://${bound ?: "127.0.0.1"}:${prefs.port}")
+            row(ctx, it, "Status",   if (running) "Running" else "Stopped")
+            row(ctx, it, "Bound to", bound ?: "—")
+            row(ctx, it, "Bind scope", when {
+                !running       -> "—"
+                loopback       -> "✓ Loopback only (127.0.0.1) — unreachable from LAN"
+                else           -> "✗ Reachable from LAN — bind addr ${bound ?: "?"}"
+            })
             row(ctx, it, "Token",    prefs.token)
             it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints: /ping /info /state /haptic /goto /action /update /restart /logcat /trace /crashes"))
+
+            // Toggle Switch: persists pref + start/stop the server live.
+            it.addView(android.widget.Switch(ctx).apply {
+                text = "API enabled"
+                isChecked = prefs.enabled
+                val pad = dp(6); setPadding(pad, pad, pad, pad)
+                setOnCheckedChangeListener { _, checked ->
+                    prefs.enabled = checked
+                    if (checked) {
+                        DevControlServer.start(requireContext().applicationContext)
+                    } else {
+                        DevControlServer.stop()
+                    }
+                    // Re-render so Status/Bound/scope reflect the new state.
+                    parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
+                    parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
+                }
+            })
+
+            // Regenerate the bearer token. Rotates the cached value AND
+            // restarts the server so the new token is bound to the
+            // accept loop instead of the stale one captured at start().
+            it.addView(actionButton(ctx, "Regenerate API token") {
+                val fresh = prefs.resetToken()
+                // Bounce the server so the in-memory token (captured at
+                // start) is replaced by the fresh value.
+                if (DevControlServer.isRunning()) {
+                    DevControlServer.stop()
+                    DevControlServer.start(requireContext().applicationContext)
+                }
+                Toast.makeText(requireContext(),
+                    "New token: ${fresh.take(8)}…", Toast.LENGTH_SHORT).show()
+                // Re-render so the new token + restarted server status
+                // populate immediately.
+                parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
+                parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
+            })
         }
 
         section(ctx, column, "Curl shortcuts") {

@@ -44,9 +44,10 @@ object DevControlServer {
     private var thread: Thread? = null
 
     fun start(ctx: Context) {
-        if (!running.compareAndSet(false, true)) return
         val app = ctx.applicationContext
         val prefs = DevControlPrefs(app)
+        if (!prefs.enabled) return
+        if (!running.compareAndSet(false, true)) return
         val port = prefs.port
         val token = prefs.token
         thread = Thread({ runServer(app, port, token) }, "DevControl-$port").apply {
@@ -61,6 +62,27 @@ object DevControlServer {
         server = null
         thread?.interrupt()
         thread = null
+    }
+
+    /** True if the accept loop is currently listening. */
+    fun isRunning(): Boolean = running.get()
+
+    /**
+     * Returns the socket's actual bind address (e.g. "127.0.0.1") so
+     * the About page can verify it really is loopback-only.
+     * Returns null if not running.
+     */
+    fun boundHost(): String? {
+        val addr = server?.inetAddress ?: return null
+        return addr.hostAddress
+    }
+
+    /** True iff the listener is bound to a loopback address (127.x.x.x
+     *  or ::1). False positives are impossible — boundHost is read from
+     *  the actual ServerSocket. */
+    fun isLoopbackOnly(): Boolean {
+        val addr = server?.inetAddress ?: return false
+        return addr.isLoopbackAddress
     }
 
     private fun runServer(ctx: Context, port: Int, token: String) {

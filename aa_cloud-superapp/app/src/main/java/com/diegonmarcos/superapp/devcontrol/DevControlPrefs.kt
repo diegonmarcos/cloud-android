@@ -24,6 +24,14 @@ class DevControlPrefs(context: Context) {
             return fresh
         }
 
+    /** Master on/off for the loopback HTTP control surface. Default
+     *  true preserves the legacy behaviour (always on). When false,
+     *  [DevControlServer.start] is a no-op and Configs → About hides
+     *  the curl shortcuts behind a "service stopped" caption. */
+    var enabled: Boolean
+        get() = sp.getBoolean(K_ENABLED, true)
+        set(value) { sp.edit().putBoolean(K_ENABLED, value).apply() }
+
     fun resetToken(): String {
         val fresh = UUID.randomUUID().toString().replace("-", "")
         sp.edit().putString(K_TOKEN, fresh).apply()
@@ -32,8 +40,9 @@ class DevControlPrefs(context: Context) {
 
     companion object {
         const val DEFAULT_PORT = 38080
-        private const val PREFS   = "dev_control"
-        private const val K_PORT  = "port"
-        private const val K_TOKEN = "token"
+        private const val PREFS    = "dev_control"
+        private const val K_PORT   = "port"
+        private const val K_TOKEN  = "token"
+        private const val K_ENABLED = "enabled"
     }
 }
