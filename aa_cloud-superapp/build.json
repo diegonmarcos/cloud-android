@@ -2276,13 +2276,14 @@
       ]
     },
     "gh_release": {
-      "_doc": "GitHub Release attachment. Only fires on tag push matching the pattern, never on main pushes.",
+      "_doc": "GitHub Release attachment. rolling_tag is the canonical mode now: one release named (default `latest`) the ship workflow overwrites on every main push, so the linktree Android download link stays stable. tag_pattern stays as legacy for immutable per-tag releases when invoked under a tag push context (rolling release still publishes alongside).",
       "enabled": true,
+      "rolling_tag": "latest",
       "tag_pattern": "ea_cloud-superapp-v*",
-      "asset_name": "Cloud-SuperApp-{version_name}.apk",
+      "asset_name": "Cloud-SuperApp.apk",
       "draft": false,
-      "prerelease": true,
-      "generate_release_notes": true
+      "prerelease": false,
+      "generate_release_notes": false
     },
     "phone_install": {
       "_doc": "Targets for build.sh phone-install. Pulls APK from GHCR via curl+OCI HTTP API (no oras dep — works on aarch64 Termux without a Nix shell) and copies to a target dir an Android file manager can see. Override target_dir per environment via PHONE_TARGET env var; default suits Termux/nix-on-droid where ~/storage symlinks to /storage/emulated/0/.",

@@ -222,29 +222,59 @@ step_phone_install() {
 }
 
 step_gh_release() {
-  local enabled draft prerelease notes asset_tmpl asset
+  local enabled draft prerelease notes asset_tmpl asset rolling_tag
   enabled="$(_release_var '.release.gh_release.enabled')"
   [ "$enabled" = "true" ] || { log "gh-release: enabled=false — skip"; return 0; }
-
-  [ -n "${GITHUB_REF_NAME:-}" ] || { errlog "gh-release: GITHUB_REF_NAME unset — must run from a tag context"; exit 1; }
 
   draft="$(_release_var '.release.gh_release.draft')"
   prerelease="$(_release_var '.release.gh_release.prerelease')"
   notes="$(_release_var '.release.gh_release.generate_release_notes')"
   asset_tmpl="$(_release_var '.release.gh_release.asset_name')"
   asset="$(_resolve_template "$asset_tmpl")"
+  rolling_tag="$(_release_var '.release.gh_release.rolling_tag')"
 
-  # Stage asset with the requested filename.
+  # Stage asset with the requested filename. Prefer the release-variant
+  # APK when present; fall back to the debug variant (CI's main-push
+  # build is debug).
   cp "$DIST_DIR/$(_release_var '.release.artifact.release')" "$DIST_DIR/$asset" 2>/dev/null \
     || cp "$DIST_DIR/$(_release_var '.release.artifact.debug')" "$DIST_DIR/$asset"
 
-  local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" --title "$GITHUB_REF_NAME")
-  [ "$draft" = "true" ]      && flags+=(--draft)
-  [ "$prerelease" = "true" ] && flags+=(--prerelease)
-  [ "$notes" = "true" ]      && flags+=(--generate-notes)
+  # ─── Rolling release (mode B) ───────────────────────────────────────
+  # When release.gh_release.rolling_tag is set, the engine publishes
+  # the APK to a SINGLE GitHub Release with that tag, overwriting any
+  # existing asset (--clobber). This is what the ship workflow runs on
+  # every main push so /releases/latest/download/<asset_name> is a
+  # permanent download URL the linktree footer can link to.
+  if [ -n "$rolling_tag" ] && [ "$rolling_tag" != "null" ]; then
+    log "gh-release: rolling mode — tag=$rolling_tag ← $asset"
+    # Create the release iff it doesn't exist yet (idempotent). Note
+    # `gh release view` exits 1 when missing — that's our signal.
+    if ! in_nix gh release view "$rolling_tag" >/dev/null 2>&1; then
+      local create_flags=("$rolling_tag" --title "$rolling_tag" --target "${GITHUB_SHA:-main}" --notes "Rolling release — overwritten on every main push.")
+      [ "$draft" = "true" ]      && create_flags+=(--draft)
+      [ "$prerelease" = "true" ] && create_flags+=(--prerelease)
+      in_nix gh release create "${create_flags[@]}"
+    fi
+    # Overwrite the asset on every run.
+    in_nix gh release upload "$rolling_tag" "$DIST_DIR/$asset" --clobber
+  fi
 
-  log "gh release create $GITHUB_REF_NAME ← $asset"
-  in_nix gh release create "${flags[@]}"
+  # ─── Per-tag immutable release (legacy mode) ────────────────────────
+  # Still publish a tag-named release when invoked under a tag push
+  # (GITHUB_REF_NAME set), so the legacy ea_cloud-superapp-vN.N.N tags
+  # keep producing pinned releases. Rolling mode above runs in addition
+  # to this, not instead of.
+  if [ -n "${GITHUB_REF_NAME:-}" ]; then
+    local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" --title "$GITHUB_REF_NAME")
+    [ "$draft" = "true" ]      && flags+=(--draft)
+    [ "$prerelease" = "true" ] && flags+=(--prerelease)
+    [ "$notes" = "true" ]      && flags+=(--generate-notes)
+    log "gh release create $GITHUB_REF_NAME ← $asset"
+    in_nix gh release create "${flags[@]}"
+  elif [ -z "$rolling_tag" ] || [ "$rolling_tag" = "null" ]; then
+    errlog "gh-release: neither rolling_tag set nor GITHUB_REF_NAME present — nothing to publish"
+    exit 1
+  fi
 }
 
 # ─── Sync the bundled QR manifest from the front/linktree project ──
