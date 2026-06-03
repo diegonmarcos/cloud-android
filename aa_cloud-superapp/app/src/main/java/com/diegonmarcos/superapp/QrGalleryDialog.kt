@@ -223,8 +223,13 @@ object QrGalleryDialog {
         }
         contact.optJSONObject("address")?.let { a ->
             val t = a.optString("type", "home")
-            lines += "ADR;TYPE=$t:;;${a.optString("street")};${a.optString("city")};" +
+            val adrValue = ";;${a.optString("street")};${a.optString("city")};" +
                 "${a.optString("region")};${a.optString("postalCode")};${a.optString("country")}"
+            // RFC 2426 §5.7 — non-ASCII values need CHARSET=UTF-8 or
+            // Apple's QR vCard parser silently drops the field. (The
+            // file-import path sniffs the encoding and doesn't care.)
+            val charsetParam = if (adrValue.any { it.code > 0x7F }) ";CHARSET=UTF-8" else ""
+            lines += "ADR;TYPE=$t$charsetParam:$adrValue"
         }
         val urls = contact.optJSONArray("urls")
         if (urls != null) for (i in 0 until urls.length()) {
@@ -239,7 +244,10 @@ object QrGalleryDialog {
         }
         contact.optString("birthday").takeIf { it.isNotEmpty() }?.let { lines += "BDAY:$it" }
         lines += "END:VCARD"
-        return lines.joinToString("\n")
+        // vCard 3.0 (RFC 2426 §3.1) requires CRLF line endings — Apple's
+        // QR vCard parser is strict about it and drops fields when the
+        // line break isn't CRLF.
+        return lines.joinToString("\r\n")
     }
 
     // ── QR rendering ───────────────────────────────────────────────
