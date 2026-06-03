@@ -235,9 +235,17 @@ step_gh_release() {
 
   # Stage asset with the requested filename. Prefer the release-variant
   # APK when present; fall back to the debug variant (CI's main-push
-  # build is debug).
-  cp "$DIST_DIR/$(_release_var '.release.artifact.release')" "$DIST_DIR/$asset" 2>/dev/null \
-    || cp "$DIST_DIR/$(_release_var '.release.artifact.debug')" "$DIST_DIR/$asset"
+  # build is debug). Skip the cp when source == destination — happens
+  # when asset_name equals one of the artifact filenames (e.g. rolling
+  # mode where we set asset_name="Cloud-SuperApp.apk" matching the debug
+  # artifact name directly).
+  local src_release="$DIST_DIR/$(_release_var '.release.artifact.release')"
+  local src_debug="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  local dst="$DIST_DIR/$asset"
+  if   [ -f "$src_release" ] && [ "$src_release" != "$dst" ]; then cp "$src_release" "$dst"
+  elif [ -f "$src_debug"   ] && [ "$src_debug"   != "$dst" ]; then cp "$src_debug"   "$dst"
+  fi
+  [ -f "$dst" ] || { errlog "gh-release: staged asset $dst missing — no APK in $DIST_DIR?"; exit 1; }
 
   # ─── Rolling release (mode B) ───────────────────────────────────────
   # When release.gh_release.rolling_tag is set, the engine publishes
