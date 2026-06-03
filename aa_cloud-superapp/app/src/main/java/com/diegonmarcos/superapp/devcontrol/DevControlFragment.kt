@@ -17,9 +17,12 @@ import com.diegonmarcos.superapp.AppProcessUptime
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
 import com.diegonmarcos.superapp.Sections
+import com.diegonmarcos.superapp.WgState
+import com.wireguard.android.backend.Tunnel
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import java.util.TimeZone
 
 /**
  * About page — comprehensive runtime + build metadata for the user
@@ -338,6 +341,187 @@ class DevControlFragment : Fragment() {
             })
         }
 
+        section(ctx, column, "VPN / WireGuard") {
+            // Reads the shared GoBackend that WireGuardFragment uses.
+            // getState() reflects the runtime tunnel; getStatistics()
+            // returns per-peer rx/tx bytes + last handshake epoch.
+            val wgPrefs = WgState.prefs(ctxAny())
+            val backend = runCatching { WgState.backend(ctxAny()) }.getOrNull()
+            val tunnel  = WgState.tunnel
+            val state   = runCatching { backend?.getState(tunnel) }.getOrNull()
+            row(ctx, it, "Tunnel name", wgPrefs.tunnelName.ifBlank { "—" })
+            row(ctx, it, "State",       state?.name ?: "—")
+            row(ctx, it, "Backend",     "libwg-go ${runCatching { backend?.version }.getOrNull() ?: "—"}")
+            row(ctx, it, "Always-on",   runCatching { backend?.isAlwaysOn?.toString() }.getOrNull() ?: "—")
+            row(ctx, it, "Lockdown",    runCatching { backend?.isLockdownEnabled?.toString() }.getOrNull() ?: "—")
+            row(ctx, it, "Configured peers", wgPrefs.peers().size.toString())
+
+            // Per-peer stats: only populated when the tunnel is UP.
+            if (state == Tunnel.State.UP) {
+                val stats = runCatching { backend?.getStatistics(tunnel) }.getOrNull()
+                if (stats == null) {
+                    it.addView(small(ctx, "Statistics not available."))
+                } else {
+                    val keys = stats.peers()
+                    if (keys.isEmpty()) {
+                        it.addView(small(ctx, "Tunnel up but no peer stats yet — handshake not completed."))
+                    }
+                    // Match stats.peers() keys (Curve25519 public keys)
+                    // back to the user-named peers in WireGuardPrefs.
+                    val nameByKey = wgPrefs.peers().associate { p ->
+                        p.publicKey.trim() to p.name.ifBlank { "peer" }
+                    }
+                    for ((i, key) in keys.withIndex()) {
+                        val ps = stats.peer(key) ?: continue
+                        val k64 = runCatching { key.toBase64() }.getOrDefault("")
+                        val name = nameByKey[k64] ?: "peer #${i + 1}"
+                        val hsAge = if (ps.latestHandshakeEpochMillis > 0)
+                            fmtDuration(System.currentTimeMillis() - ps.latestHandshakeEpochMillis) + " ago"
+                        else "never"
+                        row(ctx, it, "$name · pubkey",  k64.take(8) + "…" + k64.takeLast(6))
+                        row(ctx, it, "$name · rx/tx",   "${sizeStr(ps.rxBytes)} / ${sizeStr(ps.txBytes)}")
+                        row(ctx, it, "$name · handshake", hsAge)
+                    }
+                }
+            } else {
+                it.addView(small(ctx, "Per-peer stats appear once the tunnel is UP and a handshake completes."))
+            }
+        }
+
+        section(ctx, column, "Battery (deep)") {
+            // Direct read from sticky battery intent + BatteryManager
+            // properties. cycle_count is the Android 14+ goodie.
+            val ctxAny = requireContext()
+            val bm = ctxAny.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            val battery = runCatching {
+                ctxAny.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+            }.getOrNull()
+            val level   = battery?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL,  -1) ?: -1
+            val scale   = battery?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE,  -1) ?: -1
+            val status  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
+            val plugged = battery?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, -1) ?: -1
+            val tech    = battery?.getStringExtra(android.os.BatteryManager.EXTRA_TECHNOLOGY) ?: "—"
+            val tempDeci = battery?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+            val mvolts  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
+            val health  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_HEALTH, -1) ?: -1
+
+            val pct = if (level >= 0 && scale > 0) "%d %%".format(level * 100 / scale) else "—"
+            val statusStr = when (status) {
+                android.os.BatteryManager.BATTERY_STATUS_CHARGING    -> "Charging"
+                android.os.BatteryManager.BATTERY_STATUS_DISCHARGING -> "Discharging"
+                android.os.BatteryManager.BATTERY_STATUS_FULL        -> "Full"
+                android.os.BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "Not charging"
+                else -> "—"
+            }
+            val pluggedStr = when (plugged) {
+                android.os.BatteryManager.BATTERY_PLUGGED_AC       -> "AC"
+                android.os.BatteryManager.BATTERY_PLUGGED_USB      -> "USB"
+                android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless"
+                0 -> "Unplugged"
+                else -> "—"
+            }
+            val healthStr = when (health) {
+                android.os.BatteryManager.BATTERY_HEALTH_GOOD              -> "Good"
+                android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT          -> "Overheat"
+                android.os.BatteryManager.BATTERY_HEALTH_DEAD              -> "Dead"
+                android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE      -> "Over voltage"
+                android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "Failure"
+                android.os.BatteryManager.BATTERY_HEALTH_COLD              -> "Cold"
+                else -> "—"
+            }
+            row(ctx, it, "Level",       pct)
+            row(ctx, it, "Status",      statusStr)
+            row(ctx, it, "Power source", pluggedStr)
+            row(ctx, it, "Health",      healthStr)
+            row(ctx, it, "Technology",  tech)
+            row(ctx, it, "Temperature", if (tempDeci >= 0) "%.1f °C".format(tempDeci / 10.0) else "—")
+            row(ctx, it, "Voltage",     if (mvolts >= 0) "%d mV".format(mvolts) else "—")
+
+            // BatteryManager properties: instant µA / µAh / µWh. cycle
+            // count is API 34+ (constant value 7); query optimistically.
+            if (bm != null) {
+                val curNowMicro = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) }.getOrDefault(0)
+                val curAvgMicro = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE) }.getOrDefault(0)
+                val chargeCounterUah = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) }.getOrDefault(0)
+                val energyCounterNwh = runCatching { bm.getLongProperty(android.os.BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER) }.getOrDefault(0L)
+                row(ctx, it, "Current (now)", if (curNowMicro != Int.MIN_VALUE) "%d mA".format(curNowMicro / 1000) else "—")
+                row(ctx, it, "Current (avg)", if (curAvgMicro != Int.MIN_VALUE) "%d mA".format(curAvgMicro / 1000) else "—")
+                row(ctx, it, "Charge counter", if (chargeCounterUah > 0) "%d mAh".format(chargeCounterUah / 1000) else "—")
+                row(ctx, it, "Energy counter", if (energyCounterNwh > 0) "%d µWh".format(energyCounterNwh) else "—")
+                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                    // BATTERY_PROPERTY_CYCLE_COUNT = 7 (API 34+).
+                    val cycles = runCatching { bm.getIntProperty(7) }.getOrDefault(-1)
+                    row(ctx, it, "Cycle count", if (cycles >= 0) cycles.toString() else "—")
+                }
+                val remainingMs = runCatching { bm.computeChargeTimeRemaining() }.getOrDefault(-1L)
+                if (remainingMs > 0) row(ctx, it, "Time to full", fmtDuration(remainingMs))
+            }
+        }
+
+        section(ctx, column, "Network") {
+            val cm = ctxAny().getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val active = cm?.activeNetwork
+            val caps = active?.let { runCatching { cm.getNetworkCapabilities(it) }.getOrNull() }
+            val link = active?.let { runCatching { cm.getLinkProperties(it) }.getOrNull() }
+
+            val transports = mutableListOf<String>()
+            caps?.let { c ->
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI))      transports.add("Wi-Fi")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR))  transports.add("Cellular")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET))  transports.add("Ethernet")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN))       transports.add("VPN")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH)) transports.add("Bluetooth")
+            }
+            row(ctx, it, "Transport",     if (transports.isEmpty()) "—" else transports.joinToString(", "))
+            row(ctx, it, "Validated",     caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)?.toString() ?: "—")
+            row(ctx, it, "Captive portal", caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)?.toString() ?: "—")
+            row(ctx, it, "Metered",       cm?.isActiveNetworkMetered?.toString() ?: "—")
+            caps?.let { c ->
+                row(ctx, it, "Link down",     "${c.linkDownstreamBandwidthKbps} kbps")
+                row(ctx, it, "Link up",       "${c.linkUpstreamBandwidthKbps} kbps")
+            }
+            link?.let { lp ->
+                row(ctx, it, "Iface",  lp.interfaceName ?: "—")
+                row(ctx, it, "MTU",    lp.mtu.toString())
+                row(ctx, it, "DNS",    lp.dnsServers.joinToString(", ") { it.hostAddress ?: "" }.ifBlank { "—" })
+                val v4 = lp.linkAddresses.mapNotNull { la -> la.address.hostAddress }.filter { ":" !in it }
+                val v6 = lp.linkAddresses.mapNotNull { la -> la.address.hostAddress }.filter { ":" in it }
+                row(ctx, it, "IPv4",   v4.joinToString(", ").ifBlank { "—" })
+                row(ctx, it, "IPv6",   v6.joinToString(", ").ifBlank { "—" })
+                val gw = lp.routes.firstOrNull { r -> r.isDefaultRoute }?.gateway?.hostAddress
+                row(ctx, it, "Default gw", gw ?: "—")
+            }
+        }
+
+        section(ctx, column, "Wi-Fi") {
+            // SSID/BSSID require ACCESS_FINE_LOCATION on Android 10+
+            // AND a connected Wi-Fi network; we already declare both.
+            // If location isn't granted yet, SSID comes back as
+            // "<unknown ssid>" — surface that as the user-facing hint.
+            val wm = ctxAny().applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+            if (wm == null || !wm.isWifiEnabled) {
+                it.addView(small(ctx, "Wi-Fi is off."))
+            } else {
+                @Suppress("DEPRECATION")
+                val info = runCatching { wm.connectionInfo }.getOrNull()
+                if (info == null) {
+                    it.addView(small(ctx, "No Wi-Fi connection info."))
+                } else {
+                    val ssid = info.ssid?.trim('"').orEmpty()
+                    row(ctx, it, "SSID",       if (ssid.isBlank() || ssid == "<unknown ssid>") "Needs location permission" else ssid)
+                    row(ctx, it, "BSSID",      info.bssid ?: "—")
+                    row(ctx, it, "RSSI",       "${info.rssi} dBm")
+                    row(ctx, it, "Link speed", "${info.linkSpeed} Mbps")
+                    row(ctx, it, "Tx speed",   "${info.txLinkSpeedMbps} Mbps")
+                    if (android.os.Build.VERSION.SDK_INT >= 29) {
+                        row(ctx, it, "Rx speed", "${info.rxLinkSpeedMbps} Mbps")
+                    }
+                    row(ctx, it, "Frequency",  "${info.frequency} MHz")
+                    row(ctx, it, "Hidden SSID", info.hiddenSSID.toString())
+                }
+            }
+        }
+
         section(ctx, column, "Sections (from build.json)") {
             val all = Sections.all()
             row(ctx, it, "Total",       all.size.toString())
@@ -363,6 +547,218 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Haptic",  "curl -XPOST -H 'Authorization: Bearer $tok' 'http://127.0.0.1:$port/haptic?preset=gemini_stream'")
             row(ctx, it, "Update",  "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/update")
             row(ctx, it, "Restart", "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/restart")
+        }
+
+        section(ctx, column, "SoC / CPU") {
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                row(ctx, it, "SoC mfr",   android.os.Build.SOC_MANUFACTURER)
+                row(ctx, it, "SoC model", android.os.Build.SOC_MODEL)
+            }
+            row(ctx, it, "Bootloader", android.os.Build.BOOTLOADER)
+            @Suppress("DEPRECATION")
+            row(ctx, it, "Radio",      android.os.Build.getRadioVersion() ?: "—")
+            row(ctx, it, "Board",      android.os.Build.BOARD)
+            row(ctx, it, "Fingerprint", android.os.Build.FINGERPRINT)
+            row(ctx, it, "CPU cores",  Runtime.getRuntime().availableProcessors().toString())
+            val cpuModel = runCatching {
+                File("/proc/cpuinfo").useLines { lines ->
+                    lines.firstOrNull { it.startsWith("Hardware") || it.contains("model name") }
+                        ?.substringAfter(':')?.trim()
+                }
+            }.getOrNull()
+            row(ctx, it, "CPU model",  cpuModel ?: "—")
+            val curFreq = runCatching {
+                File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq").readText().trim().toLong()
+            }.getOrNull()
+            row(ctx, it, "Cur freq",   curFreq?.let { "%d MHz".format(it / 1000) } ?: "—")
+            val gov = runCatching {
+                File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").readText().trim()
+            }.getOrNull()
+            row(ctx, it, "Governor",   gov ?: "—")
+        }
+
+        section(ctx, column, "Thermal zones") {
+            val zones = runCatching {
+                File("/sys/class/thermal").listFiles { f -> f.name.startsWith("thermal_zone") }
+                    ?.sortedBy { it.name }
+            }.getOrNull()
+            if (zones.isNullOrEmpty()) {
+                it.addView(small(ctx, "No thermal zones readable (kernel restricts /sys/class/thermal on most modern devices)."))
+            } else {
+                for (z in zones) {
+                    val type = runCatching { File(z, "type").readText().trim() }.getOrDefault(z.name)
+                    val tempMilliC = runCatching { File(z, "temp").readText().trim().toLong() }.getOrDefault(0L)
+                    row(ctx, it, z.name, "$type — %.1f °C".format(tempMilliC / 1000.0))
+                }
+            }
+        }
+
+        section(ctx, column, "Kernel / OS") {
+            row(ctx, it, "Kernel",   System.getProperty("os.version") ?: "—")
+            row(ctx, it, "Security patch", android.os.Build.VERSION.SECURITY_PATCH)
+            row(ctx, it, "Codename", android.os.Build.VERSION.CODENAME)
+            row(ctx, it, "Incremental", android.os.Build.VERSION.INCREMENTAL)
+            row(ctx, it, "/proc/version", runCatching { File("/proc/version").readText().trim() }.getOrDefault("—"))
+            row(ctx, it, "VM",       "${System.getProperty("java.vm.name")} ${System.getProperty("java.vm.version")}")
+            row(ctx, it, "VM heap",  "${sizeStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())} / ${sizeStr(Runtime.getRuntime().maxMemory())}")
+            val nativeHeap = android.os.Debug.getNativeHeapAllocatedSize()
+            row(ctx, it, "Native heap", sizeStr(nativeHeap))
+        }
+
+        section(ctx, column, "Memory") {
+            val am = ctxAny().getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            val mi = android.app.ActivityManager.MemoryInfo()
+            am?.getMemoryInfo(mi)
+            row(ctx, it, "Total RAM",  sizeStr(mi.totalMem))
+            row(ctx, it, "Available",  sizeStr(mi.availMem))
+            row(ctx, it, "Threshold",  sizeStr(mi.threshold))
+            row(ctx, it, "Low memory", mi.lowMemory.toString())
+            val pids = intArrayOf(android.os.Process.myPid())
+            val procInfo = runCatching { am?.getProcessMemoryInfo(pids) }.getOrNull()?.firstOrNull()
+            if (procInfo != null) {
+                row(ctx, it, "App PSS",  sizeStr(procInfo.totalPss * 1024L))
+                row(ctx, it, "Java heap", sizeStr(procInfo.getMemoryStat("summary.java-heap")?.toLongOrNull()?.times(1024L) ?: 0L))
+                row(ctx, it, "Native heap (proc)", sizeStr(procInfo.getMemoryStat("summary.native-heap")?.toLongOrNull()?.times(1024L) ?: 0L))
+            }
+            val fdCount = runCatching {
+                File("/proc/self/fd").listFiles()?.size ?: 0
+            }.getOrDefault(0)
+            row(ctx, it, "Open FDs", fdCount.toString())
+            row(ctx, it, "Threads",  Thread.activeCount().toString())
+        }
+
+        section(ctx, column, "Display") {
+            val wm = ctxAny().getSystemService(Context.WINDOW_SERVICE) as? android.view.WindowManager
+            val dm = resources.displayMetrics
+            row(ctx, it, "Resolution", "${dm.widthPixels} × ${dm.heightPixels}")
+            row(ctx, it, "Density",    "${dm.density}x · ${dm.densityDpi} dpi")
+            @Suppress("DEPRECATION")
+            val display = wm?.defaultDisplay
+            row(ctx, it, "Refresh",    display?.refreshRate?.let { "%.1f Hz".format(it) } ?: "—")
+            if (android.os.Build.VERSION.SDK_INT >= 23) {
+                val modes = display?.supportedModes?.map { "%.0f Hz @ %dx%d".format(it.refreshRate, it.physicalWidth, it.physicalHeight) }
+                row(ctx, it, "Modes", modes?.joinToString(", ") ?: "—")
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 24) {
+                row(ctx, it, "HDR",       display?.hdrCapabilities?.supportedHdrTypes?.joinToString(",") ?: "—")
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                row(ctx, it, "Wide gamut", display?.isWideColorGamut?.toString() ?: "—")
+            }
+            val cfg = resources.configuration
+            val dark = (cfg.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            row(ctx, it, "Dark mode", dark.toString())
+            row(ctx, it, "Font scale", "${cfg.fontScale}x")
+        }
+
+        section(ctx, column, "APK provenance") {
+            val pm = ctxAny().packageManager
+            val pkg = ctxAny().packageName
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val src = runCatching { pm.getInstallSourceInfo(pkg) }.getOrNull()
+                row(ctx, it, "Installed by", src?.installingPackageName ?: "—")
+                row(ctx, it, "Initiated by", src?.initiatingPackageName ?: "—")
+                if (android.os.Build.VERSION.SDK_INT >= 33)
+                    row(ctx, it, "Update owner", src?.updateOwnerPackageName ?: "—")
+            } else {
+                @Suppress("DEPRECATION")
+                val installer = runCatching { pm.getInstallerPackageName(pkg) }.getOrNull()
+                row(ctx, it, "Installed by", installer ?: "—")
+            }
+            // Signing cert SHA-256 — proves "this APK was signed by my keystore"
+            val sigInfo = runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= 28) {
+                    pm.getPackageInfo(pkg, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES).signingInfo
+                } else null
+            }.getOrNull()
+            val sigs = sigInfo?.signingCertificateHistory ?: sigInfo?.apkContentsSigners
+            if (sigs.isNullOrEmpty()) {
+                row(ctx, it, "Cert SHA-256", "—")
+            } else {
+                val md = java.security.MessageDigest.getInstance("SHA-256")
+                val hex = md.digest(sigs[0].toByteArray()).joinToString(":") { "%02X".format(it) }
+                row(ctx, it, "Cert SHA-256", hex)
+            }
+            // Split APKs (base + per-density + per-ABI)
+            @Suppress("DEPRECATION")
+            val appInfo = pm.getPackageInfo(pkg, 0).applicationInfo
+            val splits = appInfo.splitSourceDirs?.size ?: 0
+            row(ctx, it, "Splits",      "$splits split APK(s)")
+            row(ctx, it, "Native lib dir", appInfo.nativeLibraryDir ?: "—")
+            val nativeLibs = runCatching { File(appInfo.nativeLibraryDir ?: "").listFiles()?.map { it.name } }.getOrNull()
+            row(ctx, it, "Native libs", nativeLibs?.joinToString(", ") ?: "—")
+        }
+
+        section(ctx, column, "Sensors") {
+            val sm = ctxAny().getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+            val all = sm?.getSensorList(android.hardware.Sensor.TYPE_ALL) ?: emptyList()
+            row(ctx, it, "Count", all.size.toString())
+            for ((idx, s) in all.withIndex()) {
+                row(ctx, it, "Sensor ${idx + 1}", "${s.name} — ${s.vendor}")
+            }
+        }
+
+        section(ctx, column, "Security posture") {
+            val cr = ctxAny().contentResolver
+            val devMode = runCatching {
+                android.provider.Settings.Global.getInt(cr,
+                    android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED) == 1
+            }.getOrDefault(false)
+            val adbEnabled = runCatching {
+                android.provider.Settings.Global.getInt(cr,
+                    android.provider.Settings.Global.ADB_ENABLED) == 1
+            }.getOrDefault(false)
+            row(ctx, it, "Dev options", devMode.toString())
+            row(ctx, it, "USB ADB",     adbEnabled.toString())
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val adbWifi = runCatching {
+                    android.provider.Settings.Global.getInt(cr, "adb_wifi_enabled") == 1
+                }.getOrDefault(false)
+                row(ctx, it, "Wireless ADB", adbWifi.toString())
+            }
+            val km = ctxAny().getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+            row(ctx, it, "Device secure",  (km?.isDeviceSecure ?: false).toString())
+            row(ctx, it, "Keyguard locked", (km?.isKeyguardLocked ?: false).toString())
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                val bm = ctxAny().getSystemService(Context.BIOMETRIC_SERVICE)
+                    as? android.hardware.biometrics.BiometricManager
+                val biometric = runCatching {
+                    @Suppress("DEPRECATION")
+                    bm?.canAuthenticate() ?: -1
+                }.getOrDefault(-1)
+                row(ctx, it, "Biometric ready", when (biometric) {
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_SUCCESS              -> "Yes"
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED  -> "No (not enrolled)"
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE    -> "No (no hardware)"
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "Hardware unavailable"
+                    else -> "Unknown"
+                })
+            }
+        }
+
+        section(ctx, column, "Locale & time") {
+            val locales = if (android.os.Build.VERSION.SDK_INT >= 24)
+                (0 until resources.configuration.locales.size()).joinToString(", ") {
+                    resources.configuration.locales[it].toLanguageTag()
+                }
+            else
+                @Suppress("DEPRECATION") resources.configuration.locale.toLanguageTag()
+            row(ctx, it, "Locales",  locales)
+            val tz = TimeZone.getDefault()
+            row(ctx, it, "Timezone", "${tz.id} (${tz.displayName})")
+            val offMin = tz.rawOffset / 60000
+            row(ctx, it, "UTC offset", "%+03d:%02d".format(offMin / 60, kotlin.math.abs(offMin) % 60))
+            row(ctx, it, "In DST",   tz.inDaylightTime(Date()).toString())
+            val autoTime = runCatching {
+                android.provider.Settings.Global.getInt(ctxAny().contentResolver,
+                    android.provider.Settings.Global.AUTO_TIME) == 1
+            }.getOrDefault(false)
+            row(ctx, it, "Auto time", autoTime.toString())
+            // System uptime gap = boot wall-clock.
+            val bootWall = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
+            row(ctx, it, "Booted",   fmtMillis(bootWall))
+            row(ctx, it, "System uptime", fmtDuration(android.os.SystemClock.elapsedRealtime()))
         }
         return scroll
     }

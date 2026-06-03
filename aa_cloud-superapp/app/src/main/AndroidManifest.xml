@@ -5,6 +5,10 @@
     <!-- Network for JMAP / CloudData fetch / GHCR in-app updater. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Read-only Wi-Fi state for the About page: SSID/BSSID need both
+         this AND ACCESS_FINE_LOCATION (Android 10+ scoped Wi-Fi info);
+         link speed / frequency / RSSI come from the same surface. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <!-- Surface area for Config → About → Permissions. Each row shows
          GRANTED / DENIED state at runtime; the user grants/revokes via

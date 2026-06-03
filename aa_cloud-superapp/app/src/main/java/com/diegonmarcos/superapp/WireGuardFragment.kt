@@ -39,8 +39,9 @@ import java.io.InputStreamReader
 class WireGuardFragment : Fragment() {
 
     private lateinit var prefs: WireGuardPrefs
-    private var goBackend: GoBackend? = null
-    private val tunnel by lazy { WgTunnel { prefs.tunnelName.ifBlank { "wg-mesh" } } }
+    /** Shared process-wide GoBackend + Tunnel — see [WgState]. */
+    private val goBackend: GoBackend? get() = context?.let { WgState.backend(it) }
+    private val tunnel get() = WgState.tunnel
 
     /** Re-attach to redraw fields after structural changes (Generate,
      *  Import, Add Peer, Remove Peer). */
@@ -94,8 +95,10 @@ class WireGuardFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        prefs = WireGuardPrefs(ctx)
-        if (goBackend == null) goBackend = GoBackend(ctx.applicationContext)
+        prefs = WgState.prefs(ctx)
+        // Touch the backend so it's eagerly initialised — DevControl
+        // queries getStatistics() against the same Tunnel object.
+        WgState.backend(ctx)
 
         val scroll = ScrollView(ctx).apply {
             isFillViewport = true
@@ -440,12 +443,6 @@ class WireGuardFragment : Fragment() {
 
     private fun dp(ctx: android.content.Context, v: Int): Int =
         (v * ctx.resources.displayMetrics.density).toInt()
-
-    /** Minimal Tunnel impl — name from prefs, no callbacks needed. */
-    private class WgTunnel(val nameProvider: () -> String) : Tunnel {
-        override fun getName(): String = nameProvider()
-        override fun onStateChange(newState: Tunnel.State) = Unit
-    }
 
     companion object {
         fun newInstance(): WireGuardFragment = WireGuardFragment()
