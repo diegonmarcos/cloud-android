@@ -13,6 +13,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.diegonmarcos.superapp.AppProcessUptime
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
 import com.diegonmarcos.superapp.Sections
@@ -71,23 +72,20 @@ class DevControlFragment : Fragment() {
         allPermsLauncher.launch(perms)
     }
 
-    /** Deep-link to the OS's per-app battery usage details. The dedicated
-     *  intent exists on API 33+; older devices land on the generic
-     *  application-details page (where the user can drill down to Battery
-     *  via the visible row). */
+    /** Deep-link to the OS's per-app settings page — the user can then
+     *  drill down to Battery via the visible row. Android doesn't expose
+     *  a public "open battery details for this app" intent (the
+     *  Settings.ACTION_BATTERY_* surface is for saver / optimisation
+     *  settings only), so the app-details deeplink is the closest public
+     *  affordance across every API level. */
     private fun openBatteryDetails() {
         runCatching {
-            val intent = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                android.content.Intent(android.provider.Settings.ACTION_BATTERY_USAGE_DETAILS).apply {
-                    data = android.net.Uri.fromParts("package", requireContext().packageName, null)
-                }
-            } else {
+            startActivity(
                 android.content.Intent(
                     android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     android.net.Uri.fromParts("package", requireContext().packageName, null),
                 )
-            }
-            startActivity(intent)
+            )
         }
     }
 
