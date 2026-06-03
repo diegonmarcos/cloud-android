@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.AppProcessUptime
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
+import com.diegonmarcos.superapp.PermAskTracker
 import com.diegonmarcos.superapp.Sections
 import com.diegonmarcos.superapp.WgState
 import com.wireguard.android.backend.Tunnel
@@ -64,6 +65,9 @@ class DevControlFragment : Fragment() {
 
     private fun requestNotificationsPermission() {
         if (android.os.Build.VERSION.SDK_INT >= 33) {
+            // Track that we asked so the "Denied (don't ask)" vs "Not
+            // requested" disambiguation works on future renders.
+            PermAskTracker(requireContext()).markAsked("android.permission.POST_NOTIFICATIONS")
             notifPermLauncher.launch("android.permission.POST_NOTIFICATIONS")
         } else {
             Toast.makeText(requireContext(),
@@ -72,7 +76,32 @@ class DevControlFragment : Fragment() {
     }
 
     private fun requestAllPermissions(perms: Array<String>) {
+        PermAskTracker(requireContext()).markAskedAll(perms.toList())
         allPermsLauncher.launch(perms)
+    }
+
+    /**
+     * Resolve the user-facing state for a single permission. Beyond
+     * the GRANTED/DENIED binary that `checkSelfPermission` returns,
+     * Android distinguishes — at the UX level — between:
+     *   • ⏳ Ask each time      (denied, but `shouldShowRationale=true`)
+     *   • ✗ Denied (don't ask) (denied, no rationale, asked before)
+     *   • ◯ Not requested      (denied, no rationale, never asked)
+     * Disambiguation uses [PermAskTracker] since Android exposes no
+     * API to tell "never asked" apart from "permanently denied".
+     */
+    private fun permissionState(perm: String): String {
+        val ctx = ctxAny()
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(ctx, perm) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (granted) return "✓ Granted"
+        val act = activity ?: return "✗ Denied"
+        val rationale = runCatching {
+            androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(act, perm)
+        }.getOrDefault(false)
+        if (rationale) return "⏳ Ask each time"
+        val askedBefore = PermAskTracker(ctx).hasBeenRequested(perm)
+        return if (askedBefore) "✗ Denied (don't ask)" else "◯ Not requested"
     }
 
     /** Deep-link to the OS's per-app settings page — the user can then
@@ -259,12 +288,9 @@ class DevControlFragment : Fragment() {
                 "SMS"               to android.Manifest.permission.READ_SMS,
                 "Phone"             to android.Manifest.permission.READ_PHONE_STATE,
             )
+            it.addView(small(ctx, "States: ✓ Granted · ⏳ Ask each time · ✗ Denied (don't ask) · ◯ Not requested. Restricted-by-policy permissions (SMS, Phone, Call Log) often stay at ✗ Denied (don't ask) on non-default handlers — toggle via system settings."))
             for ((label, perm) in perms) {
-                val state = runCatching {
-                    androidx.core.content.ContextCompat.checkSelfPermission(ctxAny(), perm) ==
-                        android.content.pm.PackageManager.PERMISSION_GRANTED
-                }.getOrDefault(false)
-                row(ctx, it, label, if (state) "✓ Granted" else "✗ Denied")
+                row(ctx, it, label, permissionState(perm))
             }
             // Button row: request POST_NOTIFICATIONS via the standard
             // permission dialog (API 33+). On older Android levels
