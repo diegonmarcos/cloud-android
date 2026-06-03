@@ -20,6 +20,7 @@
 # ║   oras-pull   pull APK from ghcr → dist/  [tag=latest]            ║
 # ║   phone-install pull + copy to Android shared storage Download     ║
 # ║   gh-release  attach APK to GitHub Release (release.gh_release)   ║
+# ║   sync-qrcodes  pull qrcodes.json from front/linktree → assets/    ║
 # ║                                                                  ║
 # ║ NEVER bypass this script for build operations.                    ║
 # ╚══════════════════════════════════════════════════════════════════╝
@@ -246,6 +247,23 @@ step_gh_release() {
   in_nix gh release create "${flags[@]}"
 }
 
+# ─── Sync the bundled QR manifest from the front/linktree project ──
+# `assets/qrcodes/qrcodes.json` is the SOLE asset the in-app QR gallery
+# reads (parsed by QrGalleryDialog.kt). It is the same JSON the linktree
+# web project owns, treated as canonical source-of-truth. This command
+# refreshes the bundled copy from the local front clone — declarative
+# (one knob: FRONT_REPO env / default sibling path), idempotent, and
+# leaves a clear diff in `git status` for review before committing.
+step_sync_qrcodes() {
+  local src="${FRONT_REPO:-$HOME/git/front}/a-Portals/linktree/src/typescript/qrcode/qrcodes.json"
+  local dst="$SCRIPT_DIR/app/src/main/assets/qrcodes/qrcodes.json"
+  [ -f "$src" ] || { errlog "sync-qrcodes: source not found: $src (set FRONT_REPO if your front clone lives elsewhere)"; exit 1; }
+  mkdir -p "$(dirname "$dst")"
+  cp "$src" "$dst"
+  log "sync-qrcodes: $(basename "$dst") ← $(realpath --relative-to="$SCRIPT_DIR" "$src" 2>/dev/null || echo "$src") ($(wc -c < "$dst") B)"
+  log "  review with: git -C $SCRIPT_DIR diff -- app/src/main/assets/qrcodes/qrcodes.json"
+}
+
 case "$CMD" in
   build)      step_build ;;
   release)    step_release ;;
@@ -260,6 +278,7 @@ case "$CMD" in
   oras-pull)    step_oras_pull "$@" ;;
   phone-install) step_phone_install "$@" ;;
   gh-release)   step_gh_release ;;
+  sync-qrcodes) step_sync_qrcodes ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;

@@ -215,43 +215,12 @@ class BusinessCardFragment : Fragment() {
         return bmp
     }
 
-    /** Open the full QR-code gallery — same page the linktree site
-     *  serves at linktree.diegonmarcos.com/qrcode.html. Cards are
-     *  data-driven from src/typescript/qrcode/qrcodes.json (the
-     *  single source of truth shared with the web). Tapping a card
-     *  opens the QR full-screen — the gallery page handles that
-     *  modal internally, so the app side stays a thin WebView host. */
+    /** Open the native, self-contained QR gallery. Reads the bundled
+     *  asset assets/qrcodes/qrcodes.json (same single source of truth
+     *  the linktree project uses) and renders every QR + tap-to-full-
+     *  screen modal in Kotlin — no WebView, no network needed. */
     private fun showQrGallery() {
-        val ctx = requireContext()
-        val dialog = android.app.Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        val webView = android.webkit.WebView(ctx).apply {
-            setBackgroundColor(0xFF1A0033.toInt())
-            settings.javaScriptEnabled = true       // qrcode.html fetches qrcodes.json + renders cards
-            settings.domStorageEnabled = true       // SW + cache state
-            settings.loadWithOverviewMode = true
-            settings.useWideViewPort = true
-            // Bounce navigations to the system browser EXCEPT the QR
-            // page itself + its same-origin assets — keeps the app from
-            // becoming a generic browser if the user taps an outbound
-            // link inside the dialog.
-            webViewClient = object : android.webkit.WebViewClient() {
-                override fun shouldOverrideUrlLoading(
-                    view: android.webkit.WebView,
-                    req: android.webkit.WebResourceRequest,
-                ): Boolean {
-                    val host = req.url.host ?: return false
-                    if (host == "linktree.diegonmarcos.com") return false
-                    runCatching {
-                        startActivity(android.content.Intent(
-                            android.content.Intent.ACTION_VIEW, req.url))
-                    }
-                    return true
-                }
-            }
-            loadUrl("https://linktree.diegonmarcos.com/qrcode.html")
-        }
-        dialog.setContentView(webView)
-        dialog.show()
+        QrGalleryDialog.show(requireContext())
     }
 
     /** Encode `text` as a colourful QR code Bitmap. Uses ZXing for the
