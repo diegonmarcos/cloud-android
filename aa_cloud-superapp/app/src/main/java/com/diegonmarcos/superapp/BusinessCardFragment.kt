@@ -131,6 +131,23 @@ class BusinessCardFragment : Fragment() {
         })
         col.addView(identity)
 
+        // Weighted spacer — pushes the QR card down so it sits just
+        // above the bottom nav instead of right under the Website row.
+        // ScrollView.isFillViewport=true above is the other half of
+        // the deal: it forces the column to be at least as tall as the
+        // viewport so the 1f weight actually has slack to consume.
+        // When content overflows the viewport (small screens), the
+        // spacer collapses to its minHeight and the page just scrolls
+        // — the QR still ends up at the bottom of the scrolled content.
+        col.addView(View(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            )
+            minimumHeight = dp(ctx, 16)
+        })
+
         // ── QR code linking to the website ─────────────────────────
         val qrUrl = "https://${profile.website.removePrefix("https://").removePrefix("http://")}"
         val qrCard = LinearLayout(ctx).apply {
