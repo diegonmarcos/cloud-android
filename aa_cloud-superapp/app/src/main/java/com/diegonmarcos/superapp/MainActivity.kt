@@ -235,6 +235,7 @@ class MainActivity : AppCompatActivity(),
             installNavSwipeGesture()
             installHomeLongPressFan()
             installTooltipConsumer()
+            installHamburgerJitter()
 
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
@@ -515,6 +516,101 @@ class MainActivity : AppCompatActivity(),
             override fun onChildViewRemoved(parent: View?, child: View?) = Unit
         })
         applyToChildren(toolbar)
+    }
+
+    // ── hamburger jitter ─────────────────────────────────────────────────
+    //
+    // The drawer-toggle hamburger sits in the same spot for hours of use
+    // and never has anything to "say". Give it a tiny lifelike tic — a
+    // random, short, low-amplitude shake every 6–14 seconds — so the
+    // toolbar feels alive without being annoying. Animation is the
+    // ImageButton's transform only (translation + rotation), nothing
+    // about hit-test or click handling changes.
+    //
+    // Lifecycle: scheduled in onResume, cancelled in onPause — no work
+    // happens while the activity is backgrounded.
+
+    private val jitterHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var jitterRunnable: Runnable? = null
+    private val jitterRng = java.util.Random()
+
+    /** Hook the runnable into the lifecycle-tracked toolbar. Idempotent. */
+    private fun installHamburgerJitter() {
+        // Nothing to do here at construction time — the scheduling is
+        // driven by onResume / onPause so the loop pauses cleanly when
+        // the activity is backgrounded. Kept as a stub for symmetry with
+        // installNavSwipeGesture / installHomeLongPressFan / install-
+        // TooltipConsumer.
+    }
+
+    private fun scheduleHamburgerJitter() {
+        cancelHamburgerJitter()
+        val toolbar: com.google.android.material.appbar.MaterialToolbar =
+            findViewById(R.id.toolbar) ?: return
+        // Wait one layout pass so the navigation ImageButton is in the
+        // toolbar's child list.
+        toolbar.post {
+            val navIcon = findToolbarNavIcon(toolbar) ?: return@post
+            postNextJitter(navIcon)
+        }
+    }
+
+    private fun cancelHamburgerJitter() {
+        jitterRunnable?.let { jitterHandler.removeCallbacks(it) }
+        jitterRunnable = null
+    }
+
+    private fun findToolbarNavIcon(toolbar: ViewGroup): View? {
+        // The drawer-toggle ImageButton is the toolbar's first child whose
+        // drawable IS the navigation icon. Defending against future child
+        // ordering by matching on (ImageButton, drawable == nav icon).
+        val navDrawable =
+            (toolbar as? com.google.android.material.appbar.MaterialToolbar)?.navigationIcon
+        for (i in 0 until toolbar.childCount) {
+            val v = toolbar.getChildAt(i)
+            if (v is android.widget.ImageButton) {
+                if (navDrawable == null || v.drawable == navDrawable) return v
+            }
+        }
+        return null
+    }
+
+    private fun postNextJitter(view: View) {
+        // Random 6–14 second pause between tics.
+        val delayMs = 6000L + jitterRng.nextInt(8000)
+        jitterRunnable = Runnable {
+            playHamburgerJitter(view)
+            postNextJitter(view)
+        }
+        jitterHandler.postDelayed(jitterRunnable!!, delayMs)
+    }
+
+    private fun playHamburgerJitter(view: View) {
+        // Three flavours rolled randomly so it doesn't read as a loop:
+        //   0 → side-shake (translateX)
+        //   1 → head-shake (rotation)
+        //   2 → mixed jitter (both)
+        val flavour = jitterRng.nextInt(3)
+        val durMs = 240L + jitterRng.nextInt(160) // 240–400ms
+        val rotPeak = (jitterRng.nextFloat() * 8f + 4f) * if (jitterRng.nextBoolean()) 1f else -1f
+        val xPeak = (jitterRng.nextFloat() * 4f + 2f) * if (jitterRng.nextBoolean()) 1f else -1f
+        val animators = mutableListOf<android.animation.ObjectAnimator>()
+        if (flavour != 1) {
+            animators += android.animation.ObjectAnimator.ofFloat(
+                view, "translationX",
+                0f, xPeak, -xPeak * 0.6f, xPeak * 0.25f, 0f,
+            ).apply { duration = durMs }
+        }
+        if (flavour != 0) {
+            animators += android.animation.ObjectAnimator.ofFloat(
+                view, "rotation",
+                0f, rotPeak, -rotPeak * 0.6f, rotPeak * 0.25f, 0f,
+            ).apply { duration = durMs }
+        }
+        android.animation.AnimatorSet().apply {
+            playTogether(*animators.toTypedArray())
+            start()
+        }
     }
 
     /** Best-effort hit-test: return the View of the Home menu item
@@ -1228,11 +1324,13 @@ class MainActivity : AppCompatActivity(),
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener { state ->
             runOnUiThread { handleUpdateState(state) }
         }
+        scheduleHamburgerJitter()
     }
 
     override fun onPause() {
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
+        cancelHamburgerJitter()
         super.onPause()
     }
 
