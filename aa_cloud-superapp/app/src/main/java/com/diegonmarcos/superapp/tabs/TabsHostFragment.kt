@@ -39,13 +39,21 @@ import java.security.MessageDigest
  * Implements [Collapsible] so re-tapping the Tabs bottom-nav slot
  * snaps back to GRID — quick gesture to "see all tabs".
  */
-class TabsHostFragment : Fragment(), Collapsible, com.diegonmarcos.superapp.SuppressHorizontalSwipe {
+class TabsHostFragment : Fragment(), Collapsible,
+    com.diegonmarcos.superapp.SuppressHorizontalSwipe,
+    com.diegonmarcos.superapp.SuppressVerticalSwipe {
 
     /** Activity-level horizontal-fling cycler skips this fragment while
      *  a WebView is visible, so URL bar gestures / desktop-view-mode
      *  horizontal scrolls inside the page don't get hijacked into a
      *  bottom-nav cycle. */
     override fun suppressHorizontalSwipe(): Boolean = mode is Mode.DETAIL
+
+    /** Same opt-out for vertical flings — swipe-up inside the browser
+     *  must not open the app-drawer sheet (WebView owns vertical
+     *  scrolling + swipe-up navigation gestures); swipe-down doesn't
+     *  conflict in practice but is gated symmetrically for consistency. */
+    override fun suppressVerticalSwipe(): Boolean = mode is Mode.DETAIL
 
     /** Desktop-mode toggle — flips WebView UA + width override + initial
      *  scale. Persists for the lifetime of this fragment only. */

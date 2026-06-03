@@ -303,6 +303,14 @@ class MainActivity : AppCompatActivity(),
     /** Open the app drawer on swipe-up (only while on Home), close it on
      *  swipe-down. Returns true if the gesture was consumed. */
     private fun handleVerticalFling(dy: Float): Boolean {
+        // Some fragments (browser/WebView in detail mode etc.) need to
+        // own vertical flings — let the inner content scroll, pull-to-
+        // refresh, or fire its own swipe-up navigation without the
+        // activity stealing the gesture to open the app drawer sheet.
+        val cur = supportFragmentManager.findFragmentById(R.id.fragment_container)
+        if ((cur as? SuppressVerticalSwipe)?.suppressVerticalSwipe() == true) {
+            return false
+        }
         val sheetIsUp = supportFragmentManager.findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null ||
                         supportFragmentManager.backStackEntryCount > 0 &&
                           (0 until supportFragmentManager.backStackEntryCount).any {
