@@ -1133,30 +1133,49 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        menu.findItem(R.id.action_back)?.isVisible =
-            supportFragmentManager.backStackEntryCount > 0 || currentSection != "home"
+        // action_back: anywhere except a clean Home (Home with no
+        // back-stack entries is the "root" — back is meaningless there).
+        val atHomeRoot = currentSection == "home" &&
+            supportFragmentManager.backStackEntryCount == 0
+        menu.findItem(R.id.action_back)?.isVisible = !atHomeRoot
+        // action_vcard: ONLY at the Home root (mirror of action_back).
+        // Slots into the same top-right toolbar position so the user
+        // gets a single context-appropriate action there at all times.
+        menu.findItem(R.id.action_vcard)?.isVisible = atHomeRoot
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_back) {
-            // Hierarchical "up": one tap = one level toward Home.
-            //   • Any fragments on the back stack? → pop them ALL at once
-            //     (the section root is the parent of every nested page,
-            //     so going up from a deep detail lands directly at the
-            //     section's aggregator/grid, not on intermediate pages).
-            //   • Already at a section root (empty back stack)? → Home.
-            //   • Already on Home? → no-op (the icon hides via
-            //     onPrepareOptionsMenu, but defend the path anyway).
-            if (supportFragmentManager.backStackEntryCount > 0) {
-                supportFragmentManager.popBackStack(
-                    null,
-                    FragmentManager.POP_BACK_STACK_INCLUSIVE,
-                )
-            } else if (currentSection != "home") {
-                goHome()
+        when (item.itemId) {
+            R.id.action_back -> {
+                // Hierarchical "up": one tap = one level toward Home.
+                //   • Any fragments on the back stack? → pop them ALL
+                //     at once (the section root is the parent of every
+                //     nested page, so going up from a deep detail lands
+                //     directly at the section's aggregator/grid, not on
+                //     intermediate pages).
+                //   • Already at a section root (empty back stack)? →
+                //     Home.
+                //   • Already on Home? → no-op (the icon hides via
+                //     onPrepareOptionsMenu, but defend the path anyway).
+                if (supportFragmentManager.backStackEntryCount > 0) {
+                    supportFragmentManager.popBackStack(
+                        null,
+                        FragmentManager.POP_BACK_STACK_INCLUSIVE,
+                    )
+                } else if (currentSection != "home") {
+                    goHome()
+                }
+                return true
             }
-            return true
+            R.id.action_vcard -> {
+                // Same destination as tapping the drawer-header
+                // identity row — reuses the existing NavigationListener
+                // wiring so there's exactly one path into the Virtual
+                // Business Card screen.
+                onDrawerBusinessCardOpen()
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }

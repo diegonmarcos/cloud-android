@@ -15,4 +15,14 @@
           android:title="@string/action_back"
           android:icon="@drawable/ic_back"
           app:showAsAction="ifRoom" />
+
+    <!-- vCard shortcut — shown ONLY on the Home screen (mirror of
+         action_back which hides on Home). Tap opens the Virtual
+         Business Card screen — same destination as tapping the
+         drawer-header identity row. Visibility toggled in
+         MainActivity.onPrepareOptionsMenu. -->
+    <item android:id="@+id/action_vcard"
+          android:title="@string/action_vcard"
+          android:icon="@drawable/ic_vcard"
+          app:showAsAction="ifRoom" />
 </menu>
