@@ -258,21 +258,34 @@ step_gh_release() {
     # Create the release iff it doesn't exist yet (idempotent). Note
     # `gh release view` exits 1 when missing — that's our signal.
     if ! in_nix gh release view "$rolling_tag" >/dev/null 2>&1; then
-      local create_flags=("$rolling_tag" --title "$rolling_tag" --target "${GITHUB_SHA:-main}" --notes "Rolling release — overwritten on every main push.")
+      local create_flags=("$rolling_tag" --title "$rolling_tag" --target "${GITHUB_SHA:-main}" --notes "Rolling release — overwritten on every main push." --latest)
       [ "$draft" = "true" ]      && create_flags+=(--draft)
       [ "$prerelease" = "true" ] && create_flags+=(--prerelease)
       in_nix gh release create "${create_flags[@]}"
     fi
     # Overwrite the asset on every run.
     in_nix gh release upload "$rolling_tag" "$DIST_DIR/$asset" --clobber
+    # Re-affirm the Latest flag every run — GH unmarks it when another
+    # release is published (or sometimes after a sibling release is
+    # deleted), and /releases/latest/ depends on it. Idempotent.
+    in_nix gh release edit "$rolling_tag" --latest >/dev/null 2>&1 || true
   fi
 
   # ─── Per-tag immutable release (legacy mode) ────────────────────────
-  # Still publish a tag-named release when invoked under a tag push
-  # (GITHUB_REF_NAME set), so the legacy ea_cloud-superapp-vN.N.N tags
-  # keep producing pinned releases. Rolling mode above runs in addition
-  # to this, not instead of.
-  if [ -n "${GITHUB_REF_NAME:-}" ]; then
+  # Still publish a tag-named release when invoked under a tag push, so
+  # the legacy ea_cloud-superapp-vN.N.N tags keep producing pinned
+  # releases. Rolling mode above runs in addition to this, not instead.
+  #
+  # Gate on GITHUB_REF (full "refs/tags/..." or "refs/heads/...") rather
+  # than GITHUB_REF_NAME — GitHub Actions sets GITHUB_REF_NAME as a
+  # default-env var the runner re-injects even when a step's env block
+  # tries to clear it with an empty string, so it would always read
+  # "main" on a main-branch push and falsely trigger this branch. Once
+  # we know it's a tag push from GITHUB_REF, GITHUB_REF_NAME holds the
+  # short tag name we want to use.
+  local is_tag_push=0
+  case "${GITHUB_REF:-}" in refs/tags/*) is_tag_push=1 ;; esac
+  if [ "$is_tag_push" = "1" ] && [ -n "${GITHUB_REF_NAME:-}" ]; then
     local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" --title "$GITHUB_REF_NAME")
     [ "$draft" = "true" ]      && flags+=(--draft)
     [ "$prerelease" = "true" ] && flags+=(--prerelease)
@@ -280,7 +293,7 @@ step_gh_release() {
     log "gh release create $GITHUB_REF_NAME ← $asset"
     in_nix gh release create "${flags[@]}"
   elif [ -z "$rolling_tag" ] || [ "$rolling_tag" = "null" ]; then
-    errlog "gh-release: neither rolling_tag set nor GITHUB_REF_NAME present — nothing to publish"
+    errlog "gh-release: neither rolling_tag set nor under a tag push — nothing to publish"
     exit 1
   fi
 }
