@@ -116,25 +116,15 @@ class AppDrawerSheetFragment : Fragment() {
         renderTabChips(chipRow)
         root.addView(tabsStrip)
 
-        // ── Section + action tile grid below.
-        val sectionTiles = Sections.all()
-            .filter { !it.isMasterIndex }
-            .map { sec ->
-                TileGridFragment.Tile(
-                    id      = "section:${sec.id}",
-                    label   = sec.label,
-                    iconRes = Sections.iconResFor(requireContext(), sec.iconName),
-                )
-            }
-        val actionTiles = Sections.homeActions().map { act ->
-            TileGridFragment.Tile(
-                id      = "action:${act.actionType}",
-                label   = act.label,
-                iconRes = Sections.iconResFor(requireContext(), act.iconName),
-            )
-        }
-        val title = getString(R.string.section_home)
-
+        // ── Grouped tile view, data-driven from build.json::ui.home_groups.
+        // Uses [HomeGroupedFragment] which renders one themed group per
+        // home_groups entry (Home / Comms / Infos / Suite / Tools / Configs
+        // …). Clicks fan out via the same TileGridFragment.TileClickListener
+        // contract MainActivity already implements, so deep-links like
+        // "section:wg" or "page:wg/config" land in the right place.
+        // The previous flat Sections.all() + homeActions() grid is
+        // replaced — home_groups is now the sole source of truth for the
+        // swipe-up Home Apps page.
         val host = FrameLayout(ctx).apply {
             id = R.id.app_drawer_grid_host
             layoutParams = LinearLayout.LayoutParams(
@@ -146,7 +136,7 @@ class AppDrawerSheetFragment : Fragment() {
         root.addView(host)
         if (s == null && childFragmentManager.findFragmentById(host.id) == null) {
             childFragmentManager.beginTransaction()
-                .replace(host.id, TileGridFragment.newInstance(title, sectionTiles + actionTiles))
+                .replace(host.id, HomeGroupedFragment.newInstance())
                 .commit()
         }
         return root
