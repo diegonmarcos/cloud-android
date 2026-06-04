@@ -127,22 +127,16 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
         iconRes: Int,
         palette: List<Pair<Int, Int>>,
     ) {
-        val slot = abs(tileId.hashCode()) % palette.size
-        val (bg, fg) = palette[slot]
-
+        // Plain monochrome look — matches every other tile surface in the
+        // app (TileGridFragment, drawer items, action chips). The previous
+        // hash-derived colored pill was visually noisy and didn't match
+        // the rest of the design system; the white icons + transparent
+        // pill let the grid read consistently with the section list.
         tileView.findViewById<TextView>(R.id.tile_label).text = label
-
-        // Pill-style rectangle (corner radius >> dimensions) so the icon
-        // background looks circular regardless of the tile's aspect ratio —
-        // OVAL distorts into an ellipse when the FrameLayout isn't square.
-        tileView.findViewById<FrameLayout>(R.id.tile_icon_bg).background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 1000f
-            setColor(bg)
-        }
+        tileView.findViewById<FrameLayout>(R.id.tile_icon_bg).background = null
         val icon = tileView.findViewById<ImageView>(R.id.tile_icon)
         icon.setImageResource(iconRes)
-        icon.imageTintList = ColorStateList.valueOf(fg)
+        icon.imageTintList = ColorStateList.valueOf(0xFFFFFFFF.toInt())
 
         val press = AnimationUtils.loadAnimation(requireContext(), R.anim.tile_press)
         tileView.setOnClickListener { v ->
@@ -152,16 +146,7 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
         }
     }
 
-    private fun tilePalette(ctx: Context): List<Pair<Int, Int>> = listOf(
-        ctx.col(R.color.tile_blue_bg)   to ctx.col(R.color.tile_blue_fg),
-        ctx.col(R.color.tile_green_bg)  to ctx.col(R.color.tile_green_fg),
-        ctx.col(R.color.tile_purple_bg) to ctx.col(R.color.tile_purple_fg),
-        ctx.col(R.color.tile_pink_bg)   to ctx.col(R.color.tile_pink_fg),
-        ctx.col(R.color.tile_orange_bg) to ctx.col(R.color.tile_orange_fg),
-        ctx.col(R.color.tile_teal_bg)   to ctx.col(R.color.tile_teal_fg),
-        ctx.col(R.color.tile_amber_bg)  to ctx.col(R.color.tile_amber_fg),
-        ctx.col(R.color.tile_indigo_bg) to ctx.col(R.color.tile_indigo_fg),
-    )
+    private fun tilePalette(ctx: Context): List<Pair<Int, Int>> = emptyList()
 
     @ColorInt
     private fun Context.col(id: Int): Int = ContextCompat.getColor(this, id)
