@@ -49,16 +49,26 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
 
         val inflater = LayoutInflater.from(ctx)
         val palette  = tilePalette(ctx)
-        // Per-mode icon selection: tiles can declare icon_apps /
-        // icon_admin overrides in build.json::ui.home_groups; we pick
-        // here so the right glyph lands on screen for the current mode.
+        // Per-mode icon selection. Section.iconForMode(mode) is the
+        // SOURCE OF TRUTH — when a tile points at `section:X`, we look
+        // the section up and resolve its mode-aware icon there, so the
+        // home_groups tile + the bottom-nav item + the drawer entry all
+        // render the SAME glyph for the same mode. For `page:S/P` tiles
+        // and free-form tiles the tile's own iconName is used.
         val mode = ModePrefs(ctx).mode
+        fun resolveTileIcon(tile: Sections.HomeTile): String {
+            if (tile.id.startsWith("section:")) {
+                val sid = tile.id.removePrefix("section:")
+                Sections.byId(sid)?.let { return it.iconForMode(mode) }
+            }
+            return tile.iconForMode(mode)
+        }
 
         data class Bucket(val title: String, val tiles: List<Triple<String, String, String>>)
 
         val buckets = mutableListOf<Bucket>()
         Sections.homeGroups().forEach { g ->
-            buckets += Bucket(g.title, g.tiles.map { Triple(it.id, it.label, it.iconForMode(mode)) })
+            buckets += Bucket(g.title, g.tiles.map { Triple(it.id, it.label, resolveTileIcon(it)) })
         }
         Sections.homeActions().takeIf { it.isNotEmpty() }?.let { acts ->
             buckets += Bucket(

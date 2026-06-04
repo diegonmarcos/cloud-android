@@ -18,6 +18,13 @@ object Sections {
         val id: String,
         val label: String,
         val iconName: String,
+        /** Optional per-mode icon overrides — when non-null, [iconForMode]
+         *  picks them over [iconName]. Lets Infos/Tools (and any other
+         *  mode-aware section) swap glyphs between Apps and Admin in the
+         *  bottom nav, drawer and Home Apps grid simultaneously.
+         *  Source: build.json::sections[*].icon_apps / icon_admin. */
+        val iconApps: String? = null,
+        val iconAdmin: String? = null,
         val module: String?,
         val bottomNav: Boolean,
         val isMasterIndex: Boolean,
@@ -37,7 +44,14 @@ object Sections {
         val stackShared: List<StackPanel> = emptyList(),
         val stackApps:   List<StackPanel> = emptyList(),
         val stackAdmin:  List<StackPanel> = emptyList(),
-    )
+    ) {
+        /** Pick the right icon for the user's current mode.
+         *  Apps vs Admin fall back to [iconName] when no override exists. */
+        fun iconForMode(mode: String): String = when (mode) {
+            "admin" -> iconAdmin ?: iconName
+            else    -> iconApps  ?: iconName
+        }
+    }
 
     /** One collapsable card in an [AggregatorStackFragment].
      *  `kind` dispatches to a body builder in that fragment. Unknown
@@ -373,6 +387,8 @@ object Sections {
                     id              = o.getString("id"),
                     label           = o.getString("label"),
                     iconName        = o.optString("icon", "ic_settings"),
+                    iconApps        = o.optString("icon_apps", "").takeIf { it.isNotBlank() },
+                    iconAdmin       = o.optString("icon_admin", "").takeIf { it.isNotBlank() },
                     module          = module,
                     bottomNav       = o.optBoolean("bottom_nav", false),
                     isMasterIndex   = o.optBoolean("is_master_index", false),

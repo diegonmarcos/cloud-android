@@ -201,9 +201,12 @@
         ]
       },
       {
+        "_doc_icons": "Per-mode icons: in Apps mode shows the everyday logs glyph; in Admin mode swaps to the C3-workflows glyph so the ops view reads as the workflows dashboard. Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode) — single source of truth.",
         "id": "infos",
         "label": "Infos",
         "icon": "ic_p_logs",
+        "icon_apps": "ic_p_logs",
+        "icon_admin": "ic_p_c3_workflows",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
@@ -381,9 +384,12 @@
         ]
       },
       {
+        "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
         "id": "tools",
         "label": "Tools",
         "icon": "ic_p_sol_tools",
+        "icon_apps": "ic_p_sol_tools",
+        "icon_admin": "ic_p_c3_stack",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
@@ -1354,12 +1360,9 @@
             "icon": "ic_chat"
           },
           {
-            "_doc": "Per-mode icons: apps shows the everyday logs glyph, admin swaps to the C3-workflows glyph so it reads as the ops-control entry-point.",
             "id": "section:infos",
             "label": "Infos",
-            "icon": "ic_p_logs",
-            "icon_apps": "ic_p_logs",
-            "icon_admin": "ic_p_c3_workflows"
+            "icon": "ic_p_logs"
           },
           {
             "id": "section:suite",
@@ -1367,12 +1370,9 @@
             "icon": "ic_suite"
           },
           {
-            "_doc": "Per-mode icons: apps shows the multi-tools (mymovies / mymusic / etc.) glyph; admin swaps to the C3-stack glyph so the ops view reads as the infra dashboard.",
             "id": "section:tools",
             "label": "Tools",
-            "icon": "ic_p_sol_tools",
-            "icon_apps": "ic_p_sol_tools",
-            "icon_admin": "ic_p_c3_stack"
+            "icon": "ic_p_sol_tools"
           }
         ]
       },

@@ -171,6 +171,11 @@ class MainActivity : AppCompatActivity(),
                 override fun onTabReselected(tab: TabLayout.Tab) {}
             })
 
+            // Apply mode-aware bottom-nav icons on init. Sections with
+            // icon_apps/icon_admin overrides will swap glyphs; the rest
+            // keep their bottom_nav.xml static icon.
+            refreshBottomNavIconsForMode()
+
             bottomNav.setOnItemSelectedListener { onBottomNavPicked(it) }
             bottomNav.setOnItemReselectedListener { item ->
                 val tappedSection = sectionIdForNavId(item.itemId)
@@ -1223,11 +1228,32 @@ class MainActivity : AppCompatActivity(),
         Haptics.tap(drawerLayout)
         modePrefs.toggle()
         refreshDynamicIsland()
+        // Bottom-nav icons can be mode-aware (Section.iconForMode); rebind
+        // here so Infos/Tools switch glyphs immediately without waiting
+        // for a process restart. Same data path drives the home_groups
+        // tiles + drawer rows.
+        refreshBottomNavIconsForMode()
         // Refresh any visible aggregator so its tiles re-render for the
         // new mode.
         if (currentSection.isNotEmpty()) {
             val sec = Sections.byId(currentSection)
             if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
+        }
+    }
+
+    /** Rebind bottom-nav menu items to their per-mode icons. Reads
+     *  Section.iconForMode(modePrefs.mode) for every nav_X item whose
+     *  matching section has icon_apps / icon_admin overrides; falls
+     *  back to the static icons declared in res/menu/bottom_nav.xml
+     *  when no override exists. Safe to call repeatedly. */
+    private fun refreshBottomNavIconsForMode() {
+        val mode = modePrefs.mode
+        for (i in 0 until bottomNav.menu.size()) {
+            val item = bottomNav.menu.getItem(i)
+            val sectionId = sectionIdForNavId(item.itemId) ?: continue
+            val section = Sections.byId(sectionId) ?: continue
+            val iconRes = Sections.iconResFor(this, section.iconForMode(mode))
+            if (iconRes != 0) item.setIcon(iconRes)
         }
     }
 

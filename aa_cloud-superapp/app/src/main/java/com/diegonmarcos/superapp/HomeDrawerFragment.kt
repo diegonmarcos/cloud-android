@@ -136,20 +136,30 @@ class HomeDrawerFragment : Fragment() {
         // surfaces is build.json::ui.home_groups — change there to
         // reshape both at once.
         val mode = ModePrefs(ctx).mode
+        // Icon resolution: when a tile's id is `section:X`, the section's
+        // iconForMode(mode) wins so drawer / bottom-nav / sheet all show
+        // the same glyph per mode. For `page:S/P` tiles the page's icon
+        // is used; everything else falls back to the tile's own icon.
+        fun iconForTile(tile: Sections.HomeTile): String {
+            if (tile.id.startsWith("section:")) {
+                Sections.byId(tile.id.removePrefix("section:"))?.let {
+                    return it.iconForMode(mode)
+                }
+            }
+            return tile.iconForMode(mode)
+        }
         for (group in Sections.homeGroups()) {
             val groupId = id++
             val sub = menu.addSubMenu(groupId, Menu.NONE, Menu.NONE, group.title)
             for (tile in group.tiles) {
                 val tileId = id++
                 val item = sub.add(groupId, tileId, Menu.NONE, tile.label)
-                Sections.iconResFor(ctx, tile.iconForMode(mode)).takeIf { it != 0 }
+                Sections.iconResFor(ctx, iconForTile(tile)).takeIf { it != 0 }
                     ?.let { item.setIcon(it) }
                 item.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
                 // Tile id format mirrors HomeGroupedFragment / MainActivity:
                 //   "section:<X>"        → switch to section X
                 //   "page:<sec>/<page>"  → deep-link to that page
-                // Anything else falls back to a section dispatch with the
-                // raw id so legacy entries don't lose their click target.
                 dispatch[tileId] = when {
                     tile.id.startsWith("section:") -> Target.Section(
                         tile.id.removePrefix("section:"), tile.label,
@@ -164,6 +174,27 @@ class HomeDrawerFragment : Fragment() {
                         ) else Target.Section(rest, tile.label)
                     }
                     else -> Target.Section(tile.id, tile.label)
+                }
+
+                // One extra depth level: when the tile is `section:X`,
+                // expand its first-level pages as indented siblings inside
+                // the same sub-menu. Each page becomes its own tappable
+                // MenuItem that deep-links to that page. `page:` tiles
+                // don't get expanded (they're already a leaf), and free-
+                // form tiles have no pages by definition.
+                if (tile.id.startsWith("section:")) {
+                    val sid = tile.id.removePrefix("section:")
+                    val section = Sections.byId(sid) ?: continue
+                    for (page in section.pages) {
+                        val pageItemId = id++
+                        val pageItem = sub.add(groupId, pageItemId, Menu.NONE, "    ${page.label}")
+                        page.iconName?.let {
+                            Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
+                                ?.let { r -> pageItem.setIcon(r) }
+                        }
+                        pageItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+                        dispatch[pageItemId] = Target.Page(section.id, page.id, page.label)
+                    }
                 }
             }
         }
