@@ -94,14 +94,19 @@ class HomeDrawerFragment : Fragment() {
                 modeTv.text  = "Mode: $modeLabel"
             }
             rebind()
-            // Tap anywhere EXCEPT the swap icon → open the Virtual
-            // Business Card screen (the swap icon swallows its own taps
-            // via its own listener below).
-            userRow.setOnClickListener {
+            // Narrower hit-target: only the round AVATAR (the circle with
+            // the initials) opens the Virtual Business Card. The rest of
+            // the userRow — name / email / mode text — is no longer
+            // tappable, so casual interaction with the drawer header
+            // doesn't accidentally trigger the BC screen.
+            avatar.isClickable = true
+            avatar.isFocusable  = true
+            avatar.setOnClickListener {
                 Haptics.tap(it)
                 (activity as? NavigationListener)?.onDrawerBusinessCardOpen()
             }
-            // Swap icon → flip Apps↔Admin. Doesn't propagate to userRow.
+            // Swap icon → flip Apps↔Admin. Independent tap target on
+            // the right side of the same row.
             swapBtn?.setOnClickListener {
                 Haptics.tap(it)
                 (activity as? NavigationListener)?.onDrawerModeToggle()
