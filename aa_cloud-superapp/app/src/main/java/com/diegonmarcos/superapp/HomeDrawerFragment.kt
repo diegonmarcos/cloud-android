@@ -128,52 +128,44 @@ class HomeDrawerFragment : Fragment() {
             dispatch[actId] = Target.Action(action.actionType)
         }
 
-        // Per-section group keeps NavigationView's automatic divider between
-        // sections AND lets the section title row itself be a tappable
-        // MenuItem (addSubMenu would render it as a non-clickable group
-        // header instead). Pages render as indented siblings within the
-        // same group — visual hierarchy via "    " prefix.
-        for (section in Sections.all().filter { !it.isMasterIndex }) {
+        // Drawer mirrors the swipe-up Home Apps view 1:1 — same
+        // `home_groups` schema, same per-group ordering, same tile ids.
+        // Each group becomes a NavigationView sub-menu whose title is
+        // rendered as a non-clickable section header; each tile under
+        // it is a clickable MenuItem. Single source of truth for both
+        // surfaces is build.json::ui.home_groups — change there to
+        // reshape both at once.
+        for (group in Sections.homeGroups()) {
             val groupId = id++
-
-            // Section title row — tappable, navigates to the section index.
-            val sectionItemId = id++
-            val sectionItem = menu.add(groupId, sectionItemId, Menu.NONE, section.label)
-            Sections.iconResFor(ctx, section.iconName).takeIf { it != 0 }
-                ?.let { sectionItem.setIcon(it) }
-            sectionItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-            dispatch[sectionItemId] = Target.Section(section.id, section.label)
-
-            // First-level pages only — section.pages, NOT page.subPages.
-            // Per user request the drawer expands one level deep so the
-            // site map stays scannable.
-            if (section.pages.isNotEmpty()) {
-                for (page in section.pages) {
-                    val pageItemId = id++
-                    val pageItem = menu.add(groupId, pageItemId, Menu.NONE, "    ${page.label}")
-                    page.iconName?.let {
-                        Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
-                            ?.let { r -> pageItem.setIcon(r) }
+            val sub = menu.addSubMenu(groupId, Menu.NONE, Menu.NONE, group.title)
+            for (tile in group.tiles) {
+                val tileId = id++
+                val item = sub.add(groupId, tileId, Menu.NONE, tile.label)
+                Sections.iconResFor(ctx, tile.iconName).takeIf { it != 0 }
+                    ?.let { item.setIcon(it) }
+                item.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+                // Tile id format mirrors HomeGroupedFragment / MainActivity:
+                //   "section:<X>"        → switch to section X
+                //   "page:<sec>/<page>"  → deep-link to that page
+                // Anything else falls back to a section dispatch with the
+                // raw id so legacy entries don't lose their click target.
+                dispatch[tileId] = when {
+                    tile.id.startsWith("section:") -> Target.Section(
+                        tile.id.removePrefix("section:"), tile.label,
+                    )
+                    tile.id.startsWith("page:") -> {
+                        val rest = tile.id.removePrefix("page:")
+                        val slash = rest.indexOf('/')
+                        if (slash > 0) Target.Page(
+                            rest.substring(0, slash),
+                            rest.substring(slash + 1),
+                            tile.label,
+                        ) else Target.Section(rest, tile.label)
                     }
-                    pageItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-                    dispatch[pageItemId] = Target.Page(section.id, page.id, page.label)
-                }
-            } else {
-                for ((idx, label) in section.defaultChildren.withIndex()) {
-                    val pageItemId = id++
-                    val pageItem = menu.add(groupId, pageItemId, Menu.NONE, "    $label")
-                    pageItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
-                    dispatch[pageItemId] = Target.Page(section.id, "child-$idx", label)
+                    else -> Target.Section(tile.id, tile.label)
                 }
             }
         }
-
-        // home_actions are NOT rendered here — those belong to the
-        // swipe-up Home Apps grid only (AppDrawerSheetFragment). The
-        // drawer surfaces sections (top) + home_drawer_prepend (very
-        // top, above sections); section-level shortcuts like Linktree
-        // live INSIDE their owning section (Tabs → Linktree page) so
-        // they're not duplicated as standalone drawer rows.
     }
 
     private fun onItemPicked(itemId: Int) {
