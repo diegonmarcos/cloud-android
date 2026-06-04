@@ -1005,6 +1005,11 @@
             "upstream": "WgImport"
           },
           {
+            "id": "config",
+            "label": "Config",
+            "icon": "ic_wg"
+          },
+          {
             "id": "settings",
             "label": "Settings",
             "icon": "ic_settings",
@@ -1134,11 +1139,6 @@
             "icon": "ic_settings"
           },
           {
-            "id": "wireguard",
-            "label": "WireGuard",
-            "icon": "ic_wg"
-          },
-          {
             "id": "update",
             "label": "Update",
             "icon": "ic_refresh",
@@ -1190,14 +1190,7 @@
     },
     "_doc_modes": "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). A URL-shaped action_type is launched via launchUri. Extend by adding entries here — never hardcoded in Kotlin.",
-    "home_actions": [
-      {
-        "id": "linktree",
-        "label": "Linktree",
-        "icon": "ic_tree",
-        "action_type": "https://linktree.diegonmarcos.com/"
-      }
-    ],
+    "home_actions": [],
     "_doc_home_drawer_prepend": "Drawer menu entries prepended ABOVE the first section. Same {label, icon, action_type} shape as home_actions; dispatched through MainActivity.dispatchHomeAction. Use for quick-access items that aren't tied to a single section — e.g. opening the swipe-up Home Apps sheet from the drawer too.",
     "home_drawer_prepend": [
       {
@@ -1350,10 +1343,35 @@
         "notes": "MIME attachments inside JMAP store"
       }
     ],
-    "_doc_home_groups": "Home master view is organised into themed groups (Communication / Infos / Others / C3) with section-titled rows of tiles. Each tile's `id` is either 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), driven by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
+    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Tools / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {
-        "title": "Communication",
+        "title": "Home",
+        "tiles": [
+          {
+            "id": "section:communication",
+            "label": "Comms",
+            "icon": "ic_chat"
+          },
+          {
+            "id": "section:infos",
+            "label": "Infos",
+            "icon": "ic_p_logs"
+          },
+          {
+            "id": "section:suite",
+            "label": "Suite",
+            "icon": "ic_suite"
+          },
+          {
+            "id": "section:tools",
+            "label": "Tools",
+            "icon": "ic_p_sol_tools"
+          }
+        ]
+      },
+      {
+        "title": "Comms",
         "tiles": [
           {
             "id": "section:mail",
@@ -1377,68 +1395,93 @@
         "tiles": [
           {
             "id": "section:cal",
-            "label": "Calendars",
+            "label": "Calendar",
             "icon": "ic_calendar"
           },
+          {
+            "id": "section:feed",
+            "label": "RSS",
+            "icon": "ic_rss"
+          }
+        ]
+      },
+      {
+        "title": "Suite",
+        "tiles": [
           {
             "id": "section:drive",
             "label": "Drive",
             "icon": "ic_drive"
           },
           {
-            "id": "section:feed",
-            "label": "RSS + ntfy",
-            "icon": "ic_rss"
-          }
-        ]
-      },
-      {
-        "title": "Others",
-        "tiles": [
-          {
-            "id": "page:solutions/professional",
-            "label": "Professional",
-            "icon": "ic_p_sol_pro"
-          },
-          {
-            "id": "page:solutions/personal",
-            "label": "Personal",
-            "icon": "ic_p_sol_personal"
-          },
-          {
-            "id": "page:solutions/tools",
-            "label": "Tools",
-            "icon": "ic_p_sol_tools"
-          },
-          {
-            "id": "page:solutions/cloud",
-            "label": "Cloud",
-            "icon": "ic_p_sol_cloud"
-          },
-          {
-            "id": "page:solutions/other",
-            "label": "Other",
-            "icon": "ic_p_sol_other"
-          }
-        ]
-      },
-      {
-        "title": "C3",
-        "tiles": [
-          {
-            "id": "page:c3/health",
-            "label": "Health",
-            "icon": "ic_p_c3_health"
-          },
-          {
-            "id": "page:wg/status",
-            "label": "WG mesh",
-            "icon": "ic_p_wg_tunnels"
-          },
-          {
             "id": "section:vault",
             "label": "Vault",
             "icon": "ic_vault"
+          }
+        ]
+      },
+      {
+        "title": "Tools",
+        "tiles": [
+          {
+            "id": "page:tools/mymovies",
+            "label": "Movies",
+            "icon": "ic_video"
+          },
+          {
+            "id": "page:tools/mymusic",
+            "label": "Music",
+            "icon": "ic_music"
+          },
+          {
+            "id": "page:tools/mymaps",
+            "label": "Maps",
+            "icon": "ic_maps"
+          },
+          {
+            "id": "page:tools/myphotos",
+            "label": "Photos",
+            "icon": "ic_photos"
+          },
+          {
+            "id": "page:tools/myanalytics",
+            "label": "Analytics",
+            "icon": "ic_p_logs"
+          }
+        ]
+      },
+      {
+        "title": "Configs",
+        "tiles": [
+          {
+            "id": "page:config/profile",
+            "label": "Profile",
+            "icon": "ic_settings"
+          },
+          {
+            "id": "section:wg",
+            "label": "WireGuard",
+            "icon": "ic_wg"
+          },
+          {
+            "id": "section:tabs",
+            "label": "Tabs",
+            "icon": "ic_mode_apps"
+          },
+          {
+            "id": "page:config/update",
+            "label": "Update",
+            "icon": "ic_refresh"
+          },
+          {
+            "id": "page:config/import",
+            "label": "Import",
+            "icon": "ic_p_import"
+          },
+          {
+            "id": "page:config/about",
+            "label": "About",
+            "icon": "ic_settings"
           }
         ]
       }
