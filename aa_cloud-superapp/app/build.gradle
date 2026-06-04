@@ -3,6 +3,10 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Capture wall-clock start so we can emit gradle's config-phase
+// elapsed time as a geeky data point in the About page below.
+def gradleScriptStartMs = System.currentTimeMillis()
+
 // Data-driven version code + name. Base from build.json; CI bumps via
 // GITHUB_RUN_NUMBER so every push monotonically increases the version code
 // (Android PackageInstaller refuses updates with non-increasing versionCode).
@@ -99,6 +103,88 @@ def wgIfMtu         = (wgDefault.interface_mtu            ?: '').toString()
 def wgPeersJson     = groovy.json.JsonOutput.toJson(wgDefault.peers ?: [])
 def wgPeersB64      = wgPeersJson.bytes.encodeBase64().toString()
 
+// ── Stack scan ────────────────────────────────────────────────────────
+// Data-driven snapshot of "what's inside this APK" for Configs → About →
+// Stack. Computed from the actual repository contents at config time —
+// no hardcoded list to drift. Two derived JSON blobs are baked into
+// BuildConfig:
+//   • UI_STACK_LANGUAGES_JSON_B64 — {language: {files, loc}} by extension
+//   • UI_STACK_FRAMEWORKS_JSON_B64 — sorted unique deps from every
+//     *.gradle in the repo (deduped, project(':...') skipped)
+def repoRoot = rootDir.parentFile  // ea_cloud-superapp/
+
+// Friendly-name table: filename extension → language label. Anything not
+// listed here is ignored (build outputs, generated sources, .lock, etc.).
+def stackExtMap = [
+    "kt"     : "Kotlin",
+    "java"   : "Java",
+    "go"     : "Go (libwg-go)",
+    "c"      : "C (ndk-compat)",
+    "h"      : "C headers",
+    "xml"    : "XML (resources/manifest)",
+    "json"   : "JSON (config)",
+    "gradle" : "Gradle (Groovy)",
+    "kts"    : "Gradle (Kotlin DSL)",
+    "groovy" : "Groovy",
+    "sh"     : "Shell",
+    "md"     : "Markdown",
+    "nix"    : "Nix",
+    "yml"    : "YAML",
+    "yaml"   : "YAML",
+    "pro"    : "ProGuard",
+]
+// Roots we count: app source, every libs/* source, root build/config.
+def stackRoots = [
+    new File(rootDir, "app/src/main"),
+    new File(repoRoot, "libs"),
+    new File(repoRoot, "build.json"),
+    rootDir,                         // app/build.gradle, app/proguard
+]
+// Directories we skip (no point counting generated / external code).
+def stackSkipDirs = [
+    "build", ".gradle", ".idea", "dist", ".result",
+    "libs/net/src/main/cpp/libwg-go/generated-src",
+]
+def stackStats = [:]  // ext -> [files: N, loc: M]
+stackRoots.each { root ->
+    if (!root.exists()) return
+    root.eachFileRecurse { f ->
+        if (!f.isFile()) return
+        def rel = f.absolutePath.replace(rootDir.absolutePath + "/", "")
+        if (stackSkipDirs.any { rel.startsWith(it) || rel.contains("/${it}/") }) return
+        def ext = f.name.tokenize(".").last().toLowerCase()
+        def label = stackExtMap[ext]
+        if (label == null) return
+        def loc = 0
+        try { loc = f.readLines("UTF-8").size() } catch (Throwable t) { return }
+        def bucket = stackStats[label] ?: [files: 0, loc: 0]
+        bucket.files += 1
+        bucket.loc   += loc
+        stackStats[label] = bucket
+    }
+}
+def stackLanguagesJson = groovy.json.JsonOutput.toJson(stackStats)
+def stackLanguagesB64  = stackLanguagesJson.bytes.encodeBase64().toString()
+
+// Framework scan: walk every *.gradle in this app/ + libs/, harvest
+// `implementation`/`api`/`compileOnly` lines whose argument is a Maven
+// coordinate (group:artifact:version). Skip `project(':libs:...')`
+// entries — those are internal modules already covered by the module list.
+def stackDeps = new TreeSet()
+def depPattern = ~/\b(implementation|api|compileOnly|runtimeOnly|annotationProcessor|kapt)\s*[\(\s]\s*['"]([^'":]+:[^'":]+:[^'"]+)['"]/
+def gradleSearchRoots = [rootDir, new File(repoRoot, "libs"), new File(repoRoot, "ea_cloud-superapp")]
+gradleSearchRoots.findAll { it.exists() }.each { root ->
+    root.eachFileRecurse { f ->
+        if (!f.isFile()) return
+        if (!(f.name.endsWith(".gradle") || f.name.endsWith(".gradle.kts"))) return
+        def text = ""
+        try { text = f.text } catch (Throwable t) { return }
+        depPattern.matcher(text).each { m -> stackDeps.add(m[2]) }
+    }
+}
+def stackFrameworksJson = groovy.json.JsonOutput.toJson(stackDeps.toList())
+def stackFrameworksB64  = stackFrameworksJson.bytes.encodeBase64().toString()
+
 android {
     namespace 'com.diegonmarcos.superapp'
     compileSdk 34
@@ -140,6 +226,14 @@ android {
         buildConfigField "String", "UI_WG_INTERFACE_LISTEN_PORT",    "\"${wgIfListenPort}\""
         buildConfigField "String", "UI_WG_INTERFACE_MTU",            "\"${wgIfMtu}\""
         buildConfigField "String", "UI_WG_PEERS_JSON_B64",           "\"${wgPeersB64}\""
+        // Stack scan results — bakes the source-of-truth at build time so
+        // the About → Stack section doesn't have to ship a static manifest.
+        buildConfigField "String", "UI_STACK_LANGUAGES_JSON_B64",    "\"${stackLanguagesB64}\""
+        buildConfigField "String", "UI_STACK_FRAMEWORKS_JSON_B64",   "\"${stackFrameworksB64}\""
+        // Wall-clock elapsed for app/build.gradle's config phase. Only a
+        // partial picture (assemble runs after this gets baked), but a
+        // reasonable proxy for "is the build getting slower over time".
+        buildConfigField "long",   "STACK_GRADLE_CONFIG_MS",         "${System.currentTimeMillis() - gradleScriptStartMs}L"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

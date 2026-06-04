@@ -810,6 +810,75 @@ class DevControlFragment : Fragment() {
             }
         }
 
+        section(ctx, column, "Stack") {
+            // Languages — decode the base64 JSON blob the build emitted.
+            // Format: {"Kotlin":{"files":N,"loc":M}, …}
+            it.addView(small(ctx, "What's actually inside this APK — scanned by the build, never a hardcoded list."))
+            val langB64 = BuildConfig.UI_STACK_LANGUAGES_JSON_B64
+            val langJson = runCatching { String(android.util.Base64.decode(langB64, android.util.Base64.DEFAULT)) }.getOrDefault("{}")
+            val langs = runCatching {
+                val o = org.json.JSONObject(langJson)
+                val list = mutableListOf<Triple<String, Int, Int>>()
+                val it2 = o.keys()
+                while (it2.hasNext()) {
+                    val k = it2.next()
+                    val v = o.optJSONObject(k) ?: continue
+                    list += Triple(k, v.optInt("files", 0), v.optInt("loc", 0))
+                }
+                list.sortedByDescending { tr -> tr.third }
+            }.getOrDefault(emptyList())
+            val totalLoc = langs.sumOf { tr -> tr.third }
+            val totalFiles = langs.sumOf { tr -> tr.second }
+            row(ctx, it, "Total LOC",   "%,d lines".format(totalLoc))
+            row(ctx, it, "Total files", totalFiles.toString())
+            for ((lang, files, loc) in langs) {
+                val pct = if (totalLoc > 0) " (%d%%)".format(loc * 100 / totalLoc) else ""
+                row(ctx, it, lang, "%,d lines · %d file(s)%s".format(loc, files, pct))
+            }
+
+            // Frameworks — sorted unique Maven coordinates that the
+            // gradle scripts depend on. Internal :libs:* are skipped.
+            it.addView(small(ctx, "Frameworks (Maven coordinates from every *.gradle in the repo):"))
+            val fwB64 = BuildConfig.UI_STACK_FRAMEWORKS_JSON_B64
+            val fwJson = runCatching { String(android.util.Base64.decode(fwB64, android.util.Base64.DEFAULT)) }.getOrDefault("[]")
+            val frameworks = runCatching {
+                val arr = org.json.JSONArray(fwJson)
+                (0 until arr.length()).map { i -> arr.getString(i) }
+            }.getOrDefault(emptyList())
+            row(ctx, it, "Dep count", frameworks.size.toString())
+            for (dep in frameworks) {
+                // Strip the version off the front for terseness; show
+                // "group:artifact" with version on a second row.
+                val parts = dep.split(":")
+                val head = if (parts.size >= 2) "${parts[0]}:${parts[1]}" else dep
+                val ver  = if (parts.size >= 3) parts[2] else "?"
+                row(ctx, it, head, ver)
+            }
+
+            // Local internal modules — derived from build.json::modules.
+            it.addView(small(ctx, "Internal modules (build.json::modules, project(':libs:*')):"))
+            // Modules are part of buildJson::modules but we don't have it
+            // here — list nativeLibraryDir contents (per-ABI native libs)
+            // instead, which is its own useful "what's in here" line.
+            val pm2 = ctxAny().packageManager
+            @Suppress("DEPRECATION")
+            val ai = pm2.getPackageInfo(ctxAny().packageName, 0).applicationInfo
+            val splits = ai.splitSourceDirs
+            row(ctx, it, "Base APK", File(ai.sourceDir).name + " · " + sizeStr(File(ai.sourceDir).length()))
+            splits?.forEach { s ->
+                row(ctx, it, "Split", File(s).name + " · " + sizeStr(File(s).length()))
+            }
+
+            // Build-time metrics. STACK_GRADLE_CONFIG_MS is the elapsed
+            // time of app/build.gradle's config phase (NOT the full
+            // Gradle+AGP build — that's only readable in GHA logs).
+            it.addView(small(ctx, "Build metrics (this APK):"))
+            row(ctx, it, "Gradle config phase", "%d ms".format(BuildConfig.STACK_GRADLE_CONFIG_MS))
+            row(ctx, it, "Build SHA", BuildConfig.GIT_SHORT_SHA)
+            row(ctx, it, "Built UTC", BuildConfig.BUILD_TIMESTAMP)
+            it.addView(small(ctx, "Full assemble + native-build duration lives in GitHub Actions — open the run on github.com/diegonmarcos/unix/actions for the wall-clock number."))
+        }
+
         section(ctx, column, "Locale & time") {
             val locales = if (android.os.Build.VERSION.SDK_INT >= 24)
                 (0 until resources.configuration.locales.size()).joinToString(", ") {
