@@ -49,12 +49,16 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
 
         val inflater = LayoutInflater.from(ctx)
         val palette  = tilePalette(ctx)
+        // Per-mode icon selection: tiles can declare icon_apps /
+        // icon_admin overrides in build.json::ui.home_groups; we pick
+        // here so the right glyph lands on screen for the current mode.
+        val mode = ModePrefs(ctx).mode
 
         data class Bucket(val title: String, val tiles: List<Triple<String, String, String>>)
 
         val buckets = mutableListOf<Bucket>()
         Sections.homeGroups().forEach { g ->
-            buckets += Bucket(g.title, g.tiles.map { Triple(it.id, it.label, it.iconName) })
+            buckets += Bucket(g.title, g.tiles.map { Triple(it.id, it.label, it.iconForMode(mode)) })
         }
         Sections.homeActions().takeIf { it.isNotEmpty() }?.let { acts ->
             buckets += Bucket(
@@ -63,13 +67,18 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
             )
         }
 
+        // Fixed-height rows (in dp). With 5 cols this keeps icon + label
+        // legible at all group sizes. Container ScrollView handles overflow
+        // when total content exceeds the visible area.
+        val rowHeightPx = (96 * resources.displayMetrics.density).toInt()
+
         for (bucket in buckets) {
             addGroupHeader(root, inflater, bucket.title)
 
-            val rowCount = ceil(bucket.tiles.size.toDouble() / COLS).toInt().coerceAtLeast(1)
             val rowsContainer = LinearLayout(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 0, rowCount.toFloat(),
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
                 orientation = LinearLayout.VERTICAL
             }
@@ -78,7 +87,7 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
             while (i < bucket.tiles.size) {
                 val row = LinearLayout(ctx).apply {
                     layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f,
+                        ViewGroup.LayoutParams.MATCH_PARENT, rowHeightPx,
                     )
                     orientation = LinearLayout.HORIZONTAL
                     weightSum = COLS.toFloat()
@@ -88,8 +97,9 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
                     if (i + c < bucket.tiles.size) {
                         val (id, label, iconName) = bucket.tiles[i + c]
                         val tileView = inflater.inflate(R.layout.item_tile, row, false)
-                        // Override the static 128dp from item_tile.xml so the
-                        // tile fills the row — that's how the grid scales.
+                        // Tile width = column weight; height = fixed
+                        // (matches the row), so labels render at their
+                        // intended autoSize range without being squashed.
                         tileView.layoutParams = LinearLayout.LayoutParams(
                             0, ViewGroup.LayoutParams.MATCH_PARENT, 1f,
                         ).apply {

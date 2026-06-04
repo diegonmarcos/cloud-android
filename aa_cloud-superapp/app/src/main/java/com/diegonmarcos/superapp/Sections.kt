@@ -124,8 +124,23 @@ object Sections {
     data class Sample(val title: String, val subtitle: String)
 
     /** A grouped Home tile — `id` is "section:<X>" or "page:<sec>/<page>",
-     *  same format MainActivity.onTileClicked already understands. */
-    data class HomeTile(val id: String, val label: String, val iconName: String)
+     *  same format MainActivity.onTileClicked already understands.
+     *  iconApps / iconAdmin are optional per-mode overrides; null falls
+     *  back to iconName. Resolve via [HomeTile.iconForMode] at render time. */
+    data class HomeTile(
+        val id: String,
+        val label: String,
+        val iconName: String,
+        val iconApps: String? = null,
+        val iconAdmin: String? = null,
+    ) {
+        /** Pick the right icon for the user's current mode. Apps vs Admin
+         *  fall back to the unconditional iconName when no override exists. */
+        fun iconForMode(mode: String): String = when (mode) {
+            "admin" -> iconAdmin ?: iconName
+            else    -> iconApps  ?: iconName  // "apps" or anything else
+        }
+    }
     data class HomeGroup(val title: String, val tiles: List<HomeTile>)
 
     /** wg-mesh/v1 node — one row in the WG mesh status table. */
@@ -532,9 +547,11 @@ object Sections {
                 val t = tilesArr.getJSONObject(j)
                 tiles.add(
                     HomeTile(
-                        id       = t.getString("id"),
-                        label    = t.getString("label"),
-                        iconName = t.optString("icon", "ic_settings"),
+                        id        = t.getString("id"),
+                        label     = t.getString("label"),
+                        iconName  = t.optString("icon", "ic_settings"),
+                        iconApps  = t.optString("icon_apps", "").takeIf { it.isNotBlank() },
+                        iconAdmin = t.optString("icon_admin", "").takeIf { it.isNotBlank() },
                     )
                 )
             }

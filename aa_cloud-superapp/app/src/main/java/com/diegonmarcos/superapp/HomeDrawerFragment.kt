@@ -135,13 +135,14 @@ class HomeDrawerFragment : Fragment() {
         // it is a clickable MenuItem. Single source of truth for both
         // surfaces is build.json::ui.home_groups — change there to
         // reshape both at once.
+        val mode = ModePrefs(ctx).mode
         for (group in Sections.homeGroups()) {
             val groupId = id++
             val sub = menu.addSubMenu(groupId, Menu.NONE, Menu.NONE, group.title)
             for (tile in group.tiles) {
                 val tileId = id++
                 val item = sub.add(groupId, tileId, Menu.NONE, tile.label)
-                Sections.iconResFor(ctx, tile.iconName).takeIf { it != 0 }
+                Sections.iconResFor(ctx, tile.iconForMode(mode)).takeIf { it != 0 }
                     ?.let { item.setIcon(it) }
                 item.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
                 // Tile id format mirrors HomeGroupedFragment / MainActivity:

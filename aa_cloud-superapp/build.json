@@ -1354,9 +1354,12 @@
             "icon": "ic_chat"
           },
           {
+            "_doc": "Per-mode icons: apps shows the everyday logs glyph, admin swaps to the C3-workflows glyph so it reads as the ops-control entry-point.",
             "id": "section:infos",
             "label": "Infos",
-            "icon": "ic_p_logs"
+            "icon": "ic_p_logs",
+            "icon_apps": "ic_p_logs",
+            "icon_admin": "ic_p_c3_workflows"
           },
           {
             "id": "section:suite",
@@ -1364,9 +1367,12 @@
             "icon": "ic_suite"
           },
           {
+            "_doc": "Per-mode icons: apps shows the multi-tools (mymovies / mymusic / etc.) glyph; admin swaps to the C3-stack glyph so the ops view reads as the infra dashboard.",
             "id": "section:tools",
             "label": "Tools",
-            "icon": "ic_p_sol_tools"
+            "icon": "ic_p_sol_tools",
+            "icon_apps": "ic_p_sol_tools",
+            "icon_admin": "ic_p_c3_stack"
           }
         ]
       },
@@ -1417,6 +1423,11 @@
             "id": "section:vault",
             "label": "Vault",
             "icon": "ic_vault"
+          },
+          {
+            "id": "section:tabs",
+            "label": "Tabs",
+            "icon": "ic_mode_apps"
           }
         ]
       },
@@ -1462,11 +1473,6 @@
             "id": "section:wg",
             "label": "WireGuard",
             "icon": "ic_wg"
-          },
-          {
-            "id": "section:tabs",
-            "label": "Tabs",
-            "icon": "ic_mode_apps"
           },
           {
             "id": "page:config/update",
