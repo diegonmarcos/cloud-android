@@ -192,7 +192,15 @@ class HomeDrawerFragment : Fragment() {
                     val section = Sections.byId(sid) ?: continue
                     for (page in section.pages) {
                         val pageItemId = id++
-                        val pageItem = sub.add(groupId, pageItemId, Menu.NONE, "    ${page.label}")
+                        // Visual indent so children read clearly as
+                        // children of their parent tile. NBSP (U+00A0) is
+                        // used instead of regular spaces because
+                        // NavigationView's MenuItem title trims/collapses
+                        // leading whitespace in some Material themes;
+                        // NBSP survives that. The "└─" prefix + extra
+                        // indent matches a typical tree-view visual.
+                        val indented = "      └─── ${page.label}"
+                        val pageItem = sub.add(groupId, pageItemId, Menu.NONE, indented)
                         page.iconName?.let {
                             Sections.iconResFor(ctx, it).takeIf { r -> r != 0 }
                                 ?.let { r -> pageItem.setIcon(r) }
