@@ -31,6 +31,13 @@ import java.util.TimeZone
  */
 class DevControlFragment : Fragment() {
 
+    /** Accumulator that mirrors everything written to the UI by
+     *  [title] / [section] / [row] + the inline folder-tree block, so
+     *  the "Copy All Infos" button at the bottom can dump the whole
+     *  page to the clipboard as plain text. Reset at the start of
+     *  every onCreateView so it stays in sync after a reattach. */
+    private var infoBuf = StringBuilder()
+
     /** Standard permission request — wired to the Notifications button
      *  in the Permissions section. Re-renders the fragment on result so
      *  the row's ✓ / ✗ updates without a manual refresh. */
@@ -182,6 +189,7 @@ class DevControlFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
+        infoBuf = StringBuilder()
         val scroll = ScrollView(ctx).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -892,6 +900,7 @@ class DevControlFragment : Fragment() {
             val treeB64 = BuildConfig.UI_STACK_FOLDER_TREE_B64
             val treeStr = runCatching { String(android.util.Base64.decode(treeB64, android.util.Base64.DEFAULT)) }
                 .getOrDefault("—")
+            infoBuf.append("\n```\n").append(treeStr).append("\n```\n")
             it.addView(TextView(ctx).apply {
                 text = treeStr
                 setTextColor(0xFFE9D8FD.toInt())
@@ -926,12 +935,27 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Booted",   fmtMillis(bootWall))
             row(ctx, it, "System uptime", fmtDuration(android.os.SystemClock.elapsedRealtime()))
         }
+
+        // Tail-anchor: snapshot the entire About page to the clipboard.
+        // The accumulator [infoBuf] is filled during render by every
+        // title / section / row helper + the inline folder-tree block,
+        // so this captures whatever was actually drawn — no parallel
+        // data collection to keep in sync.
+        column.addView(actionButton(ctx, "Copy All Infos") {
+            val snapshot = infoBuf.toString()
+            copy(ctx, snapshot)
+            Toast.makeText(ctx,
+                "Copied ${snapshot.length} chars (${snapshot.count { it == '\n' }} lines)",
+                Toast.LENGTH_SHORT).show()
+        })
+
         return scroll
     }
 
     // ── helpers ──────────────────────────────────────────────────────
 
     private fun section(ctx: Context, host: LinearLayout, head: String, body: (LinearLayout) -> Unit) {
+        infoBuf.append("\n## ").append(head).append("\n")
         host.addView(sectionHeader(ctx, head))
         val grp = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -942,6 +966,7 @@ class DevControlFragment : Fragment() {
     }
 
     private fun row(ctx: Context, host: LinearLayout, key: String, value: String) {
+        infoBuf.append("  ").append(key).append(": ").append(value).append("\n")
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(4), 0, dp(4))
@@ -968,6 +993,7 @@ class DevControlFragment : Fragment() {
     }
 
     private fun title(ctx: Context, text: String) = TextView(ctx).apply {
+        infoBuf.append("# ").append(text).append("\n")
         this.text = text
         setTextColor(0xFFE9D8FD.toInt())
         typeface = Typeface.DEFAULT_BOLD
