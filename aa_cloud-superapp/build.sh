@@ -383,7 +383,7 @@ step_sync_net() {
 }
 
 # ── step_refresh_tree ─────────────────────────────────────────────────
-# Snapshot the L2 folder topology of every ea_* sibling clone under
+# Snapshot the L3 folder topology of every ea_* sibling clone under
 # ~/git/unix/ and write to data/folder-tree.txt. Re-run whenever the
 # topology of an upstream changes (or whenever a new sibling gets
 # cloned). The file is read by app/build.gradle at config time and
@@ -427,8 +427,25 @@ step_refresh_tree() {
       local prefix2="│   "; [ "$last1" = "true" ] && prefix2="    "
       for c in "${children[@]}"; do
         j=$((j + 1))
-        local head2="├── "; [ "$j" = "$m" ] && head2="└── "
+        local last2="false"; [ "$j" = "$m" ] && last2="true"
+        local head2="├── "; [ "$last2" = "true" ] && head2="└── "
         echo "${prefix2}${head2}${c}/"
+        # L3 grand-children — direct sub-dirs of this depth-2 dir.
+        # Skip the same set of build/output dirs as depth-2.
+        local grand=()
+        while IFS= read -r g; do grand+=("$g"); done < <(
+          find "$unix_root/$sib/$c" -mindepth 1 -maxdepth 1 -type d \
+            ! -name '.*' ! -name 'build' ! -name 'dist' ! -name 'node_modules' \
+            ! -name '.gradle' ! -name '.result' -printf '%f\n' | sort
+        )
+        local p="${#grand[@]}"
+        local k=0
+        local prefix3="${prefix2}│   "; [ "$last2" = "true" ] && prefix3="${prefix2}    "
+        for g in "${grand[@]}"; do
+          k=$((k + 1))
+          local head3="├── "; [ "$k" = "$p" ] && head3="└── "
+          echo "${prefix3}${head3}${g}/"
+        done
       done
     done
   } > "$out"

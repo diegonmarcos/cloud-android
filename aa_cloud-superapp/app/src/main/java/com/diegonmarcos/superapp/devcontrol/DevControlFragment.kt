@@ -888,7 +888,7 @@ class DevControlFragment : Fragment() {
 
             // Folder tree — 2 levels under ~/git/unix/, showing every
             // ea_* sibling clone and its immediate sub-dirs.
-            it.addView(small(ctx, "Folder tree (depth 2, ea_* siblings only):"))
+            it.addView(small(ctx, "Folder tree (depth 3, ea_* siblings only):"))
             val treeB64 = BuildConfig.UI_STACK_FOLDER_TREE_B64
             val treeStr = runCatching { String(android.util.Base64.decode(treeB64, android.util.Base64.DEFAULT)) }
                 .getOrDefault("—")

@@ -2,49 +2,98 @@ unix/
 ├── ea_______________________________/
 ├── ea_cal-davx5/
 │   ├── app-ose/
+│   │   └── src/
 │   ├── core/
+│   │   ├── schemas/
+│   │   └── src/
 │   ├── doc/
 │   ├── fastlane/
+│   │   └── metadata/
 │   ├── gradle/
+│   │   └── wrapper/
 │   ├── scripts/
 │   └── synctools/
+│       ├── opentasks-contract/
+│       └── src/
 ├── ea_cloud-superapp/
 │   ├── app/
+│   │   ├── keystores/
+│   │   └── src/
 │   ├── data/
 │   └── libs/
+│       ├── cal/
+│       ├── chat/
+│       ├── core/
+│       ├── feed/
+│       ├── mail/
+│       ├── net/
+│       ├── ops/
+│       ├── updater/
+│       └── vault/
 ├── ea_feed-feeder/
 │   ├── app/
+│   │   ├── libs/
+│   │   ├── schemas/
+│   │   └── src/
 │   ├── ci/
 │   ├── fastlane/
+│   │   └── metadata/
 │   ├── gradle/
+│   │   └── wrapper/
 │   ├── graphics/
 │   └── scripts/
 ├── ea_mail-fairmail/
 │   ├── app/
+│   │   ├── lib/
+│   │   ├── schemas/
+│   │   └── src/
 │   ├── colorpicker/
+│   │   └── src/
 │   ├── decrypt/
 │   ├── eml/
 │   ├── gradle/
+│   │   └── wrapper/
 │   ├── images/
 │   ├── metadata/
+│   │   ├── de-DE/
+│   │   ├── en-US/
+│   │   └── ru/
 │   ├── oauth/
 │   ├── openpgp-api/
+│   │   └── src/
 │   ├── patches/
 │   ├── privacy/
 │   ├── screenshots/
+│   │   └── amazon/
 │   ├── tools/
 │   └── tutorials/
+│       └── images/
 ├── ea_net-wireguard/
 │   ├── gradle/
+│   │   └── wrapper/
 │   ├── tunnel/
+│   │   ├── src/
+│   │   └── tools/
 │   └── ui/
+│       ├── sampledata/
+│       └── src/
 └── ea_vault-keepassdx/
     ├── app/
+    │   ├── schemas/
+    │   └── src/
     ├── art/
     ├── crypto/
+    │   └── src/
     ├── database/
+    │   └── src/
     ├── fastlane/
+    │   └── metadata/
     ├── gradle/
+    │   └── wrapper/
     ├── icon-pack/
+    │   ├── classic/
+    │   ├── material/
+    │   └── src/
     ├── LICENSES/
     └── src/
+        └── libre/
