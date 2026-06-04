@@ -300,8 +300,12 @@ class MainActivity : AppCompatActivity(),
             })
     }
 
-    /** Open the app drawer on swipe-up (only while on Home), close it on
-     *  swipe-down. Returns true if the gesture was consumed. */
+    /** Open the app drawer on swipe-up while on Home. Swipe-down is
+     *  intentionally NOT bound — it was conflicting with normal in-app
+     *  navigation (scrolling lists, pull-to-refresh, sheet-close all
+     *  fighting for the same gesture). The Home Apps sheet still
+     *  closes via the back button or back gesture. Returns true if
+     *  the gesture was consumed. */
     private fun handleVerticalFling(dy: Float): Boolean {
         // Some fragments (browser/WebView in detail mode etc.) need to
         // own vertical flings — let the inner content scroll, pull-to-
@@ -321,13 +325,11 @@ class MainActivity : AppCompatActivity(),
             dy < 0 && currentSection == "home" && !sheetIsUp -> {
                 openAppDrawerSheet(); true
             }
-            dy > 0 && sheetIsUp -> {
-                supportFragmentManager.popBackStack(
-                    AppDrawerSheetFragment.BACK_STACK_TAG,
-                    androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
-                )
-                true
-            }
+            // swipe-down (dy > 0) was here to close the sheet — removed
+            // because it was firing during normal scroll inside the sheet
+            // and inside section pages, making lists feel sticky and
+            // dismissing the sheet unintentionally. Back button / system
+            // back-gesture remain as the explicit close path.
             else -> false
         }
     }
