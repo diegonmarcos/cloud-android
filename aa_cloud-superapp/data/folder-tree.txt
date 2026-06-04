@@ -1,0 +1,50 @@
+unix/
+├── ea_______________________________/
+├── ea_cal-davx5/
+│   ├── app-ose/
+│   ├── core/
+│   ├── doc/
+│   ├── fastlane/
+│   ├── gradle/
+│   ├── scripts/
+│   └── synctools/
+├── ea_cloud-superapp/
+│   ├── app/
+│   ├── data/
+│   └── libs/
+├── ea_feed-feeder/
+│   ├── app/
+│   ├── ci/
+│   ├── fastlane/
+│   ├── gradle/
+│   ├── graphics/
+│   └── scripts/
+├── ea_mail-fairmail/
+│   ├── app/
+│   ├── colorpicker/
+│   ├── decrypt/
+│   ├── eml/
+│   ├── gradle/
+│   ├── images/
+│   ├── metadata/
+│   ├── oauth/
+│   ├── openpgp-api/
+│   ├── patches/
+│   ├── privacy/
+│   ├── screenshots/
+│   ├── tools/
+│   └── tutorials/
+├── ea_net-wireguard/
+│   ├── gradle/
+│   ├── tunnel/
+│   └── ui/
+└── ea_vault-keepassdx/
+    ├── app/
+    ├── art/
+    ├── crypto/
+    ├── database/
+    ├── fastlane/
+    ├── gradle/
+    ├── icon-pack/
+    ├── LICENSES/
+    └── src/

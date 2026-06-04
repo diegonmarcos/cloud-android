@@ -869,14 +869,38 @@ class DevControlFragment : Fragment() {
                 row(ctx, it, "Split", File(s).name + " · " + sizeStr(File(s).length()))
             }
 
-            // Build-time metrics. STACK_GRADLE_CONFIG_MS is the elapsed
-            // time of app/build.gradle's config phase (NOT the full
-            // Gradle+AGP build — that's only readable in GHA logs).
-            it.addView(small(ctx, "Build metrics (this APK):"))
+            // Build-time metrics. Avg/last numbers come from `gh run
+            // list` at gradle config time — full wall-clock from queue
+            // to "completed" of the GHA `ship-cloud-superapp.yml`
+            // workflow, sampling the most-recent N successful runs.
+            it.addView(small(ctx, "Build metrics (from GitHub Actions history):"))
+            fun fmtSecs(s: Long): String = when {
+                s < 0     -> "—"
+                s < 60    -> "${s}s"
+                s < 3600  -> "%dm %02ds".format(s / 60, s % 60)
+                else      -> "%dh %02dm".format(s / 3600, (s % 3600) / 60)
+            }
+            row(ctx, it, "Build avg time", fmtSecs(BuildConfig.STACK_BUILD_AVG_SECS) +
+                if (BuildConfig.STACK_BUILD_SAMPLE > 0) " (n=${BuildConfig.STACK_BUILD_SAMPLE})" else "")
+            row(ctx, it, "Build last",     fmtSecs(BuildConfig.STACK_BUILD_LAST_SECS))
             row(ctx, it, "Gradle config phase", "%d ms".format(BuildConfig.STACK_GRADLE_CONFIG_MS))
-            row(ctx, it, "Build SHA", BuildConfig.GIT_SHORT_SHA)
-            row(ctx, it, "Built UTC", BuildConfig.BUILD_TIMESTAMP)
-            it.addView(small(ctx, "Full assemble + native-build duration lives in GitHub Actions — open the run on github.com/diegonmarcos/unix/actions for the wall-clock number."))
+            row(ctx, it, "Build SHA",      BuildConfig.GIT_SHORT_SHA)
+
+            // Folder tree — 2 levels under ~/git/unix/, showing every
+            // ea_* sibling clone and its immediate sub-dirs.
+            it.addView(small(ctx, "Folder tree (depth 2, ea_* siblings only):"))
+            val treeB64 = BuildConfig.UI_STACK_FOLDER_TREE_B64
+            val treeStr = runCatching { String(android.util.Base64.decode(treeB64, android.util.Base64.DEFAULT)) }
+                .getOrDefault("—")
+            it.addView(TextView(ctx).apply {
+                text = treeStr
+                setTextColor(0xFFE9D8FD.toInt())
+                typeface = Typeface.MONOSPACE
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                setBackgroundColor(0x33000000)
+                setTextIsSelectable(true)
+            })
         }
 
         section(ctx, column, "Locale & time") {
