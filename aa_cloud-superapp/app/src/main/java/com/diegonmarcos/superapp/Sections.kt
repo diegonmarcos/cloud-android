@@ -579,9 +579,27 @@ object Sections {
                     )
                 )
             }
+            // Optional `tiles_from_section: <id>` — if set, the section's
+            // tiles_shared list is converted to HomeTiles and PREPENDED
+            // to whatever explicit tiles the group declares. Lets a Home
+            // Apps group ride on a section's canonical list (no duplicate
+            // data) while still allowing the home_groups JSON to add
+            // group-only extras at the bottom of the row.
+            val fromSection = o.optString("tiles_from_section", "").takeIf { it.isNotBlank() }
+            val derivedTiles = mutableListOf<HomeTile>()
+            if (fromSection != null) {
+                byId(fromSection)?.tilesShared?.forEach { agg ->
+                    derivedTiles += HomeTile(
+                        id       = agg.target,
+                        label    = agg.label,
+                        iconName = agg.iconName,
+                    )
+                }
+            }
+            derivedTiles += tiles
             parsed.add(HomeGroup(
                 title  = o.getString("title"),
-                tiles  = tiles,
+                tiles  = derivedTiles,
                 scroll = o.optString("scroll", "").takeIf { it.isNotBlank() },
             ))
         }

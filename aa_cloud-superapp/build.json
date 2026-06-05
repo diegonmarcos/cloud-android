@@ -332,7 +332,14 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "_doc_tiles_shared": "Single source of truth for the Suite apps list. Both the bottom-nav Suite aggregator AND home_groups[Suite] read from here — home_groups uses tiles_from_section to pull this list automatically so the two surfaces never drift. AI-Chat first per user spec, Tabs last.",
         "tiles_shared": [
+          {
+            "id": "ai-chat",
+            "label": "AI-Chat",
+            "icon": "ic_ai_chat",
+            "target": "app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp"
+          },
           {
             "id": "drive",
             "label": "Drive",
@@ -364,12 +371,6 @@
             "target": "obsidian://open"
           },
           {
-            "id": "ai-chat",
-            "label": "AI-Chat",
-            "icon": "ic_ai_chat",
-            "target": "app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp"
-          },
-          {
             "id": "wallet",
             "label": "Wallet",
             "icon": "ic_wallet",
@@ -392,6 +393,12 @@
             "label": "My-Fin",
             "icon": "ic_fin",
             "target": "https://diegonmarcos.github.io/my-fin/"
+          },
+          {
+            "id": "tabs",
+            "label": "Tabs",
+            "icon": "ic_mode_apps",
+            "target": "section:tabs"
           }
         ]
       },
@@ -1424,66 +1431,11 @@
         ]
       },
       {
-        "_doc": "Suite mirrors sections[suite].tiles_shared (the same list shown when the user opens the Suite section directly) plus Tabs. 11 tiles, AI-Chat first per user spec. Marked scroll=horizontal so the row scrolls per-tile horizontally rather than wrapping to a second row at the 5-col grid limit — keeps the meta-row a single visual strip.",
+        "_doc": "Suite pulls its tile list from sections[suite].tiles_shared via tiles_from_section. Single source of truth — edit the section, both surfaces (bottom-nav Suite aggregator + Home Apps Suite group) update together. scroll=horizontal so 11 tiles ride one scroll strip instead of wrapping; per-tile smooth scroll, not snap-per-page.",
         "title": "Suite",
         "scroll": "horizontal",
-        "tiles": [
-          {
-            "id": "action:app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp",
-            "label": "AI-Chat",
-            "icon": "ic_ai_chat"
-          },
-          {
-            "id": "section:drive",
-            "label": "Drive",
-            "icon": "ic_drive"
-          },
-          {
-            "id": "section:vault",
-            "label": "Vault",
-            "icon": "ic_vault"
-          },
-          {
-            "id": "action:intent://#Intent;package=com.google.android.apps.maps;S.browser_fallback_url=https%3A%2F%2Fmaps.google.com;end",
-            "label": "Maps",
-            "icon": "ic_maps"
-          },
-          {
-            "id": "action:app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F",
-            "label": "Sheets",
-            "icon": "ic_sheets"
-          },
-          {
-            "id": "action:obsidian://open",
-            "label": "Notes",
-            "icon": "ic_notes"
-          },
-          {
-            "id": "action:app://com.google.android.apps.walletnfcrel?fallback=https%3A%2F%2Fwallet.google.com",
-            "label": "Wallet",
-            "icon": "ic_wallet"
-          },
-          {
-            "id": "action:app://com.aspiro.tidal?fallback=https%3A%2F%2Ftidal.com",
-            "label": "Music",
-            "icon": "ic_music"
-          },
-          {
-            "id": "action:app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com",
-            "label": "Photos",
-            "icon": "ic_photos"
-          },
-          {
-            "id": "action:https://diegonmarcos.github.io/my-fin/",
-            "label": "My-Fin",
-            "icon": "ic_fin"
-          },
-          {
-            "id": "section:tabs",
-            "label": "Tabs",
-            "icon": "ic_mode_apps"
-          }
-        ]
+        "tiles_from_section": "suite",
+        "tiles": []
       },
       {
         "title": "Tools",
