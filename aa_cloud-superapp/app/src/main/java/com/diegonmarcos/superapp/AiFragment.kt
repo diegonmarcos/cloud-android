@@ -121,8 +121,109 @@ class AiFragment : Fragment() {
             ModelInfo("QwQ-32B",               "32B",  "Q4",   "128k", openSource = true,  api = "\$0.15 / \$0.45", vps = "~\$0.20/h (1×H100)"),
         )))
 
+        // ── Action bar — three buttons in one row at the bottom ──
+        val actions = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val pad = dp(6); setPadding(0, dp(16), 0, pad)
+        }
+        actions.addView(actionButton(ctx, "Import All") { importLauncher.launch("application/json") })
+        actions.addView(actionButton(ctx, "Export All") { exportLauncher.launch("ai-config.json") })
+        actions.addView(actionButton(ctx, "Paste Config") { pasteConfig() })
+        col.addView(actions)
+
         return scroll
     }
+
+    // ── Action-bar plumbing ──────────────────────────────────────────────
+
+    /** Open a JSON file picker → apply its contents to AiPrefs. */
+    private val importLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+            uri ?: return@registerForActivityResult
+            runCatching {
+                val body = requireContext().contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: return@runCatching
+                applyConfig(body)
+                redrawFragment()
+                toast("Imported.")
+            }.onFailure { toast("Import failed: ${it.message}") }
+        }
+
+    /** SAF "create document" → write serialized config to the chosen file. */
+    private val exportLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            uri ?: return@registerForActivityResult
+            runCatching {
+                val body = serializeAll()
+                requireContext().contentResolver.openOutputStream(uri)?.use { it.write(body.toByteArray()) }
+                toast("Exported.")
+            }.onFailure { toast("Export failed: ${it.message}") }
+        }
+
+    private fun pasteConfig() {
+        val ctx = requireContext()
+        val clip = (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager)
+        val text = clip?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
+        if (text.isNullOrBlank()) { toast("Clipboard empty."); return }
+        runCatching {
+            applyConfig(text)
+            redrawFragment()
+            toast("Pasted.")
+        }.onFailure { toast("Paste failed: ${it.message}") }
+    }
+
+    /** Read every slot's four persisted fields into a single JSON object,
+     *  one nested object per slot keyed by slot.key. */
+    private fun serializeAll(): String {
+        val root = org.json.JSONObject()
+        for (slot in AiPrefs.Slot.values()) {
+            root.put(slot.key, org.json.JSONObject().apply {
+                put("name",    prefs.name(slot))
+                put("apiUrl",  prefs.apiUrl(slot))
+                put("token",   prefs.token(slot))
+                put("costCap", prefs.costCap(slot))
+                put("dailyCap", prefs.dailyCap(slot))
+            })
+        }
+        return root.toString(2)
+    }
+
+    /** Apply the inverse — overwrites all five fields per declared slot.
+     *  Throws on malformed JSON so the caller can toast the error. */
+    private fun applyConfig(body: String) {
+        val root = org.json.JSONObject(body)
+        for (slot in AiPrefs.Slot.values()) {
+            val o = root.optJSONObject(slot.key) ?: continue
+            if (o.has("name"))    prefs.setName(slot,    o.optString("name"))
+            if (o.has("apiUrl"))  prefs.setApiUrl(slot,  o.optString("apiUrl"))
+            if (o.has("token"))   prefs.setToken(slot,   o.optString("token"))
+            if (o.has("costCap")) prefs.setCostCap(slot, o.optString("costCap"))
+            if (o.has("dailyCap")) prefs.setDailyCap(slot, o.optBoolean("dailyCap"))
+        }
+    }
+
+    private fun redrawFragment() {
+        parentFragmentManager.beginTransaction().detach(this).commitNow()
+        parentFragmentManager.beginTransaction().attach(this).commitNow()
+    }
+
+    private fun toast(msg: String) {
+        android.widget.Toast.makeText(requireContext(), msg, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    private fun actionButton(ctx: Context, label: String, onClick: () -> Unit): View =
+        TextView(ctx).apply {
+            text = label
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF7C3AED.toInt())
+            gravity = android.view.Gravity.CENTER
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            isClickable = true; isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = dp(6)
+            }
+            setOnClickListener { onClick() }
+        }
 
     /** One model's facts. */
     private data class ModelInfo(
