@@ -213,7 +213,7 @@
         "tiles_apps": [
           {
             "id": "cloud-notifications",
-            "label": "Cloud Notifications",
+            "label": "Cloud-SuperApp-Notifications",
             "icon": "ic_world",
             "target": "action:open_notification_center"
           },
@@ -233,7 +233,7 @@
         "tiles_admin": [
           {
             "id": "cloud-notifications",
-            "label": "Cloud Notifications",
+            "label": "Cloud-SuperApp-Notifications",
             "icon": "ic_world",
             "target": "action:open_notification_center"
           },
