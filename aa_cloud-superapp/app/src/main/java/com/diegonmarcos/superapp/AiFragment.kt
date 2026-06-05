@@ -55,6 +55,10 @@ class AiFragment : Fragment() {
             col.addView(modelLabel(ctx, "Model ${slot.key} (${slot.role})"))
             col.addView(label(ctx, "Name"))
             col.addView(field(ctx, prefs.name(slot)) { prefs.setName(slot, it) })
+            col.addView(label(ctx, "API URL"))
+            col.addView(field(ctx, prefs.apiUrl(slot)) { prefs.setApiUrl(slot, it) }.apply {
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            })
             col.addView(label(ctx, "Token"))
             col.addView(field(ctx, prefs.token(slot)) { prefs.setToken(slot, it) }.apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD

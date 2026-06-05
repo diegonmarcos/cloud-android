@@ -20,10 +20,15 @@ class AiPrefs(context: Context) {
     private val sp: SharedPreferences =
         context.getSharedPreferences("ai_prefs", Context.MODE_PRIVATE)
 
-    enum class Slot(val key: String, val defaultName: String, val role: String) {
-        S4B(  "4b",       "llama-3.1-4b-q4",   "Server"),
-        S70B( "70b",      "llama-3.3-70b-q4",  "Tasks"),
-        FRONTIER("frontier", "claude-opus-4.7", "Architecture"),
+    enum class Slot(
+        val key: String,
+        val defaultName: String,
+        val role: String,
+        val defaultApiUrl: String,
+    ) {
+        S4B(     "4b",       "llama-3.1-4b-q4",  "Servicer",    "http://10.0.0.1:11434/v1"),
+        S70B(    "70b",      "llama-3.3-70b-q4", "Tasks",       "http://10.0.0.1:11434/v1"),
+        FRONTIER("frontier", "claude-opus-4.7",  "Architecture", "https://api.anthropic.com/v1"),
     }
 
     fun name(slot: Slot): String =
@@ -31,6 +36,13 @@ class AiPrefs(context: Context) {
 
     fun setName(slot: Slot, value: String) {
         sp.edit().putString("${slot.key}.name", value).apply()
+    }
+
+    fun apiUrl(slot: Slot): String =
+        sp.getString("${slot.key}.apiUrl", slot.defaultApiUrl) ?: slot.defaultApiUrl
+
+    fun setApiUrl(slot: Slot, value: String) {
+        sp.edit().putString("${slot.key}.apiUrl", value).apply()
     }
 
     fun token(slot: Slot): String =
