@@ -98,7 +98,7 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
             // the screen width so the row's first 5 tiles are visible
             // and the rest scroll into view per-tile. A small "→"
             // hint sits below the row to flag that more tiles exist.
-            if (bucket.scroll == "horizontal" && bucket.tiles.size > COLS) {
+            if (bucket.scroll == "horizontal") {
                 val tileWidthPx = resources.displayMetrics.widthPixels / COLS -
                     (8 * resources.displayMetrics.density).toInt()
                 val hStrip = android.widget.HorizontalScrollView(ctx).apply {
@@ -130,17 +130,21 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
                     stripRow.addView(tileView)
                 }
                 root.addView(hStrip)
-                // Small "more →" hint — single-line caption beneath the
-                // strip, centred, sized so it's a hint not a row.
-                root.addView(android.widget.TextView(ctx).apply {
-                    text = "swipe → ${bucket.tiles.size} apps"
-                    gravity = android.view.Gravity.CENTER
-                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                    setTextColor(0x88FFFFFF.toInt())
-                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
-                    val v = (2 * resources.displayMetrics.density).toInt()
-                    setPadding(0, v, 0, v * 3)
-                })
+                // Small "more →" hint — only when there's actually
+                // overflow (more tiles than columns can show), so a
+                // 5-tile scroll-flagged group doesn't lie about having
+                // more apps than are visible.
+                if (bucket.tiles.size > COLS) {
+                    root.addView(android.widget.TextView(ctx).apply {
+                        text = "swipe → ${bucket.tiles.size} apps"
+                        gravity = android.view.Gravity.CENTER
+                        setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                        setTextColor(0x88FFFFFF.toInt())
+                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
+                        val v = (2 * resources.displayMetrics.density).toInt()
+                        setPadding(0, v, 0, v * 3)
+                    })
+                }
                 continue
             }
 

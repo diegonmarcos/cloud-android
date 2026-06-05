@@ -1179,6 +1179,11 @@
             "icon": "ic_settings"
           },
           {
+            "id": "ai",
+            "label": "AI",
+            "icon": "ic_ai_sparkle"
+          },
+          {
             "id": "update",
             "label": "Update",
             "icon": "ic_refresh",
@@ -1483,7 +1488,9 @@
         ]
       },
       {
+        "_doc": "Configs Home-Apps group. Marked scroll=horizontal to match Suite — keeps the group in a single visual strip. Order per user spec: Profile · WireGuard · AI · Import · About. Update page lives in config.pages but isn't surfaced as a tile here (auto-update runs in background; manual check still reachable via the drawer's L3 expansion of section:config).",
         "title": "Configs",
+        "scroll": "horizontal",
         "tiles": [
           {
             "id": "page:config/profile",
@@ -1496,9 +1503,9 @@
             "icon": "ic_wg"
           },
           {
-            "id": "page:config/update",
-            "label": "Update",
-            "icon": "ic_refresh"
+            "id": "page:config/ai",
+            "label": "AI",
+            "icon": "ic_ai_sparkle"
           },
           {
             "id": "page:config/import",
