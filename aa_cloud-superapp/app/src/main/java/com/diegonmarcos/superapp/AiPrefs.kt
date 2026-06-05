@@ -27,9 +27,10 @@ class AiPrefs(context: Context) {
         val defaultApiUrl: String,
         val defaultCostCap: String,
     ) {
-        S4B(     "4b",       "llama-3.1-4b-q4",  "Servicer",    "http://10.0.0.1:11434/v1",     "5"),
-        S70B(    "70b",      "llama-3.3-70b-q4", "Tasks",       "http://10.0.0.1:11434/v1",     "10"),
-        FRONTIER("frontier", "claude-opus-4.7",  "Architecture", "https://api.anthropic.com/v1", "50"),
+        S4B(           "4b",          "llama-3.1-4b-q4",  "Servicer",            "http://10.0.0.1:11434/v1",          "5"),
+        S70B(          "70b",         "llama-3.3-70b-q4", "Tasks",               "http://10.0.0.1:11434/v1",          "10"),
+        FRONTIER(      "frontier",    "claude-opus-4.7",  "Architecture",        "https://api.anthropic.com/v1",      "50"),
+        FRONTIER_BATCH("frontierBatch","claude-opus-4.7", "Architecture · Batch","https://api.anthropic.com/v1/batches","30"),
     }
 
     fun name(slot: Slot): String =

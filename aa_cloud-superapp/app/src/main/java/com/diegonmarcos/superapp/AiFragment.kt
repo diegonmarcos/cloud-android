@@ -96,7 +96,96 @@ class AiFragment : Fragment() {
         )
         col.addView(costTable(ctx, costData))
 
+        // ── Models (suggestions) ──
+        col.addView(sectionHeader(ctx, "Models"))
+        col.addView(caption(ctx, "Suggested model lineups per provider. params · quant · context · open-source flag · API \$/M tokens (in/out) · self-host VPS \$/h (open-source only). Prices indicative as of mid-2026; update from the provider's pricing page."))
+
+        col.addView(modelsGroup(ctx, "Anthropic (closed)", listOf(
+            ModelInfo("Claude Opus 4.7",    "—",       "—",  "200k", openSource = false, api = "\$15  / \$75",   vps = "—"),
+            ModelInfo("Claude Sonnet 4.6",  "—",       "—",  "200k", openSource = false, api = "\$3   / \$15",   vps = "—"),
+            ModelInfo("Claude Haiku 4.5",   "—",       "—",  "200k", openSource = false, api = "\$1   / \$5",    vps = "—"),
+        )))
+
+        col.addView(modelsGroup(ctx, "Google (closed)", listOf(
+            ModelInfo("Gemini 2.5 Pro",     "—",       "—",  "2M",   openSource = false, api = "\$1.25 / \$5",   vps = "—"),
+            ModelInfo("Gemini 2.5 Flash",   "—",       "—",  "1M",   openSource = false, api = "\$0.075 / \$0.30", vps = "—"),
+        )))
+
+        col.addView(modelsGroup(ctx, "DeepSeek (open-source, MIT-like)", listOf(
+            ModelInfo("DeepSeek V3",        "671B (37B act, MoE)", "FP8 / Q4", "128k", openSource = true,  api = "\$0.27 / \$1.10", vps = "~\$0.50/h (4×H100)"),
+            ModelInfo("DeepSeek R1",        "671B (37B act, MoE)", "FP8 / Q4", "128k", openSource = true,  api = "\$0.55 / \$2.19", vps = "~\$0.50/h (4×H100)"),
+        )))
+
+        col.addView(modelsGroup(ctx, "Qwen (open-source, Apache 2.0)", listOf(
+            ModelInfo("Qwen 2.5-72B Instruct", "72B",  "Q4",   "128k", openSource = true,  api = "\$0.20 / \$0.60", vps = "~\$0.40/h (2×H100)"),
+            ModelInfo("QwQ-32B",               "32B",  "Q4",   "128k", openSource = true,  api = "\$0.15 / \$0.45", vps = "~\$0.20/h (1×H100)"),
+        )))
+
         return scroll
+    }
+
+    /** One model's facts. */
+    private data class ModelInfo(
+        val name: String,
+        val params: String,
+        val quant: String,
+        val context: String,
+        val openSource: Boolean,
+        val api: String,   // "input$/M  /  output$/M"
+        val vps: String,   // self-host hourly cost, or "—" when closed
+    )
+
+    /** Group of models under a provider header. Each model gets a small
+     *  card showing params/quant/context + price line. */
+    private fun modelsGroup(ctx: Context, title: String, models: List<ModelInfo>): View {
+        val card = tableCard(ctx, title)
+        for (m in models) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                val pad = dp(6); setPadding(pad, pad, pad, pad)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(4) }
+                layoutParams = lp
+                setBackgroundColor(0x221A0033)
+            }
+            // Name + open-source badge.
+            val head = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            head.addView(TextView(ctx).apply {
+                text = m.name
+                setTextColor(0xFFE9D8FD.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+                typeface = Typeface.DEFAULT_BOLD
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            head.addView(TextView(ctx).apply {
+                text = if (m.openSource) "open-source" else "closed"
+                setTextColor(if (m.openSource) 0xFF22C55E.toInt() else 0xFF94A3B8.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            row.addView(head)
+            // Specs line.
+            row.addView(TextView(ctx).apply {
+                text = "params ${m.params} · quant ${m.quant} · ctx ${m.context}"
+                setTextColor(0xCCFFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                typeface = Typeface.MONOSPACE
+                setPadding(0, dp(2), 0, 0)
+            })
+            // Price line.
+            row.addView(TextView(ctx).apply {
+                text = "API ${m.api} per 1M  |  VPS ${m.vps}"
+                setTextColor(0xFFB794F4.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                typeface = Typeface.MONOSPACE
+                setPadding(0, dp(1), 0, 0)
+                setTextIsSelectable(true)
+            })
+            card.addView(row)
+        }
+        return card
     }
 
     // ── Report tables ────────────────────────────────────────────────────
