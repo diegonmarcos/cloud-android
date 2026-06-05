@@ -10,6 +10,7 @@ import android.content.pm.PackageInstaller
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import com.diegonmarcos.superapp.core.NotificationStore
 
 /**
  * Receives PackageInstaller status callbacks. Forwards the system
@@ -36,7 +37,8 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 context.startActivity(confirm)
             }
             PackageInstaller.STATUS_SUCCESS -> {
-                surface(context, "Update installed ✓", "Cloud SuperApp installed successfully.")
+                surface(context, "Update installed ✓", "Cloud SuperApp installed successfully.",
+                    severity = NotificationStore.Sev.INFO)
             }
             else -> {
                 val label = when (status) {
@@ -49,12 +51,28 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                     PackageInstaller.STATUS_FAILURE_STORAGE     -> "STORAGE"
                     else -> "status=$status"
                 }
-                surface(context, "Update failed: $label", message.ifEmpty { label })
+                surface(context, "Update failed: $label", message.ifEmpty { label },
+                    severity = NotificationStore.Sev.ERROR)
             }
         }
     }
 
-    private fun surface(context: Context, short: String, full: String) {
+    private fun surface(context: Context, short: String, full: String,
+                        severity: String = NotificationStore.Sev.INFO) {
+        // Mirror into the in-app feed so the launcher badge AND the
+        // Cloud-SuperApp Notifications panel reflect the same event.
+        // Without this push the framework notification (and its badge)
+        // shows up but the in-app list stays empty — exactly the bug
+        // the user reported.
+        runCatching {
+            NotificationStore.push(
+                ctx      = context,
+                source   = "Updater",
+                title    = short,
+                body     = full,
+                severity = severity,
+            )
+        }
         try {
             Toast.makeText(context, short, Toast.LENGTH_LONG).show()
         } catch (_: Throwable) { /* off-Looper thread — skip toast */ }

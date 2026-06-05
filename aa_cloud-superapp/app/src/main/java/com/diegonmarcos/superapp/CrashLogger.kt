@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp
 
+import com.diegonmarcos.superapp.core.NotificationStore
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build

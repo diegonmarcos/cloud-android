@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp
 
+import com.diegonmarcos.superapp.core.NotificationStore
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -63,6 +64,13 @@ class NotificationCenterFragment : Fragment() {
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
             )
         })
+        // Viewing the in-app feed is also the moment to dismiss any
+        // matching framework notifications so the launcher icon badge
+        // clears — keeps the launcher's "1" badge and our feed in sync.
+        runCatching {
+            (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
+                as? android.app.NotificationManager)?.cancelAll()
+        }
         val entries = NotificationStore.all(ctx)
         if (entries.isNotEmpty()) {
             header.addView(TextView(ctx).apply {

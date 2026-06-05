@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.core
 
 import android.content.Context
 import org.json.JSONArray
@@ -6,22 +6,18 @@ import org.json.JSONObject
 import java.util.UUID
 
 /**
- * Append-only in-app notification feed. Lightweight SharedPreferences-
- * backed JSON ring buffer; producers push entries, NotificationCenter-
- * Fragment renders them.
+ * Append-only in-app notification feed. Shared across modules — lives
+ * in libs:core so both the app code (CrashLogger, App.onCreate
+ * version-bump detector) AND libs:updater (PackageInstallerReceiver
+ * mirror) can push to it. NotificationCenterFragment +
+ * AggregatorStackFragment's "notifications" panel read from it.
  *
  * Why not Android's framework notifications? Those go to the system
  * shade and are subject to user channel preferences / DND / etc. This
  * is the SuperApp's *own* feed, surfaced inside the app at any time
- * regardless of OS notification state.
- *
- * Current producers:
- *  • Updater — version-bump detector in App.onCreate pushes
- *    "Updated to vc:N" the first launch after the apk was replaced.
- *  • CrashLogger — pushes "App crashed" with the throwable class +
- *    message right before the previous handler kills the process.
- *
- * Add producers as you go: any class with a Context can call push().
+ * regardless of OS notification state. Producers that DO post a
+ * framework notification (the Updater on install) ALSO push here so
+ * the launcher badge count and the in-app list stay in sync.
  */
 object NotificationStore {
     private const val PREFS = "notification_store"

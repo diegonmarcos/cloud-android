@@ -15,6 +15,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import com.diegonmarcos.superapp.core.NotificationStore
 import com.google.android.material.card.MaterialCardView
 
 /**
@@ -205,6 +206,13 @@ class AggregatorStackFragment : Fragment(),
      *  inside the Infos aggregator. Wired producers: Updater +
      *  CrashLogger; future producers push via NotificationStore.push(). */
     private fun renderNotifications(ctx: android.content.Context, body: LinearLayout) {
+        // Viewing this panel also dismisses any matching framework
+        // notification so the launcher icon badge clears at the same
+        // time the in-app feed becomes visible.
+        runCatching {
+            (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
+                as? android.app.NotificationManager)?.cancelAll()
+        }
         val entries = NotificationStore.all(ctx)
         if (entries.isEmpty()) {
             body.addView(android.widget.TextView(ctx).apply {
