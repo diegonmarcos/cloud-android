@@ -323,14 +323,15 @@
         ],
         "stack_apps": [
           {
-            "kind": "notifications",
-            "title": "Cloud-SuperApp Notifications",
-            "subtitle": "In-app feed (Updater + Crash producers)"
-          },
-          {
             "kind": "calendar_month",
             "title": "Calendar",
             "subtitle": "Month view · CalDAV sync pending"
+          },
+          {
+            "_doc": "Agenda list — next 7 days, one row per day. Lives only in Apps mode (Admin shows ops-leaning panels instead). CalDAV integration pending; placeholder rows until then.",
+            "kind": "calendar_agenda",
+            "title": "Agenda",
+            "subtitle": "Next 7 days"
           },
           {
             "kind": "news_feeds",

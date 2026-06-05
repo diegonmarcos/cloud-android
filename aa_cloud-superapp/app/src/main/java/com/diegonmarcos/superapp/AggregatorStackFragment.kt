@@ -192,6 +192,7 @@ class AggregatorStackFragment : Fragment(),
         "rss"                -> embedChild(body, RssFeedFragment.newInstance())
         "news_feeds"         -> embedChild(body, NewsFeedFragment.newInstance())
         "calendar_month"     -> embedChild(body, CalendarMonthFragment.newInstance())
+        "calendar_agenda"    -> embedChild(body, CalendarAgendaFragment.newInstance())
         "drive_connections"  -> embedChild(body, DriveConnectionsFragment.newInstance())
         "linktree_slide"     -> renderLinktreeSlide(ctx, body, panel.slideId)
         "link_grid"          -> renderLinkGrid(ctx, body, panel.columns, panel.links)
