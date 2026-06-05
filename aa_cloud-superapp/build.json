@@ -328,10 +328,10 @@
             "subtitle": "Month view · CalDAV sync pending"
           },
           {
-            "_doc": "Agenda list — next 7 days, one row per day. Lives only in Apps mode (Admin shows ops-leaning panels instead). CalDAV integration pending; placeholder rows until then.",
-            "kind": "calendar_agenda",
-            "title": "Agenda",
-            "subtitle": "Next 7 days"
+            "_doc": "Tasks panel with an Agenda · Day · ToDo tab strip — single card hosting all three views the user wants in Apps mode. Tab switch is in-process (no fragment swap); each view is a self-contained placeholder until CalDAV / Tasks integration lands.",
+            "kind": "tasks",
+            "title": "Tasks",
+            "subtitle": "Agenda · Day · ToDo"
           },
           {
             "kind": "news_feeds",
