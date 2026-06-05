@@ -155,7 +155,15 @@ object Sections {
             else    -> iconApps  ?: iconName  // "apps" or anything else
         }
     }
-    data class HomeGroup(val title: String, val tiles: List<HomeTile>)
+    /** A Home Apps group. [scroll] is "horizontal" when the row should
+     *  scroll horizontally instead of wrapping at the 5-col grid limit
+     *  — typical use case is a long Suite row that doesn't deserve its
+     *  own multi-row block on the Home screen. Null = normal grid wrap. */
+    data class HomeGroup(
+        val title: String,
+        val tiles: List<HomeTile>,
+        val scroll: String? = null,
+    )
 
     /** wg-mesh/v1 node — one row in the WG mesh status table. */
     data class MeshNode(
@@ -571,7 +579,11 @@ object Sections {
                     )
                 )
             }
-            parsed.add(HomeGroup(o.getString("title"), tiles))
+            parsed.add(HomeGroup(
+                title  = o.getString("title"),
+                tiles  = tiles,
+                scroll = o.optString("scroll", "").takeIf { it.isNotBlank() },
+            ))
         }
         cachedGroups = parsed
         return parsed

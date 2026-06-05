@@ -212,6 +212,12 @@
         "is_aggregator": true,
         "tiles_apps": [
           {
+            "id": "cloud-notifications",
+            "label": "Cloud Notifications",
+            "icon": "ic_world",
+            "target": "action:open_notification_center"
+          },
+          {
             "id": "calendar",
             "label": "Calendar",
             "icon": "ic_calendar",
@@ -225,6 +231,12 @@
           }
         ],
         "tiles_admin": [
+          {
+            "id": "cloud-notifications",
+            "label": "Cloud Notifications",
+            "icon": "ic_world",
+            "target": "action:open_notification_center"
+          },
           {
             "id": "cal-workflows",
             "label": "Workflows cal",
@@ -1412,8 +1424,15 @@
         ]
       },
       {
+        "_doc": "Suite mirrors sections[suite].tiles_shared (the same list shown when the user opens the Suite section directly) plus Tabs. 11 tiles, AI-Chat first per user spec. Marked scroll=horizontal so the row scrolls per-tile horizontally rather than wrapping to a second row at the 5-col grid limit — keeps the meta-row a single visual strip.",
         "title": "Suite",
+        "scroll": "horizontal",
         "tiles": [
+          {
+            "id": "action:app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp",
+            "label": "AI-Chat",
+            "icon": "ic_ai_chat"
+          },
           {
             "id": "section:drive",
             "label": "Drive",
@@ -1423,6 +1442,41 @@
             "id": "section:vault",
             "label": "Vault",
             "icon": "ic_vault"
+          },
+          {
+            "id": "action:intent://#Intent;package=com.google.android.apps.maps;S.browser_fallback_url=https%3A%2F%2Fmaps.google.com;end",
+            "label": "Maps",
+            "icon": "ic_maps"
+          },
+          {
+            "id": "action:app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F",
+            "label": "Sheets",
+            "icon": "ic_sheets"
+          },
+          {
+            "id": "action:obsidian://open",
+            "label": "Notes",
+            "icon": "ic_notes"
+          },
+          {
+            "id": "action:app://com.google.android.apps.walletnfcrel?fallback=https%3A%2F%2Fwallet.google.com",
+            "label": "Wallet",
+            "icon": "ic_wallet"
+          },
+          {
+            "id": "action:app://com.aspiro.tidal?fallback=https%3A%2F%2Ftidal.com",
+            "label": "Music",
+            "icon": "ic_music"
+          },
+          {
+            "id": "action:app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com",
+            "label": "Photos",
+            "icon": "ic_photos"
+          },
+          {
+            "id": "action:https://diegonmarcos.github.io/my-fin/",
+            "label": "My-Fin",
+            "icon": "ic_fin"
           },
           {
             "id": "section:tabs",

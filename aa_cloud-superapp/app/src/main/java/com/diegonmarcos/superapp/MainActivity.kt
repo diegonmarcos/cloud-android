@@ -1108,6 +1108,10 @@ class MainActivity : AppCompatActivity(),
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet()
             }
+            // Cloud Notification Center — same surface the top-bar bell
+            // icon opens. Wiring it here means any data-driven entry
+            // (tile target / drawer action) can route to it without code.
+            actionType == "open_notification_center" -> openNotificationCenter()
             actionType.contains("://") -> launchUri(actionType)
             else -> anchor.snack("action:$actionType")
         }
