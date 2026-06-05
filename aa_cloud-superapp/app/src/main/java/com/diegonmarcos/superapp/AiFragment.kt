@@ -98,27 +98,34 @@ class AiFragment : Fragment() {
 
         // ── Models (suggestions) ──
         col.addView(sectionHeader(ctx, "Models"))
-        col.addView(caption(ctx, "Suggested model lineups per provider. params · quant · context · open-source flag · API \$/M tokens (in/out) · self-host VPS \$/h (open-source only). Prices indicative as of mid-2026; update from the provider's pricing page."))
+        col.addView(caption(ctx, "Recommended candidates per slot tier. Each slot lists one Anthropic + one Gemini + two Chinese open-source picks sized for that tier. params · quant · context · open-source flag · API \$/M (in/out) · self-host VPS \$/h. Prices indicative as of mid-2026."))
 
-        col.addView(modelsGroup(ctx, "Anthropic (closed)", listOf(
-            ModelInfo("Claude Opus 4.7",    "—",       "—",  "200k", openSource = false, api = "\$15  / \$75",   vps = "—"),
-            ModelInfo("Claude Sonnet 4.6",  "—",       "—",  "200k", openSource = false, api = "\$3   / \$15",   vps = "—"),
-            ModelInfo("Claude Haiku 4.5",   "—",       "—",  "200k", openSource = false, api = "\$1   / \$5",    vps = "—"),
+        col.addView(modelsGroup(ctx, "Model 4b (Servicer)", listOf(
+            ModelInfo("Claude Haiku 4.5",          "—",                   "—",  "200k", openSource = false, api = "\$1   / \$5",      vps = "—"),
+            ModelInfo("Gemini 2.5 Flash-Lite",     "—",                   "—",  "1M",   openSource = false, api = "\$0.10 / \$0.40",  vps = "—"),
+            ModelInfo("Qwen 2.5-3B Instruct",      "3B",                  "Q4", "128k", openSource = true,  api = "\$0.05 / \$0.10",  vps = "~\$0.05/h (small GPU)"),
+            ModelInfo("DeepSeek V2-Lite",          "16B (2.4B act, MoE)", "Q4", "32k",  openSource = true,  api = "\$0.07 / \$0.28",  vps = "~\$0.10/h (1×L40S)"),
         )))
 
-        col.addView(modelsGroup(ctx, "Google (closed)", listOf(
-            ModelInfo("Gemini 2.5 Pro",     "—",       "—",  "2M",   openSource = false, api = "\$1.25 / \$5",   vps = "—"),
-            ModelInfo("Gemini 2.5 Flash",   "—",       "—",  "1M",   openSource = false, api = "\$0.075 / \$0.30", vps = "—"),
+        col.addView(modelsGroup(ctx, "Model 70b (Tasks)", listOf(
+            ModelInfo("Claude Sonnet 4.6",         "—",                   "—",  "200k", openSource = false, api = "\$3    / \$15",    vps = "—"),
+            ModelInfo("Gemini 2.5 Flash",          "—",                   "—",  "1M",   openSource = false, api = "\$0.075 / \$0.30", vps = "—"),
+            ModelInfo("Qwen 2.5-72B Instruct",     "72B",                 "Q4", "128k", openSource = true,  api = "\$0.20 / \$0.60",  vps = "~\$0.40/h (2×H100)"),
+            ModelInfo("DeepSeek V3",               "671B (37B act, MoE)", "FP8/Q4", "128k", openSource = true, api = "\$0.27 / \$1.10", vps = "~\$0.50/h (4×H100)"),
         )))
 
-        col.addView(modelsGroup(ctx, "DeepSeek (open-source, MIT-like)", listOf(
-            ModelInfo("DeepSeek V3",        "671B (37B act, MoE)", "FP8 / Q4", "128k", openSource = true,  api = "\$0.27 / \$1.10", vps = "~\$0.50/h (4×H100)"),
-            ModelInfo("DeepSeek R1",        "671B (37B act, MoE)", "FP8 / Q4", "128k", openSource = true,  api = "\$0.55 / \$2.19", vps = "~\$0.50/h (4×H100)"),
+        col.addView(modelsGroup(ctx, "Frontier (Architecture)", listOf(
+            ModelInfo("Claude Opus 4.7",           "—",                   "—",  "200k", openSource = false, api = "\$15  / \$75",     vps = "—"),
+            ModelInfo("Gemini 2.5 Pro",            "—",                   "—",  "2M",   openSource = false, api = "\$1.25 / \$5",     vps = "—"),
+            ModelInfo("DeepSeek R1",               "671B (37B act, MoE)", "FP8/Q4", "128k", openSource = true, api = "\$0.55 / \$2.19", vps = "~\$0.50/h (4×H100)"),
+            ModelInfo("Qwen 3 Max Reasoning",      "~250B (MoE)",         "FP8", "256k", openSource = true,  api = "\$0.60 / \$2.40",  vps = "~\$1.00/h (8×H100)"),
         )))
 
-        col.addView(modelsGroup(ctx, "Qwen (open-source, Apache 2.0)", listOf(
-            ModelInfo("Qwen 2.5-72B Instruct", "72B",  "Q4",   "128k", openSource = true,  api = "\$0.20 / \$0.60", vps = "~\$0.40/h (2×H100)"),
-            ModelInfo("QwQ-32B",               "32B",  "Q4",   "128k", openSource = true,  api = "\$0.15 / \$0.45", vps = "~\$0.20/h (1×H100)"),
+        col.addView(modelsGroup(ctx, "Frontier · Batch (50% off)", listOf(
+            ModelInfo("Claude Opus 4.7 Batch",     "—",                   "—",  "200k", openSource = false, api = "\$7.50 / \$37.50", vps = "—"),
+            ModelInfo("Gemini 2.5 Pro Batch",      "—",                   "—",  "2M",   openSource = false, api = "\$0.625 / \$2.50", vps = "—"),
+            ModelInfo("DeepSeek R1 (off-peak)",    "671B (37B act, MoE)", "FP8/Q4", "128k", openSource = true, api = "\$0.135 / \$0.55", vps = "~\$0.50/h (4×H100)"),
+            ModelInfo("Qwen 3 Max Batch",          "~250B (MoE)",         "FP8", "256k", openSource = true,  api = "\$0.30 / \$1.20",  vps = "~\$1.00/h (8×H100)"),
         )))
 
         // ── Action bar — three buttons in one row at the bottom ──
