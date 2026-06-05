@@ -61,4 +61,15 @@ class AiPrefs(context: Context) {
     fun setCostCap(slot: Slot, value: String) {
         sp.edit().putString("${slot.key}.costCap", value).apply()
     }
+
+    /** When true the monthly cap is enforced as a per-day budget
+     *  (cap ÷ days_in_month). Lets short bursts not eat the whole
+     *  month's allowance early. Defaults off so existing behaviour
+     *  (one bucket per month) is unchanged. */
+    fun dailyCap(slot: Slot): Boolean =
+        sp.getBoolean("${slot.key}.dailyCap", false)
+
+    fun setDailyCap(slot: Slot, value: Boolean) {
+        sp.edit().putBoolean("${slot.key}.dailyCap", value).apply()
+    }
 }

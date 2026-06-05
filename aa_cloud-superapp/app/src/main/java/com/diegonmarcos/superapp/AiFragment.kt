@@ -67,6 +67,12 @@ class AiFragment : Fragment() {
             col.addView(field(ctx, prefs.costCap(slot)) { prefs.setCostCap(slot, it) }.apply {
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
             })
+            col.addView(android.widget.Switch(ctx).apply {
+                text = "Cap Daily Proportionally"
+                isChecked = prefs.dailyCap(slot)
+                val pad = dp(6); setPadding(pad, pad, pad, pad)
+                setOnCheckedChangeListener { _, checked -> prefs.setDailyCap(slot, checked) }
+            })
         }
 
         // ── Reports ──
