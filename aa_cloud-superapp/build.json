@@ -1488,7 +1488,7 @@
         ]
       },
       {
-        "_doc": "Configs Home-Apps group. Marked scroll=horizontal to match Suite — keeps the group in a single visual strip. Order per user spec: Profile · WireGuard · AI · Import · About. Update page lives in config.pages but isn't surfaced as a tile here (auto-update runs in background; manual check still reachable via the drawer's L3 expansion of section:config).",
+        "_doc": "Configs Home-Apps group. Marked scroll=horizontal to match Suite — keeps the group in a single visual strip. Order per user spec: Profile · WireGuard · AI · Import · Update · About.",
         "title": "Configs",
         "scroll": "horizontal",
         "tiles": [
@@ -1511,6 +1511,11 @@
             "id": "page:config/import",
             "label": "Import",
             "icon": "ic_p_import"
+          },
+          {
+            "id": "page:config/update",
+            "label": "Update",
+            "icon": "ic_refresh"
           },
           {
             "id": "page:config/about",
