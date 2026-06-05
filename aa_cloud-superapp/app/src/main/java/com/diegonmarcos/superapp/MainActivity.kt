@@ -1128,6 +1128,19 @@ class MainActivity : AppCompatActivity(),
      *  factory in [SectionPages]; mail pages with args (e.g. MESSAGES carrying
      *  folder_id) go through [MailPages.fragmentFor]. */
     fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) {
+        // Pages that declare an `action` in build.json (e.g. config/update
+        // → "action:check_updates", config/import → "action:import_configs")
+        // must dispatch the action instead of opening a fragment. Before
+        // we did this here, only the drawer's onDrawerPageSelected honoured
+        // the action — Home Apps tiles using `page:config/import` ended up
+        // at SectionFragment's "Coming soon" placeholder. Now both surfaces
+        // route the same way.
+        val pageAction = Sections.byId(sectionId)?.pages
+            ?.firstOrNull { it.id == pageId }?.action.orEmpty()
+        if (pageAction.isNotBlank()) {
+            onTileClicked(pageAction)
+            return
+        }
         if (currentSection != sectionId) {
             currentSection = sectionId
             currentLabel = Sections.byId(sectionId)?.label ?: sectionId
