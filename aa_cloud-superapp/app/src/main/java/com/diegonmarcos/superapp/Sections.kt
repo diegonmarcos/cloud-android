@@ -77,7 +77,15 @@ object Sections {
         /** Used by kind=link / openExternal pointers. */
         val url: String = "",
         val iconName: String = "",
+        /** Used by kind=repos / gha_runs — list of GitHub repos to
+         *  surface commits / workflow runs from. Each entry resolves to
+         *  api.github.com/repos/<owner>/<repo>/... at render time. */
+        val repos: List<RepoRef> = emptyList(),
     )
+
+    /** One row in a kind=repos / gha_runs panel. `label` is the short
+     *  display name; `owner`/`repo` build the API URL. */
+    data class RepoRef(val owner: String, val repo: String, val label: String)
 
     data class LinkItem(
         val label: String,
@@ -373,6 +381,19 @@ object Sections {
                 val out = mutableListOf<StackPanel>()
                 for (j in 0 until sa.length()) {
                     val p = sa.getJSONObject(j)
+                    // Optional repos array for kind=repos / gha_runs.
+                    val reposJson = p.optJSONArray("repos")
+                    val reposList = mutableListOf<RepoRef>()
+                    if (reposJson != null) {
+                        for (k in 0 until reposJson.length()) {
+                            val r = reposJson.getJSONObject(k)
+                            reposList += RepoRef(
+                                owner = r.optString("owner", ""),
+                                repo  = r.optString("repo", ""),
+                                label = r.optString("label", r.optString("repo", "")),
+                            )
+                        }
+                    }
                     out.add(StackPanel(
                         kind            = p.optString("kind", "placeholder"),
                         title           = p.optString("title", ""),
@@ -385,6 +406,7 @@ object Sections {
                         flattenColumns  = p.optBoolean("flatten_columns", false),
                         url             = p.optString("url", ""),
                         iconName        = p.optString("icon", ""),
+                        repos           = reposList,
                     ))
                 }
                 return out

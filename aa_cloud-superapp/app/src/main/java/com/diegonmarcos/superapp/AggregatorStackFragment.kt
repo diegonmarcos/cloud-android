@@ -15,8 +15,12 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.superapp.core.NotificationStore
 import com.google.android.material.card.MaterialCardView
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 
 /**
  * Stack-render variant of an aggregator section. When an aggregator
@@ -197,7 +201,170 @@ class AggregatorStackFragment : Fragment(),
         "chat_mattermost"    -> renderChatPlaceholder(ctx, body, "Mattermost", "page:chat/mattermost")
         "open_link"          -> renderOpenLink(ctx, body, panel)
         "notifications"      -> renderNotifications(ctx, body)
+        "repos"              -> renderRepos(ctx, body, panel)
+        "gha_runs"           -> renderGhaRuns(ctx, body, panel)
         else                 -> renderPlaceholder(ctx, body, panel)
+    }
+
+    /** Recent commits across the panel's declared repos. Fetches in
+     *  parallel from the GitHub REST API (unauthed, 60-req/h limit
+     *  shared with gha_runs; 60s cache via GitHubFeed). */
+    private fun renderRepos(ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel) {
+        if (panel.repos.isEmpty()) {
+            body.addView(android.widget.TextView(ctx).apply {
+                text = "No repos declared. Add a `repos: [{owner, repo, label}]` array to the panel."
+                setTextColor(0x99FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(0, dp(8), 0, dp(8))
+            })
+            return
+        }
+        val loading = android.widget.TextView(ctx).apply {
+            text = "Loading commits…"
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        body.addView(loading)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val now = System.currentTimeMillis()
+            val results = panel.repos.map { ref ->
+                async { ref to GitHubFeed.commits(ctx, ref.owner, ref.repo, 3) }
+            }.awaitAll()
+            body.removeView(loading)
+            for ((ref, commits) in results) {
+                body.addView(repoHeader(ctx, "${ref.label} (commits)", "${ref.owner}/${ref.repo}"))
+                if (commits.isEmpty()) {
+                    body.addView(emptyRow(ctx, "(no recent commits — API rate-limited or repo unreachable)"))
+                    continue
+                }
+                for (c in commits) {
+                    body.addView(githubRow(
+                        ctx,
+                        title    = c.message,
+                        meta     = "${c.sha} · ${c.author} · ${GitHubFeed.ago(now - c.tsMillis)}",
+                        url      = c.htmlUrl,
+                        severity = "info",
+                    ))
+                }
+            }
+        }
+    }
+
+    /** Recent workflow runs across the panel's declared repos. */
+    private fun renderGhaRuns(ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel) {
+        if (panel.repos.isEmpty()) {
+            body.addView(android.widget.TextView(ctx).apply {
+                text = "No repos declared. Add a `repos` array to the panel."
+                setTextColor(0x99FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(0, dp(8), 0, dp(8))
+            })
+            return
+        }
+        val loading = android.widget.TextView(ctx).apply {
+            text = "Loading workflow runs…"
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        body.addView(loading)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val now = System.currentTimeMillis()
+            val results = panel.repos.map { ref ->
+                async { ref to GitHubFeed.runs(ctx, ref.owner, ref.repo, 3) }
+            }.awaitAll()
+            body.removeView(loading)
+            for ((ref, runs) in results) {
+                body.addView(repoHeader(ctx, "${ref.label} (workflow runs)", "${ref.owner}/${ref.repo}"))
+                if (runs.isEmpty()) {
+                    body.addView(emptyRow(ctx, "(no workflow runs — repo may have no Actions enabled)"))
+                    continue
+                }
+                for (r in runs) {
+                    val sev = when (r.conclusion) {
+                        "success" -> "info"
+                        "failure", "timed_out", "cancelled" -> "error"
+                        else      -> "warn"
+                    }
+                    val statusLabel = if (r.conclusion.isNotBlank()) r.conclusion else r.status
+                    body.addView(githubRow(
+                        ctx,
+                        title    = r.displayTitle.ifBlank { r.name },
+                        meta     = "${r.name} · $statusLabel · ${GitHubFeed.ago(now - r.tsMillis)}",
+                        url      = r.htmlUrl,
+                        severity = sev,
+                    ))
+                }
+            }
+        }
+    }
+
+    private fun repoHeader(ctx: android.content.Context, title: String, sub: String): View {
+        val box = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(10), 0, dp(4))
+        }
+        box.addView(android.widget.TextView(ctx).apply {
+            text = title
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+        })
+        box.addView(android.widget.TextView(ctx).apply {
+            text = sub
+            setTextColor(0x77FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        })
+        return box
+    }
+
+    private fun emptyRow(ctx: android.content.Context, label: String): View =
+        android.widget.TextView(ctx).apply {
+            text = label
+            setTextColor(0x77FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(dp(4), dp(2), 0, dp(2))
+        }
+
+    private fun githubRow(ctx: android.content.Context, title: String, meta: String,
+                          url: String, severity: String): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(8); setPadding(pad, pad, pad, pad)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(4) }
+            layoutParams = lp
+            setBackgroundColor(when (severity) {
+                "error" -> 0x55B91C1C.toInt()
+                "warn"  -> 0x55D97706.toInt()
+                else    -> 0x331A0033
+            })
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                if (url.isNotBlank()) {
+                    runCatching {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                }
+            }
+        }
+        row.addView(android.widget.TextView(ctx).apply {
+            text = title
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        row.addView(android.widget.TextView(ctx).apply {
+            text = meta
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, dp(2), 0, 0)
+        })
+        return row
     }
 
     /** Embed the in-app NotificationStore feed inline as a stack-panel

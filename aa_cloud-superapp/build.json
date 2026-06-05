@@ -293,10 +293,26 @@
             "title": "RSS · ntfy channels"
           },
           {
-            "kind": "open_link",
+            "_doc": "Live GHA workflow runs across the watched repos. Fetches api.github.com/repos/{owner}/{repo}/actions/runs unauthenticated (60 req/h limit shared across panels, 60s cache).",
+            "kind": "gha_runs",
             "title": "GHA · Workflow runs",
-            "url": "https://github.com/diegonmarcos/cloud/actions",
-            "icon": "ic_p_c3_workflows"
+            "subtitle": "Latest 3 runs per repo",
+            "repos": [
+              {"owner": "diegonmarcos", "repo": "unix", "label": "unix"},
+              {"owner": "diegonmarcos", "repo": "cloud", "label": "cloud"},
+              {"owner": "diegonmarcos", "repo": "diegonmarcos.github.io", "label": "front"}
+            ]
+          },
+          {
+            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache.",
+            "kind": "repos",
+            "title": "Repos · Commits",
+            "subtitle": "Latest 3 commits per repo",
+            "repos": [
+              {"owner": "diegonmarcos", "repo": "unix", "label": "unix"},
+              {"owner": "diegonmarcos", "repo": "cloud", "label": "cloud"},
+              {"owner": "diegonmarcos", "repo": "diegonmarcos.github.io", "label": "front"}
+            ]
           },
           {
             "kind": "open_link",
