@@ -77,26 +77,139 @@ class AiFragment : Fragment() {
 
         // ── Reports ──
         col.addView(sectionHeader(ctx, "Reports"))
-        col.addView(caption(ctx, "Mock data shown until the cloud metrics source is wired."))
-        col.addView(reportCard(ctx,
-            title = "Tokens usage per model",
-            rows  = listOf(
-                "Model 4b q4 (Server)"          to "in 1,240,890 · out 234,567 · cached 891,234",
-                "Model 70b q4 (Tasks)"          to "in 567,890   · out 123,456 · cached 234,567",
-                "Model Frontier (Architecture)" to "in 89,012    · out 12,345  · cached 56,789",
-            ),
-        ))
-        col.addView(reportCard(ctx,
-            title = "Cost breakdown (USD)",
-            rows  = listOf(
-                "Model 4b q4 (Server)"          to "$1.71 · in $1.24 · out $0.47",
-                "Model 70b q4 (Tasks)"          to "$1.31 · in $0.85 · out $0.46",
-                "Model Frontier (Architecture)" to "$1.49 · in $1.34 · out $0.15",
-                "TOTAL (last 30 days)"          to "$4.51",
-            ),
-        ))
+        col.addView(caption(ctx, "Mock data shown until the cloud metrics source is wired. Both tables show per-row + per-column + global totals."))
+
+        // Tokens table — per-model rows × in/out/cached cols + row & col totals.
+        val tokenData = listOf(
+            Triple("Servicer 4b",   intArrayOf(1_240_890, 234_567, 891_234), null),
+            Triple("Tasks 70b",     intArrayOf(  567_890, 123_456, 234_567), null),
+            Triple("Frontier",      intArrayOf(   89_012,  12_345,  56_789), null),
+        )
+        col.addView(tokensTable(ctx, tokenData))
+
+        // Cost table — per-model rows × in/out cols + row & col totals.
+        // Dollar values are floats; we display 2 decimal places.
+        val costData = listOf(
+            Triple("Servicer 4b", doubleArrayOf(1.24, 0.47), null),
+            Triple("Tasks 70b",   doubleArrayOf(0.85, 0.46), null),
+            Triple("Frontier",    doubleArrayOf(1.34, 0.15), null),
+        )
+        col.addView(costTable(ctx, costData))
 
         return scroll
+    }
+
+    // ── Report tables ────────────────────────────────────────────────────
+
+    private fun tokensTable(ctx: Context, data: List<Triple<String, IntArray, Nothing?>>): View {
+        val card = tableCard(ctx, "Tokens usage per model")
+        val header = listOf("Model", "Input", "Output", "Cached", "Total")
+        card.addView(tableRow(ctx, header, isHeader = true))
+        val nf = NumberFormat.getNumberInstance(Locale.US)
+        val colTotals = IntArray(3)
+        var grand = 0
+        for ((model, cells, _) in data) {
+            val rowTotal = cells.sum()
+            grand += rowTotal
+            for (i in cells.indices) colTotals[i] += cells[i]
+            card.addView(tableRow(ctx, listOf(
+                model,
+                nf.format(cells[0]),
+                nf.format(cells[1]),
+                nf.format(cells[2]),
+                nf.format(rowTotal),
+            )))
+        }
+        card.addView(tableRow(ctx, listOf(
+            "TOTAL",
+            nf.format(colTotals[0]),
+            nf.format(colTotals[1]),
+            nf.format(colTotals[2]),
+            nf.format(grand),
+        ), isFooter = true))
+        return card
+    }
+
+    private fun costTable(ctx: Context, data: List<Triple<String, DoubleArray, Nothing?>>): View {
+        val card = tableCard(ctx, "Cost breakdown (USD)")
+        val header = listOf("Model", "Input \$", "Output \$", "Total \$")
+        card.addView(tableRow(ctx, header, isHeader = true))
+        val cf = NumberFormat.getCurrencyInstance(Locale.US)
+        val colTotals = DoubleArray(2)
+        var grand = 0.0
+        for ((model, cells, _) in data) {
+            val rowTotal = cells.sum()
+            grand += rowTotal
+            for (i in cells.indices) colTotals[i] += cells[i]
+            card.addView(tableRow(ctx, listOf(
+                model,
+                cf.format(cells[0]),
+                cf.format(cells[1]),
+                cf.format(rowTotal),
+            )))
+        }
+        card.addView(tableRow(ctx, listOf(
+            "TOTAL",
+            cf.format(colTotals[0]),
+            cf.format(colTotals[1]),
+            cf.format(grand),
+        ), isFooter = true))
+        return card
+    }
+
+    private fun tableCard(ctx: Context, title: String): LinearLayout {
+        val card = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(12); setPadding(pad, pad, pad, pad)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+            layoutParams = lp
+            setBackgroundColor(0x331A0033)
+        }
+        card.addView(TextView(ctx).apply {
+            text = title
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, 0, 0, dp(6))
+        })
+        return card
+    }
+
+    private fun tableRow(
+        ctx: Context,
+        cells: List<String>,
+        isHeader: Boolean = false,
+        isFooter: Boolean = false,
+    ): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(3), 0, dp(3))
+            if (isFooter) setBackgroundColor(0x55B794F4.toInt())
+        }
+        for ((i, txt) in cells.withIndex()) {
+            // Column 0 is the model label (wide, left-aligned); the rest
+            // are numeric, narrow + right-aligned (mono) for readability.
+            val isLabel = (i == 0)
+            row.addView(TextView(ctx).apply {
+                text = txt
+                if (isLabel) {
+                    setTextColor(if (isHeader || isFooter) 0xFFE9D8FD.toInt() else 0xCCFFFFFF.toInt())
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f)
+                } else {
+                    setTextColor(if (isHeader || isFooter) 0xFFE9D8FD.toInt() else 0xFFB794F4.toInt())
+                    typeface = Typeface.MONOSPACE
+                    gravity = android.view.Gravity.END
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                if (isHeader || isFooter) setTypeface(typeface, Typeface.BOLD)
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setTextIsSelectable(true)
+            })
+        }
+        return row
     }
 
     // ── widget factories ─────────────────────────────────────────────────
@@ -145,46 +258,6 @@ class AiFragment : Fragment() {
                 override fun afterTextChanged(s: Editable?) { save(s?.toString().orEmpty()) }
             })
         }
-
-    private fun reportCard(ctx: Context, title: String, rows: List<Pair<String, String>>): View {
-        val card = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dp(12); setPadding(pad, pad, pad, pad)
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(8) }
-            layoutParams = lp
-            setBackgroundColor(0x331A0033)
-        }
-        card.addView(TextView(ctx).apply {
-            text = title
-            setTextColor(0xFFE9D8FD.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-        })
-        for ((k, v) in rows) {
-            val row = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, dp(4), 0, dp(2))
-            }
-            row.addView(TextView(ctx).apply {
-                text = k
-                setTextColor(0xCCFFFFFF.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                layoutParams = LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
-            row.addView(TextView(ctx).apply {
-                text = v
-                setTextColor(0xFFB794F4.toInt())
-                typeface = Typeface.MONOSPACE
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setTextIsSelectable(true)
-            })
-            card.addView(row)
-        }
-        return card
-    }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
