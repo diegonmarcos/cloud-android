@@ -49,15 +49,40 @@ class NotificationCenterFragment : Fragment() {
             // Don't let backdrop's click pass through the panel.
             isClickable = true
         }
-        panel.addView(TextView(ctx).apply {
+        // Header row: title on the left, "Clear" action on the right.
+        val header = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(dp(ctx, 4), 0, dp(ctx, 4), dp(ctx, 6))
+        }
+        header.addView(TextView(ctx).apply {
             text = "Notifications"
             setTextColor(0xFFE9D8FD.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
-            setPadding(dp(ctx, 4), 0, 0, dp(ctx, 6))
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            )
         })
+        val entries = NotificationStore.all(ctx)
+        if (entries.isNotEmpty()) {
+            header.addView(TextView(ctx).apply {
+                text = "Clear"
+                setTextColor(0xFFB794F4.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(dp(ctx, 8), dp(ctx, 4), dp(ctx, 8), dp(ctx, 4))
+                isClickable = true; isFocusable = true
+                setOnClickListener {
+                    NotificationStore.clear(ctx)
+                    parentFragmentManager.popBackStack()
+                }
+            })
+        }
+        panel.addView(header)
 
-        // Placeholder list of sample notifications. Replace with a real
-        // feed once a NotificationCenter source is wired.
+        // Feed comes from NotificationStore. Producers: CrashLogger
+        // (writes "App crashed" on every uncaught throwable),
+        // App.detectVersionBump (writes "Updated to vc:N" on first
+        // launch after a versionCode bump).
         val scroll = ScrollView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -65,7 +90,16 @@ class NotificationCenterFragment : Fragment() {
             )
         }
         val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        for (n in samples()) list.addView(notificationRow(ctx, n.first, n.second))
+        if (entries.isEmpty()) {
+            list.addView(TextView(ctx).apply {
+                text = "No notifications yet.\n\nProducers wired:\n  • Updater  — version-bump on launch\n  • Crash    — uncaught exceptions"
+                setTextColor(0x99FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(dp(ctx, 8), dp(ctx, 16), dp(ctx, 8), dp(ctx, 16))
+            })
+        } else {
+            for (e in entries) list.addView(notificationRow(ctx, e))
+        }
         scroll.addView(list)
         panel.addView(scroll)
 
@@ -73,15 +107,7 @@ class NotificationCenterFragment : Fragment() {
         return backdrop
     }
 
-    /** Inline placeholder feed — title + body pairs. */
-    private fun samples(): List<Pair<String, String>> = listOf(
-        "Updater" to "Tap Configs → Update to check GHCR for a new APK.",
-        "Mail"    to "Inbox feed pending JMAP wiring.",
-        "Trace"   to "Pull /trace from a Termux shell to read the live log.",
-        "Cloud"   to "37 services declared in build.json — all green at last sync.",
-    )
-
-    private fun notificationRow(ctx: android.content.Context, title: String, body: String): View {
+    private fun notificationRow(ctx: android.content.Context, e: NotificationStore.Entry): View {
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val pad = dp(ctx, 10); setPadding(pad, pad, pad, pad)
@@ -90,20 +116,47 @@ class NotificationCenterFragment : Fragment() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(ctx, 6) }
             layoutParams = lp
-            setBackgroundColor(0x331A0033)
+            // Severity-coloured stripe via background tint.
+            val bg = when (e.severity) {
+                NotificationStore.Sev.ERROR -> 0x55B91C1C.toInt()
+                NotificationStore.Sev.WARN  -> 0x55D97706.toInt()
+                else                        -> 0x331A0033
+            }
+            setBackgroundColor(bg)
         }
-        row.addView(TextView(ctx).apply {
-            text = title
+        // Title + small "<source> · <time-ago>" header.
+        val meta = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        meta.addView(TextView(ctx).apply {
+            text = e.title
             setTextColor(0xFFE9D8FD.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            )
         })
+        meta.addView(TextView(ctx).apply {
+            text = "${e.source} · ${fmtAgo(System.currentTimeMillis() - e.ts)}"
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        })
+        row.addView(meta)
         row.addView(TextView(ctx).apply {
-            text = body
+            text = e.body
             setTextColor(0xCCE9D8FD.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             setPadding(0, dp(ctx, 2), 0, 0)
         })
         return row
+    }
+
+    private fun fmtAgo(ms: Long): String = when {
+        ms < 60_000           -> "just now"
+        ms < 3_600_000        -> "${ms / 60_000}m ago"
+        ms < 86_400_000       -> "${ms / 3_600_000}h ago"
+        else                  -> "${ms / 86_400_000}d ago"
     }
 
     private fun dp(ctx: android.content.Context, v: Int): Int =

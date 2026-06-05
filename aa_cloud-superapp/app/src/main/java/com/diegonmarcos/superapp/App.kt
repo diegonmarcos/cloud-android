@@ -33,6 +33,28 @@ class App : Application() {
         runCatching { Trace.install(this) }
         runCatching { CrashLogger.install(this) }
         runCatching { DynamicColors.applyToActivitiesIfAvailable(this) }
+        runCatching { detectVersionBump() }
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
+    }
+
+    /** Updater producer for NotificationStore. Compares the current
+     *  BuildConfig.VERSION_CODE against the value last recorded in a
+     *  private SharedPreferences. First launch after a code bump pushes
+     *  an "Updated to vc:N" entry; first-ever launch records the
+     *  baseline silently (nothing to update from). */
+    private fun detectVersionBump() {
+        val sp = getSharedPreferences("updater_marker", android.content.Context.MODE_PRIVATE)
+        val lastVc = sp.getInt("last_vc", -1)
+        val curVc  = BuildConfig.VERSION_CODE
+        if (lastVc in 1 until curVc) {
+            NotificationStore.push(
+                ctx      = this,
+                source   = "Updater",
+                title    = "Updated to vc:$curVc",
+                body     = "From vc:$lastVc · sha:${BuildConfig.GIT_SHORT_SHA} · ${BuildConfig.BUILD_TIMESTAMP}",
+                severity = NotificationStore.Sev.INFO,
+            )
+        }
+        if (lastVc != curVc) sp.edit().putInt("last_vc", curVc).apply()
     }
 }

@@ -65,6 +65,21 @@ object CrashLogger {
                 if (traceFile.exists()) {
                     writeToPublicDownloads(context, "trace-$timestamp.log", traceFile.readText())
                 }
+
+                // (4) Surface in the in-app notification feed so the user
+                // sees this without digging into files. Body keeps the
+                // crash class + first line of message — enough to triage.
+                runCatching {
+                    val cls  = throwable.javaClass.simpleName
+                    val msg  = throwable.message?.lineSequence()?.firstOrNull().orEmpty()
+                    NotificationStore.push(
+                        ctx      = context,
+                        source   = "Crash",
+                        severity = NotificationStore.Sev.ERROR,
+                        title    = "App crashed (${thread.name})",
+                        body     = if (msg.isBlank()) cls else "$cls: $msg",
+                    )
+                }
             } catch (saveError: Throwable) {
                 Log.e(TAG, "failed to save crash", saveError)
             }
