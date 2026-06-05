@@ -195,7 +195,74 @@ class AggregatorStackFragment : Fragment(),
         "chat_matrix"        -> renderChatPlaceholder(ctx, body, "Matrix", "page:chat/matrix")
         "chat_mattermost"    -> renderChatPlaceholder(ctx, body, "Mattermost", "page:chat/mattermost")
         "open_link"          -> renderOpenLink(ctx, body, panel)
+        "notifications"      -> renderNotifications(ctx, body)
         else                 -> renderPlaceholder(ctx, body, panel)
+    }
+
+    /** Embed the in-app NotificationStore feed inline as a stack-panel
+     *  body. Same row shape as NotificationCenterFragment but without
+     *  the backdrop / dropdown chrome — this is the version that lives
+     *  inside the Infos aggregator. Wired producers: Updater +
+     *  CrashLogger; future producers push via NotificationStore.push(). */
+    private fun renderNotifications(ctx: android.content.Context, body: LinearLayout) {
+        val entries = NotificationStore.all(ctx)
+        if (entries.isEmpty()) {
+            body.addView(android.widget.TextView(ctx).apply {
+                text = "No notifications yet.\n\nProducers wired: Updater (version-bump on launch), Crash (uncaught exceptions)."
+                setTextColor(0x99FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(0, dp(8), 0, dp(8))
+            })
+            return
+        }
+        val now = System.currentTimeMillis()
+        for (e in entries.take(20)) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                val pad = dp(10); setPadding(pad, pad, pad, pad)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(6) }
+                layoutParams = lp
+                setBackgroundColor(when (e.severity) {
+                    NotificationStore.Sev.ERROR -> 0x55B91C1C.toInt()
+                    NotificationStore.Sev.WARN  -> 0x55D97706.toInt()
+                    else                        -> 0x331A0033
+                })
+            }
+            val meta = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            meta.addView(android.widget.TextView(ctx).apply {
+                text = e.title
+                setTextColor(0xFFE9D8FD.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            val ago = (now - e.ts).let { ms ->
+                when {
+                    ms < 60_000     -> "just now"
+                    ms < 3_600_000  -> "${ms / 60_000}m ago"
+                    ms < 86_400_000 -> "${ms / 3_600_000}h ago"
+                    else            -> "${ms / 86_400_000}d ago"
+                }
+            }
+            meta.addView(android.widget.TextView(ctx).apply {
+                text = "${e.source} · $ago"
+                setTextColor(0x88FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            })
+            row.addView(meta)
+            row.addView(android.widget.TextView(ctx).apply {
+                text = e.body
+                setTextColor(0xCCE9D8FD.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(0, dp(2), 0, 0)
+            })
+            body.addView(row)
+        }
     }
 
     /** Round-robin pool of stable host ids. View.generateViewId() crashes
