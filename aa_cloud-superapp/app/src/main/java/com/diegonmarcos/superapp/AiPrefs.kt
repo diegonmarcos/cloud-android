@@ -25,10 +25,11 @@ class AiPrefs(context: Context) {
         val defaultName: String,
         val role: String,
         val defaultApiUrl: String,
+        val defaultCostCap: String,
     ) {
-        S4B(     "4b",       "llama-3.1-4b-q4",  "Servicer",    "http://10.0.0.1:11434/v1"),
-        S70B(    "70b",      "llama-3.3-70b-q4", "Tasks",       "http://10.0.0.1:11434/v1"),
-        FRONTIER("frontier", "claude-opus-4.7",  "Architecture", "https://api.anthropic.com/v1"),
+        S4B(     "4b",       "llama-3.1-4b-q4",  "Servicer",    "http://10.0.0.1:11434/v1",     "5"),
+        S70B(    "70b",      "llama-3.3-70b-q4", "Tasks",       "http://10.0.0.1:11434/v1",     "10"),
+        FRONTIER("frontier", "claude-opus-4.7",  "Architecture", "https://api.anthropic.com/v1", "50"),
     }
 
     fun name(slot: Slot): String =
@@ -50,5 +51,14 @@ class AiPrefs(context: Context) {
 
     fun setToken(slot: Slot, value: String) {
         sp.edit().putString("${slot.key}.token", value).apply()
+    }
+
+    /** Per-month cost cap in USD. Stored as plain string so the user can
+     *  type "5", "5.50", "" (no cap), etc. without input-type fighting. */
+    fun costCap(slot: Slot): String =
+        sp.getString("${slot.key}.costCap", slot.defaultCostCap) ?: slot.defaultCostCap
+
+    fun setCostCap(slot: Slot, value: String) {
+        sp.edit().putString("${slot.key}.costCap", value).apply()
     }
 }

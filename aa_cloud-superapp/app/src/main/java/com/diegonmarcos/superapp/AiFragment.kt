@@ -63,6 +63,10 @@ class AiFragment : Fragment() {
             col.addView(field(ctx, prefs.token(slot)) { prefs.setToken(slot, it) }.apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             })
+            col.addView(label(ctx, "Cost Cap — Limit \$/Month"))
+            col.addView(field(ctx, prefs.costCap(slot)) { prefs.setCostCap(slot, it) }.apply {
+                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            })
         }
 
         // ── Reports ──
