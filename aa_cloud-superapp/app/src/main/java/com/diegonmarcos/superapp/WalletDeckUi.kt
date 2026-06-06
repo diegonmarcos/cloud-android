@@ -223,25 +223,25 @@ private fun WalletDeckCard(
     onInfoTap: () -> Unit,
 ) {
     val ctx = LocalContext.current
-    // For the user's own vCard, pack all profile fields the way the
-    // standalone BusinessCardFragment does (name · titles · company ·
-    // location · website / email). Keeps the wallet preview consistent
-    // with the full Virtual Business Card surface — same data fed by
-    // the same ProfilePrefs source of truth.
+    // For the user's own vCard, pull from assets/qrcodes/qrcodes.json
+    // (the file's own description names it the single source of truth
+    // for the user's vCard data — the .vcf files exported under
+    // src/public/ are GENERATED from this block). ProfilePrefs is the
+    // editable runtime layer used by other surfaces; it can drift if
+    // the user hasn't filled it in, so we don't depend on it here.
     val resolved = remember(card.id, card.kind) {
         if (card.kind == "vcard") {
-            val profile = ProfilePrefs(ctx)
-            val taglineParts = listOf(
-                profile.titles,
-                profile.company,
-                profile.location,
-            ).filter { it.isNotBlank() }
-            card.copy(
-                brand   = profile.name.ifBlank { "Virtual Business Card" },
-                tagline = if (taglineParts.isNotEmpty()) taglineParts.joinToString(" · ")
-                          else profile.email,
-                number  = profile.website.ifBlank { profile.email },
-            )
+            val q = QrcodesData.contact(ctx)
+            if (q != null) {
+                val taglineParts = listOf(q.tel, q.cityCountry, q.landingUrl)
+                    .filter { it.isNotBlank() }
+                card.copy(
+                    brand   = q.displayName,
+                    tagline = if (taglineParts.isNotEmpty()) taglineParts.joinToString(" · ")
+                              else q.email,
+                    number  = q.email,
+                )
+            } else card
         } else card
     }
     Box(modifier = Modifier.fillMaxSize().clickable(onClick = onCardTap)) {
