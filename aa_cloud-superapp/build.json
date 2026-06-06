@@ -383,7 +383,7 @@
               },
               {
                 "id": "mattermost",
-                "label": "Mattermost (Internal+Matrix+Rss+Bots)",
+                "label": "Mattermost (Matrix+Rss+Bots)",
                 "icon": "ic_p_chat_mattermost",
                 "target": "page:chat/mattermost"
               }

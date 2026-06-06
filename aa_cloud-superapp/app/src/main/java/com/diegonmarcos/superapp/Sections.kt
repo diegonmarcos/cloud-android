@@ -643,21 +643,25 @@ object Sections {
             val referenced  = fromSection?.let { byId(it) }
 
             if (referenced != null && referenced.tileGroups.isNotEmpty()) {
+                // Each TileGroup becomes its own HomeGroup card. Title
+                // is the group's own — no "parent · " prefix — so the
+                // surface reads like the user's spec ("AI",
+                // "Data Primary", …) rather than "Suite · AI".
                 for (grp in referenced.tileGroups) {
                     parsed.add(HomeGroup(
-                        title  = "$parentTitle · ${grp.title}",
+                        title  = grp.title,
                         tiles  = grp.tiles.map { agg ->
                             HomeTile(id = agg.target, label = agg.label, iconName = agg.iconName)
                         },
                         scroll = scrollMode,
                     ))
                 }
-                // If the entry also declared explicit `tiles` after the
-                // groups, emit them as a tail-bucket so group-only
-                // extras still surface.
+                // Tail-bucket for any explicit `tiles` declared after
+                // the groups — labelled "Other" so it's clear they're
+                // group-less extras.
                 if (tiles.isNotEmpty()) {
                     parsed.add(HomeGroup(
-                        title  = "$parentTitle · Other",
+                        title  = "Other",
                         tiles  = tiles,
                         scroll = scrollMode,
                     ))
