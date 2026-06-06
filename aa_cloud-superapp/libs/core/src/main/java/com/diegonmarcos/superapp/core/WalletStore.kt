@@ -20,20 +20,32 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 4
+    private const val SEED_VERSION = 5
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
-     *  composable maps kind → background + accent colour. */
+     *  composable maps kind → background + accent colour.
+     *
+     *  [eventAt] partitions the wallet into the two top-level surfaces:
+     *  Cards (eventAt == 0L → long-lasting credentials like a debit
+     *  card, transit pass, gym membership) and Tickets (eventAt > 0L
+     *  → event-bound passes — flights, trains, concerts, theatre).
+     *  The Calendar tab is just the Tickets list, regrouped by date. */
     data class Card(
         val id: String,
-        val kind: String,        // "loyalty" | "transit" | "boarding" | "totp" | "membership" | "music"
+        val kind: String,        // "vcard" | "vcard_imported" | "credit" | "debit" | "transit" | "gym" | "flight" | "train" | "music" | "theater" | …
         val brand: String,       // top-line label (e.g. "TIDAL")
         val tagline: String,     // sub-line (e.g. "Premium · since 2018")
         val accent: Long,        // ARGB int (e.g. 0xFF111827) — packed into Long so signed ints survive JSON
         val barcode: String = "",
         val number: String = "", // visible identifier, e.g. card number, member id
+        val eventAt: Long = 0L,  // epoch millis of the ticket event; 0 = no event (long-lasting card)
+        val eventLocation: String = "", // venue / origin → destination, free-form
     ) {
+        /** Convenience — distinguishes Cards from Tickets without
+         *  having to read [eventAt] directly at every call site. */
+        val isTicket: Boolean get() = eventAt > 0L
+
         fun toJson(): JSONObject = JSONObject().apply {
             put("id", id)
             put("kind", kind)
@@ -42,16 +54,20 @@ object WalletStore {
             put("accent", accent)
             put("barcode", barcode)
             put("number", number)
+            put("eventAt", eventAt)
+            put("eventLocation", eventLocation)
         }
         companion object {
             fun fromJson(o: JSONObject): Card = Card(
-                id      = o.optString("id", UUID.randomUUID().toString()),
-                kind    = o.optString("kind", "loyalty"),
-                brand   = o.optString("brand", ""),
-                tagline = o.optString("tagline", ""),
-                accent  = o.optLong("accent", 0xFF111827L),
-                barcode = o.optString("barcode", ""),
-                number  = o.optString("number", ""),
+                id            = o.optString("id", UUID.randomUUID().toString()),
+                kind          = o.optString("kind", "loyalty"),
+                brand         = o.optString("brand", ""),
+                tagline       = o.optString("tagline", ""),
+                accent        = o.optLong("accent", 0xFF111827L),
+                barcode       = o.optString("barcode", ""),
+                number        = o.optString("number", ""),
+                eventAt       = o.optLong("eventAt", 0L),
+                eventLocation = o.optString("eventLocation", ""),
             )
         }
     }
@@ -157,15 +173,6 @@ object WalletStore {
         ),
         Card(
             id      = UUID.randomUUID().toString(),
-            kind    = "boarding",
-            brand   = "Lufthansa",
-            tagline = "LH 192 · BER → MUC · 14:35",
-            accent  = 0xFF1E40AF,                // royal blue
-            barcode = "M1MARCOS/DIEGO       EXXX23 BERMUCLH 0192",
-            number  = "Seat 12A · Gate B14",
-        ),
-        Card(
-            id      = UUID.randomUUID().toString(),
             kind    = "transit",
             brand   = "BVG Berlin",
             tagline = "AB · Monatskarte · expires 2026-07-31",
@@ -180,5 +187,67 @@ object WalletStore {
             accent  = 0xFF166534,                // forest green
             number  = "M-77129",
         ),
+        // ── TICKETS — event-bound (eventAt > 0) ───────────────────
+        // Flight (the old "boarding" Lufthansa, now classified as a
+        // ticket with a real departure time so it sorts on the
+        // Calendar tab). Other tickets follow the same shape:
+        // brand = vendor, tagline = route/show, number = seat info,
+        // eventLocation = origin → destination or venue address.
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "flight",
+            brand         = "Lufthansa",
+            tagline       = "LH 192 · BER → MUC",
+            accent        = 0xFF1E40AF,         // royal blue
+            barcode       = "M1MARCOS/DIEGO       EXXX23 BERMUCLH 0192",
+            number        = "Seat 12A · Gate B14",
+            eventAt       = relativeMillis(daysFromNow = 2, hour = 14, minute = 35),
+            eventLocation = "BER → MUC",
+        ),
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "train",
+            brand         = "Deutsche Bahn ICE",
+            tagline       = "ICE 1024 · Berlin Hbf → München Hbf",
+            accent        = 0xFFE11D2A,         // DB red
+            number        = "Wagen 23 · Sitz 71",
+            eventAt       = relativeMillis(daysFromNow = 5, hour = 9, minute = 12),
+            eventLocation = "Berlin Hbf",
+        ),
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "music",
+            brand         = "Berghain · Klubnacht",
+            tagline       = "Friday Klubnacht",
+            accent        = 0xFF1F2937,         // obsidian
+            number        = "Doors 23:55",
+            eventAt       = relativeMillis(daysFromNow = 7, hour = 23, minute = 55),
+            eventLocation = "Am Wriezener Bahnhof, Berlin",
+        ),
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "theater",
+            brand         = "Berliner Ensemble",
+            tagline       = "Die Dreigroschenoper",
+            accent        = 0xFF8B0000,         // bordeaux
+            number        = "Reihe 7 · Sitz 14",
+            eventAt       = relativeMillis(daysFromNow = 10, hour = 19, minute = 30),
+            eventLocation = "Bertolt-Brecht-Platz 1, Berlin",
+        ),
     )
+
+    /** Epoch millis at (today + daysFromNow) clock-set to hour:minute.
+     *  Used by [mockSeed] so the ticket dates are always in the near
+     *  future relative to install time — the Calendar agenda has fresh
+     *  rows on every reseed. */
+    private fun relativeMillis(daysFromNow: Int, hour: Int, minute: Int): Long {
+        val cal = java.util.Calendar.getInstance().apply {
+            add(java.util.Calendar.DAY_OF_YEAR, daysFromNow)
+            set(java.util.Calendar.HOUR_OF_DAY, hour)
+            set(java.util.Calendar.MINUTE, minute)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        return cal.timeInMillis
+    }
 }

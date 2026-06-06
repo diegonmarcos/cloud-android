@@ -65,9 +65,24 @@ internal fun WalletDeck(
     onModeChange: (WalletMode) -> Unit,
     onAddTap: () -> Unit,
     onOpenVcard: () -> Unit,
+    showAddTile: Boolean = true,
 ) {
-    // Append the synthetic "Add card" tile so it cycles with the rest.
-    val deck = remember(cards) { cards + AddCardSentinel }
+    // Append the synthetic "Add card" tile so it cycles with the rest —
+    // only on the Cards tab (the Tickets tab gets imports through QR
+    // scan in a future iteration, not the same .vcf / .pkpass flow).
+    val deck = remember(cards, showAddTile) {
+        if (showAddTile) cards + AddCardSentinel else cards
+    }
+    if (deck.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                "No items on this tab.",
+                color = Color(0x99FFFFFF),
+                fontSize = 14.sp,
+            )
+        }
+        return
+    }
 
     // Circular scroll: enormous slot count, modulo to fetch actual card.
     // Start mid-list so user can scroll up or down equally before hitting
