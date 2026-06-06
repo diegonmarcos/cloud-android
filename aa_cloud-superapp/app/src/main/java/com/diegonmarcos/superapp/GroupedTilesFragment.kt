@@ -96,7 +96,11 @@ class GroupedTilesFragment : Fragment() {
             val pad = dp(6); setPadding(pad, pad, pad, pad)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             isClickable = true; isFocusable = true
-            background = ctx.getDrawable(android.R.drawable.list_selector_background)
+            // No cell background — matches TileGridFragment's bare tile
+            // look. The previous list_selector_background was the default
+            // amber/yellow highlight from the platform list theme, which
+            // showed up only on Suite (the sole GroupedTilesFragment user
+            // today).
             setOnClickListener {
                 Haptics.tap(it)
                 (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tile.target)
