@@ -375,6 +375,103 @@ class DevControlFragment : Fragment() {
             })
         }
 
+        section(ctx, column, "Memory & CPU Usage") {
+            // All metrics are process-attributable + readable WITHOUT any
+            // privileged permission. JVM heap from Runtime; PSS from
+            // Debug.MemoryInfo (Android's accounting for shared-page
+            // proportional set size); RSS from /proc/self/statm (raw
+            // kernel view). System totals come from ActivityManager.
+            // CPU comes from /proc/self/stat (utime + stime in jiffies)
+            // normalised against process wall-time for an avg %.
+            val ctxAny = requireContext()
+            val rt = Runtime.getRuntime()
+
+            val heapMax   = rt.maxMemory()
+            val heapTotal = rt.totalMemory()
+            val heapFree  = rt.freeMemory()
+            val heapUsed  = heapTotal - heapFree
+            val heapPct   = if (heapMax > 0) (heapUsed * 100 / heapMax).toInt() else -1
+            row(ctx, it, "JVM heap used",
+                "${sizeStr(heapUsed)} / ${sizeStr(heapMax)}" +
+                    (if (heapPct >= 0) " ($heapPct%)" else ""))
+            row(ctx, it, "JVM heap total", sizeStr(heapTotal))
+            row(ctx, it, "JVM heap free",  sizeStr(heapFree))
+
+            val mi = android.os.Debug.MemoryInfo()
+            android.os.Debug.getMemoryInfo(mi)
+            row(ctx, it, "PSS total",     sizeStr(mi.totalPss.toLong()        * 1024L))
+            row(ctx, it, "PSS dalvik",    sizeStr(mi.dalvikPss.toLong()       * 1024L))
+            row(ctx, it, "PSS native",    sizeStr(mi.nativePss.toLong()       * 1024L))
+            row(ctx, it, "PSS other",     sizeStr(mi.otherPss.toLong()        * 1024L))
+            row(ctx, it, "Private dirty", sizeStr(mi.totalPrivateDirty.toLong() * 1024L))
+
+            // RSS via /proc/self/statm field 2 (resident pages).
+            val pageSize = runCatching {
+                android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE)
+            }.getOrDefault(4096L)
+            val rssBytes = runCatching {
+                val parts = File("/proc/self/statm").readText().trim().split(' ')
+                parts.getOrNull(1)?.toLongOrNull()?.let { it * pageSize } ?: -1L
+            }.getOrDefault(-1L)
+            row(ctx, it, "RSS", if (rssBytes < 0) "—" else sizeStr(rssBytes))
+
+            val am = ctxAny.getSystemService(Context.ACTIVITY_SERVICE)
+                as? android.app.ActivityManager
+            val sysMi = android.app.ActivityManager.MemoryInfo()
+            am?.getMemoryInfo(sysMi)
+            row(ctx, it, "System avail",      sizeStr(sysMi.availMem))
+            row(ctx, it, "System total",      sizeStr(sysMi.totalMem))
+            row(ctx, it, "System low-memory", sysMi.lowMemory.toString())
+            row(ctx, it, "Heap class limit",  am?.memoryClass?.let { "$it MB" } ?: "—")
+            row(ctx, it, "Heap class (large)",
+                am?.largeMemoryClass?.let { "$it MB" } ?: "—")
+
+            // CPU: utime (field 14) + stime (field 15) in jiffies. The
+            // comm field is parenthesised and may contain spaces — strip
+            // it before tokenising so field indices stay aligned.
+            val statRaw = runCatching { File("/proc/self/stat").readText() }.getOrNull()
+            val fields = statRaw?.let { raw ->
+                val open  = raw.indexOf('(')
+                val close = raw.lastIndexOf(')')
+                if (open < 0 || close < 0 || close <= open) null
+                else (raw.substring(0, open) + raw.substring(close + 1))
+                    .trim().split(Regex("\\s+"))
+            }
+            val tck   = runCatching {
+                android.system.Os.sysconf(android.system.OsConstants._SC_CLK_TCK)
+            }.getOrDefault(100L)
+            val utime = fields?.getOrNull(13)?.toLongOrNull() ?: -1L
+            val stime = fields?.getOrNull(14)?.toLongOrNull() ?: -1L
+            val cpuJif = if (utime < 0 || stime < 0) -1L else utime + stime
+
+            val uptimeMs = android.os.SystemClock.elapsedRealtime() -
+                AppProcessUptime.startedAtElapsed
+            val uptimeSec = uptimeMs / 1000.0
+
+            row(ctx, it, "CPU user-time",
+                if (utime < 0 || tck <= 0) "—"
+                else "%.2fs".format(utime.toDouble() / tck))
+            row(ctx, it, "CPU sys-time",
+                if (stime < 0 || tck <= 0) "—"
+                else "%.2fs".format(stime.toDouble() / tck))
+            row(ctx, it, "CPU total",
+                if (cpuJif < 0 || tck <= 0) "—"
+                else "%.2fs".format(cpuJif.toDouble() / tck))
+
+            val cores = rt.availableProcessors()
+            val avgPctSingle = if (cpuJif < 0 || uptimeSec <= 0 || tck <= 0) -1.0
+                else (cpuJif.toDouble() / tck / uptimeSec) * 100.0
+            val avgPctPerCore = if (avgPctSingle < 0 || cores <= 0) -1.0
+                else avgPctSingle / cores
+            row(ctx, it, "CPU avg % (1-thread)",
+                if (avgPctSingle < 0) "—" else "%.2f%%".format(avgPctSingle))
+            row(ctx, it, "CPU avg % (per-core)",
+                if (avgPctPerCore < 0) "—" else "%.2f%%".format(avgPctPerCore))
+            row(ctx, it, "Cores online", cores.toString())
+
+            it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak."))
+        }
+
         section(ctx, column, "VPN / WireGuard") {
             // Reads the shared GoBackend that WireGuardFragment uses.
             // getState() reflects the runtime tunnel; getStatistics()
