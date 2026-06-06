@@ -186,12 +186,22 @@ internal fun WalletDeck(
                         onCardTap  = {
                             // vCard is one-tap → the existing
                             // BusinessCardFragment (same destination as
-                            // the drawer-header identity row). Every
-                            // other card uses the two-tap Select-then-
-                            // Full pattern.
-                            if (card.kind == "vcard") onOpenVcard()
-                            else if (isSelected) onModeChange(WalletMode.Full(card.id))
-                            else                 onModeChange(WalletMode.Selected(card.id))
+                            // the drawer-header identity row).
+                            //
+                            // Every other card uses the two-tap pattern,
+                            // but with a strict re-selection rule: while
+                            // any card is Selected, tapping a DIFFERENT
+                            // card counts as "tap outside the selection"
+                            // → dismiss to Idle. The user has to tap
+                            // again to pick that new card. Prevents the
+                            // selection from invisibly hopping between
+                            // cards on accidental taps.
+                            when {
+                                card.kind == "vcard"  -> onOpenVcard()
+                                isSelected            -> onModeChange(WalletMode.Full(card.id))
+                                selectedId != null    -> onModeChange(WalletMode.Idle)
+                                else                  -> onModeChange(WalletMode.Selected(card.id))
+                            }
                         },
                         onInfoTap  = { onModeChange(WalletMode.Config(card.id)) },
                     )
@@ -213,30 +223,50 @@ private fun WalletDeckCard(
     onInfoTap: () -> Unit,
 ) {
     val ctx = LocalContext.current
+    // For the user's own vCard, pack all profile fields the way the
+    // standalone BusinessCardFragment does (name · titles · company ·
+    // location · website / email). Keeps the wallet preview consistent
+    // with the full Virtual Business Card surface — same data fed by
+    // the same ProfilePrefs source of truth.
     val resolved = remember(card.id, card.kind) {
         if (card.kind == "vcard") {
             val profile = ProfilePrefs(ctx)
+            val taglineParts = listOf(
+                profile.titles,
+                profile.company,
+                profile.location,
+            ).filter { it.isNotBlank() }
             card.copy(
                 brand   = profile.name.ifBlank { "Virtual Business Card" },
-                tagline = profile.titles.ifBlank { profile.email },
-                number  = profile.email,
+                tagline = if (taglineParts.isNotEmpty()) taglineParts.joinToString(" · ")
+                          else profile.email,
+                number  = profile.website.ifBlank { profile.email },
             )
         } else card
     }
     Box(modifier = Modifier.fillMaxSize().clickable(onClick = onCardTap)) {
         WalletCardView(card = resolved, isExpanded = isSelected, modifier = Modifier.fillMaxSize())
+        // (i) info button — top-right circle. No shadow (it cast a
+        // soft gray halo that looked like a second, off-centre ring),
+        // solid black 70% opacity background, and the "i" glyph is
+        // the pre-circled-info Unicode ⓘ so we don't have to fight
+        // letter-baseline maths to centre a Latin "i" inside a circle.
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)
                 .size(28.dp)
-                .shadow(2.dp, shape = CircleShape)
                 .clip(CircleShape)
-                .background(Color(0x55000000))
+                .background(Color(0xB3000000))
                 .clickable(onClick = onInfoTap),
             contentAlignment = Alignment.Center,
         ) {
-            Text("i", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(
+                "ⓘ",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Normal,
+            )
         }
     }
 }

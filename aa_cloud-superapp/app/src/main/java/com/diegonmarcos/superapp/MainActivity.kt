@@ -230,8 +230,19 @@ class MainActivity : AppCompatActivity(),
             // effect — runOnCommit would have worked but it's mutually
             // exclusive with addToBackStack, so we use the listener instead.
             supportFragmentManager.addOnBackStackChangedListener {
-                supportFragmentManager.findFragmentById(R.id.fragment_container)
-                    ?.let { applyChrome(it) }
+                val frag = supportFragmentManager.findFragmentById(R.id.fragment_container)
+                frag?.let { applyChrome(it) }
+                // When the back stack drains AND the resulting visible
+                // fragment is the originally-committed Home3DFragment,
+                // sync currentSection back to "home". popBackStack()
+                // itself doesn't go through goHome(), so without this
+                // the field stays stale and onPrepareOptionsMenu keeps
+                // showing the Back arrow at the Home root.
+                if (supportFragmentManager.backStackEntryCount == 0 && frag is Home3DFragment) {
+                    currentSection = "home"
+                    currentLabel = getString(R.string.section_home)
+                    supportActionBar?.title = currentLabel
+                }
                 // Toolbar's right-side Back action toggles visibility with
                 // the back-stack depth; invalidate to redraw.
                 invalidateOptionsMenu()
@@ -1307,6 +1318,16 @@ class MainActivity : AppCompatActivity(),
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.action_back -> {
+                // First, give the visible fragment a chance to handle
+                // it internally — Wallet's Compose state machine (cards
+                // Selected/Full/Config) wants Back to unwind one
+                // Compose step at a time before popping the activity
+                // back-stack. Only fragments implementing BackHandler
+                // participate; everything else falls through.
+                val top = supportFragmentManager.findFragmentById(R.id.fragment_container)
+                if ((top as? BackHandler)?.tryHandleBack() == true) {
+                    return true
+                }
                 // ONE LEVEL up — matches system Back. Previously this
                 // popped the entire back stack (jump to section root),
                 // but that aggressive behaviour skipped past parents

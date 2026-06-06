@@ -4,10 +4,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,27 +25,72 @@ import com.diegonmarcos.superapp.core.WalletStore
 /**
  * Wallet — Compose surface. State machine across four modes:
  *   • Idle      — deck of cards in the circular swipe roll.
- *   • Selected  — one card lifted, the rest fade. Tap outside → Idle.
+ *   • Selected  — one card lifted, the rest fade. Tap outside or any
+ *                 different card → Idle. Tap the same card → Full.
  *   • Full      — full-page card view with info panel + Back.
  *   • Config    — per-card edit screen (reached via the (i) overlay).
  *
- * The deck is a LazyColumn with [Int.MAX_VALUE] item slots and modulo
- * lookup, giving an effectively circular linked-list scroll without
- * piling 6 cards × 1000 copies into memory. A synthetic "Add card"
- * sentinel is appended at the end of the user's cards so it rides
- * the same loop and is reachable from any cycle.
- *
- * Storage: [WalletStore] (libs:core) is the only persistence layer.
+ * Mode state is hoisted to the Fragment (not local to WalletScreen)
+ * so [tryHandleBack] can dismiss non-Idle modes when the user taps
+ * the toolbar Back / hits system Back — without unwinding past
+ * WalletFragment in the activity back-stack. MainActivity asks
+ * BackHandler.tryHandleBack on the visible fragment first; only when
+ * it returns false does popBackStack fire.
  */
-class WalletFragment : Fragment() {
+class WalletFragment : Fragment(), BackHandler {
+
+    private val modeState: MutableState<WalletMode> = mutableStateOf(WalletMode.Idle)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View =
         ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { WalletScreen() }
+            setContent { WalletScreen(modeState) }
         }
 
+    override fun onViewCreated(view: View, s: Bundle?) {
+        super.onViewCreated(view, s)
+        // System Back: dismiss the Compose state instead of popping
+        // WalletFragment off the activity back-stack — that's what
+        // "the parent of a selected card is the deck, not Home" means
+        // for the back gesture.
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (!tryHandleBack()) {
+                        // Compose mode is already Idle — let the
+                        // activity handle it (pop back stack).
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            },
+        )
+    }
+
+    /** [BackHandler] entry point — MainActivity calls this from the
+     *  toolbar action_back before popBackStack. Returns true when we
+     *  consumed the back gesture by dismissing a non-Idle Compose
+     *  state; false when we have nothing to dismiss. */
+    override fun tryHandleBack(): Boolean {
+        if (modeState.value != WalletMode.Idle) {
+            modeState.value = WalletMode.Idle
+            return true
+        }
+        return false
+    }
+
     companion object { fun newInstance(): WalletFragment = WalletFragment() }
+}
+
+/** Fragments that want to intercept the Back gesture (toolbar action
+ *  AND system back) before the activity pops their hosting back-stack
+ *  entry. Currently implemented by [WalletFragment] so its Compose
+ *  state machine can unwind one step at a time. */
+interface BackHandler {
+    /** Return true to consume the back gesture. */
+    fun tryHandleBack(): Boolean
 }
 
 /** Wallet UI state. Single source of truth for everything the user can
@@ -68,7 +115,7 @@ internal val AddCardSentinel = WalletStore.Card(
 )
 
 @Composable
-private fun WalletScreen() {
+private fun WalletScreen(modeState: MutableState<WalletMode>) {
     val ctx = LocalContext.current
     // Stable sort: vCard(s) — the user's own Virtual Business Cards —
     // always pin to the TOP of the deck, regardless of when other
@@ -82,7 +129,7 @@ private fun WalletScreen() {
         vc + rest
     }
     var cards by remember { mutableStateOf(orderedCards(WalletStore.all(ctx))) }
-    var mode  by remember { mutableStateOf<WalletMode>(WalletMode.Idle) }
+    var mode by modeState
     var showAddSheet by remember { mutableStateOf(false) }
 
     val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
