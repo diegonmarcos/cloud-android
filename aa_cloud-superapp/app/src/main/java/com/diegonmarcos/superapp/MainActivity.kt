@@ -1265,11 +1265,13 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    /** Rebind bottom-nav menu items to their per-mode icons. Reads
-     *  Section.iconForMode(modePrefs.mode) for every nav_X item whose
-     *  matching section has icon_apps / icon_admin overrides; falls
-     *  back to the static icons declared in res/menu/bottom_nav.xml
-     *  when no override exists. Safe to call repeatedly. */
+    /** Rebind bottom-nav menu items to their per-mode icons AND to
+     *  their data-driven labels. Reads Section.iconForMode + Section.label
+     *  from build.json::ui.sections — bottom_nav.xml is now only the
+     *  structural anchor (item ids + fallback static icons); the human-
+     *  visible label is whatever sections[id=X].label says today. Lets
+     *  us rename Tools→Labs purely in build.json without touching
+     *  res/values/strings.xml. Safe to call repeatedly. */
     private fun refreshBottomNavIconsForMode() {
         val mode = modePrefs.mode
         for (i in 0 until bottomNav.menu.size()) {
@@ -1278,6 +1280,7 @@ class MainActivity : AppCompatActivity(),
             val section = Sections.byId(sectionId) ?: continue
             val iconRes = Sections.iconResFor(this, section.iconForMode(mode))
             if (iconRes != 0) item.setIcon(iconRes)
+            if (section.label.isNotBlank()) item.title = section.label
         }
     }
 

@@ -469,7 +469,42 @@ class DevControlFragment : Fragment() {
                 if (avgPctPerCore < 0) "—" else "%.2f%%".format(avgPctPerCore))
             row(ctx, it, "Cores online", cores.toString())
 
-            it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak."))
+            // ── Phone storage ─────────────────────────────────────
+            // StatFs against the data partition is the right anchor —
+            // that's where the app, its caches, and DB live; "phone
+            // storage" colloquially means user-data partition free space.
+            // External / SD is separate but reported next to it so the
+            // user has both numbers in one place.
+            val dataDir = android.os.Environment.getDataDirectory().absolutePath
+            val (dataFree, dataTotal) = statFsBytes(dataDir)
+            val dataPct = if (dataTotal > 0) ((dataTotal - dataFree) * 100 / dataTotal).toInt() else -1
+            row(ctx, it, "Data free",
+                "${sizeStr(dataFree)} / ${sizeStr(dataTotal)}" +
+                    (if (dataPct >= 0) " (${100 - dataPct}% free)" else ""))
+
+            val extDir = ctxAny.getExternalFilesDir(null)?.absolutePath
+            if (extDir != null) {
+                val (extFree, extTotal) = statFsBytes(extDir)
+                row(ctx, it, "External free",
+                    "${sizeStr(extFree)} / ${sizeStr(extTotal)}")
+            }
+
+            // ── Phone swap (zRAM / disk) ──────────────────────────
+            // /proc/meminfo SwapTotal + SwapFree are kB, space-padded.
+            // Some kernels disable swap entirely → SwapTotal:0; report
+            // "disabled" so the row isn't misread as "everything's used".
+            val (swapTotal, swapFree) = readSwapBytes()
+            val swapUsed = if (swapTotal < 0 || swapFree < 0) -1L else swapTotal - swapFree
+            row(ctx, it, "Swap total",
+                if (swapTotal < 0) "—"
+                else if (swapTotal == 0L) "disabled"
+                else sizeStr(swapTotal))
+            row(ctx, it, "Swap free",
+                if (swapFree < 0 || swapTotal == 0L) "—" else sizeStr(swapFree))
+            row(ctx, it, "Swap used",
+                if (swapUsed < 0 || swapTotal == 0L) "—" else sizeStr(swapUsed))
+
+            it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak. Storage = data partition (where the app + caches live). Swap is typically zRAM on Android — counts AGAINST physical RAM but appears as virtual."))
         }
 
         section(ctx, column, "VPN / WireGuard") {
@@ -1144,6 +1179,28 @@ class DevControlFragment : Fragment() {
         bytes >= 1024          -> "%.1f KiB".format(bytes / 1024.0)
         else                   -> "$bytes B"
     }
+
+    /** (free, total) bytes for the filesystem hosting [path]. Returns
+     *  (-1, -1) when StatFs throws — happens on early-API or unmounted
+     *  external paths. */
+    private fun statFsBytes(path: String): Pair<Long, Long> = runCatching {
+        val s = android.os.StatFs(path)
+        s.availableBytes to s.totalBytes
+    }.getOrDefault(-1L to -1L)
+
+    /** (swapTotalBytes, swapFreeBytes) from /proc/meminfo. -1L on parse
+     *  failure; 0L SwapTotal means the kernel has no swap configured
+     *  (caller should render "disabled"). Values in /proc/meminfo are
+     *  in kB — multiplied to bytes here so callers stay in sizeStr units. */
+    private fun readSwapBytes(): Pair<Long, Long> = runCatching {
+        val text = File("/proc/meminfo").readText()
+        fun kb(field: String): Long {
+            val m = Regex("(?m)^${field}:\\s+(\\d+)\\s+kB").find(text)
+                ?: return -1L
+            return m.groupValues[1].toLong() * 1024L
+        }
+        kb("SwapTotal") to kb("SwapFree")
+    }.getOrDefault(-1L to -1L)
 
     private fun fmtMillis(ms: Long): String =
         DateFormat.getDateTimeInstance().format(Date(ms))

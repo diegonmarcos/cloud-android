@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -112,6 +113,13 @@ internal fun WalletDeck(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .height(CardDp)
+                    // Selected card must paint above the rest. LazyColumn
+                    // draws items in slot order, so a later card (drawn
+                    // last) sits on top by default — the previously-bug
+                    // was the faded sibling beneath the lifted selection
+                    // bleeding through and making it LOOK semi-transparent.
+                    // zIndex(1f) lifts the selected box out of that stack.
+                    .zIndex(if (isSelected) 1f else 0f)
                     .graphicsLayer {
                         this.alpha = alpha
                         translationY = lift.toPx()

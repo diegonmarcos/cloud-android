@@ -11,7 +11,7 @@
     <string name="section_communication">Comms</string>
     <string name="section_infos">Infos</string>
     <string name="section_suite">Suite</string>
-    <string name="section_tools">Tools</string>
+    <string name="section_tools">Labs</string>
     <string name="mode_apps">Apps</string>
     <string name="mode_admin">Admin</string>
     <string name="mode_toggled">Mode: %1$s</string>
