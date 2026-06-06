@@ -1297,42 +1297,37 @@ class MainActivity : AppCompatActivity(),
         val atHomeRoot = currentSection == "home" &&
             supportFragmentManager.backStackEntryCount == 0
         menu.findItem(R.id.action_back)?.isVisible = !atHomeRoot
-        // action_vcard: ONLY at the Home root (mirror of action_back).
+        // action_wallet: ONLY at the Home root (mirror of action_back).
         // Slots into the same top-right toolbar position so the user
         // gets a single context-appropriate action there at all times.
-        menu.findItem(R.id.action_vcard)?.isVisible = atHomeRoot
+        menu.findItem(R.id.action_wallet)?.isVisible = atHomeRoot
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.action_back -> {
-                // Hierarchical "up": one tap = one level toward Home.
-                //   • Any fragments on the back stack? → pop them ALL
-                //     at once (the section root is the parent of every
-                //     nested page, so going up from a deep detail lands
-                //     directly at the section's aggregator/grid, not on
-                //     intermediate pages).
-                //   • Already at a section root (empty back stack)? →
-                //     Home.
-                //   • Already on Home? → no-op (the icon hides via
-                //     onPrepareOptionsMenu, but defend the path anyway).
+                // ONE LEVEL up — matches system Back. Previously this
+                // popped the entire back stack (jump to section root),
+                // but that aggressive behaviour skipped past parents
+                // for cross-section pushes (e.g. Wallet → vCard →
+                // toolbar Back used to jump all the way to Home,
+                // bypassing Wallet). Single-pop is predictable and
+                // composes — tap twice to skip two levels.
                 if (supportFragmentManager.backStackEntryCount > 0) {
-                    supportFragmentManager.popBackStack(
-                        null,
-                        FragmentManager.POP_BACK_STACK_INCLUSIVE,
-                    )
+                    supportFragmentManager.popBackStack()
                 } else if (currentSection != "home") {
                     goHome()
                 }
                 return true
             }
-            R.id.action_vcard -> {
-                // Same destination as tapping the drawer-header
-                // identity row — reuses the existing NavigationListener
-                // wiring so there's exactly one path into the Virtual
-                // Business Card screen.
-                onDrawerBusinessCardOpen()
+            R.id.action_wallet -> {
+                // Open the Wallet section page. The Virtual Business
+                // Card surface is now reachable from inside Wallet
+                // (tap the pinned vCard at the top of the deck) — same
+                // NavigationListener wiring as the drawer-header
+                // identity row, just routed through one extra hop.
+                openSectionPage("wallet", "cards")
                 return true
             }
         }

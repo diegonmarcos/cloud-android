@@ -89,9 +89,9 @@ private fun WalletScreen() {
     // vCard (kind="vcard") is special — it's NOT a stored, importable
     // card, it's the user's own identity card rendered from ProfilePrefs.
     // Tapping it skips the wallet's Compose Selected → Full state and
-    // routes straight to the existing BusinessCardFragment (the same
-    // screen the Home top-right action_vcard icon opens), so there's
-    // one canonical Virtual Business Card surface in the app.
+    // routes straight to the existing BusinessCardFragment (same
+    // destination as the drawer-header identity row), so there's one
+    // canonical Virtual Business Card surface in the app.
     val onOpenVcard: () -> Unit = {
         (ctx as? HomeDrawerFragment.NavigationListener)?.onDrawerBusinessCardOpen()
     }

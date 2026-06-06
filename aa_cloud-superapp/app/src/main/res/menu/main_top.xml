@@ -16,13 +16,14 @@
           android:icon="@drawable/ic_back"
           app:showAsAction="ifRoom" />
 
-    <!-- vCard shortcut — shown ONLY on the Home screen (mirror of
-         action_back which hides on Home). Tap opens the Virtual
-         Business Card screen — same destination as tapping the
-         drawer-header identity row. Visibility toggled in
+    <!-- Wallet shortcut — shown ONLY on the Home screen (mirror of
+         action_back which hides on Home). Tap navigates to the Wallet
+         section page (page:wallet/cards). The Virtual Business Card
+         screen is now reachable from inside the Wallet by tapping the
+         vCard at the top of the deck. Visibility toggled in
          MainActivity.onPrepareOptionsMenu. -->
-    <item android:id="@+id/action_vcard"
-          android:title="@string/action_vcard"
-          android:icon="@drawable/ic_vcard"
+    <item android:id="@+id/action_wallet"
+          android:title="@string/action_wallet"
+          android:icon="@drawable/ic_wallet"
           app:showAsAction="ifRoom" />
 </menu>

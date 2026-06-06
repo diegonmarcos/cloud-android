@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 2
+    private const val SEED_VERSION = 3
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -122,6 +122,19 @@ object WalletStore {
             brand   = "Virtual Business Card",   // overridden at render via ProfilePrefs
             tagline = "Tap to expand — QR vCard",
             accent  = 0xFF7C3AED,                // brand purple
+        ),
+        // Example imported vCard — sample of what a .vcf contact import
+        // looks like in the deck. kind="contact" so it does NOT receive
+        // the ProfilePrefs overlay reserved for the user's OWN vcard
+        // above. Stays in the seed so a fresh install shows BOTH paths
+        // (the identity card + an imported-style example) side by side.
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "contact",
+            brand   = "Jane Doe",
+            tagline = "Lead Designer · ACME Studio",
+            accent  = 0xFF6366F1,                // indigo (contact example)
+            number  = "jane.doe@acme.example",
         ),
         Card(
             id      = UUID.randomUUID().toString(),

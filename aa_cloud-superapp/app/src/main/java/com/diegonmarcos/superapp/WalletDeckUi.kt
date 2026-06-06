@@ -26,8 +26,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,7 +41,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,6 +78,49 @@ internal fun WalletDeck(
     }
     val listState  = rememberLazyListState(initialFirstVisibleItemIndex = initialIdx)
     val selectedId = (mode as? WalletMode.Selected)?.cardId
+    val density    = LocalDensity.current
+
+    // True while WE are running an animateScrollToItem; the swipe-to-
+    // dismiss collector below ignores scroll events during that window
+    // so our programmatic centring doesn't accidentally dismiss the
+    // selection we just made.
+    var programmaticScrolling by remember { mutableStateOf(false) }
+
+    // On Selected → animate the deck so the selected card is centred
+    // in the viewport. Looks up the nearest visible slot whose card.id
+    // matches; falls back to the first visible slot when the selected
+    // card has already scrolled off (rare — only happens if the
+    // selection survives a scroll, which the dismiss-on-scroll handler
+    // below explicitly prevents).
+    LaunchedEffect(selectedId) {
+        if (selectedId == null) return@LaunchedEffect
+        val info = listState.layoutInfo
+        val slot = info.visibleItemsInfo
+            .firstOrNull { deck[it.index % deck.size].id == selectedId }
+            ?.index
+            ?: listState.firstVisibleItemIndex
+        val viewportH = info.viewportEndOffset - info.viewportStartOffset
+        val cardPx    = with(density) { CardDp.toPx() }.toInt()
+        val offsetPx  = -((viewportH - cardPx) / 2)
+        programmaticScrolling = true
+        runCatching { listState.animateScrollToItem(slot, offsetPx) }
+        programmaticScrolling = false
+    }
+
+    // Swipe-to-dismiss while Selected: any user-initiated scroll →
+    // back to Idle. distinctUntilChanged so we don't fire on every
+    // sub-pixel update; the !programmaticScrolling gate exempts our
+    // own centring animation above.
+    LaunchedEffect(listState, selectedId) {
+        if (selectedId == null) return@LaunchedEffect
+        snapshotFlow { listState.isScrollInProgress }
+            .distinctUntilChanged()
+            .collect { scrolling ->
+                if (scrolling && !programmaticScrolling) {
+                    onModeChange(WalletMode.Idle)
+                }
+            }
+    }
 
     LazyColumn(
         state               = listState,
@@ -136,9 +185,10 @@ internal fun WalletDeck(
                         isSelected = isSelected,
                         onCardTap  = {
                             // vCard is one-tap → the existing
-                            // BusinessCardFragment (Home top-right
-                            // action_vcard). Every other card uses the
-                            // two-tap Select-then-Full pattern.
+                            // BusinessCardFragment (same destination as
+                            // the drawer-header identity row). Every
+                            // other card uses the two-tap Select-then-
+                            // Full pattern.
                             if (card.kind == "vcard") onOpenVcard()
                             else if (isSelected) onModeChange(WalletMode.Full(card.id))
                             else                 onModeChange(WalletMode.Selected(card.id))
