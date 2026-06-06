@@ -192,7 +192,16 @@ internal fun WalletDeck(
                     }
             ) {
                 if (card.id == AddCardSentinel.id) {
-                    WalletAddTile(onClick = onAddTap)
+                    // Same dismiss-other-card rule as regular cards:
+                    // while any card is Selected, tapping the "+" tile
+                    // dismisses the selection instead of firing the
+                    // Add sheet. The user has to tap the tile a second
+                    // time (after the dismissal) to open Add — matches
+                    // the rest of the deck's tap-outside semantics.
+                    WalletAddTile(onClick = {
+                        if (selectedId != null) onModeChange(WalletMode.Idle)
+                        else                    onAddTap()
+                    })
                 } else {
                     WalletDeckCard(
                         card       = card,
