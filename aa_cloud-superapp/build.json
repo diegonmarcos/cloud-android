@@ -434,10 +434,11 @@
                 "target": "section:tabs"
               },
               {
+                "_doc": "In-app card-stack wallet (WalletFragment / Compose). page:wallet/cards routes through openSectionPage → SectionPages.factoryFor → WalletFragment. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
                 "id": "wallet",
                 "label": "Wallet",
                 "icon": "ic_wallet",
-                "target": "app://com.google.android.apps.walletnfcrel?fallback=https%3A%2F%2Fwallet.google.com"
+                "target": "page:wallet/cards"
               },
               {
                 "id": "maps",
@@ -1230,6 +1231,21 @@
             "label": "Linktree",
             "icon": "ic_tree",
             "action": "https://linktree.diegonmarcos.com/"
+          }
+        ]
+      },
+      {
+        "_doc": "In-app Wallet — first Jetpack Compose surface. Renders cards in a stack-overlap deck (Apple Wallet-style). Data layer = WalletStore in libs:core; SharedPreferences-backed; seeded with mock cards on first launch. Single page 'cards' so the tile target page:wallet/cards routes through the standard openSectionPage → SectionPages factory dispatcher (which knows about WalletFragment) instead of the bare-section placeholder.",
+        "id": "wallet",
+        "label": "Wallet",
+        "icon": "ic_wallet",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          {
+            "id": "cards",
+            "label": "Cards",
+            "icon": "ic_wallet"
           }
         ]
       },

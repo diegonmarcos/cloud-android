@@ -291,7 +291,20 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
-    buildFeatures { buildConfig = true }
+    buildFeatures {
+        buildConfig = true
+        // Jetpack Compose is enabled but used SURGICALLY — only the
+        // Wallet surface (WalletFragment hosting a ComposeView) right
+        // now. Every other fragment remains programmatic-View based.
+        // Adopt per-fragment as new surfaces benefit from declarative
+        // recomposition (animation-heavy, dynamic theming).
+        compose = true
+    }
+    composeOptions {
+        // Pinned to Kotlin 1.9.24 → Compose Compiler 1.5.14 per
+        // https://developer.android.com/jetpack/androidx/releases/compose-kotlin
+        kotlinCompilerExtensionVersion = '1.5.14'
+    }
 
     // Stable signing — required for the in-app updater to install update APKs.
     // The keystore is generated once in CI (cached forever via GHA) and lives at
@@ -362,4 +375,15 @@ dependencies {
     // No camera scanning needed (we only encode), so the core artifact
     // is enough — no `zxing-android` needed.
     implementation 'com.google.zxing:core:3.5.3'
+
+    // ── Jetpack Compose (surgical adoption — WalletFragment only). ──
+    // BOM pin keeps every Compose module on a compatible release; only
+    // the artifacts we actually need are pulled in to keep the APK
+    // delta minimal.
+    implementation platform('androidx.compose:compose-bom:2024.05.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.animation:animation'
+    implementation 'androidx.compose.runtime:runtime'
 }
