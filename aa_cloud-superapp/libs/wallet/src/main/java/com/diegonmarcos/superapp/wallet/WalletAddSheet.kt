@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.wallet
 
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.diegonmarcos.superapp.core.WalletStore
 import java.util.UUID
 
 /** Bottom sheet shown when the user taps the synthetic "Add card" tile.

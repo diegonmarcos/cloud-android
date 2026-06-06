@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp
 
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.mail.MailPages
+import com.diegonmarcos.superapp.wallet.WalletFragment
 
 /**
  * Per-section page registry — now driven by [Sections] (which mirrors

@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.wallet
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -22,7 +22,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.core.WalletStore
 
 /**
  * Wallet — Compose surface. State machine across four modes:
@@ -86,15 +85,6 @@ class WalletFragment : Fragment(), BackHandler {
     companion object { fun newInstance(): WalletFragment = WalletFragment() }
 }
 
-/** Fragments that want to intercept the Back gesture (toolbar action
- *  AND system back) before the activity pops their hosting back-stack
- *  entry. Currently implemented by [WalletFragment] so its Compose
- *  state machine can unwind one step at a time. */
-interface BackHandler {
-    /** Return true to consume the back gesture. */
-    fun tryHandleBack(): Boolean
-}
-
 /** Wallet UI state. Single source of truth for everything the user can
  *  be looking at — deck/select/full/config — modeled as a sealed class
  *  so the dispatcher in [WalletScreen] is exhaustive. */
@@ -155,7 +145,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     // destination as the drawer-header identity row), so there's one
     // canonical Virtual Business Card surface in the app.
     val onOpenVcard: () -> Unit = {
-        (ctx as? HomeDrawerFragment.NavigationListener)?.onDrawerBusinessCardOpen()
+        (ctx as? WalletHost)?.onOpenVcard()
     }
     fun cardOrIdle(id: String): WalletStore.Card? {
         val c = cards.firstOrNull { it.id == id }

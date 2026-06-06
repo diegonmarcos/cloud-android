@@ -25,6 +25,8 @@ import com.google.android.material.tabs.TabLayout
 import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.superapp.mail.MailHost
 import com.diegonmarcos.superapp.mail.MailPages
+import com.diegonmarcos.superapp.wallet.BackHandler
+import com.diegonmarcos.superapp.wallet.WalletHost
 
 /**
  * Top-level shell.
@@ -45,7 +47,15 @@ class MainActivity : AppCompatActivity(),
     TileGridFragment.TileClickListener,
     com.diegonmarcos.superapp.devcontrol.DevControlBridge.ActivityHost,
     MailHost,
+    WalletHost,
     SearchOpener {
+
+    /** [WalletHost] — delegates straight to the existing drawer-
+     *  business-card navigation so there's still only ONE path into
+     *  the Virtual Business Card surface, whether the user gets here
+     *  via the drawer identity row or by tapping the pinned vCard in
+     *  the wallet deck. */
+    override fun onOpenVcard() = onDrawerBusinessCardOpen()
 
     private val TAG = "MainActivity"
     private lateinit var drawerLayout: DrawerLayout

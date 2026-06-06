@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.core
+package com.diegonmarcos.superapp.wallet
 
 import android.content.Context
 import org.json.JSONArray

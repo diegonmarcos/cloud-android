@@ -86,7 +86,8 @@
         "libs:net",
         "libs:ops",
         "libs:vault",
-        "libs:chat"
+        "libs:chat",
+        "libs:wallet"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -150,6 +151,13 @@
         "libs:core"
       ],
       "comment": "Chat / messaging. Likely integrates with mattermost-bots (chat.diegonmarcos.com) — could fork Mattermost-Mobile / SimpleX / Conversations later."
+    },
+    "libs:wallet": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "Apple/Google-Wallet-style Compose surface. Cards / Tickets / Calendar / Archive tabs. Sources its vCard data from assets/qrcodes/qrcodes.json (the front repo's generated contact block). First Compose-only lib in the project — drives the kotlinCompilerExtensionVersion pin."
     }
   },
   "ui": {

@@ -360,6 +360,7 @@ dependencies {
     implementation project(':libs:ops')
     implementation project(':libs:vault')
     implementation project(':libs:chat')
+    implementation project(':libs:wallet')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

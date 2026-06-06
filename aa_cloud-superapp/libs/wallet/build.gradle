@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.diegonmarcos.superapp.wallet'
+    compileSdk 34
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    buildFeatures {
+        // Wallet IS our Compose surface — the lib hosts every Compose
+        // composable that used to live in app/. App still depends on
+        // Compose for any future in-app Compose, but the wallet's UI
+        // surface is fully self-contained here.
+        compose = true
+    }
+    composeOptions {
+        // Pinned to Kotlin 1.9.24 → Compose Compiler 1.5.14, same as
+        // app/build.gradle so both modules agree on the bytecode
+        // contract.
+        kotlinCompilerExtensionVersion = '1.5.14'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+
+    // ZXing core — pure-Java QR encoder. No camera scanning here, so
+    // the core artifact is enough (matches app/build.gradle pin).
+    implementation 'com.google.zxing:core:3.5.3'
+
+    // Compose — BOM-pinned to keep every artifact on a compatible
+    // release.
+    implementation platform('androidx.compose:compose-bom:2024.05.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.animation:animation'
+    implementation 'androidx.compose.runtime:runtime'
+    // activity-compose for rememberLauncherForActivityResult — used by
+    // the wallet's Add-card bottom sheet to drive the .vcf / .pkpass
+    // / .pass file picker.
+    implementation 'androidx.activity:activity-compose:1.9.0'
+}
