@@ -70,11 +70,31 @@ internal val AddCardSentinel = WalletStore.Card(
 @Composable
 private fun WalletScreen() {
     val ctx = LocalContext.current
-    var cards by remember { mutableStateOf(WalletStore.all(ctx)) }
+    // Stable sort: vCard(s) — the user's own Virtual Business Cards —
+    // always pin to the TOP of the deck, regardless of when other
+    // cards were imported. WalletStore.push() prepends new cards at
+    // index 0; without this re-order the imported cards would bump
+    // the vCard down on every import. partition() preserves relative
+    // order within each bucket, so non-vCards keep their newest-first
+    // ordering.
+    val orderedCards: (List<WalletStore.Card>) -> List<WalletStore.Card> = { raw ->
+        val (vc, rest) = raw.partition { it.kind == "vcard" }
+        vc + rest
+    }
+    var cards by remember { mutableStateOf(orderedCards(WalletStore.all(ctx))) }
     var mode  by remember { mutableStateOf<WalletMode>(WalletMode.Idle) }
     var showAddSheet by remember { mutableStateOf(false) }
 
-    val refresh: () -> Unit = { cards = WalletStore.all(ctx) }
+    val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
+    // vCard (kind="vcard") is special — it's NOT a stored, importable
+    // card, it's the user's own identity card rendered from ProfilePrefs.
+    // Tapping it skips the wallet's Compose Selected → Full state and
+    // routes straight to the existing BusinessCardFragment (the same
+    // screen the Home top-right action_vcard icon opens), so there's
+    // one canonical Virtual Business Card surface in the app.
+    val onOpenVcard: () -> Unit = {
+        (ctx as? HomeDrawerFragment.NavigationListener)?.onDrawerBusinessCardOpen()
+    }
     fun cardOrIdle(id: String): WalletStore.Card? {
         val c = cards.firstOrNull { it.id == id }
         if (c == null) mode = WalletMode.Idle
@@ -105,6 +125,7 @@ private fun WalletScreen() {
                 mode         = m,
                 onModeChange = { mode = it },
                 onAddTap     = { showAddSheet = true },
+                onOpenVcard  = onOpenVcard,
             )
         }
         if (showAddSheet) {

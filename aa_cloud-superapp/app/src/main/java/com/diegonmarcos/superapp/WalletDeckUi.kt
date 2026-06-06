@@ -58,6 +58,7 @@ internal fun WalletDeck(
     mode: WalletMode,
     onModeChange: (WalletMode) -> Unit,
     onAddTap: () -> Unit,
+    onOpenVcard: () -> Unit,
 ) {
     // Append the synthetic "Add card" tile so it cycles with the rest.
     val deck = remember(cards) { cards + AddCardSentinel }
@@ -134,8 +135,13 @@ internal fun WalletDeck(
                         card       = card,
                         isSelected = isSelected,
                         onCardTap  = {
-                            if (isSelected) onModeChange(WalletMode.Full(card.id))
-                            else            onModeChange(WalletMode.Selected(card.id))
+                            // vCard is one-tap → the existing
+                            // BusinessCardFragment (Home top-right
+                            // action_vcard). Every other card uses the
+                            // two-tap Select-then-Full pattern.
+                            if (card.kind == "vcard") onOpenVcard()
+                            else if (isSelected) onModeChange(WalletMode.Full(card.id))
+                            else                 onModeChange(WalletMode.Selected(card.id))
                         },
                         onInfoTap  = { onModeChange(WalletMode.Config(card.id)) },
                     )
