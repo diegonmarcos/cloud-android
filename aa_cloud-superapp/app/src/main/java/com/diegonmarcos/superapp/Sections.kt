@@ -37,13 +37,17 @@ object Sections {
         val tilesShared: List<AggTile> = emptyList(),
         val tilesApps:   List<AggTile> = emptyList(),
         val tilesAdmin:  List<AggTile> = emptyList(),
-        /** Optional sub-grouping for sections like Suite that organise
-         *  their tiles by theme. When non-empty:
+        /** Optional sub-grouping for sections like Suite / Labs that
+         *  organise their tiles by theme. When non-empty:
          *   • [aggregatorTilesFor] flattens them so the bottom-nav grid
          *     still works without code changes.
-         *   • [homeGroups] expands a single `tiles_from_section`
-         *     reference into N HomeGroups (one per TileGroup),
-         *     titled "{parent} · {group.title}". */
+         *   • [GroupedTilesFragment] renders one titled row per group on
+         *     the bottom-nav SECTION page.
+         *   • [homeGroups] FLATTENS them into a single HomeGroup card
+         *     by default (matches Suite's "all in one horizontal row"
+         *     spec). Set `group_explode: true` on the home_groups entry
+         *     to EXPAND instead — one HomeGroup per TileGroup (Labs uses
+         *     this so each sub-title gets its own card). */
         val tileGroups:  List<TileGroup> = emptyList(),
         /** Per-mode stack panels — vertical scroll of collapsable cards.
          *  When a stack_* list is non-empty for the active mode, the
@@ -633,20 +637,26 @@ object Sections {
 
             // Optional `tiles_from_section: <id>` — pulls tiles from a
             // canonical section's list so the home_groups JSON stays a
-            // single reference, never a duplicate.
-            // • Section with `tile_groups` → EXPAND into one HomeGroup
-            //   per group, titled "{parent} · {group.title}".
-            // • Section with flat `tiles_shared` → single HomeGroup,
-            //   tiles PREPENDED to whatever explicit `tiles` the entry
-            //   declares.
-            val fromSection = o.optString("tiles_from_section", "").takeIf { it.isNotBlank() }
-            val referenced  = fromSection?.let { byId(it) }
+            // single reference, never a duplicate. Behaviour depends on
+            // the referenced section's shape AND the explicit
+            // `group_explode` flag on this entry:
+            //   • tile_groups + group_explode:true  → EXPAND into one
+            //     HomeGroup card per TileGroup (Labs uses this).
+            //   • tile_groups + group_explode:false → FLATTEN all
+            //     groups' tiles into a single HomeGroup (Suite — all
+            //     18 tiles in one horizontal scroll strip).
+            //   • flat tiles_shared                 → single HomeGroup,
+            //     tiles PREPENDED to whatever explicit `tiles` the entry
+            //     declares.
+            val groupExplode = o.optBoolean("group_explode", false)
+            val fromSection  = o.optString("tiles_from_section", "").takeIf { it.isNotBlank() }
+            val referenced   = fromSection?.let { byId(it) }
 
-            if (referenced != null && referenced.tileGroups.isNotEmpty()) {
+            if (referenced != null && referenced.tileGroups.isNotEmpty() && groupExplode) {
                 // Each TileGroup becomes its own HomeGroup card. Title
                 // is the group's own — no "parent · " prefix — so the
-                // surface reads like the user's spec ("AI",
-                // "Data Primary", …) rather than "Suite · AI".
+                // surface reads like the user's spec ("C3", "Data&ML",
+                // …) rather than "Labs · C3".
                 for (grp in referenced.tileGroups) {
                     parsed.add(HomeGroup(
                         title  = grp.title,
@@ -671,12 +681,25 @@ object Sections {
 
             val derivedTiles = mutableListOf<HomeTile>()
             if (referenced != null) {
-                referenced.tilesShared.forEach { agg ->
-                    derivedTiles += HomeTile(
-                        id       = agg.target,
-                        label    = agg.label,
-                        iconName = agg.iconName,
-                    )
+                if (referenced.tileGroups.isNotEmpty()) {
+                    // FLATTEN: all tile_groups' tiles in declaration order
+                    // become ONE HomeGroup card. Used by Suite so its 18
+                    // tiles ride a single horizontal scroll strip.
+                    referenced.tileGroups.forEach { grp ->
+                        grp.tiles.forEach { agg ->
+                            derivedTiles += HomeTile(
+                                id = agg.target, label = agg.label, iconName = agg.iconName,
+                            )
+                        }
+                    }
+                } else {
+                    referenced.tilesShared.forEach { agg ->
+                        derivedTiles += HomeTile(
+                            id       = agg.target,
+                            label    = agg.label,
+                            iconName = agg.iconName,
+                        )
+                    }
                 }
             }
             derivedTiles += tiles

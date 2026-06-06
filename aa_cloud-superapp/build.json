@@ -347,7 +347,7 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema; bottom-nav Suite flattens them into one tile grid (Sections.aggregatorTilesFor) while Home Apps Suite expands them into one card per group via tiles_from_section. Single source of truth — edit here, both surfaces update.",
+        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema, read by three surfaces: (1) bottom-nav Suite SECTION page → GroupedTilesFragment renders one titled row per group; (2) Home Apps Suite card → flattens all groups into a single horizontal scroll strip (home_groups entry has no group_explode); (3) aggregatorTilesFor flat fallback if anything else asks. Single source of truth — edit here, all surfaces update.",
         "tile_groups": [
           {
             "title": "AI",
@@ -487,14 +487,24 @@
       },
       {
         "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
+        "_doc_label": "Bottom-nav button displays 'Labs'. Section id stays 'tools' so deep-link grammar (page:tools/* / section:tools) and historical wiring don't break — this is a pure display rename.",
+        "_doc_tile_groups": "Themed sub-groups for Labs. Used ONLY by the Home Apps surface (via tiles_from_section + group_explode:true in home_groups). Bottom-nav Labs renders AggregatorStackFragment from stack_apps/stack_admin, so tile_groups doesn't affect it. Each group is intentionally empty until the lineup is decided — Home Apps will show one placeholder card per title.",
         "id": "tools",
-        "label": "Tools",
+        "label": "Labs",
         "icon": "ic_p_sol_tools",
         "icon_apps": "ic_p_sol_tools",
         "icon_admin": "ic_p_c3_stack",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "tile_groups": [
+          { "title": "C3",            "tiles": [] },
+          { "title": "Data&ML",       "tiles": [] },
+          { "title": "Engineering",   "tiles": [] },
+          { "title": "Quant&Markets", "tiles": [] },
+          { "title": "Aero&Space",    "tiles": [] },
+          { "title": "Circus",        "tiles": [] }
+        ],
         "tiles_apps": [
           {
             "id": "linktree",
@@ -1471,7 +1481,7 @@
         "notes": "MIME attachments inside JMAP store"
       }
     ],
-    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Tools / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Single source of truth — change this to reshape the Home page, nothing else.",
+    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. The Suite entry FLATTENS sections[suite].tile_groups into one horizontal strip; the Labs entry sets group_explode:true to EXPAND sections[tools].tile_groups into one card per sub-title (C3, Data&ML, Engineering, Quant&Markets, Aero&Space, Circus). Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {
         "title": "Home",
@@ -1493,7 +1503,7 @@
           },
           {
             "id": "section:tools",
-            "label": "Tools",
+            "label": "Labs",
             "icon": "ic_p_sol_tools"
           }
         ]
@@ -1534,41 +1544,18 @@
         ]
       },
       {
-        "_doc": "Suite pulls its tile list from sections[suite].tiles_shared via tiles_from_section. Single source of truth — edit the section, both surfaces (bottom-nav Suite aggregator + Home Apps Suite group) update together. scroll=horizontal so 11 tiles ride one scroll strip instead of wrapping; per-tile smooth scroll, not snap-per-page.",
+        "_doc": "Home Apps Suite — FLATTENED card. tiles_from_section pulls sections[suite].tile_groups and flattens them in declaration order into a single horizontal-scroll strip (group_explode is OFF / absent). The grouped layout still lives on the bottom-nav Suite SECTION page via GroupedTilesFragment, so the sub-titles aren't lost — they're just absent from Home Apps. scroll=horizontal so all 18 tiles ride one strip; per-tile smooth scroll, not snap-per-page.",
         "title": "Suite",
         "scroll": "horizontal",
         "tiles_from_section": "suite",
         "tiles": []
       },
       {
-        "title": "Tools",
-        "tiles": [
-          {
-            "id": "page:tools/mymovies",
-            "label": "Movies",
-            "icon": "ic_video"
-          },
-          {
-            "id": "page:tools/mymusic",
-            "label": "Music",
-            "icon": "ic_music"
-          },
-          {
-            "id": "page:tools/mymaps",
-            "label": "Maps",
-            "icon": "ic_maps"
-          },
-          {
-            "id": "page:tools/myphotos",
-            "label": "Photos",
-            "icon": "ic_photos"
-          },
-          {
-            "id": "page:tools/myanalytics",
-            "label": "Analytics",
-            "icon": "ic_p_logs"
-          }
-        ]
+        "_doc": "Home Apps Labs — EXPANDED into one card per tile_group on sections[tools]. group_explode:true is the explicit opt-in (Suite leaves it off so it flattens). Sub-group titles (C3 · Data&ML · Engineering · Quant&Markets · Aero&Space · Circus) each become a HomeGroup card. Cards are empty placeholders until the per-group lineup is decided.",
+        "title": "Labs",
+        "tiles_from_section": "tools",
+        "group_explode": true,
+        "tiles": []
       },
       {
         "_doc": "Configs Home-Apps group. Marked scroll=horizontal to match Suite — keeps the group in a single visual strip. Order per user spec: Profile · WireGuard · AI · Import · Update · About.",
