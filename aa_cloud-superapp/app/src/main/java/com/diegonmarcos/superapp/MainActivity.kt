@@ -741,6 +741,13 @@ class MainActivity : AppCompatActivity(),
             section.isAggregator && Sections.aggregatorIsStack(section, currentMode) ->
                 AggregatorStackFragment.newInstance(section.id, label, currentMode)
 
+            // Aggregator with themed sub-groups (Suite today) → render
+            // them as titled rows in a GroupedTilesFragment instead of
+            // flattening into one grid. Same data, same TileClickListener
+            // contract, just structured.
+            section.isAggregator && section.tileGroups.isNotEmpty() ->
+                GroupedTilesFragment.newInstance(section.id)
+
             section.isAggregator -> {
                 val aggTiles = Sections.aggregatorTilesFor(section, currentMode).map { t ->
                     TileGridFragment.Tile(
