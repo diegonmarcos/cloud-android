@@ -160,7 +160,7 @@
     "sections": [
       {
         "id": "communication",
-        "label": "Communication",
+        "label": "Comms",
         "icon": "ic_chat",
         "module": null,
         "bottom_nav": true,
