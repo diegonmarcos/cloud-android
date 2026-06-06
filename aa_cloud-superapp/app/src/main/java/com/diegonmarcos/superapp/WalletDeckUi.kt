@@ -223,36 +223,24 @@ private fun WalletDeckCard(
     onInfoTap: () -> Unit,
 ) {
     val ctx = LocalContext.current
-    // BOTH "vcard" (profile, taps to BusinessCardFragment) AND
-    // "vcard_imported" (example of what an imported .vcf looks like,
-    // taps to the normal Selected/Full flow) render from the canonical
-    // assets/qrcodes/qrcodes.json::contact block — that file's own
-    // description names itself the single source of truth for the
-    // user's vCard data. Every field that appears in the generated
-    // .vcf file (FN, EMAIL, TEL, ADR, URL × N, BDAY) is packed into
-    // the tagline as separate lines so the card shows the FULL vCard,
-    // not a summary.
+    // Deck cards always render at TWO lines — Title (brand) + Subtitle
+    // (tagline). For the user's vCard slots, brand = displayName and
+    // subtitle is a kind-specific role label ("Profile Card" / "vCard
+    // 3.0") so the deck stays scannable. The FULL identity (tel,
+    // email, address, all URLs, birthday, socials) only renders when
+    // the card is expanded (Selected on the deck or in the wallet's
+    // Full page) — WalletCardView handles that inflation internally.
     val resolved = remember(card.id, card.kind) {
         if (card.kind == "vcard" || card.kind == "vcard_imported") {
             val q = QrcodesData.contact(ctx)
             if (q != null) {
-                val addr = listOf(q.street, q.cityCountry, q.country)
-                    .filter { it.isNotBlank() }
-                    .joinToString(", ")
-                val taglineLines = listOf(
-                    q.tel,
-                    q.email,
-                    addr,
-                    q.linktreeUrl.removePrefix("https://"),
-                    q.telegramUrl.removePrefix("https://"),
-                    q.whatsappUrl.removePrefix("https://"),
-                    q.landingUrl.removePrefix("https://"),
-                    if (q.birthday.isNotBlank()) "BDAY ${q.birthday}" else "",
-                    if (q.socials.isNotBlank())  "Socials ${q.socials}" else "",
-                ).filter { it.isNotBlank() }
                 card.copy(
                     brand   = q.displayName,
-                    tagline = taglineLines.joinToString("\n"),
+                    tagline = when (card.kind) {
+                        "vcard"          -> "Profile Card"
+                        "vcard_imported" -> "vCard 3.0"
+                        else             -> card.tagline
+                    },
                     number  = "",
                 )
             } else card
@@ -321,21 +309,27 @@ internal fun WalletCardView(
             .background(Brush.linearGradient(listOf(accent, base)))
             .padding(20.dp),
     ) {
+        val ctx = LocalContext.current
         Row(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().weight(1f)) {
-                Text(card.brand,   color = Color.White,       fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                // vCard cards pack the full identity (tel · email ·
-                // address · all URLs · birthday) into the tagline as
-                // newline-separated lines, so render it tight (10sp,
-                // tight line height) to fit ~9 rows in the available
-                // card height. Non-vCards keep the 13sp single-line
-                // tagline style.
+                Text(card.brand, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                // Deck (isExpanded=false) shows ONLY the short subtitle
+                // already in card.tagline ("Profile Card", "vCard 3.0",
+                // "Visa · IBAN ending 4582", …). When the card expands
+                // (Selected on the deck or rendered in the wallet's
+                // Full page) AND it's a vCard kind, inflate the
+                // tagline to the full multi-line identity pulled from
+                // QrcodesData — tight font so the rows fit.
                 val isVcardLike = card.kind == "vcard" || card.kind == "vcard_imported"
+                val expandedTagline = if (isExpanded && isVcardLike) {
+                    QrcodesData.contact(ctx)?.fullCardTagline()
+                } else null
+                val displayTagline = expandedTagline ?: card.tagline
                 Text(
-                    card.tagline,
+                    displayTagline,
                     color = Color(0xCCFFFFFF),
-                    fontSize = if (isVcardLike) 10.sp else 13.sp,
-                    lineHeight = if (isVcardLike) 13.sp else 16.sp,
+                    fontSize  = if (expandedTagline != null) 10.sp else 13.sp,
+                    lineHeight = if (expandedTagline != null) 13.sp else 16.sp,
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 if (card.number.isNotBlank()) {

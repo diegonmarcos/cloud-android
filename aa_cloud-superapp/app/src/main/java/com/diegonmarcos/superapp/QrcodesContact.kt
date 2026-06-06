@@ -31,6 +31,28 @@ data class QrcodesContact(
     val cityCountry: String get() = listOf(city, country)
         .filter { it.isNotBlank() }
         .joinToString(", ")
+
+    /** Multi-line full identity for the expanded-card view. Matches the
+     *  field set the generated .vcf file ships (tel, email, address,
+     *  every URL with its role, birthday, socials handle). Lines omit
+     *  when their underlying field is blank so an unfilled contact
+     *  doesn't print a row of empty bullets. */
+    fun fullCardTagline(): String {
+        val addr = listOf(street, cityCountry, country)
+            .filter { it.isNotBlank() }
+            .joinToString(", ")
+        return listOf(
+            tel,
+            email,
+            addr,
+            linktreeUrl.removePrefix("https://"),
+            telegramUrl.removePrefix("https://"),
+            whatsappUrl.removePrefix("https://"),
+            landingUrl.removePrefix("https://"),
+            if (birthday.isNotBlank()) "BDAY $birthday" else "",
+            if (socials.isNotBlank())  "Socials $socials" else "",
+        ).filter { it.isNotBlank() }.joinToString("\n")
+    }
 }
 
 object QrcodesData {

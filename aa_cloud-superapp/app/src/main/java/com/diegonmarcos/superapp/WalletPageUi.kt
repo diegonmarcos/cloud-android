@@ -38,14 +38,24 @@ private val BgColor = Color(0xFF0B0414)
 @Composable
 internal fun WalletFullPage(card: WalletStore.Card, onBack: () -> Unit) {
     val ctx = LocalContext.current
+    // Brand from canonical QrcodesData; subtitle stays a short role
+    // label here too. WalletCardView is rendered with isExpanded=true
+    // below, which inflates the full multi-line identity inside the
+    // card body via QrcodesData.fullCardTagline().
     val resolved = remember(card.id, card.kind) {
-        if (card.kind == "vcard") {
-            val profile = ProfilePrefs(ctx)
-            card.copy(
-                brand   = profile.name.ifBlank { "Virtual Business Card" },
-                tagline = profile.titles.ifBlank { profile.email },
-                number  = profile.email,
-            )
+        if (card.kind == "vcard" || card.kind == "vcard_imported") {
+            val q = QrcodesData.contact(ctx)
+            if (q != null) {
+                card.copy(
+                    brand   = q.displayName,
+                    tagline = when (card.kind) {
+                        "vcard"          -> "Profile Card"
+                        "vcard_imported" -> "vCard 3.0"
+                        else             -> card.tagline
+                    },
+                    number  = "",
+                )
+            } else card
         } else card
     }
     Column(
