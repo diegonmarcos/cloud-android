@@ -88,6 +88,17 @@ object WalletStore {
         saveAll(ctx, current)
     }
 
+    /** Replace an existing card in place (matched by id). No-op if the id
+     *  is unknown — keeps the deck immutable from the caller's POV. Used
+     *  by the per-card config screen to persist edits. */
+    fun update(ctx: Context, card: Card) {
+        val current = all(ctx).toMutableList()
+        val idx = current.indexOfFirst { it.id == card.id }
+        if (idx < 0) return
+        current[idx] = card
+        saveAll(ctx, current)
+    }
+
     fun remove(ctx: Context, id: String) {
         val current = all(ctx).toMutableList()
         current.removeAll { it.id == id }
