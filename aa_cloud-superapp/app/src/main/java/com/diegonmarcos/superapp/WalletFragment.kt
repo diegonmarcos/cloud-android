@@ -184,7 +184,21 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                 when (val m = mode) {
                     is WalletMode.Full -> {
                         cardOrIdle(m.cardId)?.let { card ->
-                            WalletFullPage(card = card, onBack = { mode = WalletMode.Idle })
+                            // Tickets get their own wider rectangular
+                            // page (route, date/time, QR, location +
+                            // map) — see WalletTicketPage. Cards keep
+                            // the existing card-on-info-panel layout.
+                            if (card.isTicket) {
+                                WalletTicketPage(
+                                    ticket = card,
+                                    onBack = { mode = WalletMode.Idle },
+                                )
+                            } else {
+                                WalletFullPage(
+                                    card   = card,
+                                    onBack = { mode = WalletMode.Idle },
+                                )
+                            }
                         }
                     }
                     is WalletMode.Config -> {
@@ -201,6 +215,13 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                     }
                     else -> when (tab) {
                         WalletTab.Calendar -> WalletCalendarView(
+                            tickets     = cardsForTab,
+                            onTicketTap = { mode = WalletMode.Full(it.id) },
+                        )
+                        // Tickets tab: vertical list of "stub + info"
+                        // strips, NOT the card-stack roll. Tap a strip
+                        // → wallet Full state → WalletTicketPage.
+                        WalletTab.Tickets -> WalletTicketList(
                             tickets     = cardsForTab,
                             onTicketTap = { mode = WalletMode.Full(it.id) },
                         )
