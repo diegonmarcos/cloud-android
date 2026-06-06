@@ -16,6 +16,12 @@ import java.util.UUID
 object WalletStore {
     private const val PREFS = "wallet_store"
     private const val KEY   = "cards"
+    /** Bump when the mock seed contents change so dev/test installs
+     *  automatically reseed on next open. Real user-added cards are
+     *  the casualty here, but during mock-data phase nobody's adding
+     *  cards yet — the import path lands later. */
+    private const val SEED_VERSION = 2
+    private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
      *  composable maps kind → background + accent colour. */
@@ -55,10 +61,12 @@ object WalletStore {
      *  the same JSON. */
     fun all(ctx: Context): List<Card> {
         val sp = ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val raw = sp.getString(KEY, null)
-        if (raw == null) {
+        val raw            = sp.getString(KEY, null)
+        val storedVersion  = sp.getInt(SEED_VERSION_KEY, 0)
+        if (raw == null || storedVersion != SEED_VERSION) {
             val seed = mockSeed()
             saveAll(ctx, seed)
+            sp.edit().putInt(SEED_VERSION_KEY, SEED_VERSION).apply()
             return seed
         }
         return runCatching {
@@ -91,58 +99,59 @@ object WalletStore {
             .edit().clear().apply()
     }
 
-    /** Seeded sample cards covering each `kind` so the deck has visual
-     *  variety on first launch. Edit via the upcoming import path or
-     *  by tapping a card to remove. */
+    /** Seeded sample cards — one per user-requested category so the
+     *  deck shows the full variety on first launch. The vCard pulls
+     *  its brand / tagline / number from ProfilePrefs at render time
+     *  (kind == "vcard") so it always reflects the user's current
+     *  identity rather than stale snapshot fields. */
     private fun mockSeed(): List<Card> = listOf(
         Card(
             id      = UUID.randomUUID().toString(),
-            kind    = "music",
-            brand   = "TIDAL",
-            tagline = "Premium · since 2018",
-            accent  = 0xFF111827L, // near-black
-            number  = "DM-771249",
+            kind    = "vcard",
+            brand   = "Virtual Business Card",   // overridden at render via ProfilePrefs
+            tagline = "Tap to expand — QR vCard",
+            accent  = 0xFF7C3AED,                // brand purple
         ),
         Card(
             id      = UUID.randomUUID().toString(),
-            kind    = "transit",
-            brand   = "BVG Berlin",
-            tagline = "AB · Monatskarte",
-            accent  = 0xFFEAB308L, // amber
-            barcode = "880088_BVG_DM",
+            kind    = "credit",
+            brand   = "American Express Gold",
+            tagline = "Charge · since 2019",
+            accent  = 0xFFD4AF37,                // gold
+            number  = "•••• ••••• 21006",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "debit",
+            brand   = "N26 Debit",
+            tagline = "Visa · IBAN ending 4582",
+            accent  = 0xFF111827,                // near-black
+            number  = "•••• •••• •••• 4582",
         ),
         Card(
             id      = UUID.randomUUID().toString(),
             kind    = "boarding",
             brand   = "Lufthansa",
             tagline = "LH 192 · BER → MUC · 14:35",
-            accent  = 0xFF1E40AFL, // royal blue
+            accent  = 0xFF1E40AF,                // royal blue
             barcode = "M1MARCOS/DIEGO       EXXX23 BERMUCLH 0192",
             number  = "Seat 12A · Gate B14",
         ),
         Card(
             id      = UUID.randomUUID().toString(),
-            kind    = "loyalty",
-            brand   = "Carrefour Pass",
-            tagline = "Loyalty · gold tier",
-            accent  = 0xFFB91C1CL, // carrefour red
-            number  = "C-3247 8821 0098",
+            kind    = "transit",
+            brand   = "BVG Berlin",
+            tagline = "AB · Monatskarte · expires 2026-07-31",
+            accent  = 0xFFEAB308,                // amber
+            barcode = "880088_BVG_DM",
         ),
         Card(
             id      = UUID.randomUUID().toString(),
-            kind    = "membership",
+            kind    = "gym",
             brand   = "FitX",
             tagline = "Berlin Mitte · since 2024",
-            accent  = 0xFF166534L, // forest green
+            accent  = 0xFF166534,                // forest green
             number  = "M-77129",
-        ),
-        Card(
-            id      = UUID.randomUUID().toString(),
-            kind    = "totp",
-            brand   = "GitHub · TOTP",
-            tagline = "Preview — full vault in Vaultwarden",
-            accent  = 0xFF581C87L, // deep purple
-            number  = "184 902",
         ),
     )
 }

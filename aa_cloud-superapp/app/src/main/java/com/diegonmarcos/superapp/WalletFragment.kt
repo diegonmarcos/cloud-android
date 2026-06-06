@@ -1,22 +1,26 @@
 package com.diegonmarcos.superapp
 
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +36,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.core.WalletStore
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 
 /**
  * First Compose surface in the app. Hosts a card-stack wallet that
@@ -68,6 +76,7 @@ class WalletFragment : Fragment() {
 
 @Composable
 private fun WalletDeck(cards: List<WalletStore.Card>) {
+    val ctx = LocalContext.current
     // Single "expanded" card id at a time. null means deck-collapsed.
     var expandedId by remember { mutableStateOf<String?>(null) }
 
@@ -110,9 +119,23 @@ private fun WalletDeck(cards: List<WalletStore.Card>) {
                     animationSpec = tween(durationMillis = 260),
                     label         = "card-offset-$index",
                 )
+                // For the virtual business card, overlay the user's
+                // live ProfilePrefs values so brand/tagline/number always
+                // reflect what's in Configs → Profile (no stale seed).
+                val resolved = remember(card.id, card.kind) {
+                    if (card.kind == "vcard") {
+                        val profile = ProfilePrefs(ctx)
+                        card.copy(
+                            brand   = profile.name.ifBlank { "Virtual Business Card" },
+                            tagline = profile.titles.ifBlank { profile.email },
+                            number  = profile.email,
+                        )
+                    } else card
+                }
                 WalletCardView(
-                    card = card,
+                    card = resolved,
                     cardHeight = cardHeight,
+                    isExpanded = isExpanded,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
@@ -130,6 +153,7 @@ private fun WalletDeck(cards: List<WalletStore.Card>) {
 private fun WalletCardView(
     card: WalletStore.Card,
     cardHeight: androidx.compose.ui.unit.Dp,
+    isExpanded: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val base = Color(card.accent.toULong().toLong())
@@ -146,44 +170,93 @@ private fun WalletCardView(
             .background(Brush.linearGradient(listOf(accent, base)))
             .padding(20.dp),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Text(
-                text = card.brand,
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = FontFamily.SansSerif,
-            )
-            Text(
-                text = card.tagline,
-                color = Color(0xCCFFFFFF),
-                fontSize = 13.sp,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            if (card.number.isNotBlank()) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = card.number,
+                    text = card.brand,
                     color = Color.White,
-                    fontSize = 16.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.SansSerif,
                 )
-            }
-            if (card.barcode.isNotBlank()) {
                 Text(
-                    text = "⌫ ${card.barcode}",
+                    text = card.tagline,
                     color = Color(0xCCFFFFFF),
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                if (card.number.isNotBlank()) {
+                    Text(
+                        text = card.number,
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                if (card.barcode.isNotBlank()) {
+                    Text(
+                        text = "⌫ ${card.barcode}",
+                        color = Color(0xCCFFFFFF),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = card.kind.uppercase(),
+                    color = Color(0x88FFFFFF),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = card.kind.uppercase(),
-                color = Color(0x88FFFFFF),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.End),
-            )
+            // vCard cards: when expanded, render the live vCard QR on
+            // the right. Encoded from ProfilePrefs at compose time so
+            // edits in Configs → Profile reflect on next open.
+            if (card.kind == "vcard" && isExpanded) {
+                Spacer(modifier = Modifier.size(12.dp))
+                VcardQr(card = card)
+            }
         }
     }
+}
+
+@Composable
+private fun VcardQr(card: WalletStore.Card) {
+    val ctx = LocalContext.current
+    val payload = remember(card.id) { vcardPayload(ProfilePrefs(ctx)) }
+    val sizePx = 256
+    val bitmap = remember(payload) {
+        runCatching {
+            val matrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, sizePx, sizePx)
+            val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.RGB_565)
+            for (y in 0 until sizePx) for (x in 0 until sizePx) {
+                bmp.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
+            bmp.asImageBitmap()
+        }.getOrNull()
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = "vCard QR",
+            modifier = Modifier
+                .size(120.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.White)
+                .padding(4.dp),
+        )
+    }
+}
+
+/** vCard 3.0 string built from ProfilePrefs. Same shape the existing
+ *  BusinessCardFragment encodes — keeps both surfaces in sync. */
+private fun vcardPayload(profile: ProfilePrefs): String = buildString {
+    append("BEGIN:VCARD\n")
+    append("VERSION:3.0\n")
+    if (profile.name.isNotBlank())     append("FN:${profile.name}\n")
+    if (profile.email.isNotBlank())    append("EMAIL:${profile.email}\n")
+    if (profile.company.isNotBlank())  append("ORG:${profile.company}\n")
+    if (profile.titles.isNotBlank())   append("TITLE:${profile.titles}\n")
+    if (profile.website.isNotBlank())  append("URL:${profile.website}\n")
+    append("END:VCARD")
 }
