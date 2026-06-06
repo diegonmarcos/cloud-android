@@ -347,73 +347,140 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "_doc_tiles_shared": "Single source of truth for the Suite apps list. Both the bottom-nav Suite aggregator AND home_groups[Suite] read from here — home_groups uses tiles_from_section to pull this list automatically so the two surfaces never drift. AI-Chat first per user spec, Tabs last.",
-        "tiles_shared": [
+        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema; bottom-nav Suite flattens them into one tile grid (Sections.aggregatorTilesFor) while Home Apps Suite expands them into one card per group via tiles_from_section. Single source of truth — edit here, both surfaces update.",
+        "tile_groups": [
           {
-            "id": "ai-chat",
-            "label": "AI-Chat",
-            "icon": "ic_ai_chat",
-            "target": "app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp"
+            "title": "AI",
+            "tiles": [
+              {
+                "id": "ai-chat-web",
+                "label": "AI-Chat (web)",
+                "icon": "ic_ai_chat",
+                "target": "app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp"
+              },
+              {
+                "id": "ai-chat-local",
+                "label": "AI-Chat (local)",
+                "icon": "ic_ai_chat",
+                "target": "http://10.0.0.1:8080"
+              },
+              {
+                "id": "drive",
+                "label": "Drive (Git, Registry, S3)",
+                "icon": "ic_drive",
+                "target": "section:drive"
+              }
+            ]
           },
           {
-            "id": "drive",
-            "label": "Drive",
-            "icon": "ic_drive",
-            "target": "section:drive"
+            "title": "Data Primary",
+            "tiles": [
+              {
+                "id": "mail",
+                "label": "Mail",
+                "icon": "ic_mail",
+                "target": "section:mail"
+              },
+              {
+                "id": "mattermost",
+                "label": "Mattermost (Internal+Matrix+Rss+Bots)",
+                "icon": "ic_p_chat_mattermost",
+                "target": "page:chat/mattermost"
+              }
+            ]
           },
           {
-            "id": "vault",
-            "label": "Vault",
-            "icon": "ic_vault",
-            "target": "section:vault"
+            "title": "Data Apps",
+            "tiles": [
+              {
+                "id": "calendar",
+                "label": "Calendar",
+                "icon": "ic_calendar",
+                "target": "section:cal"
+              },
+              {
+                "id": "notes",
+                "label": "Notes (Obsidian)",
+                "icon": "ic_notes",
+                "target": "obsidian://open"
+              },
+              {
+                "id": "sheets",
+                "label": "Sheets",
+                "icon": "ic_sheets",
+                "target": "app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F"
+              },
+              {
+                "id": "photos",
+                "label": "Photos",
+                "icon": "ic_photos",
+                "target": "app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com"
+              },
+              {
+                "id": "music",
+                "label": "Music",
+                "icon": "ic_music",
+                "target": "app://com.aspiro.tidal?fallback=https%3A%2F%2Ftidal.com"
+              }
+            ]
           },
           {
-            "id": "maps",
-            "label": "Maps",
-            "icon": "ic_maps",
-            "target": "intent://#Intent;package=com.google.android.apps.maps;S.browser_fallback_url=https%3A%2F%2Fmaps.google.com;end"
+            "title": "Tools Primary",
+            "tiles": [
+              {
+                "id": "tabs",
+                "label": "Tabs",
+                "icon": "ic_mode_apps",
+                "target": "section:tabs"
+              },
+              {
+                "id": "wallet",
+                "label": "Wallet",
+                "icon": "ic_wallet",
+                "target": "app://com.google.android.apps.walletnfcrel?fallback=https%3A%2F%2Fwallet.google.com"
+              },
+              {
+                "id": "maps",
+                "label": "Maps",
+                "icon": "ic_maps",
+                "target": "intent://#Intent;package=com.google.android.apps.maps;S.browser_fallback_url=https%3A%2F%2Fmaps.google.com;end"
+              },
+              {
+                "id": "vault",
+                "label": "Vault",
+                "icon": "ic_vault",
+                "target": "section:vault"
+              }
+            ]
           },
           {
-            "id": "sheets",
-            "label": "Sheets",
-            "icon": "ic_sheets",
-            "target": "app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F"
-          },
-          {
-            "id": "notes",
-            "label": "Notes",
-            "icon": "ic_notes",
-            "target": "obsidian://open"
-          },
-          {
-            "id": "wallet",
-            "label": "Wallet",
-            "icon": "ic_wallet",
-            "target": "app://com.google.android.apps.walletnfcrel?fallback=https%3A%2F%2Fwallet.google.com"
-          },
-          {
-            "id": "music",
-            "label": "Music",
-            "icon": "ic_music",
-            "target": "app://com.aspiro.tidal?fallback=https%3A%2F%2Ftidal.com"
-          },
-          {
-            "id": "photos",
-            "label": "Photos",
-            "icon": "ic_photos",
-            "target": "app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com"
-          },
-          {
-            "id": "my-fin",
-            "label": "My-Fin",
-            "icon": "ic_fin",
-            "target": "https://diegonmarcos.github.io/my-fin/"
-          },
-          {
-            "id": "tabs",
-            "label": "Tabs",
-            "icon": "ic_mode_apps",
-            "target": "section:tabs"
+            "title": "Tools Dashboards",
+            "tiles": [
+              {
+                "id": "myfin",
+                "label": "MyFin",
+                "icon": "ic_fin",
+                "target": "https://diegonmarcos.github.io/my-fin/"
+              },
+              {
+                "id": "mytrips",
+                "label": "MyTrips",
+                "icon": "ic_world",
+                "target": "https://diegonmarcos.github.io/my-trips/"
+              },
+              {
+                "id": "myhealth",
+                "label": "MyHealth",
+                "icon": "ic_heart",
+                "target": "https://diegonmarcos.github.io/my-health/"
+              },
+              {
+                "id": "mydata",
+                "label": "MyData",
+                "icon": "ic_database",
+                "target": "https://diegonmarcos.github.io/my-data/"
+              }
+            ]
           }
         ]
       },

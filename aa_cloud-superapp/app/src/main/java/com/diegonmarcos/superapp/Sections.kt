@@ -37,6 +37,14 @@ object Sections {
         val tilesShared: List<AggTile> = emptyList(),
         val tilesApps:   List<AggTile> = emptyList(),
         val tilesAdmin:  List<AggTile> = emptyList(),
+        /** Optional sub-grouping for sections like Suite that organise
+         *  their tiles by theme. When non-empty:
+         *   • [aggregatorTilesFor] flattens them so the bottom-nav grid
+         *     still works without code changes.
+         *   • [homeGroups] expands a single `tiles_from_section`
+         *     reference into N HomeGroups (one per TileGroup),
+         *     titled "{parent} · {group.title}". */
+        val tileGroups:  List<TileGroup> = emptyList(),
         /** Per-mode stack panels — vertical scroll of collapsable cards.
          *  When a stack_* list is non-empty for the active mode, the
          *  aggregator renders [AggregatorStackFragment] instead of the
@@ -114,6 +122,9 @@ object Sections {
         val iconName: String,
         val target: String,
     )
+
+    /** A themed sub-group of an aggregator section's tile list. */
+    data class TileGroup(val title: String, val tiles: List<AggTile>)
 
     data class Page(
         val id: String,
@@ -348,6 +359,20 @@ object Sections {
             fun parseTiles(arrName: String): List<AggTile> =
                 parseTilesInline(o.optJSONArray(arrName))
 
+            /** sections[].tile_groups[*] = {title, tiles:[…]} */
+            fun parseTileGroups(arrName: String): List<TileGroup> {
+                val arr = o.optJSONArray(arrName) ?: return emptyList()
+                val out = mutableListOf<TileGroup>()
+                for (j in 0 until arr.length()) {
+                    val g = arr.getJSONObject(j)
+                    out.add(TileGroup(
+                        title = g.optString("title", ""),
+                        tiles = parseTilesInline(g.optJSONArray("tiles")),
+                    ))
+                }
+                return out
+            }
+
             fun parseLinks(arr: org.json.JSONArray?): List<LinkItem> {
                 arr ?: return emptyList()
                 val out = mutableListOf<LinkItem>()
@@ -428,6 +453,7 @@ object Sections {
                     tilesShared     = parseTiles("tiles_shared"),
                     tilesApps       = parseTiles("tiles_apps"),
                     tilesAdmin      = parseTiles("tiles_admin"),
+                    tileGroups      = parseTileGroups("tile_groups"),
                     stackShared     = parseStack("stack_shared"),
                     stackApps       = parseStack("stack_apps"),
                     stackAdmin      = parseStack("stack_admin"),
@@ -445,9 +471,10 @@ object Sections {
     /** Apps/Admin global toggle default — overridden by ModePrefs at runtime. */
     fun defaultMode(): String = BuildConfig.UI_DEFAULT_MODE
 
-    /** Aggregator's tiles for the given mode. `tiles_shared` always wins
-     *  if present; otherwise apps/admin-specific list. */
+    /** Aggregator's tiles for the given mode. tile_groups wins (flattened
+     *  into a single list); then tiles_shared; then per-mode lists. */
     fun aggregatorTilesFor(sec: Section, mode: String): List<AggTile> = when {
+        sec.tileGroups.isNotEmpty()  -> sec.tileGroups.flatMap { it.tiles }
         sec.tilesShared.isNotEmpty() -> sec.tilesShared
         mode == "admin"              -> sec.tilesAdmin
         else                         -> sec.tilesApps
@@ -601,16 +628,46 @@ object Sections {
                     )
                 )
             }
-            // Optional `tiles_from_section: <id>` — if set, the section's
-            // tiles_shared list is converted to HomeTiles and PREPENDED
-            // to whatever explicit tiles the group declares. Lets a Home
-            // Apps group ride on a section's canonical list (no duplicate
-            // data) while still allowing the home_groups JSON to add
-            // group-only extras at the bottom of the row.
+            val parentTitle = o.getString("title")
+            val scrollMode  = o.optString("scroll", "").takeIf { it.isNotBlank() }
+
+            // Optional `tiles_from_section: <id>` — pulls tiles from a
+            // canonical section's list so the home_groups JSON stays a
+            // single reference, never a duplicate.
+            // • Section with `tile_groups` → EXPAND into one HomeGroup
+            //   per group, titled "{parent} · {group.title}".
+            // • Section with flat `tiles_shared` → single HomeGroup,
+            //   tiles PREPENDED to whatever explicit `tiles` the entry
+            //   declares.
             val fromSection = o.optString("tiles_from_section", "").takeIf { it.isNotBlank() }
+            val referenced  = fromSection?.let { byId(it) }
+
+            if (referenced != null && referenced.tileGroups.isNotEmpty()) {
+                for (grp in referenced.tileGroups) {
+                    parsed.add(HomeGroup(
+                        title  = "$parentTitle · ${grp.title}",
+                        tiles  = grp.tiles.map { agg ->
+                            HomeTile(id = agg.target, label = agg.label, iconName = agg.iconName)
+                        },
+                        scroll = scrollMode,
+                    ))
+                }
+                // If the entry also declared explicit `tiles` after the
+                // groups, emit them as a tail-bucket so group-only
+                // extras still surface.
+                if (tiles.isNotEmpty()) {
+                    parsed.add(HomeGroup(
+                        title  = "$parentTitle · Other",
+                        tiles  = tiles,
+                        scroll = scrollMode,
+                    ))
+                }
+                continue
+            }
+
             val derivedTiles = mutableListOf<HomeTile>()
-            if (fromSection != null) {
-                byId(fromSection)?.tilesShared?.forEach { agg ->
+            if (referenced != null) {
+                referenced.tilesShared.forEach { agg ->
                     derivedTiles += HomeTile(
                         id       = agg.target,
                         label    = agg.label,
@@ -620,9 +677,9 @@ object Sections {
             }
             derivedTiles += tiles
             parsed.add(HomeGroup(
-                title  = o.getString("title"),
+                title  = parentTitle,
                 tiles  = derivedTiles,
-                scroll = o.optString("scroll", "").takeIf { it.isNotBlank() },
+                scroll = scrollMode,
             ))
         }
         cachedGroups = parsed
