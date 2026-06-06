@@ -42,6 +42,44 @@ enum class WalletTab(val label: String) {
     Calendar("Calendar"),
 }
 
+/** Bottom button rendered on the Tickets tab that toggles between
+ *  Upcoming (default) and Archive (past-event tickets). Mirrors the
+ *  pill aesthetic of [WalletTabStrip] so the chrome reads consistent.
+ *  Label shows the count of the other view so the user knows what's
+ *  on the far side of the toggle. */
+@Composable
+internal fun WalletArchiveToggle(
+    showingArchive: Boolean,
+    upcomingCount: Int,
+    archiveCount:  Int,
+    onToggle: () -> Unit,
+) {
+    val label = if (showingArchive) "Back to Upcoming  ($upcomingCount)"
+                else                "Archive  ($archiveCount)"
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (showingArchive) Color(0xFF7C3AED) else Color(0x22FFFFFF))
+                .clickable(onClick = onToggle)
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = if (showingArchive) FontWeight.SemiBold else FontWeight.Normal,
+            )
+        }
+    }
+}
+
 /** Pill tab strip rendered above the deck. Three options — Cards /
  *  Tickets / Calendar. Tap to switch; the active pill fills with the
  *  brand purple, the rest sit on a 13% white wash. */

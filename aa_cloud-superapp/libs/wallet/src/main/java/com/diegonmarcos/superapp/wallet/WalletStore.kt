@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 5
+    private const val SEED_VERSION = 6
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -45,6 +45,11 @@ object WalletStore {
         /** Convenience — distinguishes Cards from Tickets without
          *  having to read [eventAt] directly at every call site. */
         val isTicket: Boolean get() = eventAt > 0L
+
+        /** True for tickets whose event time has passed. Drives the
+         *  Archive view inside the Tickets tab — upcoming tickets stay
+         *  in the main list, past ones automatically move to Archive. */
+        val isPastTicket: Boolean get() = isTicket && eventAt < System.currentTimeMillis()
 
         fun toJson(): JSONObject = JSONObject().apply {
             put("id", id)
@@ -233,6 +238,51 @@ object WalletStore {
             number        = "Reihe 7 · Sitz 14",
             eventAt       = relativeMillis(daysFromNow = 10, hour = 19, minute = 30),
             eventLocation = "Bertolt-Brecht-Platz 1, Berlin",
+        ),
+        // ── PAST TICKETS (Archive view) — same kinds, days < 0 ───
+        // Tickets whose eventAt is in the past auto-route into the
+        // Tickets tab's Archive view. Built deterministically against
+        // install-time so the archive always has something to show.
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "flight",
+            brand         = "Lufthansa",
+            tagline       = "LH 187 · MUC → BER",
+            accent        = 0xFF1E40AF,
+            barcode       = "M1MARCOS/DIEGO       OPQR45 MUCBERLH 0187",
+            number        = "Seat 8C · Gate H22",
+            eventAt       = relativeMillis(daysFromNow = -3, hour = 18, minute = 50),
+            eventLocation = "MUC → BER",
+        ),
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "music",
+            brand         = "Funkhaus Berlin",
+            tagline       = "Nils Frahm — Solo Piano",
+            accent        = 0xFF7E22CE,         // violet
+            number        = "GA · Doors 20:00",
+            eventAt       = relativeMillis(daysFromNow = -14, hour = 20, minute = 0),
+            eventLocation = "Nalepastraße 18, Berlin",
+        ),
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "train",
+            brand         = "Deutsche Bahn ICE",
+            tagline       = "ICE 925 · Köln → Berlin",
+            accent        = 0xFFE11D2A,
+            number        = "Wagen 7 · Sitz 33",
+            eventAt       = relativeMillis(daysFromNow = -28, hour = 7, minute = 47),
+            eventLocation = "Köln Hbf",
+        ),
+        Card(
+            id            = UUID.randomUUID().toString(),
+            kind          = "theater",
+            brand         = "Schaubühne",
+            tagline       = "Hamlet — Thomas Ostermeier",
+            accent        = 0xFF5B0F0F,         // dark bordeaux
+            number        = "Reihe 4 · Sitz 9",
+            eventAt       = relativeMillis(daysFromNow = -42, hour = 19, minute = 30),
+            eventLocation = "Kurfürstendamm 153, Berlin",
         ),
     )
 

@@ -123,6 +123,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     var cards by remember { mutableStateOf(orderedCards(WalletStore.all(ctx))) }
     var mode by modeState
     var tab  by remember { mutableStateOf(WalletTab.Cards) }
+    var ticketsShowArchive by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
 
     val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
@@ -130,14 +131,20 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     // Tab partitioning. Cards tab = long-lasting credentials
     // (eventAt == 0). Tickets / Calendar tabs share the same event-
     // bound subset (eventAt > 0) but render differently — deck vs
-    // agenda view.
-    val cardsForTab = remember(cards, tab) {
+    // agenda view. The Tickets tab further splits into Upcoming
+    // (default) and Archive (past events) via a bottom toggle button;
+    // [ticketsShowArchive] flips the predicate.
+    val cardsForTab = remember(cards, tab, ticketsShowArchive) {
         when (tab) {
             WalletTab.Cards    -> cards.filter { !it.isTicket }
-            WalletTab.Tickets,
-            WalletTab.Calendar -> cards.filter {  it.isTicket }
+            WalletTab.Tickets  -> cards.filter {
+                it.isTicket && (if (ticketsShowArchive) it.isPastTicket else !it.isPastTicket)
+            }
+            WalletTab.Calendar -> cards.filter { it.isTicket && !it.isPastTicket }
         }
     }
+    val pastCount = remember(cards) { cards.count { it.isPastTicket } }
+    val upcomingCount = remember(cards) { cards.count { it.isTicket && !it.isPastTicket } }
     // vCard (kind="vcard") is special — it's NOT a stored, importable
     // card, it's the user's own identity card rendered from ProfilePrefs.
     // Tapping it skips the wallet's Compose Selected → Full state and
@@ -166,6 +173,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                         if (next != tab) {
                             tab  = next
                             mode = WalletMode.Idle  // reset selection so the new tab opens clean
+                            ticketsShowArchive = false  // any tab change drops out of Archive
                         }
                     },
                 )
@@ -210,11 +218,23 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                         )
                         // Tickets tab: vertical list of "stub + info"
                         // strips, NOT the card-stack roll. Tap a strip
-                        // → wallet Full state → WalletTicketPage.
-                        WalletTab.Tickets -> WalletTicketList(
-                            tickets     = cardsForTab,
-                            onTicketTap = { mode = WalletMode.Full(it.id) },
-                        )
+                        // → wallet Full state → WalletTicketPage. A
+                        // bottom Archive button toggles between
+                        // Upcoming (default) and past tickets.
+                        WalletTab.Tickets -> Column(modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                WalletTicketList(
+                                    tickets     = cardsForTab,
+                                    onTicketTap = { mode = WalletMode.Full(it.id) },
+                                )
+                            }
+                            WalletArchiveToggle(
+                                showingArchive    = ticketsShowArchive,
+                                upcomingCount     = upcomingCount,
+                                archiveCount      = pastCount,
+                                onToggle          = { ticketsShowArchive = !ticketsShowArchive },
+                            )
+                        }
                         else -> WalletDeck(
                             cards        = cardsForTab,
                             mode         = m,
