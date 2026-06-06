@@ -223,14 +223,16 @@ private fun WalletDeckCard(
     onInfoTap: () -> Unit,
 ) {
     val ctx = LocalContext.current
-    // For the user's own vCard, pull from assets/qrcodes/qrcodes.json
-    // (the file's own description names it the single source of truth
-    // for the user's vCard data — the .vcf files exported under
-    // src/public/ are GENERATED from this block). ProfilePrefs is the
-    // editable runtime layer used by other surfaces; it can drift if
-    // the user hasn't filled it in, so we don't depend on it here.
+    // BOTH "vcard" (profile, taps to BusinessCardFragment) AND
+    // "vcard_imported" (example of what an imported .vcf looks like,
+    // taps to the normal Selected/Full flow) render from the canonical
+    // assets/qrcodes/qrcodes.json::contact block — that file's own
+    // description names itself the single source of truth for the
+    // user's vCard data. ProfilePrefs is the editable runtime layer
+    // used by other surfaces; it can drift if the user hasn't filled
+    // it in, so we don't depend on it here.
     val resolved = remember(card.id, card.kind) {
-        if (card.kind == "vcard") {
+        if (card.kind == "vcard" || card.kind == "vcard_imported") {
             val q = QrcodesData.contact(ctx)
             if (q != null) {
                 val taglineParts = listOf(q.tel, q.cityCountry, q.landingUrl)

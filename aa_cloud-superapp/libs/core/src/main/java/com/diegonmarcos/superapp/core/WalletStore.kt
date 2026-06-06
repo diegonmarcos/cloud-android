@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 3
+    private const val SEED_VERSION = 4
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -123,18 +123,21 @@ object WalletStore {
             tagline = "Tap to expand — QR vCard",
             accent  = 0xFF7C3AED,                // brand purple
         ),
-        // Example imported vCard — sample of what a .vcf contact import
-        // looks like in the deck. kind="contact" so it does NOT receive
-        // the ProfilePrefs overlay reserved for the user's OWN vcard
-        // above. Stays in the seed so a fresh install shows BOTH paths
-        // (the identity card + an imported-style example) side by side.
+        // Imported-vCard EXAMPLE — kind="vcard_imported" is overlaid
+        // at render time with the same QrcodesData.contact block the
+        // profile card above uses, so the user sees THEIR OWN data in
+        // both spots (one acts as the BusinessCardFragment shortcut,
+        // the other demonstrates the "this is what an imported .vcf
+        // looks like" flow with Selected/Full behaviour). The seeded
+        // brand/tagline/number values are placeholders — replaced by
+        // QrcodesData on every render. Indigo accent so it's visually
+        // distinguishable from the purple profile card.
         Card(
             id      = UUID.randomUUID().toString(),
-            kind    = "contact",
-            brand   = "Jane Doe",
-            tagline = "Lead Designer · ACME Studio",
-            accent  = 0xFF6366F1,                // indigo (contact example)
-            number  = "jane.doe@acme.example",
+            kind    = "vcard_imported",
+            brand   = "Imported vCard",
+            tagline = "Tap to open the card details",
+            accent  = 0xFF6366F1,                // indigo
         ),
         Card(
             id      = UUID.randomUUID().toString(),
