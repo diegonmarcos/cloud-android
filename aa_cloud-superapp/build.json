@@ -488,7 +488,8 @@
       {
         "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
         "_doc_label": "Bottom-nav button displays 'Labs'. Section id stays 'tools' so deep-link grammar (page:tools/* / section:tools) and historical wiring don't break — this is a pure display rename.",
-        "_doc_tile_groups": "Themed sub-groups for Labs. Used ONLY by the Home Apps surface (via tiles_from_section + group_explode:true in home_groups). Bottom-nav Labs renders AggregatorStackFragment from stack_apps/stack_admin, so tile_groups doesn't affect it. Each group is intentionally empty until the lineup is decided — Home Apps will show one placeholder card per title.",
+        "_doc_tiles_shared": "Master Lab index — 6 icon tiles, one per Lab. Read by the Home Apps Labs card (single flat strip via tiles_from_section) AND by aggregatorTilesFor as the canonical Labs roster. Each tile's target opens the Lab's stack page (page:tools/<lab-id>) — placeholder content until per-Lab stack is populated. Bottom-nav Labs still renders the linktree stack (stack_apps wins) so this list is the Home Apps face only.",
+        "_doc_pages": "Per-Lab stack pages. Initially empty content (PageContentFragment fallback renders a stub) — wire each one to its dedicated content fragment as Labs come online.",
         "id": "tools",
         "label": "Labs",
         "icon": "ic_p_sol_tools",
@@ -497,13 +498,21 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "tile_groups": [
-          { "title": "C3",            "tiles": [] },
-          { "title": "Data&ML",       "tiles": [] },
-          { "title": "Engineering",   "tiles": [] },
-          { "title": "Quant&Markets", "tiles": [] },
-          { "title": "Aero&Space",    "tiles": [] },
-          { "title": "Circus",        "tiles": [] }
+        "tiles_shared": [
+          { "id": "c3",           "label": "C3",             "icon": "ic_p_c3_stack", "target": "page:tools/c3" },
+          { "id": "data-ml",      "label": "Data & ML",      "icon": "ic_database",   "target": "page:tools/data-ml" },
+          { "id": "engineering",  "label": "Engineering",    "icon": "ic_wg",         "target": "page:tools/engineering" },
+          { "id": "quant",        "label": "Quant & Markets","icon": "ic_fin",        "target": "page:tools/quant" },
+          { "id": "aero-space",   "label": "Aero & Space",   "icon": "ic_world",      "target": "page:tools/aero-space" },
+          { "id": "circus",       "label": "Circus",         "icon": "ic_solutions",  "target": "page:tools/circus" }
+        ],
+        "pages": [
+          { "id": "c3",           "label": "C3",             "icon": "ic_p_c3_stack" },
+          { "id": "data-ml",      "label": "Data & ML",      "icon": "ic_database" },
+          { "id": "engineering",  "label": "Engineering",    "icon": "ic_wg" },
+          { "id": "quant",        "label": "Quant & Markets","icon": "ic_fin" },
+          { "id": "aero-space",   "label": "Aero & Space",   "icon": "ic_world" },
+          { "id": "circus",       "label": "Circus",         "icon": "ic_solutions" }
         ],
         "tiles_apps": [
           {
@@ -1481,7 +1490,7 @@
         "notes": "MIME attachments inside JMAP store"
       }
     ],
-    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. The Suite entry FLATTENS sections[suite].tile_groups into one horizontal strip; the Labs entry sets group_explode:true to EXPAND sections[tools].tile_groups into one card per sub-title (C3, Data&ML, Engineering, Quant&Markets, Aero&Space, Circus). Single source of truth — change this to reshape the Home page, nothing else.",
+    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Both Suite and Labs entries FLATTEN their referenced section's tiles into a single horizontal-scroll strip — Suite pulls sections[suite].tile_groups (all 18 tiles), Labs pulls sections[tools].tiles_shared (6 Lab icons, each opening page:tools/<lab-id>). Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {
         "title": "Home",
@@ -1551,10 +1560,10 @@
         "tiles": []
       },
       {
-        "_doc": "Home Apps Labs — EXPANDED into one card per tile_group on sections[tools]. group_explode:true is the explicit opt-in (Suite leaves it off so it flattens). Sub-group titles (C3 · Data&ML · Engineering · Quant&Markets · Aero&Space · Circus) each become a HomeGroup card. Cards are empty placeholders until the per-group lineup is decided.",
+        "_doc": "Home Apps Labs — ONE card containing 6 icon tiles (master Lab index). tiles_from_section flattens sections[tools].tiles_shared into this card (no group_explode). Each icon → page:tools/<lab-id> opens that Lab's stack page (placeholder content for now). scroll=horizontal so the 6 icons ride a single strip and stay reachable without wrapping into multiple rows.",
         "title": "Labs",
+        "scroll": "horizontal",
         "tiles_from_section": "tools",
-        "group_explode": true,
         "tiles": []
       },
       {
