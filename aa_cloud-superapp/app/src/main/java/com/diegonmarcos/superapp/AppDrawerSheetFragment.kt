@@ -136,6 +136,10 @@ class AppDrawerSheetFragment : Fragment() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             )
             for (tab in tabs) addTab(newTab().setText(tab.label))
+            // Pill-style chrome — matches the browser-tab chip strip below
+            // and the broader glassmorphism + lavender language. Applies
+            // AFTER addTab so it can iterate the populated tab list.
+            AppTabsStyle.apply(this)
         }
 
         val host = FrameLayout(ctx).apply {

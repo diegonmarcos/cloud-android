@@ -67,6 +67,10 @@ class TabbedSectionFragment : Fragment(), Collapsible {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
+            // Liquid-glass pill chrome — same helper used by Home Apps
+            // (Cloud | Phone) so Infos / Labs / Home Apps all read as
+            // one consistent surface.
+            AppTabsStyle.apply(this)
         }
 
         val childContainer = FrameLayout(ctx).apply {
