@@ -47,20 +47,18 @@ class LauncherStatusStripView @JvmOverloads constructor(
         val px = (12 * resources.displayMetrics.density).toInt()
         val py = (3 * resources.displayMetrics.density).toInt()
         setPadding(px, py, px, py)
-        // Black wash so the white text reads cleanly regardless of
-        // the GalaxyBackdrop visible underneath.
-        setBackgroundColor(0xCC000000.toInt())
+        // NO background — the parent FrameLayout's GalaxyBackdropView
+        // already fills the camera/cutout area + the rest of the
+        // screen edge-to-edge. Leaving the strip transparent makes
+        // the galaxy read as ONE continuous panel from the camera
+        // punch-hole all the way down. Text below uses a strong
+        // shadow for contrast.
+        setBackgroundColor(0x00000000)
 
-        timeView = TextView(context).apply {
-            setTextColor(0xFFFFFFFF.toInt())
-            textSize = 13f
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        timeView = makeStripText().apply {
             layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
         }
-        batteryView = TextView(context).apply {
-            setTextColor(0xFFFFFFFF.toInt())
-            textSize = 13f
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        batteryView = makeStripText().apply {
             gravity = Gravity.END
             layoutParams = LayoutParams(
                 LayoutParams.WRAP_CONTENT,
@@ -69,6 +67,18 @@ class LauncherStatusStripView @JvmOverloads constructor(
         }
         addView(timeView)
         addView(batteryView)
+    }
+
+    /** Shared style for the two strip TextViews — bold monospace
+     *  white with a soft black halo shadow so the readout survives
+     *  bright stars / nebula bands behind it. */
+    private fun makeStripText(): TextView = TextView(context).apply {
+        setTextColor(0xFFFFFFFF.toInt())
+        textSize = 13f
+        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        // dx=0, dy=1, radius=4, color=#CC000000 — drops a tight
+        // anti-aliased halo so white text reads on any galaxy patch.
+        setShadowLayer(4f, 0f, 1f, 0xCC000000.toInt())
     }
 
     private val timeReceiver = object : BroadcastReceiver() {

@@ -170,6 +170,12 @@ object Sections {
         val iconName: String,
         val iconApps: String? = null,
         val iconAdmin: String? = null,
+        /** Optional positional hint used ONLY on the explicit `tiles`
+         *  entries of a home_groups row that ALSO declares
+         *  `tiles_from_section`. When non-blank, the tile is inserted
+         *  right after the derived tile whose id matches. Blank =
+         *  appended at the end of the group (legacy behaviour). */
+        val insertAfterId: String = "",
     ) {
         /** Pick the right icon for the user's current mode. Apps vs Admin
          *  fall back to the unconditional iconName when no override exists. */
@@ -624,11 +630,12 @@ object Sections {
                 val t = tilesArr.getJSONObject(j)
                 tiles.add(
                     HomeTile(
-                        id        = t.getString("id"),
-                        label     = t.getString("label"),
-                        iconName  = t.optString("icon", "ic_settings"),
-                        iconApps  = t.optString("icon_apps", "").takeIf { it.isNotBlank() },
-                        iconAdmin = t.optString("icon_admin", "").takeIf { it.isNotBlank() },
+                        id            = t.getString("id"),
+                        label         = t.getString("label"),
+                        iconName      = t.optString("icon", "ic_settings"),
+                        iconApps      = t.optString("icon_apps", "").takeIf { it.isNotBlank() },
+                        iconAdmin     = t.optString("icon_admin", "").takeIf { it.isNotBlank() },
+                        insertAfterId = t.optString("insert_after_id", ""),
                     )
                 )
             }
@@ -725,10 +732,21 @@ object Sections {
                     }
                 }
             }
-            // Explicit `tiles` entries on the home_groups row stay APPENDED
-            // — they're cross-section shortcuts that the derived list
-            // can't reach (e.g. section:wg under the Configs row).
-            derivedTiles += tiles
+            // Merge explicit `tiles` entries into the derived list.
+            // Each extra tile is either positional (insertAfterId !=
+            // "") — slotted right after the matching derived tile —
+            // or appended (legacy behaviour). Lets a home_groups row
+            // declare cross-section shortcuts (e.g. section:wg under
+            // Configs) AND control where they land, without giving up
+            // the derivation from sections.<x>.pages.
+            for (extra in tiles) {
+                if (extra.insertAfterId.isBlank()) {
+                    derivedTiles += extra
+                } else {
+                    val idx = derivedTiles.indexOfFirst { it.id == extra.insertAfterId }
+                    if (idx >= 0) derivedTiles.add(idx + 1, extra) else derivedTiles += extra
+                }
+            }
             parsed.add(HomeGroup(
                 title  = parentTitle,
                 tiles  = derivedTiles,
