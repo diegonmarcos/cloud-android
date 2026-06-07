@@ -36,48 +36,60 @@ class IslandWaveView @JvmOverloads constructor(
     private val clipRect = RectF()
     private var time = 0f
 
-    /** Each channel composes three harmonics so the shape isn't a pure
-     *  sine — closer to real audio. [ampModFreq] / [ampModPhase] drive
-     *  a slow sinusoidal envelope on the channel's amplitude so each
-     *  band rises and falls on its own rhythm, mimicking music
-     *  channels reacting to different instruments. */
+    /** Each channel composes three harmonics + a slow amp modulator.
+     *  Order matters — list[0] paints FIRST (back), list[3] paints
+     *  LAST (front). For all 4 layers to stay visible:
+     *    • BACK waves get the LARGEST baseAmp + DEEPEST baselineY so
+     *      their crests rise high above the front waves.
+     *    • FRONT waves get the SMALLEST baseAmp + HIGHEST baselineY
+     *      (closer to the top of the pill) so they sit as a narrow
+     *      ribbon at the bottom and don't blanket the back ones.
+     *  Combined with stepped alphas — back is ~60% opaque, front
+     *  ~95% — the four bands read as overlapping music ribbons. */
     private val waves = listOf(
-        Wave(
-            color       = 0xAAEDE9FE.toInt(), // very light lilac
-            baseFreq    = 1.6f,
-            h2          = 2.7f, h3 = 3.5f,
-            phaseSpeed  = 1.1f,
-            baseAmp     = 0.45f,
-            ampModFreq  = 0.45f, ampModPhase = 0.0f,
+        Wave( // BACK — tallest, drawn first
+            color           = 0x99B69EF9.toInt(), // soft lavender, 60% alpha
+            baseFreq        = 1.6f,
+            h2              = 2.7f, h3 = 3.5f,
+            phaseSpeed      = 1.1f,
+            baseAmp         = 0.85f,
+            ampModFreq      = 0.45f, ampModPhase = 0.0f,
+            baselineYFrac   = 0.88f,
         ),
         Wave(
-            color       = 0xB8DDD6F3.toInt(), // pastel violet
-            baseFreq    = 1.9f,
-            h2          = 2.4f, h3 = 4.1f,
-            phaseSpeed  = 1.5f,
-            baseAmp     = 0.55f,
-            ampModFreq  = 0.6f,  ampModPhase = 1.3f,
+            color           = 0xB3CABDFB.toInt(), // soft periwinkle, 70%
+            baseFreq        = 1.9f,
+            h2              = 2.4f, h3 = 4.1f,
+            phaseSpeed      = 1.5f,
+            baseAmp         = 0.70f,
+            ampModFreq      = 0.60f, ampModPhase = 1.3f,
+            baselineYFrac   = 0.82f,
         ),
         Wave(
-            color       = 0xBBCABDFB.toInt(), // soft periwinkle
-            baseFreq    = 2.3f,
-            h2          = 3.1f, h3 = 4.7f,
-            phaseSpeed  = 0.9f,
-            baseAmp     = 0.6f,
-            ampModFreq  = 0.32f, ampModPhase = 2.5f,
+            color           = 0xCCDDD6F3.toInt(), // pastel violet, 80%
+            baseFreq        = 2.3f,
+            h2              = 3.1f, h3 = 4.7f,
+            phaseSpeed      = 0.9f,
+            baseAmp         = 0.55f,
+            ampModFreq      = 0.32f, ampModPhase = 2.5f,
+            baselineYFrac   = 0.76f,
         ),
-        Wave(
-            color       = 0xBEB69EF9.toInt(), // soft lavender
-            baseFreq    = 2.8f,
-            h2          = 3.6f, h3 = 5.2f,
-            phaseSpeed  = 1.8f,
-            baseAmp     = 0.7f,
-            ampModFreq  = 0.78f, ampModPhase = 0.7f,
+        Wave( // FRONT — shortest, drawn last
+            color           = 0xE6EDE9FE.toInt(), // very light lilac, 90%
+            baseFreq        = 2.8f,
+            h2              = 3.6f, h3 = 5.2f,
+            phaseSpeed      = 1.8f,
+            baseAmp         = 0.40f,
+            ampModFreq      = 0.78f, ampModPhase = 0.7f,
+            baselineYFrac   = 0.70f,
         ),
     )
 
+    // Animation rate dropped 4× (was 60s sweep — too fast). 240s
+    // sweep ≈ 75% slower visual movement, well within the lazy
+    // "ambient" tempo a music-bar idle vibe wants.
     private val animator = ValueAnimator.ofFloat(0f, 1000f).apply {
-        duration = 60_000L  // long sweep so phase wraps smoothly
+        duration = 240_000L
         repeatCount = ValueAnimator.INFINITE
         interpolator = LinearInterpolator()
         addUpdateListener {
@@ -111,11 +123,15 @@ class IslandWaveView @JvmOverloads constructor(
         canvas.save()
         canvas.clipPath(clipPath)
 
-        val baseline = h * 0.6f
         val step = (w / 90f).coerceAtLeast(1f)
         val twoPi = (2f * PI).toFloat()
 
         for (wave in waves) {
+            // Each wave has its OWN baseline Y (staggered top→bottom)
+            // so the four layers don't collapse onto one line. Without
+            // this stagger the front (biggest) wave blanketed the back
+            // ones — only 2 read as visible.
+            val baseline = h * wave.baselineYFrac
             // Slow amplitude modulator — the music-channel "bounce".
             // Ranges 0.35 → 1.0 so the wave never fully disappears
             // but DOES visibly rise / fall.
@@ -168,5 +184,9 @@ class IslandWaveView @JvmOverloads constructor(
         val baseAmp: Float,
         val ampModFreq: Float,
         val ampModPhase: Float,
+        /** Fraction of view height where this channel's centreline
+         *  sits. 0 = top, 1 = bottom. Stagger across all 4 waves so
+         *  the layers don't collapse onto each other. */
+        val baselineYFrac: Float,
     )
 }
