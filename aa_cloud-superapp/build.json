@@ -407,6 +407,12 @@
                 "target": "section:cal"
               },
               {
+                "id": "contacts",
+                "label": "Contacts",
+                "icon": "ic_p_sol_personal",
+                "target": "app://com.google.android.contacts?fallback=https%3A%2F%2Fcontacts.google.com"
+              },
+              {
                 "id": "notes",
                 "label": "Notes (Obsidian)",
                 "icon": "ic_notes",

@@ -62,39 +62,37 @@ class GroupedTilesFragment : Fragment() {
             setPadding(dp(4), dp(12), 0, dp(4))
         }
 
-    /** A row of tiles in 5-column wrap (matches Home Apps groupSize). */
+    /** One horizontally-scrollable strip per group — tiles stay on a
+     *  single line regardless of count; the user scrolls right for
+     *  overflow. Replaces the previous 5-column wrap so groups like
+     *  Suite/Data Apps (6 tiles now) don't break onto a second row. */
     private fun tileRow(ctx: android.content.Context, tiles: List<Sections.AggTile>): View {
-        val wrapper = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
+        val scroll = android.widget.HorizontalScrollView(ctx).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
         }
-        val cols = 5
-        val rows = (tiles.size + cols - 1) / cols
-        for (r in 0 until rows) {
-            val row = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                weightSum = cols.toFloat()
-            }
-            for (c in 0 until cols) {
-                val idx = r * cols + c
-                if (idx < tiles.size) {
-                    row.addView(tileCell(ctx, tiles[idx]))
-                } else {
-                    row.addView(View(ctx).apply {
-                        layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
-                    })
-                }
-            }
-            wrapper.addView(row)
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
         }
-        return wrapper
+        for (tile in tiles) row.addView(tileCell(ctx, tile))
+        scroll.addView(row)
+        return scroll
     }
 
     private fun tileCell(ctx: android.content.Context, tile: Sections.AggTile): View {
+        // Fixed-width cells so the horizontal scroll row shows ~5
+        // tiles at a time on a typical phone width and the rest stay
+        // reachable by swiping.
+        val cellWidth = dp(72)
         val cell = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
             val pad = dp(6); setPadding(pad, pad, pad, pad)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(cellWidth, LinearLayout.LayoutParams.WRAP_CONTENT)
             isClickable = true; isFocusable = true
             // No cell background — matches TileGridFragment's bare tile
             // look. The previous list_selector_background was the default
