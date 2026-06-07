@@ -85,11 +85,12 @@ class IslandWaveView @JvmOverloads constructor(
         ),
     )
 
-    // Animation rate dropped 4× then nudged 1.3× longer again — the
-    // 240s sweep was the right ballpark but still on the brisk side
-    // for an idle ambient vibe. 312s gives a noticeably lazier drift.
+    // Rate dropped 4× → 1.3× → 1.15× cumulatively (60s → 240 → 312 →
+    // ~358s). Each bump narrows in on the final ambient tempo without
+    // overshooting; the harmonic + modulator rates all scale off the
+    // same `time` so one duration knob slows everything together.
     private val animator = ValueAnimator.ofFloat(0f, 1000f).apply {
-        duration = 312_000L
+        duration = 358_800L
         repeatCount = ValueAnimator.INFINITE
         interpolator = LinearInterpolator()
         addUpdateListener {
