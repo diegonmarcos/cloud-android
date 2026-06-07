@@ -21,7 +21,24 @@ import com.google.android.material.tabs.TabLayout
  * keep going straight to their content fragment via the existing
  * goSection dispatch — no wrapper, no tabs.
  */
-class TabbedSectionFragment : Fragment() {
+class TabbedSectionFragment : Fragment(), Collapsible {
+
+    /** Container id of the inner child host. Stored so the
+     *  bottom-nav re-tap handler can find the live child fragment and
+     *  forward [Collapsible.toggleAllCollapsed] to it. The id is
+     *  generated at runtime by View.generateViewId() in
+     *  [onCreateView]. */
+    private var childContainerId: Int = 0
+
+    /** [Collapsible] — bottom-nav re-tap on Infos / Labs now reaches
+     *  this wrapper first (since [TabbedSectionFragment] is the
+     *  visible top fragment). Delegate to whichever inner child
+     *  fragment is currently mounted; if it doesn't implement
+     *  Collapsible, the gesture is a no-op. */
+    override fun toggleAllCollapsed() {
+        val child = childFragmentManager.findFragmentById(childContainerId)
+        (child as? Collapsible)?.toggleAllCollapsed()
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -57,6 +74,7 @@ class TabbedSectionFragment : Fragment() {
                 1f,
             )
         }
+        childContainerId = childContainer.id
 
         root.addView(tabs)
         root.addView(childContainer)

@@ -93,17 +93,20 @@
                 android:clickable="false"
                 android:focusable="false">
 
-                <TextView
-                    android:id="@+id/dynamic_island_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                <!-- IslandWaveView replaces the old "DCM · Apps"
+                     identity text — a Samsung-music-island-style
+                     animated triple-sine wave in violet→lilac gradient.
+                     The id stays `dynamic_island_label` so the existing
+                     refreshDynamicIsland's findViewById<TextView>
+                     short-circuits gracefully (returns null → early
+                     return) without any code change. -->
+                <com.diegonmarcos.superapp.IslandWaveView
+                    android:id="@+id/dynamic_island_wave"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:layout_gravity="center"
-                    android:fontFamily="monospace"
-                    android:textColor="@color/island_accent"
-                    android:textSize="11sp"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    tools:text="DCM · Apps" />
+                    android:clickable="false"
+                    android:focusable="false" />
 
                 <!-- Prismatic neon halo around the island perimeter —
                      full rainbow sweep chasing around the pill. Sized

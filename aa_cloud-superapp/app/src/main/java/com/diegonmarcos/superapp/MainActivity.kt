@@ -1267,15 +1267,12 @@ class MainActivity : AppCompatActivity(),
             .commit()
     }
 
-    /** Update the toolbar Dynamic Island label — reads from ProfilePrefs
-     *  + ModePrefs. Cheap; called on every state change that might
-     *  affect the displayed values. */
-    private fun refreshDynamicIsland() {
-        val tv = findViewById<android.widget.TextView>(R.id.dynamic_island_label) ?: return
-        val profile = ProfilePrefs(this)
-        val modeLabel = if (modePrefs.mode == "admin") "Admin" else "Apps"
-        tv.text = "${profile.initials} · $modeLabel"
-    }
+    /** Dynamic Island is now an [IslandWaveView] (purely decorative
+     *  animated triple-sine waveform — Samsung-music-island vibe).
+     *  The old "{INITIALS} · {Mode}" text label is gone, so this is
+     *  intentionally a no-op kept on the existing call sites for any
+     *  future re-introduction of text overlay. */
+    private fun refreshDynamicIsland() { /* no-op — see IslandWaveView */ }
 
     /** Called by [TabbedSectionFragment] after it has written the new
      *  mode into [ModePrefs]. Refreshes every other surface that
