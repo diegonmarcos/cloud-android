@@ -1,0 +1,292 @@
+package com.diegonmarcos.superapp
+
+import android.app.Dialog
+import android.content.Context
+import android.content.pm.LauncherApps
+import android.graphics.drawable.Drawable
+import android.os.Bundle
+import android.os.Process
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.FrameLayout
+import android.widget.GridLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+
+/**
+ * Phone tab of the Home Apps swipe-up sheet — Android-launcher-style
+ * grouping of every installed (launchable) app into the folder
+ * taxonomy declared in `build.json::ui.phone_folders`. Smart classifier
+ * lives in [PhoneAppClassifier]; folder rendering follows the iOS-
+ * glass-on-Samsung-grid spec the user pinned in
+ * Screenshot_20260608_001142_One UI Home.jpg.
+ *
+ * Visual contract:
+ *   • Grid of folder cards, 6 columns (from `phone_grid_columns`).
+ *   • Each folder card: 2×2 mini-icon preview of its top apps inside a
+ *     rounded glass-bg square, label beneath.
+ *   • Tap a folder → modal dialog showing every app inside, 5 columns
+ *     of full-size icons. Tap an app → launches via [LauncherApps].
+ */
+class PhoneAppsFragment : Fragment() {
+
+    private lateinit var launcherApps: LauncherApps
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
+        val ctx = inflater.context
+        launcherApps = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+
+        val scroll = ScrollView(ctx).apply {
+            isFillViewport = true
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+        }
+        val rootCol = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(ctx, 8); setPadding(pad, pad, pad, dp(ctx, 96))
+        }
+        scroll.addView(rootCol)
+
+        val apps     = collectLaunchableApps(ctx)
+        val folders  = PhoneFolders.loadFromBuildConfig()
+        val grouped  = PhoneAppClassifier.groupByFolder(apps, folders)
+        val columns  = BuildConfig.UI_PHONE_GRID_COLUMNS
+
+        // Skip empty folders entirely — One UI hides them too, and an
+        // empty 2×2 placeholder reads as broken to the user.
+        val visible = folders.filter { (grouped[it.id]?.size ?: 0) > 0 }
+
+        renderFolderGrid(rootCol, ctx, visible, grouped, columns)
+        return scroll
+    }
+
+    /** Walk the system's launchable activities (every app the user can
+     *  open) for the current user profile. Excludes ourselves so the
+     *  Phone tab doesn't double-list the SuperApp launcher. */
+    private fun collectLaunchableApps(ctx: Context): List<PhoneApp> {
+        val me = Process.myUserHandle()
+        return runCatching {
+            launcherApps.getActivityList(null, me).mapNotNull { info ->
+                val pkg = info.applicationInfo.packageName
+                if (pkg == ctx.packageName) return@mapNotNull null
+                PhoneApp(
+                    packageName       = pkg,
+                    activityComponent = info.componentName,
+                    label             = info.label?.toString() ?: pkg,
+                    icon              = runCatching { info.getBadgedIcon(0) }.getOrNull(),
+                    user              = me,
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Lay out [folders] as a fixed-column grid of folder cards. Uses
+     *  nested LinearLayouts instead of GridLayout to avoid GridLayout's
+     *  cell-size measure cycles when child widths vary. */
+    private fun renderFolderGrid(
+        parent: LinearLayout,
+        ctx: Context,
+        folders: List<PhoneFolders.Folder>,
+        grouped: Map<String, List<PhoneApp>>,
+        columns: Int,
+    ) {
+        folders.chunked(columns).forEach { rowFolders ->
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            }
+            for (folder in rowFolders) {
+                val apps = grouped[folder.id].orEmpty()
+                row.addView(makeFolderCard(ctx, folder, apps))
+            }
+            // Pad the row with empty weighted spacers if it has fewer
+            // than `columns` folders, so the last row stays left-aligned
+            // (Samsung does the same — folders flow left to right, no
+            // re-centring of the trailing row).
+            val short = columns - rowFolders.size
+            repeat(short) {
+                row.addView(View(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+                })
+            }
+            parent.addView(row)
+        }
+    }
+
+    /** A single folder tile: glass-bg rounded square with a 2×2 mini-
+     *  icon preview, label underneath. */
+    private fun makeFolderCard(
+        ctx: Context,
+        folder: PhoneFolders.Folder,
+        apps: List<PhoneApp>,
+    ): View {
+        val cellSize = dp(ctx, 60)
+        val column = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val side = dp(ctx, 2); val top = dp(ctx, 6)
+            setPadding(side, top, side, top)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                Haptics.tap(it)
+                showFolderDialog(ctx, folder, apps)
+            }
+        }
+        // Glass square holding the 2x2 mini-preview.
+        val square = FrameLayout(ctx).apply {
+            background = ContextCompat.getDrawable(ctx, R.drawable.bg_liquid_glass)
+            layoutParams = LinearLayout.LayoutParams(cellSize, cellSize)
+        }
+        val mini = GridLayout(ctx).apply {
+            rowCount = 2; columnCount = 2
+            val p = dp(ctx, 6); setPadding(p, p, p, p)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        }
+        val miniSize = (cellSize - dp(ctx, 18)) / 2  // 2 minis, 6dp pad ×3
+        for (slot in 0 until 4) {
+            val iv = ImageView(ctx).apply {
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = miniSize; height = miniSize
+                    setMargins(dp(ctx, 1), dp(ctx, 1), dp(ctx, 1), dp(ctx, 1))
+                }
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            apps.getOrNull(slot)?.icon?.let { iv.setImageDrawable(it) }
+            mini.addView(iv)
+        }
+        square.addView(mini)
+        column.addView(square)
+        column.addView(TextView(ctx).apply {
+            text = folder.label
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            textSize = 10f
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            val mt = dp(ctx, 4)
+            layoutParams = LinearLayout.LayoutParams(
+                cellSize, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = mt }
+        })
+        return column
+    }
+
+    /** Open the folder in a modal dialog — full app list with launchable
+     *  icons. 5 columns, like One UI's expanded folder view. */
+    private fun showFolderDialog(
+        ctx: Context,
+        folder: PhoneFolders.Folder,
+        apps: List<PhoneApp>,
+    ) {
+        val dialog = Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.window?.requestFeature(Window.FEATURE_NO_TITLE)
+        val sheet = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xEE0A0A14.toInt())  // near-black, near-opaque
+            val pad = dp(ctx, 16); setPadding(pad, pad, pad, pad)
+        }
+        sheet.addView(TextView(ctx).apply {
+            text = folder.label
+            setTextColor(0xFFFFFFFFL.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+            setPadding(0, dp(ctx, 16), 0, dp(ctx, 16))
+        })
+        val grid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        val scroll = ScrollView(ctx).apply {
+            isFillViewport = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0, 1f,
+            )
+        }
+        scroll.addView(grid)
+        val expandedCols = 5
+        apps.chunked(expandedCols).forEach { rowApps ->
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            }
+            for (app in rowApps) row.addView(makeExpandedAppTile(ctx, app, dialog))
+            val short = expandedCols - rowApps.size
+            repeat(short) {
+                row.addView(View(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+                })
+            }
+            grid.addView(row)
+        }
+        sheet.addView(scroll)
+        // Tap outside (the column background) → dismiss.
+        sheet.setOnClickListener { dialog.dismiss() }
+        dialog.setContentView(sheet)
+        dialog.show()
+    }
+
+    /** A single full-size launchable app tile inside the expanded
+     *  folder dialog. Tap → launch via [LauncherApps.startMainActivity]
+     *  + dismiss the dialog (Samsung's UX). */
+    private fun makeExpandedAppTile(
+        ctx: Context,
+        app: PhoneApp,
+        dialog: Dialog,
+    ): View {
+        val tile = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val p = dp(ctx, 8); setPadding(p, p, p, p)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                Haptics.tap(it)
+                runCatching {
+                    launcherApps.startMainActivity(app.activityComponent, app.user, null, null)
+                }
+                dialog.dismiss()
+            }
+        }
+        tile.addView(ImageView(ctx).apply {
+            app.icon?.let { setImageDrawable(it) }
+            val sz = dp(ctx, 48)
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+        })
+        tile.addView(TextView(ctx).apply {
+            text = app.label
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            textSize = 11f
+            gravity = Gravity.CENTER
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            val mt = dp(ctx, 4)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = mt }
+        })
+        return tile
+    }
+
+    private fun dp(ctx: Context, v: Int): Int = (v * ctx.resources.displayMetrics.density).toInt()
+
+    companion object { fun newInstance() = PhoneAppsFragment() }
+}

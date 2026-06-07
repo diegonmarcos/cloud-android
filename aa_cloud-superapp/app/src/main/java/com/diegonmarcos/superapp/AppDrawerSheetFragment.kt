@@ -116,15 +116,27 @@ class AppDrawerSheetFragment : Fragment() {
         renderTabChips(chipRow)
         root.addView(tabsStrip)
 
-        // ── Grouped tile view, data-driven from build.json::ui.home_groups.
-        // Uses [HomeGroupedFragment] which renders one themed group per
-        // home_groups entry (Home / Comms / Infos / Suite / Tools / Configs
-        // …). Clicks fan out via the same TileGridFragment.TileClickListener
-        // contract MainActivity already implements, so deep-links like
-        // "section:wg" or "page:wg/config" land in the right place.
-        // The previous flat Sections.all() + homeActions() grid is
-        // replaced — home_groups is now the sole source of truth for the
-        // swipe-up Home Apps page.
+        // ── Body tabs (Cloud | Phone) — data-driven from build.json::ui.home_apps_tabs.
+        // Cloud = HomeGroupedFragment (cloud-services tile grid derived
+        // from build.json::ui.home_groups). Phone = PhoneAppsFragment
+        // (Android-launcher folder grid of installed apps, classified by
+        // PhoneAppClassifier against build.json::ui.phone_folders).
+        // Tabs are also exposed via TabPrefs-style state but kept stateless
+        // here — re-opening the sheet always lands on the first tab (Cloud),
+        // matching the user's One UI muscle memory.
+        val tabs = HomeAppsTabs.loadFromBuildConfig()
+        val bodyTabs = com.google.android.material.tabs.TabLayout(ctx).apply {
+            tabMode = com.google.android.material.tabs.TabLayout.MODE_FIXED
+            setSelectedTabIndicatorColor(0xFFE9D8FD.toInt())
+            setTabTextColors(0x88FFFFFF.toInt(), 0xFFFFFFFFL.toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            for (tab in tabs) addTab(newTab().setText(tab.label))
+        }
+        root.addView(bodyTabs)
+
         val host = FrameLayout(ctx).apply {
             id = R.id.app_drawer_grid_host
             layoutParams = LinearLayout.LayoutParams(
@@ -134,10 +146,28 @@ class AppDrawerSheetFragment : Fragment() {
             )
         }
         root.addView(host)
-        if (s == null && childFragmentManager.findFragmentById(host.id) == null) {
+
+        fun showTab(id: String) {
+            val frag: androidx.fragment.app.Fragment = when (id) {
+                "phone" -> PhoneAppsFragment.newInstance()
+                else    -> HomeGroupedFragment.newInstance()  // "cloud" + default
+            }
             childFragmentManager.beginTransaction()
-                .replace(host.id, HomeGroupedFragment.newInstance())
+                .replace(host.id, frag)
                 .commit()
+        }
+
+        bodyTabs.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
+                Haptics.tap(bodyTabs)
+                showTab(tabs.getOrNull(tab.position)?.id ?: "cloud")
+            }
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+        })
+
+        if (s == null && childFragmentManager.findFragmentById(host.id) == null) {
+            showTab(tabs.firstOrNull()?.id ?: "cloud")
         }
         return root
     }
