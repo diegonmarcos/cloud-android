@@ -40,6 +40,16 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- QUERY_ALL_PACKAGES is the launcher's app-discovery permission.
+         Self-signed APK (no Play distribution) so the usual Play Store
+         policy gate on this permission does not apply; declaring it
+         here grants LauncherApps + PackageManager full visibility over
+         every installed launchable activity — the SuperApp needs that
+         to act as a Home / Launcher replacement and render the app
+         drawer for the Cloud Minimalist Black theme. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
     <application
         android:name=".App"
         android:label="@string/app_name"
@@ -49,10 +59,26 @@
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="false"
+            android:stateNotNeeded="true">
+            <!-- Standard app-drawer entry. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- HOME intent-filter — flips the SuperApp into the
+                 Android Home Screen replacement candidate list. Once
+                 the user picks it as default, all Home button / home
+                 gesture presses route here. launchMode=singleTask +
+                 empty taskAffinity match the AOSP Launcher3 task
+                 semantics so back / recents behave as expected. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <!-- Launcher icon long-press shortcuts -->
             <meta-data

@@ -50,6 +50,11 @@ def uiSamplesJson    = groovy.json.JsonOutput.toJson(buildJson.ui.page_samples ?
 def uiSamplesB64     = uiSamplesJson.bytes.encodeBase64().toString()
 def uiGroupsJson     = groovy.json.JsonOutput.toJson(buildJson.ui.home_groups ?: [])
 def uiGroupsB64      = uiGroupsJson.bytes.encodeBase64().toString()
+// Launcher themes — Configs → Launcher picker reads this list to
+// render the chooser. Single source of truth lives in
+// build.json::ui.launcher_themes; add a theme there, picker updates.
+def uiLauncherThemesJson = groovy.json.JsonOutput.toJson(buildJson.ui.launcher_themes ?: [])
+def uiLauncherThemesB64  = uiLauncherThemesJson.bytes.encodeBase64().toString()
 // Mesh + services topology come from snapshots committed in data/
 // (regenerated via data/regen.sh from cloud / cloud-data upstream).
 // Bake-time read + base64 so the parser only sees the raw bytes.
@@ -253,6 +258,7 @@ android {
         buildConfigField "String", "UI_HOME_DRAWER_PREPEND_B64", "\"${uiDrawerPrependB64}\""
         buildConfigField "String", "UI_PAGE_SAMPLES_B64",   "\"${uiSamplesB64}\""
         buildConfigField "String", "UI_HOME_GROUPS_B64",    "\"${uiGroupsB64}\""
+        buildConfigField "String", "UI_LAUNCHER_THEMES_B64", "\"${uiLauncherThemesB64}\""
         buildConfigField "String", "MESH_JSON_B64",         "\"${meshB64}\""
         buildConfigField "String", "SERVICES_PUBLIC_B64",   "\"${svcPubB64}\""
         buildConfigField "String", "SERVICES_PRIVATE_B64",  "\"${svcPrivB64}\""

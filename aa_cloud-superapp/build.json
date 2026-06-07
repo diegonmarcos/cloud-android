@@ -1303,11 +1303,30 @@
             "action": "action:import_configs"
           },
           {
+            "id": "launcher",
+            "label": "Launcher",
+            "icon": "ic_home"
+          },
+          {
             "id": "about",
             "label": "About",
             "icon": "ic_settings"
           }
         ]
+      }
+    ],
+    "_doc_launcher_themes": "Themes the user can pick in Configs → Launcher. The chosen theme drives MainActivity's home-pane chrome ONLY when the SuperApp is set as the Android Home / Launcher replacement. id maps to LauncherTheme enum; `default: true` marks the first-run choice. Cloud Theme = existing UI (Home3D + bottom nav + dynamic island) but with our own top strip showing only Time + Battery in launcher mode. Cloud Minimalist Black = terminal aesthetic — pure black, monospace green/white app list, no chrome.",
+    "launcher_themes": [
+      {
+        "id": "cloud",
+        "label": "Cloud Theme",
+        "subtitle": "The default rich SuperApp UI — bottom nav, dynamic island, 3D home. Top status strip trimmed to Time · Battery only.",
+        "default": true
+      },
+      {
+        "id": "cloud_minimalist_black",
+        "label": "Cloud Minimalist Black",
+        "subtitle": "Terminal aesthetic — pure black background, monospace green app list, no chrome. One-screen scroll."
       }
     ],
     "default_section": "home",

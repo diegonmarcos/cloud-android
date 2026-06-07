@@ -34,6 +34,7 @@ object SectionPages {
         sectionId == "drive" && pageId == "connections" -> DriveConnectionsFragment.newInstance()
         sectionId == "config" && pageId == "profile"   -> ProfileFragment.newInstance()
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
+        sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()
         sectionId == "config" && (pageId == "about" || pageId == "dev") ->
