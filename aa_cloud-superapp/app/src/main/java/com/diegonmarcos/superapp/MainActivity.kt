@@ -756,6 +756,17 @@ class MainActivity : AppCompatActivity(),
         val section = Sections.byId(id)
         val content: Fragment = when {
             section == null -> SectionFragment.forSection(id, label)
+            // Aggregator with BOTH Apps and Admin variants — wrap with
+            // a TabbedSectionFragment so the page carries its own
+            // "Apps · Admin" tab strip at the top. Replaces the old
+            // global drawer swap-icon switcher for these sections
+            // (Infos, Labs today). Predicate matches tile-shaped OR
+            // stack-shaped variants — covers every section that has a
+            // meaningful mode distinction.
+            section.isAggregator && (
+                (section.tilesApps.isNotEmpty()  && section.tilesAdmin.isNotEmpty()) ||
+                (section.stackApps.isNotEmpty()  && section.stackAdmin.isNotEmpty())
+            ) -> TabbedSectionFragment.newInstance(section.id, label)
             // Aggregator: if stack_* is declared for the current mode →
             // scrollable collapsable-card view. Otherwise fall back to the
             // tile-grid (still data-driven via tiles_* in build.json).
@@ -1264,6 +1275,18 @@ class MainActivity : AppCompatActivity(),
         val profile = ProfilePrefs(this)
         val modeLabel = if (modePrefs.mode == "admin") "Admin" else "Apps"
         tv.text = "${profile.initials} · $modeLabel"
+    }
+
+    /** Called by [TabbedSectionFragment] after it has written the new
+     *  mode into [ModePrefs]. Refreshes every other surface that
+     *  reads from ModePrefs (drawer island label, bottom-nav icons,
+     *  options menu) — but does NOT re-trigger [goSection] because
+     *  the tab strip already rendered its own new child fragment;
+     *  rebuilding the section would unmount the tab fragment itself. */
+    fun notifyModeChanged() {
+        refreshDynamicIsland()
+        refreshBottomNavIconsForMode()
+        invalidateOptionsMenu()
     }
 
     override fun onDrawerModeToggle() {

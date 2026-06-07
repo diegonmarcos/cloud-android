@@ -105,13 +105,15 @@ class HomeDrawerFragment : Fragment() {
                 Haptics.tap(it)
                 (activity as? NavigationListener)?.onDrawerBusinessCardOpen()
             }
-            // Swap icon → flip Apps↔Admin. Independent tap target on
-            // the right side of the same row.
-            swapBtn?.setOnClickListener {
-                Haptics.tap(it)
-                (activity as? NavigationListener)?.onDrawerModeToggle()
-                rebind()
-            }
+            // The Apps↔Admin global swap icon is RETIRED. Mode switching
+            // now lives inside the section pages that have both
+            // variants (Infos, Labs) via TabbedSectionFragment's "Apps
+            // · Admin" tab strip. Hide the swap icon so the drawer
+            // identity row stays a pure profile row. The
+            // NavigationListener.onDrawerModeToggle hook is kept for
+            // backwards-compatibility in case any other surface
+            // triggers it programmatically.
+            swapBtn?.visibility = View.GONE
         }
 
         val menu = nav.menu

@@ -610,22 +610,13 @@
             "target": "page:drive/connections"
           }
         ],
+        "_doc_stack_apps": "Labs/Apps tab — themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
         "stack_apps": [
-          {
-            "kind": "linktree_slide",
-            "title": "Suite",
-            "slide_id": "suite"
-          },
-          {
-            "kind": "linktree_slide",
-            "title": "Lab Tools",
-            "slide_id": "lab-tools"
-          },
-          {
-            "kind": "linktree_slide",
-            "title": "Circus",
-            "slide_id": "circus"
-          }
+          { "kind": "link_grid", "title": "Data & ML",       "subtitle": "Datasets · ML pipelines · model registry" },
+          { "kind": "link_grid", "title": "Engineering",     "subtitle": "Build systems · ops tooling · infra notes" },
+          { "kind": "link_grid", "title": "Quant & Markets", "subtitle": "Market data · strategies · backtests" },
+          { "kind": "link_grid", "title": "Aero & Space",    "subtitle": "Mission tracking · orbital data · launches" },
+          { "kind": "link_grid", "title": "Circus",          "subtitle": "Misc experiments and side quests" }
         ],
         "stack_admin": [
           {
