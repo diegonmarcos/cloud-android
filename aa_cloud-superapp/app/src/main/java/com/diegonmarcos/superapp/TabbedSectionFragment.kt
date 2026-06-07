@@ -34,10 +34,13 @@ class TabbedSectionFragment : Fragment(), Collapsible {
      *  this wrapper first (since [TabbedSectionFragment] is the
      *  visible top fragment). Delegate to whichever inner child
      *  fragment is currently mounted; if it doesn't implement
-     *  Collapsible, the gesture is a no-op. */
-    override fun toggleAllCollapsed() {
+     *  Collapsible, the gesture is a no-op. Returns the child's own
+     *  consumed-flag (or false when the child isn't Collapsible) so
+     *  MainActivity's re-tap handler can decide whether to fall back
+     *  to the default behaviour. */
+    override fun toggleAllCollapsed(): Boolean {
         val child = childFragmentManager.findFragmentById(childContainerId)
-        (child as? Collapsible)?.toggleAllCollapsed()
+        return (child as? Collapsible)?.toggleAllCollapsed() ?: false
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
