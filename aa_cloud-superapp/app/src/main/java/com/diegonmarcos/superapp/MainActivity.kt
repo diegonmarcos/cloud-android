@@ -78,6 +78,14 @@ class MainActivity : AppCompatActivity(),
      *  listener — applyChrome adds it to the BottomNav clearance so
      *  content doesn't slide under the nav bar. */
     private var bottomSystemInset: Int = 0
+    /** Real status-bar inset captured from the OS the moment
+     *  [applyEdgeToEdgeInsets]'s listener fires. Samsung One UI reports
+     *  a taller bar than `android.R.dimen.status_bar_height` (because of
+     *  the camera cutout), so the resource lookup under-sizes the launcher
+     *  strip's negative topMargin — the strip lands BELOW the bar zone
+     *  where the toolbar island covers it. Using this cached real value
+     *  in [applyLauncherChrome] keeps the strip flush with y=0. */
+    private var topSystemInset: Int = 0
 
     /** Global UI mode (apps | admin). Hot-swaps which aggregator
      *  tile-list renders in Communication/Infos/Suite/Tools. */
@@ -777,23 +785,29 @@ class MainActivity : AppCompatActivity(),
         val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
         if (isLauncher) {
             controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+            // Samsung One UI re-shows the system bars on the slightest
+            // movement unless we pin the "swipe to reveal transiently"
+            // behaviour. Without this, the system status bar paints back
+            // over our strip the moment the user touches anything.
+            controller.systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
             controller.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
         }
         when {
             isLauncher && theme == LauncherTheme.Cloud -> {
-                // OWN the status-bar zone — DrawerLayout's fits-system-
-                // windows behaviour adds top padding equal to the status
-                // bar height inside its content. Without compensating,
-                // our strip lands BELOW that gap. Lift the strip with a
-                // negative topMargin = -statusBarHeight and force its
-                // height to exactly statusBarHeight, so it visually
-                // replaces the hidden system bar instead of stacking
-                // beneath it. The text auto-centers in the strip via
-                // gravity=CENTER_VERTICAL (set in the view init).
+                // OWN the status-bar zone — shell_linear has been padded
+                // top by [applyEdgeToEdgeInsets]'s listener (sys.top); we
+                // cancel that padding for the strip ONLY with a negative
+                // topMargin equal to the REAL top inset (Samsung's bar is
+                // taller than `android.R.dimen.status_bar_height`, so the
+                // resource fallback under-cancels). Force the strip's
+                // height to that same inset so it visually fills the bar
+                // zone and the text/battery centre cleanly via the inner
+                // row's gravity=CENTER_VERTICAL.
                 strip?.let {
-                    val barH = statusBarHeightPx()
-                    val lp = it.layoutParams as? android.widget.FrameLayout.LayoutParams
+                    val barH = if (topSystemInset > 0) topSystemInset else statusBarHeightPx()
+                    val lp = it.layoutParams as? android.view.ViewGroup.MarginLayoutParams
                     if (lp != null) {
                         lp.topMargin = -barH
                         lp.height = barH
@@ -1005,6 +1019,7 @@ class MainActivity : AppCompatActivity(),
             val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(top = sys.top, bottom = sys.bottom)
             bottomSystemInset = sys.bottom
+            topSystemInset = sys.top
             // The galaxy view needs to extend INTO the padded inset zones
             // so the stars / comets fill the status + nav bar area too.
             // Negative margins push it past the shell's padding boundary;
@@ -1015,6 +1030,12 @@ class MainActivity : AppCompatActivity(),
                 lp.bottomMargin = -sys.bottom
                 galaxy.layoutParams = lp
             }
+            // Re-apply the launcher chrome now that the REAL top inset is
+            // known — the first applyLauncherChrome() call in onCreate ran
+            // before this listener fired, so it used the stale-but-safe
+            // resource fallback. Refresh now with the actual Samsung /
+            // Pixel / OEM-reported height so the strip sits at y=0.
+            applyLauncherChrome()
             insets
         }
     }
