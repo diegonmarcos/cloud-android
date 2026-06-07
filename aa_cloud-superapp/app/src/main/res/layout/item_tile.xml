@@ -9,8 +9,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="128dp"
-    android:layout_margin="6dp"
-    app:cardCornerRadius="20dp"
+    android:layout_margin="3dp"
+    app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
     app:strokeWidth="0dp"
     app:cardBackgroundColor="@android:color/transparent"
@@ -24,18 +24,17 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="6dp">
+        android:padding="4dp">
 
-        <!-- Icon: small (32dp), centered, no background. Linktree pattern —
-             the link CARD carries the glass, the icon itself is just a
-             small white glyph (filter:invert(1) in CSS, near-white violet
-             tint here). -->
+        <!-- Icon: small (32dp), centered, no background. Tight top
+             margin (4dp, was 14dp) so the tile compacts vertically and
+             matches Suite/GroupedTilesFragment's density. -->
         <FrameLayout
             android:id="@+id/tile_icon_bg"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="14dp">
+            android:layout_marginTop="4dp">
 
             <ImageView
                 android:id="@+id/tile_icon"

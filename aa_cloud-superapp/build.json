@@ -2438,7 +2438,7 @@
         }
       }
     ],
-    "tile_columns": 5
+    "tile_columns": 6
   },
   "deploy": {
     "host": "local",

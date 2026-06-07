@@ -84,10 +84,10 @@ class GroupedTilesFragment : Fragment() {
     }
 
     private fun tileCell(ctx: android.content.Context, tile: Sections.AggTile): View {
-        // Fixed-width cells so the horizontal scroll row shows ~5
-        // tiles at a time on a typical phone width and the rest stay
-        // reachable by swiping.
-        val cellWidth = dp(72)
+        // Fixed-width cells so the horizontal scroll row shows ~6
+        // tiles at a time on a typical phone width (matches Home Apps'
+        // tile_columns = 6) and the rest stay reachable by swiping.
+        val cellWidth = dp(60)
         val cell = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL

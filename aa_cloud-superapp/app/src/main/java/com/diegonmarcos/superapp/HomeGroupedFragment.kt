@@ -88,7 +88,11 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
         // Fixed-height rows (in dp). With 5 cols this keeps icon + label
         // legible at all group sizes. Container ScrollView handles overflow
         // when total content exceeds the visible area.
-        val rowHeightPx = (96 * resources.displayMetrics.density).toInt()
+        // Tightened from 96dp to 76dp to match Suite/GroupedTilesFragment's
+        // compact density now that tile_columns is 6 (more tiles per
+        // line → each tile is narrower → it can be shorter too without
+        // squishing icons / labels).
+        val rowHeightPx = (76 * resources.displayMetrics.density).toInt()
 
         for (bucket in buckets) {
             addGroupHeader(root, inflater, bucket.title)
@@ -121,7 +125,9 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
                     tileView.layoutParams = LinearLayout.LayoutParams(
                         tileWidthPx, ViewGroup.LayoutParams.MATCH_PARENT,
                     ).apply {
-                        val m = (4 * resources.displayMetrics.density).toInt()
+                        // Tight 2dp margins between tiles — matches Suite's
+                        // density now that tile_columns is 6.
+                        val m = (2 * resources.displayMetrics.density).toInt()
                         setMargins(m, m, m, m)
                     }
                     val iconRes = Sections.iconResFor(ctx, iconTile).takeIf { it != 0 }
