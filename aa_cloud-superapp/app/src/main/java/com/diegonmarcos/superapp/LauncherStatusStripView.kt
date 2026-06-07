@@ -8,6 +8,7 @@ import android.graphics.Typeface
 import android.os.BatteryManager
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.text.SimpleDateFormat
