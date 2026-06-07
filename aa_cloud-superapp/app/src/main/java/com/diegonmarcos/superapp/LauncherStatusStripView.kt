@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Typeface
 import android.os.BatteryManager
-import android.text.format.DateFormat
 import android.util.AttributeSet
 import android.view.Gravity
 import android.widget.LinearLayout
@@ -39,34 +38,57 @@ class LauncherStatusStripView @JvmOverloads constructor(
 ) : LinearLayout(context, attrs, defStyle) {
 
     private val timeView: TextView
-    private val batteryView: TextView
+    private val batteryView: BatteryIconView
 
     init {
-        orientation = HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        val px = (12 * resources.displayMetrics.density).toInt()
-        val py = (3 * resources.displayMetrics.density).toInt()
-        setPadding(px, py, px, py)
+        // OUTER strip is now VERTICAL — a horizontal row of (time +
+        // battery) on top, and a 1dp hairline separator pinned to the
+        // bottom edge so the user can clearly see where the launcher's
+        // status bar ends and the home content begins.
+        orientation = VERTICAL
+        setPadding(0, 0, 0, 0)
         // NO background — the parent FrameLayout's GalaxyBackdropView
-        // already fills the camera/cutout area + the rest of the
-        // screen edge-to-edge. Leaving the strip transparent makes
-        // the galaxy read as ONE continuous panel from the camera
-        // punch-hole all the way down. Text below uses a strong
-        // shadow for contrast.
+        // already fills the camera/cutout + the rest of the screen
+        // edge-to-edge. Transparent strip = galaxy reads continuous
+        // from the punch-hole straight through. Text below uses a
+        // strong shadow for contrast.
         setBackgroundColor(0x00000000)
 
+        val px = (12 * resources.displayMetrics.density).toInt()
+        val innerRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(px, 0, px, 0)
+            // weight 1 → fills the available strip height MINUS the
+            // 1dp separator beneath, so the strip's total height
+            // (set by MainActivity.applyLauncherChrome to
+            // statusBarHeightPx) is honoured without overflow.
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
+        }
         timeView = makeStripText().apply {
             layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
         }
-        batteryView = makeStripText().apply {
-            gravity = Gravity.END
+        batteryView = BatteryIconView(context).apply {
+            // BatteryIconView reports its intrinsic size via onMeasure
+            // (~36dp × 15dp). LayoutParams.WRAP_CONTENT honours that.
             layoutParams = LayoutParams(
                 LayoutParams.WRAP_CONTENT,
                 LayoutParams.WRAP_CONTENT,
             )
         }
-        addView(timeView)
-        addView(batteryView)
+        innerRow.addView(timeView)
+        innerRow.addView(batteryView)
+        addView(innerRow)
+
+        // Bottom hairline — faint white (20% alpha) so it survives
+        // both dark and bright patches of the galaxy backdrop.
+        addView(View(context).apply {
+            setBackgroundColor(0x33FFFFFF.toInt())
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                maxOf(1, (resources.displayMetrics.density * 0.75f).toInt()),
+            )
+        })
     }
 
     /** Shared style for the two strip TextViews — bold monospace
@@ -117,8 +139,10 @@ class LauncherStatusStripView @JvmOverloads constructor(
     }
 
     private fun refreshTime() {
-        val pattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
-        timeView.text = SimpleDateFormat(pattern, Locale.US).format(Date())
+        // dd-MM-yyyy HH:mm EEE — 24h forced (Date pattern leaves no
+        // ambiguity with locale 12h defaults), dash dates, 3-letter
+        // weekday (Mon · Tue · Wed · Thu · Fri · Sat · Sun).
+        timeView.text = SimpleDateFormat("dd-MM-yyyy HH:mm EEE", Locale.US).format(Date())
     }
 
     private fun refreshBattery(intent: Intent) {
@@ -128,8 +152,6 @@ class LauncherStatusStripView @JvmOverloads constructor(
         val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
         val pct = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
-        batteryView.text = if (pct >= 0) {
-            if (charging) "${pct}% ⚡" else "${pct}%"
-        } else "—"
+        batteryView.setBattery(pct, charging)
     }
 }
