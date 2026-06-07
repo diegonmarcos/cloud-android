@@ -30,7 +30,8 @@ class LauncherConfigFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        val prefs = LauncherThemePrefs(ctx)
+        val themePrefs = LauncherThemePrefs(ctx)
+        val profilePrefs = LauncherProfilePrefs(ctx)
 
         val scroll = ScrollView(ctx).apply {
             isFillViewport = true
@@ -45,7 +46,38 @@ class LauncherConfigFragment : Fragment() {
         }
         scroll.addView(root)
 
-        // Header
+        // ── Profiles section ───────────────────────────────────────
+        root.addView(TextView(ctx).apply {
+            text = "Profile"
+            setTextColor(0xFFFFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+            setPadding(0, 0, 0, dp(ctx, 8))
+        })
+        root.addView(TextView(ctx).apply {
+            text = "Personal / Work / Guest. The picked profile is the " +
+                "foundation for filtering which apps + folders the Phone " +
+                "tab will surface (wired in a follow-up patch)."
+            setTextColor(0xAAFFFFFFL.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+            setPadding(0, 0, 0, dp(ctx, 16))
+        })
+        val profiles = LauncherProfiles.loadFromBuildConfig()
+        val currentProfile = profilePrefs.profile
+        for (profileRow in profiles) {
+            root.addView(genericTile(
+                ctx,
+                label    = profileRow.label,
+                subtitle = profileRow.subtitle,
+                isSelected = profileRow.id == currentProfile.id,
+            ) {
+                profilePrefs.profile = LauncherProfile.fromId(profileRow.id)
+                parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
+            })
+            root.addView(spacer(ctx, dp(ctx, 8)))
+        }
+
+        // ── Theme section ──────────────────────────────────────────
+        root.addView(spacer(ctx, dp(ctx, 24)))
         root.addView(TextView(ctx).apply {
             text = "Launcher theme"
             setTextColor(0xFFFFFFFF.toInt())
@@ -61,19 +93,18 @@ class LauncherConfigFragment : Fragment() {
         })
 
         // Theme tiles — data-driven from BuildConfig.
-        val themes = remember(LauncherThemes.loadFromBuildConfig())
-        val current = prefs.theme
+        val themes = LauncherThemes.loadFromBuildConfig()
+        val current = themePrefs.theme
         for (themeRow in themes) {
-            root.addView(themeTile(ctx, themeRow, isSelected = themeRow.id == current.id) {
-                prefs.theme = LauncherTheme.fromId(themeRow.id)
-                // Tell the activity to re-apply launcher chrome + swap
-                // the home pane if needed (Cloud ↔ MinimalistBlack).
+            root.addView(genericTile(
+                ctx,
+                label    = themeRow.label,
+                subtitle = themeRow.subtitle,
+                isSelected = themeRow.id == current.id,
+            ) {
+                themePrefs.theme = LauncherTheme.fromId(themeRow.id)
                 (activity as? MainActivity)?.notifyLauncherThemeChanged()
-                // Rebuild the fragment so the selection highlight + the
-                // "is default launcher? ✓" hint also re-evaluate.
-                parentFragmentManager.beginTransaction()
-                    .detach(this).attach(this)
-                    .commit()
+                parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
         }
@@ -111,9 +142,13 @@ class LauncherConfigFragment : Fragment() {
         return scroll
     }
 
-    private fun themeTile(
+    /** Shared "selectable card" row used by both the Profiles and the
+     *  Themes pickers — label up top, optional subtitle beneath,
+     *  selected-state filled in brand purple, unselected on 13% white. */
+    private fun genericTile(
         ctx: android.content.Context,
-        theme: LauncherThemes.Theme,
+        label: String,
+        subtitle: String,
         isSelected: Boolean,
         onClick: () -> Unit,
     ): View {
@@ -128,13 +163,13 @@ class LauncherConfigFragment : Fragment() {
             }
         }
         tile.addView(TextView(ctx).apply {
-            text = (if (isSelected) "● " else "○ ") + theme.label
+            text = (if (isSelected) "● " else "○ ") + label
             setTextColor(0xFFFFFFFFL.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
         })
-        if (theme.subtitle.isNotBlank()) {
+        if (subtitle.isNotBlank()) {
             tile.addView(TextView(ctx).apply {
-                text = theme.subtitle
+                text = subtitle
                 setTextColor(0xAAFFFFFFL.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Caption)
                 setPadding(0, dp(ctx, 4), 0, 0)
@@ -161,10 +196,6 @@ class LauncherConfigFragment : Fragment() {
         return resolved?.activityInfo?.packageName == ctx.packageName
     }
 
-    /** Trivial pass-through — avoids needing to import remember in a
-     *  non-Compose Fragment while keeping the call site read like Compose. */
-    private fun <T> remember(value: T): T = value
-
     companion object { fun newInstance() = LauncherConfigFragment() }
 }
 
@@ -185,6 +216,32 @@ object LauncherThemes {
         (0 until arr.length()).map { idx ->
             val o = arr.getJSONObject(idx)
             Theme(
+                id       = o.optString("id"),
+                label    = o.optString("label"),
+                subtitle = o.optString("subtitle"),
+                default  = o.optBoolean("default", false),
+            )
+        }
+    }.getOrDefault(emptyList())
+}
+
+/** Parses build.json::ui.launcher_profiles from the baked BuildConfig
+ *  blob. Same shape as [LauncherThemes]. Add a profile via build.json
+ *  + LauncherProfile enum — no other Kotlin edits needed. */
+object LauncherProfiles {
+    data class Profile(
+        val id: String,
+        val label: String,
+        val subtitle: String,
+        val default: Boolean,
+    )
+
+    fun loadFromBuildConfig(): List<Profile> = runCatching {
+        val json = String(Base64.decode(BuildConfig.UI_LAUNCHER_PROFILES_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        (0 until arr.length()).map { idx ->
+            val o = arr.getJSONObject(idx)
+            Profile(
                 id       = o.optString("id"),
                 label    = o.optString("label"),
                 subtitle = o.optString("subtitle"),

@@ -1330,6 +1330,25 @@
         "subtitle": "Terminal aesthetic — pure black background, monospace green app list, no chrome. One-screen scroll."
       }
     ],
+    "_doc_launcher_profiles": "Profiles the user can pick in Configs → Launcher → Profiles. The chosen profile is persisted via LauncherProfilePrefs and is the foundation for future per-profile filtering of the Phone tab (Work hides personal banking, Guest narrows to a curated subset, etc.). id maps to the LauncherProfile enum.",
+    "launcher_profiles": [
+      {
+        "id": "personal",
+        "label": "Personal",
+        "subtitle": "Your default everyday profile — every installed app and folder visible.",
+        "default": true
+      },
+      {
+        "id": "work",
+        "label": "Work",
+        "subtitle": "Focus mode — hides personal entertainment / finance / chat folders. Defaults to the Minimalist Black theme."
+      },
+      {
+        "id": "guest",
+        "label": "Guest",
+        "subtitle": "Hands-off mode — only browser, dialer, camera, and a few utility apps shown."
+      }
+    ],
     "default_section": "home",
     "default_mode": "apps",
     "_doc_profile_default": "Seeds the drawer-header identity row + the Configs/Profile form + the Virtual Business Card. User-editable at runtime via ProfileFragment (persisted in ProfilePrefs SharedPreferences); these values are only the FIRST-RUN defaults. Photo URIs (picture, banner) are NOT seeded — they're picked by the user via the gallery picker in Configs → Profile.",
