@@ -114,11 +114,14 @@ class IslandWaveView @JvmOverloads constructor(
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
 
-        // Clip to the pill's rounded-rect shape (radius = half height,
-        // matching the island's bg_dynamic_island drawable). Without
-        // this the wave fills paint past the rounded corners.
-        clipRect.set(0f, 0f, w, h)
-        val radius = min(h, w) * 0.5f
+        // Clip to the pill's rounded-rect shape — radius = half the
+        // INSET height, so the wave never paints into the 1dp pill
+        // stroke OR the PrismaticShimmerView neon frame drawn on top.
+        // Without this the bottom of the fill leaks 1–2px past the
+        // neon ring at the rounded ends.
+        val inset = 2f * resources.displayMetrics.density
+        clipRect.set(inset, inset, w - inset, h - inset)
+        val radius = min(clipRect.height(), clipRect.width()) * 0.5f
         clipPath.reset()
         clipPath.addRoundRect(clipRect, radius, radius, Path.Direction.CW)
         canvas.save()
