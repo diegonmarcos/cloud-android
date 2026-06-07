@@ -66,9 +66,11 @@ class LauncherConfigFragment : Fragment() {
         for (themeRow in themes) {
             root.addView(themeTile(ctx, themeRow, isSelected = themeRow.id == current.id) {
                 prefs.theme = LauncherTheme.fromId(themeRow.id)
-                // Rebuild the fragment so the selection highlight updates
-                // immediately. MainActivity reads LauncherThemePrefs on
-                // next state change — Phase 2 will hook the live swap.
+                // Tell the activity to re-apply launcher chrome + swap
+                // the home pane if needed (Cloud ↔ MinimalistBlack).
+                (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                // Rebuild the fragment so the selection highlight + the
+                // "is default launcher? ✓" hint also re-evaluate.
                 parentFragmentManager.beginTransaction()
                     .detach(this).attach(this)
                     .commit()

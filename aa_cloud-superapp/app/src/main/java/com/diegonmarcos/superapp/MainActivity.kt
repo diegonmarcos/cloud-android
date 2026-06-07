@@ -733,15 +733,91 @@ class MainActivity : AppCompatActivity(),
         currentLabel = getString(R.string.section_home)
         supportActionBar?.title = currentLabel
 
-        // Home = 3D rotating cube + pull-up hint. The legacy tile grid
-        // (sections + actions) is reachable by pulling UP from this
-        // fragment — see [AppDrawerSheetFragment]. Both islands remain
-        // visible above this surface.
-        swapContent(Home3DFragment.newInstance(), clearBackStack = true)
+        // Pick the home pane fragment based on launcher state + theme:
+        //   • SuperApp is the active launcher AND theme = MinimalistBlack
+        //     → terminal-style monospace app list (MinimalistBlackFragment)
+        //   • Otherwise → existing 3D cube home (Home3DFragment).
+        // Either way, applyLauncherChrome() handles the surrounding
+        // chrome (system bar / status strip visibility).
+        val themePrefs = LauncherThemePrefs(this)
+        val homePane: androidx.fragment.app.Fragment =
+            if (isDefaultLauncher() && themePrefs.theme == LauncherTheme.CloudMinimalistBlack)
+                MinimalistBlackFragment.newInstance()
+            else
+                Home3DFragment.newInstance()
+        swapContent(homePane, clearBackStack = true)
 
         syncBottomNav("home")
         syncDrawerTab(0)
         invalidateOptionsMenu()
+        applyLauncherChrome()
+    }
+
+    /** Apply launcher-mode chrome based on (isDefaultLauncher, theme):
+     *
+     *   Cloud Theme + launcher    → hide system status bar, show our
+     *                               LauncherStatusStripView (Time +
+     *                               Battery), hide nothing else.
+     *   Minimalist Black + launcher → hide system status bar AND hide
+     *                               toolbar island + bottom nav (pure
+     *                               terminal screen).
+     *   Not launcher              → show system status bar, hide our
+     *                               strip, leave toolbar + bottom nav
+     *                               at their normal visibility.
+     *
+     * Idempotent — safe to call from onResume, theme changes, and
+     * goHome / goSection. */
+    fun applyLauncherChrome() {
+        val isLauncher = isDefaultLauncher()
+        val theme = LauncherThemePrefs(this).theme
+        val strip = findViewById<View>(R.id.launcher_status_strip)
+        val toolbarIsland = findViewById<View>(R.id.toolbar_island)
+        val bottomNavIsland = findViewById<View>(R.id.bottom_nav_island)
+
+        val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+        if (isLauncher) {
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        } else {
+            controller.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        }
+        when {
+            isLauncher && theme == LauncherTheme.Cloud -> {
+                strip?.visibility = View.VISIBLE
+                toolbarIsland?.visibility = View.VISIBLE
+                bottomNavIsland?.visibility = View.VISIBLE
+            }
+            isLauncher && theme == LauncherTheme.CloudMinimalistBlack -> {
+                strip?.visibility = View.GONE
+                toolbarIsland?.visibility = View.GONE
+                bottomNavIsland?.visibility = View.GONE
+            }
+            else -> {
+                strip?.visibility = View.GONE
+                toolbarIsland?.visibility = View.VISIBLE
+                bottomNavIsland?.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    /** Called by [LauncherConfigFragment] right after writing a new
+     *  theme into [LauncherThemePrefs]. Re-applies the launcher chrome
+     *  and, if the user is currently on Home, rebuilds the home pane
+     *  so a Minimalist Black ↔ Cloud swap takes effect immediately. */
+    fun notifyLauncherThemeChanged() {
+        applyLauncherChrome()
+        if (currentSection == "home") goHome()
+    }
+
+    /** True when the SuperApp's MainActivity is currently the resolved
+     *  default Home Screen handler. Mirrored from
+     *  [LauncherConfigFragment.isDefaultLauncher] so the chrome
+     *  decision flow can stay local to the activity. */
+    private fun isDefaultLauncher(): Boolean {
+        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
+            addCategory(android.content.Intent.CATEGORY_HOME)
+        }
+        val resolved = packageManager.resolveActivity(intent, 0)
+        return resolved?.activityInfo?.packageName == packageName
     }
 
     /** Land the right pane on the given section's TileGrid (or placeholder
@@ -1434,6 +1510,11 @@ class MainActivity : AppCompatActivity(),
             runOnUiThread { handleUpdateState(state) }
         }
         scheduleHamburgerJitter()
+        // Re-apply launcher chrome — user may have toggled us as the
+        // default Home handler from system Settings while we were
+        // backgrounded, and the system status bar / our strip need to
+        // sync. Idempotent.
+        applyLauncherChrome()
     }
 
     override fun onPause() {
