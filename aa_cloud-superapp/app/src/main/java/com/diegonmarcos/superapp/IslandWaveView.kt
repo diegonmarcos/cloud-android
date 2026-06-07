@@ -85,11 +85,11 @@ class IslandWaveView @JvmOverloads constructor(
         ),
     )
 
-    // Animation rate dropped 4× (was 60s sweep — too fast). 240s
-    // sweep ≈ 75% slower visual movement, well within the lazy
-    // "ambient" tempo a music-bar idle vibe wants.
+    // Animation rate dropped 4× then nudged 1.3× longer again — the
+    // 240s sweep was the right ballpark but still on the brisk side
+    // for an idle ambient vibe. 312s gives a noticeably lazier drift.
     private val animator = ValueAnimator.ofFloat(0f, 1000f).apply {
-        duration = 240_000L
+        duration = 312_000L
         repeatCount = ValueAnimator.INFINITE
         interpolator = LinearInterpolator()
         addUpdateListener {
