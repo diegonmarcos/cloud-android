@@ -782,7 +782,28 @@ class MainActivity : AppCompatActivity(),
         }
         when {
             isLauncher && theme == LauncherTheme.Cloud -> {
-                strip?.visibility = View.VISIBLE
+                // OWN the status-bar zone — DrawerLayout's fits-system-
+                // windows behaviour adds top padding equal to the status
+                // bar height inside its content. Without compensating,
+                // our strip lands BELOW that gap. Lift the strip with a
+                // negative topMargin = -statusBarHeight and force its
+                // height to exactly statusBarHeight, so it visually
+                // replaces the hidden system bar instead of stacking
+                // beneath it. The text auto-centers in the strip via
+                // gravity=CENTER_VERTICAL (set in the view init).
+                strip?.let {
+                    val barH = statusBarHeightPx()
+                    val lp = it.layoutParams as? android.widget.FrameLayout.LayoutParams
+                    if (lp != null) {
+                        lp.topMargin = -barH
+                        lp.height = barH
+                        it.layoutParams = lp
+                    }
+                    // Drop the legacy py=3dp padding the view set in init
+                    // so the text isn't squeezed against the bottom edge.
+                    it.setPadding(it.paddingLeft, 0, it.paddingRight, 0)
+                    it.visibility = View.VISIBLE
+                }
                 toolbarIsland?.visibility = View.VISIBLE
                 bottomNavIsland?.visibility = View.VISIBLE
             }
@@ -806,6 +827,16 @@ class MainActivity : AppCompatActivity(),
     fun notifyLauncherThemeChanged() {
         applyLauncherChrome()
         if (currentSection == "home") goHome()
+    }
+
+    /** System status bar pixel height. Reads the platform's
+     *  android.R.dimen.status_bar_height resource so we match Samsung /
+     *  Pixel / OEM-specific values without guessing. Falls back to 24dp
+     *  on the rare device that doesn't expose the dimen. */
+    private fun statusBarHeightPx(): Int {
+        val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resId > 0) resources.getDimensionPixelSize(resId)
+               else (24 * resources.displayMetrics.density).toInt()
     }
 
     /** True when the SuperApp's MainActivity is currently the resolved
