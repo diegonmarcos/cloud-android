@@ -796,20 +796,25 @@ class MainActivity : AppCompatActivity(),
         }
         when {
             isLauncher && theme == LauncherTheme.Cloud -> {
-                // OWN the status-bar zone — shell_linear has been padded
-                // top by [applyEdgeToEdgeInsets]'s listener (sys.top); we
-                // cancel that padding for the strip ONLY with a negative
-                // topMargin equal to the REAL top inset (Samsung's bar is
-                // taller than `android.R.dimen.status_bar_height`, so the
-                // resource fallback under-cancels). Force the strip's
-                // height to that same inset so it visually fills the bar
-                // zone and the text/battery centre cleanly via the inner
-                // row's gravity=CENTER_VERTICAL.
+                // OWN the status-bar zone — when in launcher mode the
+                // system bars are HIDDEN (`controller.hide(statusBars())`
+                // above), so the OS dispatches sys.top = 0 to the insets
+                // listener and shell_linear's paddingTop stays 0. That
+                // means the strip's frame already sits at screen y=0; we
+                // do NOT want a negative topMargin (that would push it
+                // off-screen above the visible area — the bug the user
+                // saw in c062214). Pick the strip height: use the cached
+                // real top inset only if it was ever observed > 0 (i.e.
+                // the listener fired while the system bars happened to
+                // be momentarily visible — typically the very first
+                // dispatch before hide() takes effect), otherwise fall
+                // back to the resource baseline. Both give the inner row
+                // enough vertical room for 13sp text + 15dp battery icon.
                 strip?.let {
                     val barH = if (topSystemInset > 0) topSystemInset else statusBarHeightPx()
                     val lp = it.layoutParams as? android.view.ViewGroup.MarginLayoutParams
                     if (lp != null) {
-                        lp.topMargin = -barH
+                        lp.topMargin = 0
                         lp.height = barH
                         it.layoutParams = lp
                     }
