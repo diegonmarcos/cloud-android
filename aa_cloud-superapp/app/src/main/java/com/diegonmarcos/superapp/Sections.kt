@@ -681,27 +681,53 @@ object Sections {
 
             val derivedTiles = mutableListOf<HomeTile>()
             if (referenced != null) {
-                if (referenced.tileGroups.isNotEmpty()) {
-                    // FLATTEN: all tile_groups' tiles in declaration order
-                    // become ONE HomeGroup card. Used by Suite so its 18
-                    // tiles ride a single horizontal scroll strip.
-                    referenced.tileGroups.forEach { grp ->
-                        grp.tiles.forEach { agg ->
+                when {
+                    referenced.tileGroups.isNotEmpty() -> {
+                        // FLATTEN: all tile_groups' tiles in declaration
+                        // order become ONE HomeGroup card. Used by Suite
+                        // so its 18 tiles ride a single horizontal
+                        // scroll strip.
+                        referenced.tileGroups.forEach { grp ->
+                            grp.tiles.forEach { agg ->
+                                derivedTiles += HomeTile(
+                                    id = agg.target, label = agg.label, iconName = agg.iconName,
+                                )
+                            }
+                        }
+                    }
+                    referenced.tilesShared.isNotEmpty() -> {
+                        referenced.tilesShared.forEach { agg ->
                             derivedTiles += HomeTile(
-                                id = agg.target, label = agg.label, iconName = agg.iconName,
+                                id       = agg.target,
+                                label    = agg.label,
+                                iconName = agg.iconName,
                             )
                         }
                     }
-                } else {
-                    referenced.tilesShared.forEach { agg ->
-                        derivedTiles += HomeTile(
-                            id       = agg.target,
-                            label    = agg.label,
-                            iconName = agg.iconName,
-                        )
+                    referenced.pages.isNotEmpty() -> {
+                        // PAGES-DERIVED: synthesise one tile per declared
+                        // sub-page of the referenced section. Single
+                        // source of truth — sections[x].pages drives both
+                        // the section page-grid AND the Home Apps row,
+                        // so adding a page (e.g. Configs/Launcher) shows
+                        // up everywhere automatically. Pages with an
+                        // `action:` field route to that action directly;
+                        // ones without resolve to page:<sectionId>/<pageId>.
+                        referenced.pages.forEach { p ->
+                            val target = if (p.action.isNotBlank()) p.action
+                                         else "page:${referenced.id}/${p.id}"
+                            derivedTiles += HomeTile(
+                                id       = target,
+                                label    = p.label,
+                                iconName = p.iconName.orEmpty(),
+                            )
+                        }
                     }
                 }
             }
+            // Explicit `tiles` entries on the home_groups row stay APPENDED
+            // — they're cross-section shortcuts that the derived list
+            // can't reach (e.g. section:wg under the Configs row).
             derivedTiles += tiles
             parsed.add(HomeGroup(
                 title  = parentTitle,

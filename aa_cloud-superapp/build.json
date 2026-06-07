@@ -1591,39 +1591,15 @@
         "tiles": []
       },
       {
-        "_doc": "Configs Home-Apps group. Marked scroll=horizontal to match Suite — keeps the group in a single visual strip. Order per user spec: Profile · WireGuard · AI · Import · Update · About.",
+        "_doc": "Configs Home-Apps group — DATA-DRIVEN. tiles_from_section pulls every page declared on sections[config].pages (Profile · AI · Update · Import · Launcher · About; new pages flow in automatically). The explicit `tiles` field carries cross-section shortcuts the derived list can't reach — today just WireGuard, which lives in its own bottom-nav section but the user wants reachable from the Configs row.",
         "title": "Configs",
         "scroll": "horizontal",
+        "tiles_from_section": "config",
         "tiles": [
-          {
-            "id": "page:config/profile",
-            "label": "Profile",
-            "icon": "ic_settings"
-          },
           {
             "id": "section:wg",
             "label": "WireGuard",
             "icon": "ic_wg"
-          },
-          {
-            "id": "page:config/ai",
-            "label": "AI",
-            "icon": "ic_ai_sparkle"
-          },
-          {
-            "id": "page:config/import",
-            "label": "Import",
-            "icon": "ic_p_import"
-          },
-          {
-            "id": "page:config/update",
-            "label": "Update",
-            "icon": "ic_refresh"
-          },
-          {
-            "id": "page:config/about",
-            "label": "About",
-            "icon": "ic_settings"
           }
         ]
       }
