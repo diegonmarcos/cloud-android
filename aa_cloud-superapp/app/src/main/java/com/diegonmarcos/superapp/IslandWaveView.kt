@@ -5,21 +5,24 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
 import kotlin.math.PI
+import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Samsung-music-island-style animated waveform — three stacked sine
- * bands in a violet→lilac gradient that drift across the view with a
- * continuous phase shift. Drop-in replacement for the previous
- * "DCM · Apps" text label inside the toolbar Dynamic Island.
+ * Samsung-music-island-style animated waveform — FOUR independent
+ * channels each driven by its own composite harmonic + slow amplitude
+ * modulator so the waves bounce / dip / surge out of phase like a real
+ * audio waveform rather than rolling together. Pastel lilac → soft
+ * violet palette, all semi-transparent so the layers blend smoothly.
  *
- * Each band has its own amplitude, frequency and phase offset so the
- * crests never align — the visual reads as overlapping ribbons of
- * sound rather than one fat wave.
+ * Drawing is clipped to a rounded-rect path matching the island's pill
+ * background, so the wave bodies never bleed past the pill's corners
+ * even on tall amplitude peaks.
  */
 class IslandWaveView @JvmOverloads constructor(
     context: Context,
@@ -29,24 +32,56 @@ class IslandWaveView @JvmOverloads constructor(
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
-    private var phase = 0f
+    private val clipPath = Path()
+    private val clipRect = RectF()
+    private var time = 0f
 
-    /** Back-to-front order. The first entry paints furthest back (deep
-     *  purple, smallest amplitude); each subsequent entry sits in front
-     *  (brighter, taller). Colors carry their own alpha so the
-     *  overlaps blend into a soft purple gradient overall. */
+    /** Each channel composes three harmonics so the shape isn't a pure
+     *  sine — closer to real audio. [ampModFreq] / [ampModPhase] drive
+     *  a slow sinusoidal envelope on the channel's amplitude so each
+     *  band rises and falls on its own rhythm, mimicking music
+     *  channels reacting to different instruments. */
     private val waves = listOf(
-        Wave(color = 0xCC4C1D95.toInt(), amplitude = 0.32f, freq = 1.8f, phaseOff = 0f),
-        Wave(color = 0xDD7C3AED.toInt(), amplitude = 0.42f, freq = 2.3f, phaseOff = 1.0f),
-        Wave(color = 0xEEC084FC.toInt(), amplitude = 0.55f, freq = 2.9f, phaseOff = 2.0f),
+        Wave(
+            color       = 0xAAEDE9FE.toInt(), // very light lilac
+            baseFreq    = 1.6f,
+            h2          = 2.7f, h3 = 3.5f,
+            phaseSpeed  = 1.1f,
+            baseAmp     = 0.45f,
+            ampModFreq  = 0.45f, ampModPhase = 0.0f,
+        ),
+        Wave(
+            color       = 0xB8DDD6F3.toInt(), // pastel violet
+            baseFreq    = 1.9f,
+            h2          = 2.4f, h3 = 4.1f,
+            phaseSpeed  = 1.5f,
+            baseAmp     = 0.55f,
+            ampModFreq  = 0.6f,  ampModPhase = 1.3f,
+        ),
+        Wave(
+            color       = 0xBBCABDFB.toInt(), // soft periwinkle
+            baseFreq    = 2.3f,
+            h2          = 3.1f, h3 = 4.7f,
+            phaseSpeed  = 0.9f,
+            baseAmp     = 0.6f,
+            ampModFreq  = 0.32f, ampModPhase = 2.5f,
+        ),
+        Wave(
+            color       = 0xBEB69EF9.toInt(), // soft lavender
+            baseFreq    = 2.8f,
+            h2          = 3.6f, h3 = 5.2f,
+            phaseSpeed  = 1.8f,
+            baseAmp     = 0.7f,
+            ampModFreq  = 0.78f, ampModPhase = 0.7f,
+        ),
     )
 
-    private val animator = ValueAnimator.ofFloat(0f, 2f * PI.toFloat()).apply {
-        duration = 5000
+    private val animator = ValueAnimator.ofFloat(0f, 1000f).apply {
+        duration = 60_000L  // long sweep so phase wraps smoothly
         repeatCount = ValueAnimator.INFINITE
         interpolator = LinearInterpolator()
         addUpdateListener {
-            phase = it.animatedValue as Float
+            time = it.animatedValue as Float
             invalidate()
         }
     }
@@ -66,24 +101,48 @@ class IslandWaveView @JvmOverloads constructor(
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
 
-        // Anchor the wave centreline at ~55% from the top — leaves a
-        // tiny visual margin under the title row that used to sit
-        // above. The bottom of every band closes to the view bottom so
-        // the colour fills the lower half rather than printing as
-        // free-floating squiggles.
-        val baseline = h * 0.55f
-        val step = (w / 80f).coerceAtLeast(1f)
+        // Clip to the pill's rounded-rect shape (radius = half height,
+        // matching the island's bg_dynamic_island drawable). Without
+        // this the wave fills paint past the rounded corners.
+        clipRect.set(0f, 0f, w, h)
+        val radius = min(h, w) * 0.5f
+        clipPath.reset()
+        clipPath.addRoundRect(clipRect, radius, radius, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(clipPath)
+
+        val baseline = h * 0.6f
+        val step = (w / 90f).coerceAtLeast(1f)
+        val twoPi = (2f * PI).toFloat()
 
         for (wave in waves) {
+            // Slow amplitude modulator — the music-channel "bounce".
+            // Ranges 0.35 → 1.0 so the wave never fully disappears
+            // but DOES visibly rise / fall.
+            val modAngle = time * wave.ampModFreq + wave.ampModPhase
+            val ampMod = 0.35f + 0.65f * (0.5f + 0.5f * sin(modAngle))
+            val amp = wave.baseAmp * ampMod * (h * 0.45f)
+
             paint.color = wave.color
             paint.style = Paint.Style.FILL
             path.reset()
-            val amp = wave.amplitude * h * 0.45f
+
             var x = 0f
             var firstPoint = true
             while (x <= w) {
-                val angle = (x / w) * wave.freq * 2f * PI.toFloat() + phase + wave.phaseOff
-                val y = baseline + sin(angle.toDouble()).toFloat() * amp
+                val t = x / w
+                // Three harmonics with slightly different phase speeds
+                // so they slide against each other and produce
+                // constantly-changing peaks.
+                val a1 = t * wave.baseFreq * twoPi + time * wave.phaseSpeed
+                val a2 = t * wave.baseFreq * wave.h2 * twoPi + time * wave.phaseSpeed * 1.3f
+                val a3 = t * wave.baseFreq * wave.h3 * twoPi + time * wave.phaseSpeed * 0.8f
+                val composite = (
+                    sin(a1.toDouble()) * 0.55 +
+                    sin(a2.toDouble()) * 0.30 +
+                    sin(a3.toDouble()) * 0.15
+                ).toFloat()
+                val y = baseline + composite * amp
                 if (firstPoint) {
                     path.moveTo(x, y); firstPoint = false
                 } else {
@@ -96,12 +155,18 @@ class IslandWaveView @JvmOverloads constructor(
             path.close()
             canvas.drawPath(path, paint)
         }
+
+        canvas.restore()
     }
 
     private data class Wave(
         val color: Int,
-        val amplitude: Float,
-        val freq: Float,
-        val phaseOff: Float,
+        val baseFreq: Float,
+        val h2: Float,
+        val h3: Float,
+        val phaseSpeed: Float,
+        val baseAmp: Float,
+        val ampModFreq: Float,
+        val ampModPhase: Float,
     )
 }
