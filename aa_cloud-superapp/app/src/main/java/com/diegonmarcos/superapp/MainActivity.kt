@@ -823,6 +823,12 @@ class MainActivity : AppCompatActivity(),
                     it.setPadding(it.paddingLeft, 0, it.paddingRight, 0)
                     it.visibility = View.VISIBLE
                 }
+                // Push the toolbar island BELOW the strip with a 6dp
+                // breathing gap. Without this the island's vertical
+                // span overlaps the strip and the strip's bottom
+                // hairline visually touches the dynamic-island pill.
+                val barH = if (topSystemInset > 0) topSystemInset else statusBarHeightPx()
+                setToolbarIslandTopMargin(toolbarIsland, barH + dp(6))
                 toolbarIsland?.visibility = View.VISIBLE
                 bottomNavIsland?.visibility = View.VISIBLE
             }
@@ -833,9 +839,26 @@ class MainActivity : AppCompatActivity(),
             }
             else -> {
                 strip?.visibility = View.GONE
+                // Restore the XML default — system status bar is visible
+                // here, DrawerLayout pads the content by sys.top, so a
+                // 6dp gap from THAT padded edge is already correct.
+                setToolbarIslandTopMargin(toolbarIsland, dp(6))
                 toolbarIsland?.visibility = View.VISIBLE
                 bottomNavIsland?.visibility = View.VISIBLE
             }
+        }
+    }
+
+    /** dp → px convenience for chrome math. */
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    /** Apply a topMargin to the toolbar island. Tolerant of a null
+     *  view + non-margin layout params (returns silently). */
+    private fun setToolbarIslandTopMargin(island: View?, marginPx: Int) {
+        val lp = island?.layoutParams as? android.view.ViewGroup.MarginLayoutParams ?: return
+        if (lp.topMargin != marginPx) {
+            lp.topMargin = marginPx
+            island.layoutParams = lp
         }
     }
 

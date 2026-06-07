@@ -1,11 +1,20 @@
 package com.diegonmarcos.superapp
 
+import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Typeface
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.BatteryManager
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import android.os.StatFs
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
@@ -16,21 +25,33 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Custom top status strip rendered ONLY when the SuperApp is acting
- * as the Android default launcher AND the active LauncherTheme is
- * Cloud. Replaces the system status bar (which MainActivity hides via
- * WindowInsetsController in launcher mode) with our own slim row
- * showing just two values:
+ * Top status strip rendered when the SuperApp is the active default
+ * Android launcher AND the active LauncherTheme is Cloud. Replaces the
+ * hidden system status bar with our own 3-cluster row + bottom hairline:
  *
- *   • Time     (left)  — kept current via ACTION_TIME_TICK every
- *                        minute, plus TIMEZONE_CHANGED / TIME_SET so
- *                        manual edits show up immediately.
- *   • Battery  (right) — ACTION_BATTERY_CHANGED sticky broadcast.
+ *   ┌───────────────────────────────────────────────────────────────┐
+ *   │ [5G][WiFi][WG]   dd-MM-yyyy HH:mm EEE   [R N%][S N%][Battery] │
+ *   │ ─────────────────────────────────────────────────────────────  │  hairline
+ *   └───────────────────────────────────────────────────────────────┘
  *
- * Android does not let an app remove individual icons from the
- * system status bar, so we hide the whole system bar and draw this
- * minimal substitute — matches the user's spec ("only show Time and
- * Battery") without faking system UI.
+ *   LEFT  — 5G / WiFi / WG labels. Color-tinted by current state read
+ *           from ConnectivityManager (no runtime permission needed —
+ *           ACCESS_NETWORK_STATE is install-time). 5G label tracks any
+ *           cellular transport (we can't read the exact subtype without
+ *           READ_PHONE_STATE; the label is the user-spec'd icon name).
+ *           WG label tracks any VPN transport (works for our wg as well
+ *           as Tailscale / generic VPN).
+ *   CENTER — Date + time, monospace, centred. Updated every minute via
+ *           ACTION_TIME_TICK + immediate refresh on TIMEZONE_CHANGED /
+ *           TIME_CHANGED.
+ *   RIGHT — RAM% used (ActivityManager.MemoryInfo) · Storage% used on
+ *           /data (StatFs) · BatteryIconView (existing). Polled every
+ *           10s on the main-thread ticker + on every time tick.
+ *
+ * MainActivity.applyLauncherChrome pushes the toolbar island down by
+ * `topSystemInset + 6dp` in this theme so the strip's hairline has
+ * breathing room above the dynamic island (the user pointed out they
+ * were touching).
  */
 class LauncherStatusStripView @JvmOverloads constructor(
     context: Context,
@@ -38,51 +59,101 @@ class LauncherStatusStripView @JvmOverloads constructor(
     defStyle: Int = 0,
 ) : LinearLayout(context, attrs, defStyle) {
 
-    private val timeView: TextView
+    private val signal5gView: TextView
+    private val wifiView: TextView
+    private val wgView: TextView
+    private val dateTimeView: TextView
+    private val ramView: TextView
+    private val storageView: TextView
     private val batteryView: BatteryIconView
 
+    private var hasWifi = false
+    private var hasCellular = false
+    private var hasVpn = false
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val metricsTicker = object : Runnable {
+        override fun run() {
+            refreshMetrics()
+            mainHandler.postDelayed(this, 10_000)
+        }
+    }
+
     init {
-        // OUTER strip is now VERTICAL — a horizontal row of (time +
-        // battery) on top, and a 1dp hairline separator pinned to the
-        // bottom edge so the user can clearly see where the launcher's
-        // status bar ends and the home content begins.
         orientation = VERTICAL
         setPadding(0, 0, 0, 0)
-        // NO background — the parent FrameLayout's GalaxyBackdropView
-        // already fills the camera/cutout + the rest of the screen
-        // edge-to-edge. Transparent strip = galaxy reads continuous
-        // from the punch-hole straight through. Text below uses a
-        // strong shadow for contrast.
+        // Transparent background — galaxy backdrop reads through the
+        // strip so the camera-cutout area + the strip read as ONE
+        // continuous galaxy band.
         setBackgroundColor(0x00000000)
 
-        val px = (12 * resources.displayMetrics.density).toInt()
+        val hpad = (10 * resources.displayMetrics.density).toInt()
         val innerRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(px, 0, px, 0)
-            // weight 1 → fills the available strip height MINUS the
-            // 1dp separator beneath, so the strip's total height
-            // (set by MainActivity.applyLauncherChrome to
-            // statusBarHeightPx) is honoured without overflow.
+            setPadding(hpad, 0, hpad, 0)
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
         }
-        timeView = makeStripText().apply {
-            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
-        }
-        batteryView = BatteryIconView(context).apply {
-            // BatteryIconView reports its intrinsic size via onMeasure
-            // (~36dp × 15dp). LayoutParams.WRAP_CONTENT honours that.
+
+        // ── LEFT cluster: 5G · WiFi · WG ──────────────────────────
+        val leftCluster = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             layoutParams = LayoutParams(
                 LayoutParams.WRAP_CONTENT,
                 LayoutParams.WRAP_CONTENT,
             )
         }
-        innerRow.addView(timeView)
-        innerRow.addView(batteryView)
+        signal5gView = makeIconLabel("5G")
+        wifiView     = makeIconLabel("WiFi")
+        wgView       = makeIconLabel("WG")
+        leftCluster.addView(signal5gView)
+        leftCluster.addView(wifiView)
+        leftCluster.addView(wgView)
+        innerRow.addView(leftCluster)
+
+        // ── CENTER: date + time, monospace, centred ───────────────
+        dateTimeView = TextView(context).apply {
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 12f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            setShadowLayer(4f, 0f, 1f, 0xCC000000.toInt())
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        }
+        innerRow.addView(dateTimeView)
+
+        // ── RIGHT cluster: RAM% · Storage% · Battery ──────────────
+        val rightCluster = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+            )
+        }
+        ramView     = makeIconLabel("R 0%")
+        storageView = makeIconLabel("S 0%")
+        batteryView = BatteryIconView(context).apply {
+            val mlp = (4 * resources.displayMetrics.density).toInt()
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+            ).apply { leftMargin = mlp }
+        }
+        rightCluster.addView(ramView)
+        rightCluster.addView(storageView)
+        rightCluster.addView(batteryView)
+        innerRow.addView(rightCluster)
+
         addView(innerRow)
 
-        // Bottom hairline — faint white (20% alpha) so it survives
-        // both dark and bright patches of the galaxy backdrop.
+        // ── Bottom hairline ───────────────────────────────────────
+        // Faint white separator pinned to the bottom of the strip.
+        // MainActivity nudges the toolbar island down so there's a
+        // 6dp gap between THIS hairline and the dynamic island below.
         addView(View(context).apply {
             setBackgroundColor(0x33FFFFFF.toInt())
             layoutParams = LayoutParams(
@@ -92,36 +163,52 @@ class LauncherStatusStripView @JvmOverloads constructor(
         })
     }
 
-    /** Shared style for the two strip TextViews — bold monospace
-     *  white with a soft black halo shadow so the readout survives
-     *  bright stars / nebula bands behind it. */
-    private fun makeStripText(): TextView = TextView(context).apply {
-        setTextColor(0xFFFFFFFF.toInt())
-        textSize = 13f
+    /** Shared small monospace label used by left + right cluster
+     *  members. Color set per-state via [applyIconTints] /
+     *  [refreshMetrics]. */
+    private fun makeIconLabel(text: String): TextView = TextView(context).apply {
+        this.text = text
+        setTextColor(0x66FFFFFF.toInt())
+        textSize = 10f
         typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-        // dx=0, dy=1, radius=4, color=#CC000000 — drops a tight
-        // anti-aliased halo so white text reads on any galaxy patch.
-        setShadowLayer(4f, 0f, 1f, 0xCC000000.toInt())
+        setShadowLayer(3f, 0f, 1f, 0xCC000000.toInt())
+        val px = (3 * resources.displayMetrics.density).toInt()
+        setPadding(px, 0, px, 0)
+        maxLines = 1
     }
 
     private val timeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(c: Context, i: Intent) { refreshTime() }
+        override fun onReceive(c: Context, i: Intent) {
+            refreshTime()
+            // Piggy-back metrics on the once-a-minute tick — cheap
+            // compared to the per-10s Handler poll and keeps RAM /
+            // storage from drifting if the Handler is delayed.
+            refreshMetrics()
+        }
     }
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { refreshBattery(i) }
+    }
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            post { refreshNetworkFromConnectivity() }
+        }
+        override fun onLost(network: Network) {
+            post { refreshNetworkFromConnectivity() }
+        }
+        override fun onAvailable(network: Network) {
+            post { refreshNetworkFromConnectivity() }
+        }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         runCatching {
-            context.registerReceiver(
-                timeReceiver,
-                IntentFilter().apply {
-                    addAction(Intent.ACTION_TIME_TICK)
-                    addAction(Intent.ACTION_TIMEZONE_CHANGED)
-                    addAction(Intent.ACTION_TIME_CHANGED)
-                },
-            )
+            context.registerReceiver(timeReceiver, IntentFilter().apply {
+                addAction(Intent.ACTION_TIME_TICK)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+                addAction(Intent.ACTION_TIME_CHANGED)
+            })
         }
         runCatching {
             val battery = context.registerReceiver(
@@ -130,20 +217,32 @@ class LauncherStatusStripView @JvmOverloads constructor(
             )
             if (battery != null) refreshBattery(battery)
         }
+        runCatching {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            cm?.registerNetworkCallback(
+                NetworkRequest.Builder().build(),
+                networkCallback,
+            )
+        }
         refreshTime()
+        refreshNetworkFromConnectivity()
+        refreshMetrics()
+        mainHandler.post(metricsTicker)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         runCatching { context.unregisterReceiver(timeReceiver) }
         runCatching { context.unregisterReceiver(batteryReceiver) }
+        runCatching {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            cm?.unregisterNetworkCallback(networkCallback)
+        }
+        mainHandler.removeCallbacks(metricsTicker)
     }
 
     private fun refreshTime() {
-        // dd-MM-yyyy HH:mm EEE — 24h forced (Date pattern leaves no
-        // ambiguity with locale 12h defaults), dash dates, 3-letter
-        // weekday (Mon · Tue · Wed · Thu · Fri · Sat · Sun).
-        timeView.text = SimpleDateFormat("dd-MM-yyyy HH:mm EEE", Locale.US).format(Date())
+        dateTimeView.text = SimpleDateFormat("dd-MM-yyyy HH:mm EEE", Locale.US).format(Date())
     }
 
     private fun refreshBattery(intent: Intent) {
@@ -154,5 +253,57 @@ class LauncherStatusStripView @JvmOverloads constructor(
             status == BatteryManager.BATTERY_STATUS_FULL
         val pct = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
         batteryView.setBattery(pct, charging)
+    }
+
+    /** Walk all known networks via ConnectivityManager and decide
+     *  which of the 3 LEFT labels should light up. VPN is checked
+     *  across ALL networks (a VPN can co-exist with the active
+     *  Wi-Fi / cellular network, and we want the WG indicator
+     *  bright in that case). */
+    private fun refreshNetworkFromConnectivity() {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        var wifi = false; var cell = false; var vpn = false
+        runCatching {
+            cm?.allNetworks?.forEach { n ->
+                cm.getNetworkCapabilities(n)?.let { c ->
+                    if (c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))     wifi = true
+                    if (c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) cell = true
+                    if (c.hasTransport(NetworkCapabilities.TRANSPORT_VPN))      vpn  = true
+                }
+            }
+        }
+        hasWifi = wifi; hasCellular = cell; hasVpn = vpn
+        applyIconTints()
+    }
+
+    private fun applyIconTints() {
+        val on  = 0xFFFFFFFF.toInt()
+        val off = 0x44FFFFFF.toInt()
+        signal5gView.setTextColor(if (hasCellular) on else off)
+        wifiView    .setTextColor(if (hasWifi)     on else off)
+        wgView      .setTextColor(if (hasVpn)      on else off)
+    }
+
+    /** Read RAM + /data storage utilisation and update the right
+     *  cluster labels. Both reads are cheap (no IO) and safe to call
+     *  on the main thread. */
+    private fun refreshMetrics() {
+        runCatching {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            am?.let {
+                val info = ActivityManager.MemoryInfo()
+                it.getMemoryInfo(info)
+                val pct = ((1.0 - info.availMem.toDouble() / info.totalMem.toDouble()) * 100).toInt()
+                ramView.text = "R$pct%"
+            }
+        }
+        runCatching {
+            val path = Environment.getDataDirectory().absolutePath
+            val stat = StatFs(path)
+            val total = stat.blockCountLong * stat.blockSizeLong
+            val avail = stat.availableBlocksLong * stat.blockSizeLong
+            val pct = ((1.0 - avail.toDouble() / total.toDouble()) * 100).toInt()
+            storageView.text = "S$pct%"
+        }
     }
 }
