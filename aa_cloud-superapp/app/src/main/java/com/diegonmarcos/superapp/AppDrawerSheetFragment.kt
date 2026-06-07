@@ -95,7 +95,9 @@ class AppDrawerSheetFragment : Fragment() {
             Haptics.tap(it)
             (activity as? SearchOpener)?.openSearchSheet()
         }
-        root.addView(searchIsland)
+        // addView deferred — bodyTabs (Cloud | Phone) goes ABOVE this so
+        // the user picks the surface first, then the shared search +
+        // chip strip apply to whichever tab is active.
 
         // ── Horizontal tabs strip (Google-Maps style chips).
         val tabsStrip = HorizontalScrollView(ctx).apply {
@@ -114,7 +116,7 @@ class AppDrawerSheetFragment : Fragment() {
         }
         tabsStrip.addView(chipRow)
         renderTabChips(chipRow)
-        root.addView(tabsStrip)
+        // addView deferred — see ordered block below.
 
         // ── Body tabs (Cloud | Phone) — data-driven from build.json::ui.home_apps_tabs.
         // Cloud = HomeGroupedFragment (cloud-services tile grid derived
@@ -135,7 +137,6 @@ class AppDrawerSheetFragment : Fragment() {
             )
             for (tab in tabs) addTab(newTab().setText(tab.label))
         }
-        root.addView(bodyTabs)
 
         val host = FrameLayout(ctx).apply {
             id = R.id.app_drawer_grid_host
@@ -145,6 +146,16 @@ class AppDrawerSheetFragment : Fragment() {
                 1f,
             )
         }
+
+        // ── Final mount order (top → bottom):
+        //   1. Cloud | Phone TabLayout — pick surface first.
+        //   2. Search island — shared chrome, applies to whichever
+        //      tab is active (Home Apps search routes via SearchOpener).
+        //   3. Browser-tabs chip strip — open tabs, shared too.
+        //   4. Body host — HomeGroupedFragment or PhoneAppsFragment.
+        root.addView(bodyTabs)
+        root.addView(searchIsland)
+        root.addView(tabsStrip)
         root.addView(host)
 
         fun showTab(id: String) {
