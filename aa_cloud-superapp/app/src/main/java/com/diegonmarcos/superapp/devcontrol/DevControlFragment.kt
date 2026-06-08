@@ -1342,11 +1342,11 @@ class DevControlFragment : Fragment() {
      *  signature perms whose grantee equals our own UID). Each row
      *  carries the protection-level annotation so the user can audit
      *  what the app can do without ever clicking "Allow". */
-    private fun collectAutoGrantedPerms(ctx: Context): List<Pair<String, String>> = try {
+    private fun collectAutoGrantedPerms(ctx: Context): List<Pair<String, String>> { return try {
         val pm = ctx.packageManager
         @Suppress("DEPRECATION")
         val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
-        val requested = info.requestedPermissions ?: return emptyList()
+        val requested = info.requestedPermissions ?: return@try emptyList()
         val flags     = info.requestedPermissionsFlags ?: IntArray(requested.size)
         val out = mutableListOf<Pair<String, String>>()
         for ((i, perm) in requested.withIndex()) {
@@ -1372,7 +1372,7 @@ class DevControlFragment : Fragment() {
             out.add(label to "✓ auto · $tag")
         }
         out
-    } catch (_: Throwable) { emptyList() }
+    } catch (_: Throwable) { emptyList() } }
 
     companion object { fun newInstance() = DevControlFragment() }
 }
