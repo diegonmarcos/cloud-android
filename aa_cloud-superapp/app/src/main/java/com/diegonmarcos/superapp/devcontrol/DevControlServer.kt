@@ -131,47 +131,58 @@ object DevControlServer {
                 ?.trim().orEmpty()
             val authed = auth == token
 
-            // Public endpoints
-            when (path) {
-                "/ping" -> { reply(writer, "200 OK", "pong\n"); return }
-                "/info" -> {
+            // Normalise both legacy flat paths AND the new /v1/{group}/{op}
+            // layout to a single canonical op name. The op name is what
+            // the routing + the /v1/docs catalog below both key on, so
+            // there's exactly ONE source of truth for which endpoints
+            // exist.
+            val op = canonicalOp(path)
+
+            // ENDPOINT CATALOG — declared once, used by both the
+            // routing switch AND /v1/docs. Adding an endpoint = one
+            // entry here + one branch in the switch below. /v1/docs
+            // updates automatically.
+            //
+            // auth = false for diagnostic endpoints that are SAFE to
+            // expose unauth'd because (a) they only emit data ABOUT
+            // this app, and (b) the server binds on 127.0.0.1 so
+            // anything reaching it already owns the device shell.
+
+            when (op) {
+                "docs" -> {
+                    reply(writer, "200 OK", endpointDocsJson(DevControlPrefs(ctx).port), "application/json")
+                    return
+                }
+                "system/ping" -> { reply(writer, "200 OK", "pong\n"); return }
+                "system/info" -> {
                     val body = """{"version":"${BuildConfig.VERSION_NAME}","vc":${BuildConfig.VERSION_CODE},"sha":"${BuildConfig.GIT_SHORT_SHA}","port":${DevControlPrefs(ctx).port}}"""
                     reply(writer, "200 OK", body, "application/json")
                     return
                 }
-            }
-
-            // Public endpoints that are SAFE to expose without auth
-            // because they only emit diagnostic data about THIS app and
-            // we bind on 127.0.0.1 (any process that owns this device's
-            // shell already owns the user). Letting these in unauth'd
-            // makes them trivially curlable from anywhere on the device
-            // without having to install the APK and read a token first.
-            when (path) {
-                "/logcat" -> { reply(writer, "200 OK", readLogcat(query["n"]?.toIntOrNull() ?: 300)); return }
-                "/trace"  -> { reply(writer, "200 OK", readTraceTail(ctx, query["n"]?.toIntOrNull() ?: 300)); return }
-                "/crashes" -> { reply(writer, "200 OK", readCrashes(ctx)); return }
+                "diagnostics/logcat" -> { reply(writer, "200 OK", readLogcat(query["n"]?.toIntOrNull() ?: 300)); return }
+                "diagnostics/trace"  -> { reply(writer, "200 OK", readTraceTail(ctx, query["n"]?.toIntOrNull() ?: 300)); return }
+                "diagnostics/crashes" -> { reply(writer, "200 OK", readCrashes(ctx)); return }
             }
 
             if (!authed) { reply(writer, "401 Unauthorized", "unauthorized\n"); return }
 
             // Authenticated endpoints
-            when (path) {
-                "/state" -> {
+            when (op) {
+                "state" -> {
                     val snap = DevControlBridge.host()?.stateSnapshot() ?: emptyMap()
                     val body = snap.entries.joinToString(",", "{", "}") {
                         "\"${jsonEscape(it.key)}\":\"${jsonEscape(it.value)}\""
                     }
                     reply(writer, "200 OK", body, "application/json")
                 }
-                "/haptic" -> {
+                "haptic" -> {
                     val preset = query["preset"] ?: "tick"
                     DevControlBridge.runOnMain {
                         DevControlBridge.host()?.firePresetHaptic(preset)
                     }
                     reply(writer, "200 OK", """{"ok":true,"preset":"${jsonEscape(preset)}"}""", "application/json")
                 }
-                "/goto" -> {
+                "nav/goto" -> {
                     val target = query["target"]
                     if (target.isNullOrBlank()) {
                         reply(writer, "400 Bad Request", "missing target\n")
@@ -182,7 +193,7 @@ object DevControlServer {
                         reply(writer, "200 OK", "ok\n")
                     }
                 }
-                "/action" -> {
+                "nav/action" -> {
                     val type = query["type"]
                     if (type.isNullOrBlank()) {
                         reply(writer, "400 Bad Request", "missing type\n")
@@ -193,20 +204,161 @@ object DevControlServer {
                         reply(writer, "200 OK", "ok\n")
                     }
                 }
-                "/update" -> {
+                "system/update" -> {
                     DevControlBridge.runOnMain {
                         DevControlBridge.host()?.onActionFromServer("check_updates")
                     }
                     reply(writer, "200 OK", "update queued\n")
                 }
-                "/restart" -> {
+                "system/restart" -> {
                     reply(writer, "200 OK", "restarting…\n")
                     writer.flush()
                     DevControlBridge.runOnMain { DevControlBridge.restartApp(ctx) }
                 }
-                else -> reply(writer, "404 Not Found", "not found\n")
+                "tracker/prefs"  -> { reply(writer, "200 OK", trackerPrefsJson(ctx), "application/json") }
+                "tracker/points" -> {
+                    val n = query["n"]?.toIntOrNull() ?: 20
+                    reply(writer, "200 OK", trackerPointsJson(ctx, n), "application/json")
+                }
+                "tracker/stops"  -> { reply(writer, "200 OK", trackerStopsJson(ctx), "application/json") }
+                "tracker/counts" -> { reply(writer, "200 OK", trackerCountsJson(ctx), "application/json") }
+                else -> reply(writer, "404 Not Found", "not found — see /v1/docs\n")
             }
         }
+    }
+
+    /** Map both `/ping` (legacy flat) and `/v1/system/ping` (new) to
+     *  the canonical op name `system/ping`. The routing + the /v1/docs
+     *  catalog both key on this canonical name. New endpoints SHOULD
+     *  be added under the v1/{group}/{op} form only; legacy aliases
+     *  are kept so existing curls in the user's Configs/About panel
+     *  don't break. */
+    private fun canonicalOp(path: String): String {
+        // Strip /v1/ prefix if present.
+        val stripped = path.removePrefix("/v1/").removePrefix("/")
+        // Legacy flat → canonical group/op mapping. Keep in sync with
+        // the docs catalog below.
+        return when (stripped) {
+            "ping"     -> "system/ping"
+            "info"     -> "system/info"
+            "logcat"   -> "diagnostics/logcat"
+            "trace"    -> "diagnostics/trace"
+            "crashes"  -> "diagnostics/crashes"
+            "goto"     -> "nav/goto"
+            "action"   -> "nav/action"
+            "update"   -> "system/update"
+            "restart"  -> "system/restart"
+            else       -> stripped
+        }
+    }
+
+    /** Returns the API docs as JSON — single source of truth lives
+     *  here, mirrors exactly what the routing switch handles. */
+    private fun endpointDocsJson(port: Int): String {
+        // Each entry: [op, methods, auth, description, paramsCSV]
+        val rows = listOf(
+            Spec("docs",                "GET",  false, "This endpoint — JSON catalog of every route, method, and auth requirement", ""),
+            Spec("system/ping",         "GET",  false, "Health probe — returns 'pong'", ""),
+            Spec("system/info",         "GET",  false, "App build info: version, vc, sha, port", ""),
+            Spec("system/update",       "POST", true,  "Trigger an in-app update check (libs:updater)", ""),
+            Spec("system/restart",      "POST", true,  "Restart the SuperApp process", ""),
+            Spec("diagnostics/logcat",  "GET",  false, "Recent logcat lines, threadtime format", "n=lines (default 300)"),
+            Spec("diagnostics/trace",   "GET",  false, "Tail of Trace.kt's trace.log", "n=lines (default 300)"),
+            Spec("diagnostics/crashes", "GET",  false, "All crash files concatenated, newest first", ""),
+            Spec("state",               "GET",  true,  "Snapshot of MainActivity's live state map (section, label, mode, …)", ""),
+            Spec("haptic",              "POST", true,  "Fire a named haptic preset on the device", "preset=name (default 'tick')"),
+            Spec("nav/goto",            "POST", true,  "Navigate to a tile target (section:X / page:X/Y / action:X / url)", "target=string"),
+            Spec("nav/action",          "POST", true,  "Fire one of MainActivity.onActionFromServer's verbs", "type=string"),
+            Spec("tracker/prefs",       "GET",  true,  "Tracker calibration prefs + enabled flag + last fix coords", ""),
+            Spec("tracker/counts",      "GET",  true,  "DB row counts: points + stops + last-fix timestamp", ""),
+            Spec("tracker/points",      "GET",  true,  "Recent GPS points reverse-chrono with accuracy + speed", "n=count (default 20)"),
+            Spec("tracker/stops",       "GET",  true,  "All stops in the local DB with start/end + reverse-geocoded place", ""),
+        )
+        val sb = StringBuilder()
+        sb.append("""{"port":""").append(port).append(',')
+        sb.append(""""base":"http://127.0.0.1:""").append(port).append("\",")
+        sb.append(""""auth":"Bearer <token> in Authorization header (token visible in Configs/About → Dev control HTTP)",""")
+        sb.append(""""path_styles":["/v1/{group}/{op} (preferred)","/{op} (legacy flat aliases — same handler)"],""")
+        sb.append(""""endpoints":[""")
+        rows.forEachIndexed { i, r ->
+            if (i > 0) sb.append(',')
+            sb.append('{')
+            sb.append(""""op":"""").append(jsonEscape(r.op)).append("\",")
+            sb.append(""""path":"/v1/""").append(jsonEscape(r.op)).append("\",")
+            sb.append(""""method":"""").append(jsonEscape(r.method)).append("\",")
+            sb.append(""""auth":""").append(r.auth).append(',')
+            sb.append(""""description":"""").append(jsonEscape(r.description)).append("\",")
+            sb.append(""""params":"""").append(jsonEscape(r.params)).append('"')
+            sb.append('}')
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    private data class Spec(
+        val op: String,
+        val method: String,
+        val auth: Boolean,
+        val description: String,
+        val params: String,
+    )
+
+    // ── Tracker DB read helpers (libs:maps consumers) ───────────────
+
+    private fun trackerPrefsJson(ctx: Context): String {
+        val tp = com.diegonmarcos.superapp.maps.MapsTrackingPrefs(ctx)
+        val st = com.diegonmarcos.superapp.maps.MapsTrackerPrefs(ctx)
+        return """{"enabled":${st.enabled},"last_fix_lat":${st.lastFixLat},"last_fix_lon":${st.lastFixLon},""" +
+            """"last_fix_ts":${st.lastFixTs},"interval_moving_ms":${tp.intervalMovingMs},""" +
+            """"interval_stopped_ms":${tp.intervalStoppedMs},"moving_threshold_mps":${tp.movingThresholdMps},""" +
+            """"stops_radius_m":${tp.stopsRadiusM},"stops_dwell_min":${tp.stopsDwellMin}}"""
+    }
+
+    private fun trackerCountsJson(ctx: Context): String {
+        val db = com.diegonmarcos.superapp.maps.MapsDb.get(ctx)
+        val st = com.diegonmarcos.superapp.maps.MapsTrackerPrefs(ctx)
+        return """{"points":${db.pointCount()},"stops":${db.stopCount()},"last_fix_ts":${st.lastFixTs}}"""
+    }
+
+    private fun trackerPointsJson(ctx: Context, n: Int): String {
+        val db = com.diegonmarcos.superapp.maps.MapsDb.get(ctx)
+        val rows = db.recentPoints(n)
+        val sb = StringBuilder("[")
+        rows.asReversed().forEachIndexed { i, p ->
+            if (i > 0) sb.append(',')
+            sb.append("""{"ts":""").append(p.ts).append(',')
+            sb.append(""""lat":""").append(p.lat).append(',')
+            sb.append(""""lon":""").append(p.lon).append(',')
+            sb.append(""""accuracy":""").append(p.accuracy ?: "null").append(',')
+            sb.append(""""speed":""").append(p.speed ?: "null").append(',')
+            sb.append(""""bearing":""").append(p.bearing ?: "null").append(',')
+            sb.append(""""altitude":""").append(p.altitude ?: "null")
+            sb.append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    private fun trackerStopsJson(ctx: Context): String {
+        val db = com.diegonmarcos.superapp.maps.MapsDb.get(ctx)
+        val now = System.currentTimeMillis()
+        val rows = db.stopsBetween(now - 5L * 365L * 24L * 3600_000L, now)
+        val sb = StringBuilder("[")
+        rows.forEachIndexed { i, s ->
+            if (i > 0) sb.append(',')
+            sb.append("""{"id":""").append(s.id).append(',')
+            sb.append(""""started_at":""").append(s.startedAt).append(',')
+            sb.append(""""ended_at":""").append(s.endedAt ?: "null").append(',')
+            sb.append(""""lat":""").append(s.lat).append(',')
+            sb.append(""""lon":""").append(s.lon).append(',')
+            sb.append(""""place_name":""").append(s.placeName?.let { "\"" + jsonEscape(it) + "\"" } ?: "null").append(',')
+            sb.append(""""neighborhood":""").append(s.neighborhood?.let { "\"" + jsonEscape(it) + "\"" } ?: "null").append(',')
+            sb.append(""""city":""").append(s.city?.let { "\"" + jsonEscape(it) + "\"" } ?: "null").append(',')
+            sb.append(""""country":""").append(s.country?.let { "\"" + jsonEscape(it) + "\"" } ?: "null")
+            sb.append('}')
+        }
+        sb.append(']')
+        return sb.toString()
     }
 
     private fun reply(
