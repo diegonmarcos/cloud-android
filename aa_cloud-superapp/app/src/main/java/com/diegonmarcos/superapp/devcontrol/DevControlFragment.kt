@@ -1346,7 +1346,7 @@ class DevControlFragment : Fragment() {
         val pm = ctx.packageManager
         @Suppress("DEPRECATION")
         val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
-        val requested = info.requestedPermissions ?: return@try emptyList()
+        val requested = info.requestedPermissions ?: return emptyList()
         val flags     = info.requestedPermissionsFlags ?: IntArray(requested.size)
         val out = mutableListOf<Pair<String, String>>()
         for ((i, perm) in requested.withIndex()) {
