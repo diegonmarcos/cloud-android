@@ -466,10 +466,11 @@
                 "target": "page:wallet/cards"
               },
               {
+                "_doc": "Native MyMaps section — foreground GPS tracker + MapLibre map + Timeline / Stops / Export pages. Was an external Google Maps deep-link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native fragments. For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
                 "id": "maps",
                 "label": "Maps",
                 "icon": "ic_maps",
-                "target": "intent://#Intent;package=com.google.android.apps.maps;S.browser_fallback_url=https%3A%2F%2Fmaps.google.com;end"
+                "target": "section:maps"
               },
               {
                 "id": "vault",

@@ -92,7 +92,39 @@ class SectionMenuFragment : Fragment() {
                 // tile grid; the drawer mirrors the body's PANEL
                 // hierarchy instead.
                 val mode = ModePrefs(ctx).mode
-                for (panel in Sections.aggregatorStackFor(section, mode)) {
+                val panels = Sections.aggregatorStackFor(section, mode)
+                if (panels.isEmpty() && section.tileGroups.isNotEmpty()) {
+                    // Tile-group aggregators (Suite is the canonical
+                    // case — declares tile_groups but no stack_apps /
+                    // stack_admin). Without this branch the drawer
+                    // pane rendered just the header and nothing else,
+                    // so the user couldn't see Suite's apps from the
+                    // side menu.
+                    // Each group's title becomes a disabled section
+                    // header; each tile becomes a tappable row that
+                    // routes through the same Tile dispatch the body
+                    // grid uses (section: / page: / action: / http(s) /
+                    // app://, etc.).
+                    for (group in section.tileGroups) {
+                        if (group.title.isNotBlank()) {
+                            val headId = id++
+                            val headItem = menu.add(groupId, headId, Menu.NONE,
+                                group.title.uppercase())
+                            headItem.setEnabled(false)
+                        }
+                        for (tile in group.tiles) {
+                            val tileItemId = id++
+                            val tileItem = menu.add(groupId, tileItemId, Menu.NONE,
+                                "    ↳  ${tile.label}")
+                            Sections.iconResFor(ctx, tile.iconName).takeIf { r -> r != 0 }
+                                ?.let { r -> tileItem.setIcon(r) }
+                            tileItem.setOnMenuItemClickListener { mi -> onItemPicked(mi.itemId); true }
+                            dispatch[tileItemId] = Target.Tile(tile.target)
+                        }
+                    }
+                    return
+                }
+                for (panel in panels) {
                     // linktree_slide panels load their actual content
                     // from data/linktree.json — the StackPanel itself
                     // only carries slideId. Resolve it here so we
