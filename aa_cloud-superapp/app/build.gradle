@@ -39,6 +39,12 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
 // Base64 sidesteps Java-string-literal escaping for the embedded JSON.
 def uiSectionsJson  = groovy.json.JsonOutput.toJson(buildJson.ui.sections)
 def uiSectionsB64   = uiSectionsJson.bytes.encodeBase64().toString()
+// Permissions master list — DevControlFragment's Permissions section
+// reads UI_PERMISSIONS_RUNTIME_B64 to render its row list (replaces
+// the previously hardcoded Pair list). Single source of truth:
+// build.json::ui.permissions.runtime[].
+def uiPermissionsRuntimeJson = groovy.json.JsonOutput.toJson(buildJson.ui.permissions?.runtime ?: [])
+def uiPermissionsRuntimeB64  = uiPermissionsRuntimeJson.bytes.encodeBase64().toString()
 def defaultSection  = buildJson.ui.default_section ?: 'home'
 def defaultMode     = buildJson.ui.default_mode    ?: 'apps'
 def tileColumns     = (buildJson.ui.tile_columns as Number)?.intValue() ?: 3
@@ -279,6 +285,7 @@ android {
         buildConfigField "String", "GIT_SHORT_SHA",         "\"${shortSha}\""
         buildConfigField "String", "BUILD_TIMESTAMP",       "\"${buildTimestamp}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
+        buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         buildConfigField "String", "UI_DEFAULT_MODE",       "\"${defaultMode}\""
         buildConfigField "int",    "UI_TILE_COLUMNS",       "${tileColumns}"

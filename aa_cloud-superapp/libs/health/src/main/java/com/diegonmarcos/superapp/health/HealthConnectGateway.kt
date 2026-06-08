@@ -213,6 +213,174 @@ object HealthConnectGateway {
         day, 0L, 0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0L, 0.0, 0L, 0, emptySet(),
     )
 
+    // ── Multi-day window aggregator ─────────────────────────────────
+    // Used by SummaryPage's 7d / 30d average tables. Reads every
+    // record in the metric's record list across [now-Ndays, now],
+    // sums or averages per record type as appropriate, and returns
+    // human-readable strings ready to render. No persistence to
+    // HealthStore — these are computed on demand (the multi-day
+    // window costs a few SQLite scans which are sub-second locally;
+    // caching adds complexity that isn't worth it yet).
+
+    data class WindowRow(val label: String, val value: String)
+
+    suspend fun readMetricWindow(
+        context: Context,
+        metric: HealthMetrics.Metric,
+        windowDays: Int,
+    ): List<WindowRow> = withContext(Dispatchers.IO) {
+        val c = client(context) ?: return@withContext emptyList()
+        val end = Instant.now()
+        val start = end.minusSeconds(windowDays.toLong() * 24 * 3600)
+        val range = TimeRangeFilter.between(start, end)
+        val rows = mutableListOf<WindowRow>()
+        val effDays = windowDays.toDouble().coerceAtLeast(1.0)
+
+        metric.records.forEach { type ->
+            val recs = readSafe(c, type, range)
+            val row = when (type) {
+                StepsRecord::class -> {
+                    val total = recs.filterIsInstance<StepsRecord>().sumOf { it.count }
+                    WindowRow("Steps · avg/day", "%.0f".format(total / effDays))
+                }
+                DistanceRecord::class -> {
+                    val total = recs.filterIsInstance<DistanceRecord>().sumOf { it.distance.inMeters }
+                    WindowRow("Distance · avg/day", "%.2f km".format(total / 1000.0 / effDays))
+                }
+                FloorsClimbedRecord::class -> {
+                    val total = recs.filterIsInstance<FloorsClimbedRecord>().sumOf { it.floors }
+                    WindowRow("Floors · avg/day", "%.0f".format(total / effDays))
+                }
+                ElevationGainedRecord::class -> {
+                    val total = recs.filterIsInstance<ElevationGainedRecord>().sumOf { it.elevation.inMeters }
+                    WindowRow("Elevation · avg/day", "%.0f m".format(total / effDays))
+                }
+                ActiveCaloriesBurnedRecord::class -> {
+                    val total = recs.filterIsInstance<ActiveCaloriesBurnedRecord>().sumOf { it.energy.inKilocalories }
+                    WindowRow("Active kcal · avg/day", "%.0f".format(total / effDays))
+                }
+                TotalCaloriesBurnedRecord::class -> {
+                    val total = recs.filterIsInstance<TotalCaloriesBurnedRecord>().sumOf { it.energy.inKilocalories }
+                    WindowRow("Total kcal · avg/day", "%.0f".format(total / effDays))
+                }
+                HeartRateRecord::class -> {
+                    val samples = recs.filterIsInstance<HeartRateRecord>().flatMap { it.samples }
+                    val avg = if (samples.isEmpty()) 0L else samples.sumOf { it.beatsPerMinute } / samples.size
+                    WindowRow("HR · avg", if (avg > 0) "$avg bpm" else "—")
+                }
+                RestingHeartRateRecord::class -> {
+                    val list = recs.filterIsInstance<RestingHeartRateRecord>()
+                    val avg = if (list.isEmpty()) 0L else list.sumOf { it.beatsPerMinute } / list.size
+                    WindowRow("Resting HR · avg", if (avg > 0) "$avg bpm" else "—")
+                }
+                HeartRateVariabilityRmssdRecord::class -> {
+                    val list = recs.filterIsInstance<HeartRateVariabilityRmssdRecord>()
+                    val avg = if (list.isEmpty()) 0.0 else list.sumOf { it.heartRateVariabilityMillis } / list.size
+                    WindowRow("HRV · avg", if (avg > 0) "%.0f ms".format(avg) else "—")
+                }
+                Vo2MaxRecord::class -> {
+                    val list = recs.filterIsInstance<Vo2MaxRecord>()
+                    val avg = if (list.isEmpty()) 0.0 else list.sumOf { it.vo2MillilitersPerMinuteKilogram } / list.size
+                    WindowRow("VO₂max · avg", if (avg > 0) "%.1f".format(avg) else "—")
+                }
+                SleepSessionRecord::class -> {
+                    val list = recs.filterIsInstance<SleepSessionRecord>()
+                    val totalMin = list.sumOf { (it.endTime.epochSecond - it.startTime.epochSecond) / 60 }
+                    val perDay = totalMin / effDays
+                    WindowRow("Sleep · avg/night", if (perDay > 0) "${(perDay / 60).toInt()} h ${(perDay % 60).toInt()} m" else "—")
+                }
+                ExerciseSessionRecord::class -> {
+                    val n = recs.filterIsInstance<ExerciseSessionRecord>().size
+                    WindowRow("Workouts · avg/day", "%.1f".format(n / effDays))
+                }
+                WeightRecord::class -> {
+                    val list = recs.filterIsInstance<WeightRecord>()
+                    val last = list.maxByOrNull { it.time }?.weight?.inKilograms
+                    WindowRow("Weight · latest", if (last != null) "%.1f kg".format(last) else "—")
+                }
+                BodyFatRecord::class -> {
+                    val last = recs.filterIsInstance<BodyFatRecord>().maxByOrNull { it.time }?.percentage?.value
+                    WindowRow("Body fat · latest", if (last != null) "%.1f %%".format(last) else "—")
+                }
+                BloodPressureRecord::class -> {
+                    val list = recs.filterIsInstance<BloodPressureRecord>()
+                    val sys = if (list.isEmpty()) 0.0 else list.sumOf { it.systolic.inMillimetersOfMercury } / list.size
+                    val dia = if (list.isEmpty()) 0.0 else list.sumOf { it.diastolic.inMillimetersOfMercury } / list.size
+                    WindowRow("BP · avg", if (sys > 0) "${sys.toInt()}/${dia.toInt()} mmHg" else "—")
+                }
+                BloodGlucoseRecord::class -> {
+                    val list = recs.filterIsInstance<BloodGlucoseRecord>()
+                    val avg = if (list.isEmpty()) 0.0 else list.sumOf { it.level.inMillimolesPerLiter } / list.size
+                    WindowRow("Glucose · avg", if (avg > 0) "%.1f mmol/L".format(avg) else "—")
+                }
+                OxygenSaturationRecord::class -> {
+                    val list = recs.filterIsInstance<OxygenSaturationRecord>()
+                    val avg = if (list.isEmpty()) 0.0 else list.sumOf { it.percentage.value } / list.size
+                    WindowRow("SpO₂ · avg", if (avg > 0) "%.1f %%".format(avg) else "—")
+                }
+                HydrationRecord::class -> {
+                    val total = recs.filterIsInstance<HydrationRecord>().sumOf { it.volume.inMilliliters }
+                    WindowRow("Hydration · avg/day", "%.0f mL".format(total / effDays))
+                }
+                NutritionRecord::class -> {
+                    val total = recs.filterIsInstance<NutritionRecord>().sumOf { (it.energy?.inKilocalories ?: 0.0) }
+                    WindowRow("Nutrition kcal · avg/day", "%.0f".format(total / effDays))
+                }
+                else -> WindowRow(type.simpleName ?: "?", "${recs.size} record(s)")
+            }
+            rows.add(row)
+        }
+        rows
+    }
+
+    /** Per-day snapshot for ONE metric — same shape as [WindowRow]
+     *  but the values are the day's totals/averages (no per-day
+     *  division). Used by TimelinePage's per-date drill-down. */
+    suspend fun readMetricDay(
+        context: Context,
+        metric: HealthMetrics.Metric,
+        day: LocalDate,
+    ): List<WindowRow> = withContext(Dispatchers.IO) {
+        val c = client(context) ?: return@withContext emptyList()
+        val zone = ZoneId.systemDefault()
+        val start = day.atStartOfDay(zone).toInstant()
+        val end   = day.plusDays(1).atStartOfDay(zone).toInstant()
+        val range = TimeRangeFilter.between(start, end)
+        val rows = mutableListOf<WindowRow>()
+        metric.records.forEach { type ->
+            val recs = readSafe(c, type, range)
+            val row = when (type) {
+                StepsRecord::class -> WindowRow("Steps", "${recs.filterIsInstance<StepsRecord>().sumOf { it.count }}")
+                DistanceRecord::class -> WindowRow("Distance", "%.2f km".format(recs.filterIsInstance<DistanceRecord>().sumOf { it.distance.inMeters } / 1000.0))
+                FloorsClimbedRecord::class -> WindowRow("Floors", "%.0f".format(recs.filterIsInstance<FloorsClimbedRecord>().sumOf { it.floors }))
+                ActiveCaloriesBurnedRecord::class -> WindowRow("Active kcal", "%.0f".format(recs.filterIsInstance<ActiveCaloriesBurnedRecord>().sumOf { it.energy.inKilocalories }))
+                TotalCaloriesBurnedRecord::class -> WindowRow("Total kcal", "%.0f".format(recs.filterIsInstance<TotalCaloriesBurnedRecord>().sumOf { it.energy.inKilocalories }))
+                HeartRateRecord::class -> {
+                    val samples = recs.filterIsInstance<HeartRateRecord>().flatMap { it.samples }
+                    val avg = if (samples.isEmpty()) 0L else samples.sumOf { it.beatsPerMinute } / samples.size
+                    WindowRow("HR · avg", if (avg > 0) "$avg bpm" else "—")
+                }
+                RestingHeartRateRecord::class -> {
+                    val last = recs.filterIsInstance<RestingHeartRateRecord>().maxByOrNull { it.time }
+                    WindowRow("Resting HR", if (last != null) "${last.beatsPerMinute} bpm" else "—")
+                }
+                SleepSessionRecord::class -> {
+                    val totalMin = recs.filterIsInstance<SleepSessionRecord>().sumOf { (it.endTime.epochSecond - it.startTime.epochSecond) / 60 }
+                    WindowRow("Sleep", if (totalMin > 0) "${totalMin / 60} h ${totalMin % 60} m" else "—")
+                }
+                ExerciseSessionRecord::class -> WindowRow("Workouts", "${recs.size}")
+                WeightRecord::class -> {
+                    val last = recs.filterIsInstance<WeightRecord>().maxByOrNull { it.time }?.weight?.inKilograms
+                    WindowRow("Weight", if (last != null) "%.1f kg".format(last) else "—")
+                }
+                HydrationRecord::class -> WindowRow("Hydration", "%.0f mL".format(recs.filterIsInstance<HydrationRecord>().sumOf { it.volume.inMilliliters }))
+                else -> WindowRow(type.simpleName ?: "?", "${recs.size}")
+            }
+            rows.add(row)
+        }
+        rows
+    }
+
     /** Raw inspector — flatten a record type's recent window into
      *  inspector rows for the Raw page. Hands plain strings to the UI
      *  so the page never imports HC SDK types. */

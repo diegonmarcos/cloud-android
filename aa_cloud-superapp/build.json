@@ -180,6 +180,24 @@
     }
   },
   "ui": {
+    "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
+    "permissions": {
+      "runtime": [
+        { "label": "Camera",                  "perm": "android.permission.CAMERA" },
+        { "label": "Microphone",              "perm": "android.permission.RECORD_AUDIO" },
+        { "label": "Notifications",           "perm": "android.permission.POST_NOTIFICATIONS" },
+        { "label": "Location (fine)",         "perm": "android.permission.ACCESS_FINE_LOCATION" },
+        { "label": "Location (coarse)",       "perm": "android.permission.ACCESS_COARSE_LOCATION" },
+        { "label": "Nearby Devices",          "perm": "android.permission.BLUETOOTH_SCAN" },
+        { "label": "Bluetooth Connect",       "perm": "android.permission.BLUETOOTH_CONNECT" },
+        { "label": "Contacts",                "perm": "android.permission.READ_CONTACTS" },
+        { "label": "Music and Audio",         "perm": "android.permission.READ_MEDIA_AUDIO" },
+        { "label": "Photos and Videos (img)", "perm": "android.permission.READ_MEDIA_IMAGES" },
+        { "label": "Photos and Videos (vid)", "perm": "android.permission.READ_MEDIA_VIDEO" },
+        { "label": "SMS",                     "perm": "android.permission.READ_SMS" },
+        { "label": "Phone",                   "perm": "android.permission.READ_PHONE_STATE" }
+      ]
+    },
     "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
     "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
     "_doc_home_index": "The `home` section is the master index — its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
@@ -507,7 +525,7 @@
                 "id": "myhealth",
                 "label": "MyHealth",
                 "icon": "ic_heart",
-                "target": "page:health/dashboard"
+                "target": "page:health/summary"
               },
               {
                 "id": "mydata",
@@ -1321,30 +1339,44 @@
         ]
       },
       {
-        "_doc": "MyHealth — native Health Connect dashboard. Reads the aggregated record set Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura all sync into via androidx.health.connect:connect-client (one SDK = union of every source on-device). LOCAL-ONLY: HealthStore (libs:core, SharedPreferences) caches today's rollups, write-rate stats, source-app breakdowns, and last-sync timestamps. ZERO network calls — no OAuth, no webhooks, no cloud ingester (the diegonmarcos.github.io/my-health/ web view is OUT; tile retargeted to page:health/dashboard).",
-        "_doc_pages": "Geeky-grade surface — one page per HC domain plus four meta pages (sources / permissions / raw / stats). 'sources' lists which app wrote each record type + counts; 'raw' is a per-record inspector (UID, origin pkg, timestamp, value) so the user can audit every datapoint; 'stats' surfaces HC DB size, write-rate per source, and this app's read-cache footprint.",
-        "_doc_icons_new": "Six new drawables added under app/src/main/res/drawable/: ic_p_health_activity, ic_p_health_sleep, ic_p_health_body, ic_p_health_vitals, ic_p_health_nutrition, ic_p_health_workouts, ic_p_health_cycle. Vector XMLs based on Material Symbols path data.",
+        "_doc": "MyHealth — native Health Connect dashboard. Reads the aggregated record set Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura all sync into via androidx.health.connect:connect-client (one SDK = union of every source on-device). LOCAL-ONLY: HealthStore (libs:core, SharedPreferences) caches rollups, write-rate stats, source-app breakdowns, and last-sync timestamps. ZERO network calls — no OAuth, no webhooks, no cloud ingester.",
+        "_doc_pages": "Three first-class pages: Summary (per-metric drill-in with 7d + 30d average tables), Timeline (date-picker → that day's per-metric values), Configs (Sources / Permissions / Stats / Raw / About sub-tabs + per-metric source toggles). Per-metric drill-down lives INSIDE each top-level page as Compose state — the section's drawer menu shows 3 entries, not 15.",
+        "_doc_metrics": "Data-driven metric taxonomy — read by SummaryPage / TimelinePage / ConfigsPage to render the per-metric tiles + drill-downs. Each metric maps to one-or-more Health Connect record types via `records` (matched at runtime by class simple-name) + the perm subset via `perm_keys`. Add a metric = one entry here + tile icon. Removing a metric here removes it from all 3 top-level pages.",
         "id": "health",
         "label": "MyHealth",
         "icon": "ic_heart",
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "dashboard",   "label": "Dashboard",   "icon": "ic_heart" },
-          { "id": "activity",    "label": "Activity",    "icon": "ic_p_health_activity" },
-          { "id": "heart",       "label": "Heart",       "icon": "ic_heart" },
-          { "id": "sleep",       "label": "Sleep",       "icon": "ic_p_health_sleep" },
-          { "id": "body",        "label": "Body",        "icon": "ic_p_health_body" },
-          { "id": "vitals",      "label": "Vitals",      "icon": "ic_p_health_vitals" },
-          { "id": "nutrition",   "label": "Nutrition",   "icon": "ic_p_health_nutrition" },
-          { "id": "workouts",    "label": "Workouts",    "icon": "ic_p_health_workouts" },
-          { "id": "cycle",       "label": "Cycle",       "icon": "ic_p_health_cycle" },
-          { "id": "trends",      "label": "Trends",      "icon": "ic_p_c3_reports" },
-          { "id": "sources",     "label": "Sources",     "icon": "ic_p_accounts" },
-          { "id": "permissions", "label": "Permissions", "icon": "ic_settings" },
-          { "id": "raw",         "label": "Raw",         "icon": "ic_p_logs" },
-          { "id": "stats",       "label": "Stats",       "icon": "ic_database" },
-          { "id": "about",       "label": "About",       "icon": "ic_p_more" }
+          { "id": "summary",  "label": "Summary",  "icon": "ic_p_c3_reports" },
+          { "id": "timeline", "label": "Timeline", "icon": "ic_p_cal_day"    },
+          { "id": "configs",  "label": "Configs",  "icon": "ic_settings"     }
+        ],
+        "metrics": [
+          { "id": "activity",  "label": "Activity",  "icon": "ic_p_health_activity",
+            "records":   ["StepsRecord","DistanceRecord","FloorsClimbedRecord","ElevationGainedRecord","ActiveCaloriesBurnedRecord","TotalCaloriesBurnedRecord"],
+            "perm_keys": ["READ_STEPS","READ_DISTANCE","READ_FLOORS_CLIMBED","READ_ELEVATION_GAINED","READ_ACTIVE_CALORIES_BURNED","READ_TOTAL_CALORIES_BURNED"] },
+          { "id": "heart",     "label": "Heart",     "icon": "ic_heart",
+            "records":   ["HeartRateRecord","RestingHeartRateRecord","HeartRateVariabilityRmssdRecord","Vo2MaxRecord"],
+            "perm_keys": ["READ_HEART_RATE","READ_RESTING_HEART_RATE","READ_HEART_RATE_VARIABILITY","READ_VO2_MAX"] },
+          { "id": "sleep",     "label": "Sleep",     "icon": "ic_p_health_sleep",
+            "records":   ["SleepSessionRecord"],
+            "perm_keys": ["READ_SLEEP"] },
+          { "id": "body",      "label": "Body",      "icon": "ic_p_health_body",
+            "records":   ["WeightRecord","BodyFatRecord","LeanBodyMassRecord","BoneMassRecord","BodyWaterMassRecord"],
+            "perm_keys": ["READ_WEIGHT","READ_BODY_FAT","READ_LEAN_BODY_MASS","READ_BONE_MASS","READ_BODY_WATER_MASS"] },
+          { "id": "vitals",    "label": "Vitals",    "icon": "ic_p_health_vitals",
+            "records":   ["BloodPressureRecord","BloodGlucoseRecord","OxygenSaturationRecord","BodyTemperatureRecord","RespiratoryRateRecord"],
+            "perm_keys": ["READ_BLOOD_PRESSURE","READ_BLOOD_GLUCOSE","READ_OXYGEN_SATURATION","READ_BODY_TEMPERATURE","READ_RESPIRATORY_RATE"] },
+          { "id": "nutrition", "label": "Nutrition", "icon": "ic_p_health_nutrition",
+            "records":   ["NutritionRecord","HydrationRecord"],
+            "perm_keys": ["READ_NUTRITION","READ_HYDRATION"] },
+          { "id": "workouts",  "label": "Workouts",  "icon": "ic_p_health_workouts",
+            "records":   ["ExerciseSessionRecord"],
+            "perm_keys": ["READ_EXERCISE"] },
+          { "id": "cycle",     "label": "Cycle",     "icon": "ic_p_health_cycle",
+            "records":   ["MenstruationFlowRecord"],
+            "perm_keys": ["READ_MENSTRUATION"] }
         ]
       },
       {

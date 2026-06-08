@@ -13,13 +13,17 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.superapp.AppProcessUptime
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
 import com.diegonmarcos.superapp.PermAskTracker
 import com.diegonmarcos.superapp.Sections
 import com.diegonmarcos.superapp.WgState
+import com.diegonmarcos.superapp.health.HealthConnectGateway
+import com.diegonmarcos.superapp.health.HealthMetrics
 import com.wireguard.android.backend.Tunnel
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
@@ -284,44 +288,60 @@ class DevControlFragment : Fragment() {
         }
 
         section(ctx, column, "Permissions") {
-            // Each row: friendly label + runtime grant state. Permissions
-            // declared in AndroidManifest; here we just read the current
-            // grant. Notifications gets a dedicated request button below
-            // — the only one Android lets us trigger from inside the app.
-            val perms = listOf(
-                "Camera"            to android.Manifest.permission.CAMERA,
-                "Microphone"        to android.Manifest.permission.RECORD_AUDIO,
-                "Notifications"     to "android.permission.POST_NOTIFICATIONS",
-                "Location (fine)"   to android.Manifest.permission.ACCESS_FINE_LOCATION,
-                "Location (coarse)" to android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                "Nearby Devices"    to "android.permission.BLUETOOTH_SCAN",
-                "Bluetooth Connect" to "android.permission.BLUETOOTH_CONNECT",
-                "Contacts"          to android.Manifest.permission.READ_CONTACTS,
-                "Music and Audio"   to "android.permission.READ_MEDIA_AUDIO",
-                "Photos and Videos (img)" to "android.permission.READ_MEDIA_IMAGES",
-                "Photos and Videos (vid)" to "android.permission.READ_MEDIA_VIDEO",
-                "SMS"               to android.Manifest.permission.READ_SMS,
-                "Phone"             to android.Manifest.permission.READ_PHONE_STATE,
-            )
-            it.addView(small(ctx, "States: ✓ Granted · ⏳ Ask each time · ✗ Denied (don't ask) · ◯ Not requested. Restricted-by-policy permissions (SMS, Phone, Call Log) often stay at ✗ Denied (don't ask) on non-default handlers — toggle via system settings."))
+            // ── Runtime perms — data-driven from build.json::ui.permissions.runtime[].
+            //    See BuildConfig.UI_PERMISSIONS_RUNTIME_B64. Replaces the
+            //    previously hardcoded Pair list (FIRE rule 6).
+            val perms = parseRuntimePermissions()
+            it.addView(small(ctx, "Runtime perms — States: ✓ Granted · ⏳ Ask each time · ✗ Denied (don't ask) · ◯ Not requested. Restricted-by-policy perms (SMS, Phone, Call Log) often stay at ✗ Denied (don't ask) on non-default handlers — toggle via system settings."))
             for ((label, perm) in perms) {
                 row(ctx, it, label, permissionState(perm))
             }
-            // Button row: request POST_NOTIFICATIONS via the standard
-            // permission dialog (API 33+). On older Android levels
-            // notifications are granted by default, so we just toast.
+
+            // ── Special access — single-flag toggles handled by separate
+            //    system surfaces (not in the runtime perms flow). Each is
+            //    a synchronous check against a system service.
+            it.addView(small(ctx, "Special access — system-toggles outside the runtime perms flow:"))
+            row(ctx, it, "Battery whitelist",  specialAccessBattery(ctxAny()))
+            row(ctx, it, "Default launcher",   specialAccessLauncher(ctxAny()))
+            row(ctx, it, "Usage stats",        specialAccessUsageStats(ctxAny()))
+            row(ctx, it, "Notif. listener",    specialAccessNotifListener(ctxAny()))
+            row(ctx, it, "Manage all files",   specialAccessManageStorage())
+
+            // ── Health Connect — completely separate channel from
+            //    PackageManager. HC's PermissionController has its own
+            //    grant state. Total = sum of perms declared in
+            //    build.json::ui.sections[id=health].metrics[].perm_keys.
+            //    Live count updated async by lifecycleScope below.
+            it.addView(small(ctx, "Health Connect perms — granted in the Health Connect app, NOT here. checkSelfPermission can't see them; we query HC's PermissionController directly."))
+            val hcTotal = HealthMetrics.allPermissions.size
+            val hcRow = row(ctx, it, "HC perms granted", "checking… / $hcTotal")
+            viewLifecycleOwner.lifecycleScope.launch {
+                val n = runCatching {
+                    HealthConnectGateway.grantedPermissions(requireContext()).size
+                }.getOrDefault(0)
+                hcRow.text = if (n > 0) "✓ $n / $hcTotal granted" else "◯ 0 / $hcTotal — none granted"
+            }
+            it.addView(actionButton(ctx, "Manage Health Connect perms") {
+                openHealthConnectPerms()
+            })
+
+            // ── System auto-granted — perms declared in the manifest that
+            //    Android grants at install time without a user prompt.
+            //    Almost always PROTECTION_NORMAL (INTERNET, VIBRATE,
+            //    WAKE_LOCK, FOREGROUND_SERVICE_*) — full transparency
+            //    of what the app CAN do without you ever clicking "Allow".
+            it.addView(small(ctx, "System auto-granted — protection-NORMAL perms granted at install, no user prompt. This is what the app can already do without ever asking."))
+            for ((label, status) in collectAutoGrantedPerms(ctxAny())) {
+                row(ctx, it, label, status)
+            }
+
+            // ── Buttons.
             it.addView(actionButton(ctx, "Request Notifications permission") {
                 requestNotificationsPermission()
             })
-            // Bulk request — fires the multi-permission system flow for
-            // every runtime-grantable permission the manifest declares.
-            // Android folds them into 1-N system dialogs depending on
-            // group rules (Location prompts as one group, etc.).
             it.addView(actionButton(ctx, "Request All Permissions") {
                 requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
             })
-            // Deeplink to the app's system-settings page so the user can
-            // toggle the other permissions directly from there.
             it.addView(actionButton(ctx, "Open system app settings") {
                 openAppSettings()
             })
@@ -1110,7 +1130,7 @@ class DevControlFragment : Fragment() {
         body(grp)
     }
 
-    private fun row(ctx: Context, host: LinearLayout, key: String, value: String) {
+    private fun row(ctx: Context, host: LinearLayout, key: String, value: String): TextView {
         infoBuf.append("  ").append(key).append(": ").append(value).append("\n")
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1122,7 +1142,10 @@ class DevControlFragment : Fragment() {
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             layoutParams = LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.WRAP_CONTENT)
         })
-        row.addView(TextView(ctx).apply {
+        // Capture the value TextView so callers that need to update it
+        // later (e.g. async Health Connect lookup) can rebind .text
+        // without rebuilding the row. Plain callers ignore the return.
+        val valueView = TextView(ctx).apply {
             text = value
             setTextColor(0xFFB794F4.toInt())
             typeface = Typeface.MONOSPACE
@@ -1133,8 +1156,10 @@ class DevControlFragment : Fragment() {
                 copy(ctx, "$key: $value")
                 Toast.makeText(ctx, "Copied $key", Toast.LENGTH_SHORT).show(); true
             }
-        })
+        }
+        row.addView(valueView)
         host.addView(row)
+        return valueView
     }
 
     private fun title(ctx: Context, text: String) = TextView(ctx).apply {
@@ -1219,6 +1244,132 @@ class DevControlFragment : Fragment() {
         DateFormat.getDateTimeInstance().format(Date(ms))
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    // ── Permissions helpers ────────────────────────────────────────
+    // Data-driven runtime perm list — decodes UI_PERMISSIONS_RUNTIME_B64
+    // baked from build.json::ui.permissions.runtime[] (replaces the
+    // previously-hardcoded Pair list, FIRE rule 6).
+    private fun parseRuntimePermissions(): List<Pair<String, String>> {
+        val raw = runCatching {
+            String(android.util.Base64.decode(BuildConfig.UI_PERMISSIONS_RUNTIME_B64, android.util.Base64.DEFAULT))
+        }.getOrDefault("[]")
+        val arr = runCatching { org.json.JSONArray(raw) }.getOrDefault(org.json.JSONArray())
+        val out = mutableListOf<Pair<String, String>>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val label = o.optString("label").ifBlank { continue }
+            val perm  = o.optString("perm").ifBlank { continue }
+            out.add(label to perm)
+        }
+        return out
+    }
+
+    // ── Special access — single-flag toggles outside the runtime perms flow.
+    private fun specialAccessBattery(ctx: Context): String = try {
+        val pm = ctx.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+        val ok = pm?.isIgnoringBatteryOptimizations(ctx.packageName) == true
+        if (ok) "✓ Whitelisted (no Doze)" else "◯ Subject to Doze"
+    } catch (_: Throwable) { "—" }
+
+    private fun specialAccessLauncher(ctx: Context): String = try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val rm = ctx.getSystemService(android.app.role.RoleManager::class.java)
+            val held = rm?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) == true
+            if (held) "✓ Default home/launcher" else "◯ Not default"
+        } else "— (pre-API 29)"
+    } catch (_: Throwable) { "—" }
+
+    private fun specialAccessUsageStats(ctx: Context): String = try {
+        val aom = ctx.getSystemService(android.app.AppOpsManager::class.java)
+        val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            aom?.unsafeCheckOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), ctx.packageName,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            aom?.checkOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), ctx.packageName,
+            )
+        }
+        when (mode) {
+            android.app.AppOpsManager.MODE_ALLOWED -> "✓ Allowed"
+            null                                   -> "—"
+            else                                   -> "◯ Not allowed"
+        }
+    } catch (_: Throwable) { "—" }
+
+    private fun specialAccessNotifListener(ctx: Context): String = try {
+        val flat = android.provider.Settings.Secure.getString(
+            ctx.contentResolver, "enabled_notification_listeners",
+        ).orEmpty()
+        if (flat.split(":").any { it.startsWith("${ctx.packageName}/") }) "✓ Allowed"
+        else "◯ Not allowed"
+    } catch (_: Throwable) { "—" }
+
+    private fun specialAccessManageStorage(): String = try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (android.os.Environment.isExternalStorageManager()) "✓ Allowed (R+)"
+            else "◯ Not allowed (R+)"
+        } else "— (pre-API 30 — uses storage perms)"
+    } catch (_: Throwable) { "—" }
+
+    /** Open Health Connect's permissions screen scoped to this app. */
+    private fun openHealthConnectPerms() {
+        val tried = sequenceOf(
+            android.content.Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS"),
+            android.content.Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"),
+        ).mapNotNull { intent ->
+            runCatching { startActivity(intent); intent }.getOrNull()
+        }.firstOrNull()
+        if (tried == null) {
+            // Fallback: open Play Store entry for Health Connect.
+            runCatching {
+                startActivity(android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("market://details?id=com.google.android.apps.healthdata"),
+                ))
+            }
+        }
+    }
+
+    /** Walk PackageManager's full requested-perm list and surface the
+     *  ones the system auto-granted at install (PROTECTION_NORMAL or
+     *  signature perms whose grantee equals our own UID). Each row
+     *  carries the protection-level annotation so the user can audit
+     *  what the app can do without ever clicking "Allow". */
+    private fun collectAutoGrantedPerms(ctx: Context): List<Pair<String, String>> = try {
+        val pm = ctx.packageManager
+        @Suppress("DEPRECATION")
+        val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
+        val requested = info.requestedPermissions ?: return emptyList()
+        val flags     = info.requestedPermissionsFlags ?: IntArray(requested.size)
+        val out = mutableListOf<Pair<String, String>>()
+        for ((i, perm) in requested.withIndex()) {
+            val grantedAtInstall = (flags.getOrNull(i) ?: 0) and
+                android.content.pm.PackageInfo.REQUESTED_PERMISSION_GRANTED != 0
+            if (!grantedAtInstall) continue
+            val info2 = runCatching { pm.getPermissionInfo(perm, 0) }.getOrNull()
+            val level = info2?.protectionLevel ?: -1
+            val base  = level and android.content.pm.PermissionInfo.PROTECTION_MASK_BASE
+            // PROTECTION_NORMAL (0): always auto-granted — surface every one.
+            // PROTECTION_SIGNATURE (2): granted only when signed with the
+            // same key as the declaring package; usually a system perm
+            // the app is allowed to coexist with — also worth surfacing.
+            // PROTECTION_DANGEROUS (1): runtime perm — handled by the
+            // Runtime perms section above. Skip here to avoid duplication.
+            if (base == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS) continue
+            val label = perm.removePrefix("android.permission.").take(36)
+            val tag = when (base) {
+                android.content.pm.PermissionInfo.PROTECTION_NORMAL    -> "NORMAL"
+                android.content.pm.PermissionInfo.PROTECTION_SIGNATURE -> "SIGNATURE"
+                else                                                   -> "?"
+            }
+            out.add(label to "✓ auto · $tag")
+        }
+        out
+    } catch (_: Throwable) { emptyList() }
 
     companion object { fun newInstance() = DevControlFragment() }
 }

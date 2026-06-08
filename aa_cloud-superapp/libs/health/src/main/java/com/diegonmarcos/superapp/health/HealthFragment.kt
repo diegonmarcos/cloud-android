@@ -22,15 +22,17 @@ import androidx.fragment.app.Fragment
  * pageId is carried in the Bundle), which keeps the host plumbing
  * trivial: MainActivity instantiates HealthFragment.newInstance(pageId)
  * via the SectionPages dispatcher, and the [HealthScreen] composable
- * picks which page to render based on that id.
+ * picks which top-level page to render based on that id.
  *
- * The pageId list is the source of truth in
- * build.json::ui.sections[id=health].pages[] — never duplicate it
- * here. Adding a new HC record type to the dashboard:
- *   1. Add a page entry in build.json::ui.sections[id=health].pages[].
- *   2. Add a perms-mapping entry in [HealthConnectGateway.PAGE_PERMS]
- *      if the new page needs a permission subset.
- *   3. Add a `when` branch in [HealthScreen] for the new pageId.
+ * Three top-level pages — Summary / Timeline / Configs — mirror
+ * build.json::ui.sections[id=health].pages[]. Per-metric drill-down
+ * (Activity, Heart, Sleep, Body, Vitals, Nutrition, Workouts, Cycle)
+ * is INTERNAL Compose state inside each page, driven by the
+ * `metrics` list in the same section.
+ *
+ * Adding/removing a metric: edit `metrics` in build.json — no Kotlin
+ * change needed (the list is baked into BuildConfig.UI_HEALTH_METRICS_B64
+ * at build time and decoded by [HealthMetrics]).
  */
 class HealthFragment : Fragment() {
 
@@ -50,26 +52,17 @@ class HealthFragment : Fragment() {
     companion object {
         private const val ARG_PAGE = "pageId"
 
-        /** Page id constants — kept here in addition to the JSON so
-         *  Kotlin call sites (test, deep-link parser) get compile-time
-         *  checks. JSON remains the canonical list. */
-        const val PAGE_DASHBOARD   = "dashboard"
-        const val PAGE_ACTIVITY    = "activity"
-        const val PAGE_HEART       = "heart"
-        const val PAGE_SLEEP       = "sleep"
-        const val PAGE_BODY        = "body"
-        const val PAGE_VITALS      = "vitals"
-        const val PAGE_NUTRITION   = "nutrition"
-        const val PAGE_WORKOUTS    = "workouts"
-        const val PAGE_CYCLE       = "cycle"
-        const val PAGE_TRENDS      = "trends"
-        const val PAGE_SOURCES     = "sources"
-        const val PAGE_PERMISSIONS = "permissions"
-        const val PAGE_RAW         = "raw"
-        const val PAGE_STATS       = "stats"
-        const val PAGE_ABOUT       = "about"
+        /** Page id constants — three top-level pages, mirrored from
+         *  build.json::ui.sections[id=health].pages[]. Per-metric
+         *  drill-down (Activity / Heart / Sleep / Body / Vitals /
+         *  Nutrition / Workouts / Cycle) is internal Compose state
+         *  inside each page, driven by the metrics list baked into
+         *  BuildConfig.UI_HEALTH_METRICS_B64. */
+        const val PAGE_SUMMARY  = "summary"
+        const val PAGE_TIMELINE = "timeline"
+        const val PAGE_CONFIGS  = "configs"
 
-        fun newInstance(pageId: String = PAGE_DASHBOARD): HealthFragment =
+        fun newInstance(pageId: String = PAGE_SUMMARY): HealthFragment =
             HealthFragment().apply {
                 arguments = Bundle().apply { putString(ARG_PAGE, pageId) }
             }
