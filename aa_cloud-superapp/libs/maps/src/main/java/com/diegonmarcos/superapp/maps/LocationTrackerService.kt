@@ -98,11 +98,22 @@ class LocationTrackerService : Service() {
     private fun subscribeUpdates() {
         // Drop prior callback (idempotent re-subscribe).
         callback?.let { fused.removeLocationUpdates(it) }
+        // setMinUpdateIntervalMillis is the FLOOR (fastest delivery
+        // rate), NOT the slow-mode interval. Passing intervalStoppedMs
+        // there (5 min) capped the provider to 5-min cadence even
+        // while moving — bufSize never filled within the dwell window,
+        // Stops never emitted. Correct usage:
+        //   - intervalMillis      = desired cadence (30s default)
+        //   - minUpdateIntervalMs = same, so provider doesn't deliver
+        //     faster than what we want (its default would be base/2)
+        // Dynamic moving/stopped switching needs activity-recognition
+        // re-subscribing on transitions; tracked separately. For now
+        // the tracker runs at intervalMovingMs constantly.
         val req = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
             trackingPrefs.intervalMovingMs.toLong(),
         )
-            .setMinUpdateIntervalMillis(trackingPrefs.intervalStoppedMs.toLong())
+            .setMinUpdateIntervalMillis(trackingPrefs.intervalMovingMs.toLong())
             .setMinUpdateDistanceMeters(0f)
             .build()
         val cb = object : LocationCallback() {
