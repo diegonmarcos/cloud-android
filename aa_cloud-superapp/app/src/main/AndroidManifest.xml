@@ -91,6 +91,27 @@
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
+
+            <!-- Health Connect privacy-policy / rationale activity.
+                 Without these intent-filters the Health Connect app
+                 (or system module on API 34+) will NOT list the
+                 Cloud SuperApp in its "App permissions" screen — the
+                 user has no way to grant any HC perm.
+
+                 androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE
+                 is the legacy filter (Android 13 and earlier, HC as
+                 a separate Play-Store app). VIEW_PERMISSION_USAGE +
+                 category HEALTH_PERMISSIONS is the Android 14+
+                 filter (HC is a system module, perms are standard
+                 runtime perms). Both required — manifest-merger
+                 leaves a single Activity entry hosting both. -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
         </activity>
 
     </application>
