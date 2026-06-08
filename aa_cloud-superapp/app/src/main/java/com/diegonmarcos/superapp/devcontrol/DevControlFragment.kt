@@ -900,13 +900,16 @@ class DevControlFragment : Fragment() {
                 val hex = md.digest(sigs[0].toByteArray()).joinToString(":") { "%02X".format(it) }
                 row(ctx, it, "Cert SHA-256", hex)
             }
-            // Split APKs (base + per-density + per-ABI)
+            // Split APKs (base + per-density + per-ABI).
+            // PackageInfo.applicationInfo is @Nullable as of API 35;
+            // safe-call every access and degrade to "—" / 0 if the
+            // platform decides not to hand us an ApplicationInfo.
             @Suppress("DEPRECATION")
             val appInfo = pm.getPackageInfo(pkg, 0).applicationInfo
-            val splits = appInfo.splitSourceDirs?.size ?: 0
+            val splits = appInfo?.splitSourceDirs?.size ?: 0
             row(ctx, it, "Splits",      "$splits split APK(s)")
-            row(ctx, it, "Native lib dir", appInfo.nativeLibraryDir ?: "—")
-            val nativeLibs = runCatching { File(appInfo.nativeLibraryDir ?: "").listFiles()?.map { it.name } }.getOrNull()
+            row(ctx, it, "Native lib dir", appInfo?.nativeLibraryDir ?: "—")
+            val nativeLibs = runCatching { File(appInfo?.nativeLibraryDir ?: "").listFiles()?.map { it.name } }.getOrNull()
             row(ctx, it, "Native libs", nativeLibs?.joinToString(", ") ?: "—")
         }
 
@@ -1009,9 +1012,12 @@ class DevControlFragment : Fragment() {
             // instead, which is its own useful "what's in here" line.
             val pm2 = ctxAny().packageManager
             @Suppress("DEPRECATION")
+            // PackageInfo.applicationInfo is @Nullable as of API 35.
             val ai = pm2.getPackageInfo(ctxAny().packageName, 0).applicationInfo
-            val splits = ai.splitSourceDirs
-            row(ctx, it, "Base APK", File(ai.sourceDir).name + " · " + sizeStr(File(ai.sourceDir).length()))
+            val splits = ai?.splitSourceDirs
+            val baseApk = ai?.sourceDir?.let { File(it) }
+            row(ctx, it, "Base APK",
+                if (baseApk != null) "${baseApk.name} · ${sizeStr(baseApk.length())}" else "—")
             splits?.forEach { s ->
                 row(ctx, it, "Split", File(s).name + " · " + sizeStr(File(s).length()))
             }
