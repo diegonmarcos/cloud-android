@@ -131,16 +131,16 @@ object DevControlServer {
                 ?.trim().orEmpty()
             val authed = auth == token
 
-            // Normalise both legacy flat paths AND the new /v1/{group}/{op}
+            // Normalise both legacy flat paths AND the new /api/{group}/{op}
             // layout to a single canonical op name. The op name is what
-            // the routing + the /v1/docs catalog below both key on, so
+            // the routing + the /api/docs catalog below both key on, so
             // there's exactly ONE source of truth for which endpoints
             // exist.
             val op = canonicalOp(path)
 
             // ENDPOINT CATALOG — declared once, used by both the
-            // routing switch AND /v1/docs. Adding an endpoint = one
-            // entry here + one branch in the switch below. /v1/docs
+            // routing switch AND /api/docs. Adding an endpoint = one
+            // entry here + one branch in the switch below. /api/docs
             // updates automatically.
             //
             // auth = false for diagnostic endpoints that are SAFE to
@@ -222,20 +222,20 @@ object DevControlServer {
                 }
                 "tracker/stops"  -> { reply(writer, "200 OK", trackerStopsJson(ctx), "application/json") }
                 "tracker/counts" -> { reply(writer, "200 OK", trackerCountsJson(ctx), "application/json") }
-                else -> reply(writer, "404 Not Found", "not found — see /v1/docs\n")
+                else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
     }
 
-    /** Map both `/ping` (legacy flat) and `/v1/system/ping` (new) to
-     *  the canonical op name `system/ping`. The routing + the /v1/docs
+    /** Map both `/ping` (legacy flat) and `/api/system/ping` (new) to
+     *  the canonical op name `system/ping`. The routing + the /api/docs
      *  catalog both key on this canonical name. New endpoints SHOULD
      *  be added under the v1/{group}/{op} form only; legacy aliases
      *  are kept so existing curls in the user's Configs/About panel
      *  don't break. */
     private fun canonicalOp(path: String): String {
-        // Strip /v1/ prefix if present.
-        val stripped = path.removePrefix("/v1/").removePrefix("/")
+        // Strip /api/ prefix if present.
+        val stripped = path.removePrefix("/api/").removePrefix("/")
         // Legacy flat → canonical group/op mapping. Keep in sync with
         // the docs catalog below.
         return when (stripped) {
@@ -278,13 +278,13 @@ object DevControlServer {
         sb.append("""{"port":""").append(port).append(',')
         sb.append(""""base":"http://127.0.0.1:""").append(port).append("\",")
         sb.append(""""auth":"Bearer <token> in Authorization header (token visible in Configs/About → Dev control HTTP)",""")
-        sb.append(""""path_styles":["/v1/{group}/{op} (preferred)","/{op} (legacy flat aliases — same handler)"],""")
+        sb.append(""""path_styles":["/api/{group}/{op} (preferred)","/{op} (legacy flat aliases — same handler)"],""")
         sb.append(""""endpoints":[""")
         rows.forEachIndexed { i, r ->
             if (i > 0) sb.append(',')
             sb.append('{')
             sb.append(""""op":"""").append(jsonEscape(r.op)).append("\",")
-            sb.append(""""path":"/v1/""").append(jsonEscape(r.op)).append("\",")
+            sb.append(""""path":"/api/""").append(jsonEscape(r.op)).append("\",")
             sb.append(""""method":"""").append(jsonEscape(r.method)).append("\",")
             sb.append(""""auth":""").append(r.auth).append(',')
             sb.append(""""description":"""").append(jsonEscape(r.description)).append("\",")
