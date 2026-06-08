@@ -55,6 +55,11 @@ class LocationTrackerService : Service() {
     // ── Stop-detector state — see detectStop() ─────────────────────
     private val recentBuf = ArrayDeque<MapsDb.PointRow>()
     private var activeStop: MapsDb.StopRow? = null
+    /** Row id of the currently-active Stop in MapsDb. Captured from
+     *  insertStop's return value on the MOVING→STOPPED transition so
+     *  the matching STOPPED→MOVING patches ended_at on the same row
+     *  without re-querying. -1 means no active stop. */
+    private var activeStopId: Long = -1L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -178,7 +183,7 @@ class LocationTrackerService : Service() {
                 lon       = cLon,
                 accuracy  = recentBuf.mapNotNull { it.accuracy }.average().toFloat(),
             )
-            db.insertStop(stop)
+            activeStopId = db.insertStop(stop)
             activeStop = stop
             // Fire-and-forget reverse-geocode of the new Stop. The
             // enricher self-throttles (1 req/sec) and bails if a
@@ -186,10 +191,14 @@ class LocationTrackerService : Service() {
             // Stop emissions is safe.
             StopsEnricher.kickAsync(applicationContext)
         } else if (maxDist >= radius && activeStop != null) {
-            // Transition: STOPPED → MOVING. We don't currently patch
-            // ended_at into the row (Push 3 will fold it in alongside
-            // place-name enrichment). Just clear the marker.
+            // Transition: STOPPED → MOVING. Patch ended_at on the
+            // active Stop row so downstream readers (Daily longest-
+            // dwell algorithm + future dwell-time math) see real
+            // bounds instead of treating the stop as still-running
+            // forever.
+            if (activeStopId > 0) db.updateStopEndedAt(activeStopId, row.ts)
             activeStop = null
+            activeStopId = -1L
         }
     }
 

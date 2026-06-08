@@ -186,6 +186,19 @@ class MapsDb private constructor(ctx: Context) :
         db.update("stops", cv, "id = ?", arrayOf(id.toString()))
     }
 
+    /** Patch ended_at on a Stop row — called by LocationTrackerService
+     *  when it observes the user leaving the dwell radius (transition
+     *  STOPPED → MOVING). Until this lands, every Stop row sits with
+     *  ended_at = NULL forever and the dashboards have to assume the
+     *  stop is "still active through now", which skews the longest-
+     *  dwell-per-day algorithm in MapsDailyFragment + dwell time math
+     *  everywhere else. */
+    fun updateStopEndedAt(id: Long, endedAtMs: Long) {
+        val db = writableDatabase
+        val cv = ContentValues().apply { put("ended_at", endedAtMs) }
+        db.update("stops", cv, "id = ?", arrayOf(id.toString()))
+    }
+
     /** All stops in the half-open range fromTs..toTs, newest first.
      *  Drives the Timeline + Stops + MyTrips dashboards. */
     fun stopsBetween(fromTs: Long, toTs: Long): List<RichStop> {

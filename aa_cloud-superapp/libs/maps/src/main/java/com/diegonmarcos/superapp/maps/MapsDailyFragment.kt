@@ -15,11 +15,22 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * "Daily" tab — one row per calendar day showing where the user slept
- * that night. The heuristic: for each day, find the Stop that was
- * ACTIVE at 03:00 local time of that day (most people are at their
- * sleeping place at 3 AM). First match per day wins; subsequent stops
- * on the same day are ignored here (they live in the Stops tab).
+ * "Daily" tab — one row per calendar day showing the user's primary
+ * place that day. Heuristic: for each day, pick the Stop with the
+ * LONGEST dwell that day. That's almost always either:
+ *   • the sleep location (longest dwell of the night spans across
+ *     midnight + into the morning), OR
+ *   • the day-time anchor (home / hotel / office) if the user is
+ *     stationary.
+ *
+ * Originally tried "stop ACTIVE at 03:00 local" — too strict: nothing
+ * populated until the user accumulated an overnight Stop. Longest-
+ * dwell is more forgiving while still surfacing the most meaningful
+ * single place per day.
+ *
+ * Dwell math: `endedAt ?: now` since live LocationTrackerService
+ * doesn't yet patch ended_at when the user leaves the radius. The
+ * still-active stop is treated as running through "now".
  *
  * 5-year window. Reverse-chronological (newest day first), matching
  * the Stops tab's order.
@@ -42,7 +53,7 @@ class MapsDailyFragment : Fragment() {
 
         if (daily.isEmpty()) {
             root.addView(TextView(ctx).apply {
-                text = "No daily locations yet. The Daily view shows where you slept each night — needs at least one Stop active around 03:00 local time to populate. Start the tracker on the Configs page and dwell somewhere overnight."
+                text = "No daily locations yet. Daily picks the LONGEST-dwell Stop per day — needs at least one Stop in the DB. Start the tracker on the Configs page, dwell ≥ 5 min in one spot, and refresh."
                 setTextColor(0xAAFFFFFFL.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Body2)
             })
@@ -88,40 +99,56 @@ class MapsDailyFragment : Fragment() {
         return scroll
     }
 
-    /** For each calendar day in [stops], pick the Stop that was active
-     *  at 03:00 local time of that day. Returns reverse-chronological. */
+    /** For each calendar day touched by any Stop in [stops], pick the
+     *  Stop with the LONGEST overlap into that day. Returns reverse-
+     *  chronological.
+     *
+     *  Algorithm: walk every Stop, then for each calendar day it
+     *  overlaps, accumulate the (stop, overlapMs) pair. Per-day winner
+     *  = stop with the largest overlapMs. */
     private fun computeDailyLocations(stops: List<MapsDb.RichStop>): List<DailyEntry> {
         if (stops.isEmpty()) return emptyList()
-        val out = mutableMapOf<String, DailyEntry>()
+        val now = System.currentTimeMillis()
         val dayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        // perDay: dayKey -> (anchorMs, winningStop, winningOverlapMs)
+        data class Best(val anchorMs: Long, val stop: MapsDb.RichStop, val overlapMs: Long)
+        val perDay = mutableMapOf<String, Best>()
         val cal = Calendar.getInstance()
         for (stop in stops) {
             val s = stop.startedAt
-            val e = stop.endedAt ?: System.currentTimeMillis()
-            // Walk from the start day's 03:00 forward, day by day.
+            val e = stop.endedAt ?: now
+            if (e <= s) continue
+            // Walk every calendar day this stop overlaps.
             cal.timeInMillis = s
-            cal.set(Calendar.HOUR_OF_DAY, 3)
+            cal.set(Calendar.HOUR_OF_DAY, 0)
             cal.set(Calendar.MINUTE, 0)
             cal.set(Calendar.SECOND, 0)
             cal.set(Calendar.MILLISECOND, 0)
-            // If 03:00 of the start day is BEFORE the stop began, this
-            // stop didn't cover that day's 3 AM — skip to the next day.
-            if (cal.timeInMillis < s) cal.add(Calendar.DAY_OF_MONTH, 1)
-            while (cal.timeInMillis in s..e) {
-                val key = dayFmt.format(Date(cal.timeInMillis))
-                if (!out.containsKey(key)) {
-                    out[key] = DailyEntry(
-                        dayMs        = cal.timeInMillis,
-                        placeName    = stop.placeName,
-                        neighborhood = stop.neighborhood,
-                        city         = stop.city,
-                        country      = stop.country,
-                    )
+            while (cal.timeInMillis <= e) {
+                val dayStart = cal.timeInMillis
+                val dayEnd   = dayStart + 24L * 3600_000L - 1L
+                val overlap  = (minOf(dayEnd, e) - maxOf(dayStart, s)).coerceAtLeast(0)
+                if (overlap > 0) {
+                    val key = dayFmt.format(Date(dayStart))
+                    val cur = perDay[key]
+                    if (cur == null || overlap > cur.overlapMs) {
+                        perDay[key] = Best(dayStart, stop, overlap)
+                    }
                 }
                 cal.add(Calendar.DAY_OF_MONTH, 1)
             }
         }
-        return out.entries.sortedByDescending { it.key }.map { it.value }
+        return perDay.entries
+            .sortedByDescending { it.key }
+            .map { (_, b) ->
+                DailyEntry(
+                    dayMs        = b.anchorMs,
+                    placeName    = b.stop.placeName,
+                    neighborhood = b.stop.neighborhood,
+                    city         = b.stop.city,
+                    country      = b.stop.country,
+                )
+            }
     }
 
     private data class DailyEntry(
