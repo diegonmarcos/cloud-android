@@ -18,6 +18,7 @@ import android.os.StatFs
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.text.SimpleDateFormat
@@ -88,20 +89,28 @@ class LauncherStatusStripView @JvmOverloads constructor(
         setBackgroundColor(0x00000000)
 
         val hpad = (10 * resources.displayMetrics.density).toInt()
-        val innerRow = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        // FrameLayout (NOT horizontal LinearLayout) — lets the date/time
+        // sit at gravity=CENTER which is TRUE screen-centre, aligned with
+        // the dynamic-island pill below. A LinearLayout with weighted
+        // columns would centre the date/time inside its column only —
+        // and since LEFT cluster (~60dp) is narrower than RIGHT cluster
+        // (~110dp), that "column centre" is biased rightward of screen
+        // centre. FrameLayout positions each child independently via
+        // layout_gravity, so LEFT anchors start, RIGHT anchors end, and
+        // the centre child stays glued to screen midpoint.
+        val innerRow = FrameLayout(context).apply {
             setPadding(hpad, 0, hpad, 0)
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
         }
 
-        // ── LEFT cluster: 5G · WiFi · WG ──────────────────────────
+        // ── LEFT cluster: 5G · WiFi · WG (anchored to START) ────────
         val leftCluster = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LayoutParams(
-                LayoutParams.WRAP_CONTENT,
-                LayoutParams.WRAP_CONTENT,
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.START or Gravity.CENTER_VERTICAL,
             )
         }
         signal5gView = makeIconLabel("5G")
@@ -112,7 +121,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         leftCluster.addView(wgView)
         innerRow.addView(leftCluster)
 
-        // ── CENTER: date + time, monospace, centred ───────────────
+        // ── CENTER: date + time, true screen-centre ────────────────
         dateTimeView = TextView(context).apply {
             setTextColor(0xFFFFFFFF.toInt())
             textSize = 12f
@@ -121,26 +130,31 @@ class LauncherStatusStripView @JvmOverloads constructor(
             gravity = Gravity.CENTER
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER,
+            )
         }
         innerRow.addView(dateTimeView)
 
-        // ── RIGHT cluster: RAM% · Storage% · Battery ──────────────
+        // ── RIGHT cluster: RAM% · Storage% · Battery (anchored END) ─
         val rightCluster = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LayoutParams(
-                LayoutParams.WRAP_CONTENT,
-                LayoutParams.WRAP_CONTENT,
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.END or Gravity.CENTER_VERTICAL,
             )
         }
         ramView     = makeIconLabel("R 0%")
         storageView = makeIconLabel("S 0%")
         batteryView = BatteryIconView(context).apply {
             val mlp = (4 * resources.displayMetrics.density).toInt()
-            layoutParams = LayoutParams(
-                LayoutParams.WRAP_CONTENT,
-                LayoutParams.WRAP_CONTENT,
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { leftMargin = mlp }
         }
         rightCluster.addView(ramView)

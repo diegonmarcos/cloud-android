@@ -162,13 +162,17 @@ class MainActivity : AppCompatActivity(),
             // Updated whenever onPrepareOptionsMenu fires (mode toggle,
             // back-stack change, drawer open) AND after a profile edit.
             refreshDynamicIsland()
-            // Tap the island → drop down the Notification Centre.
+            // Tap the island → fire whatever `ui.dynamic_island_action`
+            // resolves to. Default is `app:com.termux.nix` (open the
+            // Nix-on-Droid Termux app); legacy `notifications` opens
+            // the Notification Centre. Parsed at runtime so editing
+            // build.json + rebuilding is the only edit needed.
             findViewById<View>(R.id.dynamic_island)?.apply {
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {
                     Haptics.tap(it)
-                    openNotificationCenter()
+                    dispatchDynamicIslandAction()
                 }
             }
 
@@ -851,6 +855,41 @@ class MainActivity : AppCompatActivity(),
 
     /** dp → px convenience for chrome math. */
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    /** Parse [BuildConfig.UI_DYNAMIC_ISLAND_ACTION] and dispatch. Formats:
+     *   • `app:<packageName>`  → launch that app's main activity.
+     *   • `notifications`      → open the Notification Centre.
+     *   • `shortcut:<id>`      → fire a shortcut-style intent (currently
+     *     unused, reserved for future bindings like `shortcut:wallet`).
+     *  Tolerant of an uninstalled target — shows a short Toast instead of
+     *  silently falling back, so the user's binding stays authoritative. */
+    private fun dispatchDynamicIslandAction() {
+        val action = BuildConfig.UI_DYNAMIC_ISLAND_ACTION.ifBlank { "notifications" }
+        val parts = action.split(":", limit = 2)
+        when (parts.getOrNull(0)) {
+            "app" -> {
+                val pkg = parts.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return
+                val intent = packageManager.getLaunchIntentForPackage(pkg)
+                if (intent != null) {
+                    startActivity(intent)
+                } else {
+                    android.widget.Toast.makeText(this, "$pkg not installed", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+            "notifications" -> openNotificationCenter()
+            "shortcut"      -> parts.getOrNull(1)?.let { handleShortcutById(it) }
+            else            -> {}
+        }
+    }
+
+    /** Best-effort shortcut dispatch — re-uses [handleShortcutIntent]'s
+     *  vocabulary by synthesising an intent with the shortcut_action extra.
+     *  Lets `ui.dynamic_island_action = "shortcut:wallet"` reach the same
+     *  code path as the launcher-icon long-press shortcuts. */
+    private fun handleShortcutById(id: String) {
+        val syn = android.content.Intent().apply { putExtra("shortcut_action", id) }
+        handleShortcutIntent(syn)
+    }
 
     /** Apply a topMargin to the toolbar island. Tolerant of a null
      *  view + non-margin layout params (returns silently). */

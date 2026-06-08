@@ -1349,6 +1349,8 @@
         "subtitle": "Hands-off mode — only browser, dialer, camera, and a few utility apps shown."
       }
     ],
+    "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed — does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
+    "dynamic_island_action": "app:com.termux.nix",
     "_doc_home_apps_tabs": "Tabs at the top of the Home Apps swipe-up sheet (AppDrawerSheetFragment). Cloud = the existing HomeGroupedFragment (cloud-service tile grid derived from home_groups). Phone = PhoneAppsFragment (Android-launcher folder grid of installed apps grouped by phone_folders). Order = display order.",
     "home_apps_tabs": [
       { "id": "cloud", "label": "Cloud" },

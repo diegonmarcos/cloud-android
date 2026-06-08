@@ -56,9 +56,13 @@ class PhoneAppsFragment : Fragment() {
         }
         scroll.addView(rootCol)
 
-        val apps     = collectLaunchableApps(ctx)
-        val folders  = PhoneFolders.loadFromBuildConfig()
-        val grouped  = PhoneAppClassifier.groupByFolder(apps, folders)
+        // Process-level cache — see companion object below. First open
+        // does the full work (LauncherApps enumeration + 100+ icon-drawable
+        // loads + classifier walk = ~600ms on typical phones); every
+        // subsequent open is a constant-time read against the cached refs.
+        val folders  = sCachedFolders ?: PhoneFolders.loadFromBuildConfig().also { sCachedFolders = it }
+        val apps     = sCachedApps    ?: collectLaunchableApps(ctx).also { sCachedApps = it }
+        val grouped  = sCachedGrouped ?: PhoneAppClassifier.groupByFolder(apps, folders).also { sCachedGrouped = it }
         val columns  = BuildConfig.UI_PHONE_GRID_COLUMNS
 
         // Skip empty folders entirely — One UI hides them too, and an
@@ -288,5 +292,25 @@ class PhoneAppsFragment : Fragment() {
 
     private fun dp(ctx: Context, v: Int): Int = (v * ctx.resources.displayMetrics.density).toInt()
 
-    companion object { fun newInstance() = PhoneAppsFragment() }
+    companion object {
+        fun newInstance() = PhoneAppsFragment()
+
+        /** Process-level caches — survive across Fragment lifecycles
+         *  so re-opening the Phone tab is near-instant. Built once on
+         *  the first call to [onCreateView] and reused thereafter.
+         *  Annotated @Volatile so a future package-change callback can
+         *  null these from any thread safely. */
+        @Volatile private var sCachedFolders: List<PhoneFolders.Folder>? = null
+        @Volatile private var sCachedApps:    List<PhoneApp>? = null
+        @Volatile private var sCachedGrouped: Map<String, List<PhoneApp>>? = null
+
+        /** Invalidate every cache slot — call from a LauncherApps.Callback
+         *  if/when we wire package-change observation. Currently unused;
+         *  killing + reopening the app rebuilds the cache organically. */
+        fun invalidateCache() {
+            sCachedFolders = null
+            sCachedApps = null
+            sCachedGrouped = null
+        }
+    }
 }
