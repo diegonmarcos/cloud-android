@@ -59,4 +59,16 @@ object WgState {
         }
         return p!!
     }
+
+    /** Force the tunnel down — used by LauncherProfiles.Guest to
+     *  guarantee no private mesh traffic when a guest holds the
+     *  phone. Idempotent: a no-op if the tunnel is already DOWN.
+     *  Wrapped in runCatching at the call site; this method itself
+     *  is best-effort (TUN-down requires the VPN service permission,
+     *  which a stock device may not have granted yet). */
+    fun requestTunnelDown(ctx: Context) {
+        runCatching {
+            backend(ctx).setState(tunnel, Tunnel.State.DOWN, null)
+        }
+    }
 }

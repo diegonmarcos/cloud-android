@@ -340,15 +340,27 @@ class PhoneAppsFragment : Fragment() {
 
         /** Static enumeration — derives LauncherApps from [ctx] each
          *  call so warm-up (no Fragment instance) + onCreateView (has
-         *  one) share the exact same code path. */
+         *  one) share the exact same code path.
+         *
+         *  Profile filter applied last: when LauncherProfile = Guest,
+         *  the behavior map (build.json::ui.launcher_profiles[guest]
+         *  .behavior) declares app_filter=whitelist + whitelist=
+         *  [browser], and [LauncherProfiles.allowedPackagesFor]
+         *  resolves "browser" to every installed browser. The Phone
+         *  tab in Guest mode therefore lists exactly the device's
+         *  browsers — system browser, Chrome, Firefox, etc. — and
+         *  nothing else. Personal / Work pass through (filter
+         *  returns null = "no filter"). */
         private fun collectLaunchableAppsStatic(ctx: Context): List<PhoneApp> {
             val me = Process.myUserHandle()
             val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
                 ?: return emptyList()
+            val allowed = LauncherProfiles.allowedPackagesFor(ctx, LauncherProfilePrefs(ctx).profile)
             return runCatching {
                 launcher.getActivityList(null, me).mapNotNull { info ->
                     val pkg = info.applicationInfo.packageName
                     if (pkg == ctx.packageName) return@mapNotNull null
+                    if (allowed != null && pkg !in allowed) return@mapNotNull null
                     PhoneApp(
                         packageName       = pkg,
                         activityComponent = info.componentName,

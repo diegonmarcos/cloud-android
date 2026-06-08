@@ -32,7 +32,8 @@ class LauncherThemePrefs(context: Context) {
  *  while keeping the runtime switch a closed enum. */
 enum class LauncherTheme(val id: String) {
     Cloud("cloud"),
-    CloudMinimalistBlack("cloud_minimalist_black");
+    CloudMinimalistBlack("cloud_minimalist_black"),
+    CloudPowerSaving("cloud_power_saving");
 
     companion object {
         fun fromId(id: String?): LauncherTheme =

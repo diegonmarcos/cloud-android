@@ -92,7 +92,8 @@
         "libs:chat",
         "libs:wallet",
         "libs:health",
-        "libs:maps"
+        "libs:maps",
+        "libs:fin"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -177,6 +178,13 @@
         "libs:core"
       ],
       "comment": "MyMaps — native GPS tracker + MapLibre Native renderer + SQLite store. Foreground LocationTrackerService writes points; StopDetector emits dwell-events; StopsEnricher resolves each Stop via the active provider (build.json::ui.maps_providers, default Nominatim public). MyTrips Dashboard + Stats read the same SQLite. All Maps* / Mytrips* / LocationTrackerService / StopsEnricher / MapsProviderClient code lives here; app/ only retains the SectionPages dispatch that imports the fragments. Native deps: org.maplibre.gl:android-sdk + play-services-location — both heavy in native .so (arm64-only via build.json::android.abi_filters)."
+    },
+    "libs:fin": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "MyFin — personal finance dashboard. Beta renders from build.json::ui.myfin_mock (accounts, monthly stats, top expense categories, recent transactions, net worth) — all data-driven so the user can iterate the layout by editing JSON without rebuilding Kotlin. Real aggregator (Plaid / GoCardless / SaltEdge / manual OFX import) lands in a follow-up. MyFinDashboardFragment is the only surface for now; pages: dashboard."
     }
   },
   "ui": {

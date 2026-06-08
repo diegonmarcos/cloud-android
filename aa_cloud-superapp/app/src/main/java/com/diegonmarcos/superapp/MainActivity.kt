@@ -850,6 +850,19 @@ class MainActivity : AppCompatActivity(),
                 toolbarIsland?.visibility = View.GONE
                 bottomNavIsland?.visibility = View.GONE
             }
+            isLauncher && theme == LauncherTheme.CloudPowerSaving -> {
+                // Power Saving — Samsung / Apple / Pixel-style. No
+                // chrome at all: no top strip, no toolbar island, no
+                // bottom-nav island. Window background flipped to
+                // pure black for OLED self-emission savings (the
+                // oled_black feature flag drives this). Background
+                // services paused via BackgroundOrchestrator below;
+                // WireGuard stays up.
+                strip?.visibility = View.GONE
+                toolbarIsland?.visibility = View.GONE
+                bottomNavIsland?.visibility = View.GONE
+                window.decorView.setBackgroundColor(android.graphics.Color.BLACK)
+            }
             else -> {
                 strip?.visibility = View.GONE
                 // Restore the XML default — system status bar is visible
@@ -858,6 +871,24 @@ class MainActivity : AppCompatActivity(),
                 setToolbarIslandTopMargin(toolbarIsland, dp(6))
                 toolbarIsland?.visibility = View.VISIBLE
                 bottomNavIsland?.visibility = View.VISIBLE
+            }
+        }
+        // Apply the theme's background_pause / wireguard_required
+        // policy. Reads features map declared in build.json::ui
+        // .launcher_themes[theme].features so this stays declarative
+        // — Power Saving's background_pause=true tears down the Maps
+        // tracker + WorkManager periodic jobs; flipping back to Cloud
+        // is a no-op (producers re-arm on their own lifecycle).
+        runCatching {
+            BackgroundOrchestrator.applyForTheme(this, LauncherThemes.featuresFor(theme))
+        }
+        // Profile-level WireGuard policy — Guest profile pins the
+        // tunnel OFF so a borrowed phone can't see private infra.
+        runCatching {
+            val profile = LauncherProfilePrefs(this).profile
+            val behavior = LauncherProfiles.behaviorFor(profile)
+            if (behavior.wireguardOff) {
+                WgState.requestTunnelDown(this)
             }
         }
     }
