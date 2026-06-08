@@ -8,7 +8,7 @@
   },
   "android": {
     "application_id": "com.diegonmarcos.superapp",
-    "compile_sdk": 34,
+    "compile_sdk": 35,
     "min_sdk": 26,
     "target_sdk": 34,
     "version_code": 1,
@@ -16,8 +16,9 @@
   },
   "toolchain": {
     "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
-    "agp": "8.5.2",
-    "gradle": "8.7",
+    "_doc_sdk_bump": "compile_sdk bumped 34→35 to satisfy androidx.health.connect:connect-client:1.1.0-alpha10's AAR metadata constraint (it requires consumers to compile against Android 35+ for the new HC permission definitions wired to API 35 constants). AGP 8.5.2 maxes at compileSdk 34, so AGP bumped 8.5.2→8.7.3 (first stable AGP supporting compileSdk 35). Gradle 8.7→8.10.2 follows AGP 8.7's Gradle 8.9+ requirement. target_sdk stays at 34 — opting into Android 15 runtime behaviour is a separate concern from compiling against its APIs.",
+    "agp": "8.7.3",
+    "gradle": "8.10.2",
     "kotlin": "1.9.24",
     "jdk": "17"
   },
@@ -1332,6 +1333,11 @@
             "icon": "ic_home"
           },
           {
+            "id": "maps",
+            "label": "Maps",
+            "icon": "ic_settings"
+          },
+          {
             "id": "import",
             "label": "Import",
             "icon": "ic_p_import",
@@ -1384,6 +1390,33 @@
         "subtitle": "Hands-off mode — only browser, dialer, camera, and a few utility apps shown."
       }
     ],
+    "_doc_maps_providers": "Available geocoding providers. The user picks one per slot in Configs → Maps (kind: 'reverse' = city/neighborhood, 'poi' = restaurant/shop). 'host': 'free-noauth' = public free endpoint, no account, fair-use rate limit; 'free-account' = free tier behind signup; 'paid' = billing required; 'self' = our own deployment at endpoint URL. requires_api_key=true means we look up the key in MapsApiKeyPrefs. New providers: add a JSON entry + supply the key (if any) in Configs → Maps → API Keys; no Kotlin edits.",
+    "maps_providers": [
+      { "id": "nominatim_public", "label": "Nominatim (osm.org)", "kind": ["reverse"],        "host": "free-noauth",  "free_tier": "fair use",           "requires_api_key": false, "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1" },
+      { "id": "photon_public",    "label": "Photon (komoot.io)",  "kind": ["reverse"],        "host": "free-noauth",  "free_tier": "fair use",           "requires_api_key": false, "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}" },
+      { "id": "locationiq",       "label": "LocationIQ",           "kind": ["reverse"],        "host": "free-account", "free_tier": "5k req/day",         "requires_api_key": true,  "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json" },
+      { "id": "geoapify",         "label": "Geoapify",             "kind": ["reverse"],        "host": "free-account", "free_tier": "3k req/day",         "requires_api_key": true,  "endpoint": "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={key}" },
+      { "id": "opencage",         "label": "OpenCage",             "kind": ["reverse"],        "host": "free-account", "free_tier": "2.5k req/day",       "requires_api_key": true,  "endpoint": "https://api.opencagedata.com/geocode/v1/json?q={lat}+{lon}&key={key}" },
+      { "id": "nominatim_self",   "label": "Nominatim (self)",     "kind": ["reverse"],        "host": "self",         "free_tier": "unlimited (self)",   "requires_api_key": false, "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1" },
+      { "id": "photon_self",      "label": "Photon (self)",        "kind": ["reverse"],        "host": "self",         "free_tier": "unlimited (self)",   "requires_api_key": false, "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}" },
+      { "id": "overpass_public",  "label": "Overpass (osm.org)",   "kind": ["poi"],            "host": "free-noauth",  "free_tier": "fair use",           "requires_api_key": false, "endpoint": "https://overpass-api.de/api/interpreter" },
+      { "id": "overpass_self",    "label": "Overpass (self)",      "kind": ["poi"],            "host": "self",         "free_tier": "unlimited (self)",   "requires_api_key": false, "endpoint": "https://geo.diegonmarcos.com/overpass/api/interpreter" },
+      { "id": "radar",            "label": "Radar.io",             "kind": ["reverse","poi"],  "host": "free-account", "free_tier": "100k req/month",     "requires_api_key": true,  "endpoint": "https://api.radar.io/v1/geocode/reverse?coordinates={lat},{lon}" },
+      { "id": "google_places",    "label": "Google Places",        "kind": ["reverse","poi"],  "host": "paid",         "free_tier": "$200/mo credit",     "requires_api_key": true,  "endpoint": "https://places.googleapis.com/v1/places:searchNearby" }
+    ],
+    "_doc_maps_active": "Default-selected provider per slot at first launch. User changes them at runtime in Configs → Maps (persisted in MapsProviderPrefs). Defaults are free-noauth = zero account / zero key — works out of the box on a fresh install.",
+    "maps_active": {
+      "reverse": "nominatim_public",
+      "poi":     "overpass_public"
+    },
+    "_doc_maps_tracking": "Tracker calibration — first-run defaults for the foreground GPS service. User tunes via Configs → Maps → Calibration sliders, persisted in MapsTrackingPrefs. `interval_moving_ms` = GPS poll cadence when speed > moving_threshold_mps. `interval_stopped_ms` = poll cadence when below threshold. `stops_radius_m` + `stops_dwell_min` = the Stop detector: must dwell within radius for at least dwell_min minutes to register a Stop event (the only event that fires a reverse-geocode + POI lookup — the 'batching trick').",
+    "maps_tracking": {
+      "interval_moving_ms": 30000,
+      "interval_stopped_ms": 300000,
+      "moving_threshold_mps": 2,
+      "stops_radius_m": 50,
+      "stops_dwell_min": 5
+    },
     "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed — does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
     "dynamic_island_action": "app:com.termux.nix",
     "_doc_home_apps_tabs": "Tabs at the top of the Home Apps swipe-up sheet (AppDrawerSheetFragment). Cloud = the existing HomeGroupedFragment (cloud-service tile grid derived from home_groups). Phone = PhoneAppsFragment (Android-launcher folder grid of installed apps grouped by phone_folders). Order = display order.",

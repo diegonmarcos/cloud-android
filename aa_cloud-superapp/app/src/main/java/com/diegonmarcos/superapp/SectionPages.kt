@@ -36,6 +36,7 @@ object SectionPages {
         sectionId == "config" && pageId == "profile"   -> ProfileFragment.newInstance()
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
+        sectionId == "config" && pageId == "maps"     -> MapsConfigFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
         sectionId == "health"                           -> HealthFragment.newInstance(pageId)
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()
