@@ -87,7 +87,8 @@
         "libs:ops",
         "libs:vault",
         "libs:chat",
-        "libs:wallet"
+        "libs:wallet",
+        "libs:health"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -158,6 +159,13 @@
         "libs:core"
       ],
       "comment": "Apple/Google-Wallet-style Compose surface. Cards / Tickets / Calendar / Archive tabs. Sources its vCard data from assets/qrcodes/qrcodes.json (the front repo's generated contact block). First Compose-only lib in the project — drives the kotlinCompilerExtensionVersion pin."
+    },
+    "libs:health": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "MyHealth — native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device — single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface — pages declared in build.json::ui.sections[id=health]."
     }
   },
   "ui": {
@@ -487,7 +495,7 @@
                 "id": "myhealth",
                 "label": "MyHealth",
                 "icon": "ic_heart",
-                "target": "https://diegonmarcos.github.io/my-health/"
+                "target": "page:health/dashboard"
               },
               {
                 "id": "mydata",
@@ -1271,6 +1279,33 @@
             "label": "Cards",
             "icon": "ic_wallet"
           }
+        ]
+      },
+      {
+        "_doc": "MyHealth — native Health Connect dashboard. Reads the aggregated record set Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura all sync into via androidx.health.connect:connect-client (one SDK = union of every source on-device). LOCAL-ONLY: HealthStore (libs:core, SharedPreferences) caches today's rollups, write-rate stats, source-app breakdowns, and last-sync timestamps. ZERO network calls — no OAuth, no webhooks, no cloud ingester (the diegonmarcos.github.io/my-health/ web view is OUT; tile retargeted to page:health/dashboard).",
+        "_doc_pages": "Geeky-grade surface — one page per HC domain plus four meta pages (sources / permissions / raw / stats). 'sources' lists which app wrote each record type + counts; 'raw' is a per-record inspector (UID, origin pkg, timestamp, value) so the user can audit every datapoint; 'stats' surfaces HC DB size, write-rate per source, and this app's read-cache footprint.",
+        "_doc_icons_new": "Six new drawables added under app/src/main/res/drawable/: ic_p_health_activity, ic_p_health_sleep, ic_p_health_body, ic_p_health_vitals, ic_p_health_nutrition, ic_p_health_workouts, ic_p_health_cycle. Vector XMLs based on Material Symbols path data.",
+        "id": "health",
+        "label": "MyHealth",
+        "icon": "ic_heart",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          { "id": "dashboard",   "label": "Dashboard",   "icon": "ic_heart" },
+          { "id": "activity",    "label": "Activity",    "icon": "ic_p_health_activity" },
+          { "id": "heart",       "label": "Heart",       "icon": "ic_heart" },
+          { "id": "sleep",       "label": "Sleep",       "icon": "ic_p_health_sleep" },
+          { "id": "body",        "label": "Body",        "icon": "ic_p_health_body" },
+          { "id": "vitals",      "label": "Vitals",      "icon": "ic_p_health_vitals" },
+          { "id": "nutrition",   "label": "Nutrition",   "icon": "ic_p_health_nutrition" },
+          { "id": "workouts",    "label": "Workouts",    "icon": "ic_p_health_workouts" },
+          { "id": "cycle",       "label": "Cycle",       "icon": "ic_p_health_cycle" },
+          { "id": "trends",      "label": "Trends",      "icon": "ic_p_c3_reports" },
+          { "id": "sources",     "label": "Sources",     "icon": "ic_p_accounts" },
+          { "id": "permissions", "label": "Permissions", "icon": "ic_settings" },
+          { "id": "raw",         "label": "Raw",         "icon": "ic_p_logs" },
+          { "id": "stats",       "label": "Stats",       "icon": "ic_database" },
+          { "id": "about",       "label": "About",       "icon": "ic_p_more" }
         ]
       },
       {

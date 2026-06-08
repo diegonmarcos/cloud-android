@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import androidx.fragment.app.Fragment
+import com.diegonmarcos.superapp.health.HealthFragment
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.wallet.WalletFragment
 
@@ -36,6 +37,7 @@ object SectionPages {
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
+        sectionId == "health"                           -> HealthFragment.newInstance(pageId)
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()
         sectionId == "config" && (pageId == "about" || pageId == "dev") ->
             com.diegonmarcos.superapp.devcontrol.DevControlFragment.newInstance()
