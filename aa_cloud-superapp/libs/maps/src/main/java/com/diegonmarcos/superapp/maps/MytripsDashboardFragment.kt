@@ -82,6 +82,29 @@ class MytripsDashboardFragment : Fragment() {
         root.addView(kv(ctx, "Stops with city",    all5y.count { it.city != null }.toString()))
         root.addView(kv(ctx, "Stops with country", all5y.count { it.country != null }.toString()))
 
+        // ── Detector state — explains WHY a Stop has / hasn't emitted
+        //    in one panel. Reads MapsTrackerPrefs.last* telemetry that
+        //    LocationTrackerService writes on every tick. ────────────
+        root.addView(spacer(ctx, dp(ctx, 16)))
+        root.addView(subhead(ctx, "Detector state"))
+        val tp = MapsTrackerPrefs(ctx)
+        val cal = MapsTrackingPrefs(ctx)
+        val decisionStr = tp.lastDecision.ifEmpty { "(no ticks yet)" }
+        val decisionAge = if (tp.lastDecisionTs > 0)
+            humanAge(now - tp.lastDecisionTs)
+        else "—"
+        root.addView(kv(ctx, "Last decision", "$decisionStr · $decisionAge"))
+        root.addView(kv(ctx, "Buffer fill",
+            "${tp.lastBufFill} / ${tp.lastBufSize}"))
+        root.addView(kv(ctx, "Span (min) / dwell",
+            "%.1f / %d".format(tp.lastSpanMin, cal.stopsDwellMin)))
+        root.addView(kv(ctx, "p90 dist / radius_eff",
+            "%.0fm / %.0fm".format(tp.lastP90DistM, tp.lastRadiusEffM)))
+        root.addView(kv(ctx, "Avg accuracy",
+            "%.0fm".format(tp.lastAvgAccM)))
+        root.addView(kv(ctx, "Active stop id",
+            if (tp.activeStopId > 0) tp.activeStopId.toString() else "—"))
+
         // ── Last 5 GPS fixes — shows fixes are landing even
         //    pre-Stop. Reverse-chronological. ───────────────────────
         root.addView(spacer(ctx, dp(ctx, 16)))
@@ -236,6 +259,17 @@ class MytripsDashboardFragment : Fragment() {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h)
     }
     private fun dp(ctx: android.content.Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
+
+    /** "23s ago" / "4m ago" / "1h ago" — used by detector telemetry. */
+    private fun humanAge(deltaMs: Long): String {
+        val s = (deltaMs / 1000L).coerceAtLeast(0)
+        return when {
+            s < 60         -> "${s}s ago"
+            s < 3600       -> "${s / 60}m ago"
+            s < 86400      -> "${s / 3600}h ago"
+            else           -> "${s / 86400}d ago"
+        }
+    }
 
     companion object { fun newInstance() = MytripsDashboardFragment() }
 }

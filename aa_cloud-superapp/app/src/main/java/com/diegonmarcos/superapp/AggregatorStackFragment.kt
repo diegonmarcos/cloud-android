@@ -205,6 +205,7 @@ class AggregatorStackFragment : Fragment(),
         "chat_mattermost"    -> renderChatPlaceholder(ctx, body, "Mattermost", "page:chat/mattermost")
         "open_link"          -> renderOpenLink(ctx, body, panel)
         "notifications"      -> renderNotifications(ctx, body)
+        "phone_notifications" -> renderPhoneNotifications(ctx, body)
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
         else                 -> renderPlaceholder(ctx, body, panel)
@@ -442,6 +443,105 @@ class AggregatorStackFragment : Fragment(),
             })
             body.addView(row)
         }
+    }
+
+    /** Phone-system notifications captured by PhoneNotificationListenerService.
+     *  When access is denied the panel collapses to a single CTA button
+     *  that fires Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS. When
+     *  granted, rows render like the in-app notifications panel above
+     *  but tapping launches the source app. */
+    private fun renderPhoneNotifications(ctx: android.content.Context, body: LinearLayout) {
+        if (!isNotificationAccessGranted(ctx)) {
+            body.addView(android.widget.TextView(ctx).apply {
+                text = "Notification Access not granted. As a launcher we can read the phone's system notifications — grant once, then they stream here."
+                setTextColor(0x99FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(0, dp(8), 0, dp(8))
+            })
+            body.addView(android.widget.Button(ctx).apply {
+                text = "Grant Notification Access"
+                setOnClickListener {
+                    runCatching {
+                        ctx.startActivity(android.content.Intent(
+                            android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS
+                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }
+            })
+            return
+        }
+        val entries = PhoneNotificationStore.all(ctx)
+        if (entries.isEmpty()) {
+            body.addView(android.widget.TextView(ctx).apply {
+                text = "Notification Access granted — no phone notifications captured yet. They will land here as apps post them."
+                setTextColor(0x99FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setPadding(0, dp(8), 0, dp(8))
+            })
+            return
+        }
+        val now = System.currentTimeMillis()
+        for (e in entries.take(50)) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                val pad = dp(10); setPadding(pad, pad, pad, pad)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(6) }
+                layoutParams = lp
+                setBackgroundColor(0x331A0033)
+                isClickable = true
+                setOnClickListener {
+                    runCatching {
+                        val intent = ctx.packageManager.getLaunchIntentForPackage(e.packageName)
+                        if (intent != null) ctx.startActivity(intent)
+                    }
+                }
+            }
+            val meta = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            meta.addView(android.widget.TextView(ctx).apply {
+                text = e.title.ifBlank { e.appLabel }
+                setTextColor(0xFFE9D8FD.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            val ago = (now - e.ts).let { ms -> when {
+                ms < 60_000     -> "just now"
+                ms < 3_600_000  -> "${ms / 60_000}m ago"
+                ms < 86_400_000 -> "${ms / 3_600_000}h ago"
+                else            -> "${ms / 86_400_000}d ago"
+            }}
+            meta.addView(android.widget.TextView(ctx).apply {
+                text = "${e.appLabel} · $ago"
+                setTextColor(0x88FFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            })
+            row.addView(meta)
+            if (e.text.isNotBlank()) {
+                row.addView(android.widget.TextView(ctx).apply {
+                    text = e.text
+                    setTextColor(0xCCE9D8FD.toInt())
+                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                    setPadding(0, dp(2), 0, 0)
+                })
+            }
+            body.addView(row)
+        }
+    }
+
+    /** Settings.Secure.enabled_notification_listeners is a colon-
+     *  separated flat string of ComponentName.flattenToString()s. We
+     *  match on packageName alone — sufficient since only ONE listener
+     *  per package can be enabled at a time. */
+    private fun isNotificationAccessGranted(ctx: android.content.Context): Boolean {
+        val flat = android.provider.Settings.Secure.getString(
+            ctx.contentResolver, "enabled_notification_listeners"
+        ).orEmpty()
+        return flat.contains(ctx.packageName)
     }
 
     /** Round-robin pool of stable host ids. View.generateViewId() crashes

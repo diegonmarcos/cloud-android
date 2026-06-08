@@ -338,6 +338,11 @@
             "subtitle": "In-app feed (Updater + Crash producers)"
           },
           {
+            "kind": "phone_notifications",
+            "title": "Phone Notifications",
+            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)"
+          },
+          {
             "kind": "c3_public",
             "title": "C3 Health · Public",
             "subtitle": "Services reachable via Caddy edge"
@@ -1584,7 +1589,7 @@
       "interval_stopped_ms": 300000,
       "moving_threshold_mps": 2,
       "stops_radius_m": 100,
-      "stops_dwell_min": 5
+      "stops_dwell_min": 2
     },
     "_doc_myfin_mock": "MyFin beta dashboard data — fully editable here, baked into libs:fin's BuildConfig at gradle config time so MyFinDashboardFragment reads it via BuildConfig.UI_MYFIN_MOCK_B64. Currency strings are display-only (the fragment just prints what's here); flip to a real aggregator by swapping the loader, not by replacing this block. Numbers are illustrative.",
     "myfin_mock": {

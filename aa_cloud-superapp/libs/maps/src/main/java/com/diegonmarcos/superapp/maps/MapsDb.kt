@@ -199,6 +199,33 @@ class MapsDb private constructor(ctx: Context) :
         db.update("stops", cv, "id = ?", arrayOf(id.toString()))
     }
 
+    /** Single Stop by row id — used by [LocationTrackerService] on
+     *  service revival to restore the in-memory `activeStop` field
+     *  from the persisted `MapsTrackerPrefs.activeStopId` so a kill
+     *  mid-stop can still patch ended_at on the same row instead of
+     *  leaving it dangling and double-emitting a fresh Stop. */
+    fun getStop(id: Long): RichStop? {
+        val db = readableDatabase
+        db.rawQuery(
+            "SELECT id,started_at,ended_at,lat,lon,place_name,neighborhood,city,country " +
+                "FROM stops WHERE id = ?;",
+            arrayOf(id.toString()),
+        ).use { c ->
+            if (!c.moveToFirst()) return null
+            return RichStop(
+                id            = c.getLong(0),
+                startedAt     = c.getLong(1),
+                endedAt       = if (c.isNull(2)) null else c.getLong(2),
+                lat           = c.getDouble(3),
+                lon           = c.getDouble(4),
+                placeName     = c.getString(5),
+                neighborhood  = c.getString(6),
+                city          = c.getString(7),
+                country       = c.getString(8),
+            )
+        }
+    }
+
     /** All stops in the half-open range fromTs..toTs, newest first.
      *  Drives the Timeline + Stops + MyTrips dashboards. */
     fun stopsBetween(fromTs: Long, toTs: Long): List<RichStop> {

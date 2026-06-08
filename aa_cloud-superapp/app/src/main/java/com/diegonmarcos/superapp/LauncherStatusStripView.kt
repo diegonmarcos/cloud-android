@@ -156,6 +156,11 @@ class LauncherStatusStripView @JvmOverloads constructor(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { leftMargin = mlp }
+            // Tap → popup with "Estimated battery last" + session
+            // metrics (same numbers Configs/About/Battery & Usage
+            // shows, just one-glance accessible from the strip).
+            isClickable = true
+            setOnClickListener { BatteryEstimatePopup.show(context, this) }
         }
         rightCluster.addView(ramView)
         rightCluster.addView(storageView)

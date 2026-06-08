@@ -171,6 +171,29 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Open Settings → Special access → Notification access so the user
+     *  can toggle BIND_NOTIFICATION_LISTENER_SERVICE for this app. Used
+     *  by the Phone Notifications panel + the Permissions button below
+     *  the "Notif. listener" row. Same fallback as battery-optimization
+     *  in case the stock screen isn't present on a stripped AOSP fork. */
+    private fun openNotificationListenerSettings() {
+        val primary = android.content.Intent(
+            android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS,
+        )
+        if (primary.resolveActivity(requireContext().packageManager) != null) {
+            runCatching { startActivity(primary) }
+            return
+        }
+        runCatching {
+            startActivity(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", requireContext().packageName, null),
+                )
+            )
+        }
+    }
+
     /** Read per-app foreground + background time from UsageStatsManager.
      *  Returns (foregroundMs, backgroundMs); both -1 if the user hasn't
      *  granted PACKAGE_USAGE_STATS. Window = last 7 days. */
@@ -374,6 +397,9 @@ class DevControlFragment : Fragment() {
             it.addView(actionButton(ctx, "Set Battery Optimization → No Optimization") {
                 openBatteryOptimizationSettings()
             })
+            it.addView(actionButton(ctx, "Grant Notification Access") {
+                openNotificationListenerSettings()
+            })
             it.addView(actionButton(ctx, "Open system app settings") {
                 openAppSettings()
             })
@@ -429,58 +455,17 @@ class DevControlFragment : Fragment() {
             // Read current battery level + charging status, persist
             // the "last unplug" anchor in SharedPreferences, derive
             // the three user-requested rows.
-            val batterySticky = ctxAny.registerReceiver(
-                null,
-                android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED),
-            )
-            val curLevel = batterySticky?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
-            val curScale = batterySticky?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
-            val curStatus = batterySticky?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
-            val curPct = if (curLevel >= 0 && curScale > 0) curLevel * 100 / curScale else -1
-            val isCharging = curStatus == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
-                curStatus == android.os.BatteryManager.BATTERY_STATUS_FULL
-            val sp = ctxAny.getSharedPreferences("battery_session", Context.MODE_PRIVATE)
-            val now = System.currentTimeMillis()
-            var unplugTs  = sp.getLong("unplug_ts", 0L)
-            var unplugPct = sp.getInt("unplug_pct", -1)
-            if (isCharging) {
-                // Currently on the cable — clear any stale anchor so the
-                // next discharge cycle starts fresh.
-                if (unplugTs != 0L) sp.edit().clear().apply()
-                unplugTs = 0L; unplugPct = -1
-            } else if (curPct in 0..100) {
-                // Discharging. Need an anchor; record one if there's no
-                // valid prior, or if battery went UP since last anchor
-                // (brief plug-in we missed because the app was paused).
-                if (unplugTs == 0L || (unplugPct in 0..100 && curPct > unplugPct)) {
-                    sp.edit()
-                        .putLong("unplug_ts", now)
-                        .putInt("unplug_pct", curPct)
-                        .apply()
-                    unplugTs = now; unplugPct = curPct
-                }
-            }
-            if (isCharging) {
-                row(ctx, it, "Since last charge",      "Charging — n/a")
-                row(ctx, it, "% battery/min consumed", "—")
-                row(ctx, it, "Estimated battery last", "—")
-            } else if (unplugTs > 0L && unplugPct in 0..100 && curPct in 0..100) {
-                val elapsedMs = (now - unplugTs).coerceAtLeast(0L)
-                val elapsedMin = elapsedMs / 60_000.0
-                val consumed = (unplugPct - curPct).coerceAtLeast(0)
-                val ratePerMin = if (elapsedMin > 0.5) consumed / elapsedMin else 0.0
-                val etaMin = if (ratePerMin > 0.001) curPct / ratePerMin else -1.0
-                row(ctx, it, "Since last charge",
-                    "${fmtDuration(elapsedMs)}  ·  −${consumed}%  ($unplugPct% → $curPct%)")
-                row(ctx, it, "% battery/min consumed",
-                    if (ratePerMin > 0.001) "%.3f%%/min".format(ratePerMin) else "Computing…")
-                row(ctx, it, "Estimated battery last",
-                    if (etaMin > 0) fmtDuration((etaMin * 60_000).toLong()) else "Computing…")
-            } else {
-                row(ctx, it, "Since last charge",      "Anchoring on next render…")
-                row(ctx, it, "% battery/min consumed", "—")
-                row(ctx, it, "Estimated battery last", "—")
-            }
+            // Battery-session math (anchor lifecycle + rate + ETA) lives
+            // in BatterySessionStats — same source the status-strip
+            // BatteryEstimatePopup reads from when the user taps the
+            // icon. Single calc, two surfaces.
+            val bs = com.diegonmarcos.superapp.BatterySessionStats.read(ctxAny)
+            row(ctx, it, "Since last charge",
+                com.diegonmarcos.superapp.BatterySessionStats.fmtSinceLastCharge(bs))
+            row(ctx, it, "% battery/min consumed",
+                com.diegonmarcos.superapp.BatterySessionStats.fmtRate(bs))
+            row(ctx, it, "Estimated battery last",
+                com.diegonmarcos.superapp.BatterySessionStats.fmtEta(bs))
             it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only — tap the button below for the full OS report."))
 
             it.addView(actionButton(ctx, "Open battery usage details") {

@@ -69,6 +69,62 @@ class LocationTrackerService : Service() {
         trackingPrefs = MapsTrackingPrefs(this)
         db = MapsDb.get(this)
         ensureChannel()
+        rehydrateDetectorState()
+    }
+
+    /** Repopulate the in-memory detector state from on-disk DB + prefs
+     *  so a service revival (after Doze / OOM / low-memory kill) does
+     *  NOT pay the full cold warm-up penalty before the first Stop can
+     *  emit. Two restorations:
+     *
+     *  1) Ring buffer pre-fill — pulls the most recent points from the
+     *     DB up to bufSize, filters to fixes within the last 2× dwell
+     *     window (older points are from past sessions, not current
+     *     dwelling) AND accuracy ≤ 100m (same gate `detectStop` uses on
+     *     fresh fixes). Result: if the user was already stationary
+     *     when the service died and is still stationary on revival,
+     *     the very NEXT fix can clinch the Stop instead of waiting
+     *     bufSize × intervalMs for the buffer to refill.
+     *
+     *  2) Active-stop restore — if `trackerPrefs.activeStopId` points
+     *     at a Stop row that still has `ended_at = NULL`, restore it
+     *     to the in-memory `activeStop` so the next centroid-exit
+     *     correctly patches ended_at on that row instead of leaving
+     *     it dangling forever and starting a fresh Stop next door.
+     *     If the stored id is stale (row missing, already ended), the
+     *     pref is wiped so we don't keep retrying it.
+     */
+    private fun rehydrateDetectorState() {
+        val intervalMs = trackingPrefs.intervalMovingMs.coerceAtLeast(1_000)
+        val dwellMs    = trackingPrefs.stopsDwellMin * 60_000L
+        val bufSize    = maxOf(3, (dwellMs / intervalMs).toInt() + 1)
+        val now        = System.currentTimeMillis()
+        val cutoff     = now - dwellMs * 2L
+        // recentPoints returns oldest-first; just append in order.
+        val historic = db.recentPoints(bufSize * 2)
+            .filter { it.ts >= cutoff && (it.accuracy ?: Float.MAX_VALUE) <= 100f }
+        val seed = if (historic.size > bufSize) historic.takeLast(bufSize) else historic
+        recentBuf.clear()
+        for (p in seed) recentBuf.addLast(p)
+        Log.i(TAG, "Detector buffer rehydrated: ${recentBuf.size}/$bufSize from DB")
+
+        val savedId = trackerPrefs.activeStopId
+        if (savedId > 0) {
+            val row = db.getStop(savedId)
+            if (row != null && row.endedAt == null) {
+                activeStopId = savedId
+                activeStop = MapsDb.StopRow(
+                    startedAt = row.startedAt,
+                    endedAt   = row.endedAt,
+                    lat       = row.lat,
+                    lon       = row.lon,
+                )
+                Log.i(TAG, "Active stop restored id=$savedId")
+            } else {
+                trackerPrefs.activeStopId = -1L
+                Log.i(TAG, "Stale active_stop_id=$savedId cleared (row missing or already ended)")
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -158,55 +214,77 @@ class LocationTrackerService : Service() {
      *  if the centroid of those points sits within `stopsRadiusM` and
      *  the buffer spans at least `stopsDwellMin` minutes, emit a Stop
      *  row and remember it as `activeStop`. The Stop's end-time is
-     *  patched in when the user leaves the radius. */
+     *  patched in when the user leaves the radius.
+     *
+     *  Telemetry: every tick writes a snapshot of (bufFill, bufSize,
+     *  spanMin, p90DistM, radiusEffM, avgAccM) + a decision string to
+     *  [MapsTrackerPrefs] so the MyTrips dashboard can show WHY a Stop
+     *  has / hasn't emitted instead of treating the detector as a
+     *  black box. */
     private fun detectStop(row: MapsDb.PointRow) {
         // Ring-buffer size derived from the user-tuned dwell + interval
         // so the buffer ALWAYS spans at least `stopsDwellMin` minutes of
-        // fixes. Hardcoded 8 was wrong: at the default 30s cadence × 8
-        // = 4 min window, the 5-min dwell threshold (also default) was
-        // mathematically never satisfied → Stops never emitted even
-        // though the user was clearly dwelling (Points: 20, Stops: 0).
-        // New formula: ceil(dwellMs / intervalMs) + 1 (+1 fix of margin
-        // to not race the exact boundary). Floored at 3 so a degenerate
+        // fixes. ceil(dwellMs / intervalMs) + 1 (+1 fix of margin to
+        // not race the exact boundary). Floored at 3 so a degenerate
         // <30s dwell still gets a meaningful centroid.
         val intervalMs = trackingPrefs.intervalMovingMs.coerceAtLeast(1_000)
         val dwellMs    = trackingPrefs.stopsDwellMin * 60_000L
         val bufSize    = maxOf(3, (dwellMs / intervalMs).toInt() + 1)
 
+        fun writeTelemetry(decision: String, p90: Double, radEff: Double, span: Double, avgA: Double) {
+            trackerPrefs.lastDecision     = decision
+            trackerPrefs.lastDecisionTs   = row.ts
+            trackerPrefs.lastBufFill      = recentBuf.size
+            trackerPrefs.lastBufSize      = bufSize
+            trackerPrefs.lastSpanMin      = span.toFloat()
+            trackerPrefs.lastP90DistM     = p90.toFloat()
+            trackerPrefs.lastRadiusEffM   = radEff.toFloat()
+            trackerPrefs.lastAvgAccM      = avgA.toFloat()
+        }
+
         // Skip clearly-garbage fixes (accuracy > 100m or null). They'd
         // dominate the centroid + maxDist math and push every dwell
         // window over the radius even when the user is stationary.
-        // The point is still INSERTED above (db.insertPoint(row)) so the
+        // The point is still INSERTED in DB (caller already did) so the
         // map shows it; we just don't let it pollute Stop detection.
-        if ((row.accuracy ?: Float.MAX_VALUE) > 100f) return
+        if ((row.accuracy ?: Float.MAX_VALUE) > 100f) {
+            writeTelemetry("skipped_bad_acc", 0.0, 0.0, 0.0, row.accuracy?.toDouble() ?: 0.0)
+            return
+        }
 
         recentBuf.addLast(row)
         while (recentBuf.size > bufSize) recentBuf.removeFirst()
-        if (recentBuf.size < bufSize) return
 
         // Centroid + 90th-percentile distance from centroid.
-        // Was: maxOf(distances). Single noisy outlier (one fix that
-        // wandered 80m due to satellite geometry) blew the check and
-        // Stops never emitted. p90 still bounds the "where most of the
-        // recent fixes are" without being held hostage by one bad fix.
-        // The effective radius is also padded by the average reported
-        // accuracy of the buffer — if every fix says "±40m" then a
-        // 50m centroid radius is well within noise and we should
-        // accept the stop.
+        // p90 (not max) so a single noisy outlier doesn't blow the
+        // check — common under satellite-geometry drift at 5-min
+        // windows. radius_eff = stops_radius_m + avgAcc so a tight
+        // 100m centroid radius isn't rejected by ±40m reported noise.
         val cLat = recentBuf.map { it.lat }.average()
         val cLon = recentBuf.map { it.lon }.average()
         val dists = recentBuf.map { haversine(it.lat, it.lon, cLat, cLon) }.sorted()
         val p90Idx = ((dists.size - 1) * 0.9).toInt()
-        val p90Dist = dists[p90Idx]
+        val p90Dist = if (dists.isEmpty()) 0.0 else dists[p90Idx]
         val avgAcc  = recentBuf.mapNotNull { it.accuracy?.toDouble() }
             .let { if (it.isEmpty()) 0.0 else it.average() }
-        val spanMin = (recentBuf.last().ts - recentBuf.first().ts) / 60_000.0
+        val spanMin = if (recentBuf.size < 2) 0.0
+            else (recentBuf.last().ts - recentBuf.first().ts) / 60_000.0
         val radius  = trackingPrefs.stopsRadiusM.toDouble() + avgAcc
         val dwell   = trackingPrefs.stopsDwellMin.toDouble()
 
-        if (p90Dist < radius && spanMin >= dwell && activeStop == null) {
+        if (recentBuf.size < bufSize) {
+            writeTelemetry("buf_filling", p90Dist, radius, spanMin, avgAcc)
+            return
+        }
+
+        val inside = p90Dist < radius
+        val longEnough = spanMin >= dwell
+
+        if (inside && longEnough && activeStop == null) {
             // Transition: MOVING → STOPPED. Emit one Stop row anchored
-            // at the centroid.
+            // at the centroid + persist activeStopId so a service kill
+            // mid-stop can still find the row to patch ended_at on
+            // revival (see rehydrateDetectorState).
             val stop = MapsDb.StopRow(
                 startedAt = recentBuf.first().ts,
                 endedAt   = null,
@@ -216,12 +294,14 @@ class LocationTrackerService : Service() {
             )
             activeStopId = db.insertStop(stop)
             activeStop = stop
+            trackerPrefs.activeStopId = activeStopId
+            writeTelemetry("emit_stop", p90Dist, radius, spanMin, avgAcc)
             // Fire-and-forget reverse-geocode of the new Stop. The
             // enricher self-throttles (1 req/sec) and bails if a
             // worker is already running, so re-entry from rapid
             // Stop emissions is safe.
             StopsEnricher.kickAsync(applicationContext)
-        } else if (p90Dist >= radius && activeStop != null) {
+        } else if (!inside && activeStop != null) {
             // Transition: STOPPED → MOVING. Patch ended_at on the
             // active Stop row so downstream readers (Daily longest-
             // dwell algorithm + future dwell-time math) see real
@@ -230,6 +310,14 @@ class LocationTrackerService : Service() {
             if (activeStopId > 0) db.updateStopEndedAt(activeStopId, row.ts)
             activeStop = null
             activeStopId = -1L
+            trackerPrefs.activeStopId = -1L
+            writeTelemetry("exit_stop", p90Dist, radius, spanMin, avgAcc)
+        } else if (activeStop != null) {
+            writeTelemetry("active_stop_held", p90Dist, radius, spanMin, avgAcc)
+        } else if (!inside) {
+            writeTelemetry("dist_too_far", p90Dist, radius, spanMin, avgAcc)
+        } else {
+            writeTelemetry("span_too_short", p90Dist, radius, spanMin, avgAcc)
         }
     }
 
