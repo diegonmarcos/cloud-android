@@ -93,7 +93,8 @@
         "libs:wallet",
         "libs:health",
         "libs:maps",
-        "libs:fin"
+        "libs:fin",
+        "libs:browser"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -178,6 +179,13 @@
         "libs:core"
       ],
       "comment": "MyMaps — native GPS tracker + MapLibre Native renderer + SQLite store. Foreground LocationTrackerService writes points; StopDetector emits dwell-events; StopsEnricher resolves each Stop via the active provider (build.json::ui.maps_providers, default Nominatim public). MyTrips Dashboard + Stats read the same SQLite. All Maps* / Mytrips* / LocationTrackerService / StopsEnricher / MapsProviderClient code lives here; app/ only retains the SectionPages dispatch that imports the fragments. Native deps: org.maplibre.gl:android-sdk + play-services-location — both heavy in native .so (arm64-only via build.json::android.abi_filters)."
+    },
+    "libs:browser": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "Browser — in-app WebView host + tab persistence. Was com.diegonmarcos.superapp.tabs in app/.../tabs/ until the libs:browser lift; renamed Tabs → Browser so the 'Tabs' namespace is free for the future App Tabs feature (last 6 opened pages/apps). BrowserHostFragment hosts the WebView in two modes — GRID (open-tab cards) and DETAIL (fullscreen WebView). BrowserTabPrefs persists the open-tabs list in SharedPreferences (file kept as 'tabs' so users' existing list survives the rename). Pulls in Collapsible / SuppressHorizontalSwipe / SuppressVerticalSwipe from libs:core (they were promoted from app/ during this lift so libs:browser doesn't back-reference app/). No native deps; WebView is part of the Android framework."
     },
     "libs:fin": {
       "type": "library",
@@ -487,10 +495,10 @@
             "title": "Tools Primary",
             "tiles": [
               {
-                "id": "tabs",
-                "label": "Tabs",
+                "id": "browser",
+                "label": "Browser",
                 "icon": "ic_mode_apps",
-                "target": "section:tabs"
+                "target": "section:browser"
               },
               {
                 "_doc": "In-app card-stack wallet (WalletFragment / Compose). page:wallet/cards routes through openSectionPage → SectionPages.factoryFor → WalletFragment. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
@@ -1287,8 +1295,9 @@
         ]
       },
       {
-        "id": "tabs",
-        "label": "Tabs",
+        "_doc_rename": "Renamed Tabs → Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the future App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename.",
+        "id": "browser",
+        "label": "Browser",
         "icon": "ic_mode_apps",
         "module": null,
         "bottom_nav": false,

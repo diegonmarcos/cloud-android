@@ -10,8 +10,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.tabs.TabPrefs
-import com.diegonmarcos.superapp.tabs.TabsHostFragment
+import com.diegonmarcos.superapp.browser.BrowserBrowserTabPrefs
+import com.diegonmarcos.superapp.browser.BrowserHostFragment
 
 /**
  * Android-launcher-style "all apps" drawer revealed by pulling up from
@@ -19,7 +19,7 @@ import com.diegonmarcos.superapp.tabs.TabsHostFragment
  *   • Top spacer — double the gap to the activity-level search-bar island
  *     above (user feedback: needed breathing room).
  *   • Horizontal tab strip (Google-Maps-style chip row) — one chip per
- *     entry in [TabPrefs], tap = open that tab in [TabsHostFragment].
+ *     entry in [BrowserTabPrefs], tap = open that tab in [BrowserHostFragment].
  *   • TileGrid of every section + home actions below.
  * Pull-down (or back press) closes the sheet and restores the 3D cube.
  */
@@ -123,7 +123,7 @@ class AppDrawerSheetFragment : Fragment() {
         // from build.json::ui.home_groups). Phone = PhoneAppsFragment
         // (Android-launcher folder grid of installed apps, classified by
         // PhoneAppClassifier against build.json::ui.phone_folders).
-        // Tabs are also exposed via TabPrefs-style state but kept stateless
+        // Tabs are also exposed via BrowserTabPrefs-style state but kept stateless
         // here — re-opening the sheet always lands on the first tab (Cloud),
         // matching the user's One UI muscle memory.
         val tabs = HomeAppsTabs.loadFromBuildConfig()
@@ -188,11 +188,11 @@ class AppDrawerSheetFragment : Fragment() {
     }
 
     /** One chip per open tab — Google-Maps-pill styling. Tap = navigate
-     *  to TabsHostFragment with that URL pre-opened. Empty strip if no
+     *  to BrowserHostFragment with that URL pre-opened. Empty strip if no
      *  tabs are saved. */
     private fun renderTabChips(row: LinearLayout) {
         val ctx = row.context
-        val tabs = TabPrefs(ctx).all()
+        val tabs = BrowserTabPrefs(ctx).all()
         if (tabs.isEmpty()) {
             row.addView(TextView(ctx).apply {
                 text = "No open tabs"
@@ -254,10 +254,10 @@ class AppDrawerSheetFragment : Fragment() {
                 BACK_STACK_TAG,
                 androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
             )
-            // Then open TabsHostFragment with the URL pre-loaded (its
+            // Then open BrowserHostFragment with the URL pre-loaded (its
             // newInstance(openUrl) jumps straight to DETAIL on that page).
             parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, TabsHostFragment.newInstance(url))
+                .replace(R.id.fragment_container, BrowserHostFragment.newInstance(url))
                 .addToBackStack(null)
                 .commit()
         }

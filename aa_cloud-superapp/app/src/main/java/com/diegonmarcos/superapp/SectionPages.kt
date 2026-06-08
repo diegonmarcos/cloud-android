@@ -53,8 +53,8 @@ object SectionPages {
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()
         sectionId == "config" && (pageId == "about" || pageId == "dev") ->
             com.diegonmarcos.superapp.devcontrol.DevControlFragment.newInstance()
-        sectionId == "tabs"   && pageId == "all"        ->
-            com.diegonmarcos.superapp.tabs.TabsHostFragment.newInstance()
+        sectionId == "browser"   && pageId == "all"        ->
+            com.diegonmarcos.superapp.browser.BrowserHostFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }

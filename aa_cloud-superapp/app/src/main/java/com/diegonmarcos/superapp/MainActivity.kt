@@ -1,5 +1,11 @@
 package com.diegonmarcos.superapp
 
+import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
+
+import com.diegonmarcos.superapp.core.SuppressHorizontalSwipe
+
+import com.diegonmarcos.superapp.core.Collapsible
+
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -1238,15 +1244,15 @@ class MainActivity : AppCompatActivity(),
         if (uri.isBlank()) return
 
         // http(s):// → open in OUR internal browser (Tabs section) in
-        // DETAIL mode for the tapped URL. Tab is added to TabPrefs
-        // inside TabsHostFragment on creation when ARG_OPEN_URL is
+        // DETAIL mode for the tapped URL. Tab is added to BrowserTabPrefs
+        // inside BrowserHostFragment on creation when ARG_OPEN_URL is
         // present.
         if (uri.startsWith("http://") || uri.startsWith("https://")) {
-            currentSection = "tabs"
-            currentLabel = Sections.byId("tabs")?.label ?: "Tabs"
+            currentSection = "browser"
+            currentLabel = Sections.byId("browser")?.label ?: "Tabs"
             supportActionBar?.title = currentLabel
-            syncBottomNav("tabs")
-            val frag = com.diegonmarcos.superapp.tabs.TabsHostFragment.newInstance(uri)
+            syncBottomNav("browser")
+            val frag = com.diegonmarcos.superapp.browser.BrowserHostFragment.newInstance(uri)
             applyChrome(frag)
             supportFragmentManager.beginTransaction()
                 .setCustomAnimations(R.anim.fade_in, R.anim.fade_out,

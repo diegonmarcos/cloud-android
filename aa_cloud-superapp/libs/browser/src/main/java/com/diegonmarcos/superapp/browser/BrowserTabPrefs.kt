@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.tabs
+package com.diegonmarcos.superapp.browser
 
 import android.content.Context
 import org.json.JSONArray
@@ -10,8 +10,14 @@ import org.json.JSONObject
  * in SharedPreferences — small, plain, no extra dep.
  *
  * Schema: [{"url":"https://…","title":"…","ts":1234567890}]
+ *
+ * The SharedPreferences file name is kept as "tabs" so existing
+ * users' open-tabs list survives the rename from
+ * com.diegonmarcos.superapp.tabs.TabPrefs to BrowserTabPrefs.
+ * Class renamed; internal Tab data class kept because a tab inside
+ * a browser is, semantically, still a tab.
  */
-class TabPrefs(context: Context) {
+class BrowserTabPrefs(context: Context) {
 
     data class Tab(val url: String, val title: String, val ts: Long, val previewPath: String = "")
 

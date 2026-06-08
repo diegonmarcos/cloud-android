@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// libs:browser — Cloud SuperApp's in-app web browser. WebView host
+// + per-tab persistence + the tab strip Compose-free chrome. Was
+// previously com.diegonmarcos.superapp.tabs in app/.../tabs/; lifted
+// out following the libs:maps pattern so every "feature is an app
+// engine" lives under libs/ — only thin dispatch stays in app/.
+//
+// Native deps: NONE. WebView is part of the Android framework so we
+// don't ship a renderer. No Compose either; the existing host is
+// programmatic View code (LinearLayout / GridLayout / FrameLayout).
+//
+// Resources owned here:
+//   • res/drawable/bg_gradient_black_purple.xml — the host chrome
+//     background. Copied during the lift so libs:browser doesn't
+//     reach back into app/'s R class.
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.diegonmarcos.superapp.browser'
+    compileSdk 35
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.activity:activity-ktx:1.9.3'
+
+    // Material — pulled in for the existing host's TextAppearance
+    // refs (android.R.style.TextAppearance_Material_* are framework,
+    // but the chrome rows want Material polish too). Matches app/'s
+    // pin so version skew is impossible.
+    implementation 'com.google.android.material:material:1.12.0'
+}

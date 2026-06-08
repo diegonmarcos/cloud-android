@@ -1,5 +1,7 @@
 package com.diegonmarcos.superapp
 
+import com.diegonmarcos.superapp.core.Collapsible
+
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri

@@ -1,4 +1,8 @@
-package com.diegonmarcos.superapp.tabs
+package com.diegonmarcos.superapp.browser
+
+import com.diegonmarcos.superapp.core.Collapsible
+import com.diegonmarcos.superapp.core.SuppressHorizontalSwipe
+import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -21,8 +25,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.Collapsible
-import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.browser.R
 import java.io.File
 import java.security.MessageDigest
 
@@ -39,9 +42,9 @@ import java.security.MessageDigest
  * Implements [Collapsible] so re-tapping the Tabs bottom-nav slot
  * snaps back to GRID — quick gesture to "see all tabs".
  */
-class TabsHostFragment : Fragment(), Collapsible,
-    com.diegonmarcos.superapp.SuppressHorizontalSwipe,
-    com.diegonmarcos.superapp.SuppressVerticalSwipe {
+class BrowserHostFragment : Fragment(), Collapsible,
+    SuppressHorizontalSwipe,
+    SuppressVerticalSwipe {
 
     /** Activity-level horizontal-fling cycler skips this fragment while
      *  a WebView is visible, so URL bar gestures / desktop-view-mode
@@ -59,7 +62,7 @@ class TabsHostFragment : Fragment(), Collapsible,
      *  scale. Persists for the lifetime of this fragment only. */
     private var desktopMode: Boolean = false
 
-    private lateinit var prefs: TabPrefs
+    private lateinit var prefs: BrowserTabPrefs
     private lateinit var rootContainer: FrameLayout
     private var webView: WebView? = null
     private var mode: Mode = Mode.GRID
@@ -71,7 +74,7 @@ class TabsHostFragment : Fragment(), Collapsible,
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        prefs = TabPrefs(ctx)
+        prefs = BrowserTabPrefs(ctx)
         rootContainer = FrameLayout(ctx).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -158,7 +161,7 @@ class TabsHostFragment : Fragment(), Collapsible,
         rootContainer.addView(scroll)
     }
 
-    private fun tabCard(ctx: Context, tab: TabPrefs.Tab): View {
+    private fun tabCard(ctx: Context, tab: BrowserTabPrefs.Tab): View {
         val cardW = (resources.displayMetrics.widthPixels / 2) - dp(20)
         val cardH = dp(220)
         val card = FrameLayout(ctx).apply {
@@ -465,7 +468,7 @@ class TabsHostFragment : Fragment(), Collapsible,
 
     companion object {
         private const val ARG_OPEN_URL = "open_url"
-        fun newInstance(openUrl: String? = null) = TabsHostFragment().apply {
+        fun newInstance(openUrl: String? = null) = BrowserHostFragment().apply {
             arguments = Bundle().apply {
                 if (!openUrl.isNullOrBlank()) putString(ARG_OPEN_URL, openUrl)
             }

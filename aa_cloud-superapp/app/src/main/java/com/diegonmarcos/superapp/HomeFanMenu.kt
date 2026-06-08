@@ -41,8 +41,8 @@ object HomeFanMenu {
         val ctx = host.context
         // Per user spec: LEFT = Open Tabs, CENTER = Linktree, RIGHT = Update.
         val items = listOf(
-            // LEFT — Open Tabs (page:tabs/all goes straight to grid).
-            "page:tabs/all"           to (R.drawable.ic_mode_apps  to "Open Tabs"),
+            // LEFT — Open Tabs (page:browser/all goes straight to grid).
+            "page:browser/all"           to (R.drawable.ic_mode_apps  to "Open Tabs"),
             // CENTER — Home Apps (pulls up the home-sheet icon grid).
             //   ic_home_apps is a dedicated 3×3 dot launcher glyph
             //   reserved for THIS surface — distinct from ic_mode_apps

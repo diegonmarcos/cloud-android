@@ -1,5 +1,7 @@
 package com.diegonmarcos.superapp
 
+import com.diegonmarcos.superapp.core.Collapsible
+
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View

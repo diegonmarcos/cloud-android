@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.core
 
 /**
  * Implemented by fragments whose own content (e.g. an inner WebView in

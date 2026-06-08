@@ -24,8 +24,8 @@ import java.util.concurrent.Executors
  * MainActivity.onTileClicked.
  *
  * Tap targets follow the same target-grammar the rest of the app uses,
- * so http(s) URLs automatically route through launchUri → TabPrefs →
- * TabsHostFragment.
+ * so http(s) URLs automatically route through launchUri → BrowserTabPrefs →
+ * BrowserHostFragment.
  */
 class NewsFeedFragment : Fragment() {
 
@@ -188,7 +188,7 @@ class NewsFeedFragment : Fragment() {
         }
         row.setOnClickListener {
             // http(s) routes through MainActivity.launchUri →
-            // TabPrefs.add → TabsHostFragment (internal browser).
+            // BrowserTabPrefs.add → BrowserHostFragment (internal browser).
             (activity as? TileGridFragment.TileClickListener)?.onTileClicked(item.link)
         }
         return row
