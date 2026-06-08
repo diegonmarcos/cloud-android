@@ -172,19 +172,39 @@ class LocationTrackerService : Service() {
         val intervalMs = trackingPrefs.intervalMovingMs.coerceAtLeast(1_000)
         val dwellMs    = trackingPrefs.stopsDwellMin * 60_000L
         val bufSize    = maxOf(3, (dwellMs / intervalMs).toInt() + 1)
+
+        // Skip clearly-garbage fixes (accuracy > 100m or null). They'd
+        // dominate the centroid + maxDist math and push every dwell
+        // window over the radius even when the user is stationary.
+        // The point is still INSERTED above (db.insertPoint(row)) so the
+        // map shows it; we just don't let it pollute Stop detection.
+        if ((row.accuracy ?: Float.MAX_VALUE) > 100f) return
+
         recentBuf.addLast(row)
         while (recentBuf.size > bufSize) recentBuf.removeFirst()
         if (recentBuf.size < bufSize) return
 
-        // Centroid + max distance from centroid.
+        // Centroid + 90th-percentile distance from centroid.
+        // Was: maxOf(distances). Single noisy outlier (one fix that
+        // wandered 80m due to satellite geometry) blew the check and
+        // Stops never emitted. p90 still bounds the "where most of the
+        // recent fixes are" without being held hostage by one bad fix.
+        // The effective radius is also padded by the average reported
+        // accuracy of the buffer — if every fix says "±40m" then a
+        // 50m centroid radius is well within noise and we should
+        // accept the stop.
         val cLat = recentBuf.map { it.lat }.average()
         val cLon = recentBuf.map { it.lon }.average()
-        val maxDist = recentBuf.maxOfOrNull { haversine(it.lat, it.lon, cLat, cLon) } ?: 0.0
+        val dists = recentBuf.map { haversine(it.lat, it.lon, cLat, cLon) }.sorted()
+        val p90Idx = ((dists.size - 1) * 0.9).toInt()
+        val p90Dist = dists[p90Idx]
+        val avgAcc  = recentBuf.mapNotNull { it.accuracy?.toDouble() }
+            .let { if (it.isEmpty()) 0.0 else it.average() }
         val spanMin = (recentBuf.last().ts - recentBuf.first().ts) / 60_000.0
-        val radius = trackingPrefs.stopsRadiusM.toDouble()
-        val dwell  = trackingPrefs.stopsDwellMin.toDouble()
+        val radius  = trackingPrefs.stopsRadiusM.toDouble() + avgAcc
+        val dwell   = trackingPrefs.stopsDwellMin.toDouble()
 
-        if (maxDist < radius && spanMin >= dwell && activeStop == null) {
+        if (p90Dist < radius && spanMin >= dwell && activeStop == null) {
             // Transition: MOVING → STOPPED. Emit one Stop row anchored
             // at the centroid.
             val stop = MapsDb.StopRow(
@@ -201,7 +221,7 @@ class LocationTrackerService : Service() {
             // worker is already running, so re-entry from rapid
             // Stop emissions is safe.
             StopsEnricher.kickAsync(applicationContext)
-        } else if (maxDist >= radius && activeStop != null) {
+        } else if (p90Dist >= radius && activeStop != null) {
             // Transition: STOPPED → MOVING. Patch ended_at on the
             // active Stop row so downstream readers (Daily longest-
             // dwell algorithm + future dwell-time math) see real
