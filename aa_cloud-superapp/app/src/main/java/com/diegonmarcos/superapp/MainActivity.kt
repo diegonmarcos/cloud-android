@@ -243,6 +243,15 @@ class MainActivity : AppCompatActivity(),
                 bottomNav.selectedItemId = idForSectionId(target) ?: R.id.nav_home
             }
 
+            // Warm-up the Phone tab data path on a low-priority Thread
+            // so by the time the user swipes up to Home Apps → Phone,
+            // the LauncherApps enumeration + icon load + folder
+            // classification (~600ms) is already done. If the user
+            // races the warm-up, PhoneAppsFragment.onCreateView falls
+            // back to a synchronous load — same blocking shape as
+            // before warm-up existed.
+            PhoneAppsFragment.warmUp(this)
+
             // Launcher-icon shortcut (long-press launcher icon) carries a
             // shortcut_action extra. Same target grammar as tile clicks.
             handleShortcutIntent(intent)

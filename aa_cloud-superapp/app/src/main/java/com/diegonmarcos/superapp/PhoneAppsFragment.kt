@@ -56,10 +56,13 @@ class PhoneAppsFragment : Fragment() {
         }
         scroll.addView(rootCol)
 
-        // Process-level cache — see companion object below. First open
-        // does the full work (LauncherApps enumeration + 100+ icon-drawable
-        // loads + classifier walk = ~600ms on typical phones); every
-        // subsequent open is a constant-time read against the cached refs.
+        // Process-level cache populated by [warmUp] at app launch. By
+        // the time the user navigates here it's usually already
+        // primed → render is instant. If the user got here BEFORE the
+        // warm-up thread finished (rare cold path), we fall back to a
+        // synchronous load on the main thread — same blocking shape
+        // as v1 of the Phone tab. The render path is otherwise
+        // identical for hot + cold.
         val folders  = sCachedFolders ?: PhoneFolders.loadFromBuildConfig().also { sCachedFolders = it }
         val apps     = sCachedApps    ?: collectLaunchableApps(ctx).also { sCachedApps = it }
         val grouped  = sCachedGrouped ?: PhoneAppClassifier.groupByFolder(apps, folders).also { sCachedGrouped = it }
@@ -73,25 +76,12 @@ class PhoneAppsFragment : Fragment() {
         return scroll
     }
 
-    /** Walk the system's launchable activities (every app the user can
-     *  open) for the current user profile. Excludes ourselves so the
-     *  Phone tab doesn't double-list the SuperApp launcher. */
-    private fun collectLaunchableApps(ctx: Context): List<PhoneApp> {
-        val me = Process.myUserHandle()
-        return runCatching {
-            launcherApps.getActivityList(null, me).mapNotNull { info ->
-                val pkg = info.applicationInfo.packageName
-                if (pkg == ctx.packageName) return@mapNotNull null
-                PhoneApp(
-                    packageName       = pkg,
-                    activityComponent = info.componentName,
-                    label             = info.label?.toString() ?: pkg,
-                    icon              = runCatching { info.getBadgedIcon(0) }.getOrNull(),
-                    user              = me,
-                )
-            }
-        }.getOrDefault(emptyList())
-    }
+    /** Instance-side wrapper — delegates to the companion helper so
+     *  warm-up + first-open can share the exact same enumeration code
+     *  path. Kept as a fragment method so existing callers (none in
+     *  Push 1, but kept symmetric) don't have to thread `ctx` twice. */
+    private fun collectLaunchableApps(ctx: Context): List<PhoneApp> =
+        collectLaunchableAppsStatic(ctx)
 
     /** Lay out [folders] as a fixed-column grid of folder cards. Uses
      *  nested LinearLayouts instead of GridLayout to avoid GridLayout's
@@ -295,11 +285,15 @@ class PhoneAppsFragment : Fragment() {
     companion object {
         fun newInstance() = PhoneAppsFragment()
 
-        /** Process-level caches — survive across Fragment lifecycles
-         *  so re-opening the Phone tab is near-instant. Built once on
-         *  the first call to [onCreateView] and reused thereafter.
-         *  Annotated @Volatile so a future package-change callback can
-         *  null these from any thread safely. */
+        /** Process-level write-ahead buffer for the Phone tab data.
+         *  Populated by [warmUp] from MainActivity.onCreate so the
+         *  list + folder classification is ready BEFORE the user ever
+         *  swipes up to Home Apps. If the user races the warm-up
+         *  thread, the synchronous fallback in [onCreateView] still
+         *  works — just incurs the ~600ms load on the main thread the
+         *  first time. @Volatile so the warm-up writer + the Fragment
+         *  reader on different threads see consistent reference
+         *  publication. */
         @Volatile private var sCachedFolders: List<PhoneFolders.Folder>? = null
         @Volatile private var sCachedApps:    List<PhoneApp>? = null
         @Volatile private var sCachedGrouped: Map<String, List<PhoneApp>>? = null
@@ -311,6 +305,59 @@ class PhoneAppsFragment : Fragment() {
             sCachedFolders = null
             sCachedApps = null
             sCachedGrouped = null
+        }
+
+        /** Warm-up: kick a background Thread that enumerates installed
+         *  apps + loads folder taxonomy + runs the classifier, then
+         *  publishes the results to the @Volatile cache slots. Safe to
+         *  call multiple times — the no-op fast path returns immediately
+         *  if everything's already cached. MainActivity.onCreate fires
+         *  this so the Phone tab is hot the moment the user reaches it.
+         *
+         *  NOT a coroutine — keeping it on a plain low-priority Thread
+         *  avoids hauling in kotlinx-coroutines as an app/ dep just for
+         *  one fire-and-forget warm-up. */
+        fun warmUp(ctx: Context) {
+            if (sCachedFolders != null && sCachedApps != null && sCachedGrouped != null) return
+            Thread {
+                runCatching {
+                    val folders = sCachedFolders
+                        ?: PhoneFolders.loadFromBuildConfig().also { sCachedFolders = it }
+                    val apps = sCachedApps
+                        ?: collectLaunchableAppsStatic(ctx.applicationContext)
+                            .also { sCachedApps = it }
+                    if (sCachedGrouped == null) {
+                        sCachedGrouped = PhoneAppClassifier.groupByFolder(apps, folders)
+                    }
+                }
+            }.apply {
+                name = "PhoneAppsFragment.warmUp"
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+                start()
+            }
+        }
+
+        /** Static enumeration — derives LauncherApps from [ctx] each
+         *  call so warm-up (no Fragment instance) + onCreateView (has
+         *  one) share the exact same code path. */
+        private fun collectLaunchableAppsStatic(ctx: Context): List<PhoneApp> {
+            val me = Process.myUserHandle()
+            val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
+                ?: return emptyList()
+            return runCatching {
+                launcher.getActivityList(null, me).mapNotNull { info ->
+                    val pkg = info.applicationInfo.packageName
+                    if (pkg == ctx.packageName) return@mapNotNull null
+                    PhoneApp(
+                        packageName       = pkg,
+                        activityComponent = info.componentName,
+                        label             = info.label?.toString() ?: pkg,
+                        icon              = runCatching { info.getBadgedIcon(0) }.getOrNull(),
+                        user              = me,
+                    )
+                }
+            }.getOrDefault(emptyList())
         }
     }
 }
