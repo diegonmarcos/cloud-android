@@ -21,7 +21,12 @@
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.READ_POWER" />
     <uses-permission android:name="android.permission.health.READ_SPEED" />
-    <uses-permission android:name="android.permission.health.READ_STEPS_CADENCE" />
+    <!-- READ_STEPS_CADENCE intentionally omitted: Health Connect's
+         permission UI bundles cadence under "Pasos" (Steps), so
+         declaring it separately doesn't add a grantable surface and
+         it would inflate our X/Y counter past what HC actually
+         tracks. The StepsCadenceRecord type is still accessible via
+         the umbrella READ_STEPS perm above. -->
 
     <!-- Cardio + vitals. -->
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />

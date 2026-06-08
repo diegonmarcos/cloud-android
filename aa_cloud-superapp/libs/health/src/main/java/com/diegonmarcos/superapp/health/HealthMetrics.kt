@@ -3,27 +3,36 @@ package com.diegonmarcos.superapp.health
 import android.util.Base64
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BasalBodyTemperatureRecord
+import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.BloodGlucoseRecord
 import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.BodyWaterMassRecord
 import androidx.health.connect.client.records.BoneMassRecord
+import androidx.health.connect.client.records.CervicalMucusRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ElevationGainedRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.HydrationRecord
+import androidx.health.connect.client.records.IntermenstrualBleedingRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.MenstruationFlowRecord
 import androidx.health.connect.client.records.NutritionRecord
+import androidx.health.connect.client.records.OvulationTestRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
+import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
+import androidx.health.connect.client.records.SexualActivityRecord
 import androidx.health.connect.client.records.SleepSessionRecord
+import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.Vo2MaxRecord
@@ -118,25 +127,34 @@ object HealthMetrics {
         "ElevationGainedRecord"               -> ElevationGainedRecord::class
         "ActiveCaloriesBurnedRecord"          -> ActiveCaloriesBurnedRecord::class
         "TotalCaloriesBurnedRecord"           -> TotalCaloriesBurnedRecord::class
+        "PowerRecord"                         -> PowerRecord::class
+        "SpeedRecord"                         -> SpeedRecord::class
+        "Vo2MaxRecord"                        -> Vo2MaxRecord::class
         "HeartRateRecord"                     -> HeartRateRecord::class
         "RestingHeartRateRecord"              -> RestingHeartRateRecord::class
         "HeartRateVariabilityRmssdRecord"     -> HeartRateVariabilityRmssdRecord::class
-        "Vo2MaxRecord"                        -> Vo2MaxRecord::class
         "BloodPressureRecord"                 -> BloodPressureRecord::class
         "BloodGlucoseRecord"                  -> BloodGlucoseRecord::class
         "OxygenSaturationRecord"              -> OxygenSaturationRecord::class
         "BodyTemperatureRecord"               -> BodyTemperatureRecord::class
+        "BasalBodyTemperatureRecord"          -> BasalBodyTemperatureRecord::class
         "RespiratoryRateRecord"               -> RespiratoryRateRecord::class
         "SleepSessionRecord"                  -> SleepSessionRecord::class
         "ExerciseSessionRecord"               -> ExerciseSessionRecord::class
         "WeightRecord"                        -> WeightRecord::class
+        "HeightRecord"                        -> HeightRecord::class
         "BodyFatRecord"                       -> BodyFatRecord::class
         "LeanBodyMassRecord"                  -> LeanBodyMassRecord::class
         "BoneMassRecord"                      -> BoneMassRecord::class
         "BodyWaterMassRecord"                 -> BodyWaterMassRecord::class
+        "BasalMetabolicRateRecord"            -> BasalMetabolicRateRecord::class
         "NutritionRecord"                     -> NutritionRecord::class
         "HydrationRecord"                     -> HydrationRecord::class
         "MenstruationFlowRecord"              -> MenstruationFlowRecord::class
+        "OvulationTestRecord"                 -> OvulationTestRecord::class
+        "CervicalMucusRecord"                 -> CervicalMucusRecord::class
+        "SexualActivityRecord"                -> SexualActivityRecord::class
+        "IntermenstrualBleedingRecord"        -> IntermenstrualBleedingRecord::class
         else                                  -> null
     }
 

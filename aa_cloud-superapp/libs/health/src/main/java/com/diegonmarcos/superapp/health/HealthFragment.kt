@@ -44,7 +44,7 @@ class HealthFragment : Fragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0B0414))) {
-                    HealthScreen(pageId = pageId)
+                    HealthScreen(initialPageId = pageId)
                 }
             }
         }
