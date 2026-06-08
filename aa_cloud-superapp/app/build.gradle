@@ -413,6 +413,13 @@ dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    // WorkManager — used by BackgroundOrchestrator to cancel tagged
+    // periodic jobs when the active theme's features.background_pause
+    // is true (Cloud Power Saving). No producers in app/ enqueue work
+    // yet; the cancel-by-tag calls are no-ops on a fresh install but
+    // present so libs:updater / future producers can land their own
+    // jobs under the same tag set without touching the orchestrator.
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.drawerlayout:drawerlayout:1.2.0'

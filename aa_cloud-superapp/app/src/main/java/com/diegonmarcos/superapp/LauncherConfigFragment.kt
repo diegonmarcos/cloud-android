@@ -201,7 +201,12 @@ class LauncherConfigFragment : Fragment() {
 
 /** Parses build.json::ui.launcher_themes from the baked BuildConfig
  *  blob. New themes only need a build.json entry + a LauncherTheme
- *  enum case — no Kotlin list edits required here. */
+ *  enum case — no Kotlin list edits required here.
+ *
+ *  Also hosts the data-driven [Features] decoder used by MainActivity
+ *  / BackgroundOrchestrator to apply each theme's behavior (kept in
+ *  this file so the picker code and the runtime code share one
+ *  registry — no risk of two parallel parsers drifting). */
 object LauncherThemes {
     data class Theme(
         val id: String,
@@ -223,11 +228,70 @@ object LauncherThemes {
             )
         }
     }.getOrDefault(emptyList())
+
+    /** Mirrors the keys in build.json::ui.launcher_themes[*].features. */
+    data class Features(
+        val home3d:            Boolean,
+        val bottomNav:         Boolean,
+        val dynamicIsland:     Boolean,
+        val animations:        Boolean,
+        val drawer:            Boolean,
+        val oledBlack:         Boolean,
+        val grid:              String,
+        val backgroundPause:   Boolean,
+        val wireguardRequired: Boolean,
+    ) {
+        companion object {
+            val SAFE_DEFAULT = Features(
+                home3d            = true,
+                bottomNav         = true,
+                dynamicIsland     = true,
+                animations        = true,
+                drawer            = true,
+                oledBlack         = false,
+                grid              = "default",
+                backgroundPause   = false,
+                wireguardRequired = false,
+            )
+        }
+    }
+
+    private val featuresById: Map<String, Features> by lazy { parseFeatures() }
+
+    fun featuresFor(themeId: String): Features = featuresById[themeId] ?: Features.SAFE_DEFAULT
+    fun featuresFor(theme: LauncherTheme): Features = featuresFor(theme.id)
+
+    private fun parseFeatures(): Map<String, Features> = runCatching {
+        val json = String(Base64.decode(BuildConfig.UI_LAUNCHER_THEMES_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        val out = mutableMapOf<String, Features>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val id = o.optString("id")
+            if (id.isBlank()) continue
+            val f = o.optJSONObject("features") ?: org.json.JSONObject()
+            out[id] = Features(
+                home3d            = f.optBoolean("home_3d",            true),
+                bottomNav         = f.optBoolean("bottom_nav",         true),
+                dynamicIsland     = f.optBoolean("dynamic_island",     true),
+                animations        = f.optBoolean("animations",         true),
+                drawer            = f.optBoolean("drawer",             true),
+                oledBlack         = f.optBoolean("oled_black",         false),
+                grid              = f.optString("grid",                "default"),
+                backgroundPause   = f.optBoolean("background_pause",   false),
+                wireguardRequired = f.optBoolean("wireguard_required", false),
+            )
+        }
+        out
+    }.getOrDefault(emptyMap())
 }
 
 /** Parses build.json::ui.launcher_profiles from the baked BuildConfig
  *  blob. Same shape as [LauncherThemes]. Add a profile via build.json
- *  + LauncherProfile enum — no other Kotlin edits needed. */
+ *  + LauncherProfile enum — no other Kotlin edits needed.
+ *
+ *  Also hosts the [Behavior] decoder + [allowedPackagesFor] used by
+ *  PhoneAppsFragment / MainActivity to enforce per-profile lockdowns. */
 object LauncherProfiles {
     data class Profile(
         val id: String,
@@ -249,4 +313,89 @@ object LauncherProfiles {
             )
         }
     }.getOrDefault(emptyList())
+
+    /** Mirrors build.json::ui.launcher_profiles[*].behavior. */
+    data class Behavior(
+        val appFilter:     String,        // "all" | "whitelist"
+        val whitelist:     List<String>,
+        val wireguard:     String,        // "on" | "off"
+        val allowIntents:  Any,           // "all" | List<String>
+    ) {
+        val isLockdown: Boolean get() = appFilter == "whitelist"
+        val wireguardOff: Boolean get() = wireguard.equals("off", ignoreCase = true)
+
+        companion object {
+            val PASSTHROUGH = Behavior(
+                appFilter    = "all",
+                whitelist    = emptyList(),
+                wireguard    = "on",
+                allowIntents = "all",
+            )
+        }
+    }
+
+    private val behaviorById: Map<String, Behavior> by lazy { parseBehaviors() }
+
+    fun behaviorFor(profileId: String): Behavior = behaviorById[profileId] ?: Behavior.PASSTHROUGH
+    fun behaviorFor(profile: LauncherProfile): Behavior = behaviorFor(profile.id)
+
+    /** Resolve the set of allowed package names for the active profile.
+     *  Returns null when the active profile is passthrough — caller
+     *  should NOT filter. Returns a possibly-empty set otherwise. */
+    fun allowedPackagesFor(context: android.content.Context, profile: LauncherProfile): Set<String>? {
+        val b = behaviorFor(profile)
+        if (!b.isLockdown) return null
+        val out = mutableSetOf<String>()
+        b.whitelist.forEach { tag -> out.addAll(packagesForTag(context, tag)) }
+        return out
+    }
+
+    private fun packagesForTag(context: android.content.Context, tag: String): Set<String> = when (tag) {
+        "browser" -> browserPackages(context)
+        else      -> setOf(tag)
+    }
+
+    private fun browserPackages(context: android.content.Context): Set<String> {
+        val pm = context.packageManager
+        val probe = android.content.Intent(
+            android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse("http://example.com"),
+        )
+        val flags = android.content.pm.PackageManager.MATCH_ALL or
+                    android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+        val matches = try { pm.queryIntentActivities(probe, flags) } catch (_: Throwable) { emptyList() }
+        return matches.mapNotNull { it.activityInfo?.packageName }.toSet()
+    }
+
+    private fun parseBehaviors(): Map<String, Behavior> = runCatching {
+        val json = String(Base64.decode(BuildConfig.UI_LAUNCHER_PROFILES_B64, Base64.NO_WRAP))
+        val arr = JSONArray(json)
+        val out = mutableMapOf<String, Behavior>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val id = o.optString("id")
+            if (id.isBlank()) continue
+            val b = o.optJSONObject("behavior") ?: org.json.JSONObject()
+            val whitelist = mutableListOf<String>()
+            val wlArr = b.optJSONArray("whitelist") ?: JSONArray()
+            for (j in 0 until wlArr.length()) {
+                val s = wlArr.optString(j); if (s.isNotBlank()) whitelist.add(s)
+            }
+            val rawAllow = b.opt("allow_intents")
+            val allow: Any = when (rawAllow) {
+                is JSONArray -> (0 until rawAllow.length()).mapNotNull {
+                    val s = rawAllow.optString(it); if (s.isBlank()) null else s
+                }
+                is String -> rawAllow
+                else -> "all"
+            }
+            out[id] = Behavior(
+                appFilter    = b.optString("app_filter", "all"),
+                whitelist    = whitelist,
+                wireguard    = b.optString("wireguard",  "on"),
+                allowIntents = allow,
+            )
+        }
+        out
+    }.getOrDefault(emptyMap())
 }
