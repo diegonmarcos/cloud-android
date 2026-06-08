@@ -8,9 +8,9 @@ package com.diegonmarcos.superapp.core
  *
  * Lives in libs:core so both app/ (AggregatorStackFragment,
  * TabbedSectionFragment, MainActivity dispatcher) and feature
- * modules (libs:browser's BrowserHostFragment, future libs:* hosts)
- * can implement / use the same interface without a back-reference
- * from libs/* into app/.
+ * modules (libs:browser's BrowserHostFragment, future libs:&lt;x&gt;
+ * hosts) can implement / use the same interface without a
+ * back-reference from libs into app.
  */
 interface Collapsible {
     /** Collapse all panels if any are expanded; expand all if all are
