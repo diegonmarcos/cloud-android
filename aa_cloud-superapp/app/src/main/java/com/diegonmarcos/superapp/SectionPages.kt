@@ -37,6 +37,8 @@ object SectionPages {
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
         sectionId == "config" && pageId == "maps"     -> MapsConfigFragment.newInstance()
+        sectionId == "maps"   && pageId == "tracker"   -> MapsTrackerFragment.newInstance()
+        sectionId == "maps"   && pageId == "map"       -> MapsMapFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
         sectionId == "health"                           -> HealthFragment.newInstance(pageId)
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()

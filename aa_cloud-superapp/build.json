@@ -1268,6 +1268,33 @@
         ]
       },
       {
+        "_doc": "MyMaps — native GPS tracker + MapLibre map. Foreground-service LocationTrackerService writes points into a local SQLite DB; stop-detector emits Stop rows (centroid + min-dwell). Pages: tracker (start/stop + perms + counters), map (MapLibre Native view), timeline + stops + export (Push 3). The reverse-geocoder + POI providers live in Configs → Maps (provider picker + calibration).",
+        "id": "maps",
+        "label": "MyMaps",
+        "icon": "ic_settings",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          { "id": "tracker",  "label": "Tracker",  "icon": "ic_settings" },
+          { "id": "map",      "label": "Map",      "icon": "ic_settings" },
+          { "id": "timeline", "label": "Timeline", "icon": "ic_settings" },
+          { "id": "stops",    "label": "Stops",    "icon": "ic_settings" },
+          { "id": "export",   "label": "Export",   "icon": "ic_p_import" }
+        ]
+      },
+      {
+        "_doc": "MyTrips — dashboard layered on top of MyMaps's local SQLite tracker DB. Reads stops + points to render a daily-city-per-day list + 5-year rollup stats + heatmap. Push 3 fills this in; Push 2 ships a placeholder.",
+        "id": "mytrips",
+        "label": "MyTrips",
+        "icon": "ic_settings",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          { "id": "dashboard", "label": "Dashboard", "icon": "ic_settings" },
+          { "id": "stats",     "label": "Stats",     "icon": "ic_settings" }
+        ]
+      },
+      {
         "_doc": "In-app Wallet — first Jetpack Compose surface. Renders cards in a stack-overlap deck (Apple Wallet-style). Data layer = WalletStore in libs:core; SharedPreferences-backed; seeded with mock cards on first launch. Single page 'cards' so the tile target page:wallet/cards routes through the standard openSectionPage → SectionPages factory dispatcher (which knows about WalletFragment) instead of the bare-section placeholder.",
         "id": "wallet",
         "label": "Wallet",
