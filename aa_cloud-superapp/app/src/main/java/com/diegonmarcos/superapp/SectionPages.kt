@@ -3,6 +3,14 @@ package com.diegonmarcos.superapp
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.health.HealthFragment
 import com.diegonmarcos.superapp.mail.MailPages
+import com.diegonmarcos.superapp.maps.MapsConfigFragment
+import com.diegonmarcos.superapp.maps.MapsExportFragment
+import com.diegonmarcos.superapp.maps.MapsMapFragment
+import com.diegonmarcos.superapp.maps.MapsStopsFragment
+import com.diegonmarcos.superapp.maps.MapsTimelineFragment
+import com.diegonmarcos.superapp.maps.MapsTrackerFragment
+import com.diegonmarcos.superapp.maps.MytripsDashboardFragment
+import com.diegonmarcos.superapp.maps.MytripsStatsFragment
 import com.diegonmarcos.superapp.wallet.WalletFragment
 
 /**

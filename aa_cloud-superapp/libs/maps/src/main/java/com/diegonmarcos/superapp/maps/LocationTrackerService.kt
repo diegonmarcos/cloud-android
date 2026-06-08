@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.Manifest
 import android.app.Notification
@@ -212,13 +212,13 @@ class LocationTrackerService : Service() {
     private fun buildNotification(subtitle: String): Notification {
         val openMain = PendingIntent.getActivity(
             this, 0,
-            Intent(this, MainActivity::class.java).apply {
+            (packageManager.getLaunchIntentForPackage(packageName) ?: Intent()).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher_round)
+            .setSmallIcon(R.drawable.ic_maps_notif)
             .setContentTitle("Cloud Maps tracker")
             .setContentText(subtitle)
             .setOngoing(true)

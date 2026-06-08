@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.util.Base64
 import org.json.JSONArray

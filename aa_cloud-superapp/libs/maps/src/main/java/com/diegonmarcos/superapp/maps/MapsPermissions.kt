@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.Manifest
 import android.app.Activity

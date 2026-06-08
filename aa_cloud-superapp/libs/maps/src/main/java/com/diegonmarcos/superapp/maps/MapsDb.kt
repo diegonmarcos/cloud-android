@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.content.ContentValues
 import android.content.Context

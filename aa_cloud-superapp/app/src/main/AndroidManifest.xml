@@ -19,18 +19,13 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Background location — needed for the foreground GPS tracker to
-         keep collecting points while the SuperApp isn't in the
-         foreground. Android 10+ asks for this as a separate runtime
-         prompt AFTER FINE/COARSE are granted. -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <!-- Foreground-service plumbing for LocationTrackerService. The
-         _LOCATION variant is Android 14+ specific and pairs with the
-         android:foregroundServiceType="location" attribute on the
-         <service/> element below. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- ACCESS_BACKGROUND_LOCATION + FOREGROUND_SERVICE +
+         FOREGROUND_SERVICE_LOCATION + WAKE_LOCK + the
+         LocationTrackerService declaration live in
+         libs/maps/src/main/AndroidManifest.xml. Manifest-merger folds
+         them into the final APK manifest at assembly time; app/ stays
+         free of Maps-specific entries. -->
+
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
@@ -98,15 +93,5 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <!-- LocationTrackerService — foreground service that collects
-             GPS points while the user is moving / dwelling. The
-             foregroundServiceType="location" matches the
-             FOREGROUND_SERVICE_LOCATION permission declared up top
-             (Android 14+ requires both). Not exported — only our own
-             process starts it. -->
-        <service
-            android:name=".LocationTrackerService"
-            android:foregroundServiceType="location"
-            android:exported="false" />
     </application>
 </manifest>

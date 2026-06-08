@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.app.Activity
 import android.content.Intent
@@ -68,7 +68,7 @@ class MapsExportFragment : Fragment() {
         root.addView(Button(ctx).apply {
             text = "Export GeoJSON"
             setOnClickListener {
-                Haptics.tap(it)
+                MapsHaptics.tap(it)
                 pendingFormat = "geojson"
                 picker.launch("cloud-superapp-stops-${nowStamp()}.geojson")
             }
@@ -76,7 +76,7 @@ class MapsExportFragment : Fragment() {
         root.addView(Button(ctx).apply {
             text = "Export CSV"
             setOnClickListener {
-                Haptics.tap(it)
+                MapsHaptics.tap(it)
                 pendingFormat = "csv"
                 picker.launch("cloud-superapp-stops-${nowStamp()}.csv")
             }

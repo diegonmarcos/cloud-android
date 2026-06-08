@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.os.Bundle
 import android.text.Editable
@@ -120,7 +120,7 @@ class MapsConfigFragment : Fragment() {
             val pad = dp(ctx, 12); setPadding(pad, pad, pad, pad)
             setBackgroundColor(if (isSelected) 0x447C3AED.toInt() else 0x22FFFFFFL.toInt())
             isClickable = true; isFocusable = true
-            setOnClickListener { Haptics.tap(it); onPick() }
+            setOnClickListener { MapsHaptics.tap(it); onPick() }
         }
         // Top row: ● label  · [host badge] · free-tier
         tile.addView(TextView(ctx).apply {
@@ -211,7 +211,7 @@ class MapsConfigFragment : Fragment() {
                 }
                 override fun onStartTrackingTouch(sb: SeekBar?) {}
                 override fun onStopTrackingTouch(sb: SeekBar?) {
-                    Haptics.tap(this@apply); onChange(progress + min)
+                    MapsHaptics.tap(this@apply); onChange(progress + min)
                 }
             })
         })

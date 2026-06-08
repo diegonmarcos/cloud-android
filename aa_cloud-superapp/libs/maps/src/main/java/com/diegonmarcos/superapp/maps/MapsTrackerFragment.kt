@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.maps
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -83,7 +83,7 @@ class MapsTrackerFragment : Fragment() {
         startBtn = Button(ctx).apply {
             text = "Start"
             setOnClickListener {
-                Haptics.tap(it)
+                MapsHaptics.tap(it)
                 val missing = MapsPermissions.missing(ctx)
                 if (missing.isNotEmpty()) {
                     MapsPermissions.request(requireActivity(), missing, PERM_REQUEST_CODE)
@@ -97,7 +97,7 @@ class MapsTrackerFragment : Fragment() {
         stopBtn = Button(ctx).apply {
             text = "Stop"
             setOnClickListener {
-                Haptics.tap(it)
+                MapsHaptics.tap(it)
                 LocationTrackerService.stopTracking(ctx)
                 refresh()
             }
@@ -115,7 +115,7 @@ class MapsTrackerFragment : Fragment() {
         resetBtn = Button(ctx).apply {
             text = "Reset all tracker data"
             setOnClickListener {
-                Haptics.tap(it)
+                MapsHaptics.tap(it)
                 if (!resetArmed) {
                     resetArmed = true
                     text = "Tap again to confirm wipe"

@@ -91,7 +91,8 @@
         "libs:vault",
         "libs:chat",
         "libs:wallet",
-        "libs:health"
+        "libs:health",
+        "libs:maps"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -169,6 +170,13 @@
         "libs:core"
       ],
       "comment": "MyHealth — native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device — single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface — pages declared in build.json::ui.sections[id=health]."
+    },
+    "libs:maps": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "MyMaps — native GPS tracker + MapLibre Native renderer + SQLite store. Foreground LocationTrackerService writes points; StopDetector emits dwell-events; StopsEnricher resolves each Stop via the active provider (build.json::ui.maps_providers, default Nominatim public). MyTrips Dashboard + Stats read the same SQLite. All Maps* / Mytrips* / LocationTrackerService / StopsEnricher / MapsProviderClient code lives here; app/ only retains the SectionPages dispatch that imports the fragments. Native deps: org.maplibre.gl:android-sdk + play-services-location — both heavy in native .so (arm64-only via build.json::android.abi_filters)."
     }
   },
   "ui": {
