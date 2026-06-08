@@ -50,20 +50,17 @@ class MytripsDashboardFragment : Fragment() {
 
         val db = MapsDb.get(ctx)
         val all5y = db.stopsBetween(from5y, now)
-        if (all5y.isEmpty()) {
-            root.addView(header(ctx, "MyTrips"))
-            root.addView(caption(ctx, "No Stops yet. Open MyMaps → Tracker → Start to begin logging your movements."))
-            return
-        }
 
-        // ── Headline counters ─────────────────────────────────────
+        // ── Headline counters (always rendered — useful even at 0
+        //    because the user can SEE the wiring is live before any
+        //    Stops accumulate) ──────────────────────────────────────
         val cities    = all5y.mapNotNull { it.city }.toSet()
         val countries = all5y.mapNotNull { it.country }.toSet()
         val days      = all5y.map {
             SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it.startedAt))
         }.toSet()
 
-        root.addView(header(ctx, "MyTrips"))
+        root.addView(header(ctx, "MyTrips · beta"))
         root.addView(grid4(ctx,
             "Stops" to all5y.size.toString(),
             "Cities" to cities.size.toString(),
@@ -72,24 +69,57 @@ class MytripsDashboardFragment : Fragment() {
         ))
         root.addView(caption(ctx, "Last 5 years"))
 
-        // ── Today / Week / Month windows ──────────────────────────
-        section(ctx, root, "Today",      all5y.filter { it.startedAt >= fromToday })
-        section(ctx, root, "Last 7 days", all5y.filter { it.startedAt >= from7d })
-        section(ctx, root, "Last 30 days", all5y.filter { it.startedAt >= from30d })
-
-        // ── Top cities ───────────────────────────────────────────
+        // ── Raw DB telemetry — proves the tracker → DB → dashboard
+        //    wiring is live even when Stops detection hasn't yet
+        //    triggered (≥ 5-min dwell required). Once the counter
+        //    starts climbing the user knows the path is working. ─
         root.addView(spacer(ctx, dp(ctx, 16)))
-        root.addView(subhead(ctx, "Most-visited cities — last 5y"))
-        val topCities = all5y.mapNotNull { it.city }
-            .groupingBy { it }.eachCount()
-            .entries.sortedByDescending { it.value }
-            .take(10)
-        if (topCities.isEmpty()) {
-            root.addView(caption(ctx, "No cities resolved yet — enrichment runs as Stops accumulate."))
+        root.addView(subhead(ctx, "Tracker · live telemetry"))
+        val pointTotal = db.pointCount()
+        val stopTotal  = db.stopCount()
+        root.addView(kv(ctx, "GPS points logged",  pointTotal.toString()))
+        root.addView(kv(ctx, "Stops detected",     stopTotal.toString()))
+        root.addView(kv(ctx, "Stops with city",    all5y.count { it.city != null }.toString()))
+        root.addView(kv(ctx, "Stops with country", all5y.count { it.country != null }.toString()))
+
+        // ── Last 5 GPS fixes — shows fixes are landing even
+        //    pre-Stop. Reverse-chronological. ───────────────────────
+        root.addView(spacer(ctx, dp(ctx, 16)))
+        root.addView(subhead(ctx, "Last 5 GPS fixes"))
+        val recent = db.recentPoints(5).asReversed()
+        if (recent.isEmpty()) {
+            root.addView(caption(ctx, "No fixes yet — start the tracker on MyMaps → Configs."))
         } else {
-            for ((city, n) in topCities) {
-                root.addView(kv(ctx, city, "$n stops"))
+            val tsFmt = SimpleDateFormat("HH:mm:ss", Locale.US)
+            for (p in recent) {
+                root.addView(kv(ctx,
+                    tsFmt.format(Date(p.ts)),
+                    "%.5f, %.5f".format(p.lat, p.lon)))
             }
+        }
+
+        // ── Today / Week / Month windows + top cities ───────────
+        if (all5y.isNotEmpty()) {
+            section(ctx, root, "Today",       all5y.filter { it.startedAt >= fromToday })
+            section(ctx, root, "Last 7 days",  all5y.filter { it.startedAt >= from7d })
+            section(ctx, root, "Last 30 days", all5y.filter { it.startedAt >= from30d })
+
+            root.addView(spacer(ctx, dp(ctx, 16)))
+            root.addView(subhead(ctx, "Most-visited cities — last 5y"))
+            val topCities = all5y.mapNotNull { it.city }
+                .groupingBy { it }.eachCount()
+                .entries.sortedByDescending { it.value }
+                .take(10)
+            if (topCities.isEmpty()) {
+                root.addView(caption(ctx, "No cities resolved yet — enrichment runs as Stops accumulate."))
+            } else {
+                for ((city, n) in topCities) {
+                    root.addView(kv(ctx, city, "$n stops"))
+                }
+            }
+        } else {
+            root.addView(spacer(ctx, dp(ctx, 16)))
+            root.addView(caption(ctx, "Top cities + day-window rollups will populate once Stops start landing (≥ 5-min dwell)."))
         }
     }
 
