@@ -1342,37 +1342,45 @@ class DevControlFragment : Fragment() {
      *  signature perms whose grantee equals our own UID). Each row
      *  carries the protection-level annotation so the user can audit
      *  what the app can do without ever clicking "Allow". */
-    private fun collectAutoGrantedPerms(ctx: Context): List<Pair<String, String>> { return try {
-        val pm = ctx.packageManager
-        @Suppress("DEPRECATION")
-        val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
-        val requested = info.requestedPermissions ?: return emptyList()
-        val flags     = info.requestedPermissionsFlags ?: IntArray(requested.size)
-        val out = mutableListOf<Pair<String, String>>()
-        for ((i, perm) in requested.withIndex()) {
-            val grantedAtInstall = (flags.getOrNull(i) ?: 0) and
-                android.content.pm.PackageInfo.REQUESTED_PERMISSION_GRANTED != 0
-            if (!grantedAtInstall) continue
-            val info2 = runCatching { pm.getPermissionInfo(perm, 0) }.getOrNull()
-            val level = info2?.protectionLevel ?: -1
-            val base  = level and android.content.pm.PermissionInfo.PROTECTION_MASK_BASE
-            // PROTECTION_NORMAL (0): always auto-granted — surface every one.
-            // PROTECTION_SIGNATURE (2): granted only when signed with the
-            // same key as the declaring package; usually a system perm
-            // the app is allowed to coexist with — also worth surfacing.
-            // PROTECTION_DANGEROUS (1): runtime perm — handled by the
-            // Runtime perms section above. Skip here to avoid duplication.
-            if (base == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS) continue
-            val label = perm.removePrefix("android.permission.").take(36)
-            val tag = when (base) {
-                android.content.pm.PermissionInfo.PROTECTION_NORMAL    -> "NORMAL"
-                android.content.pm.PermissionInfo.PROTECTION_SIGNATURE -> "SIGNATURE"
-                else                                                   -> "?"
+    private fun collectAutoGrantedPerms(ctx: Context): List<Pair<String, String>> {
+        // Statement-level body — the previous `return try {…} catch {…}`
+        // form choked Kotlin's parser when it hit the inner `?: return
+        // emptyList()` (it tried to read `emptyList` as a label-name).
+        // Plain try/return is unambiguous.
+        try {
+            val pm = ctx.packageManager
+            @Suppress("DEPRECATION")
+            val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_PERMISSIONS)
+            val requested = info.requestedPermissions ?: return emptyList()
+            val flags = info.requestedPermissionsFlags ?: IntArray(requested.size)
+            val out = mutableListOf<Pair<String, String>>()
+            for ((i, perm) in requested.withIndex()) {
+                val grantedAtInstall = (flags.getOrNull(i) ?: 0) and
+                    android.content.pm.PackageInfo.REQUESTED_PERMISSION_GRANTED != 0
+                if (!grantedAtInstall) continue
+                val info2 = runCatching { pm.getPermissionInfo(perm, 0) }.getOrNull()
+                val level = info2?.protectionLevel ?: -1
+                val base = level and android.content.pm.PermissionInfo.PROTECTION_MASK_BASE
+                // PROTECTION_NORMAL (0): always auto-granted — surface every one.
+                // PROTECTION_SIGNATURE (2): granted only when signed with the
+                // same key as the declaring package; usually a system perm
+                // the app is allowed to coexist with — also worth surfacing.
+                // PROTECTION_DANGEROUS (1): runtime perm — handled by the
+                // Runtime perms section above. Skip here to avoid duplication.
+                if (base == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS) continue
+                val label = perm.removePrefix("android.permission.").take(36)
+                val tag = when (base) {
+                    android.content.pm.PermissionInfo.PROTECTION_NORMAL    -> "NORMAL"
+                    android.content.pm.PermissionInfo.PROTECTION_SIGNATURE -> "SIGNATURE"
+                    else                                                   -> "?"
+                }
+                out.add(label to "✓ auto · $tag")
             }
-            out.add(label to "✓ auto · $tag")
+            return out
+        } catch (_: Throwable) {
+            return emptyList()
         }
-        out
-    } catch (_: Throwable) { emptyList() } }
+    }
 
     companion object { fun newInstance() = DevControlFragment() }
 }
