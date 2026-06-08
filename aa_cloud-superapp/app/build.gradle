@@ -278,6 +278,15 @@ android {
         targetSdk 34
         versionCode codeFinal
         versionName "${buildJson.android.version_name} (sha-${shortSha})"
+        // Native-library ABI filter — declared in build.json::android.abi_filters
+        // so the choice stays data-driven. Default = arm64-v8a only,
+        // which trims MapLibre's native .so payload from ~60 MB across
+        // 4 ABIs to ~15 MB for one ABI. Trades older-32-bit-device + x86-
+        // emulator support for ~45 MB APK savings.
+        ndk {
+            def abis = buildJson.android.abi_filters ?: ['arm64-v8a']
+            abiFilters.addAll(abis as List)
+        }
         buildConfigField "String", "GIT_SHORT_SHA",         "\"${shortSha}\""
         buildConfigField "String", "BUILD_TIMESTAMP",       "\"${buildTimestamp}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
