@@ -326,7 +326,11 @@ class BrowserHostFragment : Fragment(), Collapsible,
             // UA + viewport mode applied here from the persisted-per-
             // fragment desktopMode flag. Re-applied on every toggle.
             applyViewMode(this)
-            com.diegonmarcos.superapp.Trace.i("Tabs",
+            // Was com.diegonmarcos.superapp.Trace.i — that lives in the
+            // app/ module which libs:browser can't reach back into
+            // (module boundary). Plain android.util.Log preserves the
+            // diagnostic without the cross-module ref.
+            android.util.Log.i("Tabs",
                 "webview-ua desktopMode=$desktopMode ua='${settings.userAgentString}' " +
                 "wideViewport=${settings.useWideViewPort} url=$url")
             layoutParams = LinearLayout.LayoutParams(
