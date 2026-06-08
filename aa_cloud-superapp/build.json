@@ -94,7 +94,8 @@
         "libs:health",
         "libs:maps",
         "libs:fin",
-        "libs:browser"
+        "libs:browser",
+        "libs:apptabs"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -193,6 +194,13 @@
         "libs:core"
       ],
       "comment": "MyFin — personal finance dashboard. Beta renders from build.json::ui.myfin_mock (accounts, monthly stats, top expense categories, recent transactions, net worth) — all data-driven so the user can iterate the layout by editing JSON without rebuilding Kotlin. Real aggregator (Plaid / GoCardless / SaltEdge / manual OFX import) lands in a follow-up. MyFinDashboardFragment is the only surface for now; pages: dashboard."
+    },
+    "libs:apptabs": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "App Tabs — last-6 opened SuperApp entries (sections, pages, external apps) rendered as a 2-col GRID. Sister module to libs:browser; same card-grid UX, different content (sealed Entry: SectionEntry | PageEntry | ExternalAppEntry). AppTabPrefs is SharedPreferences-backed ('app_tabs' file, strict LRU cap=6). Producers call AppTabPrefs.recordSection / recordPage / recordExternalApp on every successful navigation; the GRID re-renders on onResume so flipping back to Tabs always shows the freshest LRU. AppTabsHost is the callback interface MainActivity implements to handle card-tap re-navigation without libs:apptabs reaching back into app/."
     }
   },
   "ui": {
@@ -499,6 +507,13 @@
                 "label": "Browser",
                 "icon": "ic_mode_apps",
                 "target": "section:browser"
+              },
+              {
+                "_doc": "App Tabs — surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs→Browser rename). Tap a card = re-navigate.",
+                "id": "apptabs",
+                "label": "Tabs",
+                "icon": "ic_mode_apps",
+                "target": "section:apptabs"
               },
               {
                 "_doc": "In-app card-stack wallet (WalletFragment / Compose). page:wallet/cards routes through openSectionPage → SectionPages.factoryFor → WalletFragment. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
@@ -1295,7 +1310,18 @@
         ]
       },
       {
-        "_doc_rename": "Renamed Tabs → Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the future App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename.",
+        "_doc": "App Tabs — LRU shelf of the last 6 SuperApp things the user touched. Mix of section-level entries, page drill-downs, and external apps launched from the Phone tab. Single page 'grid' so the tile target page:apptabs/grid lands on AppTabsFragment.",
+        "id": "apptabs",
+        "label": "Tabs",
+        "icon": "ic_mode_apps",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          { "id": "grid", "label": "Tabs", "icon": "ic_mode_apps" }
+        ]
+      },
+      {
+        "_doc_rename": "Renamed Tabs → Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename.",
         "id": "browser",
         "label": "Browser",
         "icon": "ic_mode_apps",

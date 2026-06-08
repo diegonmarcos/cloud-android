@@ -422,10 +422,16 @@ dependencies {
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
 
     // libs:browser — the in-app WebView host (was app/.../tabs/ until
-    // the rename to Browser to free 'Tabs' for the future App Tabs
-    // feature). app/'s SectionPages dispatcher + MainActivity.launchUri
-    // import BrowserHostFragment from this module.
+    // the rename to Browser to free 'Tabs' for the App Tabs feature).
+    // app/'s SectionPages dispatcher + MainActivity.launchUri import
+    // BrowserHostFragment from this module.
     implementation project(':libs:browser')
+
+    // libs:apptabs — the App Tabs (last-6 LRU shelf) feature.
+    // MainActivity implements AppTabsHost (defined in libs:apptabs)
+    // so the card-tap callback can re-navigate without libs:apptabs
+    // reaching back into app/'s MainActivity by name.
+    implementation project(':libs:apptabs')
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.drawerlayout:drawerlayout:1.2.0'

@@ -1,0 +1,37 @@
+// libs:apptabs — "App Tabs" feature. Last-6 opened SuperApp
+// sections / pages / external apps card grid. Sister module to
+// libs:browser; same 2-col GRID UI shape, different content model
+// (SectionEntry | PageEntry | ExternalAppEntry instead of URL tabs).
+// Lives in its own libs/ module so the next App-Tabs UX iteration
+// doesn't touch app/'s shell wiring.
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.diegonmarcos.superapp.apptabs'
+    compileSdk 35
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+}

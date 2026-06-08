@@ -54,7 +54,24 @@ class MainActivity : AppCompatActivity(),
     com.diegonmarcos.superapp.devcontrol.DevControlBridge.ActivityHost,
     MailHost,
     WalletHost,
-    SearchOpener {
+    SearchOpener,
+    com.diegonmarcos.superapp.apptabs.AppTabsHost {
+
+    /** [AppTabsHost] — card-tap callback from libs:apptabs. Routes a
+     *  recorded LRU entry back to its original destination. Sections
+     *  go through goSection; pages through openSectionPage; external
+     *  apps fire a normal launch intent. */
+    override fun onAppTabPicked(entry: com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry) {
+        when (entry) {
+            is com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.SectionEntry ->
+                goSection(entry.sectionId, entry.label)
+            is com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.PageEntry ->
+                openSectionPage(entry.sectionId, entry.pageId)
+            is com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.ExternalAppEntry -> runCatching {
+                packageManager.getLaunchIntentForPackage(entry.packageName)?.let { startActivity(it) }
+            }
+        }
+    }
 
     /** [WalletHost] — delegates straight to the existing drawer-
      *  business-card navigation so there's still only ONE path into
@@ -986,6 +1003,13 @@ class MainActivity : AppCompatActivity(),
         currentSection = id
         currentLabel = label
         supportActionBar?.title = label
+        // Record into App Tabs LRU — skips the apptabs section itself so
+        // bouncing back from the Tabs shelf doesn't recursively log.
+        if (id != "apptabs") runCatching {
+            val sec = Sections.byId(id)
+            com.diegonmarcos.superapp.apptabs.AppTabPrefs(this)
+                .recordSection(id, label, sec?.iconName ?: "")
+        }
 
         val section = Sections.byId(id)
         val content: Fragment = when {
@@ -1276,7 +1300,14 @@ class MainActivity : AppCompatActivity(),
             val launch = pkg?.let { packageManager.getLaunchIntentForPackage(it) }
             if (launch != null) {
                 launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                runCatching { startActivity(launch); return }
+                runCatching {
+                    val label = runCatching {
+                        packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+                    }.getOrDefault(pkg)
+                    com.diegonmarcos.superapp.apptabs.AppTabPrefs(this)
+                        .recordExternalApp(pkg, label)
+                    startActivity(launch); return
+                }
             }
             if (!fallback.isNullOrBlank()) {
                 val fb = android.content.Intent(
@@ -1420,6 +1451,16 @@ class MainActivity : AppCompatActivity(),
         if (pageAction.isNotBlank()) {
             onTileClicked(pageAction)
             return
+        }
+        // Record into App Tabs LRU — skips the apptabs section so opening
+        // the shelf itself doesn't pollute the list.
+        if (sectionId != "apptabs") runCatching {
+            val pageEntry = Sections.byId(sectionId)?.pages?.firstOrNull { it.id == pageId }
+            com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).recordPage(
+                sectionId, pageId,
+                label    = pageEntry?.label ?: pageId,
+                iconName = pageEntry?.iconName ?: "",
+            )
         }
         if (currentSection != sectionId) {
             currentSection = sectionId

@@ -55,6 +55,8 @@ object SectionPages {
             com.diegonmarcos.superapp.devcontrol.DevControlFragment.newInstance()
         sectionId == "browser"   && pageId == "all"        ->
             com.diegonmarcos.superapp.browser.BrowserHostFragment.newInstance()
+        sectionId == "apptabs"                              ->
+            com.diegonmarcos.superapp.apptabs.AppTabsFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }
