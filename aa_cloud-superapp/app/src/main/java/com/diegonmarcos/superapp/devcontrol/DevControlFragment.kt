@@ -142,6 +142,35 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Jump to the battery-optimization picker. Two strategies tried
+     *  in order:
+     *    1. Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS — opens
+     *       the system list where the user picks our app and flips it
+     *       to "No Optimization" (= whitelisted). One extra tap but
+     *       works on every OEM without needing
+     *       REQUEST_IGNORE_BATTERY_OPTIMIZATIONS in the manifest.
+     *    2. ACTION_APPLICATION_DETAILS_SETTINGS — fallback if the
+     *       primary intent isn't resolved (rare; happens on aggressively
+     *       stripped AOSP forks). From the app-details page the user
+     *       still reaches Battery → Optimisation. */
+    private fun openBatteryOptimizationSettings() {
+        val primary = android.content.Intent(
+            android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+        )
+        if (primary.resolveActivity(requireContext().packageManager) != null) {
+            runCatching { startActivity(primary) }
+            return
+        }
+        runCatching {
+            startActivity(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", requireContext().packageName, null),
+                )
+            )
+        }
+    }
+
     /** Read per-app foreground + background time from UsageStatsManager.
      *  Returns (foregroundMs, backgroundMs); both -1 if the user hasn't
      *  granted PACKAGE_USAGE_STATS. Window = last 7 days. */
@@ -301,7 +330,7 @@ class DevControlFragment : Fragment() {
             //    system surfaces (not in the runtime perms flow). Each is
             //    a synchronous check against a system service.
             it.addView(small(ctx, "Special access — system-toggles outside the runtime perms flow:"))
-            row(ctx, it, "Battery whitelist",  specialAccessBattery(ctxAny()))
+            row(ctx, it, "Battery Optimization", specialAccessBattery(ctxAny()))
             row(ctx, it, "Default launcher",   specialAccessLauncher(ctxAny()))
             row(ctx, it, "Usage stats",        specialAccessUsageStats(ctxAny()))
             row(ctx, it, "Notif. listener",    specialAccessNotifListener(ctxAny()))
@@ -341,6 +370,9 @@ class DevControlFragment : Fragment() {
             })
             it.addView(actionButton(ctx, "Request All Permissions") {
                 requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
+            })
+            it.addView(actionButton(ctx, "Set Battery Optimization → No Optimization") {
+                openBatteryOptimizationSettings()
             })
             it.addView(actionButton(ctx, "Open system app settings") {
                 openAppSettings()
