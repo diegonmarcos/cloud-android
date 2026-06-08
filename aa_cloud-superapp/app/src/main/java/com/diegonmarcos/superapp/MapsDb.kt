@@ -142,6 +142,96 @@ class MapsDb private constructor(ctx: Context) :
         }
     }
 
+    /** Stops that still lack `place_name` — drives the
+     *  [StopsEnricher] worker. Returns oldest-first so newer Stops
+     *  get richer enrichment context (the user's recent area cache
+     *  primed first). */
+    fun unenrichedStops(limit: Int = 50): List<EnrichableStop> {
+        val db = readableDatabase
+        val out = mutableListOf<EnrichableStop>()
+        db.rawQuery(
+            "SELECT id,started_at,lat,lon FROM stops WHERE place_name IS NULL ORDER BY started_at ASC LIMIT ?;",
+            arrayOf(limit.toString()),
+        ).use { c ->
+            while (c.moveToNext()) out.add(EnrichableStop(
+                id        = c.getLong(0),
+                startedAt = c.getLong(1),
+                lat       = c.getDouble(2),
+                lon       = c.getDouble(3),
+            ))
+        }
+        return out
+    }
+
+    /** Write back the reverse-geocode result for one Stop. Nulls are
+     *  allowed for partial responses (e.g. Photon often skips
+     *  neighborhood). `enriched_at` marks the attempt time so a
+     *  failed enrichment (place_name=null) isn't re-tried on every
+     *  pass — see [StopsEnricher.shouldRetry]. */
+    fun enrichStop(
+        id: Long,
+        placeName: String?,
+        neighborhood: String?,
+        city: String?,
+        country: String?,
+    ) {
+        val db = writableDatabase
+        val cv = ContentValues().apply {
+            put("place_name", placeName)
+            put("neighborhood", neighborhood)
+            put("city", city)
+            put("country", country)
+            put("enriched_at", System.currentTimeMillis())
+        }
+        db.update("stops", cv, "id = ?", arrayOf(id.toString()))
+    }
+
+    /** All stops in [fromTs..toTs], newest first. Drives the
+     *  Timeline + Stops + MyTrips dashboards. */
+    fun stopsBetween(fromTs: Long, toTs: Long): List<RichStop> {
+        val db = readableDatabase
+        val out = mutableListOf<RichStop>()
+        db.rawQuery(
+            "SELECT id,started_at,ended_at,lat,lon,place_name,neighborhood,city,country " +
+                "FROM stops WHERE started_at BETWEEN ? AND ? ORDER BY started_at DESC;",
+            arrayOf(fromTs.toString(), toTs.toString()),
+        ).use { c ->
+            while (c.moveToNext()) out.add(RichStop(
+                id            = c.getLong(0),
+                startedAt     = c.getLong(1),
+                endedAt       = if (c.isNull(2)) null else c.getLong(2),
+                lat           = c.getDouble(3),
+                lon           = c.getDouble(4),
+                placeName     = c.getString(5),
+                neighborhood  = c.getString(6),
+                city          = c.getString(7),
+                country       = c.getString(8),
+            ))
+        }
+        return out
+    }
+
+    /** Reverse-geocode cache lookup keyed by rounded lat/lon. Push 3 uses
+     *  ~3-decimal-place rounding (≈ 100m grid) so two stops in the same
+     *  block share one geocode call. */
+    fun cachedReverse(latlonKey: String): String? {
+        val db = readableDatabase
+        db.rawQuery(
+            "SELECT json FROM places_cache WHERE latlon_key = ?;",
+            arrayOf(latlonKey),
+        ).use { c -> return if (c.moveToFirst()) c.getString(0) else null }
+    }
+
+    fun cacheReverse(latlonKey: String, json: String) {
+        val db = writableDatabase
+        val cv = ContentValues().apply {
+            put("latlon_key", latlonKey)
+            put("json", json)
+            put("updated_at", System.currentTimeMillis())
+        }
+        db.insertWithOnConflict("places_cache", null, cv, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
     /** Wipe every table — backs Configs → Maps → Reset / Clear data. */
     fun clearAll() {
         val db = writableDatabase
@@ -166,6 +256,32 @@ class MapsDb private constructor(ctx: Context) :
         val lat: Double,
         val lon: Double,
         val accuracy: Float? = null,
+    )
+
+    /** Minimal projection used by [StopsEnricher] when it walks the
+     *  unenriched-rows backlog — just the fields needed to fire one
+     *  reverse-geocode call and write the result back. */
+    data class EnrichableStop(
+        val id: Long,
+        val startedAt: Long,
+        val lat: Double,
+        val lon: Double,
+    )
+
+    /** Full projection used by [MapsTimelineFragment],
+     *  [MapsStopsFragment], [MapsExportFragment], and the MyTrips
+     *  dashboards — every column the reverse-geocode enrichment can
+     *  populate, plus the original spatial + temporal fields. */
+    data class RichStop(
+        val id: Long,
+        val startedAt: Long,
+        val endedAt: Long?,
+        val lat: Double,
+        val lon: Double,
+        val placeName: String?,
+        val neighborhood: String?,
+        val city: String?,
+        val country: String?,
     )
 
     companion object {

@@ -169,6 +169,11 @@ class LocationTrackerService : Service() {
             )
             db.insertStop(stop)
             activeStop = stop
+            // Fire-and-forget reverse-geocode of the new Stop. The
+            // enricher self-throttles (1 req/sec) and bails if a
+            // worker is already running, so re-entry from rapid
+            // Stop emissions is safe.
+            StopsEnricher.kickAsync(applicationContext)
         } else if (maxDist >= radius && activeStop != null) {
             // Transition: STOPPED → MOVING. We don't currently patch
             // ended_at into the row (Push 3 will fold it in alongside
