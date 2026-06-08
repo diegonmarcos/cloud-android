@@ -37,7 +37,7 @@ import androidx.fragment.app.Fragment
 class HealthFragment : Fragment() {
 
     private val pageId: String
-        get() = arguments?.getString(ARG_PAGE) ?: PAGE_DASHBOARD
+        get() = arguments?.getString(ARG_PAGE) ?: PAGE_SUMMARY
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View =
         ComposeView(requireContext()).apply {

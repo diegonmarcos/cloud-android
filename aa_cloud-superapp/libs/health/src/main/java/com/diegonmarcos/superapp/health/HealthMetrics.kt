@@ -86,11 +86,13 @@ object HealthMetrics {
             val perms = mutableSetOf<String>()
             val permArr = o.optJSONArray("perm_keys") ?: JSONArray()
             for (j in 0 until permArr.length()) {
-                val key = permArr.optString(j).ifBlank { continue }
-                // Resolve the canonical HC permission string from the
-                // record class (instead of synthesising the string
-                // from the perm_keys suffix — the HealthPermission
-                // helper guarantees the SDK-correct constant).
+                // `continue` can't appear inside a lambda (.ifBlank) —
+                // expand to a plain branch. Resolve the canonical HC
+                // permission string from the record class (instead of
+                // synthesising it from the perm_keys suffix) so the
+                // HealthPermission helper guarantees the SDK constant.
+                val key = permArr.optString(j)
+                if (key.isBlank()) continue
                 permForKey(key, recs)?.let { perms.add(it) }
             }
             out.add(

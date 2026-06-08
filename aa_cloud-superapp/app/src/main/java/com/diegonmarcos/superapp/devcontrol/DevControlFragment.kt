@@ -1257,8 +1257,11 @@ class DevControlFragment : Fragment() {
         val out = mutableListOf<Pair<String, String>>()
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
-            val label = o.optString("label").ifBlank { continue }
-            val perm  = o.optString("perm").ifBlank { continue }
+            // `continue` can't live inside a lambda (.ifBlank) — expand
+            // to explicit guards. Skip rows missing either field.
+            val label = o.optString("label")
+            val perm  = o.optString("perm")
+            if (label.isBlank() || perm.isBlank()) continue
             out.add(label to perm)
         }
         return out
