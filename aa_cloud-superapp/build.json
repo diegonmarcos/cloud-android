@@ -1297,17 +1297,16 @@
         ]
       },
       {
-        "_doc": "MyMaps — native GPS tracker + MapLibre map. Foreground-service LocationTrackerService writes points into a local SQLite DB; stop-detector emits Stop rows (centroid + min-dwell). Pages: tracker (start/stop + perms + counters), map (MapLibre Native view), timeline + stops + export (Push 3). The reverse-geocoder + POI providers live in Configs → Maps (provider picker + calibration).",
+        "_doc": "MyMaps — native GPS tracker + MapLibre map. Foreground-service LocationTrackerService writes points into a local SQLite DB; stop-detector emits Stop rows (centroid + min-dwell). Pages: map (MapLibre Native view), timeline (Daily | Stops tabs), configs (folds Tracker control + provider picker + API keys + calibration into one page), export. The tracker control + provider picker used to live as separate pages (maps/tracker + config/maps) — merged here so every Maps knob is one tap away from the Maps section.",
         "id": "maps",
         "label": "MyMaps",
         "icon": "ic_settings",
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "tracker",  "label": "Tracker",  "icon": "ic_settings" },
           { "id": "map",      "label": "Map",      "icon": "ic_settings" },
           { "id": "timeline", "label": "Timeline", "icon": "ic_settings" },
-          { "id": "stops",    "label": "Stops",    "icon": "ic_settings" },
+          { "id": "configs",  "label": "Configs",  "icon": "ic_settings" },
           { "id": "export",   "label": "Export",   "icon": "ic_p_import" }
         ]
       },
@@ -1401,11 +1400,6 @@
             "id": "launcher",
             "label": "Launcher",
             "icon": "ic_home"
-          },
-          {
-            "id": "maps",
-            "label": "Maps",
-            "icon": "ic_settings"
           },
           {
             "id": "import",

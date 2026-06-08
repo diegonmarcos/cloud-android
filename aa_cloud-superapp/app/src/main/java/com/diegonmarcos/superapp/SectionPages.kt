@@ -6,9 +6,7 @@ import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.maps.MapsConfigFragment
 import com.diegonmarcos.superapp.maps.MapsExportFragment
 import com.diegonmarcos.superapp.maps.MapsMapFragment
-import com.diegonmarcos.superapp.maps.MapsStopsFragment
-import com.diegonmarcos.superapp.maps.MapsTimelineFragment
-import com.diegonmarcos.superapp.maps.MapsTrackerFragment
+import com.diegonmarcos.superapp.maps.MapsTimelineTabsFragment
 import com.diegonmarcos.superapp.maps.MytripsDashboardFragment
 import com.diegonmarcos.superapp.maps.MytripsStatsFragment
 import com.diegonmarcos.superapp.wallet.WalletFragment
@@ -44,11 +42,9 @@ object SectionPages {
         sectionId == "config" && pageId == "profile"   -> ProfileFragment.newInstance()
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
-        sectionId == "config" && pageId == "maps"     -> MapsConfigFragment.newInstance()
-        sectionId == "maps"    && pageId == "tracker"   -> MapsTrackerFragment.newInstance()
+        sectionId == "maps"    && pageId == "configs"   -> MapsConfigFragment.newInstance()
         sectionId == "maps"    && pageId == "map"       -> MapsMapFragment.newInstance()
-        sectionId == "maps"    && pageId == "timeline"  -> MapsTimelineFragment.newInstance()
-        sectionId == "maps"    && pageId == "stops"     -> MapsStopsFragment.newInstance()
+        sectionId == "maps"    && pageId == "timeline"  -> MapsTimelineTabsFragment.newInstance()
         sectionId == "maps"    && pageId == "export"    -> MapsExportFragment.newInstance()
         sectionId == "mytrips" && pageId == "dashboard" -> MytripsDashboardFragment.newInstance()
         sectionId == "mytrips" && pageId == "stats"     -> MytripsStatsFragment.newInstance()

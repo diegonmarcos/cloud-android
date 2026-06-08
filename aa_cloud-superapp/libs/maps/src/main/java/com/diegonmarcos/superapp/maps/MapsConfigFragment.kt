@@ -32,6 +32,152 @@ import androidx.fragment.app.Fragment
  */
 class MapsConfigFragment : Fragment() {
 
+    // Tracker section state — held so refresh() can re-paint without
+    // rebuilding the whole fragment. Lazy-init in renderTrackerSection.
+    private var trackerStatusView: android.widget.TextView? = null
+    private var trackerCountsView: android.widget.TextView? = null
+    private var trackerPermsView:  android.widget.TextView? = null
+    private var trackerStartBtn:   android.widget.Button? = null
+    private var trackerStopBtn:    android.widget.Button? = null
+    private var trackerResetBtn:   android.widget.Button? = null
+    private var trackerResetArmed = false
+    private val TRACKER_PERM_REQUEST_CODE = 9991
+
+    override fun onResume() {
+        super.onResume()
+        refreshTrackerSection()
+    }
+
+    /** Build the Tracker block at the top of the Configs page —
+     *  status badge, counters, permission hint, Start/Stop buttons,
+     *  Reset-all (two-tap-armed). Same shape as the old standalone
+     *  Maps/Tracker page. */
+    private fun renderTrackerSection(ctx: android.content.Context, root: LinearLayout) {
+        root.addView(header(ctx, "Tracker"))
+        trackerStatusView = android.widget.TextView(ctx).apply {
+            setTextColor(0xFFFFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+        }
+        root.addView(trackerStatusView)
+        root.addView(spacer(ctx, dp(ctx, 8)))
+
+        trackerCountsView = android.widget.TextView(ctx).apply {
+            setTextColor(0xAAFFFFFFL.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+        }
+        root.addView(trackerCountsView)
+        root.addView(spacer(ctx, dp(ctx, 12)))
+
+        trackerPermsView = android.widget.TextView(ctx).apply {
+            setTextColor(0xFFF59E0B.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        }
+        root.addView(trackerPermsView)
+
+        val btnRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val mt = dp(ctx, 12)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = mt }
+        }
+        trackerStartBtn = android.widget.Button(ctx).apply {
+            text = "Start"
+            setOnClickListener {
+                MapsHaptics.tap(it)
+                val missing = MapsPermissions.missing(ctx)
+                if (missing.isNotEmpty()) {
+                    MapsPermissions.request(requireActivity(), missing, TRACKER_PERM_REQUEST_CODE)
+                } else {
+                    LocationTrackerService.startTracking(ctx)
+                    refreshTrackerSection()
+                }
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        trackerStopBtn = android.widget.Button(ctx).apply {
+            text = "Stop"
+            setOnClickListener {
+                MapsHaptics.tap(it)
+                LocationTrackerService.stopTracking(ctx)
+                refreshTrackerSection()
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(ctx, 8)
+            }
+        }
+        btnRow.addView(trackerStartBtn)
+        btnRow.addView(trackerStopBtn)
+        root.addView(btnRow)
+
+        root.addView(spacer(ctx, dp(ctx, 12)))
+        root.addView(caption(ctx, "Data reset wipes every collected point + stop + cached place. Irreversible — Export from the Export page first if you want a backup."))
+        trackerResetBtn = android.widget.Button(ctx).apply {
+            text = "Reset all tracker data"
+            setOnClickListener {
+                MapsHaptics.tap(it)
+                if (!trackerResetArmed) {
+                    trackerResetArmed = true
+                    text = "Tap again to confirm wipe"
+                } else {
+                    MapsDb.get(ctx).clearAll()
+                    trackerResetArmed = false
+                    text = "Reset all tracker data"
+                    refreshTrackerSection()
+                }
+            }
+        }
+        root.addView(trackerResetBtn)
+
+        refreshTrackerSection()
+    }
+
+    /** Re-read tracker state and update labels + button enablement.
+     *  Cheap; safe to call on every onResume / button-press. Returns
+     *  silently if the section hasn't been rendered yet (e.g. called
+     *  before onCreateView). */
+    private fun refreshTrackerSection() {
+        val ctx = context ?: return
+        val status = trackerStatusView ?: return
+        val counts = trackerCountsView ?: return
+        val perms  = trackerPermsView  ?: return
+
+        val trackerPrefs = MapsTrackerPrefs(ctx)
+        val db = MapsDb.get(ctx)
+        val missing = MapsPermissions.missing(ctx)
+        val running = trackerPrefs.enabled
+
+        status.text = when {
+            missing.isNotEmpty() -> "● Permissions missing"
+            running              -> "● Tracker running"
+            else                 -> "● Tracker idle"
+        }
+        status.setTextColor(when {
+            missing.isNotEmpty() -> 0xFFEF4444.toInt()
+            running              -> 0xFF22C55E.toInt()
+            else                 -> 0xFFF59E0B.toInt()
+        })
+
+        val lastTs = trackerPrefs.lastFixTs
+        val lastFixStr = if (lastTs <= 0L) "no fix yet" else
+            "last fix " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+                .format(java.util.Date(lastTs))
+        counts.text =
+            "Points: ${db.pointCount()}\n" +
+            "Stops:  ${db.stopCount()}\n" +
+            lastFixStr
+
+        perms.text = if (missing.isEmpty()) ""
+            else "Needs: " + missing.joinToString(", ") {
+                it.substringAfterLast('.').replace('_', ' ').lowercase()
+            } + "  ← tap Start to request"
+        perms.visibility = if (missing.isEmpty()) View.GONE else View.VISIBLE
+
+        trackerStartBtn?.isEnabled = !running
+        trackerStopBtn ?.isEnabled =  running
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         val providerPrefs = MapsProviderPrefs(ctx)
@@ -45,6 +191,13 @@ class MapsConfigFragment : Fragment() {
             val p = dp(ctx, 16); setPadding(p, p, p, p)
         }
         scroll.addView(root)
+
+        // ── Tracker section (folded in from the removed maps/tracker
+        //    page so every Maps knob is one tap away). Status badge,
+        //    counters, permission prompt, Start/Stop, Reset-all. ──
+        renderTrackerSection(ctx, root)
+
+        root.addView(spacer(ctx, dp(ctx, 24)))
 
         // ── Reverse geocoder section ───────────────────────────────
         root.addView(header(ctx, "Reverse geocoder"))
