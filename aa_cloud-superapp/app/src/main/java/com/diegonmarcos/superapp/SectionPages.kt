@@ -8,6 +8,7 @@ import com.diegonmarcos.superapp.maps.MapsMapFragment
 import com.diegonmarcos.superapp.maps.MapsTimelineTabsFragment
 import com.diegonmarcos.superapp.maps.MytripsDashboardFragment
 import com.diegonmarcos.superapp.maps.MytripsStatsFragment
+import com.diegonmarcos.superapp.fin.MyFinDashboardFragment
 import com.diegonmarcos.superapp.wallet.WalletFragment
 
 /**
@@ -46,6 +47,7 @@ object SectionPages {
         sectionId == "maps"    && pageId == "timeline"  -> MapsTimelineTabsFragment.newInstance()
         sectionId == "mytrips" && pageId == "dashboard" -> MytripsDashboardFragment.newInstance()
         sectionId == "mytrips" && pageId == "stats"     -> MytripsStatsFragment.newInstance()
+        sectionId == "myfin"   && pageId == "dashboard" -> MyFinDashboardFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
         sectionId == "health"                           -> HealthFragment.newInstance(pageId)
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()

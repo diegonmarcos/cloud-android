@@ -518,10 +518,11 @@
             "title": "Tools Dashboards",
             "tiles": [
               {
+                "_doc": "Native MyFin section — beta dashboard rendered from ui.myfin_mock. Was an external GitHub Pages link until libs:fin landed; tile now routes through SectionPages dispatch → MyFinDashboardFragment.",
                 "id": "myfin",
                 "label": "MyFin",
                 "icon": "ic_fin",
-                "target": "https://diegonmarcos.github.io/my-fin/"
+                "target": "page:myfin/dashboard"
               },
               {
                 "_doc": "Native MyTrips section — Dashboard + Stats layered on top of MyMaps's local SQLite Stop store. Was an external GitHub Pages link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native Compose-less fragments (MytripsDashboardFragment / MytripsStatsFragment).",
@@ -1331,6 +1332,17 @@
         ]
       },
       {
+        "_doc": "MyFin — personal finance dashboard (beta). Reads from build.json::ui.myfin_mock until a real aggregator lands. MyFinDashboardFragment in libs:fin reads UI_MYFIN_MOCK_B64 from BuildConfig (data-driven — edit JSON, rebuild, see new numbers).",
+        "id": "myfin",
+        "label": "MyFin",
+        "icon": "ic_fin",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          { "id": "dashboard", "label": "Dashboard", "icon": "ic_fin" }
+        ]
+      },
+      {
         "_doc": "In-app Wallet — first Jetpack Compose surface. Renders cards in a stack-overlap deck (Apple Wallet-style). Data layer = WalletStore in libs:core; SharedPreferences-backed; seeded with mock cards on first launch. Single page 'cards' so the tile target page:wallet/cards routes through the standard openSectionPage → SectionPages factory dispatcher (which knows about WalletFragment) instead of the bare-section placeholder.",
         "id": "wallet",
         "label": "Wallet",
@@ -1537,6 +1549,43 @@
       "moving_threshold_mps": 2,
       "stops_radius_m": 50,
       "stops_dwell_min": 5
+    },
+    "_doc_myfin_mock": "MyFin beta dashboard data — fully editable here, baked into libs:fin's BuildConfig at gradle config time so MyFinDashboardFragment reads it via BuildConfig.UI_MYFIN_MOCK_B64. Currency strings are display-only (the fragment just prints what's here); flip to a real aggregator by swapping the loader, not by replacing this block. Numbers are illustrative.",
+    "myfin_mock": {
+      "currency": "EUR",
+      "net_worth":   124850.42,
+      "month_label": "This month",
+      "month": {
+        "income":   5400.00,
+        "expenses": 3120.50,
+        "savings":  2279.50,
+        "savings_rate_pct": 42
+      },
+      "accounts": [
+        { "name": "Santander Checking",   "type": "checking",   "balance":    4250.18 },
+        { "name": "Nubank Savings",       "type": "savings",    "balance":   18900.00 },
+        { "name": "Revolut EUR",          "type": "wallet",     "balance":     842.55 },
+        { "name": "Wise Multi-currency",  "type": "wallet",     "balance":    2107.31 },
+        { "name": "DEGIRO Brokerage",     "type": "investment", "balance":   78650.20 },
+        { "name": "BTC / ETH (Self-Custody)","type": "crypto",  "balance":   18200.18 },
+        { "name": "Visa Platinum",        "type": "card",       "balance":   -1840.00 }
+      ],
+      "top_categories": [
+        { "name": "Rent",             "amount": 1450.00, "pct": 46 },
+        { "name": "Groceries",         "amount":  420.50, "pct": 13 },
+        { "name": "Restaurants",       "amount":  310.80, "pct": 10 },
+        { "name": "Transport",         "amount":  205.20, "pct":  7 },
+        { "name": "Subscriptions",     "amount":  189.99, "pct":  6 }
+      ],
+      "recent_tx": [
+        { "date": "2026-06-08", "payee": "Edeka Supermarkt",      "amount": -42.18, "category": "Groceries"     },
+        { "date": "2026-06-08", "payee": "Deutsche Bahn",          "amount": -18.50, "category": "Transport"      },
+        { "date": "2026-06-07", "payee": "Salary — LEAFY GmbH",    "amount": 5400.00, "category": "Income"         },
+        { "date": "2026-06-07", "payee": "Burgermeister Kreuzberg","amount": -12.40, "category": "Restaurants"    },
+        { "date": "2026-06-06", "payee": "Spotify Premium",        "amount":  -9.99, "category": "Subscriptions"  },
+        { "date": "2026-06-06", "payee": "DEGIRO — VWCE buy",      "amount": -800.00, "category": "Investment"     },
+        { "date": "2026-06-05", "payee": "Berlin Rent — June",     "amount": -1450.00,"category": "Rent"           }
+      ]
     },
     "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed — does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
     "dynamic_island_action": "app:com.termux.nix",
