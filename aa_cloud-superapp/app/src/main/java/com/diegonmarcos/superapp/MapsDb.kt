@@ -186,8 +186,8 @@ class MapsDb private constructor(ctx: Context) :
         db.update("stops", cv, "id = ?", arrayOf(id.toString()))
     }
 
-    /** All stops in [fromTs..toTs], newest first. Drives the
-     *  Timeline + Stops + MyTrips dashboards. */
+    /** All stops in the half-open range fromTs..toTs, newest first.
+     *  Drives the Timeline + Stops + MyTrips dashboards. */
     fun stopsBetween(fromTs: Long, toTs: Long): List<RichStop> {
         val db = readableDatabase
         val out = mutableListOf<RichStop>()
