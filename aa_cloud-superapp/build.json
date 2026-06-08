@@ -503,17 +503,18 @@
             "title": "Tools Primary",
             "tiles": [
               {
+                "_doc": "Browser uses ic_world (globe) so it's visually distinct from the Tabs tile (which keeps ic_mode_apps). target=page:browser/all lands the user directly on BrowserHostFragment's GRID instead of the section's page menu.",
                 "id": "browser",
                 "label": "Browser",
-                "icon": "ic_mode_apps",
-                "target": "section:browser"
+                "icon": "ic_world",
+                "target": "page:browser/all"
               },
               {
-                "_doc": "App Tabs — surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs→Browser rename). Tap a card = re-navigate.",
+                "_doc": "App Tabs — surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs→Browser rename). target=page:apptabs/grid so a tap goes STRAIGHT to AppTabsFragment; without this the section's single 'grid' page would still get wrapped in a page-menu intermediate.",
                 "id": "apptabs",
                 "label": "Tabs",
                 "icon": "ic_mode_apps",
-                "target": "section:apptabs"
+                "target": "page:apptabs/grid"
               },
               {
                 "_doc": "In-app card-stack wallet (WalletFragment / Compose). page:wallet/cards routes through openSectionPage → SectionPages.factoryFor → WalletFragment. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
@@ -1321,10 +1322,10 @@
         ]
       },
       {
-        "_doc_rename": "Renamed Tabs → Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename.",
+        "_doc_rename": "Renamed Tabs → Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename. Section icon = ic_world (globe) to visually distinguish from the App Tabs section which keeps ic_mode_apps.",
         "id": "browser",
         "label": "Browser",
-        "icon": "ic_mode_apps",
+        "icon": "ic_world",
         "module": null,
         "bottom_nav": false,
         "pages": [
