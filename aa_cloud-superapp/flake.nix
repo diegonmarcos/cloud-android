@@ -24,8 +24,12 @@
         androidEnv = pkgs.androidenv.composeAndroidPackages {
           toolsVersion        = "26.1.1";
           platformToolsVersion = "35.0.2";
-          buildToolsVersions  = [ "34.0.0" ];
-          platformVersions    = [ "34" "26" ];
+          # build-tools 35.0.0 required by compileSdk 35 (driven by
+          # androidx.health.connect:connect-client:1.1.0-alpha10 — see
+          # build.json::toolchain._doc_sdk_bump). 34.0.0 kept for
+          # transitional / NDK builds that still pin to it.
+          buildToolsVersions  = [ "35.0.0" "34.0.0" ];
+          platformVersions    = [ "35" "34" "26" ];
           # libs:net (cherry-picked wireguard-android tunnel/) builds
           # libwg-go.so via CMake → an NDK toolchain Make wrapper around
           # wireguard-go. ndkVersion in libs/net/build.gradle pins the
@@ -58,7 +62,7 @@
           ANDROID_HOME = "${androidSdk}/libexec/android-sdk";
           ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
           JAVA_HOME = "${pkgs.jdk17}/lib/openjdk";
-          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/34.0.0/aapt2";
+          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2";
 
           shellHook = ''
             echo "Diego Superapp devShell"

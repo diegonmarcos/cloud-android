@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.diegonmarcos.superapp.health'
-    compileSdk 34
+    compileSdk 35
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'

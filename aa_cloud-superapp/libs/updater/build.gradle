@@ -12,7 +12,7 @@ def au   = buildJson.release.auto_update
 
 android {
     namespace 'com.diegonmarcos.superapp.updater'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         minSdk 26

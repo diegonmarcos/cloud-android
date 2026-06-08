@@ -17,7 +17,7 @@ plugins {
 
 android {
     namespace 'com.diegonmarcos.superapp.net'
-    compileSdk 34
+    compileSdk 35
     ndkVersion '26.1.10909125'
 
     defaultConfig {
