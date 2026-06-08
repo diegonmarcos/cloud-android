@@ -106,12 +106,11 @@ class MapsMapFragment : Fragment() {
             map.setStyle(Style.Builder().fromJson(styleJson)) { _ ->
                 statusBadge.text = "Map · style ready"
                 // Auto-hide after a couple seconds so it doesn't clutter
-                // the map permanently.
+                // the map permanently. If the style FAILED to load, the
+                // callback never fires and the badge stays on "loading
+                // style…" — itself a clear "tiles aren't loading" signal
+                // the user can act on.
                 statusBadge.postDelayed({ statusBadge.visibility = View.GONE }, 2500L)
-            }
-            map.addOnDidFailLoadingMapListener { msg ->
-                statusBadge.text = "Map · load failed: $msg"
-                statusBadge.setBackgroundColor(0xCCEF4444.toInt())
             }
         }
         root.addView(mv)
