@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -254,6 +255,27 @@ class MapsConfigFragment : Fragment() {
 
         root.addView(spacer(ctx, dp(ctx, 8)))
         root.addView(caption(ctx, "Tip: ~10 stops/day × 30 days ≈ 300 reverse-geocode calls/month. LocationIQ free 5k/day handles this 17× over. Public Nominatim is fair-use OK for this volume; if you exceed it consider self-hosting Photon or Nominatim."))
+
+        // ── Export section ────────────────────────────────────────
+        // Folded in from the removed Maps/Export page so every Maps
+        // knob lives in one scroll. The actual SAF picker + writer
+        // lives in MapsExportFragment which we embed here as a child
+        // fragment via childFragmentManager. Keeps a single source of
+        // truth for the export logic.
+        root.addView(spacer(ctx, dp(ctx, 24)))
+        val exportHost = FrameLayout(ctx).apply {
+            id = View.generateViewId()
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        root.addView(exportHost)
+        if (s == null && childFragmentManager.findFragmentById(exportHost.id) == null) {
+            childFragmentManager.beginTransaction()
+                .replace(exportHost.id, MapsExportFragment.newInstance())
+                .commitAllowingStateLoss()
+        }
 
         return scroll
     }

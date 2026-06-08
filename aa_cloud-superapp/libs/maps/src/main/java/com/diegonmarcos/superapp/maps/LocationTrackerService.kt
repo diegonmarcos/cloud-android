@@ -144,7 +144,18 @@ class LocationTrackerService : Service() {
      *  row and remember it as `activeStop`. The Stop's end-time is
      *  patched in when the user leaves the radius. */
     private fun detectStop(row: MapsDb.PointRow) {
-        val bufSize = 8  // sliding window; tuned for ~30s cadence × 8 = 4min window
+        // Ring-buffer size derived from the user-tuned dwell + interval
+        // so the buffer ALWAYS spans at least `stopsDwellMin` minutes of
+        // fixes. Hardcoded 8 was wrong: at the default 30s cadence × 8
+        // = 4 min window, the 5-min dwell threshold (also default) was
+        // mathematically never satisfied → Stops never emitted even
+        // though the user was clearly dwelling (Points: 20, Stops: 0).
+        // New formula: ceil(dwellMs / intervalMs) + 1 (+1 fix of margin
+        // to not race the exact boundary). Floored at 3 so a degenerate
+        // <30s dwell still gets a meaningful centroid.
+        val intervalMs = trackingPrefs.intervalMovingMs.coerceAtLeast(1_000)
+        val dwellMs    = trackingPrefs.stopsDwellMin * 60_000L
+        val bufSize    = maxOf(3, (dwellMs / intervalMs).toInt() + 1)
         recentBuf.addLast(row)
         while (recentBuf.size > bufSize) recentBuf.removeFirst()
         if (recentBuf.size < bufSize) return

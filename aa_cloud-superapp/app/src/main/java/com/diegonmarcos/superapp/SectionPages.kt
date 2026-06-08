@@ -4,7 +4,6 @@ import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.health.HealthFragment
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.maps.MapsConfigFragment
-import com.diegonmarcos.superapp.maps.MapsExportFragment
 import com.diegonmarcos.superapp.maps.MapsMapFragment
 import com.diegonmarcos.superapp.maps.MapsTimelineTabsFragment
 import com.diegonmarcos.superapp.maps.MytripsDashboardFragment
@@ -45,7 +44,6 @@ object SectionPages {
         sectionId == "maps"    && pageId == "configs"   -> MapsConfigFragment.newInstance()
         sectionId == "maps"    && pageId == "map"       -> MapsMapFragment.newInstance()
         sectionId == "maps"    && pageId == "timeline"  -> MapsTimelineTabsFragment.newInstance()
-        sectionId == "maps"    && pageId == "export"    -> MapsExportFragment.newInstance()
         sectionId == "mytrips" && pageId == "dashboard" -> MytripsDashboardFragment.newInstance()
         sectionId == "mytrips" && pageId == "stats"     -> MytripsStatsFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()

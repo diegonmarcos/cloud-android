@@ -55,22 +55,72 @@ class MapsMapFragment : Fragment() {
         }
         mapView = mv
         mv.onCreate(savedInstanceStateOrNull())
+
+        // Visible load-state badge — top-left corner so the user can
+        // see whether the style fetch + first tile loads succeeded
+        // without digging into logcat. Previous version relied on the
+        // remote demotiles.maplibre.org style.json which was flaky on
+        // some networks → user saw a blank screen with no signal.
+        val statusBadge = TextView(ctx).apply {
+            text = "Map · loading style…"
+            setTextColor(0xFFFFFFFFL.toInt())
+            setBackgroundColor(0xCC000000.toInt())
+            val p = (6 * ctx.resources.displayMetrics.density).toInt()
+            setPadding(p, p, p, p)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.TOP or android.view.Gravity.START,
+            ).apply { setMargins(p, p, p, p) }
+        }
+
         mv.getMapAsync { map ->
             map.cameraPosition = CameraPosition.Builder()
                 .target(LatLng(initialLat, initialLon))
                 .zoom(initialZoom)
                 .build()
-            // MapLibre demo style — free + key-free. Replace with a
-            // Stadia / custom URL by editing the string here once we
-            // promote it to build.json.
-            map.setStyle(Style.Builder().fromUri("https://demotiles.maplibre.org/style.json"))
+            // Raster-tile style built inline — no dependency on a remote
+            // style.json, only on the tile server itself. tile.openstreetmap.org
+            // is fair-use OK at the personal-tracker volumes we generate.
+            // Promote tileUrl + attribution to build.json::ui.maps_tile_*
+            // when we add the Configs picker for tile sources.
+            val styleJson = """
+                {
+                  "version": 8,
+                  "name": "Cloud SuperApp · OSM raster",
+                  "sources": {
+                    "osm": {
+                      "type": "raster",
+                      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                      "tileSize": 256,
+                      "attribution": "© OpenStreetMap contributors",
+                      "maxzoom": 19
+                    }
+                  },
+                  "layers": [
+                    { "id": "background", "type": "background", "paint": { "background-color": "#0a0814" } },
+                    { "id": "osm",        "type": "raster",     "source": "osm" }
+                  ]
+                }
+            """.trimIndent()
+            map.setStyle(Style.Builder().fromJson(styleJson)) { _ ->
+                statusBadge.text = "Map · style ready"
+                // Auto-hide after a couple seconds so it doesn't clutter
+                // the map permanently.
+                statusBadge.postDelayed({ statusBadge.visibility = View.GONE }, 2500L)
+            }
+            map.addOnDidFailLoadingMapListener { msg ->
+                statusBadge.text = "Map · load failed: $msg"
+                statusBadge.setBackgroundColor(0xCCEF4444.toInt())
+            }
         }
         root.addView(mv)
+        root.addView(statusBadge)
 
         // Tiny overlay caption so empty installs explain themselves.
         if (!prefs.hasLastFix()) {
             root.addView(TextView(ctx).apply {
-                text = "No GPS fix yet — start the tracker on the Tracker page."
+                text = "No GPS fix yet — start the tracker on the Configs page."
                 setTextColor(0xFFFFFFFFL.toInt())
                 setBackgroundColor(0xAA000000.toInt())
                 val p = (8 * ctx.resources.displayMetrics.density).toInt()
