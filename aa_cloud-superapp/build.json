@@ -516,10 +516,11 @@
                 "target": "https://diegonmarcos.github.io/my-fin/"
               },
               {
+                "_doc": "Native MyTrips section — Dashboard + Stats layered on top of MyMaps's local SQLite Stop store. Was an external GitHub Pages link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native Compose-less fragments (MytripsDashboardFragment / MytripsStatsFragment).",
                 "id": "mytrips",
                 "label": "MyTrips",
                 "icon": "ic_world",
-                "target": "https://diegonmarcos.github.io/my-trips/"
+                "target": "page:mytrips/dashboard"
               },
               {
                 "id": "myhealth",
