@@ -1416,37 +1416,91 @@
         ]
       }
     ],
-    "_doc_launcher_themes": "Themes the user can pick in Configs → Launcher. The chosen theme drives MainActivity's home-pane chrome ONLY when the SuperApp is set as the Android Home / Launcher replacement. id maps to LauncherTheme enum; `default: true` marks the first-run choice. Cloud Theme = existing UI (Home3D + bottom nav + dynamic island) but with our own top strip showing only Time + Battery in launcher mode. Cloud Minimalist Black = terminal aesthetic — pure black, monospace green/white app list, no chrome.",
+    "_doc_launcher_themes": "Themes the user can pick in Configs → Launcher. The chosen theme drives MainActivity's home-pane chrome ONLY when the SuperApp is set as the Android Home / Launcher replacement. id maps to LauncherTheme enum; `default: true` marks the first-run choice. The `features` map on each theme is the DECLARATIVE contract Kotlin (Push B) will read to enable/disable chrome elements + background services. Adding a feature toggle = adding a key here; nothing in code needs to know the toggle name ahead of time. Cloud Theme = existing UI (Home3D + bottom nav + dynamic island). Cloud Minimalist Black = terminal aesthetic. Cloud Power Saving = battery-first; mirrors Samsung / Apple / Pixel power-save behaviour (no chrome, no animations, background paused) but keeps WireGuard tunnel ON so network connectivity stays alive — the SuperApp can't fall back to a stock Samsung power-saving picker because Samsung's classifier filters out home-launchers entirely (verified: even Samsung's app-search excludes us). Owning the mode is the only path.",
     "launcher_themes": [
       {
         "id": "cloud",
         "label": "Cloud Theme",
         "subtitle": "The default rich SuperApp UI — bottom nav, dynamic island, 3D home. Top status strip trimmed to Time · Battery only.",
-        "default": true
+        "default": true,
+        "features": {
+          "home_3d":            true,
+          "bottom_nav":         true,
+          "dynamic_island":     true,
+          "animations":         true,
+          "drawer":             true,
+          "oled_black":         false,
+          "grid":               "default",
+          "background_pause":   false,
+          "wireguard_required": false
+        }
       },
       {
         "id": "cloud_minimalist_black",
         "label": "Cloud Minimalist Black",
-        "subtitle": "Terminal aesthetic — pure black background, monospace green app list, no chrome. One-screen scroll."
+        "subtitle": "Terminal aesthetic — pure black background, monospace green app list, no chrome. One-screen scroll.",
+        "features": {
+          "home_3d":            false,
+          "bottom_nav":         false,
+          "dynamic_island":     false,
+          "animations":         false,
+          "drawer":             false,
+          "oled_black":         true,
+          "grid":               "monospace_list",
+          "background_pause":   false,
+          "wireguard_required": false
+        }
+      },
+      {
+        "id": "cloud_power_saving",
+        "label": "Cloud Power Saving",
+        "subtitle": "Battery-first launcher — dim OLED-black UI, no animations, no dynamic island, no 3D home. Background services paused EXCEPT WireGuard (network connectivity stays on). Mirrors Samsung / Apple / Pixel power-saving behaviour.",
+        "features": {
+          "home_3d":            false,
+          "bottom_nav":         false,
+          "dynamic_island":     false,
+          "animations":         false,
+          "drawer":             true,
+          "oled_black":         true,
+          "grid":               "4x2",
+          "background_pause":   true,
+          "wireguard_required": true
+        }
       }
     ],
-    "_doc_launcher_profiles": "Profiles the user can pick in Configs → Launcher → Profiles. The chosen profile is persisted via LauncherProfilePrefs and is the foundation for future per-profile filtering of the Phone tab (Work hides personal banking, Guest narrows to a curated subset, etc.). id maps to the LauncherProfile enum.",
+    "_doc_launcher_profiles": "Profiles the user can pick in Configs → Launcher → Profiles. The chosen profile is persisted via LauncherProfilePrefs. Unlike themes (which control UI/chrome/features), profiles control APP ISOLATION + DATA SAFETY — which apps the user can reach and which subsystems get neutered (e.g. Guest disables WireGuard so the guest can't see private infra). The `behavior` map is the declarative contract Push C reads. Personal = full access (passthrough). Work = same as Personal for now; tag-based filtering wires in once apps carry app_tags. Guest = hands-off lockdown.",
     "launcher_profiles": [
       {
         "id": "personal",
         "label": "Personal",
         "subtitle": "Your default everyday profile — every installed app and folder visible.",
-        "default": true
+        "default": true,
+        "behavior": {
+          "app_filter":    "all",
+          "wireguard":     "on",
+          "allow_intents": "all"
+        }
       },
       {
         "id": "work",
         "label": "Work",
-        "subtitle": "Focus mode — hides personal entertainment / finance / chat folders. Defaults to the Minimalist Black theme."
+        "subtitle": "Same as Personal for now — tag-based hide rules ship once each app/tile carries an app_tags list (e.g. work / personal / finance).",
+        "behavior": {
+          "app_filter":    "all",
+          "wireguard":     "on",
+          "allow_intents": "all"
+        }
       },
       {
         "id": "guest",
         "label": "Guest",
-        "subtitle": "Hands-off mode — only browser, dialer, camera, and a few utility apps shown."
+        "subtitle": "Locked down — only the system browser is reachable. WireGuard tunnel disabled so the guest can't see your private mesh. No SuperApp sections, no chat, no mail, no vault.",
+        "behavior": {
+          "app_filter":    "whitelist",
+          "whitelist":     ["browser"],
+          "wireguard":     "off",
+          "allow_intents": ["browser"]
+        }
       }
     ],
     "_doc_maps_providers": "Available geocoding providers. The user picks one per slot in Configs → Maps (kind: 'reverse' = city/neighborhood, 'poi' = restaurant/shop). 'host': 'free-noauth' = public free endpoint, no account, fair-use rate limit; 'free-account' = free tier behind signup; 'paid' = billing required; 'self' = our own deployment at endpoint URL. requires_api_key=true means we look up the key in MapsApiKeyPrefs. New providers: add a JSON entry + supply the key (if any) in Configs → Maps → API Keys; no Kotlin edits.",
