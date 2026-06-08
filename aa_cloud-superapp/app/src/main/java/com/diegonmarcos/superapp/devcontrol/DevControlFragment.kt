@@ -228,7 +228,9 @@ class DevControlFragment : Fragment() {
             val pm = requireContext().packageManager
             @Suppress("DEPRECATION")
             val info = pm.getPackageInfo(requireContext().packageName, 0)
-            val path = info.applicationInfo.sourceDir
+            // PackageInfo.applicationInfo is @Nullable as of API 35.
+            // Fall back to "—" so the dev-control row still renders.
+            val path = info.applicationInfo?.sourceDir ?: "—"
             val size = runCatching { File(path).length() }.getOrDefault(0L)
             row(ctx, it, "Path",       path)
             row(ctx, it, "Size",       sizeStr(size))
@@ -252,11 +254,16 @@ class DevControlFragment : Fragment() {
             val pm = ctxAny.packageManager
             @Suppress("DEPRECATION")
             val pkg = pm.getPackageInfo(ctxAny.packageName, 0)
-            val apkBytes  = runCatching { File(pkg.applicationInfo.sourceDir).length() }.getOrDefault(0L)
+            // PackageInfo.applicationInfo is @Nullable as of API 35;
+            // null-guard once, then degrade gracefully per field —
+            // APK size to 0 (visible "—" in the row), dataDir to
+            // Context.getDataDir() which is always non-null.
+            val appInfo   = pkg.applicationInfo
+            val apkBytes  = runCatching { File(appInfo?.sourceDir ?: "").length() }.getOrDefault(0L)
             // "Datos" = the app's private data root — includes filesDir,
             // databases, shared_prefs, and everything else the app
             // persists outside of cacheDir.
-            val dataDir   = File(pkg.applicationInfo.dataDir)
+            val dataDir   = appInfo?.dataDir?.let { File(it) } ?: ctxAny.dataDir
             val cacheDir  = ctxAny.cacheDir
             val cacheBytes = dirSize(cacheDir)
             // dataDir contains cacheDir; subtract to get pure "data".

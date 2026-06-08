@@ -61,7 +61,11 @@ internal class UpdateChecker(private val context: Context) {
     private fun currentInstalledApkSha256(): String {
         @Suppress("DEPRECATION")
         val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-        val path = info.applicationInfo.sourceDir
+        // PackageInfo.applicationInfo became @Nullable in Android 15
+        // (API 35). Treat null as a hard fail — without the install
+        // path we can't verify the running APK against GHCR.
+        val path = info.applicationInfo?.sourceDir
+            ?: error("PackageManager returned null applicationInfo for ${context.packageName} — cannot compute installed APK sha256")
         return sha256(File(path))
     }
 
