@@ -445,6 +445,19 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Usage stats",        specialAccessUsageStats(ctxAny()))
             row(ctx, it, "Notif. listener",    specialAccessNotifListener(ctxAny()))
             row(ctx, it, "Manage all files",   specialAccessManageStorage())
+            row(ctx, it, "Dumpsys (DUMP)",     specialAccessDump(ctxAny()))
+            // Helper — when DUMP isn't granted, paint a tap-to-copy adb
+            // command (it's a signature|privileged perm, can't be granted
+            // via Settings; the only user-grant path is adb pm grant).
+            if (specialAccessDumpGranted(ctxAny()).not()) {
+                it.addView(actionButton(ctx, "Copy DUMP grant command for adb") {
+                    val pkg = ctxAny().packageName
+                    val cmd = "adb shell pm grant $pkg android.permission.DUMP"
+                    copy(ctxAny(), cmd)
+                    Toast.makeText(ctxAny(),
+                        "Copied — paste into a shell with adb access", Toast.LENGTH_LONG).show()
+                })
+            }
 
             // ── Health Connect — completely separate channel from
             //    PackageManager. HC's PermissionController has its own
@@ -1549,6 +1562,19 @@ class DevControlFragment : Fragment() {
         if (flat.split(":").any { it.startsWith("${ctx.packageName}/") }) "✓ Allowed"
         else "◯ Not allowed"
     } catch (_: Throwable) { "—" }
+
+    /** DUMP — signature|privileged perm. Declared in our manifest so it's
+     *  visible in Settings → App info → Permissions, but the only way to
+     *  flip it on a non-system-signed APK is `adb shell pm grant`. Reading
+     *  PackageManager.checkSelfPermission tells us the current state. Used
+     *  by BatteryChargerSpec for `dumpsys battery` (charger max input). */
+    private fun specialAccessDumpGranted(ctx: Context): Boolean =
+        androidx.core.content.ContextCompat.checkSelfPermission(ctx, "android.permission.DUMP") ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun specialAccessDump(ctx: Context): String =
+        if (specialAccessDumpGranted(ctx)) "✓ Granted (adb)"
+        else "◯ Not granted — needs one-time adb pm grant"
 
     private fun specialAccessManageStorage(): String = try {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
