@@ -255,7 +255,7 @@ class BrowserHostFragment : Fragment(), Collapsible,
     private fun promptForUrl() {
         val ctx = requireContext()
         val input = android.widget.EditText(ctx).apply {
-            hint = "https://"
+            hint = "https://… or http://localhost:8000"
             setTextColor(Color.WHITE)
             setHintTextColor(0x80FFFFFF.toInt())
         }
@@ -263,15 +263,35 @@ class BrowserHostFragment : Fragment(), Collapsible,
             .setTitle("New tab")
             .setView(input)
             .setPositiveButton("Open") { _, _ ->
-                var url = input.text.toString().trim()
+                val url = normalizeUrl(input.text.toString())
                 if (url.isBlank()) return@setPositiveButton
-                if (!url.contains("://")) url = "https://$url"
                 prefs.add(url, url)
                 prefs.setActive(url)
                 showDetail(url)
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /** Smart URL normalisation. User-typed strings without a scheme:
+     *   • localhost / 127.0.0.1 / 10.x / 192.168.x / 172.16-31.x /
+     *     *.local / *.lan → default to http:// (no TLS at these hosts).
+     *   • Anything else → default to https://.
+     *  Returns "" for a blank input so callers can early-out. */
+    private fun normalizeUrl(raw: String): String {
+        val s = raw.trim()
+        if (s.isEmpty()) return ""
+        if (s.contains("://")) return s
+        val host = s.substringBefore("/").substringBefore(":")
+        val isPrivate =
+            host == "localhost" ||
+            host == "127.0.0.1" ||
+            host.startsWith("10.") ||
+            host.startsWith("192.168.") ||
+            host.matches(Regex("172\\.(1[6-9]|2\\d|3[01])\\..*")) ||
+            host.endsWith(".local") ||
+            host.endsWith(".lan")
+        return if (isPrivate) "http://$s" else "https://$s"
     }
 
     // ── DETAIL mode (WebView) ────────────────────────────────────────
@@ -295,15 +315,47 @@ class BrowserHostFragment : Fragment(), Collapsible,
             typeface = Typeface.DEFAULT_BOLD
             setOnClickListener { showGrid() }
         })
-        bar.addView(TextView(ctx).apply {
-            text = url
+        // Editable URL bar — replaces the previous read-only TextView so
+        // the user can re-navigate the current tab without going back to
+        // the grid. imeOptions=GO so the keyboard "Go" button submits.
+        // On submit: normalize → webView.loadUrl + sync prefs (remove the
+        // prior active key, push the new one, mark active).
+        val urlBar = android.widget.EditText(ctx).apply {
+            setText(url)
             setTextColor(0xCCFFFFFF.toInt())
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
             isSingleLine = true
             ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_VARIATION_URI
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO
             val m = dp(8); setPadding(m, 0, m, 0)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
+            setSelectAllOnFocus(true)
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO) {
+                    val nextUrl = normalizeUrl(text.toString())
+                    if (nextUrl.isNotEmpty() && nextUrl != url) {
+                        val prior = prefs.activeUrl() ?: url
+                        prefs.remove(prior)
+                        prefs.add(nextUrl, nextUrl)
+                        prefs.setActive(nextUrl)
+                        showDetail(nextUrl)
+                    } else {
+                        // No URL change — just reload the current page so the
+                        // user sees an action happen and the keyboard dismisses.
+                        webView?.loadUrl(url)
+                    }
+                    // Dismiss the keyboard regardless.
+                    val imm = ctx.getSystemService(Context.INPUT_METHOD_SERVICE)
+                        as? android.view.inputmethod.InputMethodManager
+                    imm?.hideSoftInputFromWindow(windowToken, 0)
+                    true
+                } else false
+            }
+        }
+        bar.addView(urlBar)
         // Overflow ⋮ — standard browser menu (open external / reload /
         // view mode toggle / copy URL / share). Placed at the right end
         // of the bar where every Chromium-derived browser puts it.
