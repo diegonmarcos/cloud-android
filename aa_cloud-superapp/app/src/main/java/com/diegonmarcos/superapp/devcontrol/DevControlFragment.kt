@@ -459,6 +459,21 @@ class DevControlFragment : Fragment() {
                 })
             }
 
+            // Device admin — required for the home-screen double-tap-to-
+            // lock gesture (DevicePolicyManager.lockNow). Force-lock
+            // scope only — the system dialog will reflect that one
+            // capability (see res/xml/device_admin_policy.xml).
+            row(ctx, it, "Device admin (lock)", ScreenLocker.statusString(ctxAny()))
+            if (!ScreenLocker.isActive(ctxAny())) {
+                it.addView(actionButton(ctx, "Enable Device Admin (double-tap-to-lock)") {
+                    ScreenLocker.requestActivation(requireActivity())
+                })
+            } else {
+                it.addView(actionButton(ctx, "Open system Device Admin settings (revoke)") {
+                    ScreenLocker.openSystemDeviceAdminSettings(ctxAny())
+                })
+            }
+
             // ── Health Connect — completely separate channel from
             //    PackageManager. HC's PermissionController has its own
             //    grant state. Total = sum of perms declared in

@@ -106,6 +106,12 @@ class MinimalistBlackFragment : Fragment() {
         allApps = loadApps(ctx)
         rebuildList("")
 
+        // Double-tap anywhere on the home root → lock the screen
+        // (mirrors Home3DFragment). App rows still receive single
+        // taps via their own click handlers; the root listener only
+        // sees events the child rows didn't claim.
+        ScreenLocker.attachDoubleTapLock(root)
+
         return root
     }
 

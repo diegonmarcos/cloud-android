@@ -163,6 +163,26 @@
             </intent-filter>
         </receiver>
 
+        <!-- LockScreenAdminReceiver — Device Admin bind target needed for
+             DevicePolicyManager.lockNow() (used by the home-screen
+             double-tap-to-lock gesture). Single-policy scope (force-lock
+             only) declared in res/xml/device_admin_policy.xml so the
+             system activation dialog lists exactly one capability — no
+             wipe / reset warnings. BIND_DEVICE_ADMIN is signature-level;
+             the receiver MUST require it to be a valid admin target. -->
+        <receiver
+            android:name=".LockScreenAdminReceiver"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_policy" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
         <!-- NotificationListenerService — surfaces every phone-system
              notification in the Infos/Admin "Phone Notifications" panel.
              Permission BIND_NOTIFICATION_LISTENER_SERVICE is signature-

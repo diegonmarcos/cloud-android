@@ -45,6 +45,13 @@ class Home3DFragment : Fragment() {
             setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
         root.addView(cube)
+        // Double-tap anywhere on the home root → lock the screen
+        // (DevicePolicyManager.lockNow via ScreenLocker). GestureDetector
+        // only fires onDoubleTap on TWO down-up cycles within ~300ms,
+        // so single taps on tiles / chips still propagate to their own
+        // click handlers — ViewGroup dispatch checks children before
+        // our root-level listener.
+        ScreenLocker.attachDoubleTapLock(root)
         return root
     }
 
