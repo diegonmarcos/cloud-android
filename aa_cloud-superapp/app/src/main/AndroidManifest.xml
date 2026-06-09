@@ -114,6 +114,28 @@
             </intent-filter>
         </activity>
 
+        <!-- PowerStateReceiver — captures the EXACT moment the user plugs
+             in / unplugs the cable, regardless of whether the SuperApp is
+             foregrounded. Writes battery_session.unplug_ts at the moment
+             of disconnect so Configs/About/Battery & Usage "Since last
+             charge" anchors on the real event instead of the first-read
+             moment (which was minting bogus "20s ago / 0% consumed"
+             entries when the user had actually been off-cable for hours).
+             ACTION_POWER_CONNECTED + ACTION_POWER_DISCONNECTED are
+             exempt from the API-26+ implicit-broadcast manifest
+             restrictions; ACTION_BATTERY_CHANGED is intentionally NOT
+             declared here (sticky high-frequency broadcast — receiver
+             reads it directly via registerReceiver(null, ...) inside
+             onReceive when needed). -->
+        <receiver
+            android:name=".PowerStateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+
         <!-- NotificationListenerService — surfaces every phone-system
              notification in the Infos/Admin "Phone Notifications" panel.
              Permission BIND_NOTIFICATION_LISTENER_SERVICE is signature-

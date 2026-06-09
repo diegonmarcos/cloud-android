@@ -46,6 +46,12 @@ object BatterySessionStats {
         val isCharging = curStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
             curStatus == BatteryManager.BATTERY_STATUS_FULL
 
+        // The anchor IS authoritative when PowerStateReceiver wrote it
+        // (anchor_source == "disconnect_event") — that's the actual
+        // moment the cable was pulled, regardless of whether the app
+        // was running. Falls back to first-read approximation only
+        // when no disconnect event has fired since last clear (fresh
+        // install on a phone already off-cable, or pref cleared).
         val sp = ctx.getSharedPreferences("battery_session", Context.MODE_PRIVATE)
         var unplugTs  = sp.getLong("unplug_ts", 0L)
         var unplugPct = sp.getInt("unplug_pct", -1)
@@ -53,10 +59,18 @@ object BatterySessionStats {
             if (unplugTs != 0L) sp.edit().clear().apply()
             unplugTs = 0L; unplugPct = -1
         } else if (curPct in 0..100) {
-            if (unplugTs == 0L || (unplugPct in 0..100 && curPct > unplugPct)) {
+            val haveAnchor = unplugTs != 0L && unplugPct in 0..100
+            val anchorRose = haveAnchor && curPct > unplugPct
+            if (!haveAnchor || anchorRose) {
+                // Fresh-install fallback OR pct went UP since the
+                // recorded anchor (brief plug-in we missed while the
+                // receiver was suspended / process wasn't restarted
+                // yet). Mark anchor_source so a future caller can tell
+                // this is a best-effort guess, not a disconnect event.
                 sp.edit()
                     .putLong("unplug_ts", now)
                     .putInt("unplug_pct", curPct)
+                    .putString("anchor_source", "first_read_fallback")
                     .apply()
                 unplugTs = now; unplugPct = curPct
             }
