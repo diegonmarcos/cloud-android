@@ -149,16 +149,28 @@ object BatterySessionStats {
         val etaFullAt = if (etaFullMs > 0L) now + etaFullMs else -1L
 
         // Instantaneous power. Voltage comes from the sticky intent
-        // (millivolts), current from BatteryManager.getIntProperty
-        // (microamps). Power = |I × V|; sign discarded since the
-        // isCharging flag already conveys direction. Either reading
-        // missing → powerW = 0.0 so callers can render "—".
+        // (millivolts), current from BatteryManager.getIntProperty.
+        // Android docs say µA — Samsung (and a few other OEMs) deviate
+        // and return mA, so a 3 A charge shows up as raw=3000 instead
+        // of 3_000_000. Without rescaling, P = V × I / 1e9 yields ~13 mW
+        // instead of ~13 W (user reported "0 mW" while charging at
+        // 10-45 W). Heuristic: any plausible phone draw / input is
+        // 100 mA - 6 A, i.e. raw 100k–6M when reported in µA. If the
+        // absolute raw value falls outside that band but inside the
+        // milliamp band (1–6000), rescale ×1000 to fold it back into µA.
         val voltageMv = sticky?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
-        val currentUa = runCatching {
+        val currentRaw = runCatching {
             val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
             bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
         }.getOrDefault(0)
-        val powerW = if (voltageMv > 0 && currentUa != 0 && currentUa != Int.MIN_VALUE)
+        val currentUa = when {
+            currentRaw == 0 || currentRaw == Int.MIN_VALUE -> 0
+            // |raw| < 50_000 means the OEM is using mA (5 A in mA is
+            // 5000, in µA it would be 5_000_000). Rescale to µA.
+            kotlin.math.abs(currentRaw) < 50_000           -> currentRaw * 1000
+            else                                           -> currentRaw
+        }
+        val powerW = if (voltageMv > 0 && currentUa != 0)
             kotlin.math.abs((voltageMv.toLong() * currentUa.toLong()) / 1_000_000_000.0)
         else 0.0
 
@@ -210,12 +222,15 @@ object BatterySessionStats {
     }
 
     /** Standalone power formatter. Returns "" when no reading is
-     *  available (callers can render "—"). Auto-picks watts vs.
-     *  milliwatts for readability. */
+     *  available OR rounds to "0 mW" (Samsung returns 0 / sub-mA when
+     *  the screen is off or the reading hasn't refreshed). Watts
+     *  above 1 W → "12.6 W"; sub-watt active draw → "850 mW"; under
+     *  ~5 mW noise → "". Callers render "—" on empty so the row
+     *  never disappears.  */
     fun fmtPowerOnly(s: Snapshot): String = when {
-        s.powerW <= 0.0 -> ""
-        s.powerW < 1.0  -> "%.0f mW".format(s.powerW * 1000.0)
-        else            -> "%.2f W".format(s.powerW)
+        s.powerW <= 0.005 -> ""                                // noise floor / Samsung 0-reading
+        s.powerW < 1.0    -> "%.0f mW".format(s.powerW * 1000.0)
+        else              -> "%.2f W".format(s.powerW)
     }
 
     /** Dedicated row formatter — shows the power + direction prefix.
