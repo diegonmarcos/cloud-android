@@ -568,7 +568,7 @@ class DevControlFragment : Fragment() {
             // wording + ETA-to-full math. Same underlying snapshot fields,
             // unified formatters in BatterySessionStats decide the wording.
             val labelSince = if (bs.isCharging) "Since plugged in"        else "Since last charge"
-            val labelRate  = if (bs.isCharging) "% battery/min gained"    else "% battery/min consumed"
+            val labelRate  = if (bs.isCharging) "% battery/h gained"      else "% battery/h consumed"
             val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
             val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
             row(ctx, it, labelSince,

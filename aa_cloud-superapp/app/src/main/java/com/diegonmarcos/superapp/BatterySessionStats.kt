@@ -60,6 +60,15 @@ object BatterySessionStats {
         val chargeRatePerMin: Double, // charge %/min, 0 if elapsedMin < 0.5
         val etaFullMs: Long,        // until 100%, -1 if rate too low / discharging
         val etaFullAt: Long,        // nowMs + etaFullMs, -1 if etaFullMs < 0
+
+        // Instantaneous power readings (BatteryManager + sticky intent)
+        val voltageMv: Int,         // EXTRA_VOLTAGE in millivolts; -1 if unavailable
+        val currentUa: Int,         // BATTERY_PROPERTY_CURRENT_NOW in microamps;
+                                    // sign convention is OEM-specific (Samsung:
+                                    // positive=discharging, negative=charging).
+                                    // 0 if unavailable.
+        val powerW: Double,         // |voltage × current| in watts; 0 if either
+                                    // primary reading is invalid.
     )
 
     fun read(ctx: Context, now: Long = System.currentTimeMillis()): Snapshot {
@@ -139,6 +148,20 @@ object BatterySessionStats {
             ((remainingPct / chargeRate) * 60_000.0).toLong() else -1L
         val etaFullAt = if (etaFullMs > 0L) now + etaFullMs else -1L
 
+        // Instantaneous power. Voltage comes from the sticky intent
+        // (millivolts), current from BatteryManager.getIntProperty
+        // (microamps). Power = |I × V|; sign discarded since the
+        // isCharging flag already conveys direction. Either reading
+        // missing → powerW = 0.0 so callers can render "—".
+        val voltageMv = sticky?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
+        val currentUa = runCatching {
+            val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
+        }.getOrDefault(0)
+        val powerW = if (voltageMv > 0 && currentUa != 0 && currentUa != Int.MIN_VALUE)
+            kotlin.math.abs((voltageMv.toLong() * currentUa.toLong()) / 1_000_000_000.0)
+        else 0.0
+
         return Snapshot(
             isCharging       = isCharging,
             curPct           = curPct,
@@ -157,6 +180,9 @@ object BatterySessionStats {
             chargeRatePerMin = chargeRate,
             etaFullMs        = etaFullMs,
             etaFullAt        = etaFullAt,
+            voltageMv        = voltageMv,
+            currentUa        = currentUa,
+            powerW           = powerW,
         )
     }
 
@@ -169,9 +195,15 @@ object BatterySessionStats {
 
     fun fmtRate(s: Snapshot): String = when {
         s.isCharging -> "—"
-        s.ratePerMin > 0.001 -> "%.3f%%/min".format(s.ratePerMin)
+        s.ratePerMin > 0.001 -> appendPower(s, "%.2f%%/h".format(s.ratePerMin * 60.0))
         else -> "Computing…"
     }
+
+    /** Append " | X.XW" to a rate string when the instantaneous power
+     *  reading is available, so the user sees both the time-derived
+     *  rate AND the on-device power draw (or input) side-by-side. */
+    private fun appendPower(s: Snapshot, rateStr: String): String =
+        if (s.powerW > 0.05) "$rateStr | %.1fW".format(s.powerW) else rateStr
 
     fun fmtEta(s: Snapshot): String = when {
         s.isCharging -> "—"
@@ -189,14 +221,20 @@ object BatterySessionStats {
         else -> fmtSinceLastCharge(s)
     }
 
-    /** Rate row that swaps consumed/gained sign on charging. */
+    /** Rate row that swaps consumed/gained sign on charging.
+     *  Units = %/h (per-hour); we multiply the per-minute internal rate
+     *  by 60 here so callers can read a meaningful "X% per hour" number
+     *  instead of a tiny "0.034%/min". Appends " | X.XW" instantaneous
+     *  power when available (BatteryManager.CURRENT_NOW × EXTRA_VOLTAGE). */
     fun fmtRateUnified(s: Snapshot): String = when {
         s.isCharging -> when {
-            s.chargeRatePerMin > 0.001 -> "+%.3f%%/min".format(s.chargeRatePerMin)
+            s.chargeRatePerMin > 0.001 ->
+                appendPower(s, "+%.2f%%/h".format(s.chargeRatePerMin * 60.0))
             else -> "Computing…"
         }
         else -> when {
-            s.ratePerMin > 0.001 -> "−%.3f%%/min".format(s.ratePerMin)
+            s.ratePerMin > 0.001 ->
+                appendPower(s, "−%.2f%%/h".format(s.ratePerMin * 60.0))
             else -> "Computing…"
         }
     }
