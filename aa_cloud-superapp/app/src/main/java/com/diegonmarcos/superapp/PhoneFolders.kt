@@ -22,6 +22,11 @@ object PhoneFolders {
         val order: String,
         val label: String,
         val matchKeywords: List<String>,
+        /** When `true`, PhoneAppsFragment shows this folder in the grid
+         *  even if it currently holds zero apps. Used for hand-curated
+         *  buckets like `_Misc` that the user wants visible as an empty
+         *  placeholder so they can drop apps into it later. */
+        val pinned: Boolean = false,
     )
 
     /** Folders in display order — by `order`, then `id` as a tie-breaker. */
@@ -38,6 +43,7 @@ object PhoneFolders {
                 order         = o.optString("order", "99"),
                 label         = o.optString("label"),
                 matchKeywords = kws,
+                pinned        = o.optBoolean("pin", false),
             )
         }.sortedWith(compareBy({ it.order }, { it.id }))
     }.getOrDefault(emptyList())

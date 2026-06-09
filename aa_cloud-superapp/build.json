@@ -1759,7 +1759,7 @@
       { "id": "new_apps",      "order": "98", "label": "_New Apps",
         "match_keywords": [] },
       { "id": "misc",          "order": "99", "label": "_Misc",
-        "match_keywords": [] }
+        "match_keywords": [], "pin": true }
     ],
     "_doc_phone_sections": "Top-level section headers in the Home Apps/Phone tab. Folders are bucketed under a section by their label's first character: System (_), Services (-), Tools A (.), Tools B (>). Order = render order. Empty sections (every folder empty) silently skipped. Phone tab renders one subhead per non-empty section + the folder grid below.",
     "phone_sections": [

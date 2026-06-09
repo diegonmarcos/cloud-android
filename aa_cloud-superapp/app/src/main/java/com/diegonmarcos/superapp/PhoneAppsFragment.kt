@@ -69,8 +69,12 @@ class PhoneAppsFragment : Fragment() {
         val columns  = BuildConfig.UI_PHONE_GRID_COLUMNS
 
         // Skip empty folders entirely — One UI hides them too, and an
-        // empty 2×2 placeholder reads as broken to the user.
-        val visible = folders.filter { (grouped[it.id]?.size ?: 0) > 0 }
+        // empty 2×2 placeholder reads as broken to the user. EXCEPT
+        // folders marked `pin: true` in build.json::ui.phone_folders
+        // (today: _Misc) — those stay visible as deliberate placeholders
+        // so the user can drop apps into them via build.json keyword
+        // edits.
+        val visible = folders.filter { it.pinned || (grouped[it.id]?.size ?: 0) > 0 }
 
         // ── Bucket folders into top-level sections by label prefix
         //    (System _, Services -, Tools A ., Tools B >). Each section
