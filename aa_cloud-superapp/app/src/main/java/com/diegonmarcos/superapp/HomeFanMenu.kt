@@ -39,31 +39,64 @@ object HomeFanMenu {
 
     fun show(host: View, onPick: (target: String) -> Unit): Controller {
         val ctx = host.context
-        // Per user spec: LEFT = Open Tabs, CENTER = Linktree, RIGHT = Update.
+        // Triangle layout per user spec:
+        //     • TOP row (1 bubble, centered): Home Apps — pulls up the
+        //       home-sheet icon grid. ic_home_apps is a dedicated 3×3
+        //       dot launcher glyph reserved for THIS surface.
+        //     • BOTTOM row (3 bubbles, left → right):
+        //         · Browser  → page:browser/all (BrowserHostFragment grid).
+        //                      ic_world matches the build.json Browser
+        //                      tile so the same icon means the same thing
+        //                      across the app.
+        //         · Tabs     → page:apptabs/grid (AppTabsFragment LRU
+        //                      shelf). ic_mode_apps matches the apptabs
+        //                      section icon — same icon = same destination.
+        //         · Update   → action:check_updates.
+        // items ordering = render order = bubble index. Top entry FIRST so
+        // bubbles[0] is the centered top bubble; commit() reads items[idx]
+        // by the same index the finger-detection loop fills in.
         val items = listOf(
-            // LEFT — Open Tabs (page:browser/all goes straight to grid).
-            "page:browser/all"           to (R.drawable.ic_mode_apps  to "Open Tabs"),
-            // CENTER — Home Apps (pulls up the home-sheet icon grid).
-            //   ic_home_apps is a dedicated 3×3 dot launcher glyph
-            //   reserved for THIS surface — distinct from ic_mode_apps
-            //   (4 squares), ic_solutions (4 dots), ic_tree, ic_refresh.
             "action:open_home_apps"   to (R.drawable.ic_home_apps to "Home Apps"),
-            // RIGHT — Update.
+            "page:browser/all"        to (R.drawable.ic_world     to "Browser"),
+            "page:apptabs/grid"       to (R.drawable.ic_mode_apps to "Tabs"),
             "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
         )
         val container = android.widget.LinearLayout(ctx).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
+            orientation = android.widget.LinearLayout.VERTICAL
             isClickable = false; isFocusable = false
             val pad = dp(ctx, 14); setPadding(pad, pad, pad, pad)
-            // Don't clip children — the highlighted bubble scales up 1.25×
+            // Don't clip children — the highlighted bubble scales up 1.35×
             // and the icon scales up further; clipping would chop the
             // overflow back into the bubble's bounds.
             clipChildren = false; clipToPadding = false
         }
-        val bubbles = items.map { (target, art) ->
+        val topRow = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            clipChildren = false; clipToPadding = false
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        val bottomRow = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            clipChildren = false; clipToPadding = false
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        container.addView(topRow)
+        container.addView(bottomRow)
+        // bubbles[0] goes in the top row; bubbles[1..3] in the bottom row.
+        // The order matches `items` so commit() resolves the same index
+        // the finger-detection loop highlights.
+        val bubbles = items.mapIndexed { i, (target, art) ->
             val bubble = makeBubble(ctx, art.first, art.second)
             bubble.tag = target
-            container.addView(bubble)
+            if (i == 0) topRow.addView(bubble) else bottomRow.addView(bubble)
             bubble
         }
 
@@ -94,12 +127,20 @@ object HomeFanMenu {
         val y  = hostPos[1] - containerH - dp(ctx, 12)
         popup.showAtLocation(host, android.view.Gravity.NO_GRAVITY, x, y)
 
-        // Fan-in animation — outer bubbles fly inward toward the centre.
-        val n = bubbles.size
+        // Fan-in animation matched to the triangle layout:
+        //   • bubbles[0] = top centered → drop in from above (translationY < 0).
+        //   • bubbles[1..3] = bottom row, 3 wide → outer bubbles slide
+        //     inward toward the centred Tabs bubble; all rise from below
+        //     so the row reads as one coordinated motion.
         for ((i, b) in bubbles.withIndex()) {
-            val mid = (n - 1) / 2f
-            val fromX = (mid - i) * dp(ctx, 60).toFloat()
-            animateIn(b, fromX = fromX)
+            if (i == 0) {
+                animateIn(b, fromX = 0f, fromY = -dp(ctx, 20).toFloat())
+            } else {
+                val bIdx = i - 1                       // 0..2 in bottom row
+                val bMid = 1f                          // bottom row has 3 items
+                val fromX = (bMid - bIdx) * dp(ctx, 60).toFloat()
+                animateIn(b, fromX = fromX, fromY = dp(ctx, 20).toFloat())
+            }
         }
 
         var highlightedIdx: Int = -1
@@ -197,10 +238,10 @@ object HomeFanMenu {
         return cell
     }
 
-    private fun animateIn(v: View, fromX: Float) {
-        v.translationX = fromX; v.translationY = 20f; v.alpha = 0f
+    private fun animateIn(v: View, fromX: Float, fromY: Float = 20f) {
+        v.translationX = fromX; v.translationY = fromY; v.alpha = 0f
         val ax = ObjectAnimator.ofFloat(v, "translationX", fromX, 0f)
-        val ay = ObjectAnimator.ofFloat(v, "translationY", 20f, 0f)
+        val ay = ObjectAnimator.ofFloat(v, "translationY", fromY, 0f)
         val aa = ObjectAnimator.ofFloat(v, "alpha", 0f, 1f)
         AnimatorSet().apply {
             duration = 220
