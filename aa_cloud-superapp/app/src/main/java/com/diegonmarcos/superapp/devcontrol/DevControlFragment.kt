@@ -18,7 +18,9 @@ import com.diegonmarcos.superapp.AppProcessUptime
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
 import com.diegonmarcos.superapp.PermAskTracker
+import com.diegonmarcos.superapp.ScreenLocker
 import com.diegonmarcos.superapp.Sections
+import com.diegonmarcos.superapp.SysfsProc
 import com.diegonmarcos.superapp.WgState
 import com.diegonmarcos.superapp.health.HealthConnectGateway
 import com.diegonmarcos.superapp.health.HealthMetrics
