@@ -427,7 +427,8 @@
             "title": "AI",
             "packages": [
               "com.anthropic.claude",
-              "com.google.android.apps.bard"
+              "com.google.android.apps.bard",
+              "com.termux.nix"
             ]
           },
           {
@@ -435,7 +436,8 @@
             "packages": [
               "com.lonelycatgames.Xplore",
               "com.sec.android.app.myfiles",
-              "com.google.android.apps.docs"
+              "com.google.android.apps.docs",
+              "com.viscouspot.gitsync"
             ]
           },
           {
@@ -445,6 +447,8 @@
               "com.sec.android.gallery3d",
               "com.samsung.android.calendar",
               "com.samsung.android.email.provider",
+              "com.google.android.gm",
+              "rs.ltt.android",
               "eu.faircode.email",
               "com.mattermost.rn",
               "org.telegram.messenger",
@@ -465,9 +469,7 @@
           {
             "title": "Tools Dashboards",
             "packages": [
-              "com.diegonmarcos.superapp",
-              "com.termux.nix",
-              "com.viscouspot.gitsync"
+              "com.diegonmarcos.superapp"
             ]
           },
           {
