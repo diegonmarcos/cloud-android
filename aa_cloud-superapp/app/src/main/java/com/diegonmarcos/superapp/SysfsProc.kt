@@ -3,12 +3,18 @@ package com.diegonmarcos.superapp
 import java.io.File
 
 /**
- * Reader for `/sys/class/*` and `/proc/*` — every file we touch
- * here is world-readable on every modern Android kernel. No DUMP,
- * no QUERY_ALL_PACKAGES, no signature perm, no root. Same path
- * AccuBattery, Termux's `top`, and every battery / CPU monitoring
- * app on the Play Store uses to surface kernel-side telemetry the
- * Android framework hides behind privileged APIs.
+ * Reader for `/sys/class/...` and `/proc/...` — every file we
+ * touch here is world-readable on every modern Android kernel.
+ * No DUMP, no QUERY_ALL_PACKAGES, no signature perm, no root.
+ * Same path AccuBattery, Termux's `top`, and every battery / CPU
+ * monitoring app on the Play Store uses to surface kernel-side
+ * telemetry the Android framework hides behind privileged APIs.
+ *
+ * IMPORTANT (engine gotcha): never write `/sys/class/&#42;` (or
+ * any other literal `/&#42;`) inside a KDoc on this file — Kotlin
+ * block comments are nested-aware, so a literal `/&#42;` in the
+ * docstring opens a NESTED comment that swallows the rest of the
+ * file. Use `...` or `<node>` as the placeholder instead.
  *
  * Each public function returns a list of (label, formatted-value)
  * pairs so the renderer (Configs/About#SYSFS-PROC) can iterate and

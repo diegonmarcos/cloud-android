@@ -184,8 +184,20 @@ object BatterySessionStats {
 
         // Charger spec — only meaningful when isCharging; reading it
         // when discharging would return zeros (no max negotiated).
+        // Use named args — Spec gains fields over time (we added
+        // liveInputW + source for the sysfs reader). Positional would
+        // silently desync the next time Spec grows.
         val chargerSpec = if (isCharging) BatteryChargerSpec.read()
-                          else BatteryChargerSpec.Spec(0, 0, 0.0, false, false, false)
+                          else BatteryChargerSpec.Spec(
+                              maxCurrentUa    = 0,
+                              maxVoltageUv    = 0,
+                              maxPowerW       = 0.0,
+                              liveInputW      = 0.0,
+                              source          = "",
+                              usbPowered      = false,
+                              acPowered       = false,
+                              wirelessPowered = false,
+                          )
 
         return Snapshot(
             isCharging       = isCharging,
