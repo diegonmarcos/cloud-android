@@ -54,8 +54,19 @@ object BatteryEstimatePopup {
         container.addView(label(ctx, if (s.isCharging) "Since plugged in" else "Since last charge"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtSinceAnchor(s)))
         container.addView(spacer(ctx, (6 * d).toInt()))
-        container.addView(label(ctx, if (s.isCharging) "Charge power" else "Drain power"))
+        // Honest rename: this is the BATTERY storage rate (V × I going
+        // INTO the cell), not the charger input. Android doesn't expose
+        // the latter via public API — see fmtChargerSpec below.
+        container.addView(label(ctx, if (s.isCharging) "Battery storage (live)" else "Battery drain (live)"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtPowerRow(s)))
+        if (s.isCharging) {
+            container.addView(spacer(ctx, (6 * d).toInt()))
+            // Charger spec via `dumpsys battery` — negotiated max input
+            // (not live; live charger input isn't exposed). Falls back
+            // to "—" if DUMP perm wasn't granted via adb.
+            container.addView(label(ctx, "Charger input (max)"))
+            container.addView(valueSmall(ctx, BatterySessionStats.fmtChargerSpec(s)))
+        }
         container.addView(spacer(ctx, (6 * d).toInt()))
         container.addView(label(ctx, if (s.isCharging) "% battery / h gained" else "% battery / h consumed"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtRateUnified(s)))

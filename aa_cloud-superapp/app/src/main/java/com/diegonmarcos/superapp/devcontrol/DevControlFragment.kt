@@ -569,7 +569,11 @@ class DevControlFragment : Fragment() {
             // unified formatters in BatterySessionStats decide the wording.
             val labelSince = if (bs.isCharging) "Since plugged in"        else "Since last charge"
             val labelRate  = if (bs.isCharging) "% battery/h gained"      else "% battery/h consumed"
-            val labelPower = if (bs.isCharging) "Charge power"            else "Drain power"
+            // Honest rename — this is BATTERY storage (V × I into the
+            // cell), NOT the charger input. Android doesn't expose the
+            // charger live input via public API; the "Charger input"
+            // row below shows the dumpsys-reported max negotiated spec.
+            val labelPower = if (bs.isCharging) "Battery storage (live)" else "Battery drain (live)"
             val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
             val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
             row(ctx, it, labelSince,
@@ -578,6 +582,10 @@ class DevControlFragment : Fragment() {
                 com.diegonmarcos.superapp.BatterySessionStats.fmtRateUnified(bs))
             row(ctx, it, labelPower,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtPowerRow(bs))
+            if (bs.isCharging) {
+                row(ctx, it, "Charger input (max)",
+                    com.diegonmarcos.superapp.BatterySessionStats.fmtChargerSpec(bs))
+            }
             row(ctx, it, labelEta,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtEtaDuration(bs))
             row(ctx, it, labelWall,

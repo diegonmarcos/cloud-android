@@ -68,7 +68,15 @@ object BatterySessionStats {
                                     // positive=discharging, negative=charging).
                                     // 0 if unavailable.
         val powerW: Double,         // |voltage × current| in watts; 0 if either
-                                    // primary reading is invalid.
+                                    // primary reading is invalid. This is the
+                                    // BATTERY storage rate (V × I going INTO
+                                    // the cell), NOT the charger input — Android
+                                    // doesn't expose the latter publicly.
+
+        // Charger spec via dumpsys battery (needs android.permission.DUMP,
+        // typically granted via `adb shell pm grant ... DUMP` on debuggable
+        // APKs). All-zero / empty source on permission denial → renders "—".
+        val chargerSpec: BatteryChargerSpec.Spec,
     )
 
     fun read(ctx: Context, now: Long = System.currentTimeMillis()): Snapshot {
@@ -174,6 +182,11 @@ object BatterySessionStats {
             kotlin.math.abs((voltageMv.toLong() * currentUa.toLong()) / 1_000_000_000.0)
         else 0.0
 
+        // Charger spec — only meaningful when isCharging; reading it
+        // when discharging would return zeros (no max negotiated).
+        val chargerSpec = if (isCharging) BatteryChargerSpec.read()
+                          else BatteryChargerSpec.Spec(0, 0, 0.0, false, false, false)
+
         return Snapshot(
             isCharging       = isCharging,
             curPct           = curPct,
@@ -195,7 +208,20 @@ object BatterySessionStats {
             voltageMv        = voltageMv,
             currentUa        = currentUa,
             powerW           = powerW,
+            chargerSpec      = chargerSpec,
         )
+    }
+
+    /** Format the charger spec row — "25.5 W (USB) max" / "—". */
+    fun fmtChargerSpec(s: Snapshot): String {
+        val spec = s.chargerSpec
+        if (spec.maxPowerW <= 0.005) return "—  (live charger input not exposed by Android)"
+        val src = spec.sourceLabel().ifEmpty { "—" }
+        val p = when {
+            spec.maxPowerW < 1.0 -> "%.0f mW".format(spec.maxPowerW * 1000.0)
+            else                 -> "%.1f W".format(spec.maxPowerW)
+        }
+        return "$p  ($src) max"
     }
 
     // ── Discharge-flavoured formatters (existing — unchanged callers) ──
