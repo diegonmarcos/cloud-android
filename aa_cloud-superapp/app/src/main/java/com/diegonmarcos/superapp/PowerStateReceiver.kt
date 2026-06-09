@@ -36,28 +36,54 @@ class PowerStateReceiver : BroadcastReceiver() {
 
     override fun onReceive(ctx: Context, intent: Intent) {
         val sp = ctx.getSharedPreferences("battery_session", Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val pct = readCurrentPct(ctx)
         when (intent.action) {
             Intent.ACTION_POWER_DISCONNECTED -> {
-                val sticky = ctx.registerReceiver(
-                    null,
-                    IntentFilter(Intent.ACTION_BATTERY_CHANGED),
-                )
-                val level = sticky?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-                val scale = sticky?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-                val pct = if (level >= 0 && scale > 0) level * 100 / scale else -1
+                // Cable pulled — mint discharge anchor + clear the now-
+                // stale charge anchor in one atomic edit. read()'s lazy
+                // fallback handles the rare cold-install case where the
+                // receiver never fired.
                 if (pct in 0..100) {
                     sp.edit()
-                        .putLong("unplug_ts", System.currentTimeMillis())
+                        .putLong("unplug_ts", now)
                         .putInt("unplug_pct", pct)
                         .putString("anchor_source", "disconnect_event")
+                        .remove("plug_ts")
+                        .remove("plug_pct")
+                        .remove("anchor_source_plug")
                         .apply()
                 }
             }
             Intent.ACTION_POWER_CONNECTED -> {
-                // On the cable — anchor is stale by definition.
-                // Clear so the NEXT disconnect mints a fresh one.
-                sp.edit().clear().apply()
+                // Cable inserted — mint charge anchor + clear the now-
+                // stale discharge anchor. Symmetric to the disconnect
+                // path so "Since plugged in" pins to the REAL connect
+                // moment instead of whenever the user happens to open
+                // Configs/About/Battery & Usage or the battery popup.
+                if (pct in 0..100) {
+                    sp.edit()
+                        .putLong("plug_ts", now)
+                        .putInt("plug_pct", pct)
+                        .putString("anchor_source_plug", "connect_event")
+                        .remove("unplug_ts")
+                        .remove("unplug_pct")
+                        .remove("anchor_source")
+                        .apply()
+                }
             }
         }
+    }
+
+    /** Read the sticky ACTION_BATTERY_CHANGED to get the instantaneous
+     *  percent at the moment the connect / disconnect event fired. */
+    private fun readCurrentPct(ctx: Context): Int {
+        val sticky = ctx.registerReceiver(
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+        ) ?: return -1
+        val level = sticky.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = sticky.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        return if (level >= 0 && scale > 0) level * 100 / scale else -1
     }
 }
