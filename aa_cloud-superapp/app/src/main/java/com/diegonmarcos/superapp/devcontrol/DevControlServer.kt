@@ -222,6 +222,8 @@ object DevControlServer {
                 }
                 "tracker/stops"  -> { reply(writer, "200 OK", trackerStopsJson(ctx), "application/json") }
                 "tracker/counts" -> { reply(writer, "200 OK", trackerCountsJson(ctx), "application/json") }
+                "phone/classify" -> { reply(writer, "200 OK", phoneClassifyJson(ctx), "application/json") }
+                "phone/new_apps" -> { reply(writer, "200 OK", phoneNewAppsJson(ctx), "application/json") }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
@@ -273,6 +275,8 @@ object DevControlServer {
             Spec("tracker/counts",      "GET",  true,  "DB row counts: points + stops + last-fix timestamp", ""),
             Spec("tracker/points",      "GET",  true,  "Recent GPS points reverse-chrono with accuracy + speed", "n=count (default 20)"),
             Spec("tracker/stops",       "GET",  true,  "All stops in the local DB with start/end + reverse-geocoded place", ""),
+            Spec("phone/classify",      "GET",  true,  "Every launchable installed app + the folder PhoneAppClassifier routes it to (debug surface for the Home Apps/Phone tab)", ""),
+            Spec("phone/new_apps",      "GET",  true,  "Just the apps that fell to the sink folder (_New Apps) — direct view of what's not yet covered by phone_folders.match_keywords", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -358,6 +362,57 @@ object DevControlServer {
             sb.append('}')
         }
         sb.append(']')
+        return sb.toString()
+    }
+
+    /** Walk every launchable activity + report the folder
+     *  PhoneAppClassifier routes it to. Debug surface for the Home
+     *  Apps/Phone tab — directly answers "why is app X in folder Y?". */
+    private fun phoneClassifyJson(ctx: Context): String {
+        val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
+        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
+            as android.content.pm.LauncherApps
+        val me = android.os.Process.myUserHandle()
+        val sb = StringBuilder("[")
+        var first = true
+        for (info in launcher.getActivityList(null, me)) {
+            val pkg = info.applicationInfo.packageName
+            val label = info.label.toString()
+            val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
+                .classify(pkg, label, folders)
+            if (!first) sb.append(','); first = false
+            sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
+            sb.append(""""label":"""").append(jsonEscape(label)).append('"').append(',')
+            sb.append(""""folder":"""").append(jsonEscape(folderId)).append('"')
+            sb.append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    /** Only the apps that landed in the sink folder (new_apps by
+     *  default) — focused view for "what's still uncategorised?". */
+    private fun phoneNewAppsJson(ctx: Context): String {
+        val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
+        val sinkId = com.diegonmarcos.superapp.PhoneFolders.sinkFolderId(folders)
+        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
+            as android.content.pm.LauncherApps
+        val me = android.os.Process.myUserHandle()
+        val sb = StringBuilder("""{"sink_folder_id":"""")
+        sb.append(jsonEscape(sinkId)).append('"').append(',')
+        sb.append(""""apps":[""")
+        var first = true
+        for (info in launcher.getActivityList(null, me)) {
+            val pkg = info.applicationInfo.packageName
+            val label = info.label.toString()
+            val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
+                .classify(pkg, label, folders)
+            if (folderId != sinkId) continue
+            if (!first) sb.append(','); first = false
+            sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
+            sb.append(""""label":"""").append(jsonEscape(label)).append('"').append('}')
+        }
+        sb.append("]}")
         return sb.toString()
     }
 
