@@ -562,12 +562,23 @@ class DevControlFragment : Fragment() {
             // BatteryEstimatePopup reads from when the user taps the
             // icon. Single calc, two surfaces.
             val bs = com.diegonmarcos.superapp.BatterySessionStats.read(ctxAny)
-            row(ctx, it, "Since last charge",
-                com.diegonmarcos.superapp.BatterySessionStats.fmtSinceLastCharge(bs))
-            row(ctx, it, "% battery/min consumed",
-                com.diegonmarcos.superapp.BatterySessionStats.fmtRate(bs))
-            row(ctx, it, "Estimated battery last",
-                com.diegonmarcos.superapp.BatterySessionStats.fmtEta(bs))
+            // Row labels auto-flip on charging state. Discharging: "Since
+            // last charge / % battery/min consumed / Estimated battery last
+            // / ETA battery drained". Charging: same shape, charge-flavoured
+            // wording + ETA-to-full math. Same underlying snapshot fields,
+            // unified formatters in BatterySessionStats decide the wording.
+            val labelSince = if (bs.isCharging) "Since plugged in"        else "Since last charge"
+            val labelRate  = if (bs.isCharging) "% battery/min gained"    else "% battery/min consumed"
+            val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
+            val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
+            row(ctx, it, labelSince,
+                com.diegonmarcos.superapp.BatterySessionStats.fmtSinceAnchor(bs))
+            row(ctx, it, labelRate,
+                com.diegonmarcos.superapp.BatterySessionStats.fmtRateUnified(bs))
+            row(ctx, it, labelEta,
+                com.diegonmarcos.superapp.BatterySessionStats.fmtEtaDuration(bs))
+            row(ctx, it, labelWall,
+                com.diegonmarcos.superapp.BatterySessionStats.fmtEtaWallClock(bs))
             it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
         }
 

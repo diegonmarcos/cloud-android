@@ -41,14 +41,21 @@ object BatteryEstimatePopup {
             }
         }
 
-        container.addView(label(ctx, "Estimated battery last"))
-        container.addView(valueBig(ctx, BatterySessionStats.fmtEta(s)))
+        // Headline: wall-clock ETA — discharging shows "23:14 today"
+        // (battery dies at), charging shows "07:42 tomorrow" (fully
+        // charged at). Single field, label flips on charging state so
+        // the user always reads the most actionable number first.
+        container.addView(label(ctx, if (s.isCharging) "ETA full charge" else "ETA battery drained"))
+        container.addView(valueBig(ctx, BatterySessionStats.fmtEtaWallClock(s)))
         container.addView(spacer(ctx, (10 * d).toInt()))
-        container.addView(label(ctx, "Since last charge"))
-        container.addView(valueSmall(ctx, BatterySessionStats.fmtSinceLastCharge(s)))
+        container.addView(label(ctx, if (s.isCharging) "Estimated time to full" else "Estimated battery last"))
+        container.addView(valueSmall(ctx, BatterySessionStats.fmtEtaDuration(s)))
         container.addView(spacer(ctx, (6 * d).toInt()))
-        container.addView(label(ctx, "% battery / min consumed"))
-        container.addView(valueSmall(ctx, BatterySessionStats.fmtRate(s)))
+        container.addView(label(ctx, if (s.isCharging) "Since plugged in" else "Since last charge"))
+        container.addView(valueSmall(ctx, BatterySessionStats.fmtSinceAnchor(s)))
+        container.addView(spacer(ctx, (6 * d).toInt()))
+        container.addView(label(ctx, if (s.isCharging) "% battery / min gained" else "% battery / min consumed"))
+        container.addView(valueSmall(ctx, BatterySessionStats.fmtRateUnified(s)))
 
         val pw = PopupWindow(
             container,
