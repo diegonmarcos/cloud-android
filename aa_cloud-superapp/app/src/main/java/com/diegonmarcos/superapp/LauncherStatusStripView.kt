@@ -63,6 +63,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val signal5gView: TextView
     private val wifiView: TextView
     private val wgView: TextView
+    private val btView: TextView
     private val dateTimeView: TextView
     private val ramView: TextView
     private val storageView: TextView
@@ -71,6 +72,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private var hasWifi = false
     private var hasCellular = false
     private var hasVpn = false
+    private var hasBluetooth = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val metricsTicker = object : Runnable {
@@ -116,18 +118,20 @@ class LauncherStatusStripView @JvmOverloads constructor(
         signal5gView = makeIconLabel("5G")
         wifiView     = makeIconLabel("WiFi")
         wgView       = makeIconLabel("WG")
-        // Any of the three left-cluster icons → NetworkInfoPopup (shared
+        btView       = makeIconLabel("BT")
+        // Any of the left-cluster icons → NetworkInfoPopup (shared
         // popup per cluster, per Diego's "yes click any, they are a
         // cluster" answer). Reusing the same anchor (the tapped icon)
         // keeps the bubble close to where the user tapped.
         val openNetworkPopup = OnClickListener { v -> NetworkInfoPopup.show(context, v) }
-        for (v in listOf(signal5gView, wifiView, wgView)) {
+        for (v in listOf(signal5gView, wifiView, wgView, btView)) {
             v.isClickable = true
             v.setOnClickListener(openNetworkPopup)
         }
         leftCluster.addView(signal5gView)
         leftCluster.addView(wifiView)
         leftCluster.addView(wgView)
+        leftCluster.addView(btView)
         innerRow.addView(leftCluster)
 
         // ── CENTER: date + time, true screen-centre ────────────────
@@ -313,15 +317,27 @@ class LauncherStatusStripView @JvmOverloads constructor(
             }
         }
         hasWifi = wifi; hasCellular = cell; hasVpn = vpn
+        hasBluetooth = readBluetoothEnabled()
         applyIconTints()
     }
+
+    /** Bluetooth adapter on/off via BluetoothManager. Wrapped in
+     *  runCatching since BluetoothManager.getAdapter requires
+     *  BLUETOOTH_CONNECT on API 31+ — already declared in the manifest
+     *  but a runtime check never hurts. Off = adapter null OR disabled. */
+    private fun readBluetoothEnabled(): Boolean = runCatching {
+        val mgr = context.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE)
+            as? android.bluetooth.BluetoothManager ?: return@runCatching false
+        mgr.adapter?.isEnabled == true
+    }.getOrDefault(false)
 
     private fun applyIconTints() {
         val on  = 0xFFFFFFFF.toInt()
         val off = 0x44FFFFFF.toInt()
-        signal5gView.setTextColor(if (hasCellular) on else off)
-        wifiView    .setTextColor(if (hasWifi)     on else off)
-        wgView      .setTextColor(if (hasVpn)      on else off)
+        signal5gView.setTextColor(if (hasCellular)  on else off)
+        wifiView    .setTextColor(if (hasWifi)      on else off)
+        wgView      .setTextColor(if (hasVpn)       on else off)
+        btView      .setTextColor(if (hasBluetooth) on else off)
     }
 
     /** Read RAM + /data storage utilisation and update the right

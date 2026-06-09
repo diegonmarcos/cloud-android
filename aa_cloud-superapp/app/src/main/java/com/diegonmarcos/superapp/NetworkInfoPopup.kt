@@ -64,6 +64,11 @@ object NetworkInfoPopup {
         // WireGuard
         container.addView(label(ctx, "WireGuard"))
         container.addView(valueSmall(ctx, readWg(ctx)))
+        container.addView(spacer(ctx, (4 * d).toInt()))
+
+        // Bluetooth
+        container.addView(label(ctx, "Bluetooth"))
+        container.addView(valueSmall(ctx, readBluetooth(ctx)))
         container.addView(spacer(ctx, (8 * d).toInt()))
 
         // Local IPs
@@ -153,6 +158,33 @@ object NetworkInfoPopup {
             Tunnel.State.TOGGLE -> "Toggling…"
             null -> "—"
         }
+    } catch (_: Throwable) { "—" }
+
+    private fun readBluetooth(ctx: Context): String = try {
+        val mgr = ctx.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE)
+            as? android.bluetooth.BluetoothManager ?: return "—"
+        val adapter = mgr.adapter ?: return "Unsupported"
+        if (!adapter.isEnabled) return "OFF"
+        // Try to enumerate currently bonded + connected devices. Needs
+        // BLUETOOTH_CONNECT on API 31+ — already declared in the manifest;
+        // runtime perm prompt happens via standard app-settings if missing.
+        val bonded = runCatching { adapter.bondedDevices?.size ?: 0 }.getOrDefault(0)
+        @Suppress("DEPRECATION")
+        val a2dpConnected = runCatching {
+            adapter.getProfileConnectionState(android.bluetooth.BluetoothProfile.A2DP) ==
+                android.bluetooth.BluetoothProfile.STATE_CONNECTED
+        }.getOrDefault(false)
+        @Suppress("DEPRECATION")
+        val headsetConnected = runCatching {
+            adapter.getProfileConnectionState(android.bluetooth.BluetoothProfile.HEADSET) ==
+                android.bluetooth.BluetoothProfile.STATE_CONNECTED
+        }.getOrDefault(false)
+        val activeProfiles = listOfNotNull(
+            if (a2dpConnected) "A2DP" else null,
+            if (headsetConnected) "Headset" else null,
+        )
+        val activeStr = if (activeProfiles.isEmpty()) "no active links" else activeProfiles.joinToString(" + ")
+        "ON · $bonded bonded · $activeStr"
     } catch (_: Throwable) { "—" }
 
     private fun readLocalIps(): List<String> = try {
