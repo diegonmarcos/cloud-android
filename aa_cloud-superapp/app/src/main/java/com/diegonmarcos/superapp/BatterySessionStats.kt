@@ -212,16 +212,41 @@ object BatterySessionStats {
         )
     }
 
-    /** Format the charger spec row — "25.5 W (USB) max" / "—". */
+    /** Format the charger spec row. Prefers the LIVE sysfs reading
+     *  (`/sys/class/power_supply/usb/*` etc., no perm needed); falls
+     *  back to the negotiated MAX via dumpsys (needs DUMP); falls back
+     *  to "—" when nothing readable. Shape: "14.7 W (USB) live" /
+     *  "25.5 W (USB) max" / "—". */
     fun fmtChargerSpec(s: Snapshot): String {
         val spec = s.chargerSpec
-        if (spec.maxPowerW <= 0.005) return "—  (live charger input not exposed by Android)"
         val src = spec.sourceLabel().ifEmpty { "—" }
-        val p = when {
-            spec.maxPowerW < 1.0 -> "%.0f mW".format(spec.maxPowerW * 1000.0)
-            else                 -> "%.1f W".format(spec.maxPowerW)
+        return when {
+            spec.liveInputW > 0.005 -> {
+                val p = if (spec.liveInputW < 1.0) "%.0f mW".format(spec.liveInputW * 1000.0)
+                        else "%.1f W".format(spec.liveInputW)
+                "$p  ($src) live"
+            }
+            spec.maxPowerW > 0.005 -> {
+                val p = if (spec.maxPowerW < 1.0) "%.0f mW".format(spec.maxPowerW * 1000.0)
+                        else "%.1f W".format(spec.maxPowerW)
+                "$p  ($src) max"
+            }
+            else -> "—"
         }
-        return "$p  ($src) max"
+    }
+
+    /** Phone consumption estimate = charger_live − battery_storage.
+     *  Only meaningful when BOTH readings are available (sysfs live
+     *  input + V × I battery). Empty string otherwise so callers fall
+     *  back to "—". */
+    fun fmtPhoneConsumption(s: Snapshot): String {
+        val live = s.chargerSpec.liveInputW
+        val storage = s.powerW
+        if (live <= 0.005 || storage <= 0.005) return ""
+        val delta = (live - storage).coerceAtLeast(0.0)
+        if (delta <= 0.005) return ""
+        return if (delta < 1.0) "%.0f mW".format(delta * 1000.0)
+               else             "%.1f W".format(delta)
     }
 
     // ── Discharge-flavoured formatters (existing — unchanged callers) ──

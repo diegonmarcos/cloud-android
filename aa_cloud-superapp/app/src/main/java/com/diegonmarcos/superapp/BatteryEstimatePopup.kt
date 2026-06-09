@@ -61,11 +61,20 @@ object BatteryEstimatePopup {
         container.addView(valueSmall(ctx, BatterySessionStats.fmtPowerRow(s)))
         if (s.isCharging) {
             container.addView(spacer(ctx, (6 * d).toInt()))
-            // Charger spec via `dumpsys battery` — negotiated max input
-            // (not live; live charger input isn't exposed). Falls back
-            // to "—" if DUMP perm wasn't granted via adb.
-            container.addView(label(ctx, "Charger input (max)"))
+            // Charger input — sysfs reads /sys/class/power_supply/usb/*
+            // (no perm) for the LIVE value; dumpsys fallback for the
+            // negotiated MAX when DUMP is granted; "—" otherwise. The
+            // formatter picks the most informative one available.
+            container.addView(label(ctx, "Charger input"))
             container.addView(valueSmall(ctx, BatterySessionStats.fmtChargerSpec(s)))
+            // Phone consumption — derivable only when sysfs live input
+            // AND battery storage are both present. Hidden otherwise.
+            val phone = BatterySessionStats.fmtPhoneConsumption(s)
+            if (phone.isNotEmpty()) {
+                container.addView(spacer(ctx, (4 * d).toInt()))
+                container.addView(label(ctx, "Phone consumption"))
+                container.addView(valueSmall(ctx, "$phone  (charger − battery)"))
+            }
         }
         container.addView(spacer(ctx, (6 * d).toInt()))
         container.addView(label(ctx, if (s.isCharging) "% battery / h gained" else "% battery / h consumed"))

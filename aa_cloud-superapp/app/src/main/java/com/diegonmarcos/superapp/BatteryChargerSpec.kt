@@ -34,7 +34,10 @@ object BatteryChargerSpec {
     data class Spec(
         val maxCurrentUa: Int,    // raw value from dumpsys (µA or mA — normalised)
         val maxVoltageUv: Int,    // raw value from dumpsys (µV or mV — normalised)
-        val maxPowerW: Double,    // current_A × voltage_V — 0 when read failed
+        val maxPowerW: Double,    // negotiated max (dumpsys, requires DUMP) — 0 when read failed
+        val liveInputW: Double,   // live charger input from /sys/class/power_supply/*
+                                  // (no perm needed on most devices) — 0 when read failed
+        val source: String,       // which sysfs node we got the reading from (e.g. "usb"), "" if none
         val usbPowered: Boolean,
         val acPowered: Boolean,
         val wirelessPowered: Boolean,
@@ -44,16 +47,56 @@ object BatteryChargerSpec {
             acPowered       -> "AC"
             wirelessPowered -> "Wireless"
             usbPowered      -> "USB"
-            else            -> ""
+            else            -> source.ifEmpty { "" }
         }
     }
 
-    fun read(): Spec = runCatching {
-        val proc = Runtime.getRuntime().exec(arrayOf("dumpsys", "battery"))
-        val out = proc.inputStream.bufferedReader().use { it.readText() }
-        proc.waitFor()
-        parse(out)
-    }.getOrDefault(EMPTY)
+    fun read(): Spec {
+        // Primary path — sysfs (no perm needed). This is how AccuBattery
+        // and similar gauges work without DUMP. Try the standard nodes
+        // in priority order; first hit with both voltage + current wins.
+        val (sysSource, sysPowerW) = readSysfsLive()
+
+        // Secondary path — dumpsys (needs DUMP grant via adb). Surfaces
+        // the negotiated MAX charger spec + the source flags. Skipped
+        // when DUMP isn't granted (silent permission denial → empty out).
+        val dumpsysSpec = runCatching {
+            val proc = Runtime.getRuntime().exec(arrayOf("dumpsys", "battery"))
+            val out = proc.inputStream.bufferedReader().use { it.readText() }
+            proc.waitFor()
+            parse(out)
+        }.getOrDefault(EMPTY)
+
+        return dumpsysSpec.copy(liveInputW = sysPowerW, source = sysSource)
+    }
+
+    /** Read kernel sysfs for live charger input power. Returns
+     *  (sourceLabel, powerW); ("", 0.0) when nothing readable. Tries
+     *  in order: usb → ac → main → wireless. The kernel always exposes
+     *  voltage_now (µV) + current_now (µA) for whichever supply is
+     *  actively connected; the others read 0 or absent. */
+    private fun readSysfsLive(): Pair<String, Double> {
+        val nodes = listOf("usb", "ac", "main", "wireless")
+        for (n in nodes) {
+            val vUv = readIntFromFile("/sys/class/power_supply/$n/voltage_now") ?: continue
+            val iUa = readIntFromFile("/sys/class/power_supply/$n/current_now") ?: continue
+            if (vUv <= 0 || iUa == 0) continue
+            // Both values are in their canonical SI sub-units on virtually
+            // every modern Android kernel: voltage in µV, current in µA.
+            // Some Samsung kernels report mA in current_now though, so
+            // apply the same mA→µA rescale as BatterySessionStats.read():
+            // |x| < 100_000 → treat as mA, multiply by 1000.
+            val iUaN = if (kotlin.math.abs(iUa) < 100_000) iUa * 1000 else iUa
+            val powerW = kotlin.math.abs((vUv.toLong() * iUaN.toLong()) / 1_000_000_000_000.0)
+            if (powerW > 0.005) return n to powerW
+        }
+        return "" to 0.0
+    }
+
+    private fun readIntFromFile(path: String): Int? = runCatching {
+        java.io.File(path).takeIf { it.canRead() }
+            ?.readText()?.trim()?.toIntOrNull()
+    }.getOrNull()
 
     private fun parse(text: String): Spec {
         var maxC = 0
@@ -81,8 +124,17 @@ object BatteryChargerSpec {
         val currentA = if (kotlin.math.abs(maxC) < 100_000) maxC / 1_000.0    else maxC / 1_000_000.0
         val voltageV = if (kotlin.math.abs(maxV) < 100_000) maxV / 1_000.0    else maxV / 1_000_000.0
         val power = if (currentA > 0.0 && voltageV > 0.0) currentA * voltageV else 0.0
-        return Spec(maxC, maxV, power, usb, ac, wire)
+        return Spec(
+            maxCurrentUa    = maxC,
+            maxVoltageUv    = maxV,
+            maxPowerW       = power,
+            liveInputW      = 0.0,   // filled by read() from sysfs
+            source          = "",
+            usbPowered      = usb,
+            acPowered       = ac,
+            wirelessPowered = wire,
+        )
     }
 
-    private val EMPTY = Spec(0, 0, 0.0, false, false, false)
+    private val EMPTY = Spec(0, 0, 0.0, 0.0, "", false, false, false)
 }

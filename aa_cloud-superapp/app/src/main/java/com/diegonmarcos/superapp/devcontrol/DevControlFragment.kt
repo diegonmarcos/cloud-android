@@ -596,8 +596,12 @@ class DevControlFragment : Fragment() {
             row(ctx, it, labelPower,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtPowerRow(bs))
             if (bs.isCharging) {
-                row(ctx, it, "Charger input (max)",
+                row(ctx, it, "Charger input",
                     com.diegonmarcos.superapp.BatterySessionStats.fmtChargerSpec(bs))
+                val phone = com.diegonmarcos.superapp.BatterySessionStats.fmtPhoneConsumption(bs)
+                if (phone.isNotEmpty()) {
+                    row(ctx, it, "Phone consumption", "$phone  (charger − battery)")
+                }
             }
             row(ctx, it, labelEta,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtEtaDuration(bs))
