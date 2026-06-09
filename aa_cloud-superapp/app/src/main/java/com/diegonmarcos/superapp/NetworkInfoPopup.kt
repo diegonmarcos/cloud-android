@@ -103,34 +103,38 @@ object NetworkInfoPopup {
         return if (parts.isEmpty()) "Offline" else parts.joinToString(" · ")
     }
 
-    private fun readWifi(ctx: Context): String = try {
-        val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            ?: return "—"
-        @Suppress("DEPRECATION")
-        val info = wm.connectionInfo ?: return "—"
-        @Suppress("DEPRECATION")
-        val ssid = (info.ssid ?: "<unknown>").trim('"').take(32)
-        val rssi = info.rssi
-        val speed = info.linkSpeed
-        val freq = info.frequency
-        val band = when {
-            freq in 2400..2500 -> "2.4 GHz"
-            freq in 4900..5900 -> "5 GHz"
-            freq in 5925..7125 -> "6 GHz"
-            freq <= 0 -> "—"
-            else -> "${freq} MHz"
-        }
-        "$ssid · $rssi dBm · $speed Mbps · $band"
-    } catch (_: Throwable) { "—" }
+    private fun readWifi(ctx: Context): String {
+        return try {
+            val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                ?: return "—"
+            @Suppress("DEPRECATION")
+            val info = wm.connectionInfo ?: return "—"
+            @Suppress("DEPRECATION")
+            val ssid = (info.ssid ?: "<unknown>").trim('"').take(32)
+            val rssi = info.rssi
+            val speed = info.linkSpeed
+            val freq = info.frequency
+            val band = when {
+                freq in 2400..2500 -> "2.4 GHz"
+                freq in 4900..5900 -> "5 GHz"
+                freq in 5925..7125 -> "6 GHz"
+                freq <= 0 -> "—"
+                else -> "${freq} MHz"
+            }
+            "$ssid · $rssi dBm · $speed Mbps · $band"
+        } catch (_: Throwable) { "—" }
+    }
 
-    private fun readCellular(ctx: Context): String = try {
-        val tm = ctx.applicationContext.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-            ?: return "—"
-        val carrier = tm.networkOperatorName?.takeIf { it.isNotBlank() } ?: "—"
-        @Suppress("DEPRECATION")
-        val type = networkTypeLabel(tm.networkType)
-        "$carrier · $type"
-    } catch (_: Throwable) { "—" }
+    private fun readCellular(ctx: Context): String {
+        return try {
+            val tm = ctx.applicationContext.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                ?: return "—"
+            val carrier = tm.networkOperatorName?.takeIf { it.isNotBlank() } ?: "—"
+            @Suppress("DEPRECATION")
+            val type = networkTypeLabel(tm.networkType)
+            "$carrier · $type"
+        } catch (_: Throwable) { "—" }
+    }
 
     private fun networkTypeLabel(t: Int): String = when (t) {
         TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
@@ -160,32 +164,34 @@ object NetworkInfoPopup {
         }
     } catch (_: Throwable) { "—" }
 
-    private fun readBluetooth(ctx: Context): String = try {
-        val mgr = ctx.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE)
-            as? android.bluetooth.BluetoothManager ?: return "—"
-        val adapter = mgr.adapter ?: return "Unsupported"
-        if (!adapter.isEnabled) return "OFF"
-        // Try to enumerate currently bonded + connected devices. Needs
-        // BLUETOOTH_CONNECT on API 31+ — already declared in the manifest;
-        // runtime perm prompt happens via standard app-settings if missing.
-        val bonded = runCatching { adapter.bondedDevices?.size ?: 0 }.getOrDefault(0)
-        @Suppress("DEPRECATION")
-        val a2dpConnected = runCatching {
-            adapter.getProfileConnectionState(android.bluetooth.BluetoothProfile.A2DP) ==
-                android.bluetooth.BluetoothProfile.STATE_CONNECTED
-        }.getOrDefault(false)
-        @Suppress("DEPRECATION")
-        val headsetConnected = runCatching {
-            adapter.getProfileConnectionState(android.bluetooth.BluetoothProfile.HEADSET) ==
-                android.bluetooth.BluetoothProfile.STATE_CONNECTED
-        }.getOrDefault(false)
-        val activeProfiles = listOfNotNull(
-            if (a2dpConnected) "A2DP" else null,
-            if (headsetConnected) "Headset" else null,
-        )
-        val activeStr = if (activeProfiles.isEmpty()) "no active links" else activeProfiles.joinToString(" + ")
-        "ON · $bonded bonded · $activeStr"
-    } catch (_: Throwable) { "—" }
+    private fun readBluetooth(ctx: Context): String {
+        return try {
+            val mgr = ctx.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE)
+                as? android.bluetooth.BluetoothManager ?: return "—"
+            val adapter = mgr.adapter ?: return "Unsupported"
+            if (!adapter.isEnabled) return "OFF"
+            // Try to enumerate currently bonded + connected devices. Needs
+            // BLUETOOTH_CONNECT on API 31+ — already declared in the manifest;
+            // runtime perm prompt happens via standard app-settings if missing.
+            val bonded = runCatching { adapter.bondedDevices?.size ?: 0 }.getOrDefault(0)
+            @Suppress("DEPRECATION")
+            val a2dpConnected = runCatching {
+                adapter.getProfileConnectionState(android.bluetooth.BluetoothProfile.A2DP) ==
+                    android.bluetooth.BluetoothProfile.STATE_CONNECTED
+            }.getOrDefault(false)
+            @Suppress("DEPRECATION")
+            val headsetConnected = runCatching {
+                adapter.getProfileConnectionState(android.bluetooth.BluetoothProfile.HEADSET) ==
+                    android.bluetooth.BluetoothProfile.STATE_CONNECTED
+            }.getOrDefault(false)
+            val activeProfiles = listOfNotNull(
+                if (a2dpConnected) "A2DP" else null,
+                if (headsetConnected) "Headset" else null,
+            )
+            val activeStr = if (activeProfiles.isEmpty()) "no active links" else activeProfiles.joinToString(" + ")
+            "ON · $bonded bonded · $activeStr"
+        } catch (_: Throwable) { "—" }
+    }
 
     private fun readLocalIps(): List<String> = try {
         val out = mutableListOf<String>()
