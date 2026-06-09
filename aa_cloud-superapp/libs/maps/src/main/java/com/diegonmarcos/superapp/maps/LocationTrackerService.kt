@@ -371,20 +371,27 @@ class LocationTrackerService : Service() {
         private const val CHANNEL_ID = "maps_tracker"
         private const val NOTIF_ID   = 0xA1
 
-        /** Convenience starter — toggles [MapsTrackerPrefs.enabled]
-         *  and fires startForegroundService so the OS doesn't kill
-         *  the start call on Android 8+. */
+        /** Convenience starter — toggles [MapsTrackerPrefs.enabled],
+         *  fires startForegroundService so the OS doesn't kill the
+         *  start call on Android 8+, AND enqueues the periodic
+         *  [TrackerWatchdog]. The watchdog is the survivability layer
+         *  for Samsung-class aggressive task killers + memory-pressure
+         *  kills that bypass Battery Optimization whitelist. */
         fun startTracking(ctx: android.content.Context) {
             MapsTrackerPrefs(ctx).enabled = true
             val intent = Intent(ctx, LocationTrackerService::class.java)
             ContextCompat.startForegroundService(ctx, intent)
+            TrackerWatchdog.schedule(ctx)
         }
         /** Convenience stopper — flips enabled=false (so a service
-         *  revival by START_STICKY immediately self-stops) and
-         *  explicitly stops the running instance. */
+         *  revival by START_STICKY immediately self-stops), explicitly
+         *  stops the running instance, and cancels the watchdog so a
+         *  deliberate Stop doesn't keep the worker firing every 15
+         *  min into a disabled service. */
         fun stopTracking(ctx: android.content.Context) {
             MapsTrackerPrefs(ctx).enabled = false
             ctx.stopService(Intent(ctx, LocationTrackerService::class.java))
+            TrackerWatchdog.cancel(ctx)
         }
     }
 }

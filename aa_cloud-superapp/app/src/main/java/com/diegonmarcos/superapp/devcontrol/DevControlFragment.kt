@@ -373,10 +373,6 @@ class DevControlFragment : Fragment() {
                 }.getOrDefault(0)
                 hcRow.text = if (n > 0) "✓ $n / $hcTotal granted" else "◯ 0 / $hcTotal — none granted"
             }
-            it.addView(actionButton(ctx, "Manage Health Connect perms") {
-                openHealthConnectPerms()
-            })
-
             // ── System auto-granted — perms declared in the manifest that
             //    Android grants at install time without a user prompt.
             //    Almost always PROTECTION_NORMAL (INTERNET, VIBRATE,
@@ -387,22 +383,26 @@ class DevControlFragment : Fragment() {
                 row(ctx, it, label, status)
             }
 
-            // ── Buttons.
-            it.addView(actionButton(ctx, "Request Notifications permission") {
-                requestNotificationsPermission()
-            })
-            it.addView(actionButton(ctx, "Request All Permissions") {
-                requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
-            })
-            it.addView(actionButton(ctx, "Set Battery Optimization → No Optimization") {
-                openBatteryOptimizationSettings()
-            })
-            it.addView(actionButton(ctx, "Grant Notification Access") {
-                openNotificationListenerSettings()
-            })
-            it.addView(actionButton(ctx, "Open system app settings") {
-                openAppSettings()
-            })
+            // ── Action buttons. Five grant-flow shortcuts in a single row
+            //    (one per Special Access toggle the user actually cares
+            //    about), then bulk + system-app-settings in a second row.
+            //    "Notif. (write)" = POST_NOTIFICATIONS runtime perm — our
+            //    app raises notifications. "Notif. (read)" =
+            //    BIND_NOTIFICATION_LISTENER_SERVICE — read OTHER apps'
+            //    notifications (drives the Phone Notifications panel).
+            it.addView(actionButtonRow(ctx,
+                "Grant Health Perms"          to { openHealthConnectPerms() },
+                "Grant Notif. (write)"        to { requestNotificationsPermission() },
+                "Grant Notif. (read)"         to { openNotificationListenerSettings() },
+                "Grant Usage Access"          to { openUsageAccessSettings() },
+                "Set Battery No Optimization" to { openBatteryOptimizationSettings() },
+            ))
+            it.addView(actionButtonRow(ctx,
+                "Request All Permissions" to {
+                    requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
+                },
+                "Open System App Settings" to { openAppSettings() },
+            ))
         }
 
         section(ctx, column, "Battery & Usage") {
@@ -466,14 +466,7 @@ class DevControlFragment : Fragment() {
                 com.diegonmarcos.superapp.BatterySessionStats.fmtRate(bs))
             row(ctx, it, "Estimated battery last",
                 com.diegonmarcos.superapp.BatterySessionStats.fmtEta(bs))
-            it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only — tap the button below for the full OS report."))
-
-            it.addView(actionButton(ctx, "Open battery usage details") {
-                openBatteryDetails()
-            })
-            it.addView(actionButton(ctx, "Grant Usage Access") {
-                openUsageAccessSettings()
-            })
+            it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
         }
 
         section(ctx, column, "Memory & CPU Usage") {
@@ -1273,6 +1266,44 @@ class DevControlFragment : Fragment() {
         layoutParams = lp
         isClickable = true; isFocusable = true
         setOnClickListener { onClick() }
+    }
+
+    /** Horizontal row of equal-width action buttons. Each button gets
+     *  weight=1 so 5 buttons across share the row evenly. Multi-line
+     *  text allowed (maxLines = 3) so the "Set Battery No Optimization"
+     *  label can wrap without overflowing the chip. Padding tightened
+     *  vs the single-button variant so 5 tall labels still fit
+     *  comfortably on narrow screens. */
+    private fun actionButtonRow(ctx: Context, vararg buttons: Pair<String, () -> Unit>): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+            layoutParams = lp
+        }
+        val gap = dp(4)
+        for ((idx, pair) in buttons.withIndex()) {
+            val (label, onClick) = pair
+            val btn = TextView(ctx).apply {
+                text = label
+                setTextColor(0xFFFFFFFF.toInt())
+                setBackgroundColor(0xFF7C3AED.toInt())
+                gravity = android.view.Gravity.CENTER
+                textSize = 12f
+                setPadding(dp(8), dp(10), dp(8), dp(10))
+                maxLines = 3
+                minHeight = dp(64)
+                val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                if (idx > 0) lp.leftMargin = gap
+                layoutParams = lp
+                isClickable = true; isFocusable = true
+                setOnClickListener { onClick() }
+            }
+            row.addView(btn)
+        }
+        return row
     }
 
     private fun copy(ctx: Context, v: String) {
