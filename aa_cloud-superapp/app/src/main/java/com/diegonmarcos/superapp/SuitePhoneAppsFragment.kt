@@ -101,20 +101,24 @@ class SuitePhoneAppsFragment : Fragment() {
     private fun parseGroups(): List<Group> = runCatching {
         val json = String(Base64.decode(BuildConfig.UI_SUITE_PHONE_GROUPS_B64, Base64.DEFAULT))
         val arr = JSONArray(json)
-        buildList {
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val title = o.optString("title").ifBlank { continue }
-                val pkgs = o.optJSONArray("packages") ?: continue
-                val pkgList = buildList {
-                    for (j in 0 until pkgs.length()) {
-                        val pkg = pkgs.optString(j)
-                        if (pkg.isNotBlank()) add(pkg)
-                    }
-                }
-                add(Group(title, pkgList))
+        // Plain mutable list + for-loop because `continue` inside an
+        // inline-lambda body (buildList { ... }) is an experimental
+        // Kotlin feature gated behind a compiler flag — using a
+        // regular for-loop sidesteps the gate entirely.
+        val out = mutableListOf<Group>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val title = o.optString("title")
+            if (title.isBlank()) continue
+            val pkgs = o.optJSONArray("packages") ?: continue
+            val pkgList = mutableListOf<String>()
+            for (j in 0 until pkgs.length()) {
+                val pkg = pkgs.optString(j)
+                if (pkg.isNotBlank()) pkgList.add(pkg)
             }
+            out.add(Group(title, pkgList))
         }
+        out
     }.getOrDefault(emptyList())
 
     private fun subhead(ctx: Context, t: String) = TextView(ctx).apply {
