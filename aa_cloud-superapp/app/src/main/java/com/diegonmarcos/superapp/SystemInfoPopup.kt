@@ -74,6 +74,24 @@ object SystemInfoPopup {
             "${Runtime.getRuntime().availableProcessors()} cores · ${primaryAbi()}"))
         container.addView(spacer(ctx, (4 * d).toInt()))
 
+        // CPU load — /proc/loadavg three windows (1m · 5m · 15m) +
+        // /proc/uptime busy seconds. No perm needed. Hidden when the
+        // kernel files aren't readable on this device (very rare).
+        SysfsProc.cpuLoad()?.let { c ->
+            container.addView(label(ctx, "CPU load  (1m · 5m · 15m)"))
+            container.addView(valueSmall(ctx,
+                "%.2f · %.2f · %.2f".format(c.loadAvg1m, c.loadAvg5m, c.loadAvg15m)))
+            container.addView(spacer(ctx, (4 * d).toInt()))
+            container.addView(label(ctx, "CPU busy / idle  (Σ ${c.cores} cores)"))
+            container.addView(valueSmall(ctx,
+                "busy %s · idle %s · %.1f %%".format(
+                    fmtSecs(c.busyAggregateSec.toLong()),
+                    fmtSecs(c.idleAggregateSec.toLong()),
+                    c.busyFraction * 100.0,
+                )))
+            container.addView(spacer(ctx, (4 * d).toInt()))
+        }
+
         container.addView(label(ctx, "Uptime"))
         container.addView(valueSmall(ctx, readUptime()))
 
@@ -131,6 +149,18 @@ object SystemInfoPopup {
         return when {
             h > 0 -> "%d h %02d min".format(h, m)
             m > 0 -> "%d min %02d s".format(m, sec)
+            else  -> "%d s".format(sec)
+        }
+    }
+
+    private fun fmtSecs(s: Long): String {
+        if (s <= 0L) return "0 s"
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        return when {
+            h > 0 -> "%d h %02d m".format(h, m)
+            m > 0 -> "%d m %02d s".format(m, sec)
             else  -> "%d s".format(sec)
         }
     }

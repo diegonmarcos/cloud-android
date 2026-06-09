@@ -1051,6 +1051,54 @@ class DevControlFragment : Fragment() {
             }
         }
 
+        // SYSFS-PROC — the no-perm kernel-telemetry dump. Every field
+        // here comes from a world-readable /sys or /proc file (the
+        // same path AccuBattery, Termux's top, and friends use). No
+        // DUMP, no QUERY_ALL_PACKAGES, no signature perm required.
+        // The reader (SysfsProc.kt) returns (key, formatted-value)
+        // pairs per subsystem; we paint sub-group headers via small()
+        // so the section is one big scrollable table the user can
+        // long-press individual rows to copy.
+        section(ctx, column, "SYSFS-PROC") {
+            it.addView(small(ctx, "Raw kernel-side telemetry — no runtime permission needed. World-readable /sys/class/* and /proc/* paths. Use this as the audit surface; promote interesting rows to dedicated UI elsewhere."))
+
+            it.addView(small(ctx, "── /sys/class/power_supply/battery/"))
+            for ((k, v) in SysfsProc.battery()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/class/power_supply/{usb,ac,wireless,main}/"))
+            val chargerRows = SysfsProc.chargers()
+            if (chargerRows.isEmpty()) it.addView(small(ctx, "(no charger nodes readable)"))
+            for ((k, v) in chargerRows) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/loadavg + /proc/uptime  (CPU load in seconds)"))
+            for ((k, v) in SysfsProc.cpuLoadRows()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/stat  (cumulative jiffies → seconds, ALL cores)"))
+            for ((k, v) in SysfsProc.procStatRows()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/devices/system/cpu/cpu*/cpufreq/"))
+            for ((k, v) in SysfsProc.cpuFreqs()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/class/thermal/thermal_zone*/"))
+            val thermalRows = SysfsProc.thermal()
+            if (thermalRows.isEmpty()) it.addView(small(ctx, "(no zones readable — vendor restriction)"))
+            for ((k, v) in thermalRows) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/meminfo  (selected)"))
+            for ((k, v) in SysfsProc.memInfo()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/class/net/*/statistics/"))
+            for ((k, v) in SysfsProc.network()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/diskstats"))
+            val diskRows = SysfsProc.diskstats()
+            if (diskRows.isEmpty()) it.addView(small(ctx, "(no diskstats readable)"))
+            for ((k, v) in diskRows) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/self/  (this app's own kernel-side stats)"))
+            for ((k, v) in SysfsProc.selfProc()) row(ctx, it, k, v)
+        }
+
         section(ctx, column, "Kernel / OS") {
             row(ctx, it, "Kernel",   System.getProperty("os.version") ?: "—")
             row(ctx, it, "Security patch", android.os.Build.VERSION.SECURITY_PATCH)
