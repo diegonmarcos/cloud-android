@@ -171,6 +171,43 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Open Settings → Special access → All files access → this app, so
+     *  the user can grant MANAGE_EXTERNAL_STORAGE. It's a Special Access
+     *  toggle (API 30+) and is NOT covered by the "Request All
+     *  Permissions" runtime flow — calling requestPermissions on it just
+     *  silently no-ops, which is why the row stayed "◯ Not allowed" even
+     *  after the 13/0 grant bulk-grant. Pre-API-30 falls back to the
+     *  generic app details screen. */
+    private fun openManageAllFilesSettings() {
+        val ctx = requireContext()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val primary = android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                android.net.Uri.fromParts("package", ctx.packageName, null),
+            )
+            if (primary.resolveActivity(ctx.packageManager) != null) {
+                runCatching { startActivity(primary) }
+                return
+            }
+            // Some OEMs ship without the scoped picker — jump to the
+            // global list of all-files-access apps so the user can scroll
+            // to ours.
+            val list = android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
+            )
+            if (list.resolveActivity(ctx.packageManager) != null) {
+                runCatching { startActivity(list) }
+                return
+            }
+        }
+        runCatching {
+            startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", ctx.packageName, null),
+            ))
+        }
+    }
+
     /** Open Samsung's "Background usage limits → Never sleeping apps"
      *  picker — the One UI knob that runs IN ADDITION to Battery
      *  Optimization and silently kills foreground services on its own
@@ -433,18 +470,32 @@ class DevControlFragment : Fragment() {
                 row(ctx, it, label, status)
             }
 
-            // ── Action buttons. Five grant-flow shortcuts in a single row
-            //    (one per Special Access toggle the user actually cares
-            //    about), then bulk + system-app-settings in a second row.
-            //    "Notif. (write)" = POST_NOTIFICATIONS runtime perm — our
-            //    app raises notifications. "Notif. (read)" =
-            //    BIND_NOTIFICATION_LISTENER_SERVICE — read OTHER apps'
-            //    notifications (drives the Phone Notifications panel).
+            // ── Action buttons (3-4-2 layout — gives 7 shortcuts space to
+            //    breathe vs. the prior 5+2 row).
+            //
+            //    Row 1 = "Grant" buttons that wire health + notification
+            //    perms. "Notif. (write)" = POST_NOTIFICATIONS runtime
+            //    perm (our app raises notifs). "Notif. (read)" =
+            //    BIND_NOTIFICATION_LISTENER_SERVICE (we read other apps'
+            //    notifs — drives the Phone Notifications panel).
+            //
+            //    Row 2 = Special-Access shortcuts. These CAN'T be granted
+            //    via the runtime perm bulk flow — each is a settings
+            //    jump. "Grant Files Access" deserves explicit call-out:
+            //    MANAGE_EXTERNAL_STORAGE (API 30+) is special access, not
+            //    runtime, so "Request All Permissions" silently skips it.
+            //    Samsung Never-Sleeping is One UI-only — graceful
+            //    fallback to AOSP battery saver on non-Samsung.
+            //
+            //    Row 3 = the two bulk actions.
             it.addView(actionButtonRow(ctx,
-                "Grant Health Perms"          to { openHealthConnectPerms() },
-                "Grant Notif. (write)"        to { requestNotificationsPermission() },
-                "Grant Notif. (read)"         to { openNotificationListenerSettings() },
+                "Grant Health Perms"   to { openHealthConnectPerms() },
+                "Grant Notif. (write)" to { requestNotificationsPermission() },
+                "Grant Notif. (read)"  to { openNotificationListenerSettings() },
+            ))
+            it.addView(actionButtonRow(ctx,
                 "Grant Usage Access"          to { openUsageAccessSettings() },
+                "Grant Files Access"          to { openManageAllFilesSettings() },
                 "Set Battery No Optimization" to { openBatteryOptimizationSettings() },
                 "Set Samsung Never-Sleeping"  to { openSamsungNeverSleepingSettings() },
             ))

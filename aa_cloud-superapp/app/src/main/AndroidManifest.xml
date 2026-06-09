@@ -47,6 +47,19 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- MANAGE_EXTERNAL_STORAGE (API 30+, "All files access") is a
+         Special Access permission, NOT a runtime perm — declaring it
+         here is what makes the app *appear in* Settings → Special
+         access → All files access (otherwise the picker filters us
+         out, regardless of how many intents we fire). The user grants
+         via the "Grant Files Access" button which jumps to
+         ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION. Self-signed APK
+         (no Play distribution), so the Play-Store policy gate on this
+         permission does not apply; tools:ignore suppresses the lint
+         warning for the same reason as PACKAGE_USAGE_STATS above. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
     <!-- QUERY_ALL_PACKAGES is the launcher's app-discovery permission.
          Self-signed APK (no Play distribution) so the usual Play Store
          policy gate on this permission does not apply; declaring it
