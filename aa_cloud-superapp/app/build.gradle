@@ -72,6 +72,16 @@ def uiHomeAppsTabsB64  = uiHomeAppsTabsJson.bytes.encodeBase64().toString()
 def uiPhoneFoldersJson = groovy.json.JsonOutput.toJson(buildJson.ui.phone_folders ?: [])
 def uiPhoneFoldersB64  = uiPhoneFoldersJson.bytes.encodeBase64().toString()
 def phoneGridColumns   = (buildJson.ui.phone_grid_columns as Number)?.intValue() ?: 6
+// Phone tab top-level section headers (prefix -> title). Read by
+// PhoneAppsFragment to bucket folders into System / Services / Tools A /
+// Tools B sub-sections. Source of truth: build.json::ui.phone_sections.
+def uiPhoneSectionsJson = groovy.json.JsonOutput.toJson(buildJson.ui.phone_sections ?: [])
+def uiPhoneSectionsB64  = uiPhoneSectionsJson.bytes.encodeBase64().toString()
+// Smart Folders rendered at the bottom of the Phone tab — dynamic
+// pkg_prefix / install_source_not filters over the same LauncherApps
+// enumeration. Source of truth: build.json::ui.phone_smart_folders.
+def uiPhoneSmartFoldersJson = groovy.json.JsonOutput.toJson(buildJson.ui.phone_smart_folders ?: [])
+def uiPhoneSmartFoldersB64  = uiPhoneSmartFoldersJson.bytes.encodeBase64().toString()
 // Suite section's curated Phone tab — see
 // build.json::sections[id=suite].phone_app_groups. Array of titled
 // groups, each with a `packages` array of package-name strings.
@@ -306,6 +316,8 @@ android {
         buildConfigField "String", "UI_LAUNCHER_PROFILES_B64", "\"${uiLauncherProfilesB64}\""
         buildConfigField "String", "UI_HOME_APPS_TABS_B64",   "\"${uiHomeAppsTabsB64}\""
         buildConfigField "String", "UI_PHONE_FOLDERS_B64",    "\"${uiPhoneFoldersB64}\""
+        buildConfigField "String", "UI_PHONE_SECTIONS_B64",   "\"${uiPhoneSectionsB64}\""
+        buildConfigField "String", "UI_PHONE_SMART_FOLDERS_B64", "\"${uiPhoneSmartFoldersB64}\""
         buildConfigField "String", "UI_SUITE_PHONE_GROUPS_B64", "\"${uiSuitePhoneGroupsB64}\""
         buildConfigField "int",    "UI_PHONE_GRID_COLUMNS",   "${phoneGridColumns}"
         buildConfigField "String", "UI_DYNAMIC_ISLAND_ACTION","\"${dynamicIslandAction}\""

@@ -72,8 +72,70 @@ class PhoneAppsFragment : Fragment() {
         // empty 2×2 placeholder reads as broken to the user.
         val visible = folders.filter { (grouped[it.id]?.size ?: 0) > 0 }
 
-        renderFolderGrid(rootCol, ctx, visible, grouped, columns)
+        // ── Bucket folders into top-level sections by label prefix
+        //    (System _, Services -, Tools A ., Tools B >). Each section
+        //    gets a subhead + its own grid below. Folders whose label
+        //    starts with no known prefix fall through to "Other" so they
+        //    don't disappear silently.
+        val sections = PhoneSections.loadFromBuildConfig()
+        val byPrefix = LinkedHashMap<String, MutableList<PhoneFolders.Folder>>()
+        for (sec in sections) byPrefix[sec.title] = mutableListOf()
+        val otherBucket = mutableListOf<PhoneFolders.Folder>()
+        for (folder in visible) {
+            val sec = sections.firstOrNull { folder.label.startsWith(it.prefix) }
+            if (sec != null) byPrefix.getValue(sec.title).add(folder) else otherBucket.add(folder)
+        }
+        for (sec in sections) {
+            val list = byPrefix[sec.title].orEmpty()
+            if (list.isEmpty()) continue
+            rootCol.addView(subhead(ctx, sec.title))
+            renderFolderGrid(rootCol, ctx, list, grouped, columns)
+        }
+        if (otherBucket.isNotEmpty()) {
+            rootCol.addView(subhead(ctx, "Other"))
+            renderFolderGrid(rootCol, ctx, otherBucket, grouped, columns)
+        }
+
+        // ── Smart Folders — dynamic filters at the bottom (Samsung,
+        //    Google, Alternative Stores). Same UX as a folder card:
+        //    tap opens the same dialog with the filtered apps. Rules
+        //    operate over the SAME master `apps` list so the contents
+        //    track the source enumeration in lockstep.
+        val smart = PhoneSmartFolders.loadFromBuildConfig()
+        val visibleSmart = smart.mapNotNull { sf ->
+            val matches = apps.filter { app -> sf.rule.matches(ctx, app) }
+            if (matches.isEmpty()) null else SmartRendered(sf, matches)
+        }
+        if (visibleSmart.isNotEmpty()) {
+            rootCol.addView(subhead(ctx, "Smart Folders"))
+            // Synthesize a Folder per Smart Folder so the existing
+            // renderFolderGrid + makeFolderCard helpers light up
+            // unchanged. id prefixed with "smart:" so it can't collide
+            // with a real folder id from build.json.
+            val syntheticFolders = visibleSmart.map { vs ->
+                PhoneFolders.Folder(
+                    id            = "smart:${vs.spec.id}",
+                    order         = "zz",
+                    label         = vs.spec.title,
+                    matchKeywords = emptyList(),
+                )
+            }
+            val smartGrouped = visibleSmart.associate { vs -> "smart:${vs.spec.id}" to vs.apps }
+            renderFolderGrid(rootCol, ctx, syntheticFolders, smartGrouped, columns)
+        }
         return scroll
+    }
+
+    private data class SmartRendered(
+        val spec: PhoneSmartFolders.SmartFolder,
+        val apps: List<PhoneApp>,
+    )
+
+    private fun subhead(ctx: Context, title: String) = TextView(ctx).apply {
+        text = title
+        setTextColor(0xFFE9D8FD.toInt())
+        setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+        setPadding(dp(ctx, 4), dp(ctx, 12), 0, dp(ctx, 4))
     }
 
     /** Instance-side wrapper — delegates to the companion helper so

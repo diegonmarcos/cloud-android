@@ -1694,14 +1694,10 @@
     ],
     "_doc_phone_grid_columns": "Column count for the Phone tab's folder grid. Mirrors tile_columns (6) so the two tabs share the same density rhythm.",
     "phone_grid_columns": 6,
-    "_doc_phone_folders": "Folder taxonomy for the Phone tab — captured 1:1 from the user's One UI Home (screenshot 2026-06-08). The `label` keeps the user's prefix sort markers verbatim (_#, _, -, .#, .a, .b, >) so the order reads identically to native One UI. `order` is the lexicographic sort key (two-digit blocks let new folders slot between existing ones). `match_keywords` are case-insensitive substring matches against `packageName + display label` — first matching folder wins. Apps that match no folder land in the sink folder `_Misc`. User can edit any folder's keywords here, rebuild, and the classifier picks up the new mapping; no Kotlin edits needed.",
+    "_doc_phone_folders": "Folder taxonomy for the Phone tab — categorised by function (main purpose of the app), not by manufacturer. The `label` keeps the user's prefix sort markers verbatim (_#, _, -, .#, .a, .b, >) so the order reads identically to native One UI. `order` is the lexicographic sort key (two-digit blocks let new folders slot between existing ones). `match_keywords` are case-insensitive substring matches against `packageName + display label` — first matching folder wins. Sink: `_New Apps` (id=new_apps, empty keywords) — anything that matches no other folder lands here automatically, so the user can later promote a NewApp into an existing folder OR mint a fresh one once two+ apps share a theme. `_Misc` remains for hand-curated singletons that resist categorisation (give it specific keywords to push individual apps in). Manufacturer (Google / Samsung / non-Play-Store) is metadata for Smart Folders (see phone_smart_folders below) — NOT a primary grouping criterion.",
     "phone_folders": [
       { "id": "sys_top",       "order": "00", "label": "_#SYSTEM",
         "match_keywords": ["com.android.settings","com.samsung.android.lool","com.android.systemui","settings","device care","one ui"] },
-      { "id": "sys_google",    "order": "10", "label": "_Google",
-        "match_keywords": ["com.google.","google.","youtube","gmail","chrome","drive","maps.","photos.","play.store","gboard","google one"] },
-      { "id": "sys_samsung",   "order": "11", "label": "_Samsung",
-        "match_keywords": ["com.samsung.","com.sec.android","samsung","knox","bixby","good lock","smartthings","tizen"] },
       { "id": "sys_security",  "order": "12", "label": "_Security",
         "match_keywords": ["bitwarden","vaultwarden","aegis","authenticator","ente.auth","wireguard","openvpn","tailscale","vault","yubikey","duo","krypton"] },
       { "id": "sys_info",      "order": "13", "label": "_Sys_Info",
@@ -1758,8 +1754,32 @@
         "match_keywords": ["tinder","bumble","hinge","snapchat","pinterest","9gag","imgur","facebook","bereal","feeld"] },
       { "id": "v_soc_work",    "order": "65", "label": ">Social.Work",
         "match_keywords": ["linkedin","indeed","glassdoor","workplace","workday","seek","stepstone","xing"] },
+      { "id": "new_apps",      "order": "98", "label": "_New Apps",
+        "match_keywords": [] },
       { "id": "misc",          "order": "99", "label": "_Misc",
         "match_keywords": [] }
+    ],
+    "_doc_phone_sections": "Top-level section headers in the Home Apps/Phone tab. Folders are bucketed under a section by their label's first character: System (_), Services (-), Tools A (.), Tools B (>). Order = render order. Empty sections (every folder empty) silently skipped. Phone tab renders one subhead per non-empty section + the folder grid below.",
+    "phone_sections": [
+      { "title": "System",   "prefix": "_" },
+      { "title": "Services", "prefix": "-" },
+      { "title": "Tools A",  "prefix": "." },
+      { "title": "Tools B",  "prefix": ">" }
+    ],
+    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values), pkg_eq (any pkg equals one of values), install_source_not (PackageManager.getInstallSourceInfo.installingPackageName not in values — catches sideloads + F-Droid + Aurora + GitHub APKs).",
+    "phone_smart_folders": [
+      {
+        "id": "samsung", "title": "Samsung",
+        "rule": { "type": "pkg_prefix", "values": ["com.sec.", "com.samsung."] }
+      },
+      {
+        "id": "google", "title": "Google",
+        "rule": { "type": "pkg_prefix", "values": ["com.google.", "com.android.vending"] }
+      },
+      {
+        "id": "alt_stores", "title": "Alternative Stores",
+        "rule": { "type": "install_source_not", "values": ["com.android.vending"] }
+      }
     ],
     "default_section": "home",
     "default_mode": "apps",
