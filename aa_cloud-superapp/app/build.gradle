@@ -72,6 +72,13 @@ def uiHomeAppsTabsB64  = uiHomeAppsTabsJson.bytes.encodeBase64().toString()
 def uiPhoneFoldersJson = groovy.json.JsonOutput.toJson(buildJson.ui.phone_folders ?: [])
 def uiPhoneFoldersB64  = uiPhoneFoldersJson.bytes.encodeBase64().toString()
 def phoneGridColumns   = (buildJson.ui.phone_grid_columns as Number)?.intValue() ?: 6
+// Suite section's curated Phone tab — see build.json::sections[id=suite].phone_apps.
+// Flat list of package-name strings; SuitePhoneAppsFragment renders only
+// those that resolve via LauncherApps.getActivityList (missing = silently
+// skipped so the list can be edited freely without breaking the build).
+def uiSuitePhoneAppsList = buildJson.sections.find { it.id == "suite" }?.phone_apps ?: []
+def uiSuitePhoneAppsJson = groovy.json.JsonOutput.toJson(uiSuitePhoneAppsList)
+def uiSuitePhoneAppsB64  = uiSuitePhoneAppsJson.bytes.encodeBase64().toString()
 // Dynamic-island tap target. Format: "app:<pkg>" | "notifications" |
 // "shortcut:<id>". Parsed at runtime by MainActivity. Default lives in
 // build.json::ui.dynamic_island_action.
@@ -297,6 +304,7 @@ android {
         buildConfigField "String", "UI_LAUNCHER_PROFILES_B64", "\"${uiLauncherProfilesB64}\""
         buildConfigField "String", "UI_HOME_APPS_TABS_B64",   "\"${uiHomeAppsTabsB64}\""
         buildConfigField "String", "UI_PHONE_FOLDERS_B64",    "\"${uiPhoneFoldersB64}\""
+        buildConfigField "String", "UI_SUITE_PHONE_APPS_B64", "\"${uiSuitePhoneAppsB64}\""
         buildConfigField "int",    "UI_PHONE_GRID_COLUMNS",   "${phoneGridColumns}"
         buildConfigField "String", "UI_DYNAMIC_ISLAND_ACTION","\"${dynamicIslandAction}\""
         buildConfigField "String", "MESH_JSON_B64",         "\"${meshB64}\""

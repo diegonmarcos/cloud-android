@@ -93,6 +93,8 @@ class TabbedSectionFragment : Fragment(), Collapsible {
             val child: Fragment = when {
                 Sections.aggregatorIsStack(section, mode) ->
                     AggregatorStackFragment.newInstance(section.id, label, mode)
+                section.tileGroups.isNotEmpty() && section.id == "suite" ->
+                    SuiteCloudPhoneTabsFragment.newInstance()
                 section.tileGroups.isNotEmpty() ->
                     GroupedTilesFragment.newInstance(section.id)
                 else -> {

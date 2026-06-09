@@ -1035,6 +1035,15 @@ class MainActivity : AppCompatActivity(),
             // them as titled rows in a GroupedTilesFragment instead of
             // flattening into one grid. Same data, same TileClickListener
             // contract, just structured.
+            //
+            // Suite is the ONE aggregator that also has a phone_apps
+            // curated list — wrap the tile grid in a Cloud | Phone
+            // TabLayout host so the user can swipe between the cloud
+            // services view (default) and a flat grid of their phone
+            // apps. Other aggregators bypass the tabs and go straight
+            // to GroupedTilesFragment.
+            section.isAggregator && section.tileGroups.isNotEmpty() && section.id == "suite" ->
+                SuiteCloudPhoneTabsFragment.newInstance()
             section.isAggregator && section.tileGroups.isNotEmpty() ->
                 GroupedTilesFragment.newInstance(section.id)
 
