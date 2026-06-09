@@ -199,11 +199,33 @@ object BatterySessionStats {
         else -> "Computing…"
     }
 
-    /** Append " | X.XW" to a rate string when the instantaneous power
-     *  reading is available, so the user sees both the time-derived
-     *  rate AND the on-device power draw (or input) side-by-side. */
-    private fun appendPower(s: Snapshot, rateStr: String): String =
-        if (s.powerW > 0.05) "$rateStr | %.1fW".format(s.powerW) else rateStr
+    /** Append " | <power>" to a rate string when the instantaneous
+     *  power reading is available, so the user sees both the time-
+     *  derived rate AND the on-device power draw (or input) side-by-
+     *  side. Sub-watt values render as mW so idle-screen draws (≈30-
+     *  100 mW) are still visible. */
+    private fun appendPower(s: Snapshot, rateStr: String): String {
+        val p = fmtPowerOnly(s)
+        return if (p.isNotEmpty()) "$rateStr | $p" else rateStr
+    }
+
+    /** Standalone power formatter. Returns "" when no reading is
+     *  available (callers can render "—"). Auto-picks watts vs.
+     *  milliwatts for readability. */
+    fun fmtPowerOnly(s: Snapshot): String = when {
+        s.powerW <= 0.0 -> ""
+        s.powerW < 1.0  -> "%.0f mW".format(s.powerW * 1000.0)
+        else            -> "%.2f W".format(s.powerW)
+    }
+
+    /** Dedicated row formatter — shows the power + direction prefix.
+     *  Empty reading falls back to "—" so the row never disappears. */
+    fun fmtPowerRow(s: Snapshot): String {
+        val p = fmtPowerOnly(s)
+        if (p.isEmpty()) return "—"
+        val arrow = if (s.isCharging) "↑ in" else "↓ out"
+        return "$p  $arrow"
+    }
 
     fun fmtEta(s: Snapshot): String = when {
         s.isCharging -> "—"

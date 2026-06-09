@@ -569,12 +569,15 @@ class DevControlFragment : Fragment() {
             // unified formatters in BatterySessionStats decide the wording.
             val labelSince = if (bs.isCharging) "Since plugged in"        else "Since last charge"
             val labelRate  = if (bs.isCharging) "% battery/h gained"      else "% battery/h consumed"
+            val labelPower = if (bs.isCharging) "Charge power"            else "Drain power"
             val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
             val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
             row(ctx, it, labelSince,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtSinceAnchor(bs))
             row(ctx, it, labelRate,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtRateUnified(bs))
+            row(ctx, it, labelPower,
+                com.diegonmarcos.superapp.BatterySessionStats.fmtPowerRow(bs))
             row(ctx, it, labelEta,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtEtaDuration(bs))
             row(ctx, it, labelWall,

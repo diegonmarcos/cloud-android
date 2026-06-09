@@ -54,6 +54,9 @@ object BatteryEstimatePopup {
         container.addView(label(ctx, if (s.isCharging) "Since plugged in" else "Since last charge"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtSinceAnchor(s)))
         container.addView(spacer(ctx, (6 * d).toInt()))
+        container.addView(label(ctx, if (s.isCharging) "Charge power" else "Drain power"))
+        container.addView(valueSmall(ctx, BatterySessionStats.fmtPowerRow(s)))
+        container.addView(spacer(ctx, (6 * d).toInt()))
         container.addView(label(ctx, if (s.isCharging) "% battery / h gained" else "% battery / h consumed"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtRateUnified(s)))
 
