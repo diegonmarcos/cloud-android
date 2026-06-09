@@ -116,6 +116,15 @@ class LauncherStatusStripView @JvmOverloads constructor(
         signal5gView = makeIconLabel("5G")
         wifiView     = makeIconLabel("WiFi")
         wgView       = makeIconLabel("WG")
+        // Any of the three left-cluster icons → NetworkInfoPopup (shared
+        // popup per cluster, per Diego's "yes click any, they are a
+        // cluster" answer). Reusing the same anchor (the tapped icon)
+        // keeps the bubble close to where the user tapped.
+        val openNetworkPopup = OnClickListener { v -> NetworkInfoPopup.show(context, v) }
+        for (v in listOf(signal5gView, wifiView, wgView)) {
+            v.isClickable = true
+            v.setOnClickListener(openNetworkPopup)
+        }
         leftCluster.addView(signal5gView)
         leftCluster.addView(wifiView)
         leftCluster.addView(wgView)
@@ -135,6 +144,11 @@ class LauncherStatusStripView @JvmOverloads constructor(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER,
             )
+            // Tap → CalendarAgendaPopup (next-7-days mini-list, same
+            // data source as section:cal/agenda — placeholder for now,
+            // wires to libs:cal once CalDAV slice D lands).
+            isClickable = true
+            setOnClickListener { CalendarAgendaPopup.show(context, this) }
         }
         innerRow.addView(dateTimeView)
 
@@ -150,6 +164,13 @@ class LauncherStatusStripView @JvmOverloads constructor(
         }
         ramView     = makeIconLabel("R 0%")
         storageView = makeIconLabel("S 0%")
+        // RAM + Storage → shared SystemInfoPopup (per Diego's cluster
+        // rule). Same anchor (tapped icon) as battery / network popups.
+        val openSystemPopup = OnClickListener { v -> SystemInfoPopup.show(context, v) }
+        for (v in listOf(ramView, storageView)) {
+            v.isClickable = true
+            v.setOnClickListener(openSystemPopup)
+        }
         batteryView = BatteryIconView(context).apply {
             val mlp = (4 * resources.displayMetrics.density).toInt()
             layoutParams = LinearLayout.LayoutParams(
