@@ -907,7 +907,7 @@ class DevControlFragment : Fragment() {
                 else           -> "✗ Reachable from LAN — bind addr ${bound ?: "?"}"
             })
             row(ctx, it, "Token",    prefs.token)
-            it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints: /ping /info /state /haptic /goto /action /update /restart /logcat /trace /crashes"))
+            it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints follow /api/{group}/{op} (e.g. /api/system/info, /api/diagnostics/logcat, /api/tracker/counts). Full catalog: GET /api/docs."))
 
             // Toggle Switch: persists pref + start/stop the server live.
             it.addView(android.widget.Switch(ctx).apply {
@@ -950,12 +950,22 @@ class DevControlFragment : Fragment() {
         section(ctx, column, "Curl shortcuts") {
             val port = DevControlPrefs(requireContext()).port
             val tok  = DevControlPrefs(requireContext()).token
-            row(ctx, it, "Logcat",  "curl http://127.0.0.1:$port/logcat?n=500")
-            row(ctx, it, "Trace",   "curl http://127.0.0.1:$port/trace")
-            row(ctx, it, "Crashes", "curl http://127.0.0.1:$port/crashes")
-            row(ctx, it, "Haptic",  "curl -XPOST -H 'Authorization: Bearer $tok' 'http://127.0.0.1:$port/haptic?preset=gemini_stream'")
-            row(ctx, it, "Update",  "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/update")
-            row(ctx, it, "Restart", "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/restart")
+            // Endpoint catalog moved to /api/{group}/{op} layout in
+            // commit fb2bc62; the flat aliases still resolve but the
+            // documented form is the grouped one. Source of truth for
+            // the full list is GET /api/docs (machine-readable JSON,
+            // generated from the same Spec list the routing uses so it
+            // can't drift). These shortcuts cover the most-used probes.
+            row(ctx, it, "Docs",     "curl http://127.0.0.1:$port/api/docs")
+            row(ctx, it, "Logcat",   "curl http://127.0.0.1:$port/api/diagnostics/logcat?n=500")
+            row(ctx, it, "Trace",    "curl http://127.0.0.1:$port/api/diagnostics/trace")
+            row(ctx, it, "Crashes",  "curl http://127.0.0.1:$port/api/diagnostics/crashes")
+            row(ctx, it, "Info",     "curl http://127.0.0.1:$port/api/system/info")
+            row(ctx, it, "State",    "curl -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/state")
+            row(ctx, it, "Haptic",   "curl -XPOST -H 'Authorization: Bearer $tok' 'http://127.0.0.1:$port/api/haptic?preset=gemini_stream'")
+            row(ctx, it, "Update",   "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/system/update")
+            row(ctx, it, "Restart",  "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/system/restart")
+            row(ctx, it, "Tracker",  "curl http://127.0.0.1:$port/api/tracker/counts")
         }
 
         section(ctx, column, "SoC / CPU") {
