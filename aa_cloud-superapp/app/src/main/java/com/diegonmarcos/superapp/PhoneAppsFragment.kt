@@ -404,6 +404,16 @@ class PhoneAppsFragment : Fragment() {
             }
         }
 
+        /** Public snapshot for callers OUTSIDE this fragment that need
+         *  the launchable-apps list — currently [SearchSheetFragment]'s
+         *  "Phone (apps)" scope. Returns the warm-up cache when
+         *  present (zero work), otherwise falls through to a fresh
+         *  enumeration. Same profile-filter pipeline applies; the
+         *  search scope therefore honours Guest-mode whitelisting
+         *  automatically. */
+        fun snapshot(ctx: Context): List<PhoneApp> =
+            sCachedApps ?: collectLaunchableAppsStatic(ctx.applicationContext).also { sCachedApps = it }
+
         /** Static enumeration — derives LauncherApps from [ctx] each
          *  call so warm-up (no Fragment instance) + onCreateView (has
          *  one) share the exact same code path.
