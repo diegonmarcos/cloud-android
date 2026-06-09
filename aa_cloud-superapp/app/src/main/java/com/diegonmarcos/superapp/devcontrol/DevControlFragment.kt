@@ -171,6 +171,56 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Open Samsung's "Background usage limits → Never sleeping apps"
+     *  picker — the One UI knob that runs IN ADDITION to Battery
+     *  Optimization and silently kills foreground services on its own
+     *  schedule. There's no published Android API for this; we walk
+     *  through a 5-tier fallback of Samsung-internal actions /
+     *  components, oldest-still-likely to newest, then degrade to the
+     *  generic battery saver screen on non-Samsung devices.
+     *
+     *  Tier ladder (first that resolves wins):
+     *    1. ACTION_BACKGROUND_USAGE_LIMITS — One UI 4+ deepest link
+     *       straight into the limits sub-page.
+     *    2. com.samsung.android.lool / sm.battery.ui.BatteryActivity —
+     *       One UI 5-6 internal Battery activity.
+     *    3. com.samsung.android.lool / sm.ui.battery.BatteryActivity —
+     *       Pre-One-UI-5 Battery activity (older spelling).
+     *    4. Settings.ACTION_BATTERY_SAVER_SETTINGS — generic AOSP
+     *       battery page; nearest-equivalent on non-Samsung.
+     *    5. ACTION_APPLICATION_DETAILS_SETTINGS — final fallback so
+     *       SOMETHING always opens.
+     *
+     *  All Samsung component names are undocumented + unstable; if
+     *  Samsung renames an activity the tier just doesn't resolve and
+     *  the chain falls through to the next. */
+    private fun openSamsungNeverSleepingSettings() {
+        val ctx = requireContext()
+        val pkg = ctx.packageName
+        val attempts = listOf<android.content.Intent>(
+            android.content.Intent("com.samsung.android.sm.ACTION_BACKGROUND_USAGE_LIMITS"),
+            android.content.Intent().setComponent(android.content.ComponentName(
+                "com.samsung.android.lool",
+                "com.samsung.android.sm.battery.ui.BatteryActivity",
+            )),
+            android.content.Intent().setComponent(android.content.ComponentName(
+                "com.samsung.android.lool",
+                "com.samsung.android.sm.ui.battery.BatteryActivity",
+            )),
+            android.content.Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS),
+            android.content.Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", pkg, null),
+            ),
+        )
+        for (intent in attempts) {
+            if (intent.resolveActivity(ctx.packageManager) != null) {
+                runCatching { startActivity(intent) }
+                return
+            }
+        }
+    }
+
     /** Open Settings → Special access → Notification access so the user
      *  can toggle BIND_NOTIFICATION_LISTENER_SERVICE for this app. Used
      *  by the Phone Notifications panel + the Permissions button below
@@ -396,6 +446,7 @@ class DevControlFragment : Fragment() {
                 "Grant Notif. (read)"         to { openNotificationListenerSettings() },
                 "Grant Usage Access"          to { openUsageAccessSettings() },
                 "Set Battery No Optimization" to { openBatteryOptimizationSettings() },
+                "Set Samsung Never-Sleeping"  to { openSamsungNeverSleepingSettings() },
             ))
             it.addView(actionButtonRow(ctx,
                 "Request All Permissions" to {
