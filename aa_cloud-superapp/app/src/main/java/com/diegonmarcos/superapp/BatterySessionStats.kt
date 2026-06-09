@@ -225,10 +225,15 @@ object BatterySessionStats {
     }
 
     /** Format the charger spec row. Prefers the LIVE sysfs reading
-     *  (`/sys/class/power_supply/usb/*` etc., no perm needed); falls
-     *  back to the negotiated MAX via dumpsys (needs DUMP); falls back
-     *  to "—" when nothing readable. Shape: "14.7 W (USB) live" /
-     *  "25.5 W (USB) max" / "—". */
+     *  (`/sys/class/power_supply/usb/...` etc., no perm needed);
+     *  falls back to the negotiated MAX via dumpsys (needs DUMP);
+     *  falls back to "—" when nothing readable. Shape:
+     *  "14.7 W (USB) live" / "25.5 W (USB) max" / "—".
+     *
+     *  KDoc gotcha: kept `usb/...` instead of `usb/&#42;` — Kotlin's
+     *  block comments are nested-aware, so a literal `/&#42;` here
+     *  would open a nested block-comment and swallow the rest of
+     *  the file (the trap that broke CI twice; see also SysfsProc.kt). */
     fun fmtChargerSpec(s: Snapshot): String {
         val spec = s.chargerSpec
         val src = spec.sourceLabel().ifEmpty { "—" }
