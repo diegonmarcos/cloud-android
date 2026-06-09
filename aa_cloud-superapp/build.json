@@ -1780,7 +1780,7 @@
       },
       {
         "id": "alt_stores", "title": "Alternative Stores",
-        "rule": { "type": "install_source_not", "values": ["com.android.vending"] }
+        "rule": { "type": "install_source_not", "values": ["com.android.vending", "com.sec.android.app.samsungapps"] }
       }
     ],
     "default_section": "home",
