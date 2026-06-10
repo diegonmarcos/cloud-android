@@ -35,6 +35,17 @@ class App : Application() {
         runCatching { CrashLogger.install(this) }
         runCatching { DynamicColors.applyToActivitiesIfAvailable(this) }
         runCatching { detectVersionBump() }
+        // Schedule the periodic battery-session tick (15 min cadence).
+        // Idempotent — KEEP policy ensures re-scheduling on every cold
+        // start is a no-op. Without this the discharge anchor only
+        // updates when the user OPENS a battery surface, so the rate
+        // appears to "start computing just now" hours after an actual
+        // unplug. With it, the worker runs even when the SuperApp is
+        // backgrounded / process-killed and the transition-detection
+        // path in BatterySessionStats.read catches plug/unplug events
+        // at ≤15 min granularity even when PowerStateReceiver is
+        // suppressed by Samsung Sleeping Apps.
+        runCatching { BatterySessionWorker.schedule(this) }
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
     }
 
