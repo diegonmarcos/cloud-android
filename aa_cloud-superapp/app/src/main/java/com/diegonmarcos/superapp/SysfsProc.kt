@@ -188,21 +188,53 @@ object SysfsProc {
 
     fun cpuLoad(): CpuLoad? {
         val cores = Runtime.getRuntime().availableProcessors()
-        val loadav = readText("/proc/loadavg") ?: return null
+        // Primary path — direct /proc read. Fast + cheap.
+        val loadav = readText("/proc/loadavg") ?: readLoadAvgViaUptimeBinary()
+        if (loadav == null) return null
         val parts = loadav.split(' ').filter { it.isNotBlank() }
-        if (parts.size < 5) return null
+        if (parts.size < 3) return null
         val avg1 = parts[0].toDoubleOrNull() ?: return null
         val avg5 = parts[1].toDoubleOrNull() ?: return null
         val avg15 = parts[2].toDoubleOrNull() ?: return null
-        val rt = parts[3].split('/')
-        val runnable = rt.getOrNull(0)?.toIntOrNull() ?: 0
-        val total = rt.getOrNull(1)?.toIntOrNull() ?: 0
-        val lastPid = parts[4].toLongOrNull() ?: 0L
+        val rt = parts.getOrNull(3)?.split('/')
+        val runnable = rt?.getOrNull(0)?.toIntOrNull() ?: 0
+        val total = rt?.getOrNull(1)?.toIntOrNull() ?: 0
+        val lastPid = parts.getOrNull(4)?.toLongOrNull() ?: 0L
         val uptime = readText("/proc/uptime")?.split(' ')?.filter { it.isNotBlank() }
         val uptimeSec = uptime?.getOrNull(0)?.toDoubleOrNull() ?: 0.0
         val idleSec   = uptime?.getOrNull(1)?.toDoubleOrNull() ?: 0.0
         return CpuLoad(avg1, avg5, avg15, runnable, total, lastPid, uptimeSec, idleSec, cores)
     }
+
+    /** Fallback path for /proc/loadavg when SELinux blocks direct
+     *  read (hardened Samsung One UI 7+, Pixel A15+). Spawns
+     *  `/system/bin/uptime` and parses the standard
+     *  "... load average: A.AA, B.BB, C.CC" trailing fragment.
+     *
+     *  The subprocess inherits our SELinux domain so usually fails
+     *  the same way the direct read does — but on some OEMs uptime
+     *  binary is linked to libc-internal sysinfo() which doesn't
+     *  hit /proc. Worth attempting before giving up.
+     *
+     *  Returns a fake /proc/loadavg line ("0.42 0.31 0.18 0/0 0")
+     *  on success so the caller's parser can re-use the same code
+     *  path. */
+    private fun readLoadAvgViaUptimeBinary(): String? = runCatching {
+        val p = Runtime.getRuntime().exec(arrayOf("/system/bin/uptime"))
+        val out = p.inputStream.bufferedReader().use { it.readText() }
+        p.waitFor()
+        // Output: "12:34:56 up 1 day,  2:34,  load average: 0.42, 0.31, 0.18"
+        val marker = "load average:"
+        val idx = out.indexOf(marker)
+        if (idx < 0) return@runCatching null
+        val tail = out.substring(idx + marker.length).trim()
+        val nums = tail.split(',').map { it.trim() }.take(3)
+        if (nums.size < 3) return@runCatching null
+        // Verify all three parse as doubles before declaring success.
+        if (nums.all { it.toDoubleOrNull() != null }) {
+            "${nums[0]} ${nums[1]} ${nums[2]} 0/0 0"
+        } else null
+    }.getOrNull()
 
     fun cpuLoadRows(): List<Pair<String, String>> {
         val c = cpuLoad() ?: return listOf("loadavg" to "—")
