@@ -323,6 +323,16 @@ class PhoneAppsFragment : Fragment() {
                 }
                 dialog.dismiss()
             }
+            // Long-press → stock Android-style options menu (shortcuts +
+            // App info + Uninstall). Mirrors what Pixel Launcher / One UI
+            // do on a long-press. Dismiss the folder dialog so the menu
+            // sits cleanly on its own backdrop.
+            setOnLongClickListener {
+                Haptics.tap(it)
+                dialog.dismiss()
+                AppLongPressMenu.show(ctx, app.packageName)
+                true
+            }
         }
         tile.addView(ImageView(ctx).apply {
             app.icon?.let { setImageDrawable(it) }

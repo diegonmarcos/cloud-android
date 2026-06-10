@@ -207,6 +207,14 @@ class SuitePhoneAppsFragment : Fragment() {
                 if (intent != null) ctx.startActivity(intent)
             }
         }
+        // Long-press → stock Android-style options menu (shortcuts +
+        // App info + Uninstall). Mirrors what Pixel Launcher / One UI
+        // do; same helper PhoneAppsFragment uses so behaviour is
+        // identical across both Phone surfaces.
+        setOnLongClickListener {
+            AppLongPressMenu.show(ctx, pkg)
+            true
+        }
         addView(ImageView(ctx).apply {
             setImageDrawable(icon)
             val sz = dp(ctx, 52)
@@ -368,6 +376,15 @@ class SuitePhoneAppsFragment : Fragment() {
                     if (intent != null) ctx.startActivity(intent)
                 }
                 dialog.dismiss()
+            }
+            // Long-press inside folder modal — dismiss the folder
+            // dialog first so the long-press menu sits cleanly on
+            // its own dim backdrop, matching the PhoneAppsFragment
+            // folder-tile behaviour.
+            setOnLongClickListener {
+                dialog.dismiss()
+                AppLongPressMenu.show(ctx, app.pkg)
+                true
             }
         }
         tile.addView(ImageView(ctx).apply {
