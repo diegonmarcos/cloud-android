@@ -3,6 +3,17 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Inject build.json::ui.sections[c3].pages[dagu-events].dagu_default_server
+// into BuildConfig so the Dagu login form pre-fills the server URL
+// without any caller passing it in. Data-driven — change the default
+// in build.json, get a rebuilt BuildConfig.DAGU_DEFAULT_SERVER on the
+// next gradle run. Same pattern libs/mail uses for JMAP_DEFAULT_SERVER
+// and libs/chat for MATTERMOST_DEFAULT_SERVER.
+def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def c3Section = buildJson.ui.sections.find { it.id == 'c3' }
+def daguPage = c3Section?.pages?.find { it.id == 'dagu-events' }
+def daguServer = daguPage?.dagu_default_server ?: ''
+
 android {
     namespace 'com.diegonmarcos.superapp.ops'
     compileSdk 35
@@ -10,8 +21,11 @@ android {
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'
+        buildConfigField "String", "DAGU_DEFAULT_SERVER", "\"${daguServer}\""
     }
-
+    buildFeatures {
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -22,4 +36,8 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    // EncryptedSharedPreferences for bearer-token storage — same dep
+    // libs/chat uses for MattermostPrefs.
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 }

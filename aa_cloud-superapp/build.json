@@ -310,8 +310,9 @@
             "id": "dagu-events",
             "label": "Dagu events",
             "icon": "ic_p_c3_workflows",
-            "target": "https://workflows.diegonmarcos.com/",
-            "_doc": "Dagu live UI on oci-analytics, fronted by Caddy + Authelia. Tile target is the bare URL → MainActivity.onTileClicked routes any URI with a scheme through launchUri() which opens it in the in-app BrowserHostFragment WebView. The existing Authelia session cookie (set by any prior c3-protected request) carries through automatically — no separate login. Followup: a native DaguFragment that calls Dagu's REST API directly for offline-friendly run-status badges."
+            "target": "page:c3/dagu",
+            "dagu_default_server": "https://workflows.diegonmarcos.com",
+            "_doc": "Native DaguFragment — REST API GET /api/v1/dags listing with per-DAG last-run status (success / error / running / unknown). Mirrors GitHub Actions workflow-list style: 1 row per DAG, coloured dot + relative timestamp. Auth via Authelia bearer token pasted into the login form on first open (same pattern as Mattermost section). Default server URL baked into BuildConfig via this dagu_default_server field so login form pre-fills correctly."
           },
           {
             "id": "rss-c3",

@@ -4,6 +4,7 @@ import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.health.HealthFragment
 import com.diegonmarcos.superapp.chat.ChatPages
 import com.diegonmarcos.superapp.mail.MailPages
+import com.diegonmarcos.superapp.ops.OpsPages
 import com.diegonmarcos.superapp.maps.MapsConfigFragment
 import com.diegonmarcos.superapp.maps.MapsMapFragment
 import com.diegonmarcos.superapp.maps.MapsTimelineTabsFragment
@@ -38,6 +39,7 @@ object SectionPages {
         sectionId == "mail"  -> MailPages.fragmentFor(pageId)
         sectionId == "chat"  -> ChatPages.fragmentFor(pageId)
         sectionId == "c3"    && pageId == "health"      -> C3HealthFragment.newInstance()
+        sectionId == "c3"    && pageId == "dagu"        -> OpsPages.fragmentForDagu()
         sectionId == "wg"    && pageId == "status"      -> C3MeshFragment.newInstance()
         sectionId == "feed"  && pageId == "all"         -> RssFeedFragment.newInstance()
         sectionId == "drive" && pageId == "connections" -> DriveConnectionsFragment.newInstance()
