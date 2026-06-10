@@ -307,7 +307,7 @@
             "target": "page:c3/gha"
           },
           {
-            "id": "dagu-events",
+            "id": "dagu",
             "label": "Dagu events",
             "icon": "ic_p_c3_workflows",
             "target": "page:c3/dagu",
