@@ -230,6 +230,7 @@ object DevControlServer {
                     reply(writer, "200 OK", """{"ok":true,"message":"anchor cleared — next plug/unplug will re-mint via PowerStateReceiver"}""", "application/json")
                 }
                 "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
+                "battery/properties" -> { reply(writer, "200 OK", batteryPropertiesJson(ctx), "application/json") }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
@@ -286,6 +287,7 @@ object DevControlServer {
             Spec("battery/state",       "GET",  true,  "Full BatterySessionStats.Snapshot — current pct, anchor source (disconnect_event / connect_event / first_read_fallback / (none)), elapsed since anchor, rate, ETA, raw + rescaled current_now, chargerSpec including sysfs liveInputW. The single source of truth for debugging 'why is the rate computing from the moment I opened the page' and similar regressions.", ""),
             Spec("battery/reset_anchor","GET",  true,  "DELETE the persisted session anchor (both unplug/plug). Next read mints a fresh first_read_fallback; the next real plug/unplug cycle overwrites with an authoritative receiver-event anchor. Equivalent to a fresh install for the battery-session machinery.", ""),
             Spec("sysfs/diagnostic",    "GET",  true,  "Per-path readability check for every kernel sysfs/proc file the app touches. Returns ✓ OK + preview when readable, ✗ does-not-exist / not-readable / read-failed otherwise. THIS is the answer to 'why isn't sysfs working even though no perm is needed' — hardened Androids block specific power_supply nodes via SELinux.", ""),
+            Spec("battery/properties",  "GET",  true,  "Full dump of every BatteryManager.BATTERY_PROPERTY_* getter + every sticky ACTION_BATTERY_CHANGED extra. This is the path AccuBattery and similar gauges use when sysfs is hardened (Samsung One UI 7+, Pixel A15+) — system-service surface that bypasses the SELinux block. Use it to identify which fields ARE exposed on the current device so we can wire them into BatterySessionStats.", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -471,6 +473,97 @@ object DevControlServer {
         sb.append(""""acPowered":""").append(s.chargerSpec.acPowered).append(',')
         sb.append(""""wirelessPowered":""").append(s.chargerSpec.wirelessPowered)
         sb.append('}')
+        sb.append('}')
+        return sb.toString()
+    }
+
+    /** Full dump of every BatteryManager.BATTERY_PROPERTY_* getter +
+     *  every sticky ACTION_BATTERY_CHANGED extra. Path bypasses the
+     *  SELinux block on /sys/class/power_supply because BatteryManager
+     *  goes through the system_server service binder, not raw sysfs.
+     *  Used to identify what's actually exposed on a hardened Samsung
+     *  / Pixel so we can wire BatterySessionStats to the system-
+     *  service surface instead of the kernel files. */
+    private fun batteryPropertiesJson(ctx: Context): String {
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+        val sticky = ctx.registerReceiver(
+            null,
+            android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED),
+        )
+        val sb = StringBuilder("{")
+
+        // BatteryManager (system-service path, immune to sysfs blocking)
+        sb.append(""""batteryManager":{""")
+        var firstBm = true
+        fun appendIntProp(label: String, prop: Int) {
+            if (!firstBm) sb.append(','); firstBm = false
+            val v = runCatching { bm?.getIntProperty(prop) }.getOrNull()
+            sb.append('"').append(label).append("\":").append(v ?: "null")
+        }
+        fun appendLongProp(label: String, prop: Int) {
+            if (!firstBm) sb.append(','); firstBm = false
+            val v = runCatching { bm?.getLongProperty(prop) }.getOrNull()
+            sb.append('"').append(label).append("\":").append(v ?: "null")
+        }
+        appendIntProp("current_now_uA",          android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        appendIntProp("current_average_uA",      android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
+        appendIntProp("capacity_pct",            android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        appendIntProp("status",                  android.os.BatteryManager.BATTERY_PROPERTY_STATUS)
+        appendLongProp("charge_counter_uAh",     android.os.BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+        appendLongProp("energy_counter_nWh",     android.os.BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER)
+        if (!firstBm) sb.append(','); firstBm = false
+        sb.append(""""isCharging":""").append(bm?.isCharging ?: "null")
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            sb.append(',')
+            val t = runCatching { bm?.computeChargeTimeRemaining() }.getOrNull()
+            sb.append(""""compute_charge_time_remaining_ms":""").append(t ?: "null")
+        }
+        sb.append('}')
+
+        // Sticky ACTION_BATTERY_CHANGED extras (broadcast surface;
+        // some fields like cycle_count + charging_status are API 31+
+        // and only land in the extras bundle on devices that support
+        // them — we read by string key for forward-compat).
+        sb.append(""","stickyExtras":{""")
+        if (sticky == null) {
+            sb.append(""""_present":false""")
+        } else {
+            sb.append(""""_present":true""")
+            fun appendIntExtra(label: String, key: String, default: Int = Int.MIN_VALUE) {
+                sb.append(',').append('"').append(label).append("\":")
+                val v = sticky.getIntExtra(key, default)
+                sb.append(if (v == default) "null" else v)
+            }
+            fun appendBoolExtra(label: String, key: String) {
+                sb.append(',').append('"').append(label).append("\":")
+                sb.append(sticky.getBooleanExtra(key, false))
+            }
+            fun appendStringExtra(label: String, key: String) {
+                sb.append(',').append('"').append(label).append("\":")
+                val v = sticky.getStringExtra(key)
+                if (v == null) sb.append("null")
+                else sb.append('"').append(jsonEscape(v)).append('"')
+            }
+            appendIntExtra("level",        android.os.BatteryManager.EXTRA_LEVEL)
+            appendIntExtra("scale",        android.os.BatteryManager.EXTRA_SCALE)
+            appendIntExtra("status",       android.os.BatteryManager.EXTRA_STATUS)
+            appendIntExtra("plugged",      android.os.BatteryManager.EXTRA_PLUGGED)
+            appendIntExtra("health",       android.os.BatteryManager.EXTRA_HEALTH)
+            appendIntExtra("voltage_mV",   android.os.BatteryManager.EXTRA_VOLTAGE)
+            appendIntExtra("temperature_dC", android.os.BatteryManager.EXTRA_TEMPERATURE)
+            appendStringExtra("technology", android.os.BatteryManager.EXTRA_TECHNOLOGY)
+            appendBoolExtra("present",     android.os.BatteryManager.EXTRA_PRESENT)
+            // API 31+ extras read by canonical string key (constants
+            // not always resolvable at compileSdk < 31). If absent,
+            // getIntExtra returns the default (MIN_VALUE) which we
+            // surface as null.
+            appendIntExtra("cycle_count",     "android.os.extra.CYCLE_COUNT")
+            appendIntExtra("charging_status", "android.os.extra.CHARGING_STATUS")
+            appendIntExtra("max_charging_current_uA", "android.os.extra.MAX_CHARGING_CURRENT")
+            appendIntExtra("max_charging_voltage_uV", "android.os.extra.MAX_CHARGING_VOLTAGE")
+        }
+        sb.append('}')
+
         sb.append('}')
         return sb.toString()
     }
