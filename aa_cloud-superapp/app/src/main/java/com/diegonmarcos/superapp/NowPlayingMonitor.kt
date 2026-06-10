@@ -34,9 +34,19 @@ import android.os.Looper
  */
 class NowPlayingMonitor(
     private val ctx: Context,
-    /** Invoked whenever the "is anything playing" answer flips. */
-    private val onPlayingChanged: (playing: Boolean) -> Unit,
+    /** Invoked whenever the currently-playing package flips. Null
+     *  means "nothing playing right now"; non-null is the package
+     *  name of the app whose controller is in STATE_PLAYING. Lets
+     *  callers wire the indicator's tap handler to open that
+     *  specific app via PackageManager.getLaunchIntentForPackage. */
+    private val onPlayingChanged: (playingPackage: String?) -> Unit,
 ) {
+    /** Most recently observed playing-controller package name, or
+     *  null when nothing is currently playing. Surfaced for the tap
+     *  handler so it can short-circuit "no app to open" without
+     *  having to re-query MediaSessionManager. */
+    @Volatile var currentPackage: String? = null
+        private set
     private val mgr: MediaSessionManager? =
         ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
     private val notifListenerComponent = ComponentName(
@@ -60,7 +70,7 @@ class NowPlayingMonitor(
         }
 
     private var tracked: List<MediaController> = emptyList()
-    private var lastReported: Boolean = false
+    private var lastReported: String? = null
 
     fun start() {
         val m = mgr ?: return
@@ -94,10 +104,18 @@ class NowPlayingMonitor(
     }
 
     private fun evaluateAndDispatch() {
-        val anyPlaying = tracked.any { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-        if (anyPlaying != lastReported) {
-            lastReported = anyPlaying
-            onPlayingChanged(anyPlaying)
+        // Pick the FIRST controller in PLAYING state. Most users have
+        // exactly one media app playing at a time; even when several
+        // are listed (e.g. when one was paused but the system still
+        // surfaces the session), the playing one wins. Ties are rare
+        // enough that picking the first-listed is fine.
+        val playingPkg = tracked.firstOrNull {
+            it.playbackState?.state == PlaybackState.STATE_PLAYING
+        }?.packageName
+        currentPackage = playingPkg
+        if (playingPkg != lastReported) {
+            lastReported = playingPkg
+            onPlayingChanged(playingPkg)
         }
     }
 }

@@ -91,20 +91,38 @@
                 app:titleCentered="false"
                 app:title="" />
 
-            <!-- Music-playing indicator — 3 animated equalizer bars,
-                 sits between the status-strip's date/time row and the
-                 centered Dynamic Island below. Default GONE; flipped
-                 to VISIBLE by [NowPlayingMonitor] the moment any
-                 system-wide media session enters STATE_PLAYING.
-                 Width is small (28dp) so it doesn't compete visually
-                 with the date/time it's anchored under. -->
-            <com.diegonmarcos.superapp.EqualizerBarsView
-                android:id="@+id/music_playing_indicator"
-                android:layout_width="28dp"
-                android:layout_height="14dp"
+            <!-- Music-playing mini-island — same visual language as the
+                 main Dynamic Island below (bg_dynamic_island drawable,
+                 dark pill, rounded), just smaller. Houses the animated
+                 EqualizerBarsView and is itself the tap target — tap
+                 → open the app whose media session is currently
+                 PLAYING (wired in MainActivity via
+                 NowPlayingMonitor.currentPackage). Default GONE;
+                 flipped VISIBLE by NowPlayingMonitor when any system-
+                 wide media session enters STATE_PLAYING. Sized small
+                 (32dp × 16dp) so it sits unobtrusively between the
+                 status-strip's date/time and the main Dynamic Island
+                 below — minimalist by intent. -->
+            <FrameLayout
+                android:id="@+id/music_playing_island"
+                android:layout_width="32dp"
+                android:layout_height="16dp"
                 android:layout_gravity="top|center_horizontal"
                 android:layout_marginTop="2dp"
-                android:visibility="gone" />
+                android:background="@drawable/bg_dynamic_island"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true">
+
+                <com.diegonmarcos.superapp.EqualizerBarsView
+                    android:id="@+id/music_playing_indicator"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:padding="3dp"
+                    android:clickable="false"
+                    android:focusable="false" />
+            </FrameLayout>
 
             <!-- Apple-style centered "Dynamic Island" pill. Anchored to the
                  toolbar center via gravity; lives between the hamburger

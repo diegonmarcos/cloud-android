@@ -1749,20 +1749,31 @@ class MainActivity : AppCompatActivity(),
         // backgrounded, and the system status bar / our strip need to
         // sync. Idempotent.
         applyLauncherChrome()
-        // Music-playing indicator. NotificationListener perm gates
+        // Music-playing mini-island. NotificationListener perm gates
         // the MediaSessionManager query; when it's not granted the
-        // monitor silently reports no sessions and the icon stays
-        // gone. Starting on every onResume + stopping on onPause
-        // means the listener doesn't burn cycles while we're
-        // backgrounded.
+        // monitor silently reports no sessions and the island stays
+        // GONE. Starting on every onResume + stopping on onPause
+        // means the listener doesn't burn cycles while backgrounded.
+        // Tap → open the app whose controller is currently PLAYING
+        // (NowPlayingMonitor.currentPackage). Falls back to a Toast
+        // when the package has no launch intent (rare — Android
+        // surface apps without a launcher activity).
+        val island = findViewById<android.widget.FrameLayout>(R.id.music_playing_island)
         val indicator = findViewById<EqualizerBarsView>(R.id.music_playing_indicator)
-        if (indicator != null && nowPlayingMonitor == null) {
-            nowPlayingMonitor = NowPlayingMonitor(this) { playing ->
-                if (playing) {
-                    indicator.visibility = android.view.View.VISIBLE
+        if (island != null && indicator != null && nowPlayingMonitor == null) {
+            nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage ->
+                if (playingPackage != null) {
+                    island.visibility = android.view.View.VISIBLE
                     indicator.start()
                 } else {
-                    indicator.visibility = android.view.View.GONE
+                    island.visibility = android.view.View.GONE
+                }
+            }
+            island.setOnClickListener {
+                val pkg = nowPlayingMonitor?.currentPackage ?: return@setOnClickListener
+                runCatching {
+                    val intent = packageManager.getLaunchIntentForPackage(pkg)
+                    if (intent != null) startActivity(intent)
                 }
             }
         }
