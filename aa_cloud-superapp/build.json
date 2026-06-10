@@ -429,15 +429,38 @@
               "com.anthropic.claude",
               "com.google.android.apps.bard",
               "com.termux.nix"
+            ],
+            "_doc_folders": "Nested folders inside a phone_app_group — render as One-UI-style folder tiles in the same grid as plain packages (2×2 mini-icon preview, tap → modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
+            "folders": [
+              {
+                "label": "Storage",
+                "packages": [
+                  "com.lonelycatgames.Xplore",
+                  "com.sec.android.app.myfiles",
+                  "com.google.android.apps.docs",
+                  "com.viscouspot.gitsync"
+                ]
+              }
             ]
           },
           {
-            "title": "Data Primary",
+            "title": "Communications",
             "packages": [
-              "com.lonelycatgames.Xplore",
-              "com.sec.android.app.myfiles",
-              "com.google.android.apps.docs",
-              "com.viscouspot.gitsync"
+              "eu.faircode.email",
+              "rs.ltt.android",
+              "com.mattermost.rn",
+              "com.beeper.android",
+              "com.samsung.android.dialer"
+            ],
+            "folders": [
+              {
+                "label": "comms",
+                "packages": [
+                  "com.samsung.android.email.provider",
+                  "com.whatsapp.w4b",
+                  "com.google.android.gm"
+                ]
+              }
             ]
           },
           {
@@ -446,13 +469,8 @@
               "md.obsidian",
               "com.sec.android.gallery3d",
               "com.samsung.android.calendar",
-              "com.samsung.android.email.provider",
-              "com.google.android.gm",
-              "rs.ltt.android",
-              "eu.faircode.email",
-              "com.mattermost.rn",
+              "com.samsung.android.app.contacts",
               "org.telegram.messenger",
-              "com.beeper.android",
               "com.aspiro.tidal"
             ]
           },
@@ -506,7 +524,7 @@
             ]
           },
           {
-            "title": "Data Primary",
+            "title": "Communications",
             "tiles": [
               {
                 "id": "mail",

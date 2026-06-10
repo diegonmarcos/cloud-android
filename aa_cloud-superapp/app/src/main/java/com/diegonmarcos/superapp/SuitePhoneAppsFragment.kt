@@ -1,17 +1,24 @@
 package com.diegonmarcos.superapp
 
+import android.app.Dialog
 import android.content.Context
 import android.content.pm.LauncherApps
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Process
 import android.util.Base64
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.widget.FrameLayout
+import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
 
@@ -33,7 +40,16 @@ import org.json.JSONArray
  */
 class SuitePhoneAppsFragment : Fragment() {
 
-    private data class Group(val title: String, val packages: List<String>)
+    private data class Folder(val label: String, val packages: List<String>)
+    private data class Group(
+        val title: String,
+        val packages: List<String>,
+        val folders: List<Folder>,
+    )
+    /** Resolved app payload — populated after LauncherApps lookup so
+     *  both the plain-grid tile and the folder-dialog tile can launch
+     *  via the same `pkg` + `label` + `icon` tuple. */
+    private data class AppInfo(val pkg: String, val label: String, val icon: Drawable)
 
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -57,16 +73,38 @@ class SuitePhoneAppsFragment : Fragment() {
             .groupBy { it.applicationInfo.packageName }
         val columns = BuildConfig.UI_PHONE_GRID_COLUMNS
 
+        fun resolve(pkg: String): AppInfo? {
+            val info = byPkg[pkg]?.firstOrNull() ?: return null
+            return AppInfo(
+                pkg   = pkg,
+                label = info.label.toString(),
+                icon  = info.getIcon(ctx.resources.displayMetrics.densityDpi),
+            )
+        }
+
         var anyRendered = false
         for (group in groups) {
-            val resolved = group.packages.mapNotNull { pkg ->
-                val info = byPkg[pkg]?.firstOrNull() ?: return@mapNotNull null
-                Triple(pkg, info.label.toString(), info.getIcon(ctx.resources.displayMetrics.densityDpi))
+            val packageTiles = group.packages.mapNotNull(::resolve)
+            // Resolve each folder's payload; SKIP folders whose contents
+            // are all uninstalled (mirrors the "no dead headers" rule).
+            val folderTiles = group.folders.mapNotNull { folder ->
+                val resolved = folder.packages.mapNotNull(::resolve)
+                if (resolved.isEmpty()) null else folder to resolved
             }
-            if (resolved.isEmpty()) continue
+            if (packageTiles.isEmpty() && folderTiles.isEmpty()) continue
             anyRendered = true
             root.addView(subhead(ctx, group.title))
-            for (rowChunk in resolved.chunked(columns)) {
+
+            // Render packages first, then folder tiles, in one continuous
+            // grid — so the folder cards flow naturally as the next
+            // column after the last app. Tile builders are heterogenous
+            // (View, not the same type) so we use a List<View> and
+            // chunk over it.
+            val tiles = mutableListOf<View>()
+            for (a in packageTiles) tiles.add(makeAppTile(ctx, a.pkg, a.label, a.icon))
+            for ((folder, contents) in folderTiles) tiles.add(makeFolderTile(ctx, folder.label, contents))
+
+            for (rowChunk in tiles.chunked(columns)) {
                 val row = LinearLayout(ctx).apply {
                     orientation = LinearLayout.HORIZONTAL
                     layoutParams = LinearLayout.LayoutParams(
@@ -74,9 +112,7 @@ class SuitePhoneAppsFragment : Fragment() {
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                     )
                 }
-                for ((pkg, label, icon) in rowChunk) {
-                    row.addView(makeAppTile(ctx, pkg, label, icon))
-                }
+                for (tile in rowChunk) row.addView(tile)
                 // Pad short trailing row with weighted spacers so the last
                 // row stays left-aligned within its group.
                 repeat(columns - rowChunk.size) {
@@ -116,7 +152,27 @@ class SuitePhoneAppsFragment : Fragment() {
                 val pkg = pkgs.optString(j)
                 if (pkg.isNotBlank()) pkgList.add(pkg)
             }
-            out.add(Group(title, pkgList))
+            // Optional `folders` array — One-UI-style nested folders
+            // inside the group. Each folder = { label, packages[] }.
+            // Absent or empty → group renders as a flat grid (legacy
+            // behaviour, no schema break).
+            val folderList = mutableListOf<Folder>()
+            val foldersArr = o.optJSONArray("folders")
+            if (foldersArr != null) {
+                for (k in 0 until foldersArr.length()) {
+                    val fo = foldersArr.optJSONObject(k) ?: continue
+                    val fLabel = fo.optString("label")
+                    if (fLabel.isBlank()) continue
+                    val fPkgs = fo.optJSONArray("packages") ?: continue
+                    val fPkgList = mutableListOf<String>()
+                    for (m in 0 until fPkgs.length()) {
+                        val pkg = fPkgs.optString(m)
+                        if (pkg.isNotBlank()) fPkgList.add(pkg)
+                    }
+                    if (fPkgList.isNotEmpty()) folderList.add(Folder(fLabel, fPkgList))
+                }
+            }
+            out.add(Group(title, pkgList, folderList))
         }
         out
     }.getOrDefault(emptyList())
@@ -169,6 +225,171 @@ class SuitePhoneAppsFragment : Fragment() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             )
         })
+    }
+
+    /** Folder tile rendered in-line with the package grid — same cell
+     *  width as a single-app tile so it slots seamlessly. Shows a 2×2
+     *  mini-icon preview of the first four installed apps inside; tap
+     *  opens a fullscreen modal dialog with every app in the folder
+     *  (5-column grid, same chrome as PhoneAppsFragment's expanded
+     *  folder view). Mirrors One UI's app-folder UX. */
+    private fun makeFolderTile(
+        ctx: Context,
+        label: String,
+        contents: List<AppInfo>,
+    ): View {
+        val cellSize = dp(ctx, 52)
+        val column = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val pad = dp(ctx, 6); setPadding(pad, pad, pad, pad)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            isClickable = true; isFocusable = true
+            val outVal = android.util.TypedValue()
+            ctx.theme.resolveAttribute(
+                android.R.attr.selectableItemBackgroundBorderless, outVal, true)
+            if (outVal.resourceId != 0) setBackgroundResource(outVal.resourceId)
+            setOnClickListener { showFolderDialog(ctx, label, contents) }
+        }
+        // Glass-bg square holding the 2×2 mini-preview — visually
+        // distinguishes folder tiles from plain-icon tiles.
+        val square = FrameLayout(ctx).apply {
+            background = ContextCompat.getDrawable(ctx, R.drawable.bg_liquid_glass)
+            layoutParams = LinearLayout.LayoutParams(cellSize, cellSize)
+        }
+        val mini = GridLayout(ctx).apply {
+            rowCount = 2; columnCount = 2
+            val p = dp(ctx, 5); setPadding(p, p, p, p)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        }
+        val miniSize = (cellSize - dp(ctx, 16)) / 2
+        for (slot in 0 until 4) {
+            val iv = ImageView(ctx).apply {
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = miniSize; height = miniSize
+                    setMargins(dp(ctx, 1), dp(ctx, 1), dp(ctx, 1), dp(ctx, 1))
+                }
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            contents.getOrNull(slot)?.icon?.let { iv.setImageDrawable(it) }
+            mini.addView(iv)
+        }
+        square.addView(mini)
+        column.addView(square)
+        column.addView(TextView(ctx).apply {
+            text = label
+            setTextColor(0xFFFFFFFFL.toInt())
+            textSize = 11f
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(ctx, 4), 0, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        })
+        return column
+    }
+
+    /** Modal dialog showing every app inside a folder, 5-col grid.
+     *  Tap an app → launch + dismiss. Tap the dim outside area to
+     *  dismiss without launching. */
+    private fun showFolderDialog(
+        ctx: Context,
+        label: String,
+        contents: List<AppInfo>,
+    ) {
+        val dialog = Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.window?.requestFeature(Window.FEATURE_NO_TITLE)
+        val sheet = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xEE0A0A14.toInt())
+            val pad = dp(ctx, 16); setPadding(pad, pad, pad, pad)
+            isClickable = true
+            setOnClickListener { dialog.dismiss() }
+        }
+        sheet.addView(TextView(ctx).apply {
+            text = label
+            setTextColor(0xFFFFFFFFL.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+            setPadding(0, dp(ctx, 16), 0, dp(ctx, 16))
+        })
+        val grid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        val scroll = ScrollView(ctx).apply {
+            isFillViewport = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+            )
+        }
+        scroll.addView(grid)
+        val cols = 5
+        for (rowChunk in contents.chunked(cols)) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            }
+            for (a in rowChunk) row.addView(makeExpandedAppTile(ctx, a, dialog))
+            repeat(cols - rowChunk.size) {
+                row.addView(View(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+                })
+            }
+            grid.addView(row)
+        }
+        sheet.addView(scroll)
+        dialog.setContentView(sheet)
+        dialog.show()
+    }
+
+    /** Full-size app tile inside the expanded folder dialog. Tap
+     *  launches via PackageManager + dismisses the dialog. */
+    private fun makeExpandedAppTile(
+        ctx: Context,
+        app: AppInfo,
+        dialog: Dialog,
+    ): View {
+        val tile = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val pad = dp(ctx, 8); setPadding(pad, pad, pad, pad)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                runCatching {
+                    val intent = ctx.packageManager.getLaunchIntentForPackage(app.pkg)
+                    if (intent != null) ctx.startActivity(intent)
+                }
+                dialog.dismiss()
+            }
+        }
+        tile.addView(ImageView(ctx).apply {
+            setImageDrawable(app.icon)
+            val sz = dp(ctx, 48)
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+        })
+        tile.addView(TextView(ctx).apply {
+            text = app.label
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            textSize = 11f
+            gravity = Gravity.CENTER
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            val mt = dp(ctx, 4)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = mt }
+        })
+        return tile
     }
 
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
