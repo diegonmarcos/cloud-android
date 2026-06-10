@@ -495,6 +495,7 @@
             "title": "Configs",
             "packages": [
               "com.android.vending",
+              "org.fdroid.fdroid",
               "com.android.settings"
             ]
           }
@@ -535,9 +536,16 @@
               },
               {
                 "id": "mattermost",
-                "label": "Mattermost (Matrix+Rss+Bots)",
+                "label": "Mattermost",
                 "icon": "ic_p_chat_mattermost",
                 "target": "page:chat/mattermost"
+              },
+              {
+                "id": "element",
+                "label": "Element",
+                "icon": "ic_p_chat_matrix",
+                "target": "app://im.vector.app?fallback=https%3A%2F%2Fapp.element.io%2F",
+                "_doc": "Element (Matrix) messenger. Opens the installed im.vector.app via the existing app:// launcher; falls back to the Element web client when the app isn't installed. Icon reuses ic_p_chat_matrix since Element IS the reference Matrix client."
               }
             ]
           },
