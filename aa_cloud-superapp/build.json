@@ -1218,7 +1218,8 @@
             "label": "Mattermost",
             "icon": "ic_p_chat_mattermost",
             "upstream": "ChatMattermost",
-            "_doc": "Hooks into mattermost-bots @ chat.diegonmarcos.com"
+            "mattermost_default_server": "https://chat.diegonmarcos.com",
+            "_doc": "Hooks into mattermost-bots @ chat.diegonmarcos.com. mattermost_default_server pre-fills the login form's URL field via BuildConfig.MATTERMOST_DEFAULT_SERVER (read by libs/chat/build.gradle, same data-driven pattern as libs/mail's JMAP_DEFAULT_SERVER). Credentials are entered at runtime; nothing is baked into the APK."
           },
           {
             "id": "matrix",

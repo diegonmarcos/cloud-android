@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp
 
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.health.HealthFragment
+import com.diegonmarcos.superapp.chat.ChatPages
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.maps.MapsConfigFragment
 import com.diegonmarcos.superapp.maps.MapsMapFragment
@@ -35,6 +36,7 @@ object SectionPages {
 
     private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when {
         sectionId == "mail"  -> MailPages.fragmentFor(pageId)
+        sectionId == "chat"  -> ChatPages.fragmentFor(pageId)
         sectionId == "c3"    && pageId == "health"      -> C3HealthFragment.newInstance()
         sectionId == "wg"    && pageId == "status"      -> C3MeshFragment.newInstance()
         sectionId == "feed"  && pageId == "all"         -> RssFeedFragment.newInstance()

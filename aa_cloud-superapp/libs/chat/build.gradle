@@ -3,6 +3,16 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Inject build.json::ui.sections[chat].pages[mattermost].mattermost_default_server
+// into BuildConfig so the login form pre-fills the server URL without
+// any caller passing it in. Data-driven — change the default in
+// build.json, get a rebuilt BuildConfig.MATTERMOST_DEFAULT_SERVER on
+// the next gradle run. Mirrors libs/mail's JMAP_DEFAULT_SERVER pattern.
+def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def chatSection = buildJson.ui.sections.find { it.id == 'chat' }
+def mmPage = chatSection?.pages?.find { it.id == 'mattermost' }
+def mmServer = mmPage?.mattermost_default_server ?: ''
+
 android {
     namespace 'com.diegonmarcos.superapp.chat'
     compileSdk 35
@@ -10,8 +20,11 @@ android {
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'
+        buildConfigField "String", "MATTERMOST_DEFAULT_SERVER", "\"${mmServer}\""
     }
-
+    buildFeatures {
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -22,4 +35,7 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    // EncryptedSharedPreferences for token storage — same dep libs/mail uses.
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 }
