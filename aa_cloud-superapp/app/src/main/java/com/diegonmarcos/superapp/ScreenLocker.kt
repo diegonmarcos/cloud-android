@@ -122,6 +122,20 @@ object ScreenLocker {
         ctx.startActivity(intent)
     }
 
+    /** Open Settings → Apps → Cloud SuperApp (the per-app info
+     *  screen). This is the page that on Samsung One UI 13+ hosts
+     *  the ⋮ menu → "Allow restricted settings" toggle — the
+     *  required first step before Accessibility / NotificationListener
+     *  toggles become tappable for sideloaded APKs. Without it,
+     *  tapping our service in the Accessibility list silently does
+     *  nothing because the toggle is system-disabled. */
+    fun openAppInfo(ctx: Context) {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(android.net.Uri.fromParts("package", ctx.packageName, null))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+    }
+
     /** True iff our accessibility service is enabled in the system's
      *  ENABLED_ACCESSIBILITY_SERVICES setting. Independent of
      *  whether it's currently bound (the bind can flap; the setting

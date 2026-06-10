@@ -474,7 +474,21 @@ class DevControlFragment : Fragment() {
 
             row(ctx, it, "Lock-screen accessibility (preferred)", ScreenLocker.statusStringAccessibility(ctxAny()))
             if (!ScreenLocker.isAccessibilityEnabled(ctxAny())) {
-                it.addView(actionButton(ctx, "Open Accessibility settings — enable Cloud SuperApp") {
+                // Samsung One UI 13+ "Restricted settings" guard blocks
+                // accessibility toggles for sideloaded APKs until the
+                // user explicitly allows restricted settings from the
+                // App Info ⋮ menu. Without this step, opening the
+                // Accessibility settings screen and tapping our service
+                // does nothing (toggle is system-disabled).
+                it.addView(small(ctx,
+                    "Samsung blocks Accessibility for sideloaded apps via 'Restricted settings'.\n" +
+                        "  1) Tap 'Open App Info' below.\n" +
+                        "  2) Tap the ⋮ menu (top-right) → 'Allow restricted settings'.\n" +
+                        "  3) Then come back + tap 'Open Accessibility settings' below to enable Cloud SuperApp."))
+                it.addView(actionButton(ctx, "1) Open App Info (allow restricted settings)") {
+                    ScreenLocker.openAppInfo(ctxAny())
+                })
+                it.addView(actionButton(ctx, "2) Open Accessibility settings — enable Cloud SuperApp") {
                     ScreenLocker.openSystemAccessibilitySettings(ctxAny())
                 })
             } else {
