@@ -383,6 +383,62 @@ object SysfsProc {
         return rows
     }
 
+    // ─────────────────────── readability diagnostic ───────────────────────
+
+    /** Per-path readability check for the key kernel files the rest
+     *  of the app cares about. Returned as (path, status) pairs:
+     *    "✓ OK = <preview>"           file exists, readable, sample
+     *    "✗ does not exist"           kernel build doesn't expose it
+     *    "✗ not readable (SELinux)"   exists but our app can't read
+     *    "✗ read failed: <Exception>" something else went wrong
+     *
+     *  Surfaces in Configs/About → SYSFS-PROC and via the
+     *  /api/sysfs/diagnostic HTTP endpoint. THIS is the answer to
+     *  "why isn't sysfs working even though no perm is needed" —
+     *  modern hardened Androids (12+ with stricter SELinux) often
+     *  block specific power_supply nodes even when /sys/class/...
+     *  is world-readable in the kernel default. */
+    fun sysfsReadDiagnostic(): List<Pair<String, String>> {
+        val paths = listOf(
+            "/sys/class/power_supply/battery/voltage_now",
+            "/sys/class/power_supply/battery/current_now",
+            "/sys/class/power_supply/battery/power_now",
+            "/sys/class/power_supply/battery/temp",
+            "/sys/class/power_supply/battery/capacity",
+            "/sys/class/power_supply/battery/status",
+            "/sys/class/power_supply/battery/charge_full",
+            "/sys/class/power_supply/battery/charge_full_design",
+            "/sys/class/power_supply/battery/cycle_count",
+            "/sys/class/power_supply/battery/time_to_empty_now",
+            "/sys/class/power_supply/battery/time_to_full_now",
+            "/sys/class/power_supply/usb/voltage_now",
+            "/sys/class/power_supply/usb/current_now",
+            "/sys/class/power_supply/usb/online",
+            "/sys/class/power_supply/ac/online",
+            "/sys/class/power_supply/wireless/online",
+            "/proc/loadavg",
+            "/proc/uptime",
+            "/proc/stat",
+            "/proc/meminfo",
+            "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq",
+            "/sys/class/thermal/thermal_zone0/temp",
+        )
+        return paths.map { path -> path to readability(path) }
+    }
+
+    private fun readability(path: String): String {
+        val f = File(path)
+        if (!f.exists()) return "✗ does not exist"
+        if (!f.canRead()) return "✗ not readable (SELinux / perm)"
+        return try {
+            val raw = f.readText().trim()
+            val preview = if (raw.length > 40) raw.substring(0, 40) + "…" else raw
+            "✓ OK = $preview"
+        } catch (t: Throwable) {
+            "✗ read failed: ${t.javaClass.simpleName}: ${t.message}"
+        }
+    }
+
     // ─────────────────────── formatting ───────────────────────
 
     private fun fmtSecs(s: Long): String {

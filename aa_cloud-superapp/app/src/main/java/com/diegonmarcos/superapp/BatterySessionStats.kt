@@ -77,6 +77,25 @@ object BatterySessionStats {
         // typically granted via `adb shell pm grant ... DUMP` on debuggable
         // APKs). All-zero / empty source on permission denial → renders "—".
         val chargerSpec: BatteryChargerSpec.Spec,
+
+        // ── DEBUG-VISIBILITY fields (Configs/About → Battery (debug)) ──
+        // Where did the current discharge / charge anchor come from?
+        // Values: "disconnect_event" (receiver fired), "connect_event"
+        // (receiver fired), "first_read_fallback" (lazy mint because
+        // receiver never fired before we read), "(none)" (no anchor).
+        // Surfaces in the popup so the user can tell at a glance
+        // whether the session is anchored on a real plug-event or on
+        // the moment they opened the page.
+        val unplugAnchorSource: String,
+        val plugAnchorSource: String,
+        // BatteryManager.BATTERY_PROPERTY_CURRENT_NOW raw value before
+        // the mA→µA rescale. Same sign as the kernel reported. Lets
+        // the debug surface explain why powerW is what it is.
+        val currentRaw: Int,
+        // True if the read() pass applied the |raw|<50_000 rescale
+        // (Samsung mA → canonical µA). Surfaces so the user can see
+        // their device's reporting convention.
+        val rescaledMaToUa: Boolean,
     )
 
     fun read(ctx: Context, now: Long = System.currentTimeMillis()): Snapshot {
@@ -92,10 +111,12 @@ object BatterySessionStats {
             curStatus == BatteryManager.BATTERY_STATUS_FULL
 
         val sp = ctx.getSharedPreferences("battery_session", Context.MODE_PRIVATE)
-        var unplugTs  = sp.getLong("unplug_ts", 0L)
-        var unplugPct = sp.getInt("unplug_pct", -1)
-        var plugTs    = sp.getLong("plug_ts", 0L)
-        var plugPct   = sp.getInt("plug_pct", -1)
+        var unplugTs           = sp.getLong("unplug_ts", 0L)
+        var unplugPct          = sp.getInt("unplug_pct", -1)
+        var unplugAnchorSource = sp.getString("anchor_source", "") ?: ""
+        var plugTs             = sp.getLong("plug_ts", 0L)
+        var plugPct            = sp.getInt("plug_pct", -1)
+        var plugAnchorSource   = sp.getString("anchor_source_plug", "") ?: ""
 
         if (isCharging) {
             // Stale discharge anchor — drop it so the next unplug starts
@@ -103,37 +124,59 @@ object BatterySessionStats {
             // ACTION_POWER_DISCONNECTED broadcast.
             if (unplugTs != 0L) {
                 sp.edit().remove("unplug_ts").remove("unplug_pct").remove("anchor_source").apply()
-                unplugTs = 0L; unplugPct = -1
+                unplugTs = 0L; unplugPct = -1; unplugAnchorSource = ""
             }
             // Anchor the charge session — first read while plugged OR if
             // pct went DOWN since the recorded plug anchor (cable was
             // briefly unplugged while we were paused).
+            //
+            // IMMUTABILITY FIX: only the lazy fallback anchor gets
+            // overwritten on the rose-above edge case. A receiver-set
+            // anchor (connect_event) is authoritative — even if the
+            // OEM's battery curve smooths upward by 1-2% on the next
+            // read, we keep the original plug moment. The prior bug
+            // was that any OEM with a smoothed gauge would reset the
+            // anchor to first_read_fallback on every read, defeating
+            // the receiver and matching the user's report
+            // ("starting to calculate from the time I open first the
+            // page").
             if (curPct in 0..100) {
                 val haveAnchor = plugTs != 0L && plugPct in 0..100
                 val anchorRose = haveAnchor && curPct < plugPct
-                if (!haveAnchor || anchorRose) {
+                val isReceiverAnchor = plugAnchorSource == "connect_event"
+                val shouldOverwrite = !haveAnchor || (anchorRose && !isReceiverAnchor)
+                if (shouldOverwrite) {
                     sp.edit()
                         .putLong("plug_ts", now)
                         .putInt("plug_pct", curPct)
+                        .putString("anchor_source_plug", "first_read_fallback")
                         .apply()
-                    plugTs = now; plugPct = curPct
+                    plugTs = now; plugPct = curPct; plugAnchorSource = "first_read_fallback"
                 }
             }
         } else if (curPct in 0..100) {
             // Drop the plug anchor (we're no longer charging).
             if (plugTs != 0L) {
-                sp.edit().remove("plug_ts").remove("plug_pct").apply()
-                plugTs = 0L; plugPct = -1
+                sp.edit().remove("plug_ts").remove("plug_pct").remove("anchor_source_plug").apply()
+                plugTs = 0L; plugPct = -1; plugAnchorSource = ""
             }
+            // IMMUTABILITY FIX (mirror of charging branch): receiver-set
+            // disconnect_event anchor is authoritative. Only lazy
+            // first_read_fallback anchors get reset on the rose-above
+            // edge case. This is what the user actually wanted —
+            // anchor on the REAL cable-pull, not on the moment they
+            // first open the battery page.
             val haveAnchor = unplugTs != 0L && unplugPct in 0..100
             val anchorRose = haveAnchor && curPct > unplugPct
-            if (!haveAnchor || anchorRose) {
+            val isReceiverAnchor = unplugAnchorSource == "disconnect_event"
+            val shouldOverwrite = !haveAnchor || (anchorRose && !isReceiverAnchor)
+            if (shouldOverwrite) {
                 sp.edit()
                     .putLong("unplug_ts", now)
                     .putInt("unplug_pct", curPct)
                     .putString("anchor_source", "first_read_fallback")
                     .apply()
-                unplugTs = now; unplugPct = curPct
+                unplugTs = now; unplugPct = curPct; unplugAnchorSource = "first_read_fallback"
             }
         }
 
@@ -171,11 +214,13 @@ object BatterySessionStats {
             val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
             bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
         }.getOrDefault(0)
+        val rescaledMaToUa = currentRaw != 0 && currentRaw != Int.MIN_VALUE &&
+            kotlin.math.abs(currentRaw) < 50_000
         val currentUa = when {
             currentRaw == 0 || currentRaw == Int.MIN_VALUE -> 0
             // |raw| < 50_000 means the OEM is using mA (5 A in mA is
             // 5000, in µA it would be 5_000_000). Rescale to µA.
-            kotlin.math.abs(currentRaw) < 50_000           -> currentRaw * 1000
+            rescaledMaToUa                                  -> currentRaw * 1000
             else                                           -> currentRaw
         }
         val powerW = if (voltageMv > 0 && currentUa != 0)
@@ -221,7 +266,26 @@ object BatterySessionStats {
             currentUa        = currentUa,
             powerW           = powerW,
             chargerSpec      = chargerSpec,
+            unplugAnchorSource = unplugAnchorSource.ifEmpty { "(none)" },
+            plugAnchorSource   = plugAnchorSource.ifEmpty { "(none)" },
+            currentRaw         = currentRaw,
+            rescaledMaToUa     = rescaledMaToUa,
         )
+    }
+
+    /** Wipe the current session's anchor + persisted state. Lets the
+     *  user re-mint on the next plug/unplug cycle from a clean slate.
+     *  Surfaced from the debug action button in Configs/About →
+     *  Battery (debug). Equivalent to "I just installed the APK" —
+     *  next read will lazy-mint a first_read_fallback anchor, then
+     *  whenever the user next plugs/unplugs the receiver overwrites
+     *  with the authoritative event-anchor. */
+    fun resetAnchor(ctx: Context) {
+        ctx.getSharedPreferences("battery_session", Context.MODE_PRIVATE)
+            .edit()
+            .remove("unplug_ts").remove("unplug_pct").remove("anchor_source")
+            .remove("plug_ts").remove("plug_pct").remove("anchor_source_plug")
+            .apply()
     }
 
     /** Format the charger spec row. Prefers the LIVE sysfs reading

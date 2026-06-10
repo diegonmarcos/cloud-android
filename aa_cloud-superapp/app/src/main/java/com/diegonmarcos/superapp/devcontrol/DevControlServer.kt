@@ -224,6 +224,12 @@ object DevControlServer {
                 "tracker/counts" -> { reply(writer, "200 OK", trackerCountsJson(ctx), "application/json") }
                 "phone/classify" -> { reply(writer, "200 OK", phoneClassifyJson(ctx), "application/json") }
                 "phone/new_apps" -> { reply(writer, "200 OK", phoneNewAppsJson(ctx), "application/json") }
+                "battery/state" -> { reply(writer, "200 OK", batteryStateJson(ctx), "application/json") }
+                "battery/reset_anchor" -> {
+                    com.diegonmarcos.superapp.BatterySessionStats.resetAnchor(ctx)
+                    reply(writer, "200 OK", """{"ok":true,"message":"anchor cleared — next plug/unplug will re-mint via PowerStateReceiver"}""", "application/json")
+                }
+                "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
@@ -277,6 +283,9 @@ object DevControlServer {
             Spec("tracker/stops",       "GET",  true,  "All stops in the local DB with start/end + reverse-geocoded place", ""),
             Spec("phone/classify",      "GET",  true,  "Every launchable installed app + the folder PhoneAppClassifier routes it to (debug surface for the Home Apps/Phone tab)", ""),
             Spec("phone/new_apps",      "GET",  true,  "Just the apps that fell to the sink folder (_New Apps) — direct view of what's not yet covered by phone_folders.match_keywords", ""),
+            Spec("battery/state",       "GET",  true,  "Full BatterySessionStats.Snapshot — current pct, anchor source (disconnect_event / connect_event / first_read_fallback / (none)), elapsed since anchor, rate, ETA, raw + rescaled current_now, chargerSpec including sysfs liveInputW. The single source of truth for debugging 'why is the rate computing from the moment I opened the page' and similar regressions.", ""),
+            Spec("battery/reset_anchor","GET",  true,  "DELETE the persisted session anchor (both unplug/plug). Next read mints a fresh first_read_fallback; the next real plug/unplug cycle overwrites with an authoritative receiver-event anchor. Equivalent to a fresh install for the battery-session machinery.", ""),
+            Spec("sysfs/diagnostic",    "GET",  true,  "Per-path readability check for every kernel sysfs/proc file the app touches. Returns ✓ OK + preview when readable, ✗ does-not-exist / not-readable / read-failed otherwise. THIS is the answer to 'why isn't sysfs working even though no perm is needed' — hardened Androids block specific power_supply nodes via SELinux.", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -413,6 +422,84 @@ object DevControlServer {
             sb.append(""""label":"""").append(jsonEscape(label)).append('"').append('}')
         }
         sb.append("]}")
+        return sb.toString()
+    }
+
+    /** Full BatterySessionStats.Snapshot as JSON. The single source of
+     *  truth for debugging battery-rate / anchor regressions —
+     *  surfaces EVERY field of the Snapshot data class plus the
+     *  derived chargerSpec subobject (so callers can see whether
+     *  liveInputW came from sysfs or only from dumpsys). */
+    private fun batteryStateJson(ctx: Context): String {
+        val s = com.diegonmarcos.superapp.BatterySessionStats.read(ctx)
+        val sb = StringBuilder("{")
+        sb.append(""""isCharging":""").append(s.isCharging).append(',')
+        sb.append(""""curPct":""").append(s.curPct).append(',')
+        sb.append(""""nowMs":""").append(s.nowMs).append(',')
+        // Discharge anchor block
+        sb.append(""""unplugTs":""").append(s.unplugTs).append(',')
+        sb.append(""""unplugPct":""").append(s.unplugPct).append(',')
+        sb.append(""""unplugAnchorSource":"""").append(jsonEscape(s.unplugAnchorSource)).append('"').append(',')
+        sb.append(""""elapsedMs":""").append(s.elapsedMs).append(',')
+        sb.append(""""consumedPct":""").append(s.consumedPct).append(',')
+        sb.append(""""ratePerMin":""").append(s.ratePerMin).append(',')
+        sb.append(""""etaMs":""").append(s.etaMs).append(',')
+        sb.append(""""etaDrainedAt":""").append(s.etaDrainedAt).append(',')
+        // Charge anchor block
+        sb.append(""""plugTs":""").append(s.plugTs).append(',')
+        sb.append(""""plugPct":""").append(s.plugPct).append(',')
+        sb.append(""""plugAnchorSource":"""").append(jsonEscape(s.plugAnchorSource)).append('"').append(',')
+        sb.append(""""chargeElapsedMs":""").append(s.chargeElapsedMs).append(',')
+        sb.append(""""gainedPct":""").append(s.gainedPct).append(',')
+        sb.append(""""chargeRatePerMin":""").append(s.chargeRatePerMin).append(',')
+        sb.append(""""etaFullMs":""").append(s.etaFullMs).append(',')
+        sb.append(""""etaFullAt":""").append(s.etaFullAt).append(',')
+        // Power readings (BatteryManager)
+        sb.append(""""voltageMv":""").append(s.voltageMv).append(',')
+        sb.append(""""currentRaw":""").append(s.currentRaw).append(',')
+        sb.append(""""currentUa":""").append(s.currentUa).append(',')
+        sb.append(""""rescaledMaToUa":""").append(s.rescaledMaToUa).append(',')
+        sb.append(""""powerW":""").append(s.powerW).append(',')
+        // Charger spec subobject
+        sb.append(""""chargerSpec":{""")
+        sb.append(""""maxCurrentUa":""").append(s.chargerSpec.maxCurrentUa).append(',')
+        sb.append(""""maxVoltageUv":""").append(s.chargerSpec.maxVoltageUv).append(',')
+        sb.append(""""maxPowerW":""").append(s.chargerSpec.maxPowerW).append(',')
+        sb.append(""""liveInputW":""").append(s.chargerSpec.liveInputW).append(',')
+        sb.append(""""source":"""").append(jsonEscape(s.chargerSpec.source)).append('"').append(',')
+        sb.append(""""usbPowered":""").append(s.chargerSpec.usbPowered).append(',')
+        sb.append(""""acPowered":""").append(s.chargerSpec.acPowered).append(',')
+        sb.append(""""wirelessPowered":""").append(s.chargerSpec.wirelessPowered)
+        sb.append('}')
+        sb.append('}')
+        return sb.toString()
+    }
+
+    /** Per-path readability snapshot of every kernel sysfs/proc file
+     *  the app touches. Sorted: failing paths first so the user sees
+     *  what's blocked on their device immediately, then OKs.
+     *  The frontline answer to "AccuBattery's trick isn't working
+     *  for me" — exposes whether the kernel actually allows the
+     *  read or whether SELinux is denying it. */
+    private fun sysfsDiagnosticJson(): String {
+        val all = com.diegonmarcos.superapp.SysfsProc.sysfsReadDiagnostic()
+        val sorted = all.sortedBy { (_, status) -> if (status.startsWith("✗")) 0 else 1 }
+        val sb = StringBuilder("""{"paths":[""")
+        var first = true
+        for ((path, status) in sorted) {
+            if (!first) sb.append(','); first = false
+            sb.append('{')
+            sb.append(""""path":"""").append(jsonEscape(path)).append('"').append(',')
+            sb.append(""""status":"""").append(jsonEscape(status)).append('"')
+            sb.append('}')
+        }
+        sb.append("],")
+        val total = all.size
+        val ok = all.count { (_, status) -> status.startsWith("✓") }
+        sb.append(""""summary":{"total":""").append(total).append(',')
+        sb.append(""""ok":""").append(ok).append(',')
+        sb.append(""""blocked":""").append(total - ok).append('}')
+        sb.append('}')
         return sb.toString()
     }
 
