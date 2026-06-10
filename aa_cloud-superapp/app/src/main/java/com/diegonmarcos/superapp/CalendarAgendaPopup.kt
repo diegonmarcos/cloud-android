@@ -116,14 +116,20 @@ object CalendarAgendaPopup {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             elevation = 8 * d
         }
-        // HORIZONTAL center under the date/time cell, vertical drop
-        // from the status strip — matches the other status-bar
-        // popups (Battery / SysInfo / Network) which all border the
-        // strip rather than floating mid-screen. User clarified:
-        // "was just horizontal centered, not to center also
-        // vertically, keep it like others popups bordering the
-        // status line bar".
-        pw.showAsDropDown(anchor, 0, (6 * d).toInt(), Gravity.CENTER_HORIZONTAL)
+        // Horizontally SCREEN-centered, vertically dropped from the
+        // status strip. showAsDropDown is the right vertical
+        // primitive (matches Battery/SysInfo exactly — same
+        // sub-strip drop). For horizontal centering we compute
+        // xOffset so the popup's left edge lands at
+        // (screenWidth − popupWidth) / 2 regardless of the date/
+        // time anchor's actual screen-x position (which on this
+        // device is right-of-center, so Gravity.CENTER_HORIZONTAL
+        // alone biased the popup rightward).
+        val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        val popupW  = (260 * d).toInt()
+        val xOffset = (screenW - popupW) / 2 - anchorLoc[0]
+        pw.showAsDropDown(anchor, xOffset, (6 * d).toInt(), Gravity.START)
     }
 
     private fun label(ctx: Context, t: String) = TextView(ctx).apply {

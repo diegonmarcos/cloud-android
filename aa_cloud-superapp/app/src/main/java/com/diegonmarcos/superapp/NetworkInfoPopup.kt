@@ -108,16 +108,17 @@ object NetworkInfoPopup {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             elevation = 8 * d
         }
-        // Pin the BOX's LEFT EDGE to the screen's left edge (mirror
-        // of Battery/SysInfo which use Gravity.END to pin their box's
-        // RIGHT EDGE to the screen's right edge). Anchor-relative
-        // Gravity.START aligns the box to the leftmost-icon's left
-        // edge — but that icon isn't at x=0, so the box ended up
-        // partially in the middle. showAtLocation(TOP|START) ignores
-        // the anchor's x entirely and pins to (x=0, y=below-anchor).
-        val loc = IntArray(2); anchor.getLocationOnScreen(loc)
-        val yBelowStrip = loc[1] + anchor.height + (6 * d).toInt()
-        pw.showAtLocation(anchor, Gravity.TOP or Gravity.START, 0, yBelowStrip)
+        // Pin the BOX's LEFT EDGE to the screen's left edge,
+        // matching Battery/SysInfo's right-edge alignment on the
+        // other side. We stay on showAsDropDown (the same vertical
+        // primitive Battery uses) so the popup sits FLUSH with the
+        // status strip — showAtLocation introduced a 1-2 dp
+        // vertical drift the user noticed. Horizontal pinning is
+        // done by computing xOffset = -anchorScreenX so the popup's
+        // left edge lands at screen x=0 regardless of which strip
+        // icon was tapped.
+        val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
+        pw.showAsDropDown(anchor, -anchorLoc[0], (6 * d).toInt(), Gravity.START)
     }
 
     // ─────────────────────────── Cellular ───────────────────────────
