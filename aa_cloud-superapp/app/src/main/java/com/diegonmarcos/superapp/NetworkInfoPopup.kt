@@ -27,9 +27,13 @@ import java.net.NetworkInterface
  * actually wants to scan:
  *   1. Cellular  — carrier · type · bars+dBm · mobile RX/TX rate.
  *   2. WiFi      — SSID · channel · RSSI · link speed · WiFi RX/TX rate.
- *   3. Mesh      — every wg*/tun* interface up (NOT just the app's
+ *   3. Mesh      — every wg.../tun... interface up (NOT just the app's
  *                  GoBackend tunnel). Catches the official WireGuard
  *                  app's tunnel alongside ours.
+ *                  (KDoc trap: never write the literal asterisk-
+ *                  slash glob inside a block comment — it
+ *                  terminates the doc; see also BatterySessionStats
+ *                  + SysfsProc for the same engine fix.)
  *   4. Bluetooth — adapter state + connected device names (HEADSET /
  *                  A2DP / GATT) via the hidden BluetoothDevice
  *                  isConnected() probe.
@@ -104,7 +108,16 @@ object NetworkInfoPopup {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             elevation = 8 * d
         }
-        pw.showAsDropDown(anchor, 0, (6 * d).toInt(), Gravity.START)
+        // Pin the BOX's LEFT EDGE to the screen's left edge (mirror
+        // of Battery/SysInfo which use Gravity.END to pin their box's
+        // RIGHT EDGE to the screen's right edge). Anchor-relative
+        // Gravity.START aligns the box to the leftmost-icon's left
+        // edge — but that icon isn't at x=0, so the box ended up
+        // partially in the middle. showAtLocation(TOP|START) ignores
+        // the anchor's x entirely and pins to (x=0, y=below-anchor).
+        val loc = IntArray(2); anchor.getLocationOnScreen(loc)
+        val yBelowStrip = loc[1] + anchor.height + (6 * d).toInt()
+        pw.showAtLocation(anchor, Gravity.TOP or Gravity.START, 0, yBelowStrip)
     }
 
     // ─────────────────────────── Cellular ───────────────────────────
@@ -189,13 +202,13 @@ object NetworkInfoPopup {
 
     // ─────────────────────────── Mesh ───────────────────────────
 
-    /** Every wg*/tun*/utun* interface that's UP on the kernel side.
+    /** Every wg.../tun.../utun... interface that's UP on the kernel side.
      *  Catches BOTH the SuperApp's own GoBackend tunnel AND any
      *  tunnel brought up by another app (official WireGuard /
      *  Tailscale / system-VPN-of-the-day). For the SuperApp's
      *  tracked tunnel we also append RX/TX bytes from the backend
      *  statistics — the kernel doesn't expose per-interface bytes
-     *  through java.net.NetworkInterface and /sys/class/net/* is
+     *  through java.net.NetworkInterface and /sys/class/net/... is
      *  SELinux-blocked on hardened Samsung. */
     private fun readMesh(ctx: Context): List<String> {
         val rows = mutableListOf<String>()

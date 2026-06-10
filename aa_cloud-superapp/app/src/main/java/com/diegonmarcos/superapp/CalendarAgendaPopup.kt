@@ -116,17 +116,14 @@ object CalendarAgendaPopup {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             elevation = 8 * d
         }
-        // Center the popup on-screen (NOT under the date/time anchor).
-        // showAsDropDown anchors below the anchor view and can only
-        // shift horizontally via Gravity flags; the result is still
-        // anchored vertically to the strip and clips against the
-        // status bar. showAtLocation with Gravity.CENTER ignores the
-        // anchor's position entirely and places the popup at the
-        // screen midpoint, which is what the user wants — the agenda
-        // is consulted as a centerpiece, not as a tooltip on the
-        // status strip. We still pass `anchor` only as the token-
-        // bearing root (required for window manager dispatch).
-        pw.showAtLocation(anchor, Gravity.CENTER, 0, 0)
+        // HORIZONTAL center under the date/time cell, vertical drop
+        // from the status strip — matches the other status-bar
+        // popups (Battery / SysInfo / Network) which all border the
+        // strip rather than floating mid-screen. User clarified:
+        // "was just horizontal centered, not to center also
+        // vertically, keep it like others popups bordering the
+        // status line bar".
+        pw.showAsDropDown(anchor, 0, (6 * d).toInt(), Gravity.CENTER_HORIZONTAL)
     }
 
     private fun label(ctx: Context, t: String) = TextView(ctx).apply {
