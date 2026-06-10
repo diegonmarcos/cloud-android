@@ -105,8 +105,8 @@
                  below — minimalist by intent. -->
             <FrameLayout
                 android:id="@+id/music_playing_island"
-                android:layout_width="32dp"
-                android:layout_height="16dp"
+                android:layout_width="56dp"
+                android:layout_height="14dp"
                 android:layout_gravity="top|center_horizontal"
                 android:layout_marginTop="2dp"
                 android:background="@drawable/bg_dynamic_island"
@@ -114,12 +114,19 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <com.diegonmarcos.superapp.EqualizerBarsView
+                <!-- Reuse IslandWaveView — the SAME refined Samsung-music-
+                     island waveform the main Dynamic Island below uses
+                     (4-channel pastel violet→lilac waves, rounded clip).
+                     Identical visual language; the mini-island reads as
+                     a small twin of the main one. Animator runs on
+                     attach (self-managed); when the pill visibility is
+                     GONE no onDraw fires so the animator's invalidate
+                     calls are zero-cost. -->
+                <com.diegonmarcos.superapp.IslandWaveView
                     android:id="@+id/music_playing_indicator"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_gravity="center"
-                    android:padding="3dp"
                     android:clickable="false"
                     android:focusable="false" />
             </FrameLayout>

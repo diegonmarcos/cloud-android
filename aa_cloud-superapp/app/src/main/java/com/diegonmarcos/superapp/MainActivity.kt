@@ -1759,15 +1759,14 @@ class MainActivity : AppCompatActivity(),
         // when the package has no launch intent (rare — Android
         // surface apps without a launcher activity).
         val island = findViewById<android.widget.FrameLayout>(R.id.music_playing_island)
-        val indicator = findViewById<EqualizerBarsView>(R.id.music_playing_indicator)
-        if (island != null && indicator != null && nowPlayingMonitor == null) {
+        if (island != null && nowPlayingMonitor == null) {
             nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage ->
-                if (playingPackage != null) {
-                    island.visibility = android.view.View.VISIBLE
-                    indicator.start()
-                } else {
-                    island.visibility = android.view.View.GONE
-                }
+                island.visibility = if (playingPackage != null)
+                    android.view.View.VISIBLE else android.view.View.GONE
+                // No explicit animation start needed — the inner
+                // IslandWaveView self-manages via onAttachedToWindow.
+                // When the pill is GONE the inner view's onDraw isn't
+                // called, so the running animator costs nothing.
             }
             island.setOnClickListener {
                 val pkg = nowPlayingMonitor?.currentPackage ?: return@setOnClickListener
