@@ -1,11 +1,14 @@
 package com.diegonmarcos.superapp
 
+import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -45,16 +48,44 @@ object ScreenLocker {
     fun isActive(ctx: Context): Boolean =
         runCatching { dpm(ctx).isAdminActive(componentName(ctx)) }.getOrDefault(false)
 
-    /** Locks the screen NOW if admin is active. Returns true on
-     *  success, false when admin isn't granted (the only error path
-     *  in practice — `lockNow` is documented as non-throwing once
-     *  admin is active). The caller surfaces a friendly Toast on
-     *  false so the user knows where to enable it. */
-    fun lock(ctx: Context): Boolean = runCatching {
-        if (!isActive(ctx)) return false
-        dpm(ctx).lockNow()
-        true
-    }.getOrDefault(false)
+    /** Lock the screen NOW. Tries the two paths in this order:
+     *
+     *  1. **Accessibility-service** (preferred) —
+     *     [AccessibilityService.performGlobalAction] with
+     *     [AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN]. Requires
+     *     API 28+ AND the user-granted accessibility-service bind.
+     *     Behaves like pressing the power button: Smart Lock
+     *     (Trusted Device for a paired watch, Trusted Place for
+     *     home, Voice Match) and biometric unlock STAY ACTIVE on
+     *     next wake. This is what a launcher SHOULD do.
+     *
+     *  2. **DevicePolicyManager.lockNow** (fallback) — only used
+     *     when accessibility isn't granted. Trips the strong-auth-
+     *     required bit on most builds, so Smart Lock + biometric
+     *     are temporarily disabled and the user must enter the PIN
+     *     on next unlock. Still useful as a guaranteed fallback for
+     *     users who can't / won't grant accessibility.
+     *
+     *  Returns true on success, false when NEITHER path is
+     *  available. The caller surfaces a Toast on false so the user
+     *  knows where to enable it (we point them at the
+     *  accessibility row first since that's the better UX). */
+    fun lock(ctx: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val svc = LockScreenAccessibilityService.instance
+            if (svc != null) {
+                val ok = runCatching {
+                    svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+                }.getOrDefault(false)
+                if (ok) return true
+            }
+        }
+        return runCatching {
+            if (!isActive(ctx)) return false
+            dpm(ctx).lockNow()
+            true
+        }.getOrDefault(false)
+    }
 
     /** Open the system Device Admin add-dialog targeted at our own
      *  receiver. Activity-scoped because the system dialog needs a
@@ -77,17 +108,44 @@ object ScreenLocker {
      *  admin is already active and the user wants to revoke it from
      *  the same Configs/About row that surfaced it. */
     fun openSystemDeviceAdminSettings(ctx: Context) {
-        val intent = Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)
+        val intent = Intent(Settings.ACTION_SECURITY_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         ctx.startActivity(intent)
     }
 
-    /** Human-readable status for Configs/About → Permissions →
-     *  "Device admin (lock)". Mirrors the shape of the other
-     *  specialAccess* helpers (`✓ Granted` / `⚠ Not granted`). */
+    /** Open Settings → Accessibility so the user can enable our
+     *  LockScreenAccessibilityService — the preferred path because
+     *  it preserves Smart Lock + biometric. */
+    fun openSystemAccessibilitySettings(ctx: Context) {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+    }
+
+    /** True iff our accessibility service is enabled in the system's
+     *  ENABLED_ACCESSIBILITY_SERVICES setting. Independent of
+     *  whether it's currently bound (the bind can flap; the setting
+     *  is the persistent "user intent" signal). */
+    fun isAccessibilityEnabled(ctx: Context): Boolean =
+        LockScreenAccessibilityService.isEnabled(ctx)
+
+    /** Status string for Configs/About → Permissions →
+     *  "Lock-screen accessibility (preferred)". */
+    fun statusStringAccessibility(ctx: Context): String = when {
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.P ->
+            "⚠ API ${Build.VERSION.SDK_INT} < 28 — accessibility lock not supported"
+        isAccessibilityEnabled(ctx) ->
+            "✓ Granted — Smart Lock + biometric preserved on double-tap"
+        else ->
+            "⚠ Not granted — tap action below to enable (PREFERRED — keeps Smart Lock alive)"
+    }
+
+    /** Status string for Configs/About → Permissions →
+     *  "Device admin (lock — fallback)". Mirrors the shape of the
+     *  other specialAccess* helpers. */
     fun statusString(ctx: Context): String =
-        if (isActive(ctx)) "✓ Granted — double-tap home to lock"
-        else               "⚠ Not granted — tap action below to enable"
+        if (isActive(ctx)) "✓ Granted — used only as fallback when accessibility is off"
+        else               "⚠ Not granted — fallback path; only enable if accessibility refuses"
 
     /** Attach a double-tap-to-lock gesture detector to any [View]
      *  (typically the home-screen root). Single-tap events still
@@ -110,7 +168,9 @@ object ScreenLocker {
                 if (!ok) {
                     Toast.makeText(
                         root.context,
-                        "Enable Device Admin in Configs → About → Permissions → Special access",
+                        "Enable Accessibility (preferred) or Device Admin in " +
+                            "Configs → About → Permissions → Special access — " +
+                            "accessibility keeps Smart Lock + watch unlock alive",
                         Toast.LENGTH_LONG,
                     ).show()
                 }

@@ -461,13 +461,31 @@ class DevControlFragment : Fragment() {
                 })
             }
 
-            // Device admin — required for the home-screen double-tap-to-
-            // lock gesture (DevicePolicyManager.lockNow). Force-lock
-            // scope only — the system dialog will reflect that one
-            // capability (see res/xml/device_admin_policy.xml).
-            row(ctx, it, "Device admin (lock)", ScreenLocker.statusString(ctxAny()))
+            // Home double-tap-to-lock — TWO paths. The preferred one is
+            // AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN (API 28+):
+            // behaves like pressing the power button, so Smart Lock
+            // (Trusted Device = paired Garmin watch, Trusted Place =
+            // home, Voice Match, etc.) + biometric unlock STAY ACTIVE
+            // on next wake. The fallback is DevicePolicyManager.lockNow
+            // which trips the strong-auth bit and forces PIN entry —
+            // we keep it only as a "guaranteed to work" backstop for
+            // users who refuse to grant accessibility.
+            it.addView(small(ctx, "Home double-tap → lock screen. PREFERRED path is Accessibility — it preserves Smart Lock (Garmin watch unlock, Trusted Place) and fingerprint / face. Device Admin is a fallback that disables those until you PIN-unlock once."))
+
+            row(ctx, it, "Lock-screen accessibility (preferred)", ScreenLocker.statusStringAccessibility(ctxAny()))
+            if (!ScreenLocker.isAccessibilityEnabled(ctxAny())) {
+                it.addView(actionButton(ctx, "Open Accessibility settings — enable Cloud SuperApp") {
+                    ScreenLocker.openSystemAccessibilitySettings(ctxAny())
+                })
+            } else {
+                it.addView(actionButton(ctx, "Open Accessibility settings (revoke)") {
+                    ScreenLocker.openSystemAccessibilitySettings(ctxAny())
+                })
+            }
+
+            row(ctx, it, "Device admin (lock — fallback)", ScreenLocker.statusString(ctxAny()))
             if (!ScreenLocker.isActive(ctxAny())) {
-                it.addView(actionButton(ctx, "Enable Device Admin (double-tap-to-lock)") {
+                it.addView(actionButton(ctx, "Enable Device Admin (fallback — disables Smart Lock)") {
                     ScreenLocker.requestActivation(requireActivity())
                 })
             } else {

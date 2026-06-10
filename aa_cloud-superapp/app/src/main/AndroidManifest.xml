@@ -183,6 +183,29 @@
             </intent-filter>
         </receiver>
 
+        <!-- LockScreenAccessibilityService — hosts the AccessibilityService.
+             GLOBAL_ACTION_LOCK_SCREEN call (API 28+). Preferred path for
+             the home double-tap-to-lock gesture because it preserves Smart
+             Lock (Trusted Device / Trusted Place) + biometric unlock,
+             unlike DevicePolicyManager.lockNow which trips the strong-auth
+             bit and forces a PIN entry after the next wake. BIND_ACCESSIBILITY_SERVICE
+             is signature-level; the service MUST require it to be a valid
+             accessibility target. Config (zero events observed, no UI
+             scraping, no gestures) lives in
+             res/xml/lock_screen_accessibility_service.xml. -->
+        <service
+            android:name=".LockScreenAccessibilityService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/lock_screen_accessibility_service" />
+        </service>
+
         <!-- NotificationListenerService — surfaces every phone-system
              notification in the Infos/Admin "Phone Notifications" panel.
              Permission BIND_NOTIFICATION_LISTENER_SERVICE is signature-

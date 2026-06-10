@@ -135,4 +135,13 @@
     <string name="drawer_open">Open navigation</string>
     <string name="drawer_close">Close navigation</string>
     <string name="drawer_tab_home">Home</string>
+
+    <!-- Accessibility-service strings shown in Settings → Accessibility →
+         Installed services → Cloud SuperApp. We declare a service
+         that observes ZERO events; it exists only so the home-screen
+         double-tap can call AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
+         (API 28+), which preserves Smart Lock / Trusted Device /
+         biometric (DevicePolicyManager.lockNow does NOT). -->
+    <string name="accessibility_lock_screen_summary">Lock the screen on home double-tap</string>
+    <string name="accessibility_lock_screen_description">Allows the Cloud SuperApp home screen to lock the device on a double-tap. Preserves Smart Lock (Trusted Device / Trusted Place) + fingerprint / face unlock — same UX as pressing the power button. Observes no app activity (zero accessibility events declared).</string>
 </resources>
