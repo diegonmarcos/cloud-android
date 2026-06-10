@@ -462,6 +462,13 @@ object DevControlServer {
         sb.append(""""currentUa":""").append(s.currentUa).append(',')
         sb.append(""""rescaledMaToUa":""").append(s.rescaledMaToUa).append(',')
         sb.append(""""powerW":""").append(s.powerW).append(',')
+        sb.append(""""powerWSource":"""").append(jsonEscape(s.powerWSource)).append('"').append(',')
+        // BatteryManager system-service surface (AccuBattery's trick)
+        sb.append(""""batteryTempC":""").append(s.batteryTempC).append(',')
+        sb.append(""""chargeCounterUah":""").append(s.chargeCounterUah).append(',')
+        sb.append(""""cycleCount":""").append(s.cycleCount).append(',')
+        sb.append(""""peakChargeCounterUah":""").append(s.peakChargeCounterUah).append(',')
+        sb.append(""""cumulativeChargedUah":""").append(s.cumulativeChargedUah).append(',')
         // Charger spec subobject
         sb.append(""""chargerSpec":{""")
         sb.append(""""maxCurrentUa":""").append(s.chargerSpec.maxCurrentUa).append(',')

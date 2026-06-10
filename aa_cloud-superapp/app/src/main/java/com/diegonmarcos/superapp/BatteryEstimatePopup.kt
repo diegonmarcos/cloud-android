@@ -79,6 +79,17 @@ object BatteryEstimatePopup {
         container.addView(spacer(ctx, (6 * d).toInt()))
         container.addView(label(ctx, if (s.isCharging) "% battery / h gained" else "% battery / h consumed"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtRateUnified(s)))
+        // Battery health surface: live temperature + manual cycle counter.
+        // Temp from sticky intent EXTRA_TEMPERATURE (always available);
+        // cycles derived from CHARGE_COUNTER deltas + first-seen-at-100%
+        // peak (AccuBattery's calibration method). Both rows render
+        // "—" / "calibrating" until they have data, never disappear.
+        container.addView(spacer(ctx, (6 * d).toInt()))
+        container.addView(label(ctx, "Battery temperature"))
+        container.addView(valueSmall(ctx, BatterySessionStats.fmtBatteryTemp(s)))
+        container.addView(spacer(ctx, (4 * d).toInt()))
+        container.addView(label(ctx, "Cycle count (since install)"))
+        container.addView(valueSmall(ctx, BatterySessionStats.fmtCycleCount(s)))
 
         val pw = PopupWindow(
             container,

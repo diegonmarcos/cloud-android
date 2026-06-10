@@ -96,6 +96,45 @@ object BatterySessionStats {
         // (Samsung mA → canonical µA). Surfaces so the user can see
         // their device's reporting convention.
         val rescaledMaToUa: Boolean,
+
+        // ── BatteryManager system-service surface (AccuBattery's path) ──
+        // Battery temperature in degrees Celsius, from sticky intent
+        // EXTRA_TEMPERATURE (decidegrees → divide by 10). -1.0 when
+        // unavailable. Works on every Android: BatteryStats samples
+        // the kernel via system_server, not via sysfs, so even when
+        // /sys/class/power_supply/battery/temp is SELinux-blocked
+        // (Samsung One UI 7), this is populated.
+        val batteryTempC: Double,
+        // BATTERY_PROPERTY_CHARGE_COUNTER snapshot in µAh — kernel's
+        // monotonic charge integrator. Used by [powerWSource=counter]
+        // to derive smooth time-windowed power (AccuBattery's trick).
+        // Long.MIN_VALUE when the OEM driver doesn't implement it.
+        val chargeCounterUah: Long,
+        // Which path produced `powerW`:
+        //   "counter" — Δ(charge_counter) / Δt × voltage. Smooth.
+        //               Immune to screen-off noise. PREFERRED.
+        //   "instant" — V × current_now. Noisy when screen sleeps
+        //               (Samsung drops to ~0.5 mA), used only as
+        //               fallback when counter isn't available.
+        //   "none"    — no valid reading on either path.
+        val powerWSource: String,
+        // ── Battery cycle counter (manual, AccuBattery-style) ──
+        // We count cycles by summing the POSITIVE charge_counter
+        // deltas (mAh accepted into the battery during charge) and
+        // dividing by the empirical "full" capacity captured the
+        // first time the kernel reads 100 %. So one full 0→100
+        // charge = 1.0 cycle; partial charges add fractionally.
+        //
+        // -1.0 when uncalibrated (no 100 % reached since install).
+        // Once calibrated, accurate to ±a few percent vs OEM gauge.
+        val cycleCount: Double,
+        // The kernel's CHARGE_COUNTER reading at the most recent
+        // 100 % moment. Acts as our empirical "full" capacity for
+        // the cycle-count calculation. 0 when uncalibrated.
+        val peakChargeCounterUah: Long,
+        // Total positive deltas summed since install — denominator-
+        // free running total useful to surface raw "energy moved".
+        val cumulativeChargedUah: Long,
     )
 
     fun read(ctx: Context, now: Long = System.currentTimeMillis()): Snapshot {
@@ -223,9 +262,124 @@ object BatterySessionStats {
             rescaledMaToUa                                  -> currentRaw * 1000
             else                                           -> currentRaw
         }
-        val powerW = if (voltageMv > 0 && currentUa != 0)
+        val powerWInstant = if (voltageMv > 0 && currentUa != 0)
             kotlin.math.abs((voltageMv.toLong() * currentUa.toLong()) / 1_000_000_000.0)
         else 0.0
+
+        // ── BatteryManager system-service path (AccuBattery's trick) ──
+        // CHARGE_COUNTER is the kernel's monotonic µAh integrator;
+        // smooth time-windowed deltas give a much more accurate power
+        // figure than V × instantaneous current (which on Samsung
+        // drops to ~0.5 mA when the screen sleeps even at high real
+        // load). Long.MIN_VALUE = OEM driver doesn't implement it.
+        val bm2 = runCatching {
+            ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+        }.getOrNull()
+        val chargeCounter = runCatching {
+            bm2?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) ?: Long.MIN_VALUE
+        }.getOrDefault(Long.MIN_VALUE)
+        val chargeCounterAvailable = chargeCounter != Long.MIN_VALUE && chargeCounter > 0L
+
+        val lastCounter   = sp.getLong("last_counter_uah", -1L)
+        val lastCounterTs = sp.getLong("last_counter_ts", 0L)
+        // Sample window: only trust the delta if the previous sample
+        // is within 5s..10min — too fresh = noisy, too stale = the
+        // kernel may have reset across a power event.
+        val powerWFromCounter = if (
+            chargeCounterAvailable && lastCounter > 0L &&
+            lastCounterTs > 0L && (now - lastCounterTs) in 5_000L..600_000L &&
+            voltageMv > 0
+        ) {
+            val deltaUah = chargeCounter - lastCounter
+            val deltaMs  = now - lastCounterTs
+            val deltaSec = deltaMs / 1000.0
+            // µAh × 3600 / sec = µA → / 1_000_000 = A; × V = W.
+            // abs() because discharging shows negative deltas.
+            kotlin.math.abs(deltaUah.toDouble() * 3600.0 / deltaSec / 1_000_000.0) *
+                (voltageMv / 1000.0)
+        } else 0.0
+        // Persist the new counter sample for next call's delta.
+        if (chargeCounterAvailable) {
+            sp.edit()
+                .putLong("last_counter_uah", chargeCounter)
+                .putLong("last_counter_ts", now)
+                .apply()
+        }
+        // Prefer counter path when available; instant is only used
+        // as a fallback to keep the row populated on devices that
+        // refuse CHARGE_COUNTER (Long.MIN_VALUE).
+        val (powerW, powerWSource) = when {
+            powerWFromCounter > 0.005 -> powerWFromCounter to "counter"
+            powerWInstant     > 0.005 -> powerWInstant     to "instant"
+            else                      -> 0.0               to "none"
+        }
+
+        // ── Cycle counting (AccuBattery-style) ──
+        // Sum positive deltas (mAh accepted while charging) since
+        // install; divide by the empirical "full" CHARGE_COUNTER
+        // captured the first time we read 100 % capacity. Until
+        // calibrated, cycleCount = -1.0 → UI shows
+        // "calibrating — charge to 100 %".
+        var cumulativeChargedUah = sp.getLong("cumulative_charged_uah", 0L)
+        if (chargeCounterAvailable && lastCounter > 0L && isCharging) {
+            val delta = chargeCounter - lastCounter
+            // Sanity-filter: a single sample should never accept
+            // more than ~10 % of a 5000 mAh cell (500 mAh = 500_000
+            // µAh). Anything larger is a counter reset, not real
+            // charging — drop it.
+            if (delta in 1L..500_000_000L) {
+                cumulativeChargedUah += delta
+                sp.edit().putLong("cumulative_charged_uah", cumulativeChargedUah).apply()
+            }
+        }
+        var peakChargeCounter = sp.getLong("peak_at_full_uah", 0L)
+        if (chargeCounterAvailable && curPct >= 100 && chargeCounter > peakChargeCounter) {
+            peakChargeCounter = chargeCounter
+            sp.edit().putLong("peak_at_full_uah", peakChargeCounter).apply()
+        }
+        val cycleCount = if (peakChargeCounter > 0L)
+            cumulativeChargedUah.toDouble() / peakChargeCounter.toDouble()
+        else -1.0
+
+        // ── Battery temperature ──
+        // Sticky intent EXTRA_TEMPERATURE in decidegrees Celsius
+        // (so divide by 10). Works on every Android — the broadcast
+        // is populated by system_server regardless of SELinux sysfs
+        // restrictions. -1 sentinel → -1.0 here.
+        val tempDc = sticky?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+            ?: Int.MIN_VALUE
+        val batteryTempC = if (tempDc != Int.MIN_VALUE) tempDc / 10.0 else -1.0
+
+        // ── Anchor backstop via polling-detected transition ──
+        // When the receiver missed the broadcast (Samsung Sleeping
+        // Apps, Doze, or any aggressive OEM background killer), we
+        // can still detect the plug/unplug by comparing the CURRENT
+        // isCharging to the LAST seen state. If it flipped AND the
+        // anchor for that direction is empty / lazy, mint a
+        // "transition_detected" anchor — accurate to within the
+        // poll interval, not perfect but vastly better than
+        // first_read_fallback.
+        val lastWasCharging = sp.getBoolean("last_was_charging", isCharging)
+        if (lastWasCharging && !isCharging && curPct in 0..100 &&
+            (unplugAnchorSource.isEmpty() || unplugAnchorSource == "first_read_fallback")) {
+            sp.edit()
+                .putLong("unplug_ts", now)
+                .putInt("unplug_pct", curPct)
+                .putString("anchor_source", "transition_detected")
+                .apply()
+            unplugTs = now; unplugPct = curPct
+            unplugAnchorSource = "transition_detected"
+        } else if (!lastWasCharging && isCharging && curPct in 0..100 &&
+            (plugAnchorSource.isEmpty() || plugAnchorSource == "first_read_fallback")) {
+            sp.edit()
+                .putLong("plug_ts", now)
+                .putInt("plug_pct", curPct)
+                .putString("anchor_source_plug", "transition_detected")
+                .apply()
+            plugTs = now; plugPct = curPct
+            plugAnchorSource = "transition_detected"
+        }
+        sp.edit().putBoolean("last_was_charging", isCharging).apply()
 
         // Charger spec — only meaningful when isCharging; reading it
         // when discharging would return zeros (no max negotiated).
@@ -270,6 +424,12 @@ object BatterySessionStats {
             plugAnchorSource   = plugAnchorSource.ifEmpty { "(none)" },
             currentRaw         = currentRaw,
             rescaledMaToUa     = rescaledMaToUa,
+            batteryTempC       = batteryTempC,
+            chargeCounterUah   = chargeCounter,
+            powerWSource       = powerWSource,
+            cycleCount         = cycleCount,
+            peakChargeCounterUah = peakChargeCounter,
+            cumulativeChargedUah = cumulativeChargedUah,
         )
     }
 
@@ -314,6 +474,19 @@ object BatterySessionStats {
             }
             else -> "—"
         }
+    }
+
+    /** Battery temperature row — "39.4 °C" or "—" when unavailable. */
+    fun fmtBatteryTemp(s: Snapshot): String =
+        if (s.batteryTempC < 0) "—" else "%.1f °C".format(s.batteryTempC)
+
+    /** Cycle-count row — "12.5 cycles" or "calibrating (charge to 100 %)"
+     *  until peak_at_full_uah is captured. */
+    fun fmtCycleCount(s: Snapshot): String = when {
+        s.cycleCount < 0      -> "calibrating — charge to 100 %"
+        s.peakChargeCounterUah == 0L -> "calibrating — charge to 100 %"
+        else                  -> "%.2f cycles  (≈ %d mAh full)".format(
+            s.cycleCount, s.peakChargeCounterUah / 1000L)
     }
 
     /** Phone consumption estimate = charger_live − battery_storage.

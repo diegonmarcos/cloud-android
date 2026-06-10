@@ -642,6 +642,17 @@ class DevControlFragment : Fragment() {
                 com.diegonmarcos.superapp.BatterySessionStats.fmtEtaDuration(bs))
             row(ctx, it, labelWall,
                 com.diegonmarcos.superapp.BatterySessionStats.fmtEtaWallClock(bs))
+            // BatteryManager / sticky-intent surface — works on hardened
+            // Samsung where /sys/class/power_supply/* is SELinux-blocked.
+            row(ctx, it, "Battery temp",
+                com.diegonmarcos.superapp.BatterySessionStats.fmtBatteryTemp(bs))
+            row(ctx, it, "Cycle count",
+                com.diegonmarcos.superapp.BatterySessionStats.fmtCycleCount(bs))
+            // Debug rows so the user can see WHICH path the power
+            // figure came from + the anchor provenance.
+            row(ctx, it, "Power source",      bs.powerWSource)
+            row(ctx, it, "Unplug anchor src", bs.unplugAnchorSource)
+            row(ctx, it, "Plug anchor src",   bs.plugAnchorSource)
             it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
         }
 
