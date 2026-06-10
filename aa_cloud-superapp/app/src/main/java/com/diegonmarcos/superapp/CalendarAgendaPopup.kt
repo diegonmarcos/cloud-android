@@ -116,10 +116,17 @@ object CalendarAgendaPopup {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             elevation = 8 * d
         }
-        // Centre under the date/time cell — Gravity.CENTER_HORIZONTAL
-        // aligns the popup's horizontal midpoint with the anchor's
-        // horizontal midpoint, then xOffset stays 0.
-        pw.showAsDropDown(anchor, 0, (6 * d).toInt(), Gravity.CENTER_HORIZONTAL)
+        // Center the popup on-screen (NOT under the date/time anchor).
+        // showAsDropDown anchors below the anchor view and can only
+        // shift horizontally via Gravity flags; the result is still
+        // anchored vertically to the strip and clips against the
+        // status bar. showAtLocation with Gravity.CENTER ignores the
+        // anchor's position entirely and places the popup at the
+        // screen midpoint, which is what the user wants — the agenda
+        // is consulted as a centerpiece, not as a tooltip on the
+        // status strip. We still pass `anchor` only as the token-
+        // bearing root (required for window manager dispatch).
+        pw.showAtLocation(anchor, Gravity.CENTER, 0, 0)
     }
 
     private fun label(ctx: Context, t: String) = TextView(ctx).apply {
