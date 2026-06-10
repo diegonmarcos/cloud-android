@@ -454,11 +454,12 @@
             ],
             "folders": [
               {
-                "label": "comms",
+                "label": "Others",
                 "packages": [
                   "com.samsung.android.email.provider",
                   "com.whatsapp.w4b",
-                  "com.google.android.gm"
+                  "com.google.android.gm",
+                  "org.telegram.messenger"
                 ]
               }
             ]
@@ -470,7 +471,6 @@
               "com.sec.android.gallery3d",
               "com.samsung.android.calendar",
               "com.samsung.android.app.contacts",
-              "org.telegram.messenger",
               "com.aspiro.tidal"
             ]
           },
