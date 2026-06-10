@@ -341,8 +341,21 @@ class MainActivity : AppCompatActivity(),
                     val dy = e2.y - e1.y
                     val absDx = Math.abs(dx); val absDy = Math.abs(dy)
 
-                    // VERTICAL swipes — open / close the app drawer.
-                    if (absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
+                    // VERTICAL swipes — ONLY meaningful when on the Home
+                    // section (where swipe-up opens AppDrawerSheet) and
+                    // the sheet itself isn't already up. Off-home, the
+                    // activity-level detector MUST defer entirely to
+                    // the fragment so list scrolling, pull-to-refresh,
+                    // sheet drag-close, WebView pan, etc. all own
+                    // their own vertical gestures cleanly. Short-circuit
+                    // BEFORE evaluating the vertical-fling thresholds
+                    // so the detector doesn't even claim to have seen
+                    // a vertical gesture off-home — eliminating the
+                    // conflict the user reported.
+                    val sheetIsUp = supportFragmentManager
+                        .findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null
+                    if (currentSection == "home" && !sheetIsUp &&
+                        absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
                         val consumed = handleVerticalFling(dy)
                         if (consumed) Haptics.tap(bottomNav)
                         return consumed
