@@ -1731,6 +1731,12 @@ class MainActivity : AppCompatActivity(),
 
     // ── DevControlBridge.ActivityHost ────────────────────────────────────
 
+    /** Drives the music-playing indicator above the Dynamic Island.
+     *  Initialised lazily on first onResume so we don't allocate the
+     *  MediaSessionManager binder + listener until the activity is
+     *  actually visible. */
+    private var nowPlayingMonitor: NowPlayingMonitor? = null
+
     override fun onResume() {
         super.onResume()
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
@@ -1743,12 +1749,31 @@ class MainActivity : AppCompatActivity(),
         // backgrounded, and the system status bar / our strip need to
         // sync. Idempotent.
         applyLauncherChrome()
+        // Music-playing indicator. NotificationListener perm gates
+        // the MediaSessionManager query; when it's not granted the
+        // monitor silently reports no sessions and the icon stays
+        // gone. Starting on every onResume + stopping on onPause
+        // means the listener doesn't burn cycles while we're
+        // backgrounded.
+        val indicator = findViewById<EqualizerBarsView>(R.id.music_playing_indicator)
+        if (indicator != null && nowPlayingMonitor == null) {
+            nowPlayingMonitor = NowPlayingMonitor(this) { playing ->
+                if (playing) {
+                    indicator.visibility = android.view.View.VISIBLE
+                    indicator.start()
+                } else {
+                    indicator.visibility = android.view.View.GONE
+                }
+            }
+        }
+        nowPlayingMonitor?.start()
     }
 
     override fun onPause() {
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
         cancelHamburgerJitter()
+        nowPlayingMonitor?.stop()
         super.onPause()
     }
 
