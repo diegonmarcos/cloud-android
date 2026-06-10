@@ -481,7 +481,8 @@
               "com.google.android.apps.maps",
               "com.google.android.apps.walletnfcrel",
               "com.google.android.apps.translate",
-              "com.sec.android.app.clockpackage"
+              "com.sec.android.app.clockpackage",
+              "com.x8bit.bitwarden"
             ]
           },
           {
