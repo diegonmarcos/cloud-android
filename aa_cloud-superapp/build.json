@@ -393,8 +393,9 @@
           {
             "kind": "open_link",
             "title": "Dagu · Workflow runs",
-            "url": "https://workflows.diegonmarcos.com",
-            "icon": "ic_p_c3_workflows"
+            "url": "page:c3/dagu",
+            "icon": "ic_p_c3_workflows",
+            "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead."
           }
         ],
         "stack_apps": [
