@@ -39,6 +39,15 @@ object PhoneSmartFolders {
         fun matches(ctx: Context, app: PhoneApp): Boolean = when (type) {
             "pkg_prefix" -> values.any { app.packageName.startsWith(it) }
             "pkg_eq"     -> values.any { app.packageName == it }
+            "install_source_in" -> {
+                // Show ONLY apps whose install-source-of-record (installing
+                // OR initiating package) is one of `values` — bucket apps by
+                // the specific store/installer that owns their updates.
+                // Verified against real on-device values via
+                // /api/phone/classify (installing/initiating/system dump).
+                val srcs = installSourcesOf(ctx, app.packageName)
+                srcs.any { values.contains(it) }
+            }
             "install_source_not" -> {
                 if (isSystemApp(ctx, app.packageName)) false
                 else {

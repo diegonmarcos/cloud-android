@@ -1836,7 +1836,7 @@
       { "title": "Tools A",  "prefix": "." },
       { "title": "Tools B",  "prefix": ">" }
     ],
-    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values), pkg_eq (any pkg equals one of values), install_source_not (PackageManager.getInstallSourceInfo.installingPackageName not in values — catches sideloads + F-Droid + Aurora + GitHub APKs).",
+    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record — installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo — IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values — legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`). The install-source values are real installer package names — verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
     "phone_smart_folders": [
       {
         "id": "samsung", "title": "Samsung",
@@ -1847,8 +1847,13 @@
         "rule": { "type": "pkg_prefix", "values": ["com.google.", "com.android.vending"] }
       },
       {
-        "id": "alt_stores", "title": "Alternative Stores",
-        "rule": { "type": "install_source_not", "values": ["com.android.vending", "com.sec.android.app.samsungapps"] }
+        "id": "fdroid", "title": "F-Droid · Sideload",
+        "_doc": "F-Droid installs PLUS raw-APK sideloads (com.google.android.packageinstaller = installed by hand, owned by no store). These get no automatic Play/Samsung updates.",
+        "rule": { "type": "install_source_in", "values": ["org.fdroid.fdroid", "com.google.android.packageinstaller"] }
+      },
+      {
+        "id": "uptodown", "title": "Uptodown",
+        "rule": { "type": "install_source_in", "values": ["com.uptodown"] }
       },
       {
         "id": "new_apps", "title": "New Apps",
