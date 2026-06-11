@@ -70,61 +70,84 @@ class MusicControlsPopup(private val ctx: Context) {
         playingPackage: String?,
     ) {
         dismiss()
-        if (controller == null || playingPackage == null) return
+        // NOTE: controller/playingPackage may be NULL — nothing is
+        // playing. We STILL open the popup (user wants the tap to work
+        // even when idle); it just renders an empty "Nothing playing"
+        // card with inert controls. All controller-dependent wiring
+        // below is guarded on a non-null controller.
 
         val view = LayoutInflater.from(ctx).inflate(
             R.layout.popup_music_controls, null, false)
 
         // App icon (left) — load the playing app's launcher icon
-        // + wire it to open the app on tap. Same launch path as
-        // tapping the island itself before this popup existed.
+        // + wire it to open the app on tap. When idle there's no
+        // package, so leave the icon empty and the tap inert.
         val iconView = view.findViewById<ImageView>(R.id.music_popup_icon)
-        runCatching {
-            iconView.setImageDrawable(ctx.packageManager.getApplicationIcon(playingPackage))
-        }
-        iconView.setOnClickListener {
+        if (playingPackage != null) {
             runCatching {
-                val intent = ctx.packageManager.getLaunchIntentForPackage(playingPackage)
-                if (intent != null) ctx.startActivity(intent)
+                iconView.setImageDrawable(ctx.packageManager.getApplicationIcon(playingPackage))
             }
-            dismiss()
+            iconView.setOnClickListener {
+                runCatching {
+                    val intent = ctx.packageManager.getLaunchIntentForPackage(playingPackage)
+                    if (intent != null) ctx.startActivity(intent)
+                }
+                dismiss()
+            }
+        } else {
+            iconView.setImageDrawable(null)
         }
 
-        // Transport buttons — send commands via TransportControls.
-        // No-op safely when an action isn't supported by the
-        // session (most apps support all three even if greyed out
-        // visually; we don't bother checking session.flags).
-        view.findViewById<ImageButton>(R.id.music_popup_prev).setOnClickListener {
-            runCatching { controller.transportControls.skipToPrevious() }
-        }
-        view.findViewById<ImageButton>(R.id.music_popup_next).setOnClickListener {
-            runCatching { controller.transportControls.skipToNext() }
-        }
-        view.findViewById<ImageButton>(R.id.music_popup_play_pause).setOnClickListener {
-            val playing = controller.playbackState?.state == PlaybackState.STATE_PLAYING
-            runCatching {
-                if (playing) controller.transportControls.pause()
-                else controller.transportControls.play()
+        if (controller != null) {
+            // Transport buttons — send commands via TransportControls.
+            // No-op safely when an action isn't supported by the
+            // session (most apps support all three even if greyed out
+            // visually; we don't bother checking session.flags).
+            view.findViewById<ImageButton>(R.id.music_popup_prev).setOnClickListener {
+                runCatching { controller.transportControls.skipToPrevious() }
             }
-        }
-
-        // SeekBar drag — only commit on user release so we don't
-        // spam the controller while the thumb is moving. The 1Hz
-        // tick refreshes the progress when the user isn't dragging.
-        val seek = view.findViewById<SeekBar>(R.id.music_popup_progress)
-        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            private var userDragging = false
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {}
-            override fun onStartTrackingTouch(sb: SeekBar?) { userDragging = true }
-            override fun onStopTrackingTouch(sb: SeekBar?) {
-                userDragging = false
-                val durationMs = controller.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
-                if (durationMs > 0L) {
-                    val pos = (durationMs * (sb?.progress ?: 0) / seek.max).coerceAtLeast(0)
-                    runCatching { controller.transportControls.seekTo(pos) }
+            view.findViewById<ImageButton>(R.id.music_popup_next).setOnClickListener {
+                runCatching { controller.transportControls.skipToNext() }
+            }
+            view.findViewById<ImageButton>(R.id.music_popup_play_pause).setOnClickListener {
+                val playing = controller.playbackState?.state == PlaybackState.STATE_PLAYING
+                runCatching {
+                    if (playing) controller.transportControls.pause()
+                    else controller.transportControls.play()
                 }
             }
-        })
+
+            // SeekBar drag — only commit on user release so we don't
+            // spam the controller while the thumb is moving. The 1Hz
+            // tick refreshes the progress when the user isn't dragging.
+            val seek = view.findViewById<SeekBar>(R.id.music_popup_progress)
+            seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                private var userDragging = false
+                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {}
+                override fun onStartTrackingTouch(sb: SeekBar?) { userDragging = true }
+                override fun onStopTrackingTouch(sb: SeekBar?) {
+                    userDragging = false
+                    val durationMs = controller.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+                    if (durationMs > 0L) {
+                        val pos = (durationMs * (sb?.progress ?: 0) / seek.max).coerceAtLeast(0)
+                        runCatching { controller.transportControls.seekTo(pos) }
+                    }
+                }
+            })
+        } else {
+            // Idle placeholder — no track, inert progress bar.
+            view.findViewById<TextView>(R.id.music_popup_title).text = "Nothing playing"
+            view.findViewById<TextView>(R.id.music_popup_artist).text = ""
+            view.findViewById<TextView>(R.id.music_popup_route).text = ""
+            view.findViewById<TextView>(R.id.music_popup_volume).text = ""
+            view.findViewById<TextView>(R.id.music_popup_time_elapsed).text = "0:00"
+            view.findViewById<TextView>(R.id.music_popup_time_total).text = "0:00"
+            view.findViewById<SeekBar>(R.id.music_popup_progress).apply {
+                progress = 0
+                isEnabled = false
+            }
+            view.findViewById<ImageView>(R.id.music_popup_art_bg).setImageDrawable(null)
+        }
 
         // Title marquee needs isSelected=true to actually scroll.
         view.findViewById<TextView>(R.id.music_popup_title).isSelected = true
@@ -166,11 +189,12 @@ class MusicControlsPopup(private val ctx: Context) {
         popup = pw
 
         attachedController = controller
-        controller.registerCallback(controllerCallback, Handler(Looper.getMainLooper()))
-
-        refreshMetadata(controller)
-        refreshState(controller)
-        startTicking(view, controller)
+        if (controller != null) {
+            controller.registerCallback(controllerCallback, Handler(Looper.getMainLooper()))
+            refreshMetadata(controller)
+            refreshState(controller)
+            startTicking(view, controller)
+        }
 
         // Horizontally SCREEN-centered (not anchor-centered). The
         // mini-island anchor isn't at screen center, so a plain

@@ -1886,9 +1886,10 @@ class MainActivity : AppCompatActivity(),
                 // Tap → Samsung-style controls popup anchored under the
                 // mini-island (album art + title/artist + progress +
                 // prev/play-pause/next). The popup's own app-icon tap
-                // is what opens the playing app — the island itself no
-                // longer launches the app directly.
-                val pkg = nowPlayingMonitor?.currentPackage ?: return@setOnClickListener
+                // is what opens the playing app. ALWAYS opens — even
+                // when nothing is playing (pkg/ctrl null), the popup
+                // renders an idle "Nothing playing" card.
+                val pkg = nowPlayingMonitor?.currentPackage
                 val ctrl = nowPlayingMonitor?.currentController
                 if (musicControlsPopup == null) {
                     musicControlsPopup = MusicControlsPopup(this)
