@@ -120,15 +120,14 @@ class MusicControlsPopup(private val ctx: Context) {
         // Title marquee needs isSelected=true to actually scroll.
         view.findViewById<TextView>(R.id.music_popup_title).isSelected = true
 
-        // Width = 90% of the REAL screen width (Samsung media-card
-        // style: near-full-width with small side margins), derived
-        // from displayMetrics so it adapts to any device instead of a
-        // hardcoded dp that could overflow a narrow screen. Height
-        // comes from the card's fixed 196dp (root is match_parent
-        // width / fixed height in XML; the explicit window width here
-        // governs the actual rendered width).
+        // Width = 60% of the REAL screen width — a compact card with
+        // generous side margins (user's chosen size). Derived from
+        // displayMetrics so it adapts to any device instead of a
+        // hardcoded dp. Height comes from the card's fixed 196dp (root
+        // is match_parent width / fixed height in XML; the explicit
+        // window width here governs the actual rendered width).
         val screenW = ctx.resources.displayMetrics.widthPixels
-        val popupW = (screenW * 0.90f).toInt()
+        val popupW = (screenW * 0.60f).toInt()
 
         // PopupWindow setup — outsideTouchable so the user can tap
         // outside to dismiss; focusable=true so back-press dismisses.
@@ -241,7 +240,7 @@ class MusicControlsPopup(private val ctx: Context) {
                     totalView.text = "--:--"
                 }
                 elapsedView.text = formatTime(nowPos.coerceAtLeast(0L))
-                routeView.text = audioRouteLabel()
+                applyRoute(routeView)
                 volumeView.text = volumeLabel(c)
                 handler.postDelayed(this, 500L)
             }
@@ -251,17 +250,19 @@ class MusicControlsPopup(private val ctx: Context) {
         tickRunnable = r
     }
 
-    /** Where media audio is currently routed. Uses the
-     *  deprecated-but-accurate "is audio going there NOW" booleans
-     *  first (isBluetoothA2dpOn / isWiredHeadsetOn — these reflect the
-     *  ACTIVE route, unlike getDevices which lists all CONNECTED
-     *  outputs), with a device-name lookup for the Bluetooth case so
-     *  the label can read the actual headset name when available. */
+    /** Set the route TextView's text + a MONOCHROME (white-tinted)
+     *  leading icon — bluetooth / headphones / speaker. Replaces the
+     *  previous colour emoji (🎧/🔊). Uses the deprecated-but-accurate
+     *  "is audio going there NOW" booleans (isBluetoothA2dpOn /
+     *  isWiredHeadsetOn — these reflect the ACTIVE route, unlike
+     *  getDevices which lists all CONNECTED outputs), with a
+     *  device-name lookup for the Bluetooth case so the label can read
+     *  the actual headset name when available. */
     @Suppress("DEPRECATION")
-    private fun audioRouteLabel(): String {
+    private fun applyRoute(routeView: TextView) {
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-            ?: return ""
-        return when {
+        val (iconRes, label) = when {
+            am == null -> return
             am.isBluetoothA2dpOn -> {
                 val name = runCatching {
                     am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
@@ -270,11 +271,15 @@ class MusicControlsPopup(private val ctx: Context) {
                                 it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
                         }?.productName?.toString()
                 }.getOrNull()?.takeIf { it.isNotBlank() }
-                if (name != null) "🎧 $name" else "🎧 Bluetooth"
+                R.drawable.ic_route_bluetooth to (name ?: "Bluetooth")
             }
-            am.isWiredHeadsetOn -> "🎧 Headphones"
-            else -> "🔊 Phone speaker"
+            am.isWiredHeadsetOn -> R.drawable.ic_route_headphones to "Headphones"
+            else -> R.drawable.ic_route_speaker to "Phone speaker"
         }
+        routeView.text = label
+        routeView.setCompoundDrawablesRelativeWithIntrinsicBounds(iconRes, 0, 0, 0)
+        routeView.compoundDrawablePadding =
+            (5 * ctx.resources.displayMetrics.density).toInt()
     }
 
     /** Session volume as a percent. Prefers the MediaController's own
