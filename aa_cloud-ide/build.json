@@ -84,27 +84,36 @@
     }
   },
   "release": {
-    "_doc": "Per-APK GHCR distribution. The hub + each fork publish their own OCI artifact; the hub's in-app updater drives the on-device fleet (same OCI HTTP flow ea_cloud-superapp/libs:updater + cloud-comms use). {sha} → git short sha, {version_name} → android.version_name.",
+    "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as ea_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
     "artifact": {
-      "debug": "cloud-ide-hub-debug.apk",
-      "release": "cloud-ide-hub-release.apk"
+      "_doc": "Path under dist/ to publish. `debug` is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — THE hub app, not a side-by-side variant. asset_name matches `debug` so the engine skips a redundant copy.",
+      "debug": "Cloud-IDE-Hub.apk",
+      "release": "Cloud-IDE-Hub-release.apk"
     },
     "ghcr": {
+      "_doc": "ORAS push as an OCI artifact (APK is a blob, not a container). One :latest tag plus per-commit sha + per-version tags.",
       "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "image": "cloud-ide-hub",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "{version_name}", "sha-{sha}"]
-    },
-    "phone_install": {
-      "default_tag": "latest",
-      "target_dir": "~/storage/shared/Download",
-      "asset_name": "Cloud-IDE-Hub.apk"
+      "tags": ["latest", "sha-{sha}", "v{version_name}"]
     },
     "gh_release": {
-      "enabled": false,
-      "rolling_tag": null
+      "_doc": "GitHub Release attachment. rolling_tag is canonical: one release (default `latest`) the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-IDE-Hub.apk is a stable URL. tag_pattern stays for immutable per-tag releases under a tag push (rolling release publishes alongside).",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ea_cloud-ide-v*",
+      "asset_name": "Cloud-IDE-Hub.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    },
+    "phone_install": {
+      "_doc": "Targets for build.sh phone-install — pulls the hub APK from GHCR via curl+OCI HTTP API (no oras dep; works on aarch64 Termux without a Nix shell) and copies it where an Android file manager can see it. Override per-env via PHONE_TARGET.",
+      "default_tag": "latest",
+      "target_dir": "~/storage/Download",
+      "asset_name": "Cloud-IDE-Hub.apk"
     }
   }
 }

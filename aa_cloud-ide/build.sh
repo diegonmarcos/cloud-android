@@ -21,6 +21,7 @@
 # ║   materialize-fork <key>  clone upstream@pin → tracker + patches  ║
 # ║   build-fork <key>        gradle/cordova build in a materialized fork ║
 # ║   oras-push / oras-pull / phone-install   GHCR distribution (hub) ║
+# ║   gh-release       attach hub APK to a GitHub Release (rolling)   ║
 # ║                                                                  ║
 # ║ NEVER bypass this script for build operations.                    ║
 # ╚══════════════════════════════════════════════════════════════════╝
@@ -266,6 +267,58 @@ step_phone_install() {
   log "✓ $target_dir/$asset_name — open Files → Download → tap APK"
 }
 
+# ── GitHub Release (engine reads build.json::release.gh_release) ────────
+# Same pattern as ea_cloud-comms / ea_cloud-superapp. Rolling mode keeps one
+# release (release.gh_release.rolling_tag, default `latest`), overwriting its
+# asset on every main push so /releases/latest/download/<asset> is stable; a tag
+# push (refs/tags/ea_cloud-ide-v*) also cuts an immutable per-tag release.
+step_gh_release() {
+  [ "$(_json '.release.gh_release.enabled')" = "true" ] || { log "gh-release: disabled — skip"; return 0; }
+  local draft prerelease notes asset rolling_tag src_release src_debug dst
+  draft="$(_json '.release.gh_release.draft')"
+  prerelease="$(_json '.release.gh_release.prerelease')"
+  notes="$(_json '.release.gh_release.generate_release_notes')"
+  asset="$(_resolve_template "$(_json '.release.gh_release.asset_name')")"
+  rolling_tag="$(_json '.release.gh_release.rolling_tag')"
+
+  src_release="$DIST_DIR/$(_json '.release.artifact.release')"
+  src_debug="$DIST_DIR/$(_json '.release.artifact.debug')"
+  dst="$DIST_DIR/$asset"
+  if   [ -f "$src_release" ] && [ "$src_release" != "$dst" ]; then cp "$src_release" "$dst"
+  elif [ -f "$src_debug" ]   && [ "$src_debug"   != "$dst" ]; then cp "$src_debug"   "$dst"
+  fi
+  [ -f "$dst" ] || { errlog "gh-release: staged asset $dst missing — no APK in $DIST_DIR?"; exit 1; }
+
+  if [ -n "$rolling_tag" ] && [ "$rolling_tag" != "null" ]; then
+    log "gh-release: rolling mode — tag=$rolling_tag ← $asset"
+    if ! in_nix gh release view "$rolling_tag" >/dev/null 2>&1; then
+      local create_flags=("$rolling_tag" --title "$rolling_tag" --target "${GITHUB_SHA:-main}" --notes "Rolling release — overwritten on every main push." --latest)
+      [ "$draft" = "true" ]      && create_flags+=(--draft)
+      [ "$prerelease" = "true" ] && create_flags+=(--prerelease)
+      in_nix gh release create "${create_flags[@]}"
+    fi
+    in_nix gh release upload "$rolling_tag" "$dst" --clobber
+    in_nix gh release edit "$rolling_tag" --latest >/dev/null 2>&1 || true
+  fi
+
+  # Immutable per-tag release under a tag push (refs/tags/...). Gate on
+  # GITHUB_REF, not GITHUB_REF_NAME (the runner re-injects the latter as the
+  # branch name on main pushes, which would falsely create a "main" release).
+  local is_tag_push=0
+  case "${GITHUB_REF:-}" in refs/tags/*) is_tag_push=1 ;; esac
+  if [ "$is_tag_push" = "1" ] && [ -n "${GITHUB_REF_NAME:-}" ]; then
+    local flags=("$GITHUB_REF_NAME" "$dst" --title "$GITHUB_REF_NAME")
+    [ "$draft" = "true" ]      && flags+=(--draft)
+    [ "$prerelease" = "true" ] && flags+=(--prerelease)
+    [ "$notes" = "true" ]      && flags+=(--generate-notes)
+    log "gh release create $GITHUB_REF_NAME ← $asset"
+    in_nix gh release create "${flags[@]}"
+  elif [ -z "$rolling_tag" ] || [ "$rolling_tag" = "null" ]; then
+    errlog "gh-release: neither rolling_tag set nor under a tag push — nothing to publish"
+    exit 1
+  fi
+}
+
 case "$CMD" in
   build)            step_build ;;
   release)          step_release ;;
@@ -282,6 +335,7 @@ case "$CMD" in
   oras-push)        step_oras_push ;;
   oras-pull)        step_oras_pull "$@" ;;
   phone-install)    step_phone_install "$@" ;;
+  gh-release)       step_gh_release ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;
