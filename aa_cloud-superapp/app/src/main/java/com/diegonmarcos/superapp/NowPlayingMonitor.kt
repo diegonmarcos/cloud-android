@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp
 
 import android.content.ComponentName
 import android.content.Context
+import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
@@ -34,18 +35,26 @@ import android.os.Looper
  */
 class NowPlayingMonitor(
     private val ctx: Context,
-    /** Invoked whenever the currently-playing package flips. Null
-     *  means "nothing playing right now"; non-null is the package
-     *  name of the app whose controller is in STATE_PLAYING. Lets
-     *  callers wire the indicator's tap handler to open that
-     *  specific app via PackageManager.getLaunchIntentForPackage. */
-    private val onPlayingChanged: (playingPackage: String?) -> Unit,
+    /** Invoked whenever the currently-playing package OR its
+     *  metadata flips. `playingPackage` is null when nothing is
+     *  currently playing — UI hides the island. `title` is the
+     *  best-effort song title for the marquee: prefers TITLE,
+     *  falls back to DISPLAY_TITLE, finally null when the app
+     *  publishes neither (rare — most music apps publish at
+     *  least one). Callers should defensively render
+     *  null/blank as a generic label like the app name. */
+    private val onPlayingChanged: (playingPackage: String?, title: String?) -> Unit,
 ) {
     /** Most recently observed playing-controller package name, or
      *  null when nothing is currently playing. Surfaced for the tap
      *  handler so it can short-circuit "no app to open" without
      *  having to re-query MediaSessionManager. */
     @Volatile var currentPackage: String? = null
+        private set
+    /** Most recently observed playing track title (TITLE or
+     *  DISPLAY_TITLE metadata key), or null when nothing is
+     *  playing or the app publishes no title. */
+    @Volatile var currentTitle: String? = null
         private set
     private val mgr: MediaSessionManager? =
         ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
@@ -61,6 +70,9 @@ class NowPlayingMonitor(
         override fun onPlaybackStateChanged(state: PlaybackState?) {
             evaluateAndDispatch()
         }
+        override fun onMetadataChanged(metadata: MediaMetadata?) {
+            evaluateAndDispatch()
+        }
     }
 
     private val sessionsChangedListener =
@@ -70,7 +82,8 @@ class NowPlayingMonitor(
         }
 
     private var tracked: List<MediaController> = emptyList()
-    private var lastReported: String? = null
+    private var lastReportedPkg: String? = null
+    private var lastReportedTitle: String? = null
 
     fun start() {
         val m = mgr ?: return
@@ -109,13 +122,20 @@ class NowPlayingMonitor(
         // are listed (e.g. when one was paused but the system still
         // surfaces the session), the playing one wins. Ties are rare
         // enough that picking the first-listed is fine.
-        val playingPkg = tracked.firstOrNull {
+        val playing = tracked.firstOrNull {
             it.playbackState?.state == PlaybackState.STATE_PLAYING
-        }?.packageName
+        }
+        val playingPkg = playing?.packageName
+        val title = playing?.metadata?.let { md ->
+            md.getString(MediaMetadata.METADATA_KEY_TITLE)
+                ?: md.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+        }?.takeIf { it.isNotBlank() }
         currentPackage = playingPkg
-        if (playingPkg != lastReported) {
-            lastReported = playingPkg
-            onPlayingChanged(playingPkg)
+        currentTitle = title
+        if (playingPkg != lastReportedPkg || title != lastReportedTitle) {
+            lastReportedPkg = playingPkg
+            lastReportedTitle = title
+            onPlayingChanged(playingPkg, title)
         }
     }
 }

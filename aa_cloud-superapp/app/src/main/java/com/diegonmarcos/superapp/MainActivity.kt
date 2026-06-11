@@ -1759,14 +1759,43 @@ class MainActivity : AppCompatActivity(),
         // when the package has no launch intent (rare — Android
         // surface apps without a launcher activity).
         val island = findViewById<android.widget.FrameLayout>(R.id.music_playing_island)
+        val islandIcon = findViewById<android.widget.ImageView>(R.id.music_playing_icon)
+        val islandTitle = findViewById<android.widget.TextView>(R.id.music_playing_title)
         if (island != null && nowPlayingMonitor == null) {
-            nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage ->
+            nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage, title ->
                 island.visibility = if (playingPackage != null)
                     android.view.View.VISIBLE else android.view.View.GONE
-                // No explicit animation start needed — the inner
-                // IslandWaveView self-manages via onAttachedToWindow.
-                // When the pill is GONE the inner view's onDraw isn't
-                // called, so the running animator costs nothing.
+                // Icon — load the playing app's launcher icon; fall back
+                // to null when the package has no application icon
+                // (rare; e.g. system surfaces that publish a media
+                // session without an APK icon).
+                if (playingPackage != null) {
+                    runCatching {
+                        islandIcon?.setImageDrawable(
+                            packageManager.getApplicationIcon(playingPackage))
+                    }.onFailure { islandIcon?.setImageDrawable(null) }
+                    // Title — the song name from MediaMetadata. When
+                    // the app publishes neither TITLE nor DISPLAY_TITLE,
+                    // show the app label as a sensible fallback so the
+                    // strip never reads blank.
+                    val text = title ?: runCatching {
+                        packageManager.getApplicationLabel(
+                            packageManager.getApplicationInfo(playingPackage, 0)
+                        ).toString()
+                    }.getOrDefault("Playing")
+                    islandTitle?.text = text
+                    // Marquee only animates when the TextView is selected
+                    // or focused. setSelected(true) is the canonical
+                    // "kick the scroll off without stealing focus"
+                    // pattern. Re-applied on every title change so the
+                    // animation restarts from the start of the new
+                    // string instead of continuing mid-scroll.
+                    islandTitle?.isSelected = false
+                    islandTitle?.isSelected = true
+                } else {
+                    islandIcon?.setImageDrawable(null)
+                    islandTitle?.text = ""
+                }
             }
             island.setOnClickListener {
                 val pkg = nowPlayingMonitor?.currentPackage ?: return@setOnClickListener

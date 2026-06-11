@@ -91,22 +91,23 @@
                 app:titleCentered="false"
                 app:title="" />
 
-            <!-- Music-playing mini-island — same visual language as the
-                 main Dynamic Island below (bg_dynamic_island drawable,
-                 dark pill, rounded), just smaller. Houses the animated
-                 EqualizerBarsView and is itself the tap target — tap
-                 → open the app whose media session is currently
+            <!-- Music-playing mini-island — Samsung now-playing style:
+                 small dark pill above the main Dynamic Island, with
+                 the currently-playing app's icon on the LEFT and the
+                 song title scrolling horizontally (marquee) on the
+                 RIGHT. Behind both sits a thin line-wave background
+                 (WaveLineView) — visually distinct from the main
+                 Dynamic Island's 4-channel pastel waveform so the
+                 two pills read as related but not duplicate.
+                 Tap → open the app whose media session is currently
                  PLAYING (wired in MainActivity via
                  NowPlayingMonitor.currentPackage). Default GONE;
                  flipped VISIBLE by NowPlayingMonitor when any system-
-                 wide media session enters STATE_PLAYING. Sized small
-                 (32dp × 16dp) so it sits unobtrusively between the
-                 status-strip's date/time and the main Dynamic Island
-                 below — minimalist by intent. -->
+                 wide media session enters STATE_PLAYING. -->
             <FrameLayout
                 android:id="@+id/music_playing_island"
-                android:layout_width="56dp"
-                android:layout_height="14dp"
+                android:layout_width="220dp"
+                android:layout_height="22dp"
                 android:layout_gravity="top|center_horizontal"
                 android:layout_marginTop="2dp"
                 android:background="@drawable/bg_dynamic_island"
@@ -114,21 +115,60 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <!-- Reuse IslandWaveView — the SAME refined Samsung-music-
-                     island waveform the main Dynamic Island below uses
-                     (4-channel pastel violet→lilac waves, rounded clip).
-                     Identical visual language; the mini-island reads as
-                     a small twin of the main one. Animator runs on
-                     attach (self-managed); when the pill visibility is
-                     GONE no onDraw fires so the animator's invalidate
-                     calls are zero-cost. -->
-                <com.diegonmarcos.superapp.IslandWaveView
-                    android:id="@+id/music_playing_indicator"
+                <!-- Thin scrolling-sinusoid line drawn full-bleed behind
+                     the icon + marquee. DIFFERENT pattern from the main
+                     Dynamic Island's IslandWaveView: a single low-alpha
+                     line that's the sum of a slow body wave + a fast
+                     carrier, producing a subtle beating effect that
+                     doesn't compete with the marquee text. Self-managing
+                     animator (onAttachedToWindow / onDetachedFromWindow). -->
+                <com.diegonmarcos.superapp.WaveLineView
+                    android:id="@+id/music_playing_wave"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_gravity="center"
                     android:clickable="false"
                     android:focusable="false" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="10dp"
+                    android:clickable="false"
+                    android:focusable="false">
+
+                    <ImageView
+                        android:id="@+id/music_playing_icon"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="6dp"
+                        android:contentDescription="@null"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Marquee song title. setSelected(true) from
+                         MainActivity is what kicks the scroll animation
+                         off — without it, the marquee just ellipsizes.
+                         singleLine + ellipsize=marquee + scrollHorizontally
+                         are the canonical combination per Android docs. -->
+                    <TextView
+                        android:id="@+id/music_playing_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:ellipsize="marquee"
+                        android:marqueeRepeatLimit="marquee_forever"
+                        android:scrollHorizontally="true"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:textSize="10sp"
+                        android:textColor="#E5E7EB"
+                        android:fontFamily="sans-serif-medium"
+                        android:clickable="false"
+                        android:includeFontPadding="false" />
+                </LinearLayout>
             </FrameLayout>
 
             <!-- Apple-style centered "Dynamic Island" pill. Anchored to the
