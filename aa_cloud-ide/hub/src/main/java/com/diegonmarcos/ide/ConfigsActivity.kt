@@ -13,8 +13,9 @@ import com.diegonmarcos.ide.update.Updater
 /**
  * Configs — Update + About, equal to Cloud-SuperApp. "Check for updates" runs
  * the same WorkManager flow as the periodic auto-updater and shows the fullscreen
- * UpdateOverlay (UpdateProgress-driven). "About" opens the SystemInfoPopup
- * (the dark-glass system-info bubble). Data-driven; no per-item hardcoding.
+ * UpdateOverlay (UpdateProgress-driven). "About" opens AboutActivity — the FULL
+ * SuperApp About architecture (12 sections, long-press-copy, Copy All Infos).
+ * Data-driven; no per-item hardcoding.
  */
 class ConfigsActivity : AppCompatActivity() {
 
@@ -47,10 +48,10 @@ class ConfigsActivity : AppCompatActivity() {
             textSize = 12f; alpha = 0.6f; setPadding(dp(20), 0, dp(20), dp(16))
         })
 
-        // ── About ─────────────────────────────────────────────────────────
-        val aboutRow = item(getString(R.string.cfg_about)) {}
-        aboutRow.setOnClickListener { SystemInfoPopup.show(this, aboutRow) }
-        body.addView(aboutRow)
+        // ── About — the FULL SuperApp-architecture page ───────────────────
+        body.addView(item(getString(R.string.cfg_about)) {
+            startActivity(android.content.Intent(this, AboutActivity::class.java))
+        })
 
         root.addView(body)
         setContentView(root)

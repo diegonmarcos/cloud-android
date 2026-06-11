@@ -25,6 +25,9 @@
 
     <!-- About -->
     <string name="about_title">About</string>
+    <string name="about_heading">About Cloud-IDE</string>
+    <string name="about_check_updates">Check for updates now</string>
+    <string name="about_update_started">Update check started…</string>
     <string name="about_app">App</string>
     <string name="about_updates">Updates</string>
     <string name="about_forks">Forks</string>

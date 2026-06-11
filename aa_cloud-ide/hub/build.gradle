@@ -53,6 +53,56 @@ def endpointsB64 = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64()
 def ghcr = buildJson.release.ghcr
 def au   = buildJson.release.auto_update
 
+// ── About stack-scan (ported from ea_cloud-superapp via ea_cloud-comms) ──
+// Compute "what's in this project" at config time so About → Stack ships no
+// static manifest to drift: languages {label:{files,loc}} + framework deps +
+// CI build-time history. Degrades gracefully offline (gh missing → "—").
+def stackExtMap = [ "kt":"Kotlin", "java":"Java", "json":"JSON (config)",
+    "gradle":"Gradle (Groovy)", "xml":"XML (manifest/res)", "aidl":"AIDL",
+    "nix":"Nix", "sh":"Shell", "md":"Markdown", "pro":"ProGuard" ]
+def stackSkip = ["build", ".gradle", "dist", ".result", ".git", "assets"]
+def stackStats = [:]
+repoRoot.eachFileRecurse { f ->
+    if (!f.isFile()) return
+    def rel = f.absolutePath.replace(repoRoot.absolutePath + "/", "")
+    if (stackSkip.any { rel.startsWith(it + "/") || rel.contains("/" + it + "/") }) return
+    def ext = f.name.tokenize(".").last().toLowerCase()
+    def label = stackExtMap[ext]; if (label == null) return
+    def loc = 0; try { loc = f.readLines("UTF-8").size() } catch (Throwable t) { return }
+    def b = stackStats[label] ?: [files: 0, loc: 0]; b.files += 1; b.loc += loc; stackStats[label] = b
+}
+def stackLanguagesB64 = groovy.json.JsonOutput.toJson(stackStats).bytes.encodeBase64().toString()
+
+def stackDeps = new TreeSet()
+def depPattern = ~/\b(implementation|api|androidTestImplementation|testImplementation)\s*[\(\s]\s*['"]([^'":]+:[^'":]+:[^'"]+)['"]/
+repoRoot.eachFileRecurse { f ->
+    if (!f.isFile() || !f.name.endsWith(".gradle")) return
+    def text = ""; try { text = f.text } catch (Throwable t) { return }
+    depPattern.matcher(text).each { m -> stackDeps.add(m[2]) }
+}
+def stackFrameworksB64 = groovy.json.JsonOutput.toJson(stackDeps.toList()).bytes.encodeBase64().toString()
+
+def buildHistorySecs = []
+try {
+    def ghOut = providers.exec {
+        commandLine 'gh', 'run', 'list', '--workflow=ship-cloud-ide.yml',
+            '--limit', '10', '--status', 'success', '--json', 'startedAt,updatedAt'
+        ignoreExitValue = true
+    }.standardOutput.asText.get().trim()
+    if (ghOut.startsWith('[')) {
+        new groovy.json.JsonSlurper().parseText(ghOut).each { r ->
+            try {
+                def s = java.time.Instant.parse(r.startedAt).epochSecond
+                def e = java.time.Instant.parse(r.updatedAt).epochSecond
+                if (e > s) buildHistorySecs << (e - s)
+            } catch (Throwable t) { }
+        }
+    }
+} catch (Throwable t) { }
+def buildAvgSecs    = buildHistorySecs.isEmpty() ? -1L : (buildHistorySecs.sum() / buildHistorySecs.size()).longValue()
+def buildLastSecs   = buildHistorySecs.isEmpty() ? -1L : (buildHistorySecs[0] as long)
+def buildSampleSize = buildHistorySecs.size()
+
 android {
     namespace 'com.diegonmarcos.ide'
     compileSdk 35
@@ -81,11 +131,20 @@ android {
         buildConfigField "String",  "GHCR_REGISTRY",   "\"${ghcr.registry}\""
         buildConfigField "String",  "GHCR_NAMESPACE",  "\"${ghcr.namespace}\""
         buildConfigField "String",  "GHCR_IMAGE",      "\"${ghcr.image}\""
+        buildConfigField "String",  "GHCR_MEDIA_TYPE", "\"${ghcr.media_type}\""
         buildConfigField "String",  "AUTO_UPDATE_TAG", "\"${au.tag}\""
         buildConfigField "long",    "AUTO_UPDATE_INTERVAL_HOURS", "${au.interval_hours}L"
         buildConfigField "boolean", "AUTO_UPDATE_ENABLED",        "${au.enabled}"
         buildConfigField "boolean", "AU_REQUIRE_UNMETERED",       "${au.require_unmetered_network}"
         buildConfigField "boolean", "AU_REQUIRE_CHARGING",        "${au.require_charging}"
+        buildConfigField "String",  "AU_INSTALL_MODE",            "\"${au.install_mode}\""
+
+        // About → Stack (scanned at config time, never hardcoded).
+        buildConfigField "String", "STACK_LANGUAGES_JSON_B64",  "\"${stackLanguagesB64}\""
+        buildConfigField "String", "STACK_FRAMEWORKS_JSON_B64", "\"${stackFrameworksB64}\""
+        buildConfigField "long",   "STACK_BUILD_AVG_SECS",      "${buildAvgSecs}L"
+        buildConfigField "long",   "STACK_BUILD_LAST_SECS",     "${buildLastSecs}L"
+        buildConfigField "int",    "STACK_BUILD_SAMPLE",        "${buildSampleSize}"
 
         // Resolve the IPC permission name into the manifest placeholder so the
         // <permission>/<provider>/<service> declarations stay data-driven too.
