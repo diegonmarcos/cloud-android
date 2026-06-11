@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.util.Base64
 import org.json.JSONArray
@@ -19,9 +20,18 @@ import org.json.JSONArray
  *   • pkg_eq              — any pkg equals one of values
  *   • install_source_not  — PackageManager.getInstallSourceInfo
  *                           .installingPackageName not in values.
- *                           Catches sideloads (null source) + F-Droid
- *                           + Aurora + GitHub APKs. API 30+; pre-30
- *                           falls back to deprecated getInstallerPackageName.
+ *                           CONSERVATIVE: requires a CONCRETE non-Play
+ *                           installer AND excludes system apps. Null
+ *                           installer (Smart-Switch migrations, OEM
+ *                           pre-installs whose metadata was stripped)
+ *                           is NOT counted as alt-store — too many
+ *                           false-positives (Booking, OneNote, Outlook,
+ *                           Samsung Notes, Wearable, Contacts, Configs
+ *                           all leak in otherwise). System apps
+ *                           (ApplicationInfo.FLAG_SYSTEM) are excluded
+ *                           regardless of installer. API 30+;
+ *                           pre-30 falls back to deprecated
+ *                           getInstallerPackageName.
  */
 object PhoneSmartFolders {
 
@@ -30,13 +40,19 @@ object PhoneSmartFolders {
             "pkg_prefix" -> values.any { app.packageName.startsWith(it) }
             "pkg_eq"     -> values.any { app.packageName == it }
             "install_source_not" -> {
-                val src = installerOf(ctx, app.packageName)
-                // null source = pure sideload (no installer recorded) →
-                // counts as "not in Play" so the alt-stores rule keeps it.
-                src == null || !values.contains(src)
+                if (isSystemApp(ctx, app.packageName)) false
+                else {
+                    val src = installerOf(ctx, app.packageName)
+                    src != null && !values.contains(src)
+                }
             }
             else -> false
         }
+
+        private fun isSystemApp(ctx: Context, pkg: String): Boolean = runCatching {
+            val ai = ctx.packageManager.getApplicationInfo(pkg, 0)
+            (ai.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+        }.getOrDefault(false)
 
         private fun installerOf(ctx: Context, pkg: String): String? = runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

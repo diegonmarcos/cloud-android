@@ -5,28 +5,70 @@ package com.diegonmarcos.superapp
  * facing `label`, decide which [PhoneFolders.Folder] it belongs to.
  *
  * Algorithm — deterministic + side-effect-free:
- *   1. Lowercase the haystack (`"$packageName $label"`).
- *   2. Walk folders in declared order (already sorted by
+ *   1. Walk folders in declared order (already sorted by
  *      [PhoneFolders.loadFromBuildConfig]).
- *   3. First folder whose `matchKeywords` contains any substring of the
- *      haystack wins. Empty-keyword folders (the `_Misc` sink) are
+ *   2. For each folder, walk its `matchKeywords`. First keyword that
+ *      matches the app wins; first matching folder wins overall.
+ *   3. Empty-keyword folders (the `_Misc` / `_New Apps` sinks) are
  *      skipped during matching.
  *   4. Unmatched apps fall through to the sink folder.
  *
- * This is a one-pass O(folders × keywords) match per app — fine for
- * even 500 installed apps × 30 folders × ~10 keywords on a phone.
+ * Keyword syntax — supports five forms, chosen on first character(s):
+ *
+ *   pkg:com.foo.bar     exact packageName match (case-insensitive)
+ *   pkg^com.foo.        packageName.startsWith() match
+ *   lbl:Exact Label     label exact match (case-insensitive)
+ *   lbl~substring       label contains substring (min 3 chars after `~`)
+ *   <plain string>      legacy substring match on `packageName + " " + label`
+ *                       — REQUIRES min length 4 to suppress catastrophic
+ *                       false-positives ("bb" matching "bbva" + every package
+ *                       containing the letters "bb" anywhere, etc.).
+ *
+ * Anchored forms (pkg:, pkg^, lbl:, lbl~) are the only way to express a
+ * precise match. Plain strings are a fallback for sweeping common app
+ * names ("santander", "wireguard") where collision risk is low — never
+ * use plain strings shorter than 4 chars.
  */
 object PhoneAppClassifier {
 
+    private const val MIN_PLAIN_KEYWORD_LEN = 4
+    private const val MIN_LBL_TILDE_LEN = 3
+
     fun classify(packageName: String, label: String, folders: List<PhoneFolders.Folder>): String {
-        val haystack = "$packageName $label".lowercase()
+        val pkg = packageName.lowercase()
+        val lbl = label.lowercase()
+        val haystack = "$pkg $lbl"
         for (folder in folders) {
             if (folder.matchKeywords.isEmpty()) continue
             for (kw in folder.matchKeywords) {
-                if (kw.isNotEmpty() && haystack.contains(kw)) return folder.id
+                if (matches(kw, pkg, lbl, haystack)) return folder.id
             }
         }
         return PhoneFolders.sinkFolderId(folders)
+    }
+
+    private fun matches(kw: String, pkg: String, lbl: String, haystack: String): Boolean {
+        if (kw.isEmpty()) return false
+        val k = kw.lowercase()
+        return when {
+            k.startsWith("pkg:") -> {
+                val t = k.removePrefix("pkg:")
+                t.isNotEmpty() && pkg == t
+            }
+            k.startsWith("pkg^") -> {
+                val t = k.removePrefix("pkg^")
+                t.isNotEmpty() && pkg.startsWith(t)
+            }
+            k.startsWith("lbl:") -> {
+                val t = k.removePrefix("lbl:")
+                t.isNotEmpty() && lbl == t
+            }
+            k.startsWith("lbl~") -> {
+                val t = k.removePrefix("lbl~")
+                t.length >= MIN_LBL_TILDE_LEN && lbl.contains(t)
+            }
+            else -> k.length >= MIN_PLAIN_KEYWORD_LEN && haystack.contains(k)
+        }
     }
 
     /** Group a list of installed apps into a folderId → apps map.
