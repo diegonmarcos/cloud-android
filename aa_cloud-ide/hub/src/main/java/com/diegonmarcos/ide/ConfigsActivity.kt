@@ -48,8 +48,8 @@ class ConfigsActivity : AppCompatActivity() {
         })
 
         // ── About ─────────────────────────────────────────────────────────
-        lateinit var aboutRow: TextView
-        aboutRow = item(getString(R.string.cfg_about)) { SystemInfoPopup.show(this, aboutRow) }
+        val aboutRow = item(getString(R.string.cfg_about)) {}
+        aboutRow.setOnClickListener { SystemInfoPopup.show(this, aboutRow) }
         body.addView(aboutRow)
 
         root.addView(body)
