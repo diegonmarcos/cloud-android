@@ -1,0 +1,18 @@
+Inherited licenses — NOT under the repository's PolyForm Noncommercial license.
+
+The patch series in this directory are derivative works of their respective
+upstream apps and are licensed under those upstreams' licenses. The fork APKs
+built from them (after `build.sh materialize-fork <x>`) ship under the same:
+
+  forks/files/   SPDX: GPL-3.0-or-later  Amaze File Manager    https://github.com/TeamAmaze/AmazeFileManager
+  forks/utils/   SPDX: GPL-3.0-or-later  Amaze File Utilities  https://github.com/TeamAmaze/AmazeFileUtilities
+  forks/editor/  SPDX: MIT               Acode                 https://github.com/Acode-Foundation/Acode
+
+Full license texts:
+  GPL-3.0 : https://www.gnu.org/licenses/gpl-3.0.txt
+  MIT     : https://opensource.org/license/mit
+
+These licenses permit commercial use under their own terms; for the GPL forks
+they also forbid adding further restrictions (such as "noncommercial"). The
+repository's root LICENSE therefore does NOT apply to anything under this
+directory.
