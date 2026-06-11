@@ -10,7 +10,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
@@ -177,8 +176,15 @@ object CalendarAgendaPopup {
      *  to the window and auto-cancels in onDetachedFromWindow,
      *  which fires when the PopupWindow dismisses. */
     private fun buildStopwatch(ctx: Context, d: Float): View {
-        val column = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
+        // Horizontal: BIG time digits + small flat minimalist toggle
+        // glyph button immediately to its right. Reads as a single
+        // unit anchored to the top-right of the header. Time
+        // dominates visually (20sp bold); button is a 22dp solid
+        // circle with a play/pause glyph — no gradient, no border,
+        // no rounded-rect text "Start"/"Stop" — just intent at a
+        // glance.
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -188,34 +194,43 @@ object CalendarAgendaPopup {
         val timeView = TextView(ctx).apply {
             text = formatStopwatch(stopwatchCurrentMs())
             setTextColor(0xFFE9D8FD.toInt())
-            textSize = 13f
+            textSize = 20f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            gravity = Gravity.END
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            includeFontPadding = false
         }
-        val btn = Button(ctx).apply {
-            text = if (stopwatchRunning) "Stop" else "Start"
+        val runningGlyph = "■"
+        val stoppedGlyph = "▶"
+        val runningColor = 0xFFB91C1C.toInt()
+        val stoppedColor = 0xFF16A34A.toInt()
+        val btn = TextView(ctx).apply {
+            text = if (stopwatchRunning) runningGlyph else stoppedGlyph
             textSize = 10f
-            minHeight = 0
-            minWidth = 0
-            setPadding((10 * d).toInt(), (4 * d).toInt(),
-                       (10 * d).toInt(), (4 * d).toInt())
-            background = GradientDrawable().apply {
-                cornerRadius = 8f * d
-                setColor(if (stopwatchRunning) 0xFF7F1D1D.toInt() else 0xFF166534.toInt())
-            }
             setTextColor(0xFFFFFFFF.toInt())
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            isClickable = true
+            isFocusable = true
+            val sz = (22 * d).toInt()
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply {
+                marginStart = (8 * d).toInt()
+            }
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(if (stopwatchRunning) runningColor else stoppedColor)
+            }
         }
         btn.setOnClickListener {
             if (stopwatchRunning) {
                 stopwatchAccumulatedMs += SystemClock.elapsedRealtime() - stopwatchStartElapsedMs
                 stopwatchRunning = false
-                btn.text = "Start"
-                (btn.background as? GradientDrawable)?.setColor(0xFF166534.toInt())
+                btn.text = stoppedGlyph
+                (btn.background as? GradientDrawable)?.setColor(stoppedColor)
             } else {
                 stopwatchStartElapsedMs = SystemClock.elapsedRealtime()
                 stopwatchRunning = true
-                btn.text = "Stop"
-                (btn.background as? GradientDrawable)?.setColor(0xFF7F1D1D.toInt())
+                btn.text = runningGlyph
+                (btn.background as? GradientDrawable)?.setColor(runningColor)
             }
             timeView.text = formatStopwatch(stopwatchCurrentMs())
         }
@@ -226,13 +241,13 @@ object CalendarAgendaPopup {
             stopwatchAccumulatedMs = 0L
             stopwatchStartElapsedMs = 0L
             timeView.text = formatStopwatch(0L)
-            btn.text = "Start"
-            (btn.background as? GradientDrawable)?.setColor(0xFF166534.toInt())
+            btn.text = stoppedGlyph
+            (btn.background as? GradientDrawable)?.setColor(stoppedColor)
             true
         }
         // 100ms tick while attached. Detaches automatically when
         // the PopupWindow dismisses; no leak risk.
-        column.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+        row.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             private val handler = Handler(Looper.getMainLooper())
             private val runnable = object : Runnable {
                 override fun run() {
@@ -243,9 +258,9 @@ object CalendarAgendaPopup {
             override fun onViewAttachedToWindow(v: View) { handler.post(runnable) }
             override fun onViewDetachedFromWindow(v: View) { handler.removeCallbacks(runnable) }
         })
-        column.addView(timeView)
-        column.addView(btn)
-        return column
+        row.addView(timeView)
+        row.addView(btn)
+        return row
     }
 
     private fun formatStopwatch(ms: Long): String {
