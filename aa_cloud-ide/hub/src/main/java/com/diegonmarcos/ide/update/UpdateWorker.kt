@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
  */
 class UpdateWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (!BuildConfig.AUTO_UPDATE_ENABLED) return@withContext Result.success()
+        if (!com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_ENABLED) return@withContext Result.success()
         try {
             val update = UpdateChecker(applicationContext).check()
                 ?: return@withContext Result.success()

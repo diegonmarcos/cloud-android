@@ -19,8 +19,8 @@ import java.net.URL
  */
 internal class GhcrClient(
     private val image: String,
-    private val registry: String = BuildConfig.GHCR_REGISTRY,
-    private val namespace: String = BuildConfig.GHCR_NAMESPACE,
+    private val registry: String = com.diegonmarcos.ide.BuildConfig.GHCR_REGISTRY,
+    private val namespace: String = com.diegonmarcos.ide.BuildConfig.GHCR_NAMESPACE,
 ) {
     private val repo = "$namespace/$image"
 

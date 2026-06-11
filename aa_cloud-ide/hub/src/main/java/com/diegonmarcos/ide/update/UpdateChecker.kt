@@ -10,11 +10,11 @@ import java.security.MessageDigest
  * Detect whether GHCR has a hub APK whose sha256 differs from the currently
  * installed one, and download it if so. Returns null when already up to date.
  * Mirrors ea_cloud-superapp's UpdateChecker (self-update of the hub APK from
- * BuildConfig.GHCR_IMAGE at BuildConfig.AUTO_UPDATE_TAG).
+ * com.diegonmarcos.ide.BuildConfig.GHCR_IMAGE at com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG).
  */
 internal class UpdateChecker(private val context: Context) {
     private val tag = "Ide/Update/Check"
-    private val client = GhcrClient(image = BuildConfig.GHCR_IMAGE)
+    private val client = GhcrClient(image = com.diegonmarcos.ide.BuildConfig.GHCR_IMAGE)
 
     data class Update(val remoteDigest: String, val remoteSize: Long, val assetTitle: String, val downloadedTo: File)
 
@@ -22,11 +22,11 @@ internal class UpdateChecker(private val context: Context) {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         try {
             val token = client.token()
-            val layer = client.manifest(BuildConfig.AUTO_UPDATE_TAG, token)
+            val layer = client.manifest(com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG, token)
             val currentDigest = "sha256:" + currentInstalledApkSha256()
             if (currentDigest == layer.digest) {
                 Log.i(tag, "up to date: $currentDigest")
-                UpdateProgress.update(UpdateProgress.State.UpToDate(BuildConfig.AUTO_UPDATE_TAG))
+                UpdateProgress.update(UpdateProgress.State.UpToDate(com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG))
                 return null
             }
             Log.i(tag, "update available: $currentDigest → ${layer.digest}")

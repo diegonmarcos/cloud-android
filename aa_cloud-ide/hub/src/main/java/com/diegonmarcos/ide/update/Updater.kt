@@ -21,13 +21,13 @@ object Updater {
 
     /** Enqueue (or refresh) the periodic update worker. Idempotent. */
     fun start(context: Context) {
-        if (!BuildConfig.AUTO_UPDATE_ENABLED) { cancel(context); return }
+        if (!com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_ENABLED) { cancel(context); return }
         val constraints = Constraints.Builder().apply {
-            setRequiredNetworkType(if (BuildConfig.AU_REQUIRE_UNMETERED) NetworkType.UNMETERED else NetworkType.CONNECTED)
-            if (BuildConfig.AU_REQUIRE_CHARGING) setRequiresCharging(true)
+            setRequiredNetworkType(if (com.diegonmarcos.ide.BuildConfig.AU_REQUIRE_UNMETERED) NetworkType.UNMETERED else NetworkType.CONNECTED)
+            if (com.diegonmarcos.ide.BuildConfig.AU_REQUIRE_CHARGING) setRequiresCharging(true)
         }.build()
         val request = PeriodicWorkRequestBuilder<UpdateWorker>(
-            BuildConfig.AUTO_UPDATE_INTERVAL_HOURS, TimeUnit.HOURS,
+            com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_INTERVAL_HOURS, TimeUnit.HOURS,
         ).setConstraints(constraints).build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request,
