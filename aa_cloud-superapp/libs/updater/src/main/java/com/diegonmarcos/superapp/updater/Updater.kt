@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp.updater
 
 import android.content.Context
 import androidx.work.Constraints
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -64,6 +65,33 @@ object Updater {
             ).build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             ONE_SHOT_NAME, ExistingWorkPolicy.REPLACE, request,
+        )
+    }
+
+    /**
+     * Download a companion APK from a direct [apkUrl] (e.g. a GitHub release
+     * asset) and install it for [packageName] via PackageInstaller. Used by
+     * the launcher when a tile points at a companion app (Cloud-Comms /
+     * Cloud-IDE hub) that isn't installed yet. URL + package come from
+     * build.json::ui.external_apps — never hardcoded here. Keyed per package
+     * so taps on different companion tiles don't clobber each other; KEEP
+     * means a re-tap while a download is in flight is a no-op.
+     */
+    fun installApk(context: Context, apkUrl: String, packageName: String, label: String) {
+        val data = Data.Builder()
+            .putString(ApkInstallWorker.KEY_URL, apkUrl)
+            .putString(ApkInstallWorker.KEY_PKG, packageName)
+            .putString(ApkInstallWorker.KEY_LABEL, label)
+            .build()
+        val request = OneTimeWorkRequestBuilder<ApkInstallWorker>()
+            .setInputData(data)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            ).build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "companion-install-$packageName", ExistingWorkPolicy.KEEP, request,
         )
     }
 }

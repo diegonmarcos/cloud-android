@@ -16,11 +16,17 @@ import java.io.File
 internal class UpdateInstaller(private val context: Context) {
     private val tag = "Updater/Install"
 
-    fun install(apk: File) {
+    /**
+     * Install [apk]. [targetPackage] is the applicationId of the APK being
+     * installed — defaults to our own package for the self-update path, but
+     * companion installs (Cloud-Comms / Cloud-IDE hubs) pass the foreign
+     * package so PackageInstaller disambiguates correctly.
+     */
+    fun install(apk: File, targetPackage: String = context.packageName) {
         UpdateProgress.update(UpdateProgress.State.Installing)
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(context.packageName)
+            setAppPackageName(targetPackage)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
             }

@@ -1365,6 +1365,57 @@ class MainActivity : AppCompatActivity(),
         findViewById<View>(R.id.fragment_container).snack("No app handles: $uri")
     }
 
+    /**
+     * Open a companion app declared in build.json::ui.external_apps.
+     *
+     * Grammar: `extapp:<appId>/<forkKey>` (forkKey optional). Resolution,
+     * in priority order — first hit wins:
+     *   1. the specific fork package (forks[forkKey]),
+     *   2. the hub package (hub_package),
+     *   3. neither installed → download + install install_apk_url (a direct
+     *      APK URL — Cloud-Comms-Hub.apk on a GitHub release) targeting
+     *      install_package, via libs:updater's PackageInstaller flow.
+     *
+     * Per-fork launch degrades to the hub automatically: in Cloud-Comms'
+     * one-icon model the forks ship without a launcher activity, so
+     * getLaunchIntentForPackage returns null for them and we fall through
+     * to the hub switcher — exactly the intended behaviour.
+     */
+    private fun launchExternalApp(payload: String) {
+        val parts = payload.split("/", limit = 2)
+        val app = Sections.externalApp(parts[0]) ?: run {
+            findViewById<View>(R.id.fragment_container).snack("Unknown app: ${parts[0]}")
+            return
+        }
+        val forkKey = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
+        // Candidate packages, most-specific first: the fork, then the hub.
+        val candidates = listOfNotNull(forkKey?.let { app.forks[it] }, app.hubPackage)
+            .filter { it.isNotBlank() }
+        for (pkg in candidates) {
+            val launch = packageManager.getLaunchIntentForPackage(pkg) ?: continue
+            launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            val ok = runCatching {
+                val lbl = runCatching {
+                    packageManager.getApplicationLabel(
+                        packageManager.getApplicationInfo(pkg, 0)).toString()
+                }.getOrDefault(app.label)
+                com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).recordExternalApp(pkg, lbl)
+                startActivity(launch); true
+            }.getOrDefault(false)
+            if (ok) return
+        }
+        // Nothing installed → install the companion APK (user-confirmed).
+        if (app.installApkUrl.isBlank() || app.installPackage.isBlank()) {
+            findViewById<View>(R.id.fragment_container).snack("${app.label} not installed")
+            return
+        }
+        com.diegonmarcos.superapp.updater.Updater.installApk(
+            this, app.installApkUrl, app.installPackage, app.label,
+        )
+        findViewById<View>(R.id.fragment_container)
+            .snack("${app.label} not installed — downloading…")
+    }
+
     // ── tile click dispatch ──────────────────────────────────────────────
 
     override fun onTileClicked(tileId: String) {
@@ -1401,6 +1452,9 @@ class MainActivity : AppCompatActivity(),
                     .commit()
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
+            // extapp:<appId>/<forkKey> — open a companion app (Cloud-Comms),
+            // installing it from build.json::ui.external_apps if absent.
+            tileId.startsWith("extapp:") -> launchExternalApp(tileId.removePrefix("extapp:"))
             // Any URI with a scheme — http(s), obsidian://, intent://… — is
             // handed off via launchUri so the browser_fallback_url extra
             // (intent:// convention) actually fires when the target app

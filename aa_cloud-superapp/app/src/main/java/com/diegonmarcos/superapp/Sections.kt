@@ -283,6 +283,23 @@ object Sections {
         val icon:    String = "",
     )
 
+    /** One companion Android app the launcher opens INSTEAD of an in-app
+     *  fragment (build.json::ui.external_apps). A tile target of
+     *  `extapp:<id>/<forkKey>` resolves to one of these: [MainActivity.
+     *  launchExternalApp] tries `forks[forkKey]`, then [hubPackage], then —
+     *  if neither is installed — installs [installApkUrl] (a direct APK URL,
+     *  e.g. a GitHub release asset) targeting [installPackage] via libs:updater.
+     *  Cloud-Comms is the constellation hub + 3 fork APKs. */
+    data class ExternalApp(
+        val id: String,
+        val label: String,
+        val hubPackage: String,
+        val installApkUrl: String,
+        val installPackage: String,
+        /** forkKey → fork applicationId (mail/chat/matrix). */
+        val forks: Map<String, String>,
+    )
+
     /** One row of the C3/Health private-services table. */
     data class PrivateService(
         val name: String,
@@ -305,6 +322,7 @@ object Sections {
     @Volatile private var cachedLinktree: Map<String, LinktreeSlide>? = null
     @Volatile private var cachedNews:     List<NewsFeed>?              = null
     @Volatile private var cachedMail:     List<MailAccount>?           = null
+    @Volatile private var cachedExtApps:  List<ExternalApp>?           = null
 
     fun all(): List<Section> {
         cached?.let { return it }
@@ -957,6 +975,35 @@ object Sections {
         cachedMail = out
         return out
     }
+
+    /** build.json::ui.external_apps — companion Android apps the launcher
+     *  hands off to (Cloud-Comms hub + forks). Empty when the key is absent. */
+    fun externalApps(): List<ExternalApp> {
+        cachedExtApps?.let { return it }
+        val json = String(Base64.decode(BuildConfig.EXTERNAL_APPS_B64, Base64.NO_WRAP))
+        val arr  = JSONArray(json)
+        val out  = mutableListOf<ExternalApp>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val forks = mutableMapOf<String, String>()
+            o.optJSONObject("forks")?.let { fo ->
+                val keys = fo.keys()
+                while (keys.hasNext()) { val k = keys.next(); forks[k] = fo.getString(k) }
+            }
+            out.add(ExternalApp(
+                id             = o.getString("id"),
+                label          = o.optString("label", o.getString("id")),
+                hubPackage     = o.optString("hub_package", ""),
+                installApkUrl  = o.optString("install_apk_url", ""),
+                installPackage = o.optString("install_package", o.optString("hub_package", "")),
+                forks          = forks,
+            ))
+        }
+        cachedExtApps = out
+        return out
+    }
+
+    fun externalApp(id: String): ExternalApp? = externalApps().firstOrNull { it.id == id }
 
     /** data/linktree.json — mirror of front/a-Portals/linktree/src/data/
      *  personal-tools.json. Lookup is by `slide.id` (suite | lab-tools |

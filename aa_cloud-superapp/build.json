@@ -239,19 +239,19 @@
             "id": "mail",
             "label": "Mail",
             "icon": "ic_mail",
-            "target": "section:mail"
+            "target": "extapp:cloud-comms/mail"
           },
           {
             "id": "chat-matrix",
             "label": "Chat-Matrix",
             "icon": "ic_p_chat_matrix",
-            "target": "page:chat/matrix"
+            "target": "extapp:cloud-comms/matrix"
           },
           {
             "id": "chat-mm",
             "label": "Chat-Mattermost",
             "icon": "ic_p_chat_mattermost",
-            "target": "page:chat/mattermost"
+            "target": "extapp:cloud-comms/chat"
           }
         ],
         "stack_shared": [
@@ -525,8 +525,8 @@
               {
                 "id": "drive",
                 "label": "IDE (Files Editor)",
-                "icon": "ic_drive",
-                "target": "section:drive"
+                "icon": "ic_code",
+                "target": "extapp:cloud-ide/files"
               }
             ]
           },
@@ -2801,6 +2801,33 @@
         }
       ]
     },
+    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>/<fork_key>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the per-fork package, then the hub package, then — if neither is installed — hands install_apk_url + install_package to libs:updater (PackageInstaller prompt). Fully data-driven: package ids + the GitHub-release APK URL live ONLY here, never in Kotlin. Cloud-Comms = the constellation hub (com.diegonmarcos.comms) + 3 fork APKs; appIds mirror ea_cloud-comms/build.json::forks[*].app_id, the install URL mirrors its release.gh_release (rolling `latest` asset Cloud-Comms-Hub.apk).",
+    "external_apps": [
+      {
+        "id": "cloud-comms",
+        "label": "Cloud-Comms",
+        "hub_package": "com.diegonmarcos.comms",
+        "install_package": "com.diegonmarcos.comms",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Comms-Hub.apk",
+        "forks": {
+          "mail": "com.diegonmarcos.comms.mail",
+          "chat": "com.diegonmarcos.comms.chat",
+          "matrix": "com.diegonmarcos.comms.matrix"
+        }
+      },
+      {
+        "id": "cloud-ide",
+        "label": "Cloud-IDE",
+        "hub_package": "com.diegonmarcos.ide",
+        "install_package": "com.diegonmarcos.ide",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-IDE-Hub.apk",
+        "forks": {
+          "files": "com.diegonmarcos.ide.files",
+          "utils": "com.diegonmarcos.ide.utils",
+          "editor": "com.diegonmarcos.ide.editor"
+        }
+      }
+    ],
     "news_feeds": [
       {
         "id": "bbc-world",
