@@ -417,13 +417,13 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    private fun openAppDrawerSheet() {
+    private fun openAppDrawerSheet(initialTab: String = "") {
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(
                 R.anim.slide_in_up,  R.anim.fade_out,
                 R.anim.fade_in,      R.anim.slide_out_down,
             )
-            .add(R.id.fragment_container, AppDrawerSheetFragment.newInstance(),
+            .add(R.id.fragment_container, AppDrawerSheetFragment.newInstance(initialTab),
                  AppDrawerSheetFragment.BACK_STACK_TAG)
             .addToBackStack(AppDrawerSheetFragment.BACK_STACK_TAG)
             .commit()
@@ -1494,6 +1494,12 @@ class MainActivity : AppCompatActivity(),
             actionType == "open_home_apps" -> {
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet()
+            }
+            // Same Home Apps drawer, opened on the Phone tab — Suite/Phone's
+            // "More" footer routes here (build.json::sections[suite].phone_footer).
+            actionType == "open_home_apps_phone" -> {
+                if (currentSection != "home") goHome()
+                openAppDrawerSheet("phone")
             }
             // Cloud Notification Center — same surface the top-bar bell
             // icon opens. Wiring it here means any data-driven entry

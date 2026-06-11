@@ -182,7 +182,16 @@ class AppDrawerSheetFragment : Fragment() {
         })
 
         if (s == null && childFragmentManager.findFragmentById(host.id) == null) {
-            showTab(tabs.firstOrNull()?.id ?: "cloud")
+            // Land on the requested tab (default = first / Cloud). When it's
+            // not the first tab, drive it through TabLayout.select() so the
+            // chip highlight + body swap happen together via onTabSelected;
+            // the first tab needs an explicit showTab since select(0) is a
+            // no-op (already the default selection).
+            val requested = arguments?.getString(ARG_INITIAL_TAB)?.takeIf { it.isNotBlank() }
+                ?: tabs.firstOrNull()?.id ?: "cloud"
+            val idx = tabs.indexOfFirst { it.id == requested }.coerceAtLeast(0)
+            if (idx > 0) bodyTabs.getTabAt(idx)?.select()
+            else showTab(tabs.firstOrNull()?.id ?: "cloud")
         }
         return root
     }
@@ -270,6 +279,15 @@ class AppDrawerSheetFragment : Fragment() {
         /** Tag used both for the back-stack entry name and for activity-side
          *  presence detection. Don't rename without updating MainActivity. */
         const val BACK_STACK_TAG = "app_drawer"
-        fun newInstance() = AppDrawerSheetFragment()
+        private const val ARG_INITIAL_TAB = "initial_tab"
+
+        /** [initialTab] = home_apps_tabs id to open on ("cloud" | "phone").
+         *  Blank/unknown → first tab (Cloud), preserving the prior default. */
+        fun newInstance(initialTab: String = ""): AppDrawerSheetFragment =
+            AppDrawerSheetFragment().apply {
+                if (initialTab.isNotBlank()) {
+                    arguments = Bundle().apply { putString(ARG_INITIAL_TAB, initialTab) }
+                }
+            }
     }
 }

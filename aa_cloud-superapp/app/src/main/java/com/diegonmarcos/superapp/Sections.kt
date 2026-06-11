@@ -56,6 +56,14 @@ object Sections {
         val stackShared: List<StackPanel> = emptyList(),
         val stackApps:   List<StackPanel> = emptyList(),
         val stackAdmin:  List<StackPanel> = emptyList(),
+        /** Optional centered "More" affordance rendered BELOW the last
+         *  group of a grouped surface. [sectionFooter] → the Cloud tile
+         *  surface (GroupedTilesFragment); [phoneFooter] → the Phone tab
+         *  (SuitePhoneAppsFragment). Each is an [AggTile] dispatched through
+         *  the normal onTileClicked grammar. Source: build.json::sections[*].
+         *  section_footer / phone_footer. */
+        val sectionFooter: AggTile? = null,
+        val phoneFooter:   AggTile? = null,
     ) {
         /** Pick the right icon for the user's current mode.
          *  Apps vs Admin fall back to [iconName] when no override exists. */
@@ -465,6 +473,19 @@ object Sections {
                 return out
             }
 
+            /** sections[].section_footer / phone_footer = a single tile. */
+            fun parseFooter(key: String): AggTile? {
+                val f = o.optJSONObject(key) ?: return null
+                val target = f.optString("target", "")
+                if (target.isBlank()) return null
+                return AggTile(
+                    id       = f.optString("id", f.optString("label", "more")),
+                    label    = f.optString("label", "More"),
+                    iconName = f.optString("icon", "ic_p_more"),
+                    target   = target,
+                )
+            }
+
             parsed.add(
                 Section(
                     id              = o.getString("id"),
@@ -485,6 +506,8 @@ object Sections {
                     stackShared     = parseStack("stack_shared"),
                     stackApps       = parseStack("stack_apps"),
                     stackAdmin      = parseStack("stack_admin"),
+                    sectionFooter   = parseFooter("section_footer"),
+                    phoneFooter     = parseFooter("phone_footer"),
                 )
             )
         }

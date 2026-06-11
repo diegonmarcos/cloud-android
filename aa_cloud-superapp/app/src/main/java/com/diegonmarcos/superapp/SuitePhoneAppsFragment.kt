@@ -131,7 +131,44 @@ class SuitePhoneAppsFragment : Fragment() {
                 setPadding(0, dp(ctx, 8), 0, dp(ctx, 8))
             })
         }
+        // Centered "More" affordance below the last group (data-driven via
+        // build.json::sections[id=suite].phone_footer) — routes to the full
+        // Home Apps drawer (Phone tab) through the activity's TileClickListener.
+        Sections.byId("suite")?.phoneFooter?.let { root.addView(moreFooter(ctx, it)) }
         return scroll
+    }
+
+    private fun moreFooter(ctx: Context, tile: Sections.AggTile): View {
+        val wrap = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(ctx, 20); bottomMargin = dp(ctx, 12) }
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                Haptics.tap(it)
+                (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tile.target)
+            }
+        }
+        val iconRes = Sections.iconResFor(ctx, tile.iconName)
+        if (iconRes != 0) {
+            wrap.addView(ImageView(ctx).apply {
+                setImageResource(iconRes)
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+                val sz = dp(ctx, 32)
+                layoutParams = LinearLayout.LayoutParams(sz, sz)
+            })
+        }
+        wrap.addView(TextView(ctx).apply {
+            text = tile.label
+            setTextColor(0xCCFFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(ctx, 4), 0, 0)
+        })
+        return wrap
     }
 
     private fun parseGroups(): List<Group> = runCatching {

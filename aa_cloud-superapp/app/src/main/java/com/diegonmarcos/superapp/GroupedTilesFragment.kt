@@ -50,7 +50,46 @@ class GroupedTilesFragment : Fragment() {
             col.addView(groupHeader(ctx, group.title))
             col.addView(tileRow(ctx, group.tiles))
         }
+        // Centered "More" affordance below the last group (data-driven via
+        // build.json::sections[*].section_footer). Dispatches through the
+        // same TileClickListener as any tile.
+        section?.sectionFooter?.let { col.addView(moreFooter(ctx, it)) }
         return scroll
+    }
+
+    /** Centered icon + label rendered below all groups. Tap routes the
+     *  footer's target through the activity's TileClickListener. */
+    private fun moreFooter(ctx: android.content.Context, tile: Sections.AggTile): View {
+        val wrap = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(20); bottomMargin = dp(12) }
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                Haptics.tap(it)
+                (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tile.target)
+            }
+        }
+        val iconRes = Sections.iconResFor(ctx, tile.iconName)
+        if (iconRes != 0) {
+            wrap.addView(android.widget.ImageView(ctx).apply {
+                setImageResource(iconRes)
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+                val sz = dp(32)
+                layoutParams = LinearLayout.LayoutParams(sz, sz)
+            })
+        }
+        wrap.addView(TextView(ctx).apply {
+            text = tile.label
+            setTextColor(0xCCFFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, dp(4), 0, 0)
+        })
+        return wrap
     }
 
     private fun groupHeader(ctx: android.content.Context, title: String): View =

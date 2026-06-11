@@ -424,6 +424,19 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "_doc_footers": "Centered 'More' affordance rendered below the LAST group on each Suite surface. section_footer → Suite/Cloud (GroupedTilesFragment, below 'Tools Dashboards'); phone_footer → Suite/Phone (SuitePhoneAppsFragment, below 'Configs'). Each is a tile {id,label,icon,target} dispatched through the same onTileClicked grammar as any tile. Targets jump to the full Home Apps drawer: action:open_home_apps lands on the Cloud tab; action:open_home_apps_phone lands on the Phone tab.",
+        "section_footer": {
+          "id": "more-cloud",
+          "label": "More",
+          "icon": "ic_p_more",
+          "target": "action:open_home_apps"
+        },
+        "phone_footer": {
+          "id": "more-phone",
+          "label": "More",
+          "icon": "ic_p_more",
+          "target": "action:open_home_apps_phone"
+        },
         "_doc_phone_app_groups": "Curated phone apps surfaced in Suite/Phone, grouped under the same titled sections used by Suite/Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
         "phone_app_groups": [
           {
