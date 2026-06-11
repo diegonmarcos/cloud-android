@@ -56,17 +56,18 @@ class PhoneAppsFragment : Fragment() {
         }
         scroll.addView(rootCol)
 
-        // A small centered refresh affordance at the top — invalidates the
-        // app cache (picks up new installs / uninstalls) and rebuilds the
-        // folder + smart-folder content in place.
+        // Content first, then a small centered refresh affordance at the
+        // VERY BOTTOM — invalidates the app cache (picks up new installs
+        // / uninstalls) and rebuilds the folder + smart-folder content
+        // in place.
         val content = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        rootCol.addView(content)
+        buildContent(ctx, content)
         rootCol.addView(refreshBar(ctx) {
             invalidateCache()
             content.removeAllViews()
             buildContent(ctx, content)
         })
-        rootCol.addView(content)
-        buildContent(ctx, content)
         return scroll
     }
 
@@ -78,7 +79,7 @@ class PhoneAppsFragment : Fragment() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(ctx, 4) }
+            ).apply { topMargin = dp(ctx, 8) }
         }
         bar.addView(android.widget.ImageView(ctx).apply {
             setImageResource(R.drawable.ic_refresh)
