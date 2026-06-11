@@ -15,6 +15,9 @@
          system settings (Notifications has an in-app button that fires
          the standard request flow on API 33+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Long-press → Uninstall, via PackageInstaller.uninstall (shows the
+         system confirm dialog). Normal permission, auto-granted on API 26+. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

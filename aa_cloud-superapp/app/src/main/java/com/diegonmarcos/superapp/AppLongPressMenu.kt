@@ -137,17 +137,14 @@ object AppLongPressMenu {
             }
         })
 
-        // Uninstall — system prompt with the standard "Do you want
-        // to uninstall this app?" dialog. We don't try to bypass it.
+        // Uninstall — modern PackageInstaller.uninstall(): reliably raises the
+        // system "Uninstall this app?" dialog across OEMs (ACTION_DELETE was
+        // silently no-op on some devices). The shared PackageInstallerReceiver
+        // forwards STATUS_PENDING_USER_ACTION → the confirm dialog and reports
+        // the result. Needs REQUEST_DELETE_PACKAGES (declared in the manifest).
         menu.addView(makeMenuRow(ctx, "Uninstall", "system") {
             dialog.dismiss()
-            runCatching {
-                @Suppress("DEPRECATION")
-                val intent = Intent(Intent.ACTION_DELETE)
-                    .setData(Uri.fromParts("package", pkg, null))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ctx.startActivity(intent)
-            }
+            requestUninstall(ctx, pkg)
         })
 
         backdrop.addView(menu)
@@ -160,6 +157,29 @@ object AppLongPressMenu {
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
         dialog.show()
+    }
+
+    /** Fire the system uninstall flow for [pkg] via PackageInstaller.uninstall.
+     *  The result callback goes to the shared PackageInstallerReceiver (which
+     *  launches the confirm dialog and surfaces the outcome). Wrapped so a
+     *  SecurityException (permission revoked) or a protected/system package
+     *  can't crash the launcher. */
+    private fun requestUninstall(ctx: Context, pkg: String) {
+        runCatching {
+            val installer = ctx.packageManager.packageInstaller
+            val intent = Intent(ctx, com.diegonmarcos.superapp.updater.PackageInstallerReceiver::class.java)
+                .setPackage(ctx.packageName)
+                .putExtra(
+                    com.diegonmarcos.superapp.updater.PackageInstallerReceiver.EXTRA_OP,
+                    com.diegonmarcos.superapp.updater.PackageInstallerReceiver.OP_UNINSTALL,
+                )
+            val flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+                android.app.PendingIntent.FLAG_MUTABLE
+            val pending = android.app.PendingIntent.getBroadcast(ctx, pkg.hashCode(), intent, flags)
+            installer.uninstall(pkg, pending.intentSender)
+        }.onFailure {
+            android.widget.Toast.makeText(ctx, "Can't uninstall: ${it.message}", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** Query the dynamic + manifest shortcuts for the given package.

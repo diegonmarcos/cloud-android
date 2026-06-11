@@ -567,20 +567,20 @@
                 "id": "mail",
                 "label": "Mail",
                 "icon": "ic_mail",
-                "target": "section:mail"
+                "target": "extapp:cloud-comms/mail"
               },
               {
                 "id": "mattermost",
-                "label": "Mattermost",
+                "label": "Chat-Mattermost",
                 "icon": "ic_p_chat_mattermost",
-                "target": "page:chat/mattermost"
+                "target": "extapp:cloud-comms/chat"
               },
               {
                 "id": "element",
-                "label": "Element",
+                "label": "Chat-Matrix",
                 "icon": "ic_p_chat_matrix",
-                "target": "app://im.vector.app?fallback=https%3A%2F%2Fapp.element.io%2F",
-                "_doc": "Element (Matrix) messenger. Opens the installed im.vector.app via the existing app:// launcher; falls back to the Element web client when the app isn't installed. Icon reuses ic_p_chat_matrix since Element IS the reference Matrix client."
+                "target": "extapp:cloud-comms/matrix",
+                "_doc": "Routes to the Cloud-Comms constellation (matrix fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as the Comms bottom-nav section and the Suite/AI IDE tile. Replaces the old app://im.vector.app launcher."
               }
             ]
           },

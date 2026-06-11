@@ -34,7 +34,12 @@ class PackageInstallerReceiver : BroadcastReceiver() {
             pkg.isBlank() || pkg == context.packageName -> "Cloud SuperApp"
             else -> pkg
         }
-        Log.i(TAG, "status=$status msg=$message pkg=$pkg")
+        // This same receiver drives installs AND uninstalls (the long-press
+        // menu fires PackageInstaller.uninstall with op=uninstall). Uninstall
+        // shows no in-app overlay, so it must NOT touch UpdateProgress.
+        val isUninstall = intent.getStringExtra(EXTRA_OP) == OP_UNINSTALL
+        val verb = if (isUninstall) "Uninstall" else "Install"
+        Log.i(TAG, "status=$status msg=$message pkg=$pkg op=${if (isUninstall) "uninstall" else "install"}")
 
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -44,10 +49,11 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 context.startActivity(confirm)
             }
             PackageInstaller.STATUS_SUCCESS -> {
-                // Resolve the in-app overlay (it sat on "Installing…" while the
+                // Resolve the install overlay (it sat on "Installing…" while the
                 // system installer was up). MainActivity auto-dismisses on Done.
-                UpdateProgress.update(UpdateProgress.State.Done)
-                surface(context, "Installed ✓", "$appName installed successfully.",
+                // Uninstall never raised the overlay, so leave it alone.
+                if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Done)
+                surface(context, "${verb}ed ✓", "$appName ${verb.lowercase()}ed successfully.",
                     severity = NotificationStore.Sev.INFO)
             }
             else -> {
@@ -62,9 +68,9 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                     else -> "status=$status"
                 }
                 // Resolve the overlay to a visible failure instead of leaving it
-                // stuck on "Installing…" for a companion install.
-                UpdateProgress.update(UpdateProgress.State.Failed(message.ifEmpty { label }))
-                surface(context, "Install failed: $label", message.ifEmpty { label },
+                // stuck on "Installing…" for a companion install (installs only).
+                if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Failed(message.ifEmpty { label }))
+                surface(context, "$verb failed: $label", message.ifEmpty { label },
                     severity = NotificationStore.Sev.ERROR)
             }
         }
@@ -104,5 +110,12 @@ class PackageInstallerReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .build()
         nm.notify(NOTIF_ID, notif)
+    }
+
+    companion object {
+        /** Set on the PendingIntent so this receiver can tell an uninstall
+         *  (long-press menu) from an install/update and message accordingly. */
+        const val EXTRA_OP = "com.diegonmarcos.superapp.updater.OP"
+        const val OP_UNINSTALL = "uninstall"
     }
 }
