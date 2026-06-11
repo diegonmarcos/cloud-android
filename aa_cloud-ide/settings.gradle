@@ -1,0 +1,31 @@
+// Settings — gradle module graph for the HUB project only.
+// Data-driven from build.json::modules (FIRE rule 6: never hardcode lists).
+// The three FORKS are separate gradle/cordova projects in their materialized
+// tracker clones (ea_files-amaze / ea_files-amaze-utils / ea_editor-acode) —
+// built via `./build.sh build-fork <key>`, NEVER included here.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "cloud-ide"
+
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return  // skip _doc keys
+    include ":${name}"
+    // :hub → hub/  (same :path → /path mapping as ea_cloud-superapp).
+    def path = name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://diegonmarcos.com/schemas/ide-ipc-v1.schema.json",
+  "title": "Cloud-IDE IPC contract v1",
+  "description": "Validates contract/ide-ipc-v1.json. Run via `./build.sh verify-contract`. Phase-5 conformance tests assert every fork exporter + the hub surface against this same shape.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["version", "authority", "permission", "permission_protection_level", "domains", "tables", "aidl", "states"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "authority": { "type": "string", "pattern": "^[a-z][a-z0-9_.]+$" },
+    "permission": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_.]+$" },
+    "permission_protection_level": { "type": "string", "enum": ["signature"] },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "enum": ["editor", "files", "utils"] },
+      "uniqueItems": true
+    },
+    "tables": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path", "columns"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^[a-z_]+$" },
+          "columns": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "aidl": {
+      "type": "object",
+      "required": ["service_interface", "callback_interface", "actions", "callbacks"],
+      "properties": {
+        "service_interface": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_.]+$" },
+        "callback_interface": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_.]+$" },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "args", "returns"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+              "args": { "type": "array", "items": { "type": "string" } },
+              "returns": { "type": "string", "enum": ["void", "boolean", "int", "long", "String"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "callbacks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "args"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+              "args": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "states": {
+      "type": "object",
+      "required": ["transfer", "scan"],
+      "properties": {
+        "transfer": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "scan": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}

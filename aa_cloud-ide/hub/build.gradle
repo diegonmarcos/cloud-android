@@ -1,0 +1,115 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// ── Data-driven config bake ─────────────────────────────────────────────
+// Everything the hub needs at runtime is read from the repo's source-of-truth
+// JSON at config time and baked into BuildConfig — no parallel hardcoded list
+// in Kotlin (FIRE rule 4). Bump a value in build.json / contract / data, get a
+// rebuilt BuildConfig on the next gradle run.
+def repoRoot   = rootDir                       // ea_cloud-ide/
+def buildJson  = new groovy.json.JsonSlurper().parse(file("$repoRoot/build.json"))
+def contract   = new groovy.json.JsonSlurper().parse(file("$repoRoot/contract/ide-ipc-v1.json"))
+def endpoints  = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/ide-endpoints.json"))
+
+def runNumber  = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
+def codeBase   = (buildJson.android.version_code as Number).intValue()
+def codeFinal  = codeBase + runNumber
+def shortSha   = (System.getenv('GITHUB_SHA')
+                  ?: providers.exec {
+                         commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
+                         ignoreExitValue = true
+                     }.standardOutput.asText.get().trim()).take(8)
+
+// IPC contract constants — single source of truth = contract/ide-ipc-v1.json.
+def ipcAuthority  = contract.authority
+def ipcPermission = contract.permission
+def ipcVersion    = (contract.version as Number).intValue()
+
+// Fork registry (app ids + tracker dirs + blocked state) baked as base64-JSON
+// so the switcher UI renders its tiles from build.json::forks, not a hardcoded
+// list. Base64 sidesteps Java-string-literal escaping.
+def forksJson = groovy.json.JsonOutput.toJson(buildJson.forks.findAll { k, v -> !k.startsWith('_') })
+def forksB64  = forksJson.bytes.encodeBase64().toString()
+// Endpoints baked for the workspace root + 'open in app' deep-link fallbacks.
+def endpointsB64 = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64().toString()
+
+android {
+    namespace 'com.diegonmarcos.ide'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.diegonmarcos.ide'
+        minSdk 26
+        targetSdk 34
+        versionCode codeFinal
+        versionName "${buildJson.android.version_name} (sha-${shortSha})"
+
+        buildConfigField "int",    "IPC_VERSION",      "${ipcVersion}"
+        buildConfigField "String", "IPC_AUTHORITY",    "\"${ipcAuthority}\""
+        buildConfigField "String", "IPC_PERMISSION",   "\"${ipcPermission}\""
+        buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
+        buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
+        buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
+
+        // Resolve the IPC permission name into the manifest placeholder so the
+        // <permission>/<provider>/<service> declarations stay data-driven too.
+        manifestPlaceholders = [ ipcPermission: ipcPermission, ipcAuthority: ipcAuthority ]
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildFeatures {
+        buildConfig = true
+        aidl = true
+    }
+
+    // Stable signing — the WHOLE constellation (this hub + 3 forks + cloud-comms
+    // + SuperApp) must share ONE key: the IPC permission is
+    // protectionLevel=signature, so a mismatched signature means the forks /
+    // SuperApp can't talk to the hub. The keystore at hub/keystores/ide.keystore
+    // MUST contain the SAME keypair as cloud-comms' keystore (one constellation
+    // signing identity) — generated once, stored in vault, wired via CI sops.
+    // Local fallback to the framework default keystore keeps dev builds working
+    // (they just can't cross-talk with CI-signed APKs).
+    signingConfigs {
+        debug {
+            def ks = file('keystores/ide.keystore')
+            if (ks.exists()) {
+                storeFile     ks
+                storePassword 'android'
+                keyAlias      'idekey'
+                keyPassword   'android'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+        }
+        release {
+            debuggable true
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+}

@@ -1,0 +1,110 @@
+{
+  "name": "cloud-ide",
+  "description": "Cloud-IDE — constellation of three minimally-forked upstream developer apps (Acode code editor / Amaze File Manager / Amaze File Utilities) plus a thin original hub APK. The hub switches between the forks and brokers their data (workspaces, recent files, git status, storage analysis, transfers) to Cloud-SuperApp over signature-gated AIDL + ContentProvider IPC. The shared resource is a hub-owned on-device workspace tree (not a server). Forks are declarative: pinned upstream tag + committed patch series, materialized into gitignored tracker clones at build time. Built via Nix devShell (gradle + AGP + Android SDK + node/cordova for the Acode fork).",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "_doc": "Hub-only application coordinates. The forks carry their OWN applicationId / version (declared per fork in build.json::forks) — they are separate APKs.",
+    "application_id": "com.diegonmarcos.ide",
+    "compile_sdk": 35,
+    "min_sdk": 26,
+    "target_sdk": 34,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "_doc_abi_filters": "Hub is pure-JVM (no native libs) so ABI filtering is irrelevant to it; kept for schema parity with ea_cloud-superapp / ea_cloud-comms. The forks declare their own abi_filters.",
+    "abi_filters": ["arm64-v8a"]
+  },
+  "toolchain": {
+    "_doc": "Pinned for reproducibility — all derived in flake.nix. Mirrors ea_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
+    "agp": "8.7.3",
+    "gradle": "8.10.2",
+    "kotlin": "1.9.24",
+    "jdk": "17",
+    "node": "20"
+  },
+  "ipc": {
+    "_doc": "Single source of truth for the on-device IPC surface. Kotlin constants in hub + SuperApp + every fork exporter MUST mirror this; contract/ide-ipc-v1.json carries the full table/aidl shapes and is validated by `./build.sh verify-contract`. Bumping `version` is a breaking change — add an ide-ipc-v2.json, never edit v1 in place. The permission/authority share the com.diegonmarcos.ide namespace; the signature on this permission is the SAME constellation key as cloud-comms + ea_cloud-superapp.",
+    "version": 1,
+    "contract": "contract/ide-ipc-v1.json",
+    "authority": "com.diegonmarcos.ide.provider",
+    "permission": "com.diegonmarcos.ide.permission.IPC",
+    "aidl_service": "com.diegonmarcos.ide.IIdeService"
+  },
+  "modules": {
+    "_doc": "Gradle module graph — settings.gradle iterates this (FIRE rule 6: never hardcode the list). Only the hub is an in-tree gradle module; the three forks are SEPARATE gradle/cordova projects living in their materialized tracker clones, built via `./build.sh build-fork <name>`, never included here.",
+    "hub": {
+      "type": "application",
+      "depends_on": [],
+      "comment": "Thin switcher + IPC broker. Original code (no upstream). Declares the signature permission, the unified IdeProvider (reads), the IIdeService AIDL (actions + push callbacks), the launcher switcher UI, and owns the shared workspace root (data/ide-endpoints.json::workspace.root_path). HUB-SHARING: the broker + updater are structurally identical to cloud-comms-hub — once both exist, extract them into a shared gradle module (see forks/../README) rather than maintaining two copies. cloud-comms scaffolded first, so Cloud-IDE consumes the extracted core; until that extraction lands, this hub mirrors the comms hub deliberately."
+    }
+  },
+  "forks": {
+    "_doc": "Declarative fork registry — THE source of truth for the constellation. Each fork = pinned upstream tag + committed patch series under forks/<key>/patches/. `./build.sh materialize-fork <key>` clones the upstream at the pin into the tracker dir, applies the series, and leaves a buildable project. Upstream bump = edit pinned_tag, re-apply, resolve rejects, commit. NEVER a long-lived divergent clone. `priority` is build/dev sequencing only. The fork KEY is the IPC domain (editor/files/utils) — forkUri = com.diegonmarcos.ide.<key>.provider. Tags were verified live at scaffold time (2026-06-11).",
+    "files": {
+      "app_id": "com.diegonmarcos.ide.files",
+      "upstream_repo": "https://github.com/TeamAmaze/AmazeFileManager.git",
+      "tracker_dir": "ea_files-amaze",
+      "pinned_tag": "v3.11.2",
+      "license": "GPL-3.0",
+      "primary_lang": "Kotlin+Java",
+      "runtime": "native",
+      "priority": 1,
+      "blocked_on": null,
+      "patches": [],
+      "comment": "Amaze File Manager. Build this fork FIRST: native Kotlin/Java, core of the file domain. PAIRING: FM hardcodes the Utilities package in AboutActivity.PACKAGE_AMAZE_UTILS = 'com.amaze.fileutilities' (launch constant) and reads its intent extra 'com.amaze.fileutilities.AFM_LOCATE_FILE_NAME' in MainActivity — both must be renamed symmetrically with the utils fork. Exporter FilesExportProvider owns recent_files + transfers. Uses MANAGE_EXTERNAL_STORAGE (self-distributed, no Play policy)."
+    },
+    "utils": {
+      "app_id": "com.diegonmarcos.ide.utils",
+      "upstream_repo": "https://github.com/TeamAmaze/AmazeFileUtilities.git",
+      "tracker_dir": "ea_files-amaze-utils",
+      "pinned_tag": "v1.94",
+      "license": "GPL-3.0",
+      "primary_lang": "Kotlin",
+      "runtime": "native",
+      "priority": 2,
+      "blocked_on": null,
+      "patches": [],
+      "comment": "Amaze File Utilities. Build SECOND (smallest diff, but must follow files for the symmetric pairing rename). Upstream is near-dormant (v1.94, 2024-07) — lowest drift cost, effectively owned. Already ships AIDL. Exporter UtilsExportProvider owns storage_summary. Re-namespace its FM-targeted intent key AFM_LOCATE_FILE_NAME to match the files fork's MainActivity reader."
+    },
+    "editor": {
+      "app_id": "com.diegonmarcos.ide.editor",
+      "upstream_repo": "https://github.com/Acode-Foundation/Acode.git",
+      "tracker_dir": "ea_editor-acode",
+      "pinned_tag": "v1.12.4",
+      "license": "MIT",
+      "primary_lang": "JavaScript",
+      "runtime": "cordova",
+      "priority": 3,
+      "blocked_on": null,
+      "patches": [],
+      "comment": "Acode code editor (Cordova hybrid, MIT). Build LAST: fastest-moving upstream (~weekly; v1.12.4 was latest at scaffold). Keep the NATIVE patch diff minimal — applicationId/branding + ONE Cordova plugin (Java) declaring the EditorExportProvider + IIdeService stub via <config-file target=AndroidManifest.xml> in plugin.xml. ALL behavior (recent-file reporting, workspace registration, hub switcher entry, gitea/SFTP presets) lives in forks/editor/acode-plugin/ as a normal Acode JS plugin so it rides upstream updates for free. Built-in SFTP gets presets from data/ide-endpoints.json. Exporter owns workspaces + recent_files + git_repos."
+    }
+  },
+  "release": {
+    "_doc": "Per-APK GHCR distribution. The hub + each fork publish their own OCI artifact; the hub's in-app updater drives the on-device fleet (same OCI HTTP flow ea_cloud-superapp/libs:updater + cloud-comms use). {sha} → git short sha, {version_name} → android.version_name.",
+    "artifact": {
+      "debug": "cloud-ide-hub-debug.apk",
+      "release": "cloud-ide-hub-release.apk"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-ide-hub",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": ["latest", "{version_name}", "sha-{sha}"]
+    },
+    "phone_install": {
+      "default_tag": "latest",
+      "target_dir": "~/storage/shared/Download",
+      "asset_name": "Cloud-IDE-Hub.apk"
+    },
+    "gh_release": {
+      "enabled": false,
+      "rolling_tag": null
+    }
+  }
+}

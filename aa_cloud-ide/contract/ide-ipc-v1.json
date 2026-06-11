@@ -1,0 +1,56 @@
+{
+  "$schema": "./ide-ipc-v1.schema.json",
+  "version": 1,
+  "authority": "com.diegonmarcos.ide.provider",
+  "permission": "com.diegonmarcos.ide.permission.IPC",
+  "permission_protection_level": "signature",
+  "domains": ["editor", "files", "utils"],
+  "_doc": "The on-device IPC contract between the Cloud-IDE hub and Cloud-SuperApp (and between the hub and each fork exporter). THE source of truth: hub/SuperApp/fork constants mirror this file; `./build.sh verify-contract` validates it against ide-ipc-v1.schema.json. Only file URIs + metadata cross the boundary — file CONTENT never does; full content is reached via the openFile/revealInFiles AIDL actions (deep link into the owning app). version is breaking: never edit v1 in place, add v2.",
+  "tables": {
+    "_doc": "ContentProvider tables. The hub exposes them under `authority`; each fork exporter exposes the tables IT owns under its own authority (com.diegonmarcos.ide.<domain>.provider) and the hub UNIONs them. Not every fork owns every table (editor → workspaces/recent_files/git_repos; files → recent_files/transfers; utils → storage_summary); a fork that doesn't own a table simply returns no rows and is skipped. `_ts`/`_uri` columns: epoch-millis longs / content-or-file URIs. `_bytes` columns are longs.",
+    "workspaces": {
+      "path": "workspaces",
+      "columns": ["domain", "workspace_id", "name", "root_uri", "kind", "last_opened_ts"]
+    },
+    "recent_files": {
+      "path": "recent_files",
+      "columns": ["domain", "workspace_id", "file_uri", "display_name", "mime", "last_opened_ts"]
+    },
+    "git_repos": {
+      "path": "git_repos",
+      "columns": ["workspace_id", "remote_url", "branch", "dirty", "ahead", "behind", "last_fetch_ts"]
+    },
+    "storage_summary": {
+      "path": "storage_summary",
+      "columns": ["volume", "total_bytes", "used_bytes", "junk_bytes", "duplicate_bytes", "scanned_ts"]
+    },
+    "transfers": {
+      "path": "transfers",
+      "columns": ["transfer_id", "direction", "peer", "file_uri", "state", "bytes_done", "bytes_total"]
+    }
+  },
+  "aidl": {
+    "_doc": "Bound service for actions + push callbacks (the write/live half the read-only ContentProvider can't do). Gated by the same signature permission. Survives Doze (bound service, not a socket). Method/callback signatures here are mirrored exactly in hub/src/main/aidl/.",
+    "service_interface": "com.diegonmarcos.ide.IIdeService",
+    "callback_interface": "com.diegonmarcos.ide.IIdeCallback",
+    "actions": [
+      { "name": "openFile", "args": ["String fileUri"], "returns": "boolean" },
+      { "name": "openWorkspace", "args": ["String workspaceId"], "returns": "boolean" },
+      { "name": "revealInFiles", "args": ["String fileUri"], "returns": "void" },
+      { "name": "analyzeStorage", "args": ["String volume"], "returns": "void" },
+      { "name": "openRemote", "args": ["String endpointId"], "returns": "boolean" },
+      { "name": "registerCallback", "args": ["IIdeCallback cb"], "returns": "void" },
+      { "name": "unregisterCallback", "args": ["IIdeCallback cb"], "returns": "void" }
+    ],
+    "callbacks": [
+      { "name": "onRecentChanged", "args": ["String domain"] },
+      { "name": "onStorageScanComplete", "args": ["String volume"] },
+      { "name": "onTransferStateChanged", "args": ["String transferId"] }
+    ]
+  },
+  "states": {
+    "_doc": "Allowed values. transfer = transfers.state / onTransferStateChanged; scan = storage_summary scan lifecycle / onStorageScanComplete.",
+    "transfer": ["queued", "running", "paused", "done", "error"],
+    "scan": ["idle", "scanning", "done", "error"]
+  }
+}

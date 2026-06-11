@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Network for the in-app updater (GHCR OCI HTTP API). The hub itself
+         does no sync; the forks own all file/server traffic. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Discover which fork APKs are installed (ForkRegistry.isInstalled +
+         getLaunchIntentForPackage). The three fork ids are fixed, so a scoped
+         <queries> is enough — no QUERY_ALL_PACKAGES needed. -->
+    <queries>
+        <package android:name="com.diegonmarcos.ide.editor" />
+        <package android:name="com.diegonmarcos.ide.files" />
+        <package android:name="com.diegonmarcos.ide.utils" />
+    </queries>
+
+    <!-- ── The IPC gate ──────────────────────────────────────────────────
+         Custom permission, protectionLevel=signature: only apps signed with
+         the SAME key (the forks + Cloud-SuperApp + cloud-comms) can hold it, so
+         only they can query the provider or bind the service. The name is
+         injected from build.json/contract via the ${ipcPermission} manifest
+         placeholder so it stays data-driven (one source of truth). -->
+    <permission
+        android:name="${ipcPermission}"
+        android:protectionLevel="signature" />
+    <!-- The hub also HOLDS the permission so it can query the per-fork
+         exporter providers (which require the same permission). -->
+    <uses-permission android:name="${ipcPermission}" />
+
+    <application
+        android:name=".App"
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_ide"
+        android:theme="@style/Theme.CloudIde"
+        android:allowBackup="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Unified read surface. Exported but gated by the signature
+             permission — SuperApp (same key) can query; anything else can't. -->
+        <provider
+            android:name=".IdeProvider"
+            android:authorities="${ipcAuthority}"
+            android:exported="true"
+            android:permission="${ipcPermission}" />
+
+        <!-- Action + push broker (AIDL). Same signature gate. -->
+        <service
+            android:name=".IdeService"
+            android:exported="true"
+            android:permission="${ipcPermission}"
+            tools:ignore="ExportedService" />
+
+    </application>
+</manifest>

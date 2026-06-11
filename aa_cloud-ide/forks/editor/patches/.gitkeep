@@ -1,0 +1,3 @@
+# Patch series for the Acode fork (NATIVE diff only — JS lives in acode-plugin/).
+# Add NNNN-*.patch (git format-patch / git am compatible) here. Empty = pure
+# upstream checkout at pin.
