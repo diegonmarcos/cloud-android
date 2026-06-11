@@ -74,6 +74,14 @@ object SystemInfoPopup {
             container.addView(spacer(ctx, (4 * d).toInt()))
         }
 
+        // CPU busy/idle aggregate — /proc/uptime (uptime · idle-across-cores),
+        // same row Cloud-SuperApp's About shows via SysfsProc.cpuLoad().
+        readCpuBusyIdle()?.let { bi ->
+            container.addView(label(ctx, "CPU busy / idle  (Σ ${Runtime.getRuntime().availableProcessors()} cores)"))
+            container.addView(valueSmall(ctx, bi))
+            container.addView(spacer(ctx, (4 * d).toInt()))
+        }
+
         container.addView(label(ctx, "Uptime"))
         container.addView(valueSmall(ctx, readUptime()))
         container.addView(spacer(ctx, (10 * d).toInt()))
@@ -145,6 +153,31 @@ object SystemInfoPopup {
         val parts = File("/proc/loadavg").readText().trim().split(' ')
         if (parts.size >= 3) "${parts[0]} · ${parts[1]} · ${parts[2]}" else null
     } catch (_: Throwable) { null }
+
+    /** /proc/uptime → "busy 3 h 12 m · idle 21 h 04 m · 13.2 %" (idle is already
+     *  core-aggregated; busy = uptime×cores − idle). Mirrors SuperApp's row. */
+    private fun readCpuBusyIdle(): String? {
+        return try {
+            val parts = File("/proc/uptime").readText().trim().split(' ').filter { it.isNotBlank() }
+            if (parts.size < 2) return null
+            val uptime = parts[0].toDouble()
+            val idle = parts[1].toDouble()
+            val cores = Runtime.getRuntime().availableProcessors()
+            val busy = (uptime * cores - idle).coerceAtLeast(0.0)
+            val frac = if (busy + idle > 0) busy / (busy + idle) else 0.0
+            "busy ${fmtSecs(busy.toLong())} · idle ${fmtSecs(idle.toLong())} · %.1f %%".format(frac * 100.0)
+        } catch (_: Throwable) { null }
+    }
+
+    private fun fmtSecs(s: Long): String {
+        if (s <= 0L) return "0 s"
+        val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
+        return when {
+            h > 0 -> "%d h %02d m".format(h, m)
+            m > 0 -> "%d m %02d s".format(m, sec)
+            else  -> "%d s".format(sec)
+        }
+    }
 
     private fun readUptime(): String {
         val ms = (SystemClock.elapsedRealtime() - AppProcessUptime.startedAtElapsed).coerceAtLeast(0L)
