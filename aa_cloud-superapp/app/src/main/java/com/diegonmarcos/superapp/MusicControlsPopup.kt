@@ -120,11 +120,21 @@ class MusicControlsPopup(private val ctx: Context) {
         // Title marquee needs isSelected=true to actually scroll.
         view.findViewById<TextView>(R.id.music_popup_title).isSelected = true
 
+        // Width = 90% of the REAL screen width (Samsung media-card
+        // style: near-full-width with small side margins), derived
+        // from displayMetrics so it adapts to any device instead of a
+        // hardcoded dp that could overflow a narrow screen. Height
+        // comes from the card's fixed 196dp (root is match_parent
+        // width / fixed height in XML; the explicit window width here
+        // governs the actual rendered width).
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        val popupW = (screenW * 0.90f).toInt()
+
         // PopupWindow setup — outsideTouchable so the user can tap
         // outside to dismiss; focusable=true so back-press dismisses.
         val pw = PopupWindow(
             view,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            popupW,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
             true,
         )
@@ -148,11 +158,7 @@ class MusicControlsPopup(private val ctx: Context) {
         // anchor's side. Compute xOffset so the popup's left edge
         // lands at (screenWidth − popupWidth) / 2 regardless of
         // where the anchor sits — same fix CalendarAgendaPopup uses.
-        // popupWidth = the layout's fixed 340dp root card width.
-        val d = ctx.resources.displayMetrics.density
         val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
-        val screenW = ctx.resources.displayMetrics.widthPixels
-        val popupW = (340 * d).toInt()
         val xOffset = (screenW - popupW) / 2 - anchorLoc[0]
         pw.showAsDropDown(anchor, xOffset, 4, android.view.Gravity.START)
     }
