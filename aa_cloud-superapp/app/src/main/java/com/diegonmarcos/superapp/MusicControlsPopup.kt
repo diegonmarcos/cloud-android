@@ -48,6 +48,9 @@ class MusicControlsPopup(private val ctx: Context) {
          *  inflate the popup down the screen. 167 ≈ 196 × 0.85 (the
          *  15% trim taken off the top/bottom padding). */
         private const val POPUP_HEIGHT_DP = 167f
+
+        /** Shazam package — the leftmost popup button launches it. */
+        private const val SHAZAM_PKG = "com.shazam.android"
     }
 
     private var popup: PopupWindow? = null
@@ -96,6 +99,49 @@ class MusicControlsPopup(private val ctx: Context) {
             }
         } else {
             iconView.setImageDrawable(null)
+        }
+
+        // Shazam (leftmost) — opens the Shazam app; works regardless of
+        // whether anything is playing. Use the REAL installed-app icon
+        // when present (loaded at runtime, no shipped trademark asset);
+        // keep the generic fallback vector otherwise.
+        val shazamBtn = view.findViewById<ImageButton>(R.id.music_popup_shazam)
+        runCatching {
+            shazamBtn.setImageDrawable(ctx.packageManager.getApplicationIcon(SHAZAM_PKG))
+        }
+        shazamBtn.setOnClickListener {
+            val intent = ctx.packageManager.getLaunchIntentForPackage(SHAZAM_PKG)
+                ?: android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("market://details?id=$SHAZAM_PKG"),
+                )
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { ctx.startActivity(intent) }
+            dismiss()
+        }
+
+        // Favourite (heart) — reflects the session's current heart
+        // rating when published, toggles on tap, and pushes the new
+        // heart rating back to the session when a controller exists
+        // (apps that honour setRating will sync; others just track the
+        // local visual state).
+        val heartBtn = view.findViewById<ImageButton>(R.id.music_popup_favourite)
+        var faved = runCatching {
+            controller?.metadata?.getRating(MediaMetadata.METADATA_KEY_USER_RATING)
+                ?.takeIf { it.isRated }?.hasHeart() == true
+        }.getOrDefault(false)
+        heartBtn.setImageResource(
+            if (faved) R.drawable.ic_music_heart_filled else R.drawable.ic_music_heart)
+        heartBtn.setOnClickListener {
+            faved = !faved
+            heartBtn.setImageResource(
+                if (faved) R.drawable.ic_music_heart_filled else R.drawable.ic_music_heart)
+            if (controller != null) {
+                runCatching {
+                    controller.transportControls.setRating(
+                        android.media.Rating.newHeartRating(faved))
+                }
+            }
         }
 
         if (controller != null) {
