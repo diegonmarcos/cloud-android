@@ -102,13 +102,10 @@ class MusicControlsPopup(private val ctx: Context) {
         }
 
         // Shazam (leftmost) — opens the Shazam app; works regardless of
-        // whether anything is playing. Use the REAL installed-app icon
-        // when present (loaded at runtime, no shipped trademark asset);
-        // keep the generic fallback vector otherwise.
+        // whether anything is playing. Monochrome white glyph (from the
+        // layout) to match the rest of the transport row — no coloured
+        // app icon.
         val shazamBtn = view.findViewById<ImageButton>(R.id.music_popup_shazam)
-        runCatching {
-            shazamBtn.setImageDrawable(ctx.packageManager.getApplicationIcon(SHAZAM_PKG))
-        }
         shazamBtn.setOnClickListener {
             val intent = ctx.packageManager.getLaunchIntentForPackage(SHAZAM_PKG)
                 ?: android.content.Intent(

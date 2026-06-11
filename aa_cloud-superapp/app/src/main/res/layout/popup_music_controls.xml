@@ -212,9 +212,8 @@
                 android:gravity="center"
                 android:layout_marginTop="2dp">
 
-                <!-- Shazam (leftmost) — opens the Shazam app. Icon is
-                     loaded at runtime from the installed Shazam package
-                     when present; falls back to ic_music_recognise. -->
+                <!-- Shazam (leftmost) — opens the Shazam app. Monochrome
+                     white glyph to match the transport row. -->
                 <ImageButton
                     android:id="@+id/music_popup_shazam"
                     android:layout_width="34dp"
@@ -222,21 +221,7 @@
                     android:src="@drawable/ic_music_recognise"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:scaleType="centerInside"
-                    android:contentDescription="@null" />
-
-                <Space
-                    android:layout_width="14dp"
-                    android:layout_height="0dp" />
-
-                <!-- Favourite (heart) — toggles + sends a heart rating
-                     to the session when supported. -->
-                <ImageButton
-                    android:id="@+id/music_popup_favourite"
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:src="@drawable/ic_music_heart"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:scaleType="centerInside"
+                    android:tint="#FFFFFF"
                     android:contentDescription="@null" />
 
                 <Space
@@ -279,6 +264,21 @@
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:scaleType="centerInside"
                     android:tint="#FFFFFF"
+                    android:contentDescription="@null" />
+
+                <Space
+                    android:layout_width="14dp"
+                    android:layout_height="0dp" />
+
+                <!-- Favourite (heart) — far right. Toggles + sends a
+                     heart rating to the session when supported. -->
+                <ImageButton
+                    android:id="@+id/music_popup_favourite"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:src="@drawable/ic_music_heart"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:scaleType="centerInside"
                     android:contentDescription="@null" />
             </LinearLayout>
         </LinearLayout>
