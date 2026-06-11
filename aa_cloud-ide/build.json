@@ -31,7 +31,8 @@
     "contract": "contract/ide-ipc-v1.json",
     "authority": "com.diegonmarcos.ide.provider",
     "permission": "com.diegonmarcos.ide.permission.IPC",
-    "aidl_service": "com.diegonmarcos.ide.IIdeService"
+    "aidl_service": "com.diegonmarcos.ide.IIdeService",
+    "open_fork_action": "com.diegonmarcos.ide.action.OPEN_FORK"
   },
   "modules": {
     "_doc": "Gradle module graph — settings.gradle iterates this (FIRE rule 6: never hardcode the list). Only the hub is an in-tree gradle module; the three forks are SEPARATE gradle/cordova projects living in their materialized tracker clones, built via `./build.sh build-fork <name>`, never included here.",

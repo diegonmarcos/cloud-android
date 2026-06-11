@@ -26,10 +26,10 @@ git -C ../ea_files-amaze format-patch <upstream-tag> -o forks/files/patches
 ./build.sh build-fork files
 ```
 
-## The four patch concerns (keep them as SEPARATE numbered patches)
+## The patch concerns (keep them as SEPARATE numbered patches)
 
 Minimal + orthogonal patches survive upstream churn. Every fork's series should
-factor into at most these four:
+factor into at most these concerns:
 
 1. **branding** — applicationId → `com.diegonmarcos.ide.<domain>`, app name/icon.
 2. **provisioning** — defaults from `data/ide-endpoints.json` (workspace root,
@@ -37,7 +37,19 @@ factor into at most these four:
 3. **exporter** — the `<domain>` ContentProvider + `IIdeService` stub that
    implements the tables it owns from `contract/ide-ipc-v1.json` under
    `com.diegonmarcos.ide.<domain>.provider`.
-4. **switcher** — a "back to Cloud-IDE" entry that deep-links the hub.
+4. **icon-less launch** — the one-icon model (owner decision 2026-06-11,
+   `contract/ide-ipc-v1.json::navigation`). The fork is the SINGLE hub's child,
+   not a separate launcher: **drop `<category android:name="LAUNCHER"/>`** from
+   the main activity and add an `<intent-filter>` for the action
+   `navigation.open_fork_action` (`com.diegonmarcos.ide.action.OPEN_FORK`) on an
+   activity that carries `android:permission="…permission.IPC"` (signature-gated).
+   The hub launches it by that action (`ForkLauncher`); it has NO app-drawer icon.
+5. **wrapper chrome** — a PERSISTENT consistency top bar injected at the top of
+   the fork's UI (we own the app, so we own its chrome). It renders up-nav chips
+   for the fork's ancestors from `navigation.parent_chain` (Cloud-IDE → Cloud-
+   SuperApp), reading the SAME baked config the hub's `NavBar` uses — never
+   hardcoded. This replaces the old "switcher" patch: the bar IS the way back to
+   the hub, always one tap away from every screen.
 
 ## Table ownership (who exports what)
 

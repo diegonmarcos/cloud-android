@@ -5,7 +5,7 @@
   "description": "Validates contract/ide-ipc-v1.json. Run via `./build.sh verify-contract`. Phase-5 conformance tests assert every fork exporter + the hub surface against this same shape.",
   "type": "object",
   "additionalProperties": true,
-  "required": ["version", "authority", "permission", "permission_protection_level", "domains", "tables", "aidl", "states"],
+  "required": ["version", "authority", "permission", "permission_protection_level", "domains", "navigation", "tables", "aidl", "states"],
   "properties": {
     "version": { "type": "integer", "minimum": 1 },
     "authority": { "type": "string", "pattern": "^[a-z][a-z0-9_.]+$" },
@@ -16,6 +16,29 @@
       "minItems": 1,
       "items": { "type": "string", "enum": ["editor", "files", "utils"] },
       "uniqueItems": true
+    },
+    "navigation": {
+      "type": "object",
+      "required": ["icon_model", "open_fork_action", "parent_chain"],
+      "properties": {
+        "_doc": { "type": "string" },
+        "icon_model": { "type": "string", "enum": ["hub-only", "all"] },
+        "open_fork_action": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_.]+$" },
+        "parent_chain": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "package"],
+            "properties": {
+              "name": { "type": "string" },
+              "package": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_.]+$" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "tables": {
       "type": "object",

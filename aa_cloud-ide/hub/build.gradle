@@ -27,6 +27,12 @@ def ipcAuthority  = contract.authority
 def ipcPermission = contract.permission
 def ipcVersion    = (contract.version as Number).intValue()
 
+// Navigation: one-icon model (open_fork_action) + the wrapper-chrome parent
+// chain. Both hub and (future) forks render their consistency top bar + launch
+// each other from this — data-driven, never hardcoded.
+def nav = contract.navigation
+def navParentsB64 = groovy.json.JsonOutput.toJson(nav.parent_chain).bytes.encodeBase64().toString()
+
 // Fork registry (app ids + tracker dirs + blocked state) baked as base64-JSON
 // so the switcher UI renders its tiles from build.json::forks, not a hardcoded
 // list. Base64 sidesteps Java-string-literal escaping.
@@ -59,6 +65,11 @@ android {
         buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
         buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
+
+        // Navigation (one-icon + wrapper chrome) — data-driven from contract.
+        buildConfigField "String", "OPEN_FORK_ACTION",    "\"${nav.open_fork_action}\""
+        buildConfigField "String", "ICON_MODEL",          "\"${nav.icon_model}\""
+        buildConfigField "String", "NAV_PARENTS_JSON_B64","\"${navParentsB64}\""
 
         // GHCR + auto-update (com.diegonmarcos.ide.update) — data-driven.
         buildConfigField "String",  "GHCR_REGISTRY",   "\"${ghcr.registry}\""

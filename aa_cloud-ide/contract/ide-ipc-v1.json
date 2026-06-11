@@ -5,6 +5,15 @@
   "permission": "com.diegonmarcos.ide.permission.IPC",
   "permission_protection_level": "signature",
   "domains": ["editor", "files", "utils"],
+  "navigation": {
+    "_doc": "One-icon + wrapper-chrome model (owner decision 2026-06-11). (1) ICON MODEL: the Cloud-IDE hub is the ONLY launcher icon; every fork ships ICON-LESS — its branding patch drops <category LAUNCHER> from its main activity and instead declares an activity <intent-filter> for `open_fork_action`, gated by the signature permission. The hub launches a fork via Intent(open_fork_action).setPackage(appId), because getLaunchIntentForPackage returns null for an icon-less app. (2) WRAPPER CHROME: because we own every app in the tree, each one injects a PERSISTENT consistency top bar (the 'wrapper' fork patch concern) with up-navigation chips for its ancestors in `parent_chain`, so the user is always one tap from Cloud-IDE and Cloud-SuperApp. Data-driven: the bar renders from this block (baked into BuildConfig), never hardcoded in fork UI. parent_chain is ordered root→leaf; an app shows chips only for entries ABOVE its own package.",
+    "icon_model": "hub-only",
+    "open_fork_action": "com.diegonmarcos.ide.action.OPEN_FORK",
+    "parent_chain": [
+      { "name": "Cloud-SuperApp", "package": "com.diegonmarcos.superapp" },
+      { "name": "Cloud-IDE", "package": "com.diegonmarcos.ide" }
+    ]
+  },
   "_doc": "The on-device IPC contract between the Cloud-IDE hub and Cloud-SuperApp (and between the hub and each fork exporter). THE source of truth: hub/SuperApp/fork constants mirror this file; `./build.sh verify-contract` validates it against ide-ipc-v1.schema.json. Only file URIs + metadata cross the boundary — file CONTENT never does; full content is reached via the openFile/revealInFiles AIDL actions (deep link into the owning app). version is breaking: never edit v1 in place, add v2.",
   "tables": {
     "_doc": "ContentProvider tables. The hub exposes them under `authority`; each fork exporter exposes the tables IT owns under its own authority (com.diegonmarcos.ide.<domain>.provider) and the hub UNIONs them. Not every fork owns every table (editor → workspaces/recent_files/git_repos; files → recent_files/transfers; utils → storage_summary); a fork that doesn't own a table simply returns no rows and is skipped. `_ts`/`_uri` columns: epoch-millis longs / content-or-file URIs. `_bytes` columns are longs.",

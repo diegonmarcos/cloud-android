@@ -66,17 +66,14 @@ class IdeService : Service() {
 
     private fun putUri(key: String, value: String): (Intent) -> Unit = { it.putExtra(key, value) }
 
-    /** Launch the owning fork app, applying any extra. Returns false if it's not
-        installed. Deep-link extras become contractual once the fork exporters
-        declare their VIEW intents (Phase 2). */
+    /** Launch the owning fork app, applying any extra. Delegates to ForkLauncher
+        so the icon-less one-icon model works (launch by OPEN_FORK action, not a
+        launcher intent). Deep-link extras become contractual once the fork
+        exporters declare their VIEW intents (Phase 2). */
     private fun launchFork(fork: Fork, extra: (Intent) -> Unit): Boolean {
-        val launch = packageManager.getLaunchIntentForPackage(fork.appId) ?: run {
-            Log.w(TAG, "launchFork: ${fork.appId} not installed"); return false
-        }
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        extra(launch)
-        startActivity(launch)
-        return true
+        val ok = ForkLauncher.launch(this, fork, extra)
+        if (!ok) Log.w(TAG, "launchFork: ${fork.appId} not launchable (not installed?)")
+        return ok
     }
 
     /** A fork is "available" for actions only if installed and not blocked. */

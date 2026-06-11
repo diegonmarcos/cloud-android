@@ -23,16 +23,25 @@ class MainActivity : AppCompatActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(32), dp(24), dp(24))
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         }
 
-        root.addView(TextView(this).apply {
+        // Persistent wrapper-chrome consistency bar — up-nav to our ancestors
+        // (for the hub: Cloud-SuperApp). Data-driven from contract.navigation.
+        NavBar.buildBar(this, packageName)?.let { root.addView(it) }
+
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(20), dp(24), dp(24))
+            layoutParams = LinearLayout.LayoutParams(MATCH, MATCH)
+        }
+
+        body.addView(TextView(this).apply {
             text = getString(R.string.hub_title)
             textSize = 22f
             setPadding(0, 0, 0, dp(4))
         })
-        root.addView(TextView(this).apply {
+        body.addView(TextView(this).apply {
             text = getString(R.string.hub_subtitle, BuildConfig.IPC_VERSION, BuildConfig.GIT_SHORT_SHA)
             textSize = 12f
             alpha = 0.6f
@@ -40,15 +49,16 @@ class MainActivity : AppCompatActivity() {
         })
 
         for (fork in ForkRegistry.forks) {
-            root.addView(tileFor(fork))
+            body.addView(tileFor(fork))
         }
 
         // code-server is browser-only — a deep-link tile, not a fork.
-        root.addView(codeServerTile())
+        body.addView(codeServerTile())
 
         // Configs (Update + About) — same Configs-subitems pattern as SuperApp.
-        root.addView(configsTile())
+        body.addView(configsTile())
 
+        root.addView(body)
         setContentView(root)
     }
 
@@ -99,15 +109,10 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(R.string.tile_blocked, fork.blockedOn), Toast.LENGTH_LONG).show()
             !installed ->
                 Toast.makeText(this, getString(R.string.tile_not_installed_long, fork.appId), Toast.LENGTH_LONG).show()
-            else -> {
-                val launch = packageManager.getLaunchIntentForPackage(fork.appId)
-                if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(launch)
-                } else {
-                    Toast.makeText(this, getString(R.string.tile_launch_failed), Toast.LENGTH_SHORT).show()
-                }
-            }
+            // Forks are icon-less under the one-icon model — launch by the
+            // declared OPEN_FORK action (ForkLauncher), not a launcher intent.
+            !ForkLauncher.launch(this, fork) ->
+                Toast.makeText(this, getString(R.string.tile_launch_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
