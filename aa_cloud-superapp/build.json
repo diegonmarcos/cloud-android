@@ -436,12 +436,14 @@
             "_doc_folders": "Nested folders inside a phone_app_group — render as One-UI-style folder tiles in the same grid as plain packages (2×2 mini-icon preview, tap → modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
             "folders": [
               {
-                "label": "Storage",
+                "label": "Files Editor (IDE)",
                 "packages": [
                   "com.lonelycatgames.Xplore",
                   "com.sec.android.app.myfiles",
                   "com.google.android.apps.docs",
-                  "com.viscouspot.gitsync"
+                  "com.viscouspot.gitsync",
+                  "com.foxdebug.acode",
+                  "com.rhmsoft.edi"
                 ]
               }
             ]
