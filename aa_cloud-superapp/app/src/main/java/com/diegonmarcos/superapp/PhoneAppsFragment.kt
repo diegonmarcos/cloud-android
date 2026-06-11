@@ -56,6 +56,48 @@ class PhoneAppsFragment : Fragment() {
         }
         scroll.addView(rootCol)
 
+        // A small centered refresh affordance at the top — invalidates the
+        // app cache (picks up new installs / uninstalls) and rebuilds the
+        // folder + smart-folder content in place.
+        val content = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        rootCol.addView(refreshBar(ctx) {
+            invalidateCache()
+            content.removeAllViews()
+            buildContent(ctx, content)
+        })
+        rootCol.addView(content)
+        buildContent(ctx, content)
+        return scroll
+    }
+
+    /** Centered "refresh app list" icon. */
+    private fun refreshBar(ctx: Context, onRefresh: () -> Unit): View {
+        val bar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(ctx, 4) }
+        }
+        bar.addView(android.widget.ImageView(ctx).apply {
+            setImageResource(R.drawable.ic_refresh)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xCCFFFFFF.toInt())
+            val sz = dp(ctx, 22); val p = dp(ctx, 8)
+            layoutParams = LinearLayout.LayoutParams(sz + 2 * p, sz + 2 * p)
+            setPadding(p, p, p, p)
+            isClickable = true; isFocusable = true
+            contentDescription = "Refresh app list"
+            val outVal = android.util.TypedValue()
+            ctx.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outVal, true)
+            if (outVal.resourceId != 0) setBackgroundResource(outVal.resourceId)
+            setOnClickListener { Haptics.tap(it); onRefresh() }
+        })
+        return bar
+    }
+
+    /** Build (or rebuild) the folder grid + smart folders into [rootCol]. */
+    private fun buildContent(ctx: Context, rootCol: LinearLayout) {
         // Process-level cache populated by [warmUp] at app launch. By
         // the time the user navigates here it's usually already
         // primed → render is instant. If the user got here BEFORE the
@@ -107,7 +149,7 @@ class PhoneAppsFragment : Fragment() {
         //    track the source enumeration in lockstep.
         val smart = PhoneSmartFolders.loadFromBuildConfig()
         val visibleSmart = smart.mapNotNull { sf ->
-            val matches = apps.filter { app -> sf.rule.matches(ctx, app) }
+            val matches = sf.select(ctx, apps)
             if (matches.isEmpty()) null else SmartRendered(sf, matches)
         }
         if (visibleSmart.isNotEmpty()) {
@@ -127,7 +169,6 @@ class PhoneAppsFragment : Fragment() {
             val smartGrouped = visibleSmart.associate { vs -> "smart:${vs.spec.id}" to vs.apps }
             renderFolderGrid(rootCol, ctx, syntheticFolders, smartGrouped, columns)
         }
-        return scroll
     }
 
     private data class SmartRendered(
@@ -277,7 +318,9 @@ class PhoneAppsFragment : Fragment() {
             )
         }
         scroll.addView(grid)
-        val expandedCols = 5
+        // Match the folder-grid column count (build.json::ui.phone_grid_columns,
+        // default 6) instead of a hardcoded 5.
+        val expandedCols = BuildConfig.UI_PHONE_GRID_COLUMNS
         apps.chunked(expandedCols).forEach { rowApps ->
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -453,6 +496,9 @@ class PhoneAppsFragment : Fragment() {
                         label             = info.label?.toString() ?: pkg,
                         icon              = runCatching { info.getBadgedIcon(0) }.getOrNull(),
                         user              = me,
+                        firstInstallTime  = runCatching {
+                            ctx.packageManager.getPackageInfo(pkg, 0).firstInstallTime
+                        }.getOrDefault(0L),
                     )
                 }
             }.getOrDefault(emptyList())

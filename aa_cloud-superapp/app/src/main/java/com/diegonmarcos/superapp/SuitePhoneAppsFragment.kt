@@ -372,7 +372,8 @@ class SuitePhoneAppsFragment : Fragment() {
             )
         }
         scroll.addView(grid)
-        val cols = 5
+        // Match the phone grid column count (default 6), not a hardcoded 5.
+        val cols = BuildConfig.UI_PHONE_GRID_COLUMNS
         for (rowChunk in contents.chunked(cols)) {
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL

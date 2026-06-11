@@ -35,17 +35,24 @@ import org.json.JSONArray
  */
 object PhoneSmartFolders {
 
-    data class Rule(val type: String, val values: List<String>) {
+    data class Rule(val type: String, val values: List<String>, val limit: Int = 0) {
         fun matches(ctx: Context, app: PhoneApp): Boolean = when (type) {
             "pkg_prefix" -> values.any { app.packageName.startsWith(it) }
             "pkg_eq"     -> values.any { app.packageName == it }
             "install_source_not" -> {
                 if (isSystemApp(ctx, app.packageName)) false
                 else {
-                    val src = installerOf(ctx, app.packageName)
-                    src != null && !values.contains(src)
+                    // Show ONLY apps whose source we KNOW and where NONE of the
+                    // source fields (installing + initiating) is a first-party
+                    // store. Checking both fields stops Play apps leaking when
+                    // the installing package differs from the initiating one
+                    // (common after updates / restores).
+                    val srcs = installSourcesOf(ctx, app.packageName)
+                    srcs.isNotEmpty() && srcs.none { values.contains(it) }
                 }
             }
+            // recently_installed is a ranking rule (sort + take), handled in
+            // [SmartFolder.select], not a per-app predicate.
             else -> false
         }
 
@@ -54,17 +61,32 @@ object PhoneSmartFolders {
             (ai.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
         }.getOrDefault(false)
 
-        private fun installerOf(ctx: Context, pkg: String): String? = runCatching {
+        /** The concrete (non-null) install-source package names for [pkg] —
+         *  installingPackageName AND initiatingPackageName on API 30+, or the
+         *  single deprecated installer pre-30. Empty = unknown source. */
+        private fun installSourcesOf(ctx: Context, pkg: String): Set<String> = runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                ctx.packageManager.getInstallSourceInfo(pkg).installingPackageName
+                val info = ctx.packageManager.getInstallSourceInfo(pkg)
+                setOfNotNull(info.installingPackageName, info.initiatingPackageName)
             } else {
                 @Suppress("DEPRECATION")
-                ctx.packageManager.getInstallerPackageName(pkg)
+                setOfNotNull(ctx.packageManager.getInstallerPackageName(pkg))
             }
-        }.getOrNull()
+        }.getOrDefault(emptySet())
     }
 
-    data class SmartFolder(val id: String, val title: String, val rule: Rule)
+    data class SmartFolder(val id: String, val title: String, val rule: Rule) {
+        /** The apps this smart folder shows, from the master [apps] list.
+         *  Predicate rules filter; `recently_installed` ranks by install time
+         *  (newest first) and caps at `limit`. */
+        fun select(ctx: Context, apps: List<PhoneApp>): List<PhoneApp> = when (rule.type) {
+            "recently_installed" -> apps
+                .filter { it.firstInstallTime > 0L }
+                .sortedByDescending { it.firstInstallTime }
+                .take(if (rule.limit > 0) rule.limit else 12)
+            else -> apps.filter { rule.matches(ctx, it) }
+        }
+    }
 
     fun loadFromBuildConfig(): List<SmartFolder> = runCatching {
         val json = String(Base64.decode(BuildConfig.UI_PHONE_SMART_FOLDERS_B64, Base64.DEFAULT))
@@ -77,14 +99,20 @@ object PhoneSmartFolders {
             val ruleObj = o.optJSONObject("rule") ?: continue
             if (id.isBlank() || title.isBlank()) continue
             val type = ruleObj.optString("type")
-            val valuesArr = ruleObj.optJSONArray("values") ?: continue
+            if (type.isBlank()) continue
             val values = mutableListOf<String>()
-            for (j in 0 until valuesArr.length()) {
-                val v = valuesArr.optString(j)
-                if (v.isNotBlank()) values.add(v)
+            ruleObj.optJSONArray("values")?.let { valuesArr ->
+                for (j in 0 until valuesArr.length()) {
+                    val v = valuesArr.optString(j)
+                    if (v.isNotBlank()) values.add(v)
+                }
             }
-            if (type.isBlank() || values.isEmpty()) continue
-            out.add(SmartFolder(id, title, Rule(type, values)))
+            val limit = ruleObj.optInt("limit", 0)
+            // Predicate rules need values; ranking rules (recently_installed)
+            // need a positive limit instead.
+            val valid = if (type == "recently_installed") limit > 0 else values.isNotEmpty()
+            if (!valid) continue
+            out.add(SmartFolder(id, title, Rule(type, values, limit)))
         }
         out
     }.getOrDefault(emptyList())

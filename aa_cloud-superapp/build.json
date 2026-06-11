@@ -493,7 +493,8 @@
                   "com.samsung.android.email.provider",
                   "com.whatsapp.w4b",
                   "com.google.android.gm",
-                  "org.telegram.messenger"
+                  "org.telegram.messenger",
+                  "com.instagram.android"
                 ]
               }
             ]
@@ -1825,8 +1826,8 @@
         "match_keywords": ["pkg:com.linkedin.android","pkg:com.otta.otta","pkg^com.indeed.android","pkg^com.glassdoor.app","pkg^com.xing.android","pkg^com.workday.","pkg^com.monster.android","pkg^com.upwork.android","pkg^com.fiverr","pkg^com.welcometothejungle.","linkedin","indeed jobs","glassdoor","welcome to the jungle","upwork","fiverr","stepstone","kununu"] },
       { "id": "new_apps",      "order": "98", "label": "_New Apps",
         "match_keywords": [] },
-      { "id": "misc",          "order": "99", "label": "_Misc",
-        "match_keywords": [], "pin": true }
+      { "id": "misc",          "order": "99", "label": "No Categorie",
+        "match_keywords": [], "pin": true, "sink": true }
     ],
     "_doc_phone_sections": "Top-level section headers in the Home Apps/Phone tab. Folders are bucketed under a section by their label's first character: System (_), Services (-), Tools A (.), Tools B (>). Order = render order. Empty sections (every folder empty) silently skipped. Phone tab renders one subhead per non-empty section + the folder grid below.",
     "phone_sections": [
@@ -1848,6 +1849,11 @@
       {
         "id": "alt_stores", "title": "Alternative Stores",
         "rule": { "type": "install_source_not", "values": ["com.android.vending", "com.sec.android.app.samsungapps"] }
+      },
+      {
+        "id": "new_apps", "title": "New Apps",
+        "_doc": "Newest installs by firstInstallTime, capped at `limit`. `recently_installed` is a ranking rule (sort + take), not a per-app filter — PhoneSmartFolders.select handles it; no `values` needed.",
+        "rule": { "type": "recently_installed", "limit": 12 }
       }
     ],
     "default_section": "home",

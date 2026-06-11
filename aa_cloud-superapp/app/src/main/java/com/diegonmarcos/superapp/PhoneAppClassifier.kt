@@ -96,4 +96,7 @@ data class PhoneApp(
     val label: String,
     val icon: android.graphics.drawable.Drawable?,
     val user: android.os.UserHandle,
+    /** PackageManager firstInstallTime (epoch ms); 0 if unknown. Drives the
+     *  "New Apps" smart folder (recently_installed). */
+    val firstInstallTime: Long = 0L,
 )

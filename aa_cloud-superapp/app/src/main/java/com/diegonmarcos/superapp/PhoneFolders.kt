@@ -24,9 +24,14 @@ object PhoneFolders {
         val matchKeywords: List<String>,
         /** When `true`, PhoneAppsFragment shows this folder in the grid
          *  even if it currently holds zero apps. Used for hand-curated
-         *  buckets like `_Misc` that the user wants visible as an empty
-         *  placeholder so they can drop apps into it later. */
+         *  buckets like "No Categorie" that the user wants visible as an
+         *  empty placeholder so they can drop apps into it later. */
         val pinned: Boolean = false,
+        /** Explicit catch-all marker. The first folder with `sink: true`
+         *  receives every app that matches no folder — deterministic,
+         *  unlike "first empty-keyword folder" which depends on order
+         *  when several empty-keyword buckets exist. */
+        val sink: Boolean = false,
     )
 
     /** Folders in display order — by `order`, then `id` as a tie-breaker. */
@@ -44,13 +49,16 @@ object PhoneFolders {
                 label         = o.optString("label"),
                 matchKeywords = kws,
                 pinned        = o.optBoolean("pin", false),
+                sink          = o.optBoolean("sink", false),
             )
         }.sortedWith(compareBy({ it.order }, { it.id }))
     }.getOrDefault(emptyList())
 
-    /** id of the sink folder for apps that match no folder. Falls back
-     *  to the literal "misc" if no entry with `match_keywords: []` is
-     *  found — but build.json should always ship one. */
+    /** id of the sink folder for apps that match no folder. Prefers the
+     *  explicit `sink: true` folder ("No Categorie"); falls back to the
+     *  first empty-keyword folder, then the literal "misc". */
     fun sinkFolderId(folders: List<Folder>): String =
-        folders.firstOrNull { it.matchKeywords.isEmpty() }?.id ?: "misc"
+        folders.firstOrNull { it.sink }?.id
+            ?: folders.firstOrNull { it.matchKeywords.isEmpty() }?.id
+            ?: "misc"
 }
