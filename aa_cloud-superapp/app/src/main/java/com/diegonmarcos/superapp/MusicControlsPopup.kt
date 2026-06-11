@@ -41,6 +41,14 @@ import android.widget.TextView
  */
 class MusicControlsPopup(private val ctx: Context) {
 
+    companion object {
+        /** Fixed popup height in dp — the compact landscape box that
+         *  ends just after the transport buttons. Applied as an
+         *  EXPLICIT window height (see show()) so the album art can't
+         *  inflate the popup down the screen. */
+        private const val POPUP_HEIGHT_DP = 196f
+    }
+
     private var popup: PopupWindow? = null
     private var tickHandler: Handler? = null
     private var tickRunnable: Runnable? = null
@@ -123,19 +131,30 @@ class MusicControlsPopup(private val ctx: Context) {
         // WIDE + SHORT landscape card (Samsung media-card shape):
         // horizontally spans nearly the full screen (left-icon to
         // right-icon — small side margins), vertically a compact fixed
-        // box that ends right after the transport buttons (the card's
-        // fixed 196dp height in XML — it does NOT grow down the screen;
-        // the album art centerCrops INTO this box). Width derived from
-        // the real screen width so it adapts to any device.
-        val screenW = ctx.resources.displayMetrics.widthPixels
+        // box that ends right after the transport buttons.
+        //
+        // CRITICAL: the popup HEIGHT must be an EXPLICIT pixel value on
+        // the PopupWindow itself — NOT WRAP_CONTENT. With WRAP_CONTENT
+        // the window measures its root view with an AT_MOST(screen)
+        // height spec, and the root card's layout_height="…dp" is NOT
+        // enforced as a measure constraint for a window root. So the
+        // full-bleed album ImageView (match_parent + a large bitmap +
+        // centerCrop) measures to the bitmap's intrinsic height →
+        // window wraps to ~screen height → the card ran all the way
+        // down the screen. Passing an EXPLICIT window height caps
+        // everything inside to that box; the album art then centerCrops
+        // INTO it. Both dims derived from real screen metrics.
+        val dm = ctx.resources.displayMetrics
+        val screenW = dm.widthPixels
         val popupW = (screenW * 0.92f).toInt()
+        val popupH = (POPUP_HEIGHT_DP * dm.density).toInt()
 
         // PopupWindow setup — outsideTouchable so the user can tap
         // outside to dismiss; focusable=true so back-press dismisses.
         val pw = PopupWindow(
             view,
             popupW,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            popupH,
             true,
         )
         pw.isOutsideTouchable = true
