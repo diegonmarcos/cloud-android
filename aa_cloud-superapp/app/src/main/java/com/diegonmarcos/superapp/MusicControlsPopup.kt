@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.SeekBar
 import android.widget.TextView
@@ -51,6 +52,16 @@ class MusicControlsPopup(private val ctx: Context) {
 
         /** Shazam package — the leftmost popup button launches it. */
         private const val SHAZAM_PKG = "com.shazam.android"
+
+        /** Quick-launch streaming apps shown beside "Nothing playing"
+         *  in the idle popup state. Order = display order. */
+        private val IDLE_LAUNCH_PKGS = listOf(
+            "com.aspiro.tidal",                       // Tidal
+            "com.spotify.music",                      // Spotify
+            "com.google.android.apps.youtube.music",  // YT Music ("Google Music")
+            "com.google.android.youtube",             // YouTube
+            "com.vimeo.android.videoapp",             // Vimeo
+        )
     }
 
     private var popup: PopupWindow? = null
@@ -190,6 +201,7 @@ class MusicControlsPopup(private val ctx: Context) {
                 isEnabled = false
             }
             view.findViewById<ImageView>(R.id.music_popup_art_bg).setImageDrawable(null)
+            populateIdleLaunchers(view.findViewById(R.id.music_popup_idle_apps))
         }
 
         // Title marquee needs isSelected=true to actually scroll.
@@ -368,6 +380,48 @@ class MusicControlsPopup(private val ctx: Context) {
         routeView.setCompoundDrawablesRelativeWithIntrinsicBounds(iconRes, 0, 0, 0)
         routeView.compoundDrawablePadding =
             (5 * ctx.resources.displayMetrics.density).toInt()
+    }
+
+    /** Fill the idle quick-launch strip with the streaming apps'
+     *  launcher icons (real icon when installed, generic glyph + Play
+     *  Store deep-link otherwise). Tap opens the app and dismisses. */
+    private fun populateIdleLaunchers(strip: LinearLayout) {
+        strip.removeAllViews()
+        val pm = ctx.packageManager
+        val d = ctx.resources.displayMetrics.density
+        val sz = (26 * d).toInt()
+        val gap = (6 * d).toInt()
+        var firstAdded = false
+        for (pkg in IDLE_LAUNCH_PKGS) {
+            val appIcon = runCatching { pm.getApplicationIcon(pkg) }.getOrNull()
+            val iv = ImageView(ctx)
+            iv.layoutParams = LinearLayout.LayoutParams(sz, sz).apply {
+                if (firstAdded) marginStart = gap
+            }
+            iv.scaleType = ImageView.ScaleType.FIT_CENTER
+            if (appIcon != null) {
+                iv.setImageDrawable(appIcon)
+            } else {
+                iv.setImageResource(R.drawable.ic_music_recognise)
+                iv.imageTintList =
+                    android.content.res.ColorStateList.valueOf(0xCCFFFFFF.toInt())
+            }
+            iv.isClickable = true
+            iv.isFocusable = true
+            iv.setOnClickListener {
+                val intent = pm.getLaunchIntentForPackage(pkg)
+                    ?: android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("market://details?id=$pkg"),
+                    )
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { ctx.startActivity(intent) }
+                dismiss()
+            }
+            strip.addView(iv)
+            firstAdded = true
+        }
+        strip.visibility = View.VISIBLE
     }
 
     /** Session volume as a percent. Prefers the MediaController's own

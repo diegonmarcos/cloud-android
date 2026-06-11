@@ -116,6 +116,18 @@
                         android:shadowRadius="3"
                         android:includeFontPadding="false" />
                 </LinearLayout>
+
+                <!-- Idle-only quick-launch strip — shown to the RIGHT of
+                     the "Nothing playing" text when no session is active.
+                     Populated at runtime (MusicControlsPopup) with the
+                     streaming apps' launcher icons; tap opens the app. -->
+                <LinearLayout
+                    android:id="@+id/music_popup_idle_apps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- Audio-route + volume info row. Left: where the media
