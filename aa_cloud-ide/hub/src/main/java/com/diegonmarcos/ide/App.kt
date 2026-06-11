@@ -10,6 +10,7 @@ import com.diegonmarcos.ide.update.Updater
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        AppProcessUptime.initOnce()
         Updater.start(this)
     }
 }

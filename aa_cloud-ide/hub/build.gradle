@@ -21,6 +21,11 @@ def shortSha   = (System.getenv('GITHUB_SHA')
                          commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
                          ignoreExitValue = true
                      }.standardOutput.asText.get().trim()).take(8)
+// Build timestamp (UTC) — mirrors ea_cloud-superapp; shown in the About popup.
+def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'").with {
+    setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
+    format(new java.util.Date())
+}
 
 // IPC contract constants — single source of truth = contract/ide-ipc-v1.json.
 def ipcAuthority  = contract.authority
@@ -65,6 +70,7 @@ android {
         buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
         buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
+        buildConfigField "String", "BUILD_TIMESTAMP",  "\"${buildTimestamp}\""
 
         // Navigation (one-icon + wrapper chrome) — data-driven from contract.
         buildConfigField "String", "OPEN_FORK_ACTION",    "\"${nav.open_fork_action}\""

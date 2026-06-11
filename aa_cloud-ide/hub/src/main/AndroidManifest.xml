@@ -65,9 +65,9 @@
             android:permission="${ipcPermission}"
             tools:ignore="ExportedService" />
 
-        <!-- Configs (Update + About) — internal, not exported. -->
+        <!-- Configs (Update + About). About = SystemInfoPopup (a PopupWindow,
+             no Activity). Update = UpdateOverlay DialogFragment. -->
         <activity android:name=".ConfigsActivity" android:exported="false" />
-        <activity android:name=".AboutActivity" android:exported="false" />
 
         <!-- In-app updater PackageInstaller status callback. -->
         <receiver

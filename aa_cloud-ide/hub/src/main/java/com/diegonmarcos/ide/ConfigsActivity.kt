@@ -1,8 +1,8 @@
 package com.diegonmarcos.ide
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -11,14 +11,14 @@ import com.diegonmarcos.ide.update.UpdateProgress
 import com.diegonmarcos.ide.update.Updater
 
 /**
- * Configs — the hub's settings surface. Same Configs-subitems pattern as
- * Cloud-SuperApp: an **Update** feature (manual "Check for updates" driving the
- * same WorkManager flow as the periodic auto-updater, with live progress) and an
- * **About** entry. Thin + data-driven; no per-item hardcoded config.
+ * Configs — Update + About, equal to Cloud-SuperApp. "Check for updates" runs
+ * the same WorkManager flow as the periodic auto-updater and shows the fullscreen
+ * UpdateOverlay (UpdateProgress-driven). "About" opens the SystemInfoPopup
+ * (the dark-glass system-info bubble). Data-driven; no per-item hardcoding.
  */
 class ConfigsActivity : AppCompatActivity() {
 
-    private lateinit var updateStatus: TextView
+    private var overlayShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,58 +26,49 @@ class ConfigsActivity : AppCompatActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         }
+        NavBar.buildBar(this, packageName)?.let { root.addView(it) }
 
-        // ── Update subitem ───────────────────────────────────────────────
-        root.addView(item(getString(R.string.cfg_check_updates)) { Updater.checkNow(this) })
-        updateStatus = TextView(this).apply {
-            textSize = 12f; alpha = 0.6f
-            setPadding(dp(20), 0, dp(20), dp(16))
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(20), dp(24), dp(24))
         }
-        root.addView(updateStatus)
 
-        // ── About subitem ────────────────────────────────────────────────
-        root.addView(item(getString(R.string.cfg_about)) {
-            startActivity(Intent(this, AboutActivity::class.java))
-        })
-
-        // ── Auto-update status line (data-driven) ────────────────────────
-        root.addView(TextView(this).apply {
+        // ── Update ────────────────────────────────────────────────────────
+        body.addView(item(getString(R.string.cfg_check_updates)) { startUpdateCheck() })
+        body.addView(TextView(this).apply {
             text = getString(
                 R.string.cfg_autoupdate,
                 if (BuildConfig.AUTO_UPDATE_ENABLED) "on" else "off",
                 BuildConfig.AUTO_UPDATE_INTERVAL_HOURS,
                 BuildConfig.AUTO_UPDATE_TAG,
             )
-            textSize = 12f; alpha = 0.6f
-            setPadding(dp(20), dp(24), dp(20), 0)
+            textSize = 12f; alpha = 0.6f; setPadding(dp(20), 0, dp(20), dp(16))
         })
 
+        // ── About ─────────────────────────────────────────────────────────
+        lateinit var aboutRow: TextView
+        aboutRow = item(getString(R.string.cfg_about)) { SystemInfoPopup.show(this, aboutRow) }
+        body.addView(aboutRow)
+
+        root.addView(body)
         setContentView(root)
     }
 
-    override fun onStart() {
-        super.onStart()
-        UpdateProgress.setListener { state -> runOnUiThread { renderUpdate(state) } }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        UpdateProgress.setListener(null)
-    }
-
-    private fun renderUpdate(state: UpdateProgress.State) {
-        updateStatus.text = when (state) {
-            is UpdateProgress.State.Idle -> ""
-            is UpdateProgress.State.CheckingManifest -> getString(R.string.upd_checking)
-            is UpdateProgress.State.UpToDate -> getString(R.string.upd_uptodate, state.tag)
-            is UpdateProgress.State.Downloading -> getString(R.string.upd_downloading, state.percent)
-            is UpdateProgress.State.Installing -> getString(R.string.upd_installing)
-            is UpdateProgress.State.Done -> getString(R.string.upd_done)
-            is UpdateProgress.State.Failed -> getString(R.string.upd_failed, state.message)
+    private fun startUpdateCheck() {
+        if (!overlayShown) {
+            overlayShown = true
+            UpdateProgress.update(UpdateProgress.State.CheckingManifest)
+            UpdateOverlay.newInstance().show(supportFragmentManager, UpdateOverlay.TAG)
         }
+        Updater.checkNow(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reset the gate when the overlay is gone so a second tap re-opens it.
+        if (supportFragmentManager.findFragmentByTag(UpdateOverlay.TAG) == null) overlayShown = false
     }
 
     private fun item(label: String, onClick: () -> Unit): TextView =
