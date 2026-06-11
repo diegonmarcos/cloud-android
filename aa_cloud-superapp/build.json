@@ -524,7 +524,7 @@
               },
               {
                 "id": "drive",
-                "label": "Drive (Git, Registry, S3)",
+                "label": "IDE (Files Editor)",
                 "icon": "ic_drive",
                 "target": "section:drive"
               }

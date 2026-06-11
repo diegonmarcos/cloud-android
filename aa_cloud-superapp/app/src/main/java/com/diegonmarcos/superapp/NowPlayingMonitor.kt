@@ -85,6 +85,14 @@ class NowPlayingMonitor(
     private var lastReportedPkg: String? = null
     private var lastReportedTitle: String? = null
 
+    /** The MediaController whose session is currently in
+     *  STATE_PLAYING — surfaced so the controls popup can read
+     *  metadata (TITLE, ARTIST, DURATION, ALBUM_ART) and send
+     *  transport commands (play, pause, skipToPrevious,
+     *  skipToNext) without having to re-walk the session list. */
+    @Volatile var currentController: MediaController? = null
+        private set
+
     fun start() {
         val m = mgr ?: return
         // Initial subscribe + initial evaluation. SecurityException
@@ -130,6 +138,7 @@ class NowPlayingMonitor(
             md.getString(MediaMetadata.METADATA_KEY_TITLE)
                 ?: md.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
         }?.takeIf { it.isNotBlank() }
+        currentController = playing
         currentPackage = playingPkg
         currentTitle = title
         if (playingPkg != lastReportedPkg || title != lastReportedTitle) {

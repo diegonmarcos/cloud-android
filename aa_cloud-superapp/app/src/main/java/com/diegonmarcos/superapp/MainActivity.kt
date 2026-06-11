@@ -1736,6 +1736,7 @@ class MainActivity : AppCompatActivity(),
      *  MediaSessionManager binder + listener until the activity is
      *  actually visible. */
     private var nowPlayingMonitor: NowPlayingMonitor? = null
+    private var musicControlsPopup: MusicControlsPopup? = null
 
     override fun onResume() {
         super.onResume()
@@ -1798,11 +1799,17 @@ class MainActivity : AppCompatActivity(),
                 }
             }
             island.setOnClickListener {
+                // Tap → Samsung-style controls popup anchored under the
+                // mini-island (album art + title/artist + progress +
+                // prev/play-pause/next). The popup's own app-icon tap
+                // is what opens the playing app — the island itself no
+                // longer launches the app directly.
                 val pkg = nowPlayingMonitor?.currentPackage ?: return@setOnClickListener
-                runCatching {
-                    val intent = packageManager.getLaunchIntentForPackage(pkg)
-                    if (intent != null) startActivity(intent)
+                val ctrl = nowPlayingMonitor?.currentController
+                if (musicControlsPopup == null) {
+                    musicControlsPopup = MusicControlsPopup(this)
                 }
+                musicControlsPopup?.show(island, ctrl, pkg)
             }
         }
         nowPlayingMonitor?.start()
@@ -1813,6 +1820,7 @@ class MainActivity : AppCompatActivity(),
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
         cancelHamburgerJitter()
         nowPlayingMonitor?.stop()
+        musicControlsPopup?.dismiss()
         super.onPause()
     }
 
