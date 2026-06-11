@@ -215,6 +215,8 @@ class MusicControlsPopup(private val ctx: Context) {
         val seek = root.findViewById<SeekBar>(R.id.music_popup_progress)
         val elapsedView = root.findViewById<TextView>(R.id.music_popup_time_elapsed)
         val totalView = root.findViewById<TextView>(R.id.music_popup_time_total)
+        val routeView = root.findViewById<TextView>(R.id.music_popup_route)
+        val volumeView = root.findViewById<TextView>(R.id.music_popup_volume)
         val r = object : Runnable {
             override fun run() {
                 val durationMs = c.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
@@ -233,12 +235,57 @@ class MusicControlsPopup(private val ctx: Context) {
                     totalView.text = "--:--"
                 }
                 elapsedView.text = formatTime(nowPos.coerceAtLeast(0L))
+                routeView.text = audioRouteLabel()
+                volumeView.text = volumeLabel(c)
                 handler.postDelayed(this, 500L)
             }
         }
         handler.post(r)
         tickHandler = handler
         tickRunnable = r
+    }
+
+    /** Where media audio is currently routed. Uses the
+     *  deprecated-but-accurate "is audio going there NOW" booleans
+     *  first (isBluetoothA2dpOn / isWiredHeadsetOn — these reflect the
+     *  ACTIVE route, unlike getDevices which lists all CONNECTED
+     *  outputs), with a device-name lookup for the Bluetooth case so
+     *  the label can read the actual headset name when available. */
+    @Suppress("DEPRECATION")
+    private fun audioRouteLabel(): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            ?: return ""
+        return when {
+            am.isBluetoothA2dpOn -> {
+                val name = runCatching {
+                    am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+                        .firstOrNull {
+                            it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                                it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
+                        }?.productName?.toString()
+                }.getOrNull()?.takeIf { it.isNotBlank() }
+                if (name != null) "🎧 $name" else "🎧 Bluetooth"
+            }
+            am.isWiredHeadsetOn -> "🎧 Headphones"
+            else -> "🔊 Phone speaker"
+        }
+    }
+
+    /** Session volume as a percent. Prefers the MediaController's own
+     *  PlaybackInfo (accurate for both LOCAL and REMOTE/cast sessions);
+     *  falls back to the system STREAM_MUSIC volume when the session
+     *  doesn't publish PlaybackInfo. */
+    private fun volumeLabel(c: MediaController): String {
+        val info = c.playbackInfo
+        val pct = if (info != null && info.maxVolume > 0) {
+            (info.currentVolume * 100f / info.maxVolume).toInt()
+        } else {
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            val max = am?.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) ?: 0
+            val cur = am?.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) ?: 0
+            if (max > 0) cur * 100 / max else return ""
+        }
+        return "Vol $pct%"
     }
 
     private fun formatTime(ms: Long): String {

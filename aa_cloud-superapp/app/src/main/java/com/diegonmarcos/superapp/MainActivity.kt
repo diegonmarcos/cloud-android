@@ -1762,15 +1762,35 @@ class MainActivity : AppCompatActivity(),
         val island = findViewById<android.widget.FrameLayout>(R.id.music_playing_island)
         val islandIcon = findViewById<android.widget.ImageView>(R.id.music_playing_icon)
         val islandTitle = findViewById<android.widget.TextView>(R.id.music_playing_title)
+        val islandWave = findViewById<android.view.View>(R.id.music_playing_wave)
+        // Island is PERMANENTLY visible. When nothing's playing it
+        // renders as a plain black pill (icon + text + wave hidden);
+        // when music plays the contents light up. Set here (every
+        // onResume) so it stays visible even when the Notification-
+        // Listener permission isn't granted yet and the monitor never
+        // dispatches.
+        island?.visibility = android.view.View.VISIBLE
+        // Default idle look — black pill, contents hidden — until the
+        // monitor dispatches a playing session. Without this the
+        // wave/icon would show empty before the first dispatch (or
+        // forever, when notification access isn't granted).
+        if (nowPlayingMonitor == null) {
+            islandIcon?.visibility = android.view.View.GONE
+            islandTitle?.visibility = android.view.View.GONE
+            islandWave?.visibility = android.view.View.GONE
+        }
         if (island != null && nowPlayingMonitor == null) {
             nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage, title, artist ->
-                island.visibility = if (playingPackage != null)
-                    android.view.View.VISIBLE else android.view.View.GONE
-                // Icon — load the playing app's launcher icon; fall back
-                // to null when the package has no application icon
-                // (rare; e.g. system surfaces that publish a media
-                // session without an APK icon).
+                // Toggle the CONTENTS, not the island itself — the pill
+                // stays visible (black) when nothing's playing.
                 if (playingPackage != null) {
+                    islandIcon?.visibility = android.view.View.VISIBLE
+                    islandTitle?.visibility = android.view.View.VISIBLE
+                    islandWave?.visibility = android.view.View.VISIBLE
+                    // Icon — load the playing app's launcher icon; fall back
+                    // to null when the package has no application icon
+                    // (rare; e.g. system surfaces that publish a media
+                    // session without an APK icon).
                     runCatching {
                         islandIcon?.setImageDrawable(
                             packageManager.getApplicationIcon(playingPackage))
@@ -1794,8 +1814,12 @@ class MainActivity : AppCompatActivity(),
                     islandTitle?.isSelected = false
                     islandTitle?.isSelected = true
                 } else {
+                    // Nothing playing → fully black pill.
                     islandIcon?.setImageDrawable(null)
+                    islandIcon?.visibility = android.view.View.GONE
                     islandTitle?.text = ""
+                    islandTitle?.visibility = android.view.View.GONE
+                    islandWave?.visibility = android.view.View.GONE
                 }
             }
             island.setOnClickListener {

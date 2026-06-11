@@ -108,11 +108,54 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Audio-route + volume info row. Left: where the media
+                 is playing (Bluetooth device / wired headphones /
+                 phone speaker). Right: the session volume percent.
+                 Both refreshed on the same 500ms tick as the progress
+                 bar so route/volume changes reflect live. -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/music_popup_route"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textSize="11sp"
+                    android:textColor="#E0E0E0"
+                    android:shadowColor="#FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:includeFontPadding="false"
+                    android:text="" />
+
+                <TextView
+                    android:id="@+id/music_popup_volume"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:textSize="11sp"
+                    android:textColor="#E0E0E0"
+                    android:shadowColor="#FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="2"
+                    android:includeFontPadding="false"
+                    android:text="" />
+            </LinearLayout>
+
             <SeekBar
                 android:id="@+id/music_popup_progress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:max="1000"
                 android:progress="0" />
 
