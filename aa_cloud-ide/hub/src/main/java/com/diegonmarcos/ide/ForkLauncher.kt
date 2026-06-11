@@ -4,28 +4,31 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Launches a fork app. Under the one-icon model the forks ship ICON-LESS (their
- * branding patch drops <category LAUNCHER>), so getLaunchIntentForPackage()
- * returns null for them — instead they declare an <intent-filter> for
- * BuildConfig.OPEN_FORK_ACTION (signature-gated), and the hub starts them via
- * Intent(action).setPackage(appId).
+ * Launches one of our apps and raises the Cloud-IDE overlay nav bar over it
+ * (the wrapper chrome — see NavOverlayService).
  *
- * The launcher tries the action first and falls back to a normal launch intent,
- * so a fork that is still icon-bearing (e.g. mid-migration, or before its
- * branding patch lands) keeps working. Returns false if neither resolves.
+ * Resolution order:
+ *  1. OPEN_FORK action (our future patched, icon-less forks declare it).
+ *  2. Standard launch intent for [Fork.launchPackage] — the path used TODAY by
+ *     the embedded stock apps (com.foxdebug.acode / com.amaze.filemanager).
+ *
+ * Returns false if the app isn't installed (caller then installs from the
+ * bundle via BundledForkInstaller).
  */
 object ForkLauncher {
 
     fun launch(ctx: Context, fork: Fork, configure: (Intent) -> Unit = {}): Boolean {
         val pm = ctx.packageManager
-        val byAction = Intent(BuildConfig.OPEN_FORK_ACTION).setPackage(fork.appId)
+        val byAction = Intent(BuildConfig.OPEN_FORK_ACTION).setPackage(fork.launchPackage)
         val intent = when {
             byAction.resolveActivity(pm) != null -> byAction
-            else -> pm.getLaunchIntentForPackage(fork.appId) ?: return false
+            else -> pm.getLaunchIntentForPackage(fork.launchPackage) ?: return false
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         configure(intent)
         ctx.startActivity(intent)
+        // Wrapper chrome: the persistent cross-app bar, current chip = this app.
+        NavOverlayService.show(ctx, fork.launchPackage)
         return true
     }
 }

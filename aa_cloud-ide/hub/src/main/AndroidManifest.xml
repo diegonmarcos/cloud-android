@@ -11,10 +11,18 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Discover which fork APKs are installed (ForkRegistry.isInstalled +
-         getLaunchIntentForPackage). The three fork ids are fixed, so a scoped
-         <queries> is enough — no QUERY_ALL_PACKAGES needed. -->
+    <!-- Wrapper bar overlay over the embedded apps (NavOverlayService). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Discover which apps are installed (ForkRegistry.isInstalled +
+         getLaunchIntentForPackage) — scoped <queries>, no QUERY_ALL_PACKAGES.
+         First block: the REAL ids of the embedded self-contained apps
+         (build.json::forks.<k>.embedded.package). Second block: our future
+         patched-fork ids. parent_chain (SuperApp) for the nav chips. -->
     <queries>
+        <package android:name="com.foxdebug.acode" />
+        <package android:name="com.amaze.filemanager" />
+        <package android:name="com.diegonmarcos.superapp" />
         <package android:name="com.diegonmarcos.ide.editor" />
         <package android:name="com.diegonmarcos.ide.files" />
         <package android:name="com.diegonmarcos.ide.utils" />
@@ -69,9 +77,14 @@
              no Activity). Update = UpdateOverlay DialogFragment. -->
         <activity android:name=".ConfigsActivity" android:exported="false" />
 
-        <!-- In-app updater PackageInstaller status callback. -->
+        <!-- In-app updater + bundled-app PackageInstaller status callback. -->
         <receiver
             android:name=".update.PackageInstallerReceiver"
+            android:exported="false" />
+
+        <!-- The wrapper-chrome overlay bar drawn over the embedded apps. -->
+        <service
+            android:name=".NavOverlayService"
             android:exported="false" />
 
     </application>

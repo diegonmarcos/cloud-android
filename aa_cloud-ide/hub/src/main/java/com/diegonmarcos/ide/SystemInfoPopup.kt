@@ -117,14 +117,17 @@ object SystemInfoPopup {
         pw.showAtLocation(anchor, Gravity.CENTER, 0, 0)
     }
 
-    private fun readMemory(ctx: Context): String = try {
-        val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return "—"
-        val mi = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
-        val total = mi.totalMem; val avail = mi.availMem
-        val used = (total - avail).coerceAtLeast(0L)
-        val pct = if (total > 0L) (used * 100 / total).toInt() else 0
-        "${fmtBytes(used)} / ${fmtBytes(total)} · $pct% used · ${fmtBytes(avail)} free"
-    } catch (_: Throwable) { "—" }
+    private fun readMemory(ctx: Context): String {
+        return try {
+            val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+                ?: return "—"
+            val mi = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+            val total = mi.totalMem; val avail = mi.availMem
+            val used = (total - avail).coerceAtLeast(0L)
+            val pct = if (total > 0L) (used * 100 / total).toInt() else 0
+            "${fmtBytes(used)} / ${fmtBytes(total)} · $pct% used · ${fmtBytes(avail)} free"
+        } catch (_: Throwable) { "—" }
+    }
 
     private fun readStorage(): String = try {
         val stat = StatFs(Environment.getDataDirectory().path)

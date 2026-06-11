@@ -10,13 +10,21 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 /**
- * The switcher. Renders one tile per fork (data-driven from ForkRegistry, itself
- * fed by build.json::forks) plus a code-server browser tile. Tapping a fork tile
- * launches that fork app; a fork that isn't installed or is blocked shows its
- * status instead. This is intentionally thin — the rich UX lives inside each
- * fork; the hub only routes.
+ * The Cloud-IDE home — a WRAPPER around exactly TWO self-contained apps:
+ * Acode (editor) and Amaze File Manager (files). Their real upstream APKs ride
+ * INSIDE this APK (assets/forks/, seeded by bundle-forks) and open their own
+ * full UIs under our overlay nav bar (NavOverlayService).
+ *
+ *   tile not installed → installs the bundled APK (one system confirm) → ready
+ *   tile installed     → launches the app + raises the wrapper bar
+ *
+ * Tiles are data-driven from ForkRegistry.homeForks (= forks with an `embedded`
+ * block in build.json — exactly Acode + Amaze). Below them: a small Configs row
+ * (Update + About, equal to Cloud-SuperApp). Nothing else on the home.
  */
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var tilesHost: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,9 +33,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         }
-
-        // Persistent wrapper-chrome consistency bar — up-nav to our ancestors
-        // (for the hub: Cloud-SuperApp). Data-driven from contract.navigation.
+        // In-app consistency bar (up-chip to Cloud-SuperApp).
         NavBar.buildBar(this, packageName)?.let { root.addView(it) }
 
         val body = LinearLayout(this).apply {
@@ -48,71 +54,87 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(24))
         })
 
-        for (fork in ForkRegistry.forks) {
-            body.addView(tileFor(fork))
-        }
+        // THE two apps — and nothing else.
+        tilesHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(tilesHost)
+        renderTiles()
 
-        // code-server is browser-only — a deep-link tile, not a fork.
-        body.addView(codeServerTile())
-
-        // Configs (Update + About) — same Configs-subitems pattern as SuperApp.
-        body.addView(configsTile())
+        // Configs (Update + About) — small secondary row.
+        body.addView(TextView(this).apply {
+            text = getString(R.string.tile_configs)
+            textSize = 13f
+            alpha = 0.7f
+            setPadding(dp(20), dp(18), dp(20), dp(12))
+            isClickable = true
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, ConfigsActivity::class.java))
+            }
+        })
 
         root.addView(body)
         setContentView(root)
     }
 
-    private fun configsTile(): TextView =
-        baseTile().apply {
-            text = getString(R.string.tile_configs)
-            setOnClickListener { startActivity(Intent(this@MainActivity, ConfigsActivity::class.java)) }
+    override fun onResume() {
+        super.onResume()
+        renderTiles()   // refresh installed-state after a PackageInstaller round-trip
+        // The bar is PERSISTENT across all our apps — raise it (current = hub)
+        // whenever the hub comes forward and the overlay grant exists.
+        if (NavOverlayService.hasPermission(this)) {
+            NavOverlayService.show(this, packageName)
         }
+    }
+
+    private fun renderTiles() {
+        tilesHost.removeAllViews()
+        for (fork in ForkRegistry.homeForks) {
+            tilesHost.addView(tileFor(fork))
+        }
+    }
 
     private fun tileFor(fork: Fork): TextView {
         val installed = fork.isInstalled(this)
+        val bundled = BundledForkInstaller.isBundled(this, fork)
         val status = when {
-            fork.blockedOn != null -> getString(R.string.tile_blocked, fork.blockedOn)
             installed -> getString(R.string.tile_open)
-            else -> getString(R.string.tile_not_installed)
+            bundled -> getString(R.string.tile_install_bundled)
+            else -> getString(R.string.tile_missing_bundle)
         }
-        return baseTile().apply {
-            text = "${fork.domain.replaceFirstChar { it.uppercase() }}\n$status"
-            alpha = if (installed && fork.blockedOn == null) 1f else 0.5f
-            setOnClickListener { onTileTapped(fork, installed) }
+        return TextView(this).apply {
+            text = "${fork.displayName}\n$status"
+            textSize = 18f
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(26), dp(20), dp(26))
+            isClickable = true
+            alpha = if (installed || bundled) 1f else 0.5f
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(14) }
+            setOnClickListener { onTileTapped(fork, installed, bundled) }
         }
     }
 
-    private fun codeServerTile(): TextView =
-        baseTile().apply {
-            text = getString(R.string.tile_code_server)
-            setOnClickListener {
-                val url = Endpoints.codeServerUrl()
-                if (url.isNullOrEmpty()) {
-                    Toast.makeText(this@MainActivity, R.string.tile_launch_failed, Toast.LENGTH_SHORT).show()
-                } else {
-                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+    private fun onTileTapped(fork: Fork, installed: Boolean, bundled: Boolean) {
+        when {
+            installed -> {
+                ensureOverlayPermission()
+                if (!ForkLauncher.launch(this, fork)) {
+                    Toast.makeText(this, getString(R.string.tile_launch_failed), Toast.LENGTH_SHORT).show()
                 }
             }
+            bundled -> {
+                Toast.makeText(this, getString(R.string.tile_installing, fork.displayName), Toast.LENGTH_SHORT).show()
+                BundledForkInstaller.install(this, fork)
+            }
+            else ->
+                Toast.makeText(this, getString(R.string.tile_missing_bundle), Toast.LENGTH_LONG).show()
         }
-
-    private fun baseTile(): TextView = TextView(this).apply {
-        textSize = 16f
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(20), dp(20), dp(20), dp(20))
-        isClickable = true
-        layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(12) }
     }
 
-    private fun onTileTapped(fork: Fork, installed: Boolean) {
-        when {
-            fork.blockedOn != null ->
-                Toast.makeText(this, getString(R.string.tile_blocked, fork.blockedOn), Toast.LENGTH_LONG).show()
-            !installed ->
-                Toast.makeText(this, getString(R.string.tile_not_installed_long, fork.appId), Toast.LENGTH_LONG).show()
-            // Forks are icon-less under the one-icon model — launch by the
-            // declared OPEN_FORK action (ForkLauncher), not a launcher intent.
-            !ForkLauncher.launch(this, fork) ->
-                Toast.makeText(this, getString(R.string.tile_launch_failed), Toast.LENGTH_SHORT).show()
+    /** One-time "Display over other apps" grant for the wrapper bar. The app
+     *  still launches without it — the bar appears from the next launch on. */
+    private fun ensureOverlayPermission() {
+        if (!NavOverlayService.hasPermission(this)) {
+            Toast.makeText(this, getString(R.string.overlay_grant_hint), Toast.LENGTH_LONG).show()
+            NavOverlayService.requestPermission(this)
         }
     }
 

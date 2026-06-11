@@ -53,9 +53,53 @@ prefer_host() {
 
 _json() { prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"; }
 
+# ── bundle-forks ───────────────────────────────────────────────────────
+# SELF-CONTAINED wrapper bundle: for every fork in build.json::forks that has
+# an `embedded` block, download the REAL upstream release APK (pinned URL),
+# verify its pinned sha256 (HARD FAIL on mismatch — supply-chain gate), and
+# place it at hub/src/main/assets/forks/<key>.apk so the single Cloud-IDE APK
+# physically carries Acode + Amaze inside it. Cached: a file already matching
+# the pin is not re-downloaded. Mirrors ea_cloud-comms' bundle-forks, with the
+# source swapped from GHCR to the pinned upstream release (until our patched
+# forks publish). Called automatically by build/release.
+step_bundle_forks() {
+  local assets="$SCRIPT_DIR/hub/src/main/assets/forks"
+  mkdir -p "$assets"
+  local key url sha pkg out have
+  while IFS= read -r key; do
+    [ -z "$key" ] && continue
+    url="$(_json ".forks.${key}.embedded.url")"
+    sha="$(_json ".forks.${key}.embedded.sha256")"
+    [ -n "$url" ] && [ -n "$sha" ] || continue
+    out="$assets/${key}.apk"
+    if [ -f "$out" ]; then
+      have="$(sha256sum "$out" | cut -d' ' -f1)"
+      if [ "$have" = "$sha" ]; then
+        log "bundle-forks: $key already bundled + verified — skip"
+        continue
+      fi
+      rm -f "$out"
+    fi
+    log "bundle-forks: fetching $key ← $url"
+    curl -fsSL --retry 3 -o "$out" "$url"
+    have="$(sha256sum "$out" | cut -d' ' -f1)"
+    if [ "$have" != "$sha" ]; then
+      rm -f "$out"
+      errlog "bundle-forks: sha256 MISMATCH for $key (got $have, pinned $sha) — refusing to bundle"
+      exit 1
+    fi
+    log "bundle-forks: ✓ $key embedded ($(wc -c <"$out") B, sha verified)"
+  done < <(prefer_host jq -r '.forks | to_entries[] | select(.key|startswith("_")|not) | .key' "$SCRIPT_DIR/build.json")
+  shopt -s nullglob
+  local apks=("$assets"/*.apk)
+  shopt -u nullglob
+  log "bundle-forks: ${#apks[@]} app(s) self-contained in the hub bundle"
+}
+
 # ── hub build/test ─────────────────────────────────────────────────────
 step_build() {
-  log "Build: cloud-ide hub (debug APK)"
+  step_bundle_forks
+  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, debug APK)"
   in_nix gradle :hub:assembleDebug
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_json '.release.artifact.debug')"
@@ -64,7 +108,8 @@ step_build() {
 }
 
 step_release() {
-  log "Build: cloud-ide hub (release APK)"
+  step_bundle_forks
+  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, release APK)"
   in_nix gradle :hub:assembleRelease
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_json '.release.artifact.release')"
@@ -333,6 +378,7 @@ case "$CMD" in
   shell)            step_shell ;;
   ship)             step_ship ;;
   verify-contract)  step_verify_contract ;;
+  bundle-forks)     step_bundle_forks ;;
   materialize-fork) step_materialize_fork "$@" ;;
   build-fork)       step_build_fork "$@" ;;
   oras-push)        step_oras_push ;;

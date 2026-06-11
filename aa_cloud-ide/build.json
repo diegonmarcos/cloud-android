@@ -43,9 +43,10 @@
     }
   },
   "forks": {
-    "_doc": "Declarative fork registry — THE source of truth for the constellation. Each fork = pinned upstream tag + committed patch series under forks/<key>/patches/. `./build.sh materialize-fork <key>` clones the upstream at the pin into the tracker dir, applies the series, and leaves a buildable project. Upstream bump = edit pinned_tag, re-apply, resolve rejects, commit. NEVER a long-lived divergent clone. `priority` is build/dev sequencing only. The fork KEY is the IPC domain (editor/files/utils) — forkUri = com.diegonmarcos.ide.<key>.provider. Tags were verified live at scaffold time (2026-06-11).",
+    "_doc": "Declarative fork registry — THE source of truth. OWNER DECISION (2026-06-11): Cloud-IDE is a WRAPPER — exactly TWO apps, Acode + Amaze File Manager, ride SELF-CONTAINED inside the hub APK (forks with an `embedded` block; seeded by `build.sh bundle-forks` from the pinned upstream release URL + sha256). The HOME shows ONLY embedded forks (two tiles, display_name) — `utils` has no embedded block and is NOT on the home (kept for the future patched-fork phase). Each fork = pinned tag + patch series for the LATER owned-fork phase (materialize-fork/build-fork unchanged). `embedded.package` = the id the bundled APK installs as; launching + <queries> use it. Tags + sha256 verified live 2026-06-11.",
     "files": {
       "app_id": "com.diegonmarcos.ide.files",
+      "display_name": "Amaze File Manager",
       "upstream_repo": "https://github.com/TeamAmaze/AmazeFileManager.git",
       "tracker_dir": "ea_files-amaze",
       "pinned_tag": "v3.11.2",
@@ -55,6 +56,12 @@
       "priority": 1,
       "blocked_on": null,
       "patches": [],
+      "embedded": {
+        "_doc": "SELF-CONTAINED bundle: the REAL upstream release APK rides inside the Cloud-IDE hub APK (assets/forks/files.apk, seeded by `build.sh bundle-forks` — pinned URL + sha256-verified, build FAILS on mismatch). Installed on first tap via BundledForkInstaller; launches under the Cloud-IDE overlay nav bar. `package` is the id the APK actually installs as (fdroid flavor has no suffix). When our patched fork publishes to GHCR, swap source like cloud-comms.",
+        "url": "https://github.com/TeamAmaze/AmazeFileManager/releases/download/v3.11.2/app-fdroid-release.apk",
+        "sha256": "2042c4422b80988b8cec4971ccaf7e931193ffbfdcf4867fd02927c2d31f9c35",
+        "package": "com.amaze.filemanager"
+      },
       "comment": "Amaze File Manager. Build this fork FIRST: native Kotlin/Java, core of the file domain. PAIRING: FM hardcodes the Utilities package in AboutActivity.PACKAGE_AMAZE_UTILS = 'com.amaze.fileutilities' (launch constant) and reads its intent extra 'com.amaze.fileutilities.AFM_LOCATE_FILE_NAME' in MainActivity — both must be renamed symmetrically with the utils fork. Exporter FilesExportProvider owns recent_files + transfers. Uses MANAGE_EXTERNAL_STORAGE (self-distributed, no Play policy)."
     },
     "utils": {
@@ -72,6 +79,7 @@
     },
     "editor": {
       "app_id": "com.diegonmarcos.ide.editor",
+      "display_name": "Acode",
       "upstream_repo": "https://github.com/Acode-Foundation/Acode.git",
       "tracker_dir": "ea_editor-acode",
       "pinned_tag": "v1.12.4",
@@ -81,6 +89,12 @@
       "priority": 3,
       "blocked_on": null,
       "patches": [],
+      "embedded": {
+        "_doc": "SELF-CONTAINED bundle: the REAL upstream Acode FOSS release APK rides inside the hub (assets/forks/editor.apk). Package id confirmed from upstream config.xml widget id. Same mechanism as files.embedded.",
+        "url": "https://github.com/Acode-Foundation/Acode/releases/download/v1.12.4/app-fdroid.apk",
+        "sha256": "9d4f0ed9c2a2f8e8437d58fe6dd7210cfb3773d2277523e4b5d65462741e0c60",
+        "package": "com.foxdebug.acode"
+      },
       "comment": "Acode code editor (Cordova hybrid, MIT). Build LAST: fastest-moving upstream (~weekly; v1.12.4 was latest at scaffold). Keep the NATIVE patch diff minimal — applicationId/branding + ONE Cordova plugin (Java) declaring the EditorExportProvider + IIdeService stub via <config-file target=AndroidManifest.xml> in plugin.xml. ALL behavior (recent-file reporting, workspace registration, hub switcher entry, gitea/SFTP presets) lives in forks/editor/acode-plugin/ as a normal Acode JS plugin so it rides upstream updates for free. Built-in SFTP gets presets from data/ide-endpoints.json. Exporter owns workspaces + recent_files + git_repos."
     }
   },
