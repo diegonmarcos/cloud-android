@@ -10,14 +10,17 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 /**
- * Configs > KDE page. Self-contained — finds the Surface Pro over the native
- * wg0 tunnel (preferred), then the default route, then a LAN broadcast. Does
- * NOT launch the installed org.kde.kdeconnect_tp app.
+ * Configs > KDE page. Discovery is self-contained — finds the Surface Pro over
+ * the native wg0 tunnel (preferred), then the default route, then a LAN
+ * broadcast, with no dependency on the official app. A separate, explicit
+ * "Open KDE-Connect (App)" button hands off to the installed client only when
+ * the user chooses to.
  *
  * Renders the full diagnostic trace from [KdeConnectDiscovery.diagnose] so the
  * wg0 detection, the ping RTT, and the route actually used are all visible.
@@ -86,6 +89,17 @@ class KdeConnectFragment : Fragment() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
         })
+        // Explicit, user-chosen hand-off to the official client (distinct from
+        // discovery, which stays self-contained). Opens it if installed.
+        root.addView(Button(ctx).apply {
+            text = "Open KDE-Connect (App)"
+            isAllCaps = false
+            setOnClickListener { openClient(cfg.pkg) }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+        })
         root.addView(TextView(ctx).apply {
             text = "Binds to the native WireGuard (VPN) interface so the probe " +
                 "leaves over wg0 with a source the Surface can answer; then the " +
@@ -132,6 +146,18 @@ class KdeConnectFragment : Fragment() {
             typeface = Typeface.MONOSPACE
             textSize = 12.5f
             setPadding(0, dp(3), 0, dp(3))
+        }
+    }
+
+    /** Launch the installed official client, or toast if it's absent. */
+    private fun openClient(pkg: String) {
+        val intent = requireContext().packageManager.getLaunchIntentForPackage(pkg)
+        if (intent != null) {
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } else {
+            Toast.makeText(requireContext(), "KDE Connect ($pkg) is not installed",
+                Toast.LENGTH_SHORT).show()
         }
     }
 

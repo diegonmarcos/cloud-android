@@ -4,4 +4,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Enumerate networks to find + bind the native VPN (wg0) interface. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Package visibility for the explicit "Open KDE-Connect (App)" button
+         (getLaunchIntentForPackage). Scoped — no QUERY_ALL_PACKAGES needed. -->
+    <queries>
+        <package android:name="org.kde.kdeconnect_tp" />
+    </queries>
 </manifest>
