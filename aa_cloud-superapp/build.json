@@ -506,7 +506,8 @@
               "com.sec.android.gallery3d",
               "com.samsung.android.calendar",
               "com.samsung.android.app.contacts",
-              "com.aspiro.tidal"
+              "com.aspiro.tidal",
+              "com.x8bit.bitwarden"
             ]
           },
           {
@@ -517,7 +518,7 @@
               "com.google.android.apps.walletnfcrel",
               "com.google.android.apps.translate",
               "com.sec.android.app.clockpackage",
-              "com.x8bit.bitwarden"
+              "com.sec.android.app.popupcalculator"
             ]
           },
           {
