@@ -8,20 +8,18 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 /**
- * Configs > KDE page. Surfaces the wg0-preferred KDE Connect link to the
- * Surface Pro and hands pairing off to the installed official client.
+ * Configs > KDE page. Self-contained — finds the Surface Pro over the native
+ * wg0 tunnel (preferred), then the default route, then a LAN broadcast. Does
+ * NOT depend on or launch the installed org.kde.kdeconnect_tp app.
  *
- * On open it auto-probes the Surface over wg0; the "Connect" button re-runs
- * discovery and launches org.kde.kdeconnect_tp (which finishes pairing — over
- * the tunnel when reachable, or via normal LAN broadcast when it isn't). All
- * device/IP/port data comes from build.json::ui.kde_connect via
- * [KdeConnectConfig] — nothing here is hardcoded.
+ * All device/IP/port data comes from build.json::ui.kde_connect via
+ * [KdeConnectConfig]; nothing here is hardcoded. Actual TLS pairing + plugin
+ * messaging arrive with the upstream vendor phase.
  */
 class KdeConnectFragment : Fragment() {
 
@@ -66,9 +64,9 @@ class KdeConnectFragment : Fragment() {
         root.addView(statusView)
 
         root.addView(Button(ctx).apply {
-            text = "Connect over wg0"
+            text = "Find Surface over wg0"
             isAllCaps = false
-            setOnClickListener { runDiscovery(launchOnResult = true) }
+            setOnClickListener { runDiscovery() }
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -76,9 +74,10 @@ class KdeConnectFragment : Fragment() {
         })
 
         root.addView(TextView(ctx).apply {
-            text = "Prefers the WireGuard route to the Surface; falls back to " +
-                "normal LAN discovery when the tunnel is down. Pairing completes " +
-                "in the KDE Connect app."
+            text = "Binds to the native WireGuard interface so the probe leaves " +
+                "over wg0 (source IP the Surface can answer); falls back to the " +
+                "default route, then a LAN broadcast. Self-contained — no " +
+                "external app."
             setTextColor(0x77FFFFFF.toInt())
             textSize = 12f
             gravity = Gravity.START
@@ -86,44 +85,27 @@ class KdeConnectFragment : Fragment() {
         })
 
         // Auto-probe on open so the status reflects reality without a tap.
-        runDiscovery(launchOnResult = false)
+        runDiscovery()
         return root
     }
 
-    private fun runDiscovery(launchOnResult: Boolean) {
+    private fun runDiscovery() {
         statusView.text = "Probing the Surface over wg0…"
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = KdeConnectDiscovery.discover()
-            val cfg = KdeConnectConfig.get()
-            when (result) {
+            when (val result = KdeConnectDiscovery.discover(requireContext())) {
                 is KdeConnectDiscovery.Result.Wg0Reachable -> {
-                    statusView.text = "✓ Reachable over wg0 — ${result.device.label} (${result.device.wgIp})"
-                    if (launchOnResult) launchClient(cfg.pkg, "Opening KDE Connect (wg0 link nudged)")
+                    val via = if (result.viaVpnBind) "wg0 (VPN-bound)" else "wg0 (default route)"
+                    statusView.text = "✓ Surface found over $via — ${result.device.label} (${result.device.wgIp})"
                 }
                 KdeConnectDiscovery.Result.LanFallback -> {
-                    statusView.text = "wg0 tunnel down — using LAN discovery"
-                    if (launchOnResult) launchClient(cfg.pkg, "Opening KDE Connect (LAN)")
+                    statusView.text = "Surface not reachable over wg0 — broadcast an identity on the LAN"
                 }
                 KdeConnectDiscovery.Result.Unreachable -> {
-                    statusView.text = "Surface unreachable and LAN fallback is off"
-                    if (launchOnResult) toast("Surface unreachable")
+                    statusView.text = "Surface unreachable (wg0 down and LAN fallback off)"
                 }
             }
         }
     }
-
-    private fun launchClient(pkg: String, note: String) {
-        val intent = requireContext().packageManager.getLaunchIntentForPackage(pkg)
-        if (intent != null) {
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
-            toast(note)
-        } else {
-            toast("KDE Connect ($pkg) is not installed")
-        }
-    }
-
-    private fun toast(m: String) = Toast.makeText(requireContext(), m, Toast.LENGTH_SHORT).show()
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 

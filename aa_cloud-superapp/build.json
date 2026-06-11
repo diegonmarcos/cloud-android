@@ -216,7 +216,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "KDE Connect integration (Configs > KDE page). SLICE: wg0-preferred discovery of the Surface Pro (data-driven from ui.kde_connect — wg_ip 10.0.0.5, port 1716) with LAN-broadcast fallback, plus a status/connect UI that hands off to the installed org.kde.kdeconnect_tp. Declared fork of github.com/KDE/kdeconnect-android (GPL-2.0, upstreams.kde-connect); full upstream pairing/plugins vendoring is the documented next phase. Reachability is a plain TCP probe to the Surface wg_ip so the module stays decoupled from app/ WgState."
+      "comment": "KDE Connect integration (Configs > KDE page). SLICE, SELF-CONTAINED (no dependency on the installed org.kde.kdeconnect_tp): wg0-preferred discovery of the Surface Pro (data-driven from ui.kde_connect — wg_ip 10.0.0.5, port 1716). Binds the probe + identity socket to the native VPN (wg0) Network so packets egress the tunnel with the wg0 source IP (the peer answers to that), then the default route, then a self-contained LAN broadcast. Declared fork of github.com/KDE/kdeconnect-android (GPL-2.0, upstreams.kde-connect); full upstream TLS pairing + plugin link is the documented next phase."
     }
   },
   "ui": {
@@ -2862,7 +2862,7 @@
         }
       }
     ],
-    "_doc_kde_connect": "KDE Connect integration config consumed by libs:kde-connect (Configs > KDE page). The official client org.kde.kdeconnect_tp discovers devices via UDP broadcast on the LAN, which does NOT cross WireGuard. So for each device we declare its wg_ip; libs:kde-connect probes wg_ip:port over wg0 first and, when reachable, sends a unicast KDE Connect identity packet there (the non-broadcast/VPN path) + hands off to the installed app; if the tunnel is down it falls back to normal LAN discovery. wg_ip values mirror data/mesh.json (Surface Pro = node 'laptop' = 10.0.0.5). Add a device = append here; nothing in Kotlin hardcodes an IP.",
+    "_doc_kde_connect": "KDE Connect integration config consumed by libs:kde-connect (Configs > KDE page). SELF-CONTAINED — does NOT launch the installed org.kde.kdeconnect_tp. KDE Connect discovery is UDP broadcast on the LAN, which does NOT cross WireGuard; and the peer answers to the packet's SOURCE IP, so the packet must leave over wg0. For each device we declare its wg_ip; libs:kde-connect binds its probe + identity socket to the native VPN (wg0) Network and tries that FIRST (so the source IP is the wg0 address the Surface can route back to), then the default route, then a self-contained LAN broadcast. `package` is retained as metadata for the future vendor phase, not launched. wg_ip values mirror data/mesh.json (Surface Pro = node 'laptop' = 10.0.0.5). Add a device = append here; nothing in Kotlin hardcodes an IP.",
     "kde_connect": {
       "package": "org.kde.kdeconnect_tp",
       "discovery_port": 1716,
