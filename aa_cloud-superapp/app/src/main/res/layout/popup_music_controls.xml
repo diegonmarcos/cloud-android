@@ -13,7 +13,7 @@
     android:layout_width="280dp"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bg_dynamic_island"
+    android:background="@drawable/bg_music_popup"
     android:padding="14dp">
 
     <LinearLayout
