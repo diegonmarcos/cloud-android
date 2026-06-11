@@ -142,7 +142,19 @@ class MusicControlsPopup(private val ctx: Context) {
         refreshState(controller)
         startTicking(view, controller)
 
-        pw.showAsDropDown(anchor, 0, 4, android.view.Gravity.CENTER_HORIZONTAL)
+        // Horizontally SCREEN-centered (not anchor-centered). The
+        // mini-island anchor isn't at screen center, so a plain
+        // Gravity.CENTER_HORIZONTAL biases the popup toward the
+        // anchor's side. Compute xOffset so the popup's left edge
+        // lands at (screenWidth − popupWidth) / 2 regardless of
+        // where the anchor sits — same fix CalendarAgendaPopup uses.
+        // popupWidth = the layout's fixed 280dp root width.
+        val d = ctx.resources.displayMetrics.density
+        val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        val popupW = (280 * d).toInt()
+        val xOffset = (screenW - popupW) / 2 - anchorLoc[0]
+        pw.showAsDropDown(anchor, xOffset, 4, android.view.Gravity.START)
     }
 
     fun dismiss() {

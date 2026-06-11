@@ -1763,7 +1763,7 @@ class MainActivity : AppCompatActivity(),
         val islandIcon = findViewById<android.widget.ImageView>(R.id.music_playing_icon)
         val islandTitle = findViewById<android.widget.TextView>(R.id.music_playing_title)
         if (island != null && nowPlayingMonitor == null) {
-            nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage, title ->
+            nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage, title, artist ->
                 island.visibility = if (playingPackage != null)
                     android.view.View.VISIBLE else android.view.View.GONE
                 // Icon — load the playing app's launcher icon; fall back
@@ -1775,15 +1775,15 @@ class MainActivity : AppCompatActivity(),
                         islandIcon?.setImageDrawable(
                             packageManager.getApplicationIcon(playingPackage))
                     }.onFailure { islandIcon?.setImageDrawable(null) }
-                    // Title — the song name from MediaMetadata. When
-                    // the app publishes neither TITLE nor DISPLAY_TITLE,
-                    // show the app label as a sensible fallback so the
-                    // strip never reads blank.
-                    val text = title ?: runCatching {
+                    // Marquee text — "Artist — Title" when both exist,
+                    // else whichever single field is present, else the
+                    // app label so the strip never reads blank.
+                    val song = title ?: runCatching {
                         packageManager.getApplicationLabel(
                             packageManager.getApplicationInfo(playingPackage, 0)
                         ).toString()
                     }.getOrDefault("Playing")
+                    val text = if (!artist.isNullOrBlank()) "$artist — $song" else song
                     islandTitle?.text = text
                     // Marquee only animates when the TextView is selected
                     // or focused. setSelected(true) is the canonical
