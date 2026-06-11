@@ -61,6 +61,14 @@
       "feeds_into": "libs:vault",
       "primary_lang": "Kotlin"
     },
+    "kde-connect": {
+      "tracker": "ea_net-kdeconnect",
+      "repo": "https://github.com/KDE/kdeconnect-android.git",
+      "license": "GPL-2.0",
+      "feeds_into": "libs:kde-connect",
+      "primary_lang": "Kotlin+Java",
+      "_doc_phase": "SLICE first: libs/kde-connect currently ships the wg0-preferred discovery of the Surface (ui.kde_connect) + the Configs KDE page, NOT the full upstream. Vendoring the full kdeconnect-android source (TLS pairing + plugins, whole APK -> GPL-2.0) is the documented next phase, cherry-picked into libs/kde-connect from this tracker clone."
+    },
     "ops": {
       "tracker": null,
       "repo": null,
@@ -95,7 +103,8 @@
         "libs:maps",
         "libs:fin",
         "libs:browser",
-        "libs:apptabs"
+        "libs:apptabs",
+        "libs:kde-connect"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -201,6 +210,13 @@
         "libs:core"
       ],
       "comment": "App Tabs — last-6 opened SuperApp entries (sections, pages, external apps) rendered as a 2-col GRID. Sister module to libs:browser; same card-grid UX, different content (sealed Entry: SectionEntry | PageEntry | ExternalAppEntry). AppTabPrefs is SharedPreferences-backed ('app_tabs' file, strict LRU cap=6). Producers call AppTabPrefs.recordSection / recordPage / recordExternalApp on every successful navigation; the GRID re-renders on onResume so flipping back to Tabs always shows the freshest LRU. AppTabsHost is the callback interface MainActivity implements to handle card-tap re-navigation without libs:apptabs reaching back into app/."
+    },
+    "libs:kde-connect": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "KDE Connect integration (Configs > KDE page). SLICE: wg0-preferred discovery of the Surface Pro (data-driven from ui.kde_connect — wg_ip 10.0.0.5, port 1716) with LAN-broadcast fallback, plus a status/connect UI that hands off to the installed org.kde.kdeconnect_tp. Declared fork of github.com/KDE/kdeconnect-android (GPL-2.0, upstreams.kde-connect); full upstream pairing/plugins vendoring is the documented next phase. Reachability is a plain TCP probe to the Surface wg_ip so the module stays decoupled from app/ WgState."
     }
   },
   "ui": {
@@ -1575,6 +1591,11 @@
             "action": "action:check_updates"
           },
           {
+            "id": "kde",
+            "label": "KDE",
+            "icon": "ic_kde"
+          },
+          {
             "id": "about",
             "label": "About",
             "icon": "ic_settings"
@@ -2841,6 +2862,22 @@
         }
       }
     ],
+    "_doc_kde_connect": "KDE Connect integration config consumed by libs:kde-connect (Configs > KDE page). The official client org.kde.kdeconnect_tp discovers devices via UDP broadcast on the LAN, which does NOT cross WireGuard. So for each device we declare its wg_ip; libs:kde-connect probes wg_ip:port over wg0 first and, when reachable, sends a unicast KDE Connect identity packet there (the non-broadcast/VPN path) + hands off to the installed app; if the tunnel is down it falls back to normal LAN discovery. wg_ip values mirror data/mesh.json (Surface Pro = node 'laptop' = 10.0.0.5). Add a device = append here; nothing in Kotlin hardcodes an IP.",
+    "kde_connect": {
+      "package": "org.kde.kdeconnect_tp",
+      "discovery_port": 1716,
+      "prefer_wg0": true,
+      "lan_fallback": true,
+      "probe_timeout_ms": 1500,
+      "devices": [
+        {
+          "id": "surface-pro-8",
+          "label": "Surface Pro 8",
+          "wg_ip": "10.0.0.5",
+          "primary": true
+        }
+      ]
+    },
     "news_feeds": [
       {
         "id": "bbc-world",

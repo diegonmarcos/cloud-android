@@ -438,6 +438,7 @@ dependencies {
     implementation project(':libs:health')
     implementation project(':libs:maps')
     implementation project(':libs:fin')
+    implementation project(':libs:kde-connect')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

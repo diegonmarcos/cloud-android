@@ -46,6 +46,7 @@ object SectionPages {
         sectionId == "config" && pageId == "profile"   -> ProfileFragment.newInstance()
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
+        sectionId == "config" && pageId == "kde"       -> com.diegonmarcos.superapp.kdeconnect.KdeConnectFragment.newInstance()
         sectionId == "maps"    && pageId == "configs"   -> MapsConfigFragment.newInstance()
         sectionId == "maps"    && pageId == "map"       -> MapsMapFragment.newInstance()
         sectionId == "maps"    && pageId == "timeline"  -> MapsTimelineTabsFragment.newInstance()

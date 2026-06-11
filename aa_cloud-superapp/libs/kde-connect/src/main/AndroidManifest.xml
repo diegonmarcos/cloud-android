@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- wg0 reachability probe + unicast KDE Connect identity packet. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Hand-off to the installed official client (LAN-discovery fallback +
+         pairing UI). Scoped query — no QUERY_ALL_PACKAGES needed. -->
+    <queries>
+        <package android:name="org.kde.kdeconnect_tp" />
+    </queries>
+</manifest>
