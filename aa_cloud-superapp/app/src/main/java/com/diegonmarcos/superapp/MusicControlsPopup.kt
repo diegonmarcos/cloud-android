@@ -45,8 +45,9 @@ class MusicControlsPopup(private val ctx: Context) {
         /** Fixed popup height in dp — the compact landscape box that
          *  ends just after the transport buttons. Applied as an
          *  EXPLICIT window height (see show()) so the album art can't
-         *  inflate the popup down the screen. */
-        private const val POPUP_HEIGHT_DP = 196f
+         *  inflate the popup down the screen. 167 ≈ 196 × 0.85 (the
+         *  15% trim taken off the top/bottom padding). */
+        private const val POPUP_HEIGHT_DP = 167f
     }
 
     private var popup: PopupWindow? = null
