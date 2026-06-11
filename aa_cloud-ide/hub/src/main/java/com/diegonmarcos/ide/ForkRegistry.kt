@@ -17,6 +17,7 @@ data class Fork(
     val trackerDir: String,
     val license: String,
     val runtime: String,
+    val pinnedTag: String,
     val priority: Int,
     val blockedOn: String?,
 ) {
@@ -44,6 +45,7 @@ object ForkRegistry {
                 trackerDir = o.optString("tracker_dir"),
                 license = o.optString("license"),
                 runtime = o.optString("runtime"),
+                pinnedTag = o.optString("pinned_tag"),
                 priority = o.optInt("priority", 99),
                 blockedOn = o.optString("blocked_on").takeIf { it.isNotEmpty() && it != "null" },
             )

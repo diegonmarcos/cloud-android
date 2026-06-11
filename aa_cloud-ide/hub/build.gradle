@@ -35,6 +35,13 @@ def forksB64  = forksJson.bytes.encodeBase64().toString()
 // Endpoints baked for the workspace root + 'open in app' deep-link fallbacks.
 def endpointsB64 = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64().toString()
 
+// GHCR + in-app updater config — same source of truth (build.json::release) the
+// build.sh oras-push / oras-pull / gh-release steps read. The hub's
+// com.diegonmarcos.ide.update package self-updates the hub APK from here; no
+// hardcoded URLs in Kotlin (FIRE rule 4). Mirrors ea_cloud-superapp/libs:updater.
+def ghcr = buildJson.release.ghcr
+def au   = buildJson.release.auto_update
+
 android {
     namespace 'com.diegonmarcos.ide'
     compileSdk 35
@@ -52,6 +59,16 @@ android {
         buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
         buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
+
+        // GHCR + auto-update (com.diegonmarcos.ide.update) — data-driven.
+        buildConfigField "String",  "GHCR_REGISTRY",   "\"${ghcr.registry}\""
+        buildConfigField "String",  "GHCR_NAMESPACE",  "\"${ghcr.namespace}\""
+        buildConfigField "String",  "GHCR_IMAGE",      "\"${ghcr.image}\""
+        buildConfigField "String",  "AUTO_UPDATE_TAG", "\"${au.tag}\""
+        buildConfigField "long",    "AUTO_UPDATE_INTERVAL_HOURS", "${au.interval_hours}L"
+        buildConfigField "boolean", "AUTO_UPDATE_ENABLED",        "${au.enabled}"
+        buildConfigField "boolean", "AU_REQUIRE_UNMETERED",       "${au.require_unmetered_network}"
+        buildConfigField "boolean", "AU_REQUIRE_CHARGING",        "${au.require_charging}"
 
         // Resolve the IPC permission name into the manifest placeholder so the
         // <permission>/<provider>/<service> declarations stay data-driven too.
@@ -108,6 +125,10 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    // In-app updater (com.diegonmarcos.ide.update): WorkManager periodic check +
+    // CoroutineWorker. GhcrClient uses built-in org.json (no extra dep).
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test:runner:1.6.2'

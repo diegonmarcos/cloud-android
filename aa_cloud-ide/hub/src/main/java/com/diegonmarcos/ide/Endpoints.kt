@@ -22,4 +22,11 @@ object Endpoints {
     /** The hub-owned shared workspace root path. */
     fun workspaceRoot(): String? =
         root.optJSONObject("workspace")?.optString("root_path")?.takeIf { it.isNotEmpty() }
+
+    /** gitea HTTPS base (public :443). */
+    fun giteaBase(): String? =
+        root.optJSONObject("editor")?.optString("gitea_https_base")?.takeIf { it.isNotEmpty() }
+
+    /** Count of configured SFTP presets (all WireGuard-only). */
+    fun sftpCount(): Int = root.optJSONArray("sftp")?.length() ?: 0
 }

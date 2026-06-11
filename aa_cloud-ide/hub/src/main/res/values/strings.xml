@@ -8,5 +8,26 @@
     <string name="tile_not_installed_long">%1$s is not installed yet — install it from the Cloud-IDE updater.</string>
     <string name="tile_blocked">Blocked: %1$s</string>
     <string name="tile_code_server">code-server\nOpen in browser</string>
+    <string name="tile_configs">Configs\nUpdate · About</string>
     <string name="tile_launch_failed">Could not launch</string>
+
+    <!-- Configs -->
+    <string name="configs_title">Configs</string>
+    <string name="cfg_check_updates">Check for updates</string>
+    <string name="cfg_about">About</string>
+    <string name="cfg_autoupdate">Auto-update: %1$s (every %2$dh, tag \"%3$s\")</string>
+    <string name="upd_checking">Checking GHCR…</string>
+    <string name="upd_uptodate">Up to date (%1$s)</string>
+    <string name="upd_downloading">Downloading… %1$d%%</string>
+    <string name="upd_installing">Installing…</string>
+    <string name="upd_done">Done</string>
+    <string name="upd_failed">Update failed: %1$s</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_app">App</string>
+    <string name="about_updates">Updates</string>
+    <string name="about_forks">Forks</string>
+    <string name="about_endpoints">Endpoints</string>
+    <string name="about_links">Links</string>
 </resources>

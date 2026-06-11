@@ -46,8 +46,17 @@ class MainActivity : AppCompatActivity() {
         // code-server is browser-only — a deep-link tile, not a fork.
         root.addView(codeServerTile())
 
+        // Configs (Update + About) — same Configs-subitems pattern as SuperApp.
+        root.addView(configsTile())
+
         setContentView(root)
     }
+
+    private fun configsTile(): TextView =
+        baseTile().apply {
+            text = getString(R.string.tile_configs)
+            setOnClickListener { startActivity(Intent(this@MainActivity, ConfigsActivity::class.java)) }
+        }
 
     private fun tileFor(fork: Fork): TextView {
         val installed = fork.isInstalled(this)

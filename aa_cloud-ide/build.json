@@ -114,6 +114,17 @@
       "default_tag": "latest",
       "target_dir": "~/storage/Download",
       "asset_name": "Cloud-IDE-Hub.apk"
+    },
+    "auto_update": {
+      "_doc": "In-app updater config — read at gradle eval time into BuildConfig, then used by the hub's com.diegonmarcos.ide.update package at runtime (same OCI HTTP flow as build.sh oras-pull). Same registry/namespace/image as release.ghcr. The hub self-updates from cloud-ide-hub:<tag>; the forks update via the same mechanism once they publish their own images. Mirrors ea_cloud-superapp/build.json::release.auto_update.",
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "_doc_install": "'prompt' uses PackageInstaller with a user confirmation per Android's security model. 'silent' would need the system updater privilege (F-Droid Privileged Extension territory).",
+      "install_mode": "prompt"
     }
   }
 }

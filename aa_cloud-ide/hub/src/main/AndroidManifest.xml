@@ -6,6 +6,10 @@
          does no sync; the forks own all file/server traffic. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- In-app updater: install the hub APK via PackageInstaller (user prompt)
+         + post download/result notifications. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Discover which fork APKs are installed (ForkRegistry.isInstalled +
          getLaunchIntentForPackage). The three fork ids are fixed, so a scoped
@@ -60,6 +64,15 @@
             android:exported="true"
             android:permission="${ipcPermission}"
             tools:ignore="ExportedService" />
+
+        <!-- Configs (Update + About) — internal, not exported. -->
+        <activity android:name=".ConfigsActivity" android:exported="false" />
+        <activity android:name=".AboutActivity" android:exported="false" />
+
+        <!-- In-app updater PackageInstaller status callback. -->
+        <receiver
+            android:name=".update.PackageInstallerReceiver"
+            android:exported="false" />
 
     </application>
 </manifest>
