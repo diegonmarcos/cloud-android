@@ -13,103 +13,121 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
 
 /**
- * Self-contained, wg0-preferred KDE Connect discovery. No dependency on the
- * installed org.kde.kdeconnect_tp app.
+ * Self-contained, wg0-preferred KDE Connect discovery — and its own diagnostics.
+ * No dependency on the installed org.kde.kdeconnect_tp app.
  *
- * KDE Connect discovery works by sending a UDP **identity** packet to the
- * peer's port 1716; the peer reads the packet's **source IP** and opens a TCP
- * link back to it. So which interface the packet leaves on matters: to reach
- * the Surface at its mesh IP (10.0.0.5) the packet MUST egress the native wg0
- * tunnel, otherwise its source is a Wi-Fi address the Surface can't route back
- * to. We therefore bind the probe + identity socket to the active
- * VPN-transport [Network] (the phone's native WireGuard) and try that FIRST;
- * then the default route; then a self-contained LAN broadcast.
+ * KDE Connect discovery sends a UDP **identity** packet to the peer's port 1716;
+ * the peer reads the packet's **source IP** and opens a TCP link back. So the
+ * packet must egress the native wg0 tunnel (source = wg0 IP) to reach the Surface
+ * at 10.0.0.5. We bind the probe + identity socket to the active VPN-transport
+ * [Network] (the phone's native WireGuard) and try that FIRST; then the default
+ * route; then a self-contained LAN broadcast.
  *
- * SLICE scope: reachability + identity nudge only. The TLS pairing + plugin
- * link is the upstream vendor phase (upstreams.kde-connect).
+ * [diagnose] returns the full step-by-step trace so the Configs page can show
+ * exactly which route was used + the ping RTT — no hidden behaviour.
  */
 object KdeConnectDiscovery {
     private const val TAG = "KdeConnect/Discovery"
 
     sealed class Result {
-        /** Surface answered on wg_ip:port over the wg0 tunnel; identity sent. */
         data class Wg0Reachable(val device: KdeConnectConfig.Device, val viaVpnBind: Boolean) : Result()
-        /** wg0 didn't reach the Surface; a LAN-broadcast identity was sent. */
         object LanFallback : Result()
-        /** Nothing reachable and no fallback permitted. */
         object Unreachable : Result()
     }
 
-    /**
-     * Decide + act on the route for the primary device. Pure network I/O —
-     * hops to [Dispatchers.IO] internally.
-     */
-    suspend fun discover(context: Context): Result = withContext(Dispatchers.IO) {
+    /** One visible diagnostic line. [ok] = true (✓) / false (✗) / null (•info). */
+    data class Step(val label: String, val detail: String, val ok: Boolean?)
+
+    data class Report(val result: Result, val steps: List<Step>)
+
+    /** Run discovery and return both the outcome and a human-readable trace. */
+    suspend fun diagnose(context: Context): Report = withContext(Dispatchers.IO) {
         val cfg = KdeConnectConfig.get()
+        val steps = mutableListOf<Step>()
         val device = cfg.primaryDevice
-        if (device == null || device.wgIp.isBlank()) return@withContext Result.Unreachable
+        if (device == null || device.wgIp.isBlank()) {
+            steps += Step("Device", "none declared in build.json::ui.kde_connect", false)
+            return@withContext Report(Result.Unreachable, steps)
+        }
+        steps += Step("Target", "${device.label} · ${device.wgIp}:${cfg.discoveryPort}", null)
 
         if (cfg.preferWg0) {
-            // 1. Native wg0 explicitly: bind to the VPN-transport network so the
-            //    packet leaves the tunnel with the wg0 source IP.
+            // --- native wg0 (VPN-bound) ---
             val vpn = vpnNetwork(context)
-            if (vpn != null && probe(vpn, device.wgIp, cfg.discoveryPort, cfg.probeTimeoutMs)) {
-                runCatching { sendIdentity(vpn, device.wgIp, cfg.discoveryPort) }
-                    .onFailure { Log.w(TAG, "identity over vpn-bind failed: ${it.message}") }
-                Log.i(TAG, "reached ${device.wgIp} via VPN-bound wg0")
-                return@withContext Result.Wg0Reachable(device, viaVpnBind = true)
+            if (vpn != null) {
+                val (iface, localIp) = vpnLink(context, vpn)
+                steps += Step("wg0 tunnel", "up · iface=${iface ?: "?"} local=${localIp ?: "?"}", true)
+                val rtt = probeRtt(vpn, device.wgIp, cfg.discoveryPort, cfg.probeTimeoutMs)
+                if (rtt != null) {
+                    steps += Step("Ping ${device.wgIp}:${cfg.discoveryPort} (wg0-bound)", "reachable in ${rtt} ms", true)
+                    val sent = runCatching { sendIdentity(vpn, device.wgIp, cfg.discoveryPort) }.isSuccess
+                    steps += Step("Identity nudge (wg0)", if (sent) "unicast sent" else "send failed", sent)
+                    return@withContext Report(Result.Wg0Reachable(device, viaVpnBind = true), steps)
+                }
+                steps += Step("Ping ${device.wgIp}:${cfg.discoveryPort} (wg0-bound)", "no answer within ${cfg.probeTimeoutMs} ms", false)
+            } else {
+                steps += Step("wg0 tunnel", "no VPN-transport network is up", false)
             }
-            // 2. Default route — covers the case where wg0 is already the
-            //    system default network (so no explicit bind is needed).
-            if (probe(null, device.wgIp, cfg.discoveryPort, cfg.probeTimeoutMs)) {
-                runCatching { sendIdentity(null, device.wgIp, cfg.discoveryPort) }
-                    .onFailure { Log.w(TAG, "identity over default route failed: ${it.message}") }
-                Log.i(TAG, "reached ${device.wgIp} via default route")
-                return@withContext Result.Wg0Reachable(device, viaVpnBind = false)
+
+            // --- default route (covers wg0 already being the system default) ---
+            val rttDef = probeRtt(null, device.wgIp, cfg.discoveryPort, cfg.probeTimeoutMs)
+            if (rttDef != null) {
+                steps += Step("Ping ${device.wgIp}:${cfg.discoveryPort} (default route)", "reachable in ${rttDef} ms", true)
+                val sent = runCatching { sendIdentity(null, device.wgIp, cfg.discoveryPort) }.isSuccess
+                steps += Step("Identity nudge (default)", if (sent) "unicast sent" else "send failed", sent)
+                return@withContext Report(Result.Wg0Reachable(device, viaVpnBind = false), steps)
             }
-            Log.i(TAG, "${device.wgIp}:${cfg.discoveryPort} not reachable over wg0")
+            steps += Step("Ping ${device.wgIp}:${cfg.discoveryPort} (default route)", "no answer within ${cfg.probeTimeoutMs} ms", false)
         }
 
-        // 3. Self-contained LAN fallback — broadcast an identity on the local
-        //    segment (the standard non-VPN discovery path). No external app.
+        // --- self-contained LAN broadcast fallback ---
         if (cfg.lanFallback) {
-            runCatching { broadcastIdentity(cfg.discoveryPort) }
-                .onFailure { Log.w(TAG, "LAN broadcast failed: ${it.message}") }
-            return@withContext Result.LanFallback
+            val lan = lanAddress()
+            val sent = runCatching { broadcastIdentity(cfg.discoveryPort) }.isSuccess
+            steps += Step("LAN broadcast :${cfg.discoveryPort}", (if (sent) "sent" else "failed") + (lan?.let { " · from $it" } ?: ""), sent)
+            return@withContext Report(Result.LanFallback, steps)
         }
-        Result.Unreachable
+        steps += Step("LAN fallback", "disabled in build.json", null)
+        Report(Result.Unreachable, steps)
     }
 
-    /** The active VPN-transport network (the phone's native WireGuard), or null
-     *  if no VPN is up. Binding sockets to it forces egress over wg0. */
+    /** The active VPN-transport network (the native WireGuard), or null. */
     private fun vpnNetwork(context: Context): Network? {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return null
         @Suppress("DEPRECATION")
         return cm.allNetworks.firstOrNull { n ->
-            val caps = cm.getNetworkCapabilities(n)
-            caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+            cm.getNetworkCapabilities(n)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
         }
     }
 
-    /** TCP connect to [host]:[port] within [timeoutMs], optionally pinned to
-     *  [network] so the attempt routes over a specific interface (wg0). */
-    fun probe(network: Network?, host: String, port: Int, timeoutMs: Int): Boolean =
+    /** (interfaceName, local IPv4) of the VPN network — the wg0 endpoint. */
+    private fun vpnLink(context: Context, vpn: Network): Pair<String?, String?> {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return null to null
+        val lp = cm.getLinkProperties(vpn) ?: return null to null
+        val v4 = lp.linkAddresses
+            .map { it.address.hostAddress.orEmpty() }
+            .firstOrNull { it.isNotBlank() && !it.contains(":") }
+        return lp.interfaceName to v4
+    }
+
+    /** TCP connect RTT in ms to [host]:[port] (pinned to [network] when given),
+     *  or null if it didn't answer within [timeoutMs]. This is the "ping". */
+    fun probeRtt(network: Network?, host: String, port: Int, timeoutMs: Int): Long? =
         runCatching {
+            val start = System.nanoTime()
             Socket().use { s ->
                 network?.bindSocket(s)
                 s.connect(InetSocketAddress(host, port), timeoutMs)
-                true
             }
-        }.getOrDefault(false)
+            (System.nanoTime() - start) / 1_000_000
+        }.getOrNull()
 
-    /** Unicast KDE Connect identity (protocol v7) to [host]:[port], optionally
-     *  pinned to [network]. The peer connects back to this packet's source IP,
-     *  so binding to the wg0 [network] is what makes the link traverse the
-     *  tunnel. Best-effort. */
     private fun sendIdentity(network: Network?, host: String, port: Int) {
         DatagramSocket().use { sock ->
             network?.bindSocket(sock)
@@ -119,8 +137,6 @@ object KdeConnectDiscovery {
         Log.i(TAG, "sent unicast identity to $host:$port (vpnBound=${network != null})")
     }
 
-    /** Self-contained LAN discovery — broadcast the identity to the local
-     *  segment on [port]. Replaces the old "launch the installed app" path. */
     private fun broadcastIdentity(port: Int) {
         DatagramSocket().use { sock ->
             sock.broadcast = true
@@ -131,8 +147,15 @@ object KdeConnectDiscovery {
         Log.i(TAG, "broadcast identity on LAN :$port")
     }
 
-    /** A minimal, well-formed KDE Connect identity datagram (newline-terminated
-     *  JSON) the daemon accepts on its discovery socket. */
+    /** First non-loopback site-local IPv4 (the Wi-Fi/LAN address) for display. */
+    private fun lanAddress(): String? = runCatching {
+        NetworkInterface.getNetworkInterfaces().toList()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList() }
+            .map { it.hostAddress.orEmpty() }
+            .firstOrNull { it.isNotBlank() && !it.contains(":") && it.startsWith("192.168.") }
+    }.getOrNull()
+
     private fun identityBytes(tcpPort: Int): ByteArray {
         val identity = JSONObject().apply {
             put("id", 0)
