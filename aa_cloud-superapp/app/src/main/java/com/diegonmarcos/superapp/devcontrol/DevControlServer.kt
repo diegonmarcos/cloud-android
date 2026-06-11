@@ -384,6 +384,7 @@ object DevControlServer {
         val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
             as android.content.pm.LauncherApps
         val me = android.os.Process.myUserHandle()
+        val pm = ctx.packageManager
         val sb = StringBuilder("[")
         var first = true
         for (info in launcher.getActivityList(null, me)) {
@@ -391,10 +392,36 @@ object DevControlServer {
             val label = info.label.toString()
             val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
                 .classify(pkg, label, folders)
+            // Install-source debug fields — exactly what
+            // PhoneSmartFolders.install_source_not reads, so we can see
+            // why a given app does/doesn't land in Alternative Sources.
+            var installing: String? = null
+            var initiating: String? = null
+            var isSystem = false
+            runCatching {
+                val ai = pm.getApplicationInfo(pkg, 0)
+                isSystem = (ai.flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or
+                    android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+            }
+            runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    val src = pm.getInstallSourceInfo(pkg)
+                    installing = src.installingPackageName
+                    initiating = src.initiatingPackageName
+                } else {
+                    @Suppress("DEPRECATION")
+                    installing = pm.getInstallerPackageName(pkg)
+                }
+            }
             if (!first) sb.append(','); first = false
             sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
             sb.append(""""label":"""").append(jsonEscape(label)).append('"').append(',')
-            sb.append(""""folder":"""").append(jsonEscape(folderId)).append('"')
+            sb.append(""""folder":"""").append(jsonEscape(folderId)).append('"').append(',')
+            sb.append(""""installing":""")
+                .append(if (installing == null) "null" else "\"${jsonEscape(installing!!)}\"").append(',')
+            sb.append(""""initiating":""")
+                .append(if (initiating == null) "null" else "\"${jsonEscape(initiating!!)}\"").append(',')
+            sb.append(""""system":""").append(isSystem)
             sb.append('}')
         }
         sb.append(']')
