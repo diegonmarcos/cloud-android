@@ -120,14 +120,15 @@ class MusicControlsPopup(private val ctx: Context) {
         // Title marquee needs isSelected=true to actually scroll.
         view.findViewById<TextView>(R.id.music_popup_title).isSelected = true
 
-        // Width = 60% of the REAL screen width — a compact card with
-        // generous side margins (user's chosen size). Derived from
-        // displayMetrics so it adapts to any device instead of a
-        // hardcoded dp. Height comes from the card's fixed 196dp (root
-        // is match_parent width / fixed height in XML; the explicit
-        // window width here governs the actual rendered width).
+        // WIDE + SHORT landscape card (Samsung media-card shape):
+        // horizontally spans nearly the full screen (left-icon to
+        // right-icon — small side margins), vertically a compact fixed
+        // box that ends right after the transport buttons (the card's
+        // fixed 196dp height in XML — it does NOT grow down the screen;
+        // the album art centerCrops INTO this box). Width derived from
+        // the real screen width so it adapts to any device.
         val screenW = ctx.resources.displayMetrics.widthPixels
-        val popupW = (screenW * 0.60f).toInt()
+        val popupW = (screenW * 0.92f).toInt()
 
         // PopupWindow setup — outsideTouchable so the user can tap
         // outside to dismiss; focusable=true so back-press dismisses.
