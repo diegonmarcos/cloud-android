@@ -45,8 +45,14 @@ class ApkInstallWorker(
                 UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, total))
             }
             Log.i(TAG, "downloaded $label (${apk.length()} bytes) → installing $pkg")
+            // install() flips UpdateProgress to Installing and commits the
+            // PackageInstaller session. Do NOT force Done here — that races the
+            // async session and would overwrite the "Installing…" overlay before
+            // the system installer even appears. The terminal state (Done /
+            // Failed) is driven by PackageInstallerReceiver from the real
+            // PackageInstaller callback, so the overlay tracks the actual
+            // install lifecycle instead of flickering straight to "Done".
             UpdateInstaller(applicationContext).install(apk, pkg)
-            UpdateProgress.update(UpdateProgress.State.Done)
             Result.success()
         } catch (t: Throwable) {
             Log.w(TAG, "install of $pkg failed: ${t.message}", t)

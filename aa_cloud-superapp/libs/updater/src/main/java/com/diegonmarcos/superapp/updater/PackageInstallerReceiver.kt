@@ -27,7 +27,14 @@ class PackageInstallerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: ""
-        Log.i(TAG, "status=$status msg=$message")
+        // Which app was being installed — our own (self-update) or a companion
+        // (Cloud-Comms / Cloud-IDE hub). Drives an accurate success message.
+        val pkg = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME).orEmpty()
+        val appName = when {
+            pkg.isBlank() || pkg == context.packageName -> "Cloud SuperApp"
+            else -> pkg
+        }
+        Log.i(TAG, "status=$status msg=$message pkg=$pkg")
 
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -37,7 +44,10 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 context.startActivity(confirm)
             }
             PackageInstaller.STATUS_SUCCESS -> {
-                surface(context, "Update installed ✓", "Cloud SuperApp installed successfully.",
+                // Resolve the in-app overlay (it sat on "Installing…" while the
+                // system installer was up). MainActivity auto-dismisses on Done.
+                UpdateProgress.update(UpdateProgress.State.Done)
+                surface(context, "Installed ✓", "$appName installed successfully.",
                     severity = NotificationStore.Sev.INFO)
             }
             else -> {
@@ -51,7 +61,10 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                     PackageInstaller.STATUS_FAILURE_STORAGE     -> "STORAGE"
                     else -> "status=$status"
                 }
-                surface(context, "Update failed: $label", message.ifEmpty { label },
+                // Resolve the overlay to a visible failure instead of leaving it
+                // stuck on "Installing…" for a companion install.
+                UpdateProgress.update(UpdateProgress.State.Failed(message.ifEmpty { label }))
+                surface(context, "Install failed: $label", message.ifEmpty { label },
                     severity = NotificationStore.Sev.ERROR)
             }
         }
