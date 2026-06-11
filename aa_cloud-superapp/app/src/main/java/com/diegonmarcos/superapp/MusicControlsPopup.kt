@@ -148,11 +148,11 @@ class MusicControlsPopup(private val ctx: Context) {
         // anchor's side. Compute xOffset so the popup's left edge
         // lands at (screenWidth − popupWidth) / 2 regardless of
         // where the anchor sits — same fix CalendarAgendaPopup uses.
-        // popupWidth = the layout's fixed 280dp root width.
+        // popupWidth = the layout's fixed 340dp root card width.
         val d = ctx.resources.displayMetrics.density
         val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
         val screenW = ctx.resources.displayMetrics.widthPixels
-        val popupW = (280 * d).toInt()
+        val popupW = (340 * d).toInt()
         val xOffset = (screenW - popupW) / 2 - anchorLoc[0]
         pw.showAsDropDown(anchor, xOffset, 4, android.view.Gravity.START)
     }
@@ -186,17 +186,19 @@ class MusicControlsPopup(private val ctx: Context) {
         }?.takeIf { it.isNotBlank() } ?: ""
         view.findViewById<TextView>(R.id.music_popup_title).text = title
         view.findViewById<TextView>(R.id.music_popup_artist).text = artist
-        // Album art — prefer ALBUM_ART, fall back to ART, then
-        // DISPLAY_ICON. Leave the app icon visible when the app
-        // publishes no art (already set at show() time).
+        // Album cover → full-bleed card BACKGROUND (centerCrop, dimmed
+        // by the scrim). Prefer ALBUM_ART, fall back to ART, then
+        // DISPLAY_ICON. When the session publishes no art the
+        // background stays transparent and the card's black shows
+        // through. The small left icon stays the APP icon (the
+        // launch target), set at show() time — independent of the art.
         val art = md?.let {
             it.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: it.getBitmap(MediaMetadata.METADATA_KEY_ART)
                 ?: it.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
         }
-        if (art != null) {
-            view.findViewById<ImageView>(R.id.music_popup_icon).setImageBitmap(art)
-        }
+        view.findViewById<ImageView>(R.id.music_popup_art_bg)
+            .setImageBitmap(art) // null clears it → black card background
     }
 
     private fun refreshState(c: MediaController?) {
