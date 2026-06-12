@@ -18,6 +18,17 @@
     <!-- Long-press → Uninstall, via PackageInstaller.uninstall (shows the
          system confirm dialog). Normal permission, auto-granted on API 26+. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Floating Top Nav Bar overlay (FloatingNavService). SYSTEM_ALERT_WINDOW
+         ("Display over other apps") is a Special-access perm — NOT runtime-
+         grantable; the user toggles it in Settings → Special access → Display
+         over other apps (the Configs → About → Permissions page surfaces a row
+         + a "Set Display-over-apps" deep-link button). The overlay runs in a
+         foreground service so Android keeps it alive while the user roams other
+         apps; FOREGROUND_SERVICE_SPECIAL_USE is the API-34 type for a launcher-
+         companion overlay that doesn't fit camera/location/etc. categories. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -224,6 +235,21 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+        </service>
+
+        <!-- FloatingNavService — the cross-app Floating Top Nav Bar overlay.
+             Foreground service (START_STICKY) so it survives while the user is
+             in other apps; type=specialUse because a launcher-companion overlay
+             doesn't map to the predefined FGS categories. Not exported — only
+             our own MainActivity / Permissions page start it, gated by
+             Settings.canDrawOverlays + build.json::ui.floating_nav.enabled. -->
+        <service
+            android:name=".floatingnav.FloatingNavService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating cross-app navigation bar overlay for the Cloud SuperApp launcher" />
         </service>
 
         <!-- Shizuku provider — required by the Shizuku client lib so the

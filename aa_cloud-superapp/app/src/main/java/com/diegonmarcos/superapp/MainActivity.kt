@@ -1812,6 +1812,11 @@ class MainActivity : AppCompatActivity(),
 
     override fun onResume() {
         super.onResume()
+        // Floating Top Nav Bar — start the overlay service iff enabled in
+        // build.json AND the user granted "display over other apps". The
+        // service self-hides while we're foreground and surfaces the bubble
+        // once the user leaves. Idempotent (START_STICKY); no-op otherwise.
+        com.diegonmarcos.superapp.floatingnav.FloatingNavService.startIfPermitted(this)
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener { state ->
             runOnUiThread { handleUpdateState(state) }
