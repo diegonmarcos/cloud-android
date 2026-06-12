@@ -277,6 +277,25 @@
           "label": "Phone",
           "perm": "android.permission.READ_PHONE_STATE"
         }
+      ],
+      "_doc_roles": "Single-holder RoleManager roles surfaced as Special-access rows on Configs/About → Permissions. These are NOT held by the SuperApp (it's a launcher with no dialer / call-screening service) — the holder is the Cloud-Comms phone fork (or Fossify Phone in the interim). The SuperApp cannot grant another app a role programmatically (createRequestRoleIntent only ever targets the calling app), so each row (a) reads the LIVE holder via RoleManager.getRoleHolders / TelecomManager.getDefaultDialerPackage and shows ✓ when the holder is one of `expected_holders`, and (b) the 'Set Default Apps' button deep-links to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS so the user picks Cloud-Comms there. `role` is the literal android.app.role.* constant passed straight to RoleManager. When our own fork ships, add its package to the relevant expected_holders[] — zero code change.",
+      "roles": [
+        {
+          "label": "Default phone app",
+          "role": "android.app.role.DIALER",
+          "expected_holders": [
+            "com.diegonmarcos.comms.dialer",
+            "org.fossify.phone"
+          ]
+        },
+        {
+          "label": "Spam filter (call screening)",
+          "role": "android.app.role.CALL_SCREENING",
+          "expected_holders": [
+            "com.diegonmarcos.comms.dialer",
+            "org.fossify.phone"
+          ]
+        }
       ]
     },
     "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",

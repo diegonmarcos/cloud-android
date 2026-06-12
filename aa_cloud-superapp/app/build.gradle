@@ -45,6 +45,12 @@ def uiSectionsB64   = uiSectionsJson.bytes.encodeBase64().toString()
 // build.json::ui.permissions.runtime[].
 def uiPermissionsRuntimeJson = groovy.json.JsonOutput.toJson(buildJson.ui.permissions?.runtime ?: [])
 def uiPermissionsRuntimeB64  = uiPermissionsRuntimeJson.bytes.encodeBase64().toString()
+// Single-holder RoleManager roles (Default phone app, Spam filter / call
+// screening) surfaced as Special-access rows. DevControlFragment reads
+// UI_PERMISSIONS_ROLES_B64 to render holder state + the deep-link button.
+// Source of truth: build.json::ui.permissions.roles[].
+def uiPermissionsRolesJson = groovy.json.JsonOutput.toJson(buildJson.ui.permissions?.roles ?: [])
+def uiPermissionsRolesB64  = uiPermissionsRolesJson.bytes.encodeBase64().toString()
 def defaultSection  = buildJson.ui.default_section ?: 'home'
 def defaultMode     = buildJson.ui.default_mode    ?: 'apps'
 def tileColumns     = (buildJson.ui.tile_columns as Number)?.intValue() ?: 3
@@ -315,6 +321,7 @@ android {
         buildConfigField "String", "BUILD_TIMESTAMP",       "\"${buildTimestamp}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
         buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
+        buildConfigField "String", "UI_PERMISSIONS_ROLES_B64", "\"${uiPermissionsRolesB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         buildConfigField "String", "UI_DEFAULT_MODE",       "\"${defaultMode}\""
         buildConfigField "int",    "UI_TILE_COLUMNS",       "${tileColumns}"

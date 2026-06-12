@@ -146,6 +146,26 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Jump to the system "Default apps" picker (Phone app · Caller ID &
+     *  spam app live here) so the user can select the Cloud-Comms phone
+     *  fork. The launcher can't set another app's role programmatically —
+     *  createRequestRoleIntent only ever targets the calling app — so the
+     *  picker is the only honest path. Falls back to top-level Settings on
+     *  OEMs that don't expose ACTION_MANAGE_DEFAULT_APPS_SETTINGS. */
+    private fun openDefaultAppsSettings() {
+        val ctx = requireContext()
+        val primary = android.content.Intent(
+            android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
+        )
+        if (primary.resolveActivity(ctx.packageManager) != null) {
+            runCatching { startActivity(primary) }
+            return
+        }
+        runCatching {
+            startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS))
+        }
+    }
+
     /** Jump to the battery-optimization picker. Two strategies tried
      *  in order:
      *    1. Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS — opens
@@ -473,6 +493,16 @@ class DevControlFragment : Fragment() {
             it.addView(small(ctx, "Special access — system-toggles outside the runtime perms flow:"))
             row(ctx, it, "Battery Optimization", specialAccessBattery(ctxAny()))
             row(ctx, it, "Default launcher",   specialAccessLauncher(ctxAny()))
+            // ── Single-holder RoleManager roles (Default phone app, Spam
+            //    filter / call screening) — data-driven from
+            //    build.json::ui.permissions.roles[] (UI_PERMISSIONS_ROLES_B64).
+            //    The holder is the Cloud-Comms phone fork, NOT this launcher;
+            //    we can only DISPLAY the live holder + deep-link to the picker
+            //    ("Set Default Apps" button below). ✓ when the holder is one of
+            //    the role's expected_holders.
+            for (r in parsePermissionRoles()) {
+                row(ctx, it, r.label, specialAccessRole(ctxAny(), r.role, r.expectedHolders))
+            }
             row(ctx, it, "Usage stats",        specialAccessUsageStats(ctxAny()))
             row(ctx, it, "Notif. listener",    specialAccessNotifListener(ctxAny()))
             row(ctx, it, "Manage all files",   specialAccessManageStorage())
@@ -601,6 +631,15 @@ class DevControlFragment : Fragment() {
                 permButton(ctx, "Set Battery No-Optim", grantedBatteryOptim(ctxAny())) { openBatteryOptimizationSettings() },
                 permButton(ctx, "Set Samsung Never-Sleep", null) { openSamsungNeverSleepingSettings() },
                 permButton(ctx, "Set App Settings", null) { openAppSettings() },
+            ))
+            // ── Default Phone / Spam filter — single-holder roles whose holder
+            //    is the Cloud-Comms phone fork (see Special-access rows above).
+            //    The launcher can't grant another app a role, so jump to the
+            //    system Default-Apps picker where the user selects Cloud-Comms
+            //    as Phone app + Caller ID & spam app.
+            it.addView(small(ctx, "Set defaults — pick the Cloud-Comms phone fork as Phone app + Caller ID & spam app:"))
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Set Default Apps (Phone · Spam)", null) { openDefaultAppsSettings() },
             ))
             // ── Copy the full status block (matches what's rendered above).
             it.addView(actionButton(ctx, "Copy All Perms Status") {
@@ -1807,6 +1846,7 @@ class DevControlFragment : Fragment() {
         appendLine("== Special access ==")
         appendLine("Battery Optimization: ${specialAccessBattery(ctx)}")
         appendLine("Default launcher: ${specialAccessLauncher(ctx)}")
+        for (r in parsePermissionRoles()) appendLine("${r.label}: ${specialAccessRole(ctx, r.role, r.expectedHolders)}")
         appendLine("Usage stats: ${specialAccessUsageStats(ctx)}")
         appendLine("Notif. listener: ${specialAccessNotifListener(ctx)}")
         appendLine("Manage all files: ${specialAccessManageStorage()}")
@@ -1879,6 +1919,34 @@ class DevControlFragment : Fragment() {
         return out
     }
 
+    // Single-holder RoleManager roles (Default phone app / Spam filter) —
+    // data-driven from build.json::ui.permissions.roles[] via
+    // UI_PERMISSIONS_ROLES_B64. See specialAccessRole() for why the holder
+    // is read (not granted) here.
+    private data class RoleSpec(val label: String, val role: String, val expectedHolders: List<String>)
+
+    private fun parsePermissionRoles(): List<RoleSpec> {
+        val raw = runCatching {
+            String(android.util.Base64.decode(BuildConfig.UI_PERMISSIONS_ROLES_B64, android.util.Base64.DEFAULT))
+        }.getOrDefault("[]")
+        val arr = runCatching { org.json.JSONArray(raw) }.getOrDefault(org.json.JSONArray())
+        val out = mutableListOf<RoleSpec>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val label = o.optString("label")
+            val role  = o.optString("role")
+            if (label.isBlank() || role.isBlank()) continue
+            val holdersArr = o.optJSONArray("expected_holders")
+            val holders = mutableListOf<String>()
+            if (holdersArr != null) for (j in 0 until holdersArr.length()) {
+                val h = holdersArr.optString(j)
+                if (h.isNotBlank()) holders.add(h)
+            }
+            out.add(RoleSpec(label, role, holders))
+        }
+        return out
+    }
+
     // ── Special access — single-flag toggles outside the runtime perms flow.
     private fun specialAccessBattery(ctx: Context): String = try {
         val pm = ctx.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
@@ -1892,6 +1960,36 @@ class DevControlFragment : Fragment() {
             val held = rm?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) == true
             if (held) "✓ Default home/launcher" else "◯ Not default"
         } else "— (pre-API 29)"
+    } catch (_: Throwable) { "—" }
+
+    /** Live holder state for a single-holder RoleManager role. The launcher
+     *  is NOT the holder (the Cloud-Comms phone fork is) and it can't grant
+     *  another app a role, so this only DISPLAYS the current holder:
+     *    • DIALER — read publicly via TelecomManager.getDefaultDialerPackage()
+     *      (no permission). ✓ when the holder ∈ expected_holders.
+     *    • CALL_SCREENING / others — Android exposes no public holder getter
+     *      (getRoleHolders needs the signature MANAGE_ROLE_HOLDERS perm), so
+     *      we confirm the role is available + held-by-self, otherwise point
+     *      the user at the Default-Apps picker. */
+    private fun specialAccessRole(ctx: Context, role: String, expected: List<String>): String = try {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) "— (pre-API 29)"
+        else {
+            val rm = ctx.getSystemService(android.app.role.RoleManager::class.java)
+            when {
+                rm?.isRoleAvailable(role) != true -> "— (unsupported)"
+                role == android.app.role.RoleManager.ROLE_DIALER -> {
+                    val tm = ctx.getSystemService(android.telecom.TelecomManager::class.java)
+                    val holder = runCatching { tm?.defaultDialerPackage }.getOrNull()
+                    when {
+                        holder.isNullOrBlank()    -> "◯ none — set in Default apps"
+                        expected.contains(holder) -> "✓ $holder"
+                        else                      -> "◯ $holder — set in Default apps"
+                    }
+                }
+                rm.isRoleHeld(role) -> "✓ held by this app"
+                else                -> "◯ set in Default apps"
+            }
+        }
     } catch (_: Throwable) { "—" }
 
     private fun specialAccessUsageStats(ctx: Context): String = try {
