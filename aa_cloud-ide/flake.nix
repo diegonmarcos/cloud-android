@@ -27,7 +27,10 @@
           buildToolsVersions   = [ "35.0.0" "34.0.0" ];
           platformVersions     = [ "35" "34" "26" ];
           # The hub is pure-JVM. NDK kept available for the forks that bundle
-          # native libs (Amaze FM/Utils native bits, any Cordova native plugin).
+          # native libs. NOTE: nixpkgs 24.11 androidenv indexes up to NDK 26 —
+          # Amaze upstream pins r28c, so the files-fork patch series re-pins its
+          # libs.versions.toml ndk to this version (fork builds with OUR
+          # toolchain). Revisit on the next nixpkgs bump.
           includeNDK           = true;
           ndkVersions          = [ "26.1.10909125" ];
           cmakeVersions        = [ "3.22.1" ];

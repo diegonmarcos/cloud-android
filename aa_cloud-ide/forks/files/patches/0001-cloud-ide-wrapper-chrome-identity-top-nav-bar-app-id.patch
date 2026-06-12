@@ -1,4 +1,4 @@
-From 03829b67f86b02727a4d93d1cb3180a4e54dbd53 Mon Sep 17 00:00:00 2001
+From 067c90b53d4e59e64741f28581e5a3c109203d4c Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Fri, 12 Jun 2026 14:41:00 +0200
 Subject: [PATCH] =?UTF-8?q?cloud-ide:=20wrapper=20chrome=20+=20identity=20?=
@@ -19,7 +19,8 @@ Cloud-IDE files-fork patch (concern 1 branding + concern 5 wrapper chrome):
  app/build.gradle                              |   7 +-
  .../filemanager/cloudide/CloudIdeNavBar.java  | 131 ++++++++++++++++++
  .../ui/activities/MainActivity.java           |   2 +
- 3 files changed, 138 insertions(+), 2 deletions(-)
+ gradle/libs.versions.toml                     |   2 +-
+ 4 files changed, 139 insertions(+), 3 deletions(-)
  create mode 100644 app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java
 
 diff --git a/app/build.gradle b/app/build.gradle
@@ -197,6 +198,19 @@ index 2e835df77..a8425a775 100644
  
      intent = getIntent();
  
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+index e475d17e4..4c4201531 100644
+--- a/gradle/libs.versions.toml
++++ b/gradle/libs.versions.toml
+@@ -3,7 +3,7 @@ compileSdk = "34"
+ minSdk = "21"
+ targetSdk = "35"
+ kotlin = "1.9.25"
+-ndk = "28.2.13676358" #r28c
++ndk = "26.1.10909125" # Cloud-IDE fork patch: build with our toolchain (nixpkgs 24.11 NDK); upstream pinned r28c
+ 
+ jacocoAndroid = "0.2.1"
+ gradle = "8.5.2"
 -- 
 2.47.2
 
