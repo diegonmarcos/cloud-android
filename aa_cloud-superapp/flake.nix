@@ -37,8 +37,16 @@
           includeNDK          = true;
           ndkVersions         = [ "26.1.10909125" ];
           cmakeVersions       = [ "3.22.1" ];
-          includeEmulator     = false;
-          includeSystemImages = false;
+          # Emulator + an arm64 system image for FULL-FIDELITY testing of the
+          # arm64-v8a APK (`./build.sh emulator`). On this x86_64 host the
+          # emulator emulates arm64 wholesale (TCG/software — slow but faithful),
+          # so it needs NO libhoudini translation, unlike the Waydroid path.
+          # The image ABI + API here must match build.json::emulator.system_image
+          # (system-images;android-34;google_apis;arm64-v8a).
+          includeEmulator     = true;
+          includeSystemImages = true;
+          systemImageTypes    = [ "google_apis" ];
+          abiVersions         = [ "arm64-v8a" ];
         };
 
         # Convenience env vars Gradle expects to find.

@@ -18,6 +18,17 @@
       "arm64-v8a"
     ]
   },
+  "emulator": {
+    "_doc": "build.sh emulator boots an arm64 AVD for FULL-FIDELITY testing of the arm64-v8a APK — the emulator emulates arm64 wholesale (TCG/software on this x86_64 host: slow but faithful), so NO libhoudini translation is involved (unlike the Waydroid path). The emulator binary + system image come from the Nix devShell (flake.nix composeAndroidPackages includeEmulator/includeSystemImages). system_image ABI+API MUST match flake.nix abiVersions/systemImageTypes/platformVersions. avd_name is created idempotently by build.sh from system_image; boot_args are passed verbatim to `emulator`.",
+    "avd_name": "superapp-arm64",
+    "system_image": "system-images;android-34;google_apis;arm64-v8a",
+    "device": "pixel_6",
+    "boot_args": [
+      "-no-snapshot-save",
+      "-gpu",
+      "swiftshader_indirect"
+    ]
+  },
   "toolchain": {
     "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
     "_doc_sdk_bump": "compile_sdk bumped 34→35 to satisfy androidx.health.connect:connect-client:1.1.0-alpha10's AAR metadata constraint (it requires consumers to compile against Android 35+ for the new HC permission definitions wired to API 35 constants). AGP 8.5.2 maxes at compileSdk 34, so AGP bumped 8.5.2→8.7.3 (first stable AGP supporting compileSdk 35). Gradle 8.7→8.10.2 follows AGP 8.7's Gradle 8.9+ requirement. target_sdk stays at 34 — opting into Android 15 runtime behaviour is a separate concern from compiling against its APIs.",

@@ -19,6 +19,8 @@
 # ║   oras-push   push APK as OCI artifact → ghcr (release.ghcr block)║
 # ║   oras-pull   pull APK from ghcr → dist/  [tag=latest]            ║
 # ║   phone-install pull + copy to Android shared storage Download     ║
+# ║   waydroid-install build + install APK into running Waydroid session ║
+# ║   emulator     boot arm64 AVD (full-fidelity test; then `ship` to it) ║
 # ║   gh-release  attach APK to GitHub Release (release.gh_release)   ║
 # ║   sync-qrcodes  pull qrcodes.json from front/linktree → assets/    ║
 # ║   sync-net      cherry-pick wireguard-android tunnel/ → libs/net/  ║
@@ -95,6 +97,62 @@ step_ship() {
   step_build
   log "Ship: side-loading via adb"
   in_nix adb install -r "$DIST_DIR/$(_release_var '.release.artifact.debug')"
+}
+
+step_waydroid_install() {
+  # Build + install the APK into a running Waydroid session on THIS host.
+  # `waydroid` is a system command (NixOS host flake), not part of the Android
+  # devShell — call it directly, not via in_nix. Artifact + app-id come from
+  # build.json (data-driven). Requires the ARM bridge: arm64-only APK + x86_64
+  # Waydroid ⇒ libhoudini, installed by the host's waydroid-arm-bootstrap.
+  step_build
+  local apk app_id
+  apk="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  app_id="$(_release_var '.android.application_id')"
+
+  command -v waydroid >/dev/null 2>&1 || {
+    errlog "waydroid not on PATH — enable it in the NixOS host flake (configuration_containers.nix)"; exit 1; }
+  if ! waydroid status 2>/dev/null | grep -q "Session.*RUNNING"; then
+    errlog "no running Waydroid session — start one first: waydroid-launch"; exit 1
+  fi
+  [ -f "$apk" ] || { errlog "APK not found: $apk (step_build failed?)"; exit 1; }
+
+  log "Waydroid: installing $apk"
+  waydroid app install "$apk"
+  log "✓ installed → launch with: waydroid app launch $app_id"
+}
+
+step_emulator() {
+  # Boot an arm64 AVD for FULL-FIDELITY testing — the emulator emulates arm64
+  # wholesale (no libhoudini translation, unlike the Waydroid path). Slow on
+  # first boot. Data-driven from build.json::emulator. Once up it registers as
+  # an adb device, so `./build.sh ship` (or dev) installs straight into it —
+  # same code path as a USB phone.
+  local avd img device
+  avd="$(_release_var '.emulator.avd_name')"
+  img="$(_release_var '.emulator.system_image')"
+  device="$(_release_var '.emulator.device')"
+  [ -n "$avd" ] || { errlog "build.json .emulator.avd_name missing"; exit 1; }
+  [ -n "$img" ] || { errlog "build.json .emulator.system_image missing"; exit 1; }
+
+  # Create the AVD once (idempotent). avdmanager prompts for a custom hardware
+  # profile → answer "no".
+  if ! in_nix avdmanager list avd 2>/dev/null | grep -q "Name: $avd"; then
+    log "Creating AVD '$avd' ($img${device:+, device=$device})"
+    if [ -n "$device" ]; then
+      printf 'no\n' | in_nix avdmanager create avd -n "$avd" -k "$img" --device "$device" --force
+    else
+      printf 'no\n' | in_nix avdmanager create avd -n "$avd" -k "$img" --force
+    fi
+  fi
+
+  # boot_args are data-driven (build.json::emulator.boot_args).
+  local boot_args=()
+  mapfile -t boot_args < <(prefer_host jq -r '.emulator.boot_args[]? // empty' "$SCRIPT_DIR/build.json")
+
+  log "Booting emulator '$avd' (arm64 — software-emulated; first boot is slow)"
+  log "  → in another shell: ./build.sh ship   (build + adb install into it)"
+  in_nix emulator -avd "$avd" "${boot_args[@]}" "$@"
 }
 
 # ── data-driven release helpers ────────────────────────────────────────
@@ -466,6 +524,8 @@ case "$CMD" in
   oras-push)    step_oras_push ;;
   oras-pull)    step_oras_pull "$@" ;;
   phone-install) step_phone_install "$@" ;;
+  waydroid-install) step_waydroid_install "$@" ;;
+  emulator)     step_emulator "$@" ;;
   gh-release)   step_gh_release ;;
   sync-qrcodes) step_sync_qrcodes ;;
   sync-net)     step_sync_net ;;
