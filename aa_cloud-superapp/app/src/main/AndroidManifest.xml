@@ -226,5 +226,18 @@
             </intent-filter>
         </service>
 
+        <!-- Shizuku provider — required by the Shizuku client lib so the
+             app can talk to the Shizuku server (binder + permission).
+             Backs the exact per-app energy attribution (ShizukuEnergy +
+             ShizukuUserService running dumpsys batterystats in shell
+             context). No-op when Shizuku isn't installed/running. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
     </application>
 </manifest>

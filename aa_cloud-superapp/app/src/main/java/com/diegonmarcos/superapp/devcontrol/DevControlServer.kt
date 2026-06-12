@@ -234,6 +234,7 @@ object DevControlServer {
                 "energy/self" -> { reply(writer, "200 OK", energySelfJson(), "application/json") }
                 "energy/attribution" -> { reply(writer, "200 OK", energyAttributionJson(ctx), "application/json") }
                 "energy/samples" -> { reply(writer, "200 OK", energySamplesJson(ctx), "application/json") }
+                "energy/shizuku" -> { reply(writer, "200 OK", energyShizukuJson(ctx), "application/json") }
                 "energy/reset" -> {
                     com.diegonmarcos.superapp.EnergyLedger.reset()
                     runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).clear() }
@@ -300,6 +301,7 @@ object DevControlServer {
             Spec("energy/attribution",  "GET",  true,  "Device-level Tier-1 watchdog attribution over stored samples: idle baseline mA, marginal mA per state (screen-on / audio / weak-cellular / high-cpu / bright-screen), per-foreground-app avg draw + energy proxy, and our own self cpu/net cost over the window.", ""),
             Spec("energy/samples",      "GET",  true,  "Raw recent energy-watchdog samples (last 200): per-sample whole-device draw_ma + state vector (screen, brightness, foreground pkg, cpu load, signal, wifi, audio).", ""),
             Spec("energy/reset",        "GET",  true,  "Clear the intra-app ledger + the watchdog sample store to start a fresh measurement window.", ""),
+            Spec("energy/shizuku",      "GET",  true,  "EXACT per-app mAh via Shizuku (Tier 2) — runs `dumpsys batterystats --charged` in shell context (uid 2000) through the bound ShizukuUserService and parses the per-uid 'Estimated power use (mAh)' section. Returns available/granted/status + the per-app list, or apps=null while binding / when Shizuku isn't running. Ground truth the Tier-1 correlation calibrates against.", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -408,6 +410,32 @@ object DevControlServer {
             sb.append(""""bytes":""").append(s.bytes).append('}')
         }
         sb.append("]}")
+        return sb.toString()
+    }
+
+    /** Shizuku exact per-app mAh from dumpsys batterystats (Tier 2). */
+    private fun energyShizukuJson(ctx: Context): String {
+        val se = com.diegonmarcos.superapp.ShizukuEnergy
+        val sb = StringBuilder("{")
+        sb.append(""""available":""").append(se.isAvailable()).append(',')
+        sb.append(""""granted":""").append(se.isGranted()).append(',')
+        sb.append(""""status":"""").append(jsonEscape(se.status())).append('"').append(',')
+        val exact = runCatching { se.exact(ctx) }.getOrNull()
+        sb.append(""""apps":""")
+        if (exact == null) sb.append("null")
+        else {
+            sb.append('[')
+            var first = true
+            for (a in exact) {
+                if (!first) sb.append(','); first = false
+                sb.append("""{"pkg":"""").append(jsonEscape(a.pkg)).append('"').append(',')
+                sb.append(""""label":"""").append(jsonEscape(a.label)).append('"').append(',')
+                sb.append(""""uid":""").append(a.uid).append(',')
+                sb.append(""""mah":""").append("%.2f".format(a.mAh)).append('}')
+            }
+            sb.append(']')
+        }
+        sb.append('}')
         return sb.toString()
     }
 

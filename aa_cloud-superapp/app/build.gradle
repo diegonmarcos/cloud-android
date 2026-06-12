@@ -367,6 +367,10 @@ android {
 
     buildFeatures {
         buildConfig = true
+        // AIDL — needed for the Shizuku UserService (IUserService.aidl)
+        // that runs `dumpsys batterystats` in shell context for exact
+        // per-app energy attribution.
+        aidl = true
         // Jetpack Compose is enabled but used SURGICALLY — only the
         // Wallet surface (WalletFragment hosting a ComposeView) right
         // now. Every other fragment remains programmatic-View based.
@@ -473,6 +477,14 @@ dependencies {
     // No camera scanning needed (we only encode), so the core artifact
     // is enough — no `zxing-android` needed.
     implementation 'com.google.zxing:core:3.5.3'
+
+    // Shizuku — exact per-app energy attribution. The UserService
+    // (IUserService.aidl + ShizukuUserService) runs `dumpsys
+    // batterystats` in shell context (uid 2000) when the user has
+    // Shizuku running + grants the app. api = client; provider =
+    // the ShizukuProvider declared in the manifest.
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
 
     // ── Jetpack Compose (surgical adoption — WalletFragment only). ──
     // BOM pin keeps every Compose module on a compatible release; only

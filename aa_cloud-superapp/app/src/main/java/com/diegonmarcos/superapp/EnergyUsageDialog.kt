@@ -134,6 +134,46 @@ class EnergyUsageDialog : DialogFragment() {
             }
         }
 
+        // 3b) Exact per-app mAh via Shizuku (ground truth, if available)
+        card(ctx, root, "Per-app exact  ·  Shizuku") { box ->
+            box.addView(small(ctx, ShizukuEnergy.status()))
+            when {
+                !ShizukuEnergy.isAvailable() ->
+                    box.addView(small(ctx, "Start Shizuku to unlock exact per-app mAh from dumpsys batterystats."))
+                !ShizukuEnergy.isGranted() ->
+                    box.addView(pill(ctx, "Grant Shizuku") {
+                        ShizukuEnergy.requestPermission()
+                    })
+                else -> {
+                    // dumpsys batterystats can take seconds — run it OFF the
+                    // main thread on tap, then post rows back. (Auto-running
+                    // it on every page open would risk an ANR + is wasteful.)
+                    ShizukuEnergy.bind()
+                    val results = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+                    box.addView(pill(ctx, "Load per-app (dumpsys)") {
+                        results.removeAllViews()
+                        results.addView(small(ctx, "Running dumpsys batterystats…"))
+                        Thread {
+                            val exact = runCatching { ShizukuEnergy.exact(ctx) }.getOrNull()
+                            results.post {
+                                results.removeAllViews()
+                                when {
+                                    exact == null ->
+                                        results.addView(small(ctx, "Service not bound yet — tap again in a moment."))
+                                    exact.isEmpty() ->
+                                        results.addView(small(ctx, "No per-uid power section yet (needs discharge since last full charge)."))
+                                    else -> exact.take(15).forEach { e ->
+                                        results.addView(appRow(ctx, e.pkg, e.label, "%.1f mAh".format(e.mAh)))
+                                    }
+                                }
+                            }
+                        }.start()
+                    })
+                    box.addView(results)
+                }
+            }
+        }
+
         // 4) Inside Cloud SuperApp (our own subsystem ledger)
         val (since, ledger) = EnergyLedger.snapshot()
         card(ctx, root, "Inside Cloud SuperApp") { box ->
