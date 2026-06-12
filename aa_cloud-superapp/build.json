@@ -14,7 +14,9 @@
     "version_code": 1,
     "version_name": "0.1.1-dev",
     "_doc_abi_filters": "Native-library ABIs shipped in the APK. Defaults to arm64-v8a only because MapLibre Native (added in Push 2) ships ~15-18MB of .so per ABI; shipping all 4 default ABIs (arm64-v8a + armeabi-v7a + x86 + x86_64) inflates the APK from ~22MB to ~82MB. Every Samsung Galaxy from S8 (2017) onward + every modern Pixel is arm64, so this is safe for the user's device. To support 32-bit devices or x86 emulators, add 'armeabi-v7a' / 'x86_64' to this list and rebuild — no Kotlin / gradle edits needed.",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "toolchain": {
     "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
@@ -223,19 +225,58 @@
     "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
     "permissions": {
       "runtime": [
-        { "label": "Camera",                  "perm": "android.permission.CAMERA" },
-        { "label": "Microphone",              "perm": "android.permission.RECORD_AUDIO" },
-        { "label": "Notifications",           "perm": "android.permission.POST_NOTIFICATIONS" },
-        { "label": "Location (fine)",         "perm": "android.permission.ACCESS_FINE_LOCATION" },
-        { "label": "Location (coarse)",       "perm": "android.permission.ACCESS_COARSE_LOCATION" },
-        { "label": "Nearby Devices",          "perm": "android.permission.BLUETOOTH_SCAN" },
-        { "label": "Bluetooth Connect",       "perm": "android.permission.BLUETOOTH_CONNECT" },
-        { "label": "Contacts",                "perm": "android.permission.READ_CONTACTS" },
-        { "label": "Music and Audio",         "perm": "android.permission.READ_MEDIA_AUDIO" },
-        { "label": "Photos and Videos (img)", "perm": "android.permission.READ_MEDIA_IMAGES" },
-        { "label": "Photos and Videos (vid)", "perm": "android.permission.READ_MEDIA_VIDEO" },
-        { "label": "SMS",                     "perm": "android.permission.READ_SMS" },
-        { "label": "Phone",                   "perm": "android.permission.READ_PHONE_STATE" }
+        {
+          "label": "Camera",
+          "perm": "android.permission.CAMERA"
+        },
+        {
+          "label": "Microphone",
+          "perm": "android.permission.RECORD_AUDIO"
+        },
+        {
+          "label": "Notifications",
+          "perm": "android.permission.POST_NOTIFICATIONS"
+        },
+        {
+          "label": "Location (fine)",
+          "perm": "android.permission.ACCESS_FINE_LOCATION"
+        },
+        {
+          "label": "Location (coarse)",
+          "perm": "android.permission.ACCESS_COARSE_LOCATION"
+        },
+        {
+          "label": "Nearby Devices",
+          "perm": "android.permission.BLUETOOTH_SCAN"
+        },
+        {
+          "label": "Bluetooth Connect",
+          "perm": "android.permission.BLUETOOTH_CONNECT"
+        },
+        {
+          "label": "Contacts",
+          "perm": "android.permission.READ_CONTACTS"
+        },
+        {
+          "label": "Music and Audio",
+          "perm": "android.permission.READ_MEDIA_AUDIO"
+        },
+        {
+          "label": "Photos and Videos (img)",
+          "perm": "android.permission.READ_MEDIA_IMAGES"
+        },
+        {
+          "label": "Photos and Videos (vid)",
+          "perm": "android.permission.READ_MEDIA_VIDEO"
+        },
+        {
+          "label": "SMS",
+          "perm": "android.permission.READ_SMS"
+        },
+        {
+          "label": "Phone",
+          "perm": "android.permission.READ_PHONE_STATE"
+        }
       ]
     },
     "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
@@ -390,9 +431,21 @@
             "title": "GHA · Workflow runs",
             "subtitle": "Latest 3 runs per repo",
             "repos": [
-              {"owner": "diegonmarcos", "repo": "unix", "label": "unix"},
-              {"owner": "diegonmarcos", "repo": "cloud", "label": "cloud"},
-              {"owner": "diegonmarcos", "repo": "diegonmarcos.github.io", "label": "front"}
+              {
+                "owner": "diegonmarcos",
+                "repo": "unix",
+                "label": "unix"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud",
+                "label": "cloud"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "diegonmarcos.github.io",
+                "label": "front"
+              }
             ]
           },
           {
@@ -401,9 +454,21 @@
             "title": "Repos · Commits",
             "subtitle": "Latest 3 commits per repo",
             "repos": [
-              {"owner": "diegonmarcos", "repo": "unix", "label": "unix"},
-              {"owner": "diegonmarcos", "repo": "cloud", "label": "cloud"},
-              {"owner": "diegonmarcos", "repo": "diegonmarcos.github.io", "label": "front"}
+              {
+                "owner": "diegonmarcos",
+                "repo": "unix",
+                "label": "unix"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud",
+                "label": "cloud"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "diegonmarcos.github.io",
+                "label": "front"
+              }
             ]
           },
           {
@@ -484,6 +549,7 @@
               "rs.ltt.android",
               "com.mattermost.rn",
               "com.beeper.android",
+              "com.diegonmarcos.comms.dialer",
               "com.samsung.android.dialer"
             ],
             "folders": [
@@ -712,20 +778,74 @@
         "bottom_nav": true,
         "is_aggregator": true,
         "tiles_shared": [
-          { "id": "c3",           "label": "C3",             "icon": "ic_p_c3_stack", "target": "page:tools/c3" },
-          { "id": "data-ml",      "label": "Data & ML",      "icon": "ic_database",   "target": "page:tools/data-ml" },
-          { "id": "engineering",  "label": "Engineering",    "icon": "ic_wg",         "target": "page:tools/engineering" },
-          { "id": "quant",        "label": "Quant & Markets","icon": "ic_fin",        "target": "page:tools/quant" },
-          { "id": "aero-space",   "label": "Aero & Space",   "icon": "ic_world",      "target": "page:tools/aero-space" },
-          { "id": "circus",       "label": "Circus",         "icon": "ic_solutions",  "target": "page:tools/circus" }
+          {
+            "id": "c3",
+            "label": "C3",
+            "icon": "ic_p_c3_stack",
+            "target": "page:tools/c3"
+          },
+          {
+            "id": "data-ml",
+            "label": "Data & ML",
+            "icon": "ic_database",
+            "target": "page:tools/data-ml"
+          },
+          {
+            "id": "engineering",
+            "label": "Engineering",
+            "icon": "ic_wg",
+            "target": "page:tools/engineering"
+          },
+          {
+            "id": "quant",
+            "label": "Quant & Markets",
+            "icon": "ic_fin",
+            "target": "page:tools/quant"
+          },
+          {
+            "id": "aero-space",
+            "label": "Aero & Space",
+            "icon": "ic_world",
+            "target": "page:tools/aero-space"
+          },
+          {
+            "id": "circus",
+            "label": "Circus",
+            "icon": "ic_solutions",
+            "target": "page:tools/circus"
+          }
         ],
         "pages": [
-          { "id": "c3",           "label": "C3",             "icon": "ic_p_c3_stack" },
-          { "id": "data-ml",      "label": "Data & ML",      "icon": "ic_database" },
-          { "id": "engineering",  "label": "Engineering",    "icon": "ic_wg" },
-          { "id": "quant",        "label": "Quant & Markets","icon": "ic_fin" },
-          { "id": "aero-space",   "label": "Aero & Space",   "icon": "ic_world" },
-          { "id": "circus",       "label": "Circus",         "icon": "ic_solutions" }
+          {
+            "id": "c3",
+            "label": "C3",
+            "icon": "ic_p_c3_stack"
+          },
+          {
+            "id": "data-ml",
+            "label": "Data & ML",
+            "icon": "ic_database"
+          },
+          {
+            "id": "engineering",
+            "label": "Engineering",
+            "icon": "ic_wg"
+          },
+          {
+            "id": "quant",
+            "label": "Quant & Markets",
+            "icon": "ic_fin"
+          },
+          {
+            "id": "aero-space",
+            "label": "Aero & Space",
+            "icon": "ic_world"
+          },
+          {
+            "id": "circus",
+            "label": "Circus",
+            "icon": "ic_solutions"
+          }
         ],
         "tiles_apps": [
           {
@@ -817,11 +937,31 @@
         ],
         "_doc_stack_apps": "Labs/Apps tab — themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
         "stack_apps": [
-          { "kind": "link_grid", "title": "Data & ML",       "subtitle": "Datasets · ML pipelines · model registry" },
-          { "kind": "link_grid", "title": "Engineering",     "subtitle": "Build systems · ops tooling · infra notes" },
-          { "kind": "link_grid", "title": "Quant & Markets", "subtitle": "Market data · strategies · backtests" },
-          { "kind": "link_grid", "title": "Aero & Space",    "subtitle": "Mission tracking · orbital data · launches" },
-          { "kind": "link_grid", "title": "Circus",          "subtitle": "Misc experiments and side quests" }
+          {
+            "kind": "link_grid",
+            "title": "Data & ML",
+            "subtitle": "Datasets · ML pipelines · model registry"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Engineering",
+            "subtitle": "Build systems · ops tooling · infra notes"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Quant & Markets",
+            "subtitle": "Market data · strategies · backtests"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Aero & Space",
+            "subtitle": "Mission tracking · orbital data · launches"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Circus",
+            "subtitle": "Misc experiments and side quests"
+          }
         ],
         "stack_admin": [
           {
@@ -1446,7 +1586,11 @@
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "grid", "label": "Tabs", "icon": "ic_mode_apps" }
+          {
+            "id": "grid",
+            "label": "Tabs",
+            "icon": "ic_mode_apps"
+          }
         ]
       },
       {
@@ -1478,9 +1622,21 @@
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "map",      "label": "Map",      "icon": "ic_settings" },
-          { "id": "timeline", "label": "Timeline", "icon": "ic_settings" },
-          { "id": "configs",  "label": "Configs",  "icon": "ic_settings" }
+          {
+            "id": "map",
+            "label": "Map",
+            "icon": "ic_settings"
+          },
+          {
+            "id": "timeline",
+            "label": "Timeline",
+            "icon": "ic_settings"
+          },
+          {
+            "id": "configs",
+            "label": "Configs",
+            "icon": "ic_settings"
+          }
         ]
       },
       {
@@ -1491,8 +1647,16 @@
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "dashboard", "label": "Dashboard", "icon": "ic_settings" },
-          { "id": "stats",     "label": "Stats",     "icon": "ic_settings" }
+          {
+            "id": "dashboard",
+            "label": "Dashboard",
+            "icon": "ic_settings"
+          },
+          {
+            "id": "stats",
+            "label": "Stats",
+            "icon": "ic_settings"
+          }
         ]
       },
       {
@@ -1503,7 +1667,11 @@
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "dashboard", "label": "Dashboard", "icon": "ic_fin" }
+          {
+            "id": "dashboard",
+            "label": "Dashboard",
+            "icon": "ic_fin"
+          }
         ]
       },
       {
@@ -1531,30 +1699,146 @@
         "module": null,
         "bottom_nav": false,
         "pages": [
-          { "id": "summary",  "label": "Summary",  "icon": "ic_p_c3_reports" },
-          { "id": "timeline", "label": "Timeline", "icon": "ic_p_cal_day"    },
-          { "id": "configs",  "label": "Configs",  "icon": "ic_settings"     }
+          {
+            "id": "summary",
+            "label": "Summary",
+            "icon": "ic_p_c3_reports"
+          },
+          {
+            "id": "timeline",
+            "label": "Timeline",
+            "icon": "ic_p_cal_day"
+          },
+          {
+            "id": "configs",
+            "label": "Configs",
+            "icon": "ic_settings"
+          }
         ],
         "_doc_taxonomy": "Metric grouping mirrors Health Connect's own UI categories (verified against es-ES locale: Actividad / Constantes vitales / Medidas corporales / Nutrición / Seguimiento del ciclo / Sueño) so the per-metric counts in MyHealth match exactly what the HC permission screen shows. Vo2Max sits under Activity (not Heart) per HC; Exercise stays under Activity (no separate Workouts category in HC). Total perms across all metrics = 34, matching HC's count when every category is granted.",
         "metrics": [
-          { "id": "activity",  "label": "Activity",  "icon": "ic_p_health_activity",
-            "records":   ["StepsRecord","DistanceRecord","FloorsClimbedRecord","ElevationGainedRecord","ActiveCaloriesBurnedRecord","TotalCaloriesBurnedRecord","ExerciseSessionRecord","PowerRecord","SpeedRecord","Vo2MaxRecord"],
-            "perm_keys": ["READ_STEPS","READ_DISTANCE","READ_FLOORS_CLIMBED","READ_ELEVATION_GAINED","READ_ACTIVE_CALORIES_BURNED","READ_TOTAL_CALORIES_BURNED","READ_EXERCISE","READ_POWER","READ_SPEED","READ_VO2_MAX"] },
-          { "id": "vitals",    "label": "Vitals",    "icon": "ic_p_health_vitals",
-            "records":   ["HeartRateRecord","RestingHeartRateRecord","HeartRateVariabilityRmssdRecord","BloodPressureRecord","BloodGlucoseRecord","OxygenSaturationRecord","BodyTemperatureRecord","BasalBodyTemperatureRecord","RespiratoryRateRecord"],
-            "perm_keys": ["READ_HEART_RATE","READ_RESTING_HEART_RATE","READ_HEART_RATE_VARIABILITY","READ_BLOOD_PRESSURE","READ_BLOOD_GLUCOSE","READ_OXYGEN_SATURATION","READ_BODY_TEMPERATURE","READ_BASAL_BODY_TEMPERATURE","READ_RESPIRATORY_RATE"] },
-          { "id": "body",      "label": "Body",      "icon": "ic_p_health_body",
-            "records":   ["WeightRecord","HeightRecord","BodyFatRecord","LeanBodyMassRecord","BoneMassRecord","BodyWaterMassRecord","BasalMetabolicRateRecord"],
-            "perm_keys": ["READ_WEIGHT","READ_HEIGHT","READ_BODY_FAT","READ_LEAN_BODY_MASS","READ_BONE_MASS","READ_BODY_WATER_MASS","READ_BASAL_METABOLIC_RATE"] },
-          { "id": "nutrition", "label": "Nutrition", "icon": "ic_p_health_nutrition",
-            "records":   ["NutritionRecord","HydrationRecord"],
-            "perm_keys": ["READ_NUTRITION","READ_HYDRATION"] },
-          { "id": "cycle",     "label": "Cycle",     "icon": "ic_p_health_cycle",
-            "records":   ["MenstruationFlowRecord","OvulationTestRecord","CervicalMucusRecord","SexualActivityRecord","IntermenstrualBleedingRecord"],
-            "perm_keys": ["READ_MENSTRUATION","READ_OVULATION_TEST","READ_CERVICAL_MUCUS","READ_SEXUAL_ACTIVITY","READ_INTERMENSTRUAL_BLEEDING"] },
-          { "id": "sleep",     "label": "Sleep",     "icon": "ic_p_health_sleep",
-            "records":   ["SleepSessionRecord"],
-            "perm_keys": ["READ_SLEEP"] }
+          {
+            "id": "activity",
+            "label": "Activity",
+            "icon": "ic_p_health_activity",
+            "records": [
+              "StepsRecord",
+              "DistanceRecord",
+              "FloorsClimbedRecord",
+              "ElevationGainedRecord",
+              "ActiveCaloriesBurnedRecord",
+              "TotalCaloriesBurnedRecord",
+              "ExerciseSessionRecord",
+              "PowerRecord",
+              "SpeedRecord",
+              "Vo2MaxRecord"
+            ],
+            "perm_keys": [
+              "READ_STEPS",
+              "READ_DISTANCE",
+              "READ_FLOORS_CLIMBED",
+              "READ_ELEVATION_GAINED",
+              "READ_ACTIVE_CALORIES_BURNED",
+              "READ_TOTAL_CALORIES_BURNED",
+              "READ_EXERCISE",
+              "READ_POWER",
+              "READ_SPEED",
+              "READ_VO2_MAX"
+            ]
+          },
+          {
+            "id": "vitals",
+            "label": "Vitals",
+            "icon": "ic_p_health_vitals",
+            "records": [
+              "HeartRateRecord",
+              "RestingHeartRateRecord",
+              "HeartRateVariabilityRmssdRecord",
+              "BloodPressureRecord",
+              "BloodGlucoseRecord",
+              "OxygenSaturationRecord",
+              "BodyTemperatureRecord",
+              "BasalBodyTemperatureRecord",
+              "RespiratoryRateRecord"
+            ],
+            "perm_keys": [
+              "READ_HEART_RATE",
+              "READ_RESTING_HEART_RATE",
+              "READ_HEART_RATE_VARIABILITY",
+              "READ_BLOOD_PRESSURE",
+              "READ_BLOOD_GLUCOSE",
+              "READ_OXYGEN_SATURATION",
+              "READ_BODY_TEMPERATURE",
+              "READ_BASAL_BODY_TEMPERATURE",
+              "READ_RESPIRATORY_RATE"
+            ]
+          },
+          {
+            "id": "body",
+            "label": "Body",
+            "icon": "ic_p_health_body",
+            "records": [
+              "WeightRecord",
+              "HeightRecord",
+              "BodyFatRecord",
+              "LeanBodyMassRecord",
+              "BoneMassRecord",
+              "BodyWaterMassRecord",
+              "BasalMetabolicRateRecord"
+            ],
+            "perm_keys": [
+              "READ_WEIGHT",
+              "READ_HEIGHT",
+              "READ_BODY_FAT",
+              "READ_LEAN_BODY_MASS",
+              "READ_BONE_MASS",
+              "READ_BODY_WATER_MASS",
+              "READ_BASAL_METABOLIC_RATE"
+            ]
+          },
+          {
+            "id": "nutrition",
+            "label": "Nutrition",
+            "icon": "ic_p_health_nutrition",
+            "records": [
+              "NutritionRecord",
+              "HydrationRecord"
+            ],
+            "perm_keys": [
+              "READ_NUTRITION",
+              "READ_HYDRATION"
+            ]
+          },
+          {
+            "id": "cycle",
+            "label": "Cycle",
+            "icon": "ic_p_health_cycle",
+            "records": [
+              "MenstruationFlowRecord",
+              "OvulationTestRecord",
+              "CervicalMucusRecord",
+              "SexualActivityRecord",
+              "IntermenstrualBleedingRecord"
+            ],
+            "perm_keys": [
+              "READ_MENSTRUATION",
+              "READ_OVULATION_TEST",
+              "READ_CERVICAL_MUCUS",
+              "READ_SEXUAL_ACTIVITY",
+              "READ_INTERMENSTRUAL_BLEEDING"
+            ]
+          },
+          {
+            "id": "sleep",
+            "label": "Sleep",
+            "icon": "ic_p_health_sleep",
+            "records": [
+              "SleepSessionRecord"
+            ],
+            "perm_keys": [
+              "READ_SLEEP"
+            ]
+          }
         ]
       },
       {
@@ -1613,14 +1897,14 @@
         "subtitle": "The default rich SuperApp UI — bottom nav, dynamic island, 3D home. Top status strip trimmed to Time · Battery only.",
         "default": true,
         "features": {
-          "home_3d":            true,
-          "bottom_nav":         true,
-          "dynamic_island":     true,
-          "animations":         true,
-          "drawer":             true,
-          "oled_black":         false,
-          "grid":               "default",
-          "background_pause":   false,
+          "home_3d": true,
+          "bottom_nav": true,
+          "dynamic_island": true,
+          "animations": true,
+          "drawer": true,
+          "oled_black": false,
+          "grid": "default",
+          "background_pause": false,
           "wireguard_required": false
         }
       },
@@ -1629,14 +1913,14 @@
         "label": "Cloud Minimalist Black",
         "subtitle": "Terminal aesthetic — pure black background, monospace green app list, no chrome. One-screen scroll.",
         "features": {
-          "home_3d":            false,
-          "bottom_nav":         false,
-          "dynamic_island":     false,
-          "animations":         false,
-          "drawer":             false,
-          "oled_black":         true,
-          "grid":               "monospace_list",
-          "background_pause":   false,
+          "home_3d": false,
+          "bottom_nav": false,
+          "dynamic_island": false,
+          "animations": false,
+          "drawer": false,
+          "oled_black": true,
+          "grid": "monospace_list",
+          "background_pause": false,
           "wireguard_required": false
         }
       },
@@ -1645,14 +1929,14 @@
         "label": "Cloud Power Saving",
         "subtitle": "Battery-first launcher — dim OLED-black UI, no animations, no dynamic island, no 3D home. Background services paused EXCEPT WireGuard (network connectivity stays on). Mirrors Samsung / Apple / Pixel power-saving behaviour.",
         "features": {
-          "home_3d":            false,
-          "bottom_nav":         false,
-          "dynamic_island":     false,
-          "animations":         false,
-          "drawer":             true,
-          "oled_black":         true,
-          "grid":               "4x2",
-          "background_pause":   true,
+          "home_3d": false,
+          "bottom_nav": false,
+          "dynamic_island": false,
+          "animations": false,
+          "drawer": true,
+          "oled_black": true,
+          "grid": "4x2",
+          "background_pause": true,
           "wireguard_required": true
         }
       }
@@ -1665,8 +1949,8 @@
         "subtitle": "Your default everyday profile — every installed app and folder visible.",
         "default": true,
         "behavior": {
-          "app_filter":    "all",
-          "wireguard":     "on",
+          "app_filter": "all",
+          "wireguard": "on",
           "allow_intents": "all"
         }
       },
@@ -1675,8 +1959,8 @@
         "label": "Work",
         "subtitle": "Same as Personal for now — tag-based hide rules ship once each app/tile carries an app_tags list (e.g. work / personal / finance).",
         "behavior": {
-          "app_filter":    "all",
-          "wireguard":     "on",
+          "app_filter": "all",
+          "wireguard": "on",
           "allow_intents": "all"
         }
       },
@@ -1685,31 +1969,147 @@
         "label": "Guest",
         "subtitle": "Locked down — only the system browser is reachable. WireGuard tunnel disabled so the guest can't see your private mesh. No SuperApp sections, no chat, no mail, no vault.",
         "behavior": {
-          "app_filter":    "whitelist",
-          "whitelist":     ["browser"],
-          "wireguard":     "off",
-          "allow_intents": ["browser"]
+          "app_filter": "whitelist",
+          "whitelist": [
+            "browser"
+          ],
+          "wireguard": "off",
+          "allow_intents": [
+            "browser"
+          ]
         }
       }
     ],
     "_doc_maps_providers": "Available geocoding providers. The user picks one per slot in Configs → Maps (kind: 'reverse' = city/neighborhood, 'poi' = restaurant/shop). 'host': 'free-noauth' = public free endpoint, no account, fair-use rate limit; 'free-account' = free tier behind signup; 'paid' = billing required; 'self' = our own deployment at endpoint URL. requires_api_key=true means we look up the key in MapsApiKeyPrefs. New providers: add a JSON entry + supply the key (if any) in Configs → Maps → API Keys; no Kotlin edits.",
     "maps_providers": [
-      { "id": "nominatim_public", "label": "Nominatim (osm.org)", "kind": ["reverse"],        "host": "free-noauth",  "free_tier": "fair use",           "requires_api_key": false, "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1" },
-      { "id": "photon_public",    "label": "Photon (komoot.io)",  "kind": ["reverse"],        "host": "free-noauth",  "free_tier": "fair use",           "requires_api_key": false, "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}" },
-      { "id": "locationiq",       "label": "LocationIQ",           "kind": ["reverse"],        "host": "free-account", "free_tier": "5k req/day",         "requires_api_key": true,  "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json" },
-      { "id": "geoapify",         "label": "Geoapify",             "kind": ["reverse"],        "host": "free-account", "free_tier": "3k req/day",         "requires_api_key": true,  "endpoint": "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={key}" },
-      { "id": "opencage",         "label": "OpenCage",             "kind": ["reverse"],        "host": "free-account", "free_tier": "2.5k req/day",       "requires_api_key": true,  "endpoint": "https://api.opencagedata.com/geocode/v1/json?q={lat}+{lon}&key={key}" },
-      { "id": "nominatim_self",   "label": "Nominatim (self)",     "kind": ["reverse"],        "host": "self",         "free_tier": "unlimited (self)",   "requires_api_key": false, "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1" },
-      { "id": "photon_self",      "label": "Photon (self)",        "kind": ["reverse"],        "host": "self",         "free_tier": "unlimited (self)",   "requires_api_key": false, "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}" },
-      { "id": "overpass_public",  "label": "Overpass (osm.org)",   "kind": ["poi"],            "host": "free-noauth",  "free_tier": "fair use",           "requires_api_key": false, "endpoint": "https://overpass-api.de/api/interpreter" },
-      { "id": "overpass_self",    "label": "Overpass (self)",      "kind": ["poi"],            "host": "self",         "free_tier": "unlimited (self)",   "requires_api_key": false, "endpoint": "https://geo.diegonmarcos.com/overpass/api/interpreter" },
-      { "id": "radar",            "label": "Radar.io",             "kind": ["reverse","poi"],  "host": "free-account", "free_tier": "100k req/month",     "requires_api_key": true,  "endpoint": "https://api.radar.io/v1/geocode/reverse?coordinates={lat},{lon}" },
-      { "id": "google_places",    "label": "Google Places",        "kind": ["reverse","poi"],  "host": "paid",         "free_tier": "$200/mo credit",     "requires_api_key": true,  "endpoint": "https://places.googleapis.com/v1/places:searchNearby" }
+      {
+        "id": "nominatim_public",
+        "label": "Nominatim (osm.org)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+      },
+      {
+        "id": "photon_public",
+        "label": "Photon (komoot.io)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}"
+      },
+      {
+        "id": "locationiq",
+        "label": "LocationIQ",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "5k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json"
+      },
+      {
+        "id": "geoapify",
+        "label": "Geoapify",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "3k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={key}"
+      },
+      {
+        "id": "opencage",
+        "label": "OpenCage",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "2.5k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://api.opencagedata.com/geocode/v1/json?q={lat}+{lon}&key={key}"
+      },
+      {
+        "id": "nominatim_self",
+        "label": "Nominatim (self)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+      },
+      {
+        "id": "photon_self",
+        "label": "Photon (self)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}"
+      },
+      {
+        "id": "overpass_public",
+        "label": "Overpass (osm.org)",
+        "kind": [
+          "poi"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://overpass-api.de/api/interpreter"
+      },
+      {
+        "id": "overpass_self",
+        "label": "Overpass (self)",
+        "kind": [
+          "poi"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/overpass/api/interpreter"
+      },
+      {
+        "id": "radar",
+        "label": "Radar.io",
+        "kind": [
+          "reverse",
+          "poi"
+        ],
+        "host": "free-account",
+        "free_tier": "100k req/month",
+        "requires_api_key": true,
+        "endpoint": "https://api.radar.io/v1/geocode/reverse?coordinates={lat},{lon}"
+      },
+      {
+        "id": "google_places",
+        "label": "Google Places",
+        "kind": [
+          "reverse",
+          "poi"
+        ],
+        "host": "paid",
+        "free_tier": "$200/mo credit",
+        "requires_api_key": true,
+        "endpoint": "https://places.googleapis.com/v1/places:searchNearby"
+      }
     ],
     "_doc_maps_active": "Default-selected provider per slot at first launch. User changes them at runtime in Configs → Maps (persisted in MapsProviderPrefs). Defaults are free-noauth = zero account / zero key — works out of the box on a fresh install.",
     "maps_active": {
       "reverse": "nominatim_public",
-      "poi":     "overpass_public"
+      "poi": "overpass_public"
     },
     "_doc_maps_tracking": "Tracker calibration — first-run defaults for the foreground GPS service. User tunes via Configs → Maps → Calibration sliders, persisted in MapsTrackingPrefs. `interval_moving_ms` = GPS poll cadence when speed > moving_threshold_mps. `interval_stopped_ms` = poll cadence when below threshold. `stops_radius_m` + `stops_dwell_min` = the Stop detector: must dwell within radius for at least dwell_min minutes to register a Stop event (the only event that fires a reverse-geocode + POI lookup — the 'batching trick').",
     "maps_tracking": {
@@ -1722,144 +2122,1386 @@
     "_doc_myfin_mock": "MyFin beta dashboard data — fully editable here, baked into libs:fin's BuildConfig at gradle config time so MyFinDashboardFragment reads it via BuildConfig.UI_MYFIN_MOCK_B64. Currency strings are display-only (the fragment just prints what's here); flip to a real aggregator by swapping the loader, not by replacing this block. Numbers are illustrative.",
     "myfin_mock": {
       "currency": "EUR",
-      "net_worth":   124850.42,
+      "net_worth": 124850.42,
       "month_label": "This month",
       "month": {
-        "income":   5400.00,
-        "expenses": 3120.50,
-        "savings":  2279.50,
+        "income": 5400.0,
+        "expenses": 3120.5,
+        "savings": 2279.5,
         "savings_rate_pct": 42
       },
       "accounts": [
-        { "name": "Santander Checking",   "type": "checking",   "balance":    4250.18 },
-        { "name": "Nubank Savings",       "type": "savings",    "balance":   18900.00 },
-        { "name": "Revolut EUR",          "type": "wallet",     "balance":     842.55 },
-        { "name": "Wise Multi-currency",  "type": "wallet",     "balance":    2107.31 },
-        { "name": "DEGIRO Brokerage",     "type": "investment", "balance":   78650.20 },
-        { "name": "BTC / ETH (Self-Custody)","type": "crypto",  "balance":   18200.18 },
-        { "name": "Visa Platinum",        "type": "card",       "balance":   -1840.00 }
+        {
+          "name": "Santander Checking",
+          "type": "checking",
+          "balance": 4250.18
+        },
+        {
+          "name": "Nubank Savings",
+          "type": "savings",
+          "balance": 18900.0
+        },
+        {
+          "name": "Revolut EUR",
+          "type": "wallet",
+          "balance": 842.55
+        },
+        {
+          "name": "Wise Multi-currency",
+          "type": "wallet",
+          "balance": 2107.31
+        },
+        {
+          "name": "DEGIRO Brokerage",
+          "type": "investment",
+          "balance": 78650.2
+        },
+        {
+          "name": "BTC / ETH (Self-Custody)",
+          "type": "crypto",
+          "balance": 18200.18
+        },
+        {
+          "name": "Visa Platinum",
+          "type": "card",
+          "balance": -1840.0
+        }
       ],
       "top_categories": [
-        { "name": "Rent",             "amount": 1450.00, "pct": 46 },
-        { "name": "Groceries",         "amount":  420.50, "pct": 13 },
-        { "name": "Restaurants",       "amount":  310.80, "pct": 10 },
-        { "name": "Transport",         "amount":  205.20, "pct":  7 },
-        { "name": "Subscriptions",     "amount":  189.99, "pct":  6 }
+        {
+          "name": "Rent",
+          "amount": 1450.0,
+          "pct": 46
+        },
+        {
+          "name": "Groceries",
+          "amount": 420.5,
+          "pct": 13
+        },
+        {
+          "name": "Restaurants",
+          "amount": 310.8,
+          "pct": 10
+        },
+        {
+          "name": "Transport",
+          "amount": 205.2,
+          "pct": 7
+        },
+        {
+          "name": "Subscriptions",
+          "amount": 189.99,
+          "pct": 6
+        }
       ],
       "recent_tx": [
-        { "date": "2026-06-08", "payee": "Edeka Supermarkt",      "amount": -42.18, "category": "Groceries"     },
-        { "date": "2026-06-08", "payee": "Deutsche Bahn",          "amount": -18.50, "category": "Transport"      },
-        { "date": "2026-06-07", "payee": "Salary — LEAFY GmbH",    "amount": 5400.00, "category": "Income"         },
-        { "date": "2026-06-07", "payee": "Burgermeister Kreuzberg","amount": -12.40, "category": "Restaurants"    },
-        { "date": "2026-06-06", "payee": "Spotify Premium",        "amount":  -9.99, "category": "Subscriptions"  },
-        { "date": "2026-06-06", "payee": "DEGIRO — VWCE buy",      "amount": -800.00, "category": "Investment"     },
-        { "date": "2026-06-05", "payee": "Berlin Rent — June",     "amount": -1450.00,"category": "Rent"           }
+        {
+          "date": "2026-06-08",
+          "payee": "Edeka Supermarkt",
+          "amount": -42.18,
+          "category": "Groceries"
+        },
+        {
+          "date": "2026-06-08",
+          "payee": "Deutsche Bahn",
+          "amount": -18.5,
+          "category": "Transport"
+        },
+        {
+          "date": "2026-06-07",
+          "payee": "Salary — LEAFY GmbH",
+          "amount": 5400.0,
+          "category": "Income"
+        },
+        {
+          "date": "2026-06-07",
+          "payee": "Burgermeister Kreuzberg",
+          "amount": -12.4,
+          "category": "Restaurants"
+        },
+        {
+          "date": "2026-06-06",
+          "payee": "Spotify Premium",
+          "amount": -9.99,
+          "category": "Subscriptions"
+        },
+        {
+          "date": "2026-06-06",
+          "payee": "DEGIRO — VWCE buy",
+          "amount": -800.0,
+          "category": "Investment"
+        },
+        {
+          "date": "2026-06-05",
+          "payee": "Berlin Rent — June",
+          "amount": -1450.0,
+          "category": "Rent"
+        }
       ]
     },
     "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed — does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
     "dynamic_island_action": "app:com.termux.nix",
     "_doc_home_apps_tabs": "Tabs at the top of the Home Apps swipe-up sheet (AppDrawerSheetFragment). Cloud = the existing HomeGroupedFragment (cloud-service tile grid derived from home_groups). Phone = PhoneAppsFragment (Android-launcher folder grid of installed apps grouped by phone_folders). Order = display order.",
     "home_apps_tabs": [
-      { "id": "cloud", "label": "Cloud" },
-      { "id": "phone", "label": "Phone" }
+      {
+        "id": "cloud",
+        "label": "Cloud"
+      },
+      {
+        "id": "phone",
+        "label": "Phone"
+      }
     ],
     "_doc_phone_grid_columns": "Column count for the Phone tab's folder grid. Mirrors tile_columns (6) so the two tabs share the same density rhythm.",
     "phone_grid_columns": 6,
     "_doc_phone_folders": "Folder taxonomy for the Phone tab — categorised by function (main purpose of the app), not by manufacturer. The `label` keeps the user's prefix sort markers verbatim (_#, _, -, .#, .a, .b, >) so the order reads identically to native One UI. `order` is the lexicographic sort key (two-digit blocks let new folders slot between existing ones). `match_keywords` are case-insensitive matches against the app's `packageName` and `label`. Five syntaxes (PhoneAppClassifier.matches): (1) `pkg:com.foo.bar` = exact packageName; (2) `pkg^com.foo.` = packageName.startsWith; (3) `lbl:Exact Label` = label exact; (4) `lbl~substring` = label contains (min 3 chars); (5) plain string = legacy substring on `pkg + label` (REQUIRES min length 4 to suppress catastrophic false-positives like `bb` matching `bbva` AND every package containing the letters `bb` anywhere). First matching folder wins, first matching keyword inside a folder wins. PREFER `pkg:` for known installed apps — it's the only form that can't false-match. TWO distinct sinks, different roles: (a) `_New Apps` (id=new_apps, order=98, empty keywords) is the AUTOMATIC sink — anything our keyword list doesn't know yet lands here, signal to the user that a new app needs triage / a new keyword / a new folder; (b) `_Misc` (id=misc, order=99) is the MANUAL sink — give it specific keywords to deliberately push hand-picked apps there. New Apps shrinks as keywords improve; Misc only grows when the user adds something to it on purpose. Manufacturer (Google / Samsung / non-Play-Store) is metadata for Smart Folders (see phone_smart_folders below) — NOT a primary grouping criterion.",
     "phone_folders": [
-      { "id": "sys_top",       "order": "00", "label": "_#SYSTEM",
-        "match_keywords": ["pkg:com.android.settings","pkg:com.samsung.android.lool","pkg:com.android.systemui","pkg^com.samsung.android.themecenter","pkg^com.samsung.android.themestore","pkg^com.samsung.android.app.aodservice"] },
-      { "id": "sys_security",  "order": "12", "label": "_Security",
-        "match_keywords": ["pkg:ch.protonvpn.android","pkg:com.azure.authenticator","pkg:com.beemdevelopment.aegis","pkg:com.duckduckgo.mobile.android","pkg:com.google.android.apps.authenticator2","pkg:com.wireguard.android","pkg:com.x8bit.bitwarden","pkg:com.samsung.knox.securefolder","pkg:eu.faircode.netguard","pkg:com.opera.max.global","pkg^com.bitwarden.","pkg^com.protonmail.","pkg^com.protonvpn.","pkg^me.proton.","pkg^net.openvpn.","pkg^com.expressvpn.","pkg^com.nordvpn.","pkg^com.surfshark.","pkg^net.mullvad.","pkg^com.cloudflare.","pkg^org.torproject.","pkg^io.tailscale.","pkg^com.keepassdroid.","pkg^com.kunzisoft.keepass","pkg^com.lastpass.","pkg^com.dashlane.","pkg^com.duosecurity.","pkg^ente.io.","wireguard","bitwarden","vaultwarden","protonvpn","nordvpn","expressvpn","mullvad","tailscale","keepassdx","keepassxc","lastpass","dashlane","authenticator","aegis"] },
-      { "id": "sys_info",      "order": "13", "label": "_Sys_Info",
-        "match_keywords": ["pkg:com.digibites.accubattery","pkg:com.insideinc.gcpu","pkg:com.jmaciak.dogwhistle","pkg:com.frequencygenerator.dogwhistle","pkg:com.luxdelux.frequencygenerator","pkg:com.skypaw.decibel","pkg:com.noise.sound.meter.decibel","pkg:io.japp.blackscreen","pkg:me.biplobsd.rsm","pkg:org.intoorbit.spectrum","pkg:com.sensorberg.oneaccess","pkg^io.aida64.","pkg^com.cpuid.cpu_z","pkg^com.kishan.batterymonitor","accubattery","cpuinfo","aida64","decibel x","silbato perros","dog whistle","black screen","spectroid"] },
-      { "id": "sys_tools",     "order": "14", "label": "_SysTools",
-        "match_keywords": ["pkg:com.android.vending","pkg:com.app.applistbackup","pkg:com.arlosoft.macrodroid","pkg:com.devolutions.remotedesktopmanager","pkg:com.diegonmarcos.superapp","pkg:com.ghisler.android.TotalCommander","pkg:com.ghisler.tcplugins.SFTP","pkg:com.google.android.apps.credentialmanager","pkg:com.google.android.apps.subscriptions.red","pkg:com.google.android.inputmethod.latin","pkg:com.lbe.parallel.intl","pkg:com.mobidia.android.mdm","pkg:com.mobisystems.fileman","pkg:com.rarlab.rar","pkg:com.samsung.android.app.routines","pkg:com.samsung.android.app.watchmanager","pkg:com.samsung.android.mdx","pkg:com.sec.android.easyMover","pkg:com.termux","pkg:com.termux.api","pkg:com.termux.nix","pkg:com.teslacoilsw.launcher","pkg:com.ubnt.usurvey","pkg:dk.tacit.android.foldersync.lite","pkg:moe.shizuku.privileged.api","pkg:pub.hanks.appfolderwidget","pkg:com.alphainventor.filemanager","pkg:com.amaze.filemanager","pkg:com.ghostsq.commander","pkg:com.sec.android.app.samsungapps","pkg:com.uptodown","pkg:org.fdroid.fdroid","pkg:org.kde.kdeconnect_tp","pkg:com.adobe.reader","pkg:com.binarysmith.webclipwidget.ad","pkg:com.samsung.android.sidegesturepad","pkg:com.grammarly.android.keyboard","pkg:com.gingersoftware.android.keyboard","pkg:ch.icoaching.typewise","pkg:com.google.android.apps.giant","pkg:com.google.android.apps.enterprise.cpanel","pkg:com.smlnskgmail.jaman.hashchecker","pkg:com.truedevelopersstudio.automatictap.autoclicker","pkg:com.rsupport.rs.activity.rsupport.aas2","pkg:com.phlox.simpleserver","pkg:net.techet.netanalyzerlite.an","pkg:com.mi.earphone","pkg:com.google.android.googlequicksearchbox","pkg:com.samsung.android.oneconnect","pkg:io.raindrop.raindropio","pkg^com.termux.","pkg^io.taskbar.","pkg^com.aurora.store","pkg^org.fdroid.","pkg^com.aurora.adroid","pkg^net.kollnig.missioncontrol","macrodroid","totalcommander","appfolderwidget","parallelspace","foldersync","aurora store","f-droid","wifiman","shizuku","tasker"] },
-      { "id": "civ_banking",   "order": "20", "label": "-Banking",
-        "match_keywords": ["pkg:com.binance.dev","pkg:com.bitpanda.bitpanda","pkg:com.btg.pactual.banking","pkg:com.btg.pactual.digital.mobile","pkg:com.btg.pactual.homebroker.mobile","pkg:com.fusionmedia.investing","pkg:com.paypal.android.p2pmobile","pkg:com.revolut.revolut","pkg:com.transferwise.android","pkg:com.xe.currency","pkg:es.bancosantander.apps","pkg:com.google.android.apps.walletnfcrel","pkg^com.santander.","pkg^com.bbva.","pkg^com.nubank.","pkg^com.itau.","pkg^br.com.bradesco.","pkg^br.com.caixa.","pkg^br.com.bancodobrasil.","pkg^br.com.intermedium.","pkg^br.com.c6bank.","pkg^br.com.banco","pkg^com.coinbase.android","pkg^com.binance.","pkg^com.kraken.","pkg^com.revolut.","pkg^com.wise.","pkg^com.transferwise.","pkg^net.n26.android","pkg^com.monzo.","pkg^com.starlingbank.","pkg^com.klarna.","pkg^com.paypal.","pkg^com.squareup.cash","pkg^com.venmo","pkg^com.zellepay.","pkg^de.commerzbanking.mobil","pkg^de.dkb.android.","pkg^de.deutschebank.","pkg^com.ing.","pkg^nl.abnamro.","pkg^com.bunq.android","pkg^com.fineco.","pkg^com.bancosabadell.","pkg^com.caixabank.","pkg^com.kutxabank.","pkg^com.abanca.","pkg^com.liberbank.","pkg^com.openbank.","pkg^com.wizink.","pkg^uk.co.hsbc.","pkg^uk.co.barclays.","pkg^uk.co.lloydsbank.","pkg^uk.co.natwest.","pkg^com.halifax.","pkg^com.chase.","pkg^com.citi.","pkg^com.wf.wellsfargomobile","pkg^com.capitalone.","pkg^com.mercadopago.","pkg^br.com.brainweb.ifood","santander","bitpanda","revolut","binance","coinbase","paypal","trade republic","klarna","monzo","starling","commerzbank","deutsche bank","wells fargo","capital one"] },
-      { "id": "civ_gov_ids",   "order": "21", "label": "-Gov|IDs",
-        "match_keywords": ["pkg:br.com.vidaas.sp","pkg:br.gov.economia.receita.rfb","pkg:br.gov.meugovbr","pkg:cat.atm.cartera","pkg:com.dgt.midgt","pkg:com.governikus.ausweisapp2","pkg:es.aeat.pin24h","pkg:es.correos.app","pkg:es.fnmtrcm.ceres.certificadoDigitalFNMT","pkg:es.gob.interior.policia.midni","pkg:nl.jool.isic","pkg^br.gov.","pkg^es.gob.","pkg^es.aeat.","pkg^es.snts.","pkg^es.minhap.","pkg^uk.gov.","pkg^au.gov.","pkg^de.bund.","pkg^de.bundesregierung","pkg^de.bundes.","pkg^cl.gob.","pkg^mx.gob.","pkg^it.gov.","pkg^fr.gouv.","pkg^com.dgt.","pkg^com.ausweisapp","cl@ve","ausweisapp","poste italiane","digilocker"] },
-      { "id": "civ_health",    "order": "22", "label": "-Health",
-        "match_keywords": ["pkg:air.nn.mobile.app.main","pkg:com.alltrails.alltrails","pkg:com.downdogapp","pkg:com.fatsecret.android","pkg:com.garmin.android.apps.connectmobile","pkg:com.garmin.android.apps.dive","pkg:com.garmin.android.apps.messenger","pkg:com.garmin.android.apps.explore","pkg:com.garmin.connectiq","pkg:com.google.android.apps.fitness","pkg:com.strava","pkg:com.urbandroid.sleep","pkg:de.komoot.android","pkg^com.fitbit.","pkg^com.runtastic.","pkg^com.myfitnesspal.","pkg^com.popularapp.periodcalendar","pkg^com.glow.","pkg^com.calm.","pkg^com.headspace.","pkg^com.huawei.health","pkg^com.samsung.android.app.shealth","pkg^com.google.android.apps.healthdata","pkg^com.polar.","pkg^com.wahoofitness.","pkg^com.oura.","pkg^com.whoop.","pkg^com.garmin.","pkg^com.sleepasandroid","pkg^com.downdogapp","garmin connect","alltrails","komoot","fitbit","myfitnesspal","samsung health","google fit","health connect","fatsecret","neuronation","headspace","insight timer","down dog yoga"] },
-      { "id": "civ_maps",      "order": "23", "label": "-Maps",
-        "match_keywords": ["pkg:aplicacion.tiempo","pkg:com.alohacamp.release","pkg:com.google.android.apps.maps","pkg:com.google.earth","pkg:com.mapswithme.maps.pro","pkg:com.outdooractive.Outdooractive","pkg:com.wikiloc.wikilocandroid","pkg:cz.ackee.ventusky","pkg:dk.shelter.app","pkg:fr.tramb.park4night","pkg^net.osmand.","pkg^com.waze","pkg^com.tomtom.navui","pkg^com.sygic.aura","pkg^cz.ackee.ventusky","pkg^com.windyty.android","pkg^com.windy.windyfree","google maps","google earth","osmand","accuweather","outdoor active","wikiloc","park4night","alohacamp"] },
-      { "id": "civ_market",    "order": "24", "label": "-Market",
-        "match_keywords": ["pkg:com.amazon.mShop.android.shopping","pkg:com.app.tgtg","pkg:com.backmarket","pkg:com.ebay.kleinanzeigen","pkg:com.wallapop","pkg:vivino.web.app","pkg^com.amazon.mShop.","pkg^com.amazon.windowshop","pkg^com.amazon.kindle","pkg^com.ebay.mobile","pkg^com.aliexpress.buyer","pkg^com.shein.","pkg^com.olx.","pkg^com.shopee.","pkg^com.zalando.","pkg^com.asos.","pkg^com.etsy.android","pkg^com.temu.","pkg^pl.allegro.","pkg^com.vinted.","amazon shopping","aliexpress","zalando","wallapop","vinted","kleinanzeigen","too good to go","backmarket","raindrop","vivino"] },
-      { "id": "civ_real",      "order": "25", "label": "-Real Estate",
-        "match_keywords": ["pkg:com.wggesucht.android","pkg:de.is24.android","pkg:de.nebenan.app","pkg^com.idealista.","pkg^com.fotocasa.","pkg^com.habitaclia.","pkg^com.zillow.","pkg^com.zoopla.","pkg^com.rightmove.","pkg^com.realtor.","pkg^com.compass.","pkg^com.spareroom.","pkg^com.airbnb.host","pkg^com.movoto.","pkg^com.redfin.","pkg^com.trulia.","pkg^net.badi.","idealista","fotocasa","zoopla","zillow","wg-gesucht","immoscout","rightmove","habitaclia","airbnb host","spareroom"] },
-      { "id": "civ_trip",      "order": "26", "label": "-Trans (Trip)",
-        "match_keywords": ["pkg:app.campy","pkg:com.airbnb.android","pkg:com.booking","pkg:com.goeuro.rosie","pkg:com.hostel_hop_inc.hostel_hop_mobile","pkg:com.hostelworld.app","pkg:com.rome2rio.www.rome2rio","pkg:com.ryanair.cheapflights","pkg:com.skiplagged","pkg:com.wizzair.WizzAirApp","pkg:com.workaway.app","pkg:net.skyscanner.android.main","pkg:travel.goki.app","pkg:com.getbybus.mobile","pkg:com.geomobile.tmbmobile","pkg:be.greifmatthias.wakaship","pkg:com.kautra.android.autobusubilietai","pkg:com.mo2o.alsa","pkg:no.ruter.reise","pkg:com.thetrainline","pkg:com.spanishcoders.pepephone","pkg:com.affinityclick.alosim","pkg:com.mobillium.airalo","pkg:com.saily.android","pkg:com.esim.numero","pkg:net.esim.twa","pkg:ride.app","pkg:com.donkeyrepublic.bike.android","pkg:eu.infobus.app","pkg:cat.atm.tmobilitat","pkg^com.tripadvisor.","pkg^com.kayak.android","pkg^com.expedia.","pkg^com.agoda.","pkg^com.hotels.","pkg^com.trivago.","pkg^com.airbnb.","pkg^com.booking.","pkg^com.lufthansa.","pkg^com.britishairways.","pkg^com.iberia.","pkg^com.klm.","pkg^com.airfrance.","pkg^com.emirates.","pkg^com.delta.mobile","pkg^com.alaskaair.","pkg^com.jetblue.","pkg^com.southwest.","pkg^com.tapportugal.","pkg^com.vueling.","pkg^com.easyjet.","pkg^com.norwegian.travelassistant","pkg^com.tap.portugal","pkg^com.aerlingus.","pkg^com.qatarairways.","pkg^com.etihad.","pkg^com.aa.android","pkg^com.gol.","pkg^com.latam.","pkg^com.azul.","pkg^com.donkeyrepublic.","pkg^cat.atm.","airbnb","booking.com","ryanair","lufthansa","skyscanner","hostelworld","rome2rio","tripadvisor","kayak.travel","expedia","trivago","easyjet","vueling","wizzair","workaway","goki travel","tap portugal","british airways","american airlines","airalo esim","alosim travel","saily esim","numero esim","donkey republic","trainline"] },
-      { "id": "civ_transp",    "order": "27", "label": "-Transp",
-        "match_keywords": ["pkg:com.comuto","pkg:com.trafi.android.tr","pkg:com.trafi.whitelabel.bvg","pkg:com.ubercab","pkg:de.congstar.meincongstar","pkg:de.flixbus.app","pkg:de.hafas.android.db","pkg:ee.mtakso.client","pkg:taxi.android.client","pkg:de.eos.uptrade.android.fahrinfo.berlin","pkg:de.bvg.ticket","pkg^com.lyft.","pkg^com.cabify.","pkg^com.didi.","pkg^com.transit.app","pkg^com.citymapper.","pkg^com.tranzmate","pkg^com.moovit.","pkg^com.renfe.","pkg^com.sncf.","pkg^com.oebb.","pkg^com.amtrak.","pkg^com.viarail.","pkg^de.s-bahn.","pkg^com.sixt.","pkg^com.avis.","pkg^com.europcar.","pkg^com.zipcar.","pkg^com.getaround.","pkg^com.turo.","pkg^com.bird.android","pkg^com.lime.mobile","pkg^com.tomtom.","pkg^com.tier.app","pkg^com.tier.scooter","pkg^com.uber.","pkg^com.bolt.","pkg^com.flixbus.","blablacar","flixbus","citymapper","moovit","congstar berlin","freenow taxi","fahrinfo berlin","jelbi berlin","trafi berlin"] },
-      { "id": "civ_utility",   "order": "28", "label": "-Utilities",
-        "match_keywords": ["pkg:com.android.chrome","pkg:com.brave.browser","pkg:com.diotek.sec.lookup.dictionary","pkg:com.samsung.android.app.contacts","pkg:com.samsung.android.dialer","pkg:com.sec.android.app.camera","pkg:com.sec.android.app.myfiles","pkg:me.zhanghai.android.files","pkg:pl.mobimax.cameraopus","pkg:com.google.android.apps.messaging","pkg:com.samsung.android.messaging","pkg:com.google.android.calculator","pkg:com.pengyou.cloneapp","pkg:com.sec.android.app.popupcalculator","pkg:com.google.android.apps.translate","pkg:com.lonelycatgames.Xplore","pkg:pl.solidexplorer2","pkg:com.google.audio.hearing.visualization.accessibility.scribe","pkg:com.sec.android.app.clockpackage","pkg:com.samsung.android.ardrawing","pkg^com.samsung.android.app.galaxyfinder","pkg^org.mozilla.firefox","pkg^com.opera.browser","pkg^com.opera.mini.native","pkg^com.vivaldi.browser","pkg^com.microsoft.emmx","pkg^com.tor.android","pkg^com.kiwibrowser.browser","firefox","brave browser","vivaldi","google translate","samsung calculator","samsung calendar","material files","total commander","x-plore","solid explorer"] },
-      { "id": "tools_top",     "order": "30", "label": ".#TOOLS",
-        "match_keywords": [] },
-      { "id": "a_llm",         "order": "40", "label": ".a0_LLM",
-        "match_keywords": ["pkg:ai.perplexity.app.android","pkg:ai.perplexity.comet","pkg:ai.x.grok","pkg:com.anthropic.claude","pkg:com.deepseek.chat","pkg:com.google.android.apps.bard","pkg:com.google.android.apps.googleassistant","pkg:com.microsoft.copilot","pkg:com.samsung.android.bixby.agent","pkg:xyz.chatboxapp.chatbox","pkg:org.chromium.webapk.afdfe84a0acbbed2f_v2","pkg:com.google.android.apps.labs.language.tailwind","pkg:com.facebook.stella","pkg^ai.x.","pkg^ai.perplexity.","pkg^com.openai.","pkg^com.google.android.apps.bard","pkg^xyz.chatboxapp.","pkg^com.anthropic.","pkg^com.mistral.","pkg^io.kagi.","pkg^com.poe.","pkg^ai.character.android","claude","perplexity","deepseek","notebooklm","gemini","chatgpt","copilot","mistral ai","character.ai","huggingface"] },
-      { "id": "a_db_photos",   "order": "41", "label": ".a1_DataBase|Photos",
-        "match_keywords": ["pkg:com.google.android.apps.docs","pkg:com.google.android.apps.docs.editors.docs","pkg:com.google.android.apps.docs.editors.sheets","pkg:com.google.android.apps.photos","pkg:com.sec.android.gallery3d","pkg:com.microsoft.skydrive","pkg:com.musicvideo.photoeditor.squarefit","pkg^com.dropbox.android","pkg^com.box.android","pkg^com.photoprism.","pkg^com.adobe.lrmobile","pkg^com.adobe.psmobile","pkg^com.niksoftware.snapseed","pkg^com.pixlr.express","pkg^com.photopea.","pkg^io.dbeaver.","pkg^io.dbgate.","pkg^com.mongodb.android","google drive","onedrive","google photos","samsung gallery","google docs","google sheets","snapseed","lightroom","dropbox","square fit"] },
-      { "id": "a_pages_notes", "order": "42", "label": ".a2_Pages|Notes",
-        "match_keywords": ["pkg:com.google.android.keep","pkg:com.journable.app","pkg:com.microsoft.lists.public","pkg:com.samsung.android.app.notes","pkg:com.microsoft.office.onenote","pkg:md.obsidian","pkg:com.adeeteya.markdown_editor","pkg^com.evernote","pkg^com.notion.","pkg^net.appflowy.","pkg^net.gsantner.markor","pkg^io.standardnotes.","pkg^org.joplinapp.","pkg^com.logseq.","pkg^com.craftdocs.","obsidian","onenote","evernote","notion","markor","logseq","joplin","markdown editor","journable","samsung notes","google keep"] },
-      { "id": "a_todo_cal",    "order": "43", "label": ".a3_Todo|Calendar",
-        "match_keywords": ["pkg:com.gianlu.timeless","pkg:com.google.android.apps.tasks","pkg:com.google.android.calendar","pkg:com.microsoft.todos","pkg:com.samsung.android.app.reminder","pkg:com.samsung.android.calendar","pkg:com.toggl.giskard","pkg:com.trello","pkg:com.persapps.multitimer","pkg:me.clockify.android","pkg:todolist.scheduleplanner.dailyplanner.todo.reminders","pkg^com.ticktick.","pkg^com.todoist","pkg^com.asana.","pkg^com.clickup.","pkg^com.linear.","pkg^net.thedaily.dayone","pkg^com.habitica.android","google calendar","google tasks","microsoft todo","microsoft to do","trello","clockify","toggl","todoist","ticktick","multitimer","time tracking"] },
-      { "id": "a_ide_code",    "order": "44", "label": ".a4_IDE|Code",
-        "match_keywords": ["pkg:com.foxdebug.acode","pkg:com.github.android","pkg:com.viscouspot.gitsync","pkg:com.rhmsoft.edit","pkg:jp.sblo.pandora.jota.plus","pkg^com.gitlab.","pkg^org.gitea.android","pkg^com.android.studio","pkg^com.jetbrains.","pkg^com.spck.editor","pkg^com.quoda.","pkg^com.googlecode.droidplanner","pkg^com.foxdebug.acodefree","github","gitlab","bitbucket","gitea","jetbrains","android studio","intellij","acode","gitsync"] },
-      { "id": "a_math_time",   "order": "45", "label": ".a4_Math&Time",
-        "match_keywords": ["pkg^com.wolfram.alpha","pkg^com.desmos.calculator","pkg^com.geogebra.","pkg^com.forestapp.","pkg^cc.forestapp","pkg^be.thomasmore.pomodoro","wolfram alpha","desmos","geogebra","pomodoro","forest focus"] },
-      { "id": "b_comm",        "order": "50", "label": ".b0_Communication",
-        "match_keywords": ["pkg:com.beeper.android","pkg:com.facebook.orca","pkg:com.fsck.k9","pkg:com.google.android.apps.tachyon","pkg:com.google.android.gm","pkg:com.mailtemi.email","pkg:com.mattermost.rn","pkg:com.trianguloy.openInWhatsapp","pkg:com.viber.voip","pkg:com.whatsapp","pkg:com.whatsapp.w4b","pkg:email.clean.android","pkg:im.vector.app","pkg:rs.ltt.android","pkg:eu.faircode.email","pkg:com.samsung.android.email.provider","pkg:org.telegram.messenger","pkg:com.microsoft.office.outlook","pkg:io.heckel.ntfy","pkg^com.whatsapp.","pkg^com.skype.","pkg^com.microsoft.teams","pkg^com.discord","pkg^com.Slack","pkg^com.slack","pkg^org.thunderbird.","pkg^org.mozilla.thunderbird","pkg^im.vector.","pkg^io.element.","pkg^org.thoughtcrime.securesms","pkg^org.signal","pkg^com.wire.","pkg^com.zoom.","pkg^us.zoom.","pkg^com.beeper.","pkg^jp.naver.line","whatsapp","telegram","mattermost","fairemail","outlook","gmail","viber","signal.android","thunderbird","discord","skype","slack","teams","element classic","matrix client","ntfy notifications"] },
-      { "id": "b_media",       "order": "51", "label": ".b1_Media",
-        "match_keywords": ["pkg:com.aspiro.tidal","pkg:com.google.android.apps.youtube.music","pkg:com.google.android.youtube","pkg:com.netflix.mediaclient","pkg:com.spotify.music","pkg:com.synthesia.synthesia","pkg:com.wbd.stream","pkg:tv.arte.plus7","pkg:com.amazon.avod.thirdpartyclient","pkg:com.google.android.videos","pkg^com.deezer.android.app","pkg^com.soundcloud.android","pkg^com.crunchyroll.","pkg^tv.twitch.android.app","pkg^com.disney.disneyplus","pkg^com.hulu.plus","pkg^com.apple.atve","pkg^org.videolan.vlc","pkg^org.jellyfin.mobile","pkg^org.xbmc.kodi","pkg^tv.plex.","pkg^com.plexapp.","pkg^com.tidal.","spotify","netflix","youtube music","prime video","hbo max","disney+","crunchyroll","jellyfin","plex labs","tidal","synthesia"] },
-      { "id": "b_learning",    "order": "52", "label": ".b2_Learning",
-        "match_keywords": ["pkg:com.hueber.huebermedia","pkg:com.lubosmikusiak.articuli.derdiedas","pkg:com.rype.go","pkg:com.ted.android","pkg:com.ultimateguitar.tabs","pkg:de.digionline.webweavera2","pkg:mobi.eup.easygerman","pkg:com.memrise.android.memrisecompanion","pkg:com.simonandschuster.pimsleur.unified.android","pkg:com.softissimo.reverso.context","pkg:com.duocards.app","pkg:com.flutterflix.fluentu","pkg:com.flutterflow.kards","pkg^com.duolingo","pkg^com.busuu.android","pkg^com.atistudios.mondly","pkg^com.coursera.","pkg^com.udemy.android","pkg^org.khanacademy","pkg^com.brilliant.android","pkg^org.edx.mobile","pkg^org.wikipedia","pkg^com.amazon.kindle","pkg^com.ichi2.anki","pkg^com.babbel.","pkg^com.lingoking.","pkg^com.skillshare.","pkg^com.datacamp.","duolingo","coursera","udemy","memrise","kindle reader","babbel","busuu","wikipedia app","pimsleur","reverso","fluentu","khan academy","ultimate guitar","easygerman","todaii"] },
-      { "id": "v_audio",       "order": "60", "label": ">Audio",
-        "match_keywords": ["pkg:com.shazam.android","pkg:ott.alanwatts","pkg:at.zuggabecka.radiofm4","pkg:com.earthflare.android.radioparadisewidget.gpv2","pkg:com.sec.android.app.voicenote","pkg:de.deutschlandfunk.dlfaudiothek","pkg^au.com.shiftyjelly.pocketcasts","pkg^de.danoeh.antennapod","pkg^com.audible.","pkg^com.scribd.","pkg^com.storytel.","pkg^com.tunein.player","pkg^com.bbc.sounds","pkg^com.npr.android","pkg^com.deutschlandradio.","pkg^de.deutschlandfunk.","pkg^com.dailyburn.dlb","shazam","pocketcasts","antennapod","audible","scribd","storytel","alan watts","grabadora de voz","radio paradise","radio fm4","tunein radio","deutschlandfunk"] },
-      { "id": "v_games",       "order": "61", "label": ">Games",
-        "match_keywords": ["pkg:com.epicgames.portal","pkg:com.playdead.limbo.egs.full","pkg:com.werewolfapps.online","pkg:org.faudroids.werewolf","pkg:com.samsung.android.game.gamehome","pkg^com.gamevil.","pkg^com.king.candycrush","pkg^com.king.candy","pkg^com.supercell.","pkg^com.mojang.minecraftpe","pkg^com.epicgames.fortnite","pkg^com.roblox.client","pkg^com.miniclip.","pkg^com.zynga.","pkg^net.nintendo.","pkg^com.sega.","pkg^com.activision.","pkg^com.ea.gp.","pkg^com.ustwo.monumentvalley","pkg^com.dotgears.flappybird","epic games","limbo game","wolvesville","candy crush","minecraft","fortnite","gaming hub"] },
-      { "id": "v_soc_events",  "order": "62", "label": ">Social.Events",
-        "match_keywords": ["pkg:de.bvg.ticket","pkg:com.codekarussell.rausgegangen","pkg:fm.dice","pkg:net.residentadvisor.raguide","pkg:com.nomadmania.presentation","pkg^com.eventbrite.attendee","pkg^com.meetup.android","pkg^com.bandsintown.android","pkg^com.fever.go.android","pkg^com.dice.fm","pkg^com.seetickets.","pkg^com.songkick.","pkg^com.eventim.","eventbrite","meetup","bandsintown","resident advisor","rausgegangen","nomadmania"] },
-      { "id": "v_soc_feed",    "order": "63", "label": ">Social.Feed",
-        "match_keywords": ["pkg:chat.rocket.android","pkg:com.checkitt","pkg:com.google.android.apps.magazines","pkg:com.instagram.android","pkg:com.samsung.android.app.spage","pkg:com.substack.app","pkg:com.instagram.barcelona","pkg^com.reddit.frontpage","pkg^com.twitter.android","pkg^com.x.android","pkg^com.zhiliaoapp.musically","pkg^com.tiktok.android","pkg^com.joindiaspora.","pkg^app.bsky.","pkg^com.mastodon.android","pkg^org.joinmastodon.android","pkg^medium.android","pkg^com.linkedin.android.feed","reddit","twitter","tiktok","mastodon","bluesky","substack","ground news","threads (meta)"] },
-      { "id": "v_soc_fun",     "order": "64", "label": ">Social.Fun",
-        "match_keywords": ["pkg:com.bereal.ft","pkg:com.bumble.app","pkg:com.facebook.stella","pkg:com.tinder","pkg:com.pinterest","pkg^com.facebook.katana","pkg^com.snapchat.android","pkg^com.imgur.mobile","pkg^com.ninegag.android.app","pkg^co.hinge.app","pkg^com.feeld.app","pkg^com.tantan.app","pkg^com.bumble.","facebook app","snapchat","tinder","bumble","hinge dating","pinterest","bereal"] },
-      { "id": "v_soc_work",    "order": "65", "label": ">Social.Work",
-        "match_keywords": ["pkg:com.linkedin.android","pkg:com.otta.otta","pkg^com.indeed.android","pkg^com.glassdoor.app","pkg^com.xing.android","pkg^com.workday.","pkg^com.monster.android","pkg^com.upwork.android","pkg^com.fiverr","pkg^com.welcometothejungle.","linkedin","indeed jobs","glassdoor","welcome to the jungle","upwork","fiverr","stepstone","kununu"] },
-      { "id": "new_apps",      "order": "98", "label": "_New Apps",
-        "match_keywords": [] },
-      { "id": "misc",          "order": "99", "label": "No Categorie",
-        "match_keywords": [], "pin": true, "sink": true }
+      {
+        "id": "sys_top",
+        "order": "00",
+        "label": "_#SYSTEM",
+        "match_keywords": [
+          "pkg:com.android.settings",
+          "pkg:com.samsung.android.lool",
+          "pkg:com.android.systemui",
+          "pkg^com.samsung.android.themecenter",
+          "pkg^com.samsung.android.themestore",
+          "pkg^com.samsung.android.app.aodservice"
+        ]
+      },
+      {
+        "id": "sys_security",
+        "order": "12",
+        "label": "_Security",
+        "match_keywords": [
+          "pkg:ch.protonvpn.android",
+          "pkg:com.azure.authenticator",
+          "pkg:com.beemdevelopment.aegis",
+          "pkg:com.duckduckgo.mobile.android",
+          "pkg:com.google.android.apps.authenticator2",
+          "pkg:com.wireguard.android",
+          "pkg:com.x8bit.bitwarden",
+          "pkg:com.samsung.knox.securefolder",
+          "pkg:eu.faircode.netguard",
+          "pkg:com.opera.max.global",
+          "pkg^com.bitwarden.",
+          "pkg^com.protonmail.",
+          "pkg^com.protonvpn.",
+          "pkg^me.proton.",
+          "pkg^net.openvpn.",
+          "pkg^com.expressvpn.",
+          "pkg^com.nordvpn.",
+          "pkg^com.surfshark.",
+          "pkg^net.mullvad.",
+          "pkg^com.cloudflare.",
+          "pkg^org.torproject.",
+          "pkg^io.tailscale.",
+          "pkg^com.keepassdroid.",
+          "pkg^com.kunzisoft.keepass",
+          "pkg^com.lastpass.",
+          "pkg^com.dashlane.",
+          "pkg^com.duosecurity.",
+          "pkg^ente.io.",
+          "wireguard",
+          "bitwarden",
+          "vaultwarden",
+          "protonvpn",
+          "nordvpn",
+          "expressvpn",
+          "mullvad",
+          "tailscale",
+          "keepassdx",
+          "keepassxc",
+          "lastpass",
+          "dashlane",
+          "authenticator",
+          "aegis"
+        ]
+      },
+      {
+        "id": "sys_info",
+        "order": "13",
+        "label": "_Sys_Info",
+        "match_keywords": [
+          "pkg:com.digibites.accubattery",
+          "pkg:com.insideinc.gcpu",
+          "pkg:com.jmaciak.dogwhistle",
+          "pkg:com.frequencygenerator.dogwhistle",
+          "pkg:com.luxdelux.frequencygenerator",
+          "pkg:com.skypaw.decibel",
+          "pkg:com.noise.sound.meter.decibel",
+          "pkg:io.japp.blackscreen",
+          "pkg:me.biplobsd.rsm",
+          "pkg:org.intoorbit.spectrum",
+          "pkg:com.sensorberg.oneaccess",
+          "pkg^io.aida64.",
+          "pkg^com.cpuid.cpu_z",
+          "pkg^com.kishan.batterymonitor",
+          "accubattery",
+          "cpuinfo",
+          "aida64",
+          "decibel x",
+          "silbato perros",
+          "dog whistle",
+          "black screen",
+          "spectroid"
+        ]
+      },
+      {
+        "id": "sys_tools",
+        "order": "14",
+        "label": "_SysTools",
+        "match_keywords": [
+          "pkg:com.android.vending",
+          "pkg:com.app.applistbackup",
+          "pkg:com.arlosoft.macrodroid",
+          "pkg:com.devolutions.remotedesktopmanager",
+          "pkg:com.diegonmarcos.superapp",
+          "pkg:com.ghisler.android.TotalCommander",
+          "pkg:com.ghisler.tcplugins.SFTP",
+          "pkg:com.google.android.apps.credentialmanager",
+          "pkg:com.google.android.apps.subscriptions.red",
+          "pkg:com.google.android.inputmethod.latin",
+          "pkg:com.lbe.parallel.intl",
+          "pkg:com.mobidia.android.mdm",
+          "pkg:com.mobisystems.fileman",
+          "pkg:com.rarlab.rar",
+          "pkg:com.samsung.android.app.routines",
+          "pkg:com.samsung.android.app.watchmanager",
+          "pkg:com.samsung.android.mdx",
+          "pkg:com.sec.android.easyMover",
+          "pkg:com.termux",
+          "pkg:com.termux.api",
+          "pkg:com.termux.nix",
+          "pkg:com.teslacoilsw.launcher",
+          "pkg:com.ubnt.usurvey",
+          "pkg:dk.tacit.android.foldersync.lite",
+          "pkg:moe.shizuku.privileged.api",
+          "pkg:pub.hanks.appfolderwidget",
+          "pkg:com.alphainventor.filemanager",
+          "pkg:com.amaze.filemanager",
+          "pkg:com.ghostsq.commander",
+          "pkg:com.sec.android.app.samsungapps",
+          "pkg:com.uptodown",
+          "pkg:org.fdroid.fdroid",
+          "pkg:org.kde.kdeconnect_tp",
+          "pkg:com.adobe.reader",
+          "pkg:com.binarysmith.webclipwidget.ad",
+          "pkg:com.samsung.android.sidegesturepad",
+          "pkg:com.grammarly.android.keyboard",
+          "pkg:com.gingersoftware.android.keyboard",
+          "pkg:ch.icoaching.typewise",
+          "pkg:com.google.android.apps.giant",
+          "pkg:com.google.android.apps.enterprise.cpanel",
+          "pkg:com.smlnskgmail.jaman.hashchecker",
+          "pkg:com.truedevelopersstudio.automatictap.autoclicker",
+          "pkg:com.rsupport.rs.activity.rsupport.aas2",
+          "pkg:com.phlox.simpleserver",
+          "pkg:net.techet.netanalyzerlite.an",
+          "pkg:com.mi.earphone",
+          "pkg:com.google.android.googlequicksearchbox",
+          "pkg:com.samsung.android.oneconnect",
+          "pkg:io.raindrop.raindropio",
+          "pkg^com.termux.",
+          "pkg^io.taskbar.",
+          "pkg^com.aurora.store",
+          "pkg^org.fdroid.",
+          "pkg^com.aurora.adroid",
+          "pkg^net.kollnig.missioncontrol",
+          "macrodroid",
+          "totalcommander",
+          "appfolderwidget",
+          "parallelspace",
+          "foldersync",
+          "aurora store",
+          "f-droid",
+          "wifiman",
+          "shizuku",
+          "tasker"
+        ]
+      },
+      {
+        "id": "civ_banking",
+        "order": "20",
+        "label": "-Banking",
+        "match_keywords": [
+          "pkg:com.binance.dev",
+          "pkg:com.bitpanda.bitpanda",
+          "pkg:com.btg.pactual.banking",
+          "pkg:com.btg.pactual.digital.mobile",
+          "pkg:com.btg.pactual.homebroker.mobile",
+          "pkg:com.fusionmedia.investing",
+          "pkg:com.paypal.android.p2pmobile",
+          "pkg:com.revolut.revolut",
+          "pkg:com.transferwise.android",
+          "pkg:com.xe.currency",
+          "pkg:es.bancosantander.apps",
+          "pkg:com.google.android.apps.walletnfcrel",
+          "pkg^com.santander.",
+          "pkg^com.bbva.",
+          "pkg^com.nubank.",
+          "pkg^com.itau.",
+          "pkg^br.com.bradesco.",
+          "pkg^br.com.caixa.",
+          "pkg^br.com.bancodobrasil.",
+          "pkg^br.com.intermedium.",
+          "pkg^br.com.c6bank.",
+          "pkg^br.com.banco",
+          "pkg^com.coinbase.android",
+          "pkg^com.binance.",
+          "pkg^com.kraken.",
+          "pkg^com.revolut.",
+          "pkg^com.wise.",
+          "pkg^com.transferwise.",
+          "pkg^net.n26.android",
+          "pkg^com.monzo.",
+          "pkg^com.starlingbank.",
+          "pkg^com.klarna.",
+          "pkg^com.paypal.",
+          "pkg^com.squareup.cash",
+          "pkg^com.venmo",
+          "pkg^com.zellepay.",
+          "pkg^de.commerzbanking.mobil",
+          "pkg^de.dkb.android.",
+          "pkg^de.deutschebank.",
+          "pkg^com.ing.",
+          "pkg^nl.abnamro.",
+          "pkg^com.bunq.android",
+          "pkg^com.fineco.",
+          "pkg^com.bancosabadell.",
+          "pkg^com.caixabank.",
+          "pkg^com.kutxabank.",
+          "pkg^com.abanca.",
+          "pkg^com.liberbank.",
+          "pkg^com.openbank.",
+          "pkg^com.wizink.",
+          "pkg^uk.co.hsbc.",
+          "pkg^uk.co.barclays.",
+          "pkg^uk.co.lloydsbank.",
+          "pkg^uk.co.natwest.",
+          "pkg^com.halifax.",
+          "pkg^com.chase.",
+          "pkg^com.citi.",
+          "pkg^com.wf.wellsfargomobile",
+          "pkg^com.capitalone.",
+          "pkg^com.mercadopago.",
+          "pkg^br.com.brainweb.ifood",
+          "santander",
+          "bitpanda",
+          "revolut",
+          "binance",
+          "coinbase",
+          "paypal",
+          "trade republic",
+          "klarna",
+          "monzo",
+          "starling",
+          "commerzbank",
+          "deutsche bank",
+          "wells fargo",
+          "capital one"
+        ]
+      },
+      {
+        "id": "civ_gov_ids",
+        "order": "21",
+        "label": "-Gov|IDs",
+        "match_keywords": [
+          "pkg:br.com.vidaas.sp",
+          "pkg:br.gov.economia.receita.rfb",
+          "pkg:br.gov.meugovbr",
+          "pkg:cat.atm.cartera",
+          "pkg:com.dgt.midgt",
+          "pkg:com.governikus.ausweisapp2",
+          "pkg:es.aeat.pin24h",
+          "pkg:es.correos.app",
+          "pkg:es.fnmtrcm.ceres.certificadoDigitalFNMT",
+          "pkg:es.gob.interior.policia.midni",
+          "pkg:nl.jool.isic",
+          "pkg^br.gov.",
+          "pkg^es.gob.",
+          "pkg^es.aeat.",
+          "pkg^es.snts.",
+          "pkg^es.minhap.",
+          "pkg^uk.gov.",
+          "pkg^au.gov.",
+          "pkg^de.bund.",
+          "pkg^de.bundesregierung",
+          "pkg^de.bundes.",
+          "pkg^cl.gob.",
+          "pkg^mx.gob.",
+          "pkg^it.gov.",
+          "pkg^fr.gouv.",
+          "pkg^com.dgt.",
+          "pkg^com.ausweisapp",
+          "cl@ve",
+          "ausweisapp",
+          "poste italiane",
+          "digilocker"
+        ]
+      },
+      {
+        "id": "civ_health",
+        "order": "22",
+        "label": "-Health",
+        "match_keywords": [
+          "pkg:air.nn.mobile.app.main",
+          "pkg:com.alltrails.alltrails",
+          "pkg:com.downdogapp",
+          "pkg:com.fatsecret.android",
+          "pkg:com.garmin.android.apps.connectmobile",
+          "pkg:com.garmin.android.apps.dive",
+          "pkg:com.garmin.android.apps.messenger",
+          "pkg:com.garmin.android.apps.explore",
+          "pkg:com.garmin.connectiq",
+          "pkg:com.google.android.apps.fitness",
+          "pkg:com.strava",
+          "pkg:com.urbandroid.sleep",
+          "pkg:de.komoot.android",
+          "pkg^com.fitbit.",
+          "pkg^com.runtastic.",
+          "pkg^com.myfitnesspal.",
+          "pkg^com.popularapp.periodcalendar",
+          "pkg^com.glow.",
+          "pkg^com.calm.",
+          "pkg^com.headspace.",
+          "pkg^com.huawei.health",
+          "pkg^com.samsung.android.app.shealth",
+          "pkg^com.google.android.apps.healthdata",
+          "pkg^com.polar.",
+          "pkg^com.wahoofitness.",
+          "pkg^com.oura.",
+          "pkg^com.whoop.",
+          "pkg^com.garmin.",
+          "pkg^com.sleepasandroid",
+          "pkg^com.downdogapp",
+          "garmin connect",
+          "alltrails",
+          "komoot",
+          "fitbit",
+          "myfitnesspal",
+          "samsung health",
+          "google fit",
+          "health connect",
+          "fatsecret",
+          "neuronation",
+          "headspace",
+          "insight timer",
+          "down dog yoga"
+        ]
+      },
+      {
+        "id": "civ_maps",
+        "order": "23",
+        "label": "-Maps",
+        "match_keywords": [
+          "pkg:aplicacion.tiempo",
+          "pkg:com.alohacamp.release",
+          "pkg:com.google.android.apps.maps",
+          "pkg:com.google.earth",
+          "pkg:com.mapswithme.maps.pro",
+          "pkg:com.outdooractive.Outdooractive",
+          "pkg:com.wikiloc.wikilocandroid",
+          "pkg:cz.ackee.ventusky",
+          "pkg:dk.shelter.app",
+          "pkg:fr.tramb.park4night",
+          "pkg^net.osmand.",
+          "pkg^com.waze",
+          "pkg^com.tomtom.navui",
+          "pkg^com.sygic.aura",
+          "pkg^cz.ackee.ventusky",
+          "pkg^com.windyty.android",
+          "pkg^com.windy.windyfree",
+          "google maps",
+          "google earth",
+          "osmand",
+          "accuweather",
+          "outdoor active",
+          "wikiloc",
+          "park4night",
+          "alohacamp"
+        ]
+      },
+      {
+        "id": "civ_market",
+        "order": "24",
+        "label": "-Market",
+        "match_keywords": [
+          "pkg:com.amazon.mShop.android.shopping",
+          "pkg:com.app.tgtg",
+          "pkg:com.backmarket",
+          "pkg:com.ebay.kleinanzeigen",
+          "pkg:com.wallapop",
+          "pkg:vivino.web.app",
+          "pkg^com.amazon.mShop.",
+          "pkg^com.amazon.windowshop",
+          "pkg^com.amazon.kindle",
+          "pkg^com.ebay.mobile",
+          "pkg^com.aliexpress.buyer",
+          "pkg^com.shein.",
+          "pkg^com.olx.",
+          "pkg^com.shopee.",
+          "pkg^com.zalando.",
+          "pkg^com.asos.",
+          "pkg^com.etsy.android",
+          "pkg^com.temu.",
+          "pkg^pl.allegro.",
+          "pkg^com.vinted.",
+          "amazon shopping",
+          "aliexpress",
+          "zalando",
+          "wallapop",
+          "vinted",
+          "kleinanzeigen",
+          "too good to go",
+          "backmarket",
+          "raindrop",
+          "vivino"
+        ]
+      },
+      {
+        "id": "civ_real",
+        "order": "25",
+        "label": "-Real Estate",
+        "match_keywords": [
+          "pkg:com.wggesucht.android",
+          "pkg:de.is24.android",
+          "pkg:de.nebenan.app",
+          "pkg^com.idealista.",
+          "pkg^com.fotocasa.",
+          "pkg^com.habitaclia.",
+          "pkg^com.zillow.",
+          "pkg^com.zoopla.",
+          "pkg^com.rightmove.",
+          "pkg^com.realtor.",
+          "pkg^com.compass.",
+          "pkg^com.spareroom.",
+          "pkg^com.airbnb.host",
+          "pkg^com.movoto.",
+          "pkg^com.redfin.",
+          "pkg^com.trulia.",
+          "pkg^net.badi.",
+          "idealista",
+          "fotocasa",
+          "zoopla",
+          "zillow",
+          "wg-gesucht",
+          "immoscout",
+          "rightmove",
+          "habitaclia",
+          "airbnb host",
+          "spareroom"
+        ]
+      },
+      {
+        "id": "civ_trip",
+        "order": "26",
+        "label": "-Trans (Trip)",
+        "match_keywords": [
+          "pkg:app.campy",
+          "pkg:com.airbnb.android",
+          "pkg:com.booking",
+          "pkg:com.goeuro.rosie",
+          "pkg:com.hostel_hop_inc.hostel_hop_mobile",
+          "pkg:com.hostelworld.app",
+          "pkg:com.rome2rio.www.rome2rio",
+          "pkg:com.ryanair.cheapflights",
+          "pkg:com.skiplagged",
+          "pkg:com.wizzair.WizzAirApp",
+          "pkg:com.workaway.app",
+          "pkg:net.skyscanner.android.main",
+          "pkg:travel.goki.app",
+          "pkg:com.getbybus.mobile",
+          "pkg:com.geomobile.tmbmobile",
+          "pkg:be.greifmatthias.wakaship",
+          "pkg:com.kautra.android.autobusubilietai",
+          "pkg:com.mo2o.alsa",
+          "pkg:no.ruter.reise",
+          "pkg:com.thetrainline",
+          "pkg:com.spanishcoders.pepephone",
+          "pkg:com.affinityclick.alosim",
+          "pkg:com.mobillium.airalo",
+          "pkg:com.saily.android",
+          "pkg:com.esim.numero",
+          "pkg:net.esim.twa",
+          "pkg:ride.app",
+          "pkg:com.donkeyrepublic.bike.android",
+          "pkg:eu.infobus.app",
+          "pkg:cat.atm.tmobilitat",
+          "pkg^com.tripadvisor.",
+          "pkg^com.kayak.android",
+          "pkg^com.expedia.",
+          "pkg^com.agoda.",
+          "pkg^com.hotels.",
+          "pkg^com.trivago.",
+          "pkg^com.airbnb.",
+          "pkg^com.booking.",
+          "pkg^com.lufthansa.",
+          "pkg^com.britishairways.",
+          "pkg^com.iberia.",
+          "pkg^com.klm.",
+          "pkg^com.airfrance.",
+          "pkg^com.emirates.",
+          "pkg^com.delta.mobile",
+          "pkg^com.alaskaair.",
+          "pkg^com.jetblue.",
+          "pkg^com.southwest.",
+          "pkg^com.tapportugal.",
+          "pkg^com.vueling.",
+          "pkg^com.easyjet.",
+          "pkg^com.norwegian.travelassistant",
+          "pkg^com.tap.portugal",
+          "pkg^com.aerlingus.",
+          "pkg^com.qatarairways.",
+          "pkg^com.etihad.",
+          "pkg^com.aa.android",
+          "pkg^com.gol.",
+          "pkg^com.latam.",
+          "pkg^com.azul.",
+          "pkg^com.donkeyrepublic.",
+          "pkg^cat.atm.",
+          "airbnb",
+          "booking.com",
+          "ryanair",
+          "lufthansa",
+          "skyscanner",
+          "hostelworld",
+          "rome2rio",
+          "tripadvisor",
+          "kayak.travel",
+          "expedia",
+          "trivago",
+          "easyjet",
+          "vueling",
+          "wizzair",
+          "workaway",
+          "goki travel",
+          "tap portugal",
+          "british airways",
+          "american airlines",
+          "airalo esim",
+          "alosim travel",
+          "saily esim",
+          "numero esim",
+          "donkey republic",
+          "trainline"
+        ]
+      },
+      {
+        "id": "civ_transp",
+        "order": "27",
+        "label": "-Transp",
+        "match_keywords": [
+          "pkg:com.comuto",
+          "pkg:com.trafi.android.tr",
+          "pkg:com.trafi.whitelabel.bvg",
+          "pkg:com.ubercab",
+          "pkg:de.congstar.meincongstar",
+          "pkg:de.flixbus.app",
+          "pkg:de.hafas.android.db",
+          "pkg:ee.mtakso.client",
+          "pkg:taxi.android.client",
+          "pkg:de.eos.uptrade.android.fahrinfo.berlin",
+          "pkg:de.bvg.ticket",
+          "pkg^com.lyft.",
+          "pkg^com.cabify.",
+          "pkg^com.didi.",
+          "pkg^com.transit.app",
+          "pkg^com.citymapper.",
+          "pkg^com.tranzmate",
+          "pkg^com.moovit.",
+          "pkg^com.renfe.",
+          "pkg^com.sncf.",
+          "pkg^com.oebb.",
+          "pkg^com.amtrak.",
+          "pkg^com.viarail.",
+          "pkg^de.s-bahn.",
+          "pkg^com.sixt.",
+          "pkg^com.avis.",
+          "pkg^com.europcar.",
+          "pkg^com.zipcar.",
+          "pkg^com.getaround.",
+          "pkg^com.turo.",
+          "pkg^com.bird.android",
+          "pkg^com.lime.mobile",
+          "pkg^com.tomtom.",
+          "pkg^com.tier.app",
+          "pkg^com.tier.scooter",
+          "pkg^com.uber.",
+          "pkg^com.bolt.",
+          "pkg^com.flixbus.",
+          "blablacar",
+          "flixbus",
+          "citymapper",
+          "moovit",
+          "congstar berlin",
+          "freenow taxi",
+          "fahrinfo berlin",
+          "jelbi berlin",
+          "trafi berlin"
+        ]
+      },
+      {
+        "id": "civ_utility",
+        "order": "28",
+        "label": "-Utilities",
+        "match_keywords": [
+          "pkg:com.android.chrome",
+          "pkg:com.brave.browser",
+          "pkg:com.diotek.sec.lookup.dictionary",
+          "pkg:com.samsung.android.app.contacts",
+          "pkg:com.samsung.android.dialer",
+          "pkg:com.sec.android.app.camera",
+          "pkg:com.sec.android.app.myfiles",
+          "pkg:me.zhanghai.android.files",
+          "pkg:pl.mobimax.cameraopus",
+          "pkg:com.google.android.apps.messaging",
+          "pkg:com.samsung.android.messaging",
+          "pkg:com.google.android.calculator",
+          "pkg:com.pengyou.cloneapp",
+          "pkg:com.sec.android.app.popupcalculator",
+          "pkg:com.google.android.apps.translate",
+          "pkg:com.lonelycatgames.Xplore",
+          "pkg:pl.solidexplorer2",
+          "pkg:com.google.audio.hearing.visualization.accessibility.scribe",
+          "pkg:com.sec.android.app.clockpackage",
+          "pkg:com.samsung.android.ardrawing",
+          "pkg^com.samsung.android.app.galaxyfinder",
+          "pkg^org.mozilla.firefox",
+          "pkg^com.opera.browser",
+          "pkg^com.opera.mini.native",
+          "pkg^com.vivaldi.browser",
+          "pkg^com.microsoft.emmx",
+          "pkg^com.tor.android",
+          "pkg^com.kiwibrowser.browser",
+          "firefox",
+          "brave browser",
+          "vivaldi",
+          "google translate",
+          "samsung calculator",
+          "samsung calendar",
+          "material files",
+          "total commander",
+          "x-plore",
+          "solid explorer"
+        ]
+      },
+      {
+        "id": "tools_top",
+        "order": "30",
+        "label": ".#TOOLS",
+        "match_keywords": []
+      },
+      {
+        "id": "a_llm",
+        "order": "40",
+        "label": ".a0_LLM",
+        "match_keywords": [
+          "pkg:ai.perplexity.app.android",
+          "pkg:ai.perplexity.comet",
+          "pkg:ai.x.grok",
+          "pkg:com.anthropic.claude",
+          "pkg:com.deepseek.chat",
+          "pkg:com.google.android.apps.bard",
+          "pkg:com.google.android.apps.googleassistant",
+          "pkg:com.microsoft.copilot",
+          "pkg:com.samsung.android.bixby.agent",
+          "pkg:xyz.chatboxapp.chatbox",
+          "pkg:org.chromium.webapk.afdfe84a0acbbed2f_v2",
+          "pkg:com.google.android.apps.labs.language.tailwind",
+          "pkg:com.facebook.stella",
+          "pkg^ai.x.",
+          "pkg^ai.perplexity.",
+          "pkg^com.openai.",
+          "pkg^com.google.android.apps.bard",
+          "pkg^xyz.chatboxapp.",
+          "pkg^com.anthropic.",
+          "pkg^com.mistral.",
+          "pkg^io.kagi.",
+          "pkg^com.poe.",
+          "pkg^ai.character.android",
+          "claude",
+          "perplexity",
+          "deepseek",
+          "notebooklm",
+          "gemini",
+          "chatgpt",
+          "copilot",
+          "mistral ai",
+          "character.ai",
+          "huggingface"
+        ]
+      },
+      {
+        "id": "a_db_photos",
+        "order": "41",
+        "label": ".a1_DataBase|Photos",
+        "match_keywords": [
+          "pkg:com.google.android.apps.docs",
+          "pkg:com.google.android.apps.docs.editors.docs",
+          "pkg:com.google.android.apps.docs.editors.sheets",
+          "pkg:com.google.android.apps.photos",
+          "pkg:com.sec.android.gallery3d",
+          "pkg:com.microsoft.skydrive",
+          "pkg:com.musicvideo.photoeditor.squarefit",
+          "pkg^com.dropbox.android",
+          "pkg^com.box.android",
+          "pkg^com.photoprism.",
+          "pkg^com.adobe.lrmobile",
+          "pkg^com.adobe.psmobile",
+          "pkg^com.niksoftware.snapseed",
+          "pkg^com.pixlr.express",
+          "pkg^com.photopea.",
+          "pkg^io.dbeaver.",
+          "pkg^io.dbgate.",
+          "pkg^com.mongodb.android",
+          "google drive",
+          "onedrive",
+          "google photos",
+          "samsung gallery",
+          "google docs",
+          "google sheets",
+          "snapseed",
+          "lightroom",
+          "dropbox",
+          "square fit"
+        ]
+      },
+      {
+        "id": "a_pages_notes",
+        "order": "42",
+        "label": ".a2_Pages|Notes",
+        "match_keywords": [
+          "pkg:com.google.android.keep",
+          "pkg:com.journable.app",
+          "pkg:com.microsoft.lists.public",
+          "pkg:com.samsung.android.app.notes",
+          "pkg:com.microsoft.office.onenote",
+          "pkg:md.obsidian",
+          "pkg:com.adeeteya.markdown_editor",
+          "pkg^com.evernote",
+          "pkg^com.notion.",
+          "pkg^net.appflowy.",
+          "pkg^net.gsantner.markor",
+          "pkg^io.standardnotes.",
+          "pkg^org.joplinapp.",
+          "pkg^com.logseq.",
+          "pkg^com.craftdocs.",
+          "obsidian",
+          "onenote",
+          "evernote",
+          "notion",
+          "markor",
+          "logseq",
+          "joplin",
+          "markdown editor",
+          "journable",
+          "samsung notes",
+          "google keep"
+        ]
+      },
+      {
+        "id": "a_todo_cal",
+        "order": "43",
+        "label": ".a3_Todo|Calendar",
+        "match_keywords": [
+          "pkg:com.gianlu.timeless",
+          "pkg:com.google.android.apps.tasks",
+          "pkg:com.google.android.calendar",
+          "pkg:com.microsoft.todos",
+          "pkg:com.samsung.android.app.reminder",
+          "pkg:com.samsung.android.calendar",
+          "pkg:com.toggl.giskard",
+          "pkg:com.trello",
+          "pkg:com.persapps.multitimer",
+          "pkg:me.clockify.android",
+          "pkg:todolist.scheduleplanner.dailyplanner.todo.reminders",
+          "pkg^com.ticktick.",
+          "pkg^com.todoist",
+          "pkg^com.asana.",
+          "pkg^com.clickup.",
+          "pkg^com.linear.",
+          "pkg^net.thedaily.dayone",
+          "pkg^com.habitica.android",
+          "google calendar",
+          "google tasks",
+          "microsoft todo",
+          "microsoft to do",
+          "trello",
+          "clockify",
+          "toggl",
+          "todoist",
+          "ticktick",
+          "multitimer",
+          "time tracking"
+        ]
+      },
+      {
+        "id": "a_ide_code",
+        "order": "44",
+        "label": ".a4_IDE|Code",
+        "match_keywords": [
+          "pkg:com.foxdebug.acode",
+          "pkg:com.github.android",
+          "pkg:com.viscouspot.gitsync",
+          "pkg:com.rhmsoft.edit",
+          "pkg:jp.sblo.pandora.jota.plus",
+          "pkg^com.gitlab.",
+          "pkg^org.gitea.android",
+          "pkg^com.android.studio",
+          "pkg^com.jetbrains.",
+          "pkg^com.spck.editor",
+          "pkg^com.quoda.",
+          "pkg^com.googlecode.droidplanner",
+          "pkg^com.foxdebug.acodefree",
+          "github",
+          "gitlab",
+          "bitbucket",
+          "gitea",
+          "jetbrains",
+          "android studio",
+          "intellij",
+          "acode",
+          "gitsync"
+        ]
+      },
+      {
+        "id": "a_math_time",
+        "order": "45",
+        "label": ".a4_Math&Time",
+        "match_keywords": [
+          "pkg^com.wolfram.alpha",
+          "pkg^com.desmos.calculator",
+          "pkg^com.geogebra.",
+          "pkg^com.forestapp.",
+          "pkg^cc.forestapp",
+          "pkg^be.thomasmore.pomodoro",
+          "wolfram alpha",
+          "desmos",
+          "geogebra",
+          "pomodoro",
+          "forest focus"
+        ]
+      },
+      {
+        "id": "b_comm",
+        "order": "50",
+        "label": ".b0_Communication",
+        "match_keywords": [
+          "pkg:com.beeper.android",
+          "pkg:com.facebook.orca",
+          "pkg:com.fsck.k9",
+          "pkg:com.google.android.apps.tachyon",
+          "pkg:com.google.android.gm",
+          "pkg:com.mailtemi.email",
+          "pkg:com.mattermost.rn",
+          "pkg:com.trianguloy.openInWhatsapp",
+          "pkg:com.viber.voip",
+          "pkg:com.whatsapp",
+          "pkg:com.whatsapp.w4b",
+          "pkg:email.clean.android",
+          "pkg:im.vector.app",
+          "pkg:rs.ltt.android",
+          "pkg:eu.faircode.email",
+          "pkg:com.samsung.android.email.provider",
+          "pkg:org.telegram.messenger",
+          "pkg:com.microsoft.office.outlook",
+          "pkg:io.heckel.ntfy",
+          "pkg^com.whatsapp.",
+          "pkg^com.skype.",
+          "pkg^com.microsoft.teams",
+          "pkg^com.discord",
+          "pkg^com.Slack",
+          "pkg^com.slack",
+          "pkg^org.thunderbird.",
+          "pkg^org.mozilla.thunderbird",
+          "pkg^im.vector.",
+          "pkg^io.element.",
+          "pkg^org.thoughtcrime.securesms",
+          "pkg^org.signal",
+          "pkg^com.wire.",
+          "pkg^com.zoom.",
+          "pkg^us.zoom.",
+          "pkg^com.beeper.",
+          "pkg^jp.naver.line",
+          "whatsapp",
+          "telegram",
+          "mattermost",
+          "fairemail",
+          "outlook",
+          "gmail",
+          "viber",
+          "signal.android",
+          "thunderbird",
+          "discord",
+          "skype",
+          "slack",
+          "teams",
+          "element classic",
+          "matrix client",
+          "ntfy notifications"
+        ]
+      },
+      {
+        "id": "b_media",
+        "order": "51",
+        "label": ".b1_Media",
+        "match_keywords": [
+          "pkg:com.aspiro.tidal",
+          "pkg:com.google.android.apps.youtube.music",
+          "pkg:com.google.android.youtube",
+          "pkg:com.netflix.mediaclient",
+          "pkg:com.spotify.music",
+          "pkg:com.synthesia.synthesia",
+          "pkg:com.wbd.stream",
+          "pkg:tv.arte.plus7",
+          "pkg:com.amazon.avod.thirdpartyclient",
+          "pkg:com.google.android.videos",
+          "pkg^com.deezer.android.app",
+          "pkg^com.soundcloud.android",
+          "pkg^com.crunchyroll.",
+          "pkg^tv.twitch.android.app",
+          "pkg^com.disney.disneyplus",
+          "pkg^com.hulu.plus",
+          "pkg^com.apple.atve",
+          "pkg^org.videolan.vlc",
+          "pkg^org.jellyfin.mobile",
+          "pkg^org.xbmc.kodi",
+          "pkg^tv.plex.",
+          "pkg^com.plexapp.",
+          "pkg^com.tidal.",
+          "spotify",
+          "netflix",
+          "youtube music",
+          "prime video",
+          "hbo max",
+          "disney+",
+          "crunchyroll",
+          "jellyfin",
+          "plex labs",
+          "tidal",
+          "synthesia"
+        ]
+      },
+      {
+        "id": "b_learning",
+        "order": "52",
+        "label": ".b2_Learning",
+        "match_keywords": [
+          "pkg:com.hueber.huebermedia",
+          "pkg:com.lubosmikusiak.articuli.derdiedas",
+          "pkg:com.rype.go",
+          "pkg:com.ted.android",
+          "pkg:com.ultimateguitar.tabs",
+          "pkg:de.digionline.webweavera2",
+          "pkg:mobi.eup.easygerman",
+          "pkg:com.memrise.android.memrisecompanion",
+          "pkg:com.simonandschuster.pimsleur.unified.android",
+          "pkg:com.softissimo.reverso.context",
+          "pkg:com.duocards.app",
+          "pkg:com.flutterflix.fluentu",
+          "pkg:com.flutterflow.kards",
+          "pkg^com.duolingo",
+          "pkg^com.busuu.android",
+          "pkg^com.atistudios.mondly",
+          "pkg^com.coursera.",
+          "pkg^com.udemy.android",
+          "pkg^org.khanacademy",
+          "pkg^com.brilliant.android",
+          "pkg^org.edx.mobile",
+          "pkg^org.wikipedia",
+          "pkg^com.amazon.kindle",
+          "pkg^com.ichi2.anki",
+          "pkg^com.babbel.",
+          "pkg^com.lingoking.",
+          "pkg^com.skillshare.",
+          "pkg^com.datacamp.",
+          "duolingo",
+          "coursera",
+          "udemy",
+          "memrise",
+          "kindle reader",
+          "babbel",
+          "busuu",
+          "wikipedia app",
+          "pimsleur",
+          "reverso",
+          "fluentu",
+          "khan academy",
+          "ultimate guitar",
+          "easygerman",
+          "todaii"
+        ]
+      },
+      {
+        "id": "v_audio",
+        "order": "60",
+        "label": ">Audio",
+        "match_keywords": [
+          "pkg:com.shazam.android",
+          "pkg:ott.alanwatts",
+          "pkg:at.zuggabecka.radiofm4",
+          "pkg:com.earthflare.android.radioparadisewidget.gpv2",
+          "pkg:com.sec.android.app.voicenote",
+          "pkg:de.deutschlandfunk.dlfaudiothek",
+          "pkg^au.com.shiftyjelly.pocketcasts",
+          "pkg^de.danoeh.antennapod",
+          "pkg^com.audible.",
+          "pkg^com.scribd.",
+          "pkg^com.storytel.",
+          "pkg^com.tunein.player",
+          "pkg^com.bbc.sounds",
+          "pkg^com.npr.android",
+          "pkg^com.deutschlandradio.",
+          "pkg^de.deutschlandfunk.",
+          "pkg^com.dailyburn.dlb",
+          "shazam",
+          "pocketcasts",
+          "antennapod",
+          "audible",
+          "scribd",
+          "storytel",
+          "alan watts",
+          "grabadora de voz",
+          "radio paradise",
+          "radio fm4",
+          "tunein radio",
+          "deutschlandfunk"
+        ]
+      },
+      {
+        "id": "v_games",
+        "order": "61",
+        "label": ">Games",
+        "match_keywords": [
+          "pkg:com.epicgames.portal",
+          "pkg:com.playdead.limbo.egs.full",
+          "pkg:com.werewolfapps.online",
+          "pkg:org.faudroids.werewolf",
+          "pkg:com.samsung.android.game.gamehome",
+          "pkg^com.gamevil.",
+          "pkg^com.king.candycrush",
+          "pkg^com.king.candy",
+          "pkg^com.supercell.",
+          "pkg^com.mojang.minecraftpe",
+          "pkg^com.epicgames.fortnite",
+          "pkg^com.roblox.client",
+          "pkg^com.miniclip.",
+          "pkg^com.zynga.",
+          "pkg^net.nintendo.",
+          "pkg^com.sega.",
+          "pkg^com.activision.",
+          "pkg^com.ea.gp.",
+          "pkg^com.ustwo.monumentvalley",
+          "pkg^com.dotgears.flappybird",
+          "epic games",
+          "limbo game",
+          "wolvesville",
+          "candy crush",
+          "minecraft",
+          "fortnite",
+          "gaming hub"
+        ]
+      },
+      {
+        "id": "v_soc_events",
+        "order": "62",
+        "label": ">Social.Events",
+        "match_keywords": [
+          "pkg:de.bvg.ticket",
+          "pkg:com.codekarussell.rausgegangen",
+          "pkg:fm.dice",
+          "pkg:net.residentadvisor.raguide",
+          "pkg:com.nomadmania.presentation",
+          "pkg^com.eventbrite.attendee",
+          "pkg^com.meetup.android",
+          "pkg^com.bandsintown.android",
+          "pkg^com.fever.go.android",
+          "pkg^com.dice.fm",
+          "pkg^com.seetickets.",
+          "pkg^com.songkick.",
+          "pkg^com.eventim.",
+          "eventbrite",
+          "meetup",
+          "bandsintown",
+          "resident advisor",
+          "rausgegangen",
+          "nomadmania"
+        ]
+      },
+      {
+        "id": "v_soc_feed",
+        "order": "63",
+        "label": ">Social.Feed",
+        "match_keywords": [
+          "pkg:chat.rocket.android",
+          "pkg:com.checkitt",
+          "pkg:com.google.android.apps.magazines",
+          "pkg:com.instagram.android",
+          "pkg:com.samsung.android.app.spage",
+          "pkg:com.substack.app",
+          "pkg:com.instagram.barcelona",
+          "pkg^com.reddit.frontpage",
+          "pkg^com.twitter.android",
+          "pkg^com.x.android",
+          "pkg^com.zhiliaoapp.musically",
+          "pkg^com.tiktok.android",
+          "pkg^com.joindiaspora.",
+          "pkg^app.bsky.",
+          "pkg^com.mastodon.android",
+          "pkg^org.joinmastodon.android",
+          "pkg^medium.android",
+          "pkg^com.linkedin.android.feed",
+          "reddit",
+          "twitter",
+          "tiktok",
+          "mastodon",
+          "bluesky",
+          "substack",
+          "ground news",
+          "threads (meta)"
+        ]
+      },
+      {
+        "id": "v_soc_fun",
+        "order": "64",
+        "label": ">Social.Fun",
+        "match_keywords": [
+          "pkg:com.bereal.ft",
+          "pkg:com.bumble.app",
+          "pkg:com.facebook.stella",
+          "pkg:com.tinder",
+          "pkg:com.pinterest",
+          "pkg^com.facebook.katana",
+          "pkg^com.snapchat.android",
+          "pkg^com.imgur.mobile",
+          "pkg^com.ninegag.android.app",
+          "pkg^co.hinge.app",
+          "pkg^com.feeld.app",
+          "pkg^com.tantan.app",
+          "pkg^com.bumble.",
+          "facebook app",
+          "snapchat",
+          "tinder",
+          "bumble",
+          "hinge dating",
+          "pinterest",
+          "bereal"
+        ]
+      },
+      {
+        "id": "v_soc_work",
+        "order": "65",
+        "label": ">Social.Work",
+        "match_keywords": [
+          "pkg:com.linkedin.android",
+          "pkg:com.otta.otta",
+          "pkg^com.indeed.android",
+          "pkg^com.glassdoor.app",
+          "pkg^com.xing.android",
+          "pkg^com.workday.",
+          "pkg^com.monster.android",
+          "pkg^com.upwork.android",
+          "pkg^com.fiverr",
+          "pkg^com.welcometothejungle.",
+          "linkedin",
+          "indeed jobs",
+          "glassdoor",
+          "welcome to the jungle",
+          "upwork",
+          "fiverr",
+          "stepstone",
+          "kununu"
+        ]
+      },
+      {
+        "id": "new_apps",
+        "order": "98",
+        "label": "_New Apps",
+        "match_keywords": []
+      },
+      {
+        "id": "misc",
+        "order": "99",
+        "label": "No Categorie",
+        "match_keywords": [],
+        "pin": true,
+        "sink": true
+      }
     ],
     "_doc_phone_sections": "Top-level section headers in the Home Apps/Phone tab. Folders are bucketed under a section by their label's first character: System (_), Services (-), Tools A (.), Tools B (>). Order = render order. Empty sections (every folder empty) silently skipped. Phone tab renders one subhead per non-empty section + the folder grid below.",
     "phone_sections": [
-      { "title": "System",   "prefix": "_" },
-      { "title": "Services", "prefix": "-" },
-      { "title": "Tools A",  "prefix": "." },
-      { "title": "Tools B",  "prefix": ">" }
+      {
+        "title": "System",
+        "prefix": "_"
+      },
+      {
+        "title": "Services",
+        "prefix": "-"
+      },
+      {
+        "title": "Tools A",
+        "prefix": "."
+      },
+      {
+        "title": "Tools B",
+        "prefix": ">"
+      }
     ],
     "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record — installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo — IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values — legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`). The install-source values are real installer package names — verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
     "phone_smart_folders": [
       {
-        "id": "samsung", "title": "Samsung",
-        "rule": { "type": "pkg_prefix", "values": ["com.sec.", "com.samsung."] }
+        "id": "samsung",
+        "title": "Samsung",
+        "rule": {
+          "type": "pkg_prefix",
+          "values": [
+            "com.sec.",
+            "com.samsung."
+          ]
+        }
       },
       {
-        "id": "google", "title": "Google",
-        "rule": { "type": "pkg_prefix", "values": ["com.google.", "com.android.vending"] }
+        "id": "google",
+        "title": "Google",
+        "rule": {
+          "type": "pkg_prefix",
+          "values": [
+            "com.google.",
+            "com.android.vending"
+          ]
+        }
       },
       {
-        "id": "fdroid", "title": "F-Droid · Sideload",
+        "id": "fdroid",
+        "title": "F-Droid · Sideload",
         "_doc": "F-Droid installs PLUS raw-APK sideloads (com.google.android.packageinstaller = installed by hand, owned by no store). These get no automatic Play/Samsung updates.",
-        "rule": { "type": "install_source_in", "values": ["org.fdroid.fdroid", "com.google.android.packageinstaller"] }
+        "rule": {
+          "type": "install_source_in",
+          "values": [
+            "org.fdroid.fdroid",
+            "com.google.android.packageinstaller"
+          ]
+        }
       },
       {
-        "id": "uptodown", "title": "Uptodown",
-        "rule": { "type": "install_source_in", "values": ["com.uptodown"] }
+        "id": "uptodown",
+        "title": "Uptodown",
+        "rule": {
+          "type": "install_source_in",
+          "values": [
+            "com.uptodown"
+          ]
+        }
       },
       {
-        "id": "new_apps", "title": "New Apps",
+        "id": "new_apps",
+        "title": "New Apps",
         "_doc": "Newest installs by firstInstallTime, capped at `limit`. `recently_installed` is a ranking rule (sort + take), not a per-app filter — PhoneSmartFolders.select handles it; no `values` needed.",
-        "rule": { "type": "recently_installed", "limit": 12 }
+        "rule": {
+          "type": "recently_installed",
+          "limit": 12
+        }
       }
     ],
     "default_section": "home",
