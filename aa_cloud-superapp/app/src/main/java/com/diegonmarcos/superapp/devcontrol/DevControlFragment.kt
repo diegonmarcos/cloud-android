@@ -485,14 +485,14 @@ class DevControlFragment : Fragment() {
                         "  1) Tap 'Open App Info' below.\n" +
                         "  2) Tap the ⋮ menu (top-right) → 'Allow restricted settings'.\n" +
                         "  3) Then come back + tap 'Open Accessibility settings' below to enable Cloud SuperApp."))
-                it.addView(actionButton(ctx, "1) Open App Info (allow restricted settings)") {
+                it.addView(actionButton(ctx, "1) Set App Info (allow restricted settings)") {
                     ScreenLocker.openAppInfo(ctxAny())
                 })
-                it.addView(actionButton(ctx, "2) Open Accessibility settings — enable Cloud SuperApp") {
+                it.addView(actionButton(ctx, "2) Set Accessibility — enable Cloud SuperApp") {
                     ScreenLocker.openSystemAccessibilitySettings(ctxAny())
                 })
             } else {
-                it.addView(actionButton(ctx, "Open Accessibility settings (revoke)") {
+                it.addView(actionButton(ctx, "Set Accessibility (revoke)") {
                     ScreenLocker.openSystemAccessibilitySettings(ctxAny())
                 })
             }
@@ -503,7 +503,7 @@ class DevControlFragment : Fragment() {
                     ScreenLocker.requestActivation(requireActivity())
                 })
             } else {
-                it.addView(actionButton(ctx, "Open system Device Admin settings (revoke)") {
+                it.addView(actionButton(ctx, "Set Device Admin (revoke)") {
                     ScreenLocker.openSystemDeviceAdminSettings(ctxAny())
                 })
             }
@@ -550,23 +550,34 @@ class DevControlFragment : Fragment() {
             //    fallback to AOSP battery saver on non-Samsung.
             //
             //    Row 3 = the two bulk actions.
-            it.addView(actionButtonRow(ctx,
-                "Grant Health Perms"   to { openHealthConnectPerms() },
-                "Grant Notif. (write)" to { requestNotificationsPermission() },
-                "Grant Notif. (read)"  to { openNotificationListenerSettings() },
-            ))
-            it.addView(actionButtonRow(ctx,
-                "Grant Usage Access"          to { openUsageAccessSettings() },
-                "Grant Files Access"          to { openManageAllFilesSettings() },
-                "Set Battery No Optimization" to { openBatteryOptimizationSettings() },
-                "Set Samsung Never-Sleeping"  to { openSamsungNeverSleepingSettings() },
-            ))
-            it.addView(actionButtonRow(ctx,
-                "Request All Permissions" to {
+            // ── GRANT — one-tap system dialog. Buttons gray out (✓) once
+            //    the perm is held.
+            it.addView(small(ctx, "Grant — one-tap system dialog:"))
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Grant Health Perms", null) { openHealthConnectPerms() },
+                permButton(ctx, "Grant Notif. (write)", grantedNotifWrite(ctxAny())) { requestNotificationsPermission() },
+                permButton(ctx, "Request All Perms", null) {
                     requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
                 },
-                "Open System App Settings" to { openAppSettings() },
             ))
+            // ── SET — open the menu and toggle manually (these can't be
+            //    granted by a one-tap dialog; each is a Settings jump).
+            it.addView(small(ctx, "Set — open the menu and toggle manually:"))
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Set Notif. (read)", grantedNotifRead(ctxAny())) { openNotificationListenerSettings() },
+                permButton(ctx, "Set Usage Access", com.diegonmarcos.superapp.EnergyWatchdog.hasUsageAccess(ctxAny())) { openUsageAccessSettings() },
+                permButton(ctx, "Set Files Access", grantedFiles()) { openManageAllFilesSettings() },
+            ))
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Set Battery No-Optim", grantedBatteryOptim(ctxAny())) { openBatteryOptimizationSettings() },
+                permButton(ctx, "Set Samsung Never-Sleep", null) { openSamsungNeverSleepingSettings() },
+                permButton(ctx, "Set App Settings", null) { openAppSettings() },
+            ))
+            // ── Copy the full status block (matches what's rendered above).
+            it.addView(actionButton(ctx, "Copy All Perms Status") {
+                copy(ctxAny(), buildAllPermsStatus(ctxAny()))
+                Toast.makeText(ctxAny(), "Copied full permission status", Toast.LENGTH_SHORT).show()
+            })
         }
 
         section(ctx, column, "Battery & Usage") {
@@ -668,6 +679,11 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Unplug anchor src", bs.unplugAnchorSource)
             row(ctx, it, "Plug anchor src",   bs.plugAnchorSource)
             it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
+            // Deep BatteryManager / sticky-intent dump — merged in from
+            // the former separate "Battery (deep)" section (one Battery
+            // section, not two).
+            it.addView(small(ctx, "— Deep (BatteryManager + sticky intent) —"))
+            renderBatteryDeep(ctx, it)
             // AccuBattery-style energy page — device state→draw
             // attribution, per-foreground-app draw, and our own subsystem
             // ledger (what INSIDE the app costs). Backed by the
@@ -859,73 +875,16 @@ class DevControlFragment : Fragment() {
             }
         }
 
-        section(ctx, column, "Battery (deep)") {
-            // Direct read from sticky battery intent + BatteryManager
-            // properties. cycle_count is the Android 14+ goodie.
-            val ctxAny = requireContext()
-            val bm = ctxAny.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
-            val battery = runCatching {
-                ctxAny.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
-            }.getOrNull()
-            val level   = battery?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL,  -1) ?: -1
-            val scale   = battery?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE,  -1) ?: -1
-            val status  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
-            val plugged = battery?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, -1) ?: -1
-            val tech    = battery?.getStringExtra(android.os.BatteryManager.EXTRA_TECHNOLOGY) ?: "—"
-            val tempDeci = battery?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
-            val mvolts  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
-            val health  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_HEALTH, -1) ?: -1
-
-            val pct = if (level >= 0 && scale > 0) "%d %%".format(level * 100 / scale) else "—"
-            val statusStr = when (status) {
-                android.os.BatteryManager.BATTERY_STATUS_CHARGING    -> "Charging"
-                android.os.BatteryManager.BATTERY_STATUS_DISCHARGING -> "Discharging"
-                android.os.BatteryManager.BATTERY_STATUS_FULL        -> "Full"
-                android.os.BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "Not charging"
-                else -> "—"
-            }
-            val pluggedStr = when (plugged) {
-                android.os.BatteryManager.BATTERY_PLUGGED_AC       -> "AC"
-                android.os.BatteryManager.BATTERY_PLUGGED_USB      -> "USB"
-                android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless"
-                0 -> "Unplugged"
-                else -> "—"
-            }
-            val healthStr = when (health) {
-                android.os.BatteryManager.BATTERY_HEALTH_GOOD              -> "Good"
-                android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT          -> "Overheat"
-                android.os.BatteryManager.BATTERY_HEALTH_DEAD              -> "Dead"
-                android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE      -> "Over voltage"
-                android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "Failure"
-                android.os.BatteryManager.BATTERY_HEALTH_COLD              -> "Cold"
-                else -> "—"
-            }
-            row(ctx, it, "Level",       pct)
-            row(ctx, it, "Status",      statusStr)
-            row(ctx, it, "Power source", pluggedStr)
-            row(ctx, it, "Health",      healthStr)
-            row(ctx, it, "Technology",  tech)
-            row(ctx, it, "Temperature", if (tempDeci >= 0) "%.1f °C".format(tempDeci / 10.0) else "—")
-            row(ctx, it, "Voltage",     if (mvolts >= 0) "%d mV".format(mvolts) else "—")
-
-            // BatteryManager properties: instant µA / µAh / µWh. cycle
-            // count is API 34+ (constant value 7); query optimistically.
-            if (bm != null) {
-                val curNowMicro = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) }.getOrDefault(0)
-                val curAvgMicro = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE) }.getOrDefault(0)
-                val chargeCounterUah = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) }.getOrDefault(0)
-                val energyCounterNwh = runCatching { bm.getLongProperty(android.os.BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER) }.getOrDefault(0L)
-                row(ctx, it, "Current (now)", if (curNowMicro != Int.MIN_VALUE) "%d mA".format(curNowMicro / 1000) else "—")
-                row(ctx, it, "Current (avg)", if (curAvgMicro != Int.MIN_VALUE) "%d mA".format(curAvgMicro / 1000) else "—")
-                row(ctx, it, "Charge counter", if (chargeCounterUah > 0) "%d mAh".format(chargeCounterUah / 1000) else "—")
-                row(ctx, it, "Energy counter", if (energyCounterNwh > 0) "%d µWh".format(energyCounterNwh) else "—")
-                if (android.os.Build.VERSION.SDK_INT >= 34) {
-                    // BATTERY_PROPERTY_CYCLE_COUNT = 7 (API 34+).
-                    val cycles = runCatching { bm.getIntProperty(7) }.getOrDefault(-1)
-                    row(ctx, it, "Cycle count", if (cycles >= 0) cycles.toString() else "—")
-                }
-                val remainingMs = runCatching { bm.computeChargeTimeRemaining() }.getOrDefault(-1L)
-                if (remainingMs > 0) row(ctx, it, "Time to full", fmtDuration(remainingMs))
+        // IPC Contract — the cross-app intent/IPC surface Cloud SuperApp
+        // exposes/consumes (the constellation hub ↔ ea_cloud-comms /
+        // ea_cloud-ide contract). Always rendered, even when nothing is
+        // declared yet, so the surface is discoverable.
+        section(ctx, column, "IPC Contract") {
+            val entries = collectIpcContract(requireContext())
+            if (entries.isEmpty()) {
+                it.addView(small(ctx, "No IPC contract declared yet — no exported/consumed cross-app intents, services, or providers beyond the framework defaults."))
+            } else {
+                for ((k, v) in entries) row(ctx, it, k, v)
             }
         }
 
@@ -1578,6 +1537,176 @@ class DevControlFragment : Fragment() {
     private fun copy(ctx: Context, v: String) {
         val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         clip?.setPrimaryClip(ClipData.newPlainText("about", v))
+    }
+
+    /** Deep BatteryManager + sticky-intent dump — rendered inline inside
+     *  the "Battery & Usage" section (merged from the former standalone
+     *  "Battery (deep)" section so there's a single Battery section). */
+    private fun renderBatteryDeep(ctx: Context, host: LinearLayout) {
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+        val battery = runCatching {
+            ctx.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        }.getOrNull()
+        val level   = battery?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL,  -1) ?: -1
+        val scale   = battery?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE,  -1) ?: -1
+        val status  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val plugged = battery?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, -1) ?: -1
+        val tech    = battery?.getStringExtra(android.os.BatteryManager.EXTRA_TECHNOLOGY) ?: "—"
+        val tempDeci = battery?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+        val mvolts  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
+        val health  = battery?.getIntExtra(android.os.BatteryManager.EXTRA_HEALTH, -1) ?: -1
+
+        val pct = if (level >= 0 && scale > 0) "%d %%".format(level * 100 / scale) else "—"
+        val statusStr = when (status) {
+            android.os.BatteryManager.BATTERY_STATUS_CHARGING    -> "Charging"
+            android.os.BatteryManager.BATTERY_STATUS_DISCHARGING -> "Discharging"
+            android.os.BatteryManager.BATTERY_STATUS_FULL        -> "Full"
+            android.os.BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "Not charging"
+            else -> "—"
+        }
+        val pluggedStr = when (plugged) {
+            android.os.BatteryManager.BATTERY_PLUGGED_AC       -> "AC"
+            android.os.BatteryManager.BATTERY_PLUGGED_USB      -> "USB"
+            android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless"
+            0 -> "Unplugged"
+            else -> "—"
+        }
+        val healthStr = when (health) {
+            android.os.BatteryManager.BATTERY_HEALTH_GOOD              -> "Good"
+            android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT          -> "Overheat"
+            android.os.BatteryManager.BATTERY_HEALTH_DEAD              -> "Dead"
+            android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE      -> "Over voltage"
+            android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "Failure"
+            android.os.BatteryManager.BATTERY_HEALTH_COLD              -> "Cold"
+            else -> "—"
+        }
+        row(ctx, host, "Level",       pct)
+        row(ctx, host, "Status",      statusStr)
+        row(ctx, host, "Power source", pluggedStr)
+        row(ctx, host, "Health",      healthStr)
+        row(ctx, host, "Technology",  tech)
+        row(ctx, host, "Temperature", if (tempDeci >= 0) "%.1f °C".format(tempDeci / 10.0) else "—")
+        row(ctx, host, "Voltage",     if (mvolts >= 0) "%d mV".format(mvolts) else "—")
+
+        if (bm != null) {
+            val curNowMicro = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) }.getOrDefault(0)
+            val curAvgMicro = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE) }.getOrDefault(0)
+            val chargeCounterUah = runCatching { bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) }.getOrDefault(0)
+            val energyCounterNwh = runCatching { bm.getLongProperty(android.os.BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER) }.getOrDefault(0L)
+            row(ctx, host, "Current (now)", if (curNowMicro != Int.MIN_VALUE) "%d mA".format(curNowMicro / 1000) else "—")
+            row(ctx, host, "Current (avg)", if (curAvgMicro != Int.MIN_VALUE) "%d mA".format(curAvgMicro / 1000) else "—")
+            row(ctx, host, "Charge counter", if (chargeCounterUah > 0) "%d mAh".format(chargeCounterUah / 1000) else "—")
+            row(ctx, host, "Energy counter", if (energyCounterNwh > 0) "%d µWh".format(energyCounterNwh) else "—")
+            if (android.os.Build.VERSION.SDK_INT >= 34) {
+                val cycles = runCatching { bm.getIntProperty(7) }.getOrDefault(-1)
+                row(ctx, host, "Cycle count", if (cycles >= 0) cycles.toString() else "—")
+            }
+            val remainingMs = runCatching { bm.computeChargeTimeRemaining() }.getOrDefault(-1L)
+            if (remainingMs > 0) row(ctx, host, "Time to full", fmtDuration(remainingMs))
+        }
+    }
+
+    /** Cross-app IPC surface this app exposes/consumes — the manifest's
+     *  exported activities/services/providers/receivers with intent
+     *  filters (the contract other apps in the constellation can bind
+     *  to). Empty list → nothing declared (the section shows a note). */
+    private fun collectIpcContract(ctx: Context): List<Pair<String, String>> = runCatching {
+        val pm = ctx.packageManager
+        val flags = android.content.pm.PackageManager.GET_ACTIVITIES or
+            android.content.pm.PackageManager.GET_SERVICES or
+            android.content.pm.PackageManager.GET_PROVIDERS or
+            android.content.pm.PackageManager.GET_RECEIVERS
+        val pi = pm.getPackageInfo(ctx.packageName, flags)
+        val out = ArrayList<Pair<String, String>>()
+        fun shortName(n: String) = n.removePrefix(ctx.packageName).removePrefix(".")
+        pi.activities?.filter { it.exported }?.forEach { out.add("Activity (exported)" to shortName(it.name)) }
+        pi.services?.filter { it.exported }?.forEach { out.add("Service (exported)" to shortName(it.name)) }
+        pi.providers?.filter { it.exported }?.forEach { out.add("Provider (exported)" to (it.authority ?: shortName(it.name))) }
+        pi.receivers?.filter { it.exported }?.forEach { out.add("Receiver (exported)" to shortName(it.name)) }
+        out
+    }.getOrDefault(emptyList())
+
+    /** A single weighted perm button. `granted`:
+     *   true  → dark/gray + ✓ prefix (already done — nothing to do)
+     *   false → purple (action needed)
+     *   null  → purple (a plain action with no grant state, e.g. bulk). */
+    private fun permButton(ctx: Context, label: String, granted: Boolean?, onClick: () -> Unit) =
+        TextView(ctx).apply {
+            text = if (granted == true) "✓ $label" else label
+            setTextColor(if (granted == true) 0xFF9CA3AF.toInt() else 0xFFFFFFFF.toInt())
+            setBackgroundColor(if (granted == true) 0xFF2A2A33.toInt() else 0xFF7C3AED.toInt())
+            gravity = android.view.Gravity.CENTER
+            textSize = 12f
+            setPadding(dp(8), dp(10), dp(8), dp(10))
+            maxLines = 3
+            minHeight = dp(64)
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = lp
+            isClickable = true; isFocusable = true
+            setOnClickListener { onClick() }
+        }
+
+    /** Lay out perm buttons in a weighted horizontal row (4dp gaps). */
+    private fun permButtonRow(ctx: Context, vararg btns: View): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+        }
+        for ((i, b) in btns.withIndex()) {
+            (b.layoutParams as? LinearLayout.LayoutParams)?.leftMargin = if (i > 0) dp(4) else 0
+            row.addView(b)
+        }
+        return row
+    }
+
+    // ── granted predicates for the gray-out colouring ───────────────
+    private fun grantedNotifWrite(ctx: Context): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= 33)
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                ctx, android.Manifest.permission.POST_NOTIFICATIONS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        else true
+
+    private fun grantedNotifRead(ctx: Context): Boolean = runCatching {
+        androidx.core.app.NotificationManagerCompat
+            .getEnabledListenerPackages(ctx).contains(ctx.packageName)
+    }.getOrDefault(false)
+
+    private fun grantedFiles(): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= 30)
+            android.os.Environment.isExternalStorageManager()
+        else true
+
+    private fun grantedBatteryOptim(ctx: Context): Boolean = runCatching {
+        (ctx.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager)
+            .isIgnoringBatteryOptimizations(ctx.packageName)
+    }.getOrDefault(false)
+
+    /** Full plain-text dump of every permission status — for the
+     *  "Copy All Perms Status" button. Reuses the same status helpers
+     *  the rows render, so the copy matches the screen exactly. */
+    private fun buildAllPermsStatus(ctx: Context): String = buildString {
+        appendLine("Cloud SuperApp — permission status")
+        appendLine("pkg: ${ctx.packageName}")
+        appendLine()
+        appendLine("== Runtime ==")
+        for ((label, perm) in parseRuntimePermissions()) appendLine("$label: ${permissionState(perm)}")
+        appendLine()
+        appendLine("== Special access ==")
+        appendLine("Battery Optimization: ${specialAccessBattery(ctx)}")
+        appendLine("Default launcher: ${specialAccessLauncher(ctx)}")
+        appendLine("Usage stats: ${specialAccessUsageStats(ctx)}")
+        appendLine("Notif. listener: ${specialAccessNotifListener(ctx)}")
+        appendLine("Manage all files: ${specialAccessManageStorage()}")
+        appendLine("Dumpsys (DUMP): ${specialAccessDump(ctx)}")
+        appendLine("Lock-screen accessibility: ${ScreenLocker.statusStringAccessibility(ctx)}")
+        appendLine("Device admin (lock): ${ScreenLocker.statusString(ctx)}")
+        appendLine()
+        appendLine("== Auto-granted (NORMAL) ==")
+        for ((label, status) in collectAutoGrantedPerms(ctx)) appendLine("$label: $status")
     }
 
     private fun dirSize(dir: File): Long = runCatching {

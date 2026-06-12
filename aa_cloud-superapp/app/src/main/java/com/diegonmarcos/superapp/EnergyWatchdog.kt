@@ -238,6 +238,70 @@ object EnergyWatchdog {
         )
     }
 
+    /** True iff Usage Access (PACKAGE_USAGE_STATS appop) is allowed —
+     *  the actual gate for per-app foreground time. checkSelfPermission
+     *  always returns DENIED for appop perms, so we must ask AppOps. */
+    fun hasUsageAccess(ctx: Context): Boolean = runCatching {
+        val ao = ctx.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        val mode = if (android.os.Build.VERSION.SDK_INT >= 29)
+            ao.unsafeCheckOpNoThrow("android:get_usage_stats", Process.myUid(), ctx.packageName)
+        else
+            @Suppress("DEPRECATION")
+            ao.checkOpNoThrow("android:get_usage_stats", Process.myUid(), ctx.packageName)
+        mode == android.app.AppOpsManager.MODE_ALLOWED
+    }.getOrDefault(false)
+
+    data class AppEstimate(val pkg: String, val label: String, val fgMs: Long, val mAh: Double)
+
+    /**
+     * AccuBattery-style per-app energy ESTIMATE — no privilege, no
+     * Shizuku. Exactly how AccuBattery builds its list:
+     *   per-app mAh ≈ app foreground-time × avg screen-on discharge mA
+     *
+     * Foreground time per app comes from [UsageStatsManager] over the
+     * current discharge session (since last unplug, else last 24h).
+     * Avg screen-on discharge mA comes from our own watchdog samples
+     * (screen-on, discharging); falls back to the live CURRENT_NOW
+     * reading when we have no samples yet. Ranked by mAh, top first.
+     */
+    fun perAppEstimate(ctx: Context, now: Long = System.currentTimeMillis()): List<AppEstimate> {
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE)
+            as? UsageStatsManager ?: return emptyList()
+        val bs = runCatching { BatterySessionStats.read(ctx, now) }.getOrNull()
+        val start = (bs?.unplugTs?.takeIf { it > 0 }) ?: (now - 24 * 60 * 60_000L)
+
+        // Per-app foreground ms over the session (merge duplicate rows).
+        val fg = HashMap<String, Long>()
+        runCatching {
+            usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, start, now)
+        }.getOrNull()?.forEach { u ->
+            if (u.totalTimeInForeground > 0L)
+                fg[u.packageName] = (fg[u.packageName] ?: 0L) + u.totalTimeInForeground
+        }
+        if (fg.isEmpty()) return emptyList()
+
+        // Avg screen-on discharge mA from our samples; else live draw.
+        val rows = runCatching { EnergyStore(ctx).all() }.getOrDefault(emptyList())
+            .filter { !it.charging && it.screenOn && it.drawMa > 0 }
+        val avgMa = if (rows.isNotEmpty()) rows.map { it.drawMa }.average()
+        else (bs?.currentUa?.let { kotlin.math.abs(it) / 1000.0 } ?: 0.0)
+
+        val pm = ctx.packageManager
+        return fg.entries
+            .filter { it.value >= 1000L }            // ignore sub-second blips
+            .map { (pkg, ms) ->
+                AppEstimate(
+                    pkg = pkg,
+                    label = runCatching {
+                        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                    }.getOrDefault(pkg),
+                    fgMs = ms,
+                    mAh = avgMa * ms / 3_600_000.0,
+                )
+            }
+            .sortedByDescending { it.mAh }
+    }
+
     private fun median(xs: List<Int>): Int {
         if (xs.isEmpty()) return 0
         val s = xs.sorted()

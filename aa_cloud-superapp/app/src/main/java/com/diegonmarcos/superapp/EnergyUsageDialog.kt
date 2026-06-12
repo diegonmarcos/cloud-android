@@ -117,20 +117,22 @@ class EnergyUsageDialog : DialogFragment() {
             }
         }
 
-        // 3) By foreground app
-        @Suppress("UNCHECKED_CAST")
-        val byApp = attr["by_foreground_app"] as? List<Map<String, Any>>
-        card(ctx, root, "By foreground app") { box ->
-            if (byApp.isNullOrEmpty()) {
-                box.addView(small(ctx, "Needs Usage Access + a few samples while using other apps on battery.")); return@card
+        // 3) By app — AccuBattery-style estimate (foreground time × avg
+        //    screen-on discharge mA). No Shizuku / privilege; just Usage
+        //    Access. Same method AccuBattery uses for its per-app list.
+        card(ctx, root, "By app  ·  estimate (foreground × draw)") { box ->
+            if (!EnergyWatchdog.hasUsageAccess(ctx)) {
+                box.addView(small(ctx, "Needs Usage Access. Grant it in Configs/About → Permissions → Grant Usage Access."))
+                return@card
             }
-            val total = byApp.sumOf { (it["energy_proxy"] as? Int) ?: 0 }.coerceAtLeast(1)
-            byApp.take(12).forEach { a ->
-                val pkg = a["pkg"] as? String ?: ""
-                val label = a["label"] as? String ?: pkg
-                val ma = (a["avg_ma"] as? Int) ?: 0
-                val share = ((a["energy_proxy"] as? Int) ?: 0) * 100 / total
-                box.addView(appRow(ctx, pkg, label, "$ma mA  ·  $share%"))
+            val est = runCatching { EnergyWatchdog.perAppEstimate(ctx) }.getOrDefault(emptyList())
+            if (est.isEmpty()) {
+                box.addView(small(ctx, "No foreground time in the current discharge session yet.")); return@card
+            }
+            box.addView(small(ctx, "mAh ≈ app foreground-time × avg screen-on draw (this discharge session)"))
+            est.take(15).forEach { e ->
+                box.addView(appRow(ctx, e.pkg, e.label,
+                    "%.1f mAh  ·  %s".format(e.mAh, fmtDur(e.fgMs))))
             }
         }
 
@@ -296,6 +298,14 @@ class EnergyUsageDialog : DialogFragment() {
         b >= 1L shl 20 -> "%.1f MB".format(b / (1L shl 20).toDouble())
         b >= 1L shl 10 -> "%.1f KB".format(b / (1L shl 10).toDouble())
         else -> "$b B"
+    }
+    private fun fmtDur(ms: Long): String {
+        val m = ms / 60_000L
+        return when {
+            m >= 60 -> "${m / 60}h ${m % 60}m"
+            m >= 1 -> "${m}m"
+            else -> "${ms / 1000L}s"
+        }
     }
     private fun fmtAgo(sinceMs: Long): String {
         val mins = (System.currentTimeMillis() - sinceMs) / 60_000L
