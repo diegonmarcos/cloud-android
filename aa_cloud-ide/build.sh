@@ -243,6 +243,26 @@ step_build_fork() {
   glob="$(_json ".forks.${key}.build.apk_glob")"
   dest="$SCRIPT_DIR/../$tracker"
   [ -d "$dest/.git" ] || { errlog "fork '$key' not materialized — run: ./build.sh materialize-fork $key"; exit 1; }
+
+  # Ensure the fork's signing keystore exists before gradle config (the patch's
+  # signing config references it at evaluation time). Generated once per clone
+  # with keytool + the universal debug password 'android' — data-driven from
+  # build.json::forks.<key>.build.keystore. Gitignored (lives in the ignored
+  # tracker clone). Constellation key unification is a later phase.
+  local ks alias kspath
+  ks="$(_json ".forks.${key}.build.keystore")"
+  alias="$(_json ".forks.${key}.build.keystore_alias")"; alias="${alias:-idekey}"
+  if [ -n "$ks" ]; then
+    kspath="$dest/$ks"
+    if [ ! -f "$kspath" ]; then
+      log "build-fork[$key]: generating signing keystore $ks (alias $alias)"
+      mkdir -p "$(dirname "$kspath")"
+      in_nix keytool -genkeypair -keystore "$kspath" -storepass android -keypass android \
+        -alias "$alias" -keyalg RSA -keysize 2048 -validity 10950 \
+        -dname "CN=Cloud-IDE, OU=$key, O=diegonmarcos.com, L=Madrid, ST=Madrid, C=ES"
+    fi
+  fi
+
   log "build-fork[$key]: $tracker → $task (fork's own gradle wrapper)"
   if [ -x "$dest/gradlew" ]; then
     ( cd "$dest" && in_nix ./gradlew --no-daemon "$task" )
