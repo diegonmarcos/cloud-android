@@ -668,6 +668,16 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Unplug anchor src", bs.unplugAnchorSource)
             row(ctx, it, "Plug anchor src",   bs.plugAnchorSource)
             it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
+            // AccuBattery-style energy page — device state→draw
+            // attribution, per-foreground-app draw, and our own subsystem
+            // ledger (what INSIDE the app costs). Backed by the
+            // EnergyWatchdog Tier-1 sampler + EnergyLedger.
+            it.addView(actionButton(ctx, "⚡ Open Energy Usage (AccuBattery-style)") {
+                runCatching {
+                    com.diegonmarcos.superapp.EnergyUsageDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.EnergyUsageDialog.TAG)
+                }
+            })
         }
 
         section(ctx, column, "Memory & CPU Usage") {
