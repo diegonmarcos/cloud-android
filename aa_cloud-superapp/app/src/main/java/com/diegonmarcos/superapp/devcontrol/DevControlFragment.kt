@@ -146,6 +146,32 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Open Settings → "Display over other apps" scoped to this app, so the
+     *  user grants SYSTEM_ALERT_WINDOW for the Floating Top Nav Bar overlay.
+     *  Falls back to the global list, then this app's details screen. */
+    private fun openOverlaySettings() {
+        val ctx = requireContext()
+        val scoped = android.content.Intent(
+            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            android.net.Uri.fromParts("package", ctx.packageName, null),
+        )
+        if (scoped.resolveActivity(ctx.packageManager) != null) {
+            runCatching { startActivity(scoped) }
+            return
+        }
+        val list = android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+        if (list.resolveActivity(ctx.packageManager) != null) {
+            runCatching { startActivity(list) }
+            return
+        }
+        runCatching {
+            startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", ctx.packageName, null),
+            ))
+        }
+    }
+
     /** Jump to the system "Default apps" picker (Phone app · Caller ID &
      *  spam app live here) so the user can select the Cloud-Comms phone
      *  fork. The launcher can't set another app's role programmatically —
@@ -506,6 +532,7 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Usage stats",        specialAccessUsageStats(ctxAny()))
             row(ctx, it, "Notif. listener",    specialAccessNotifListener(ctxAny()))
             row(ctx, it, "Manage all files",   specialAccessManageStorage())
+            row(ctx, it, "Display over apps",  specialAccessOverlay(ctxAny()))
             row(ctx, it, "Dumpsys (DUMP)",     specialAccessDump(ctxAny()))
             // Helper — when DUMP isn't granted, paint a tap-to-copy adb
             // command (it's a signature|privileged perm, can't be granted
@@ -640,6 +667,24 @@ class DevControlFragment : Fragment() {
             it.addView(small(ctx, "Set defaults — pick the Cloud-Comms phone fork as Phone app + Caller ID & spam app:"))
             it.addView(permButtonRow(ctx,
                 permButton(ctx, "Set Default Apps (Phone · Spam)", null) { openDefaultAppsSettings() },
+            ))
+            // ── Floating Top Nav Bar — SYSTEM_ALERT_WINDOW ("Display over
+            //    other apps") gates the cross-app overlay. Grant it, then
+            //    "Start Floating Nav" launches FloatingNavService now (it also
+            //    auto-starts on the next app resume).
+            it.addView(small(ctx, "Floating nav — grant 'Display over other apps', then start the overlay:"))
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Set Display-over-apps", android.provider.Settings.canDrawOverlays(ctxAny())) { openOverlaySettings() },
+                permButton(ctx, "Start Floating Nav", null) {
+                    com.diegonmarcos.superapp.floatingnav.FloatingNavService.startIfPermitted(ctxAny())
+                    Toast.makeText(ctxAny(),
+                        if (android.provider.Settings.canDrawOverlays(ctxAny())) "Floating nav started"
+                        else "Grant 'Display over other apps' first", Toast.LENGTH_SHORT).show()
+                },
+                permButton(ctx, "Stop Floating Nav", null) {
+                    com.diegonmarcos.superapp.floatingnav.FloatingNavService.stop(ctxAny())
+                    Toast.makeText(ctxAny(), "Floating nav stopped", Toast.LENGTH_SHORT).show()
+                },
             ))
             // ── Copy the full status block (matches what's rendered above).
             it.addView(actionButton(ctx, "Copy All Perms Status") {
@@ -1850,6 +1895,7 @@ class DevControlFragment : Fragment() {
         appendLine("Usage stats: ${specialAccessUsageStats(ctx)}")
         appendLine("Notif. listener: ${specialAccessNotifListener(ctx)}")
         appendLine("Manage all files: ${specialAccessManageStorage()}")
+        appendLine("Display over apps: ${specialAccessOverlay(ctx)}")
         appendLine("Dumpsys (DUMP): ${specialAccessDump(ctx)}")
         appendLine("Lock-screen accessibility: ${ScreenLocker.statusStringAccessibility(ctx)}")
         appendLine("Device admin (lock): ${ScreenLocker.statusString(ctx)}")
@@ -1990,6 +2036,12 @@ class DevControlFragment : Fragment() {
                 else                -> "◯ set in Default apps"
             }
         }
+    } catch (_: Throwable) { "—" }
+
+    /** SYSTEM_ALERT_WINDOW — "Display over other apps". Gates the Floating
+     *  Top Nav Bar overlay (FloatingNavService). Special-access, not runtime. */
+    private fun specialAccessOverlay(ctx: Context): String = try {
+        if (android.provider.Settings.canDrawOverlays(ctx)) "✓ Allowed" else "◯ Not allowed"
     } catch (_: Throwable) { "—" }
 
     private fun specialAccessUsageStats(ctx: Context): String = try {

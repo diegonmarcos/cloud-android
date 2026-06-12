@@ -101,8 +101,11 @@ class FloatingNavService : Service() {
 
     /** Show / hide / re-skin the overlay for the current foreground app. */
     private fun refresh(fg: String?) {
-        // We're back home in Cloud-SuperApp → no overlay.
-        if (fg == packageName) { removeBubble(); removeBar(); currentContextId = null; return }
+        // We're back home in Cloud-SuperApp → no overlay (reset expand state
+        // so the bubble reappears the next time the user leaves).
+        if (fg == packageName) {
+            removeBubble(); removeBar(); expanded = false; currentContextId = null; return
+        }
         val ctx = cfg.contextFor(fg) ?: run { removeBubble(); removeBar(); return }
         if (ctx.id != currentContextId) {
             currentContextId = ctx.id
