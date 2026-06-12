@@ -1,0 +1,202 @@
+From 03829b67f86b02727a4d93d1cb3180a4e54dbd53 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Fri, 12 Jun 2026 14:41:00 +0200
+Subject: [PATCH] =?UTF-8?q?cloud-ide:=20wrapper=20chrome=20+=20identity=20?=
+ =?UTF-8?q?=E2=80=94=20top=20nav=20bar,=20app=20id,=20installable=20signin?=
+ =?UTF-8?q?g?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Cloud-IDE files-fork patch (concern 1 branding + concern 5 wrapper chrome):
+- CloudIdeNavBar: persistent top bar above Amaze's own UI (Cloud-SuperApp |
+  Cloud-IDE | ● Amaze File Manager | Acode), injected after setContentView;
+  pure programmatic views, chips mirror contract/ide-ipc-v1.json::navigation.
+- applicationId -> com.diegonmarcos.ide.files (coexists with stock Amaze).
+- fdroid release signed with the debug keystore so the APK installs (upstream
+  leaves non-play release unsigned); constellation keystore lands with CI.
+---
+ app/build.gradle                              |   7 +-
+ .../filemanager/cloudide/CloudIdeNavBar.java  | 131 ++++++++++++++++++
+ .../ui/activities/MainActivity.java           |   2 +
+ 3 files changed, 138 insertions(+), 2 deletions(-)
+ create mode 100644 app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java
+
+diff --git a/app/build.gradle b/app/build.gradle
+index c394440b3..a8e18efaf 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -16,7 +16,7 @@ android {
+     }
+ 
+     defaultConfig {
+-        applicationId "com.amaze.filemanager"
++        applicationId "com.diegonmarcos.ide.files"  // Cloud-IDE fork patch
+         minSdkVersion libs.versions.minSdk.get().toInteger()
+         targetSdkVersion libs.versions.targetSdk.get().toInteger()
+         versionCode 124
+@@ -53,7 +53,10 @@ android {
+         }
+ 
+         release {
+-            signingConfig signingConfigs.release
++            // Cloud-IDE fork patch: sign with the debug keystore so the fdroid
++            // release APK is installable (upstream leaves it unsigned; CI keystore
++            // unification comes with the constellation signing phase).
++            signingConfig signingConfigs.debug
+ 
+             minifyEnabled true
+             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard.cfg'
+diff --git a/app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java b/app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java
+new file mode 100644
+index 000000000..6b6eaf598
+--- /dev/null
++++ b/app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java
+@@ -0,0 +1,131 @@
++/*
++ * Cloud-IDE wrapper chrome — persistent top nav bar baked into the fork.
++ *
++ * Part of the Cloud-IDE `files` fork patch series (ea_cloud-ide/forks/files/
++ * patches/). Injected by MainActivity.onCreate right after setContentView.
++ * The chip set mirrors ea_cloud-ide/contract/ide-ipc-v1.json::navigation
++ * (parent_chain + the two self-contained apps); update BOTH together.
++ *
++ * Pure android.* programmatic views — no layout/resource files, so the patch
++ * has zero resource-merge surface against upstream.
++ */
++package com.amaze.filemanager.cloudide;
++
++import android.app.Activity;
++import android.content.Intent;
++import android.graphics.Color;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.view.Gravity;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.FrameLayout;
++import android.widget.HorizontalScrollView;
++import android.widget.LinearLayout;
++import android.widget.TextView;
++import android.widget.Toast;
++
++public final class CloudIdeNavBar {
++
++    /** Mirrors contract navigation: parent_chain then the two wrapper apps.
++     *  {label, package, isCurrent} — current = this fork (files). */
++    private static final String[][] CHIPS = {
++        {"Cloud-SuperApp", "com.diegonmarcos.superapp", "0"},
++        {"Cloud-IDE",      "com.diegonmarcos.ide",      "0"},
++        {"|",              "",                          "0"},
++        {"Amaze File Manager", "",                      "1"},   // current — no-op
++        {"Acode",          "com.foxdebug.acode",        "0"},
++    };
++
++    private CloudIdeNavBar() {}
++
++    /** Wrap the activity's content view so OUR bar sits permanently above the
++     *  app's own full UI. Call once, right after setContentView(). */
++    public static void attach(final Activity activity) {
++        final FrameLayout content = activity.findViewById(android.R.id.content);
++        if (content == null || content.getChildCount() == 0) return;
++        final View appRoot = content.getChildAt(0);
++        if (appRoot instanceof CloudIdeWrapMarker) return;   // already wrapped
++
++        content.removeViewAt(0);
++
++        final CloudIdeWrapMarker column = new CloudIdeWrapMarker(activity);
++        column.setOrientation(LinearLayout.VERTICAL);
++        column.addView(buildBar(activity),
++            new LinearLayout.LayoutParams(
++                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
++        column.addView(appRoot,
++            new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
++        content.addView(column,
++            new FrameLayout.LayoutParams(
++                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
++    }
++
++    private static View buildBar(final Activity activity) {
++        final float d = activity.getResources().getDisplayMetrics().density;
++        final LinearLayout row = new LinearLayout(activity);
++        row.setOrientation(LinearLayout.HORIZONTAL);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        row.setPadding(dp(d, 8), dp(d, 4), dp(d, 8), dp(d, 4));
++        final GradientDrawable bg = new GradientDrawable();
++        bg.setColor(0xEE111111);
++        row.setBackground(bg);
++
++        for (final String[] chip : CHIPS) {
++            final String label = chip[0];
++            final String pkg = chip[1];
++            final boolean current = "1".equals(chip[2]);
++            final TextView tv = new TextView(activity);
++            tv.setTextSize(12f);
++            tv.setTypeface(Typeface.create(Typeface.MONOSPACE,
++                current ? Typeface.BOLD : Typeface.NORMAL));
++            tv.setPadding(dp(d, 10), dp(d, 6), dp(d, 10), dp(d, 6));
++            if ("|".equals(label)) {
++                tv.setText("│");
++                tv.setTextColor(0x55FFFFFF);
++            } else if (current) {
++                tv.setText("● " + label);
++                tv.setTextColor(Color.WHITE);
++            } else {
++                tv.setText(label);
++                tv.setTextColor(0xFFE9D8FD);
++                tv.setAlpha(0.8f);
++                tv.setClickable(true);
++                tv.setOnClickListener(new View.OnClickListener() {
++                    @Override public void onClick(final View v) { open(activity, label, pkg); }
++                });
++            }
++            row.addView(tv);
++        }
++
++        final HorizontalScrollView scroller = new HorizontalScrollView(activity);
++        scroller.setHorizontalScrollBarEnabled(false);
++        scroller.addView(row);
++        return scroller;
++    }
++
++    /** Launch a sibling app; if absent fall back to the Cloud-IDE hub (it can
++     *  install the bundled apps). */
++    private static void open(final Activity activity, final String label, final String pkg) {
++        Intent launch = activity.getPackageManager().getLaunchIntentForPackage(pkg);
++        if (launch == null) {
++            launch = activity.getPackageManager()
++                .getLaunchIntentForPackage("com.diegonmarcos.ide");
++        }
++        if (launch == null) {
++            Toast.makeText(activity, label + " not installed", Toast.LENGTH_SHORT).show();
++            return;
++        }
++        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
++        activity.startActivity(launch);
++    }
++
++    private static int dp(final float density, final int v) {
++        return (int) (v * density);
++    }
++
++    /** Marker subclass so attach() is idempotent across activity recreations. */
++    public static final class CloudIdeWrapMarker extends LinearLayout {
++        public CloudIdeWrapMarker(final Activity activity) { super(activity); }
++    }
++}
+diff --git a/app/src/main/java/com/amaze/filemanager/ui/activities/MainActivity.java b/app/src/main/java/com/amaze/filemanager/ui/activities/MainActivity.java
+index 2e835df77..a8425a775 100644
+--- a/app/src/main/java/com/amaze/filemanager/ui/activities/MainActivity.java
++++ b/app/src/main/java/com/amaze/filemanager/ui/activities/MainActivity.java
+@@ -349,6 +349,8 @@ public class MainActivity extends PermissionsActivity
+   public void onCreate(final Bundle savedInstanceState) {
+     super.onCreate(savedInstanceState);
+     setContentView(R.layout.main_toolbar);
++    // Cloud-IDE wrapper chrome (fork patch): persistent top nav bar.
++    com.amaze.filemanager.cloudide.CloudIdeNavBar.attach(this);
+ 
+     intent = getIntent();
+ 
+-- 
+2.47.2
+

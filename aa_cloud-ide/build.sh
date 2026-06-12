@@ -229,22 +229,36 @@ step_materialize_fork() {
 }
 
 # ── build-fork <key> ───────────────────────────────────────────────────
-# Build a materialized fork's APK. Delegates to the fork's OWN build system
-# (native gradle for files/utils; Cordova's gradle for editor). Output is
-# copied into dist/ alongside the hub APK.
+# Build a materialized fork's APK with the fork's OWN build system — its
+# checked-in gradle wrapper (pinned gradle version) and the task declared in
+# build.json::forks.<key>.build.task (flavors differ per fork). The devShell
+# supplies JDK + ANDROID_HOME; the wrapper supplies gradle. Output resolved
+# from build.json::forks.<key>.build.apk_glob → dist/cloud-ide-<key>.apk.
 step_build_fork() {
   local key="${2:-}"
   [ -n "$key" ] || { errlog "usage: build.sh build-fork <files|utils|editor>"; exit 1; }
-  local tracker dest
+  local tracker dest task glob
   tracker="$(_json ".forks.${key}.tracker_dir")"
+  task="$(_json ".forks.${key}.build.task")"; task="${task:-assembleRelease}"
+  glob="$(_json ".forks.${key}.build.apk_glob")"
   dest="$SCRIPT_DIR/../$tracker"
   [ -d "$dest/.git" ] || { errlog "fork '$key' not materialized — run: ./build.sh materialize-fork $key"; exit 1; }
-  log "build-fork[$key]: delegating to $tracker's own build"
-  ( cd "$dest" && in_nix gradle assembleRelease )
+  log "build-fork[$key]: $tracker → $task (fork's own gradle wrapper)"
+  if [ -x "$dest/gradlew" ]; then
+    ( cd "$dest" && in_nix ./gradlew --no-daemon "$task" )
+  else
+    ( cd "$dest" && in_nix gradle "$task" )
+  fi
   mkdir -p "$DIST_DIR"
-  local apk
-  apk="$(prefer_host find "$dest" -path '*/outputs/apk/*release*.apk' -print -quit 2>/dev/null || true)"
-  [ -n "$apk" ] && cp "$apk" "$DIST_DIR/cloud-ide-${key}.apk" && log "→ $DIST_DIR/cloud-ide-${key}.apk"
+  local apk=""
+  if [ -n "$glob" ]; then
+    shopt -s nullglob; local hits=("$dest"/$glob); shopt -u nullglob
+    [ "${#hits[@]}" -ge 1 ] && apk="${hits[0]}"
+  fi
+  [ -n "$apk" ] || apk="$(prefer_host find "$dest" -path '*/outputs/apk/*release*.apk' -print -quit 2>/dev/null || true)"
+  [ -n "$apk" ] || { errlog "build-fork[$key]: no APK produced (glob: ${glob:-<default>})"; exit 1; }
+  cp "$apk" "$DIST_DIR/cloud-ide-${key}.apk"
+  log "→ $DIST_DIR/cloud-ide-${key}.apk ($(wc -c <"$DIST_DIR/cloud-ide-${key}.apk") B)"
 }
 
 # ── GHCR distribution (hub APK) ─────────────────────────────────────────
