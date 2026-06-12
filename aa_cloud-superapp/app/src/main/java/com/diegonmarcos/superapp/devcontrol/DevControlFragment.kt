@@ -22,6 +22,7 @@ import com.diegonmarcos.superapp.ScreenLocker
 import com.diegonmarcos.superapp.Sections
 import com.diegonmarcos.superapp.SysfsProc
 import com.diegonmarcos.superapp.WgState
+import com.diegonmarcos.superapp.WireGuardPrefs
 import com.diegonmarcos.superapp.health.HealthConnectGateway
 import com.diegonmarcos.superapp.health.HealthMetrics
 import com.wireguard.android.backend.Tunnel
@@ -828,7 +829,7 @@ class DevControlFragment : Fragment() {
             it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak. Storage = data partition (where the app + caches live). Swap is typically zRAM on Android — counts AGAINST physical RAM but appears as virtual."))
         }
 
-        section(ctx, column, "VPN / WireGuard") {
+        section(ctx, column, "VPN / WireGuard / Mesh") {
             // Reads the shared GoBackend that WireGuardFragment uses.
             // getState() reflects the runtime tunnel; getStatistics()
             // returns per-peer rx/tx bytes + last handshake epoch.
@@ -841,38 +842,62 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Backend",     "libwg-go ${runCatching { backend?.version }.getOrNull() ?: "—"}")
             row(ctx, it, "Always-on",   runCatching { backend?.isAlwaysOn?.toString() }.getOrNull() ?: "—")
             row(ctx, it, "Lockdown",    runCatching { backend?.isLockdownEnabled?.toString() }.getOrNull() ?: "—")
-            row(ctx, it, "Configured peers", wgPrefs.peers().size.toString())
+            val peers = wgPrefs.peers()
+            row(ctx, it, "Configured peers", peers.size.toString())
 
-            // Per-peer stats: only populated when the tunnel is UP.
+            // Live per-peer rx/tx + handshake (only when tunnel UP),
+            // keyed by base64 public key for matching against prefs.
+            val statsByKey = HashMap<String, com.wireguard.android.backend.Statistics.PeerStats?>()
             if (state == Tunnel.State.UP) {
-                val stats = runCatching { backend?.getStatistics(tunnel) }.getOrNull()
-                if (stats == null) {
-                    it.addView(small(ctx, "Statistics not available."))
-                } else {
-                    val keys = stats.peers()
-                    if (keys.isEmpty()) {
-                        it.addView(small(ctx, "Tunnel up but no peer stats yet — handshake not completed."))
-                    }
-                    // Match stats.peers() keys (Curve25519 public keys)
-                    // back to the user-named peers in WireGuardPrefs.
-                    val nameByKey = wgPrefs.peers().associate { p ->
-                        p.publicKey.trim() to p.name.ifBlank { "peer" }
-                    }
-                    for ((i, key) in keys.withIndex()) {
-                        val ps = stats.peer(key) ?: continue
+                runCatching { backend?.getStatistics(tunnel) }.getOrNull()?.let { stats ->
+                    for (key in stats.peers()) {
                         val k64 = runCatching { key.toBase64() }.getOrDefault("")
-                        val name = nameByKey[k64] ?: "peer #${i + 1}"
-                        val hsAge = if (ps.latestHandshakeEpochMillis > 0)
-                            fmtDuration(System.currentTimeMillis() - ps.latestHandshakeEpochMillis) + " ago"
-                        else "never"
-                        row(ctx, it, "$name · pubkey",  k64.take(8) + "…" + k64.takeLast(6))
-                        row(ctx, it, "$name · rx/tx",   "${sizeStr(ps.rxBytes)} / ${sizeStr(ps.txBytes)}")
-                        row(ctx, it, "$name · handshake", hsAge)
+                        if (k64.isNotEmpty()) statsByKey[k64] = stats.peer(key)
                     }
                 }
-            } else {
-                it.addView(small(ctx, "Per-peer stats appear once the tunnel is UP and a handshake completes."))
             }
+
+            // Render EVERY configured peer in full (name, endpoint, allowed
+            // IPs, pubkey) regardless of tunnel state, + a live ping. The
+            // ping rows start as "pinging…" and are filled async from a
+            // background thread (ICMP/TCP reachability of the peer's mesh
+            // IP) — same idea as the KDE Connect wg0 reachability probe.
+            it.addView(small(ctx, "Per-peer full data + live reachability ping (mesh IP over the tunnel):"))
+            val pingTargets = ArrayList<Pair<String, TextView>>()
+            for ((i, p) in peers.withIndex()) {
+                val name = p.name.ifBlank { "peer #${i + 1}" }
+                it.addView(small(ctx, "— $name —"))
+                row(ctx, it, "$name · endpoint",  p.endpoint.ifBlank { "—" })
+                row(ctx, it, "$name · allowed",   p.allowedIps.ifBlank { "—" })
+                val pk = p.publicKey.trim()
+                if (pk.isNotEmpty()) row(ctx, it, "$name · pubkey", pk.take(8) + "…" + pk.takeLast(6))
+                statsByKey[pk]?.let { ps ->
+                    val hsAge = if (ps.latestHandshakeEpochMillis > 0)
+                        fmtDuration(System.currentTimeMillis() - ps.latestHandshakeEpochMillis) + " ago"
+                    else "never"
+                    row(ctx, it, "$name · rx/tx",     "${sizeStr(ps.rxBytes)} / ${sizeStr(ps.txBytes)}")
+                    row(ctx, it, "$name · handshake", hsAge)
+                }
+                val meshIp = meshIpOf(p)
+                if (meshIp != null) {
+                    val pingRow = row(ctx, it, "$name · ping $meshIp", "pinging…")
+                    pingTargets.add(meshIp to pingRow)
+                } else {
+                    row(ctx, it, "$name · ping", "no mesh IP in allowed-IPs / endpoint")
+                }
+            }
+            if (peers.isEmpty()) it.addView(small(ctx, "No peers configured. Add them in the WireGuard page."))
+
+            // Ping all peers off the main thread; update each row on arrival.
+            if (pingTargets.isNotEmpty()) {
+                Thread {
+                    for ((ip, view) in pingTargets) {
+                        val res = pingHost(ip, 1500)
+                        view.post { view.text = res }
+                    }
+                }.start()
+            }
+            it.addView(actionButton(ctx, "Re-ping all peers") { rebuildFragment() })
         }
 
         // IPC Contract — the cross-app intent/IPC surface Cloud SuperApp
@@ -1604,6 +1629,32 @@ class DevControlFragment : Fragment() {
             val remainingMs = runCatching { bm.computeChargeTimeRemaining() }.getOrDefault(-1L)
             if (remainingMs > 0) row(ctx, host, "Time to full", fmtDuration(remainingMs))
         }
+    }
+
+    /** The mesh IP to ping for a WG peer — prefer a /32 allowed-IP,
+     *  then any non-network IPv4 allowed-IP, finally the endpoint host.
+     *  Null when nothing pingable can be derived. */
+    private fun meshIpOf(p: WireGuardPrefs.PeerData): String? {
+        val cidrs = p.allowedIps.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val ipv4 = Regex("""^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$""")
+        cidrs.firstOrNull { it.endsWith("/32") }?.substringBefore('/')?.let { return it }
+        cidrs.map { it.substringBefore('/') }
+            .firstOrNull { it.matches(ipv4) && it != "0.0.0.0" && !it.endsWith(".0") }
+            ?.let { return it }
+        return p.endpoint.substringBefore(':').trim().ifBlank { null }
+    }
+
+    /** Reachability probe for [ip] — ICMP echo where allowed, else a TCP
+     *  echo handshake (InetAddress.isReachable's fallback). Returns a
+     *  ✓ latency / ✗ timeout string. Call OFF the main thread. */
+    private fun pingHost(ip: String, timeoutMs: Int): String = try {
+        val addr = java.net.InetAddress.getByName(ip)
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        val ok = addr.isReachable(timeoutMs)
+        val dt = android.os.SystemClock.elapsedRealtime() - t0
+        if (ok) "✓ reachable · ${dt} ms" else "✗ no answer (${timeoutMs} ms)"
+    } catch (e: Exception) {
+        "✗ ${e.message ?: "unreachable"}"
     }
 
     /** Cross-app IPC surface this app exposes/consumes — the manifest's
