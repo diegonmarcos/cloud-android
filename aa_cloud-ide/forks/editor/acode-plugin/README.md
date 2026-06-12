@@ -2,7 +2,7 @@
 
 The JS-side integration for the editor fork, shipped as a **regular Acode
 plugin** so it rides upstream Acode updates without patch churn. Bundled into the
-`ea_editor-acode/` fork at build time (NOT a `git am` patch).
+`ea_upstreams-sources/editor-acode/` fork at build time (NOT a `git am` patch).
 
 Responsibilities:
 

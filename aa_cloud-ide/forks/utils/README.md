@@ -2,7 +2,7 @@
 
 - **Upstream**: https://github.com/TeamAmaze/AmazeFileUtilities.git (GPL-3.0, Kotlin)
 - **App id**: `com.diegonmarcos.ide.utils`
-- **Tracker**: `ea_files-amaze-utils/`
+- **Tracker**: `ea_upstreams-sources/files-amaze-utils/`
 - **Pinned tag**: `v1.94` (latest, 2026-06-11 — upstream near-dormant since 2024-07)
 - **Priority**: 2 — build SECOND (smallest diff, but must follow `files` for the
   symmetric pairing rename).

@@ -2,7 +2,7 @@
 
 - **Upstream**: https://github.com/TeamAmaze/AmazeFileManager.git (GPL-3.0, Kotlin+Java)
 - **App id**: `com.diegonmarcos.ide.files`
-- **Tracker**: `ea_files-amaze/`
+- **Tracker**: `ea_upstreams-sources/files-amaze/`
 - **Pinned tag**: `v3.11.2` (verified latest stable, 2026-06-11)
 - **Priority**: 1 — build this fork FIRST (native, core of the file domain).
 - **Owns tables**: `recent_files`, `transfers`.

@@ -2,7 +2,7 @@
 
 - **Upstream**: https://github.com/Acode-Foundation/Acode.git (MIT, Cordova hybrid — JS 62% / Java 14% / TS 12%)
 - **App id**: `com.diegonmarcos.ide.editor`
-- **Tracker**: `ea_editor-acode/`
+- **Tracker**: `ea_upstreams-sources/editor-acode/`
 - **Pinned tag**: `v1.12.4` (latest at scaffold, 2026-06-11 — upstream releases ~weekly)
 - **Priority**: 3 — build LAST, once the patch pipeline is proven (fastest-moving upstream).
 - **Owns tables**: `workspaces`, `recent_files`, `git_repos`.

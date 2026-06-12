@@ -19,9 +19,9 @@ holds only:
 
 ```bash
 # 1. Tag already pinned in build.json::forks.<key>.pinned_tag (verified 2026-06-11):
-./build.sh materialize-fork files     # clone@tag → ea_files-amaze/ + apply patches
+./build.sh materialize-fork files     # clone@tag → ea_upstreams-sources/files-amaze/ + apply patches
 # 2. Hack in the materialized tracker clone, then export the diff back as patches:
-git -C ../ea_files-amaze format-patch <upstream-tag> -o forks/files/patches
+git -C ../ea_upstreams-sources/files-amaze format-patch <upstream-tag> -o forks/files/patches
 # 3. Build:
 ./build.sh build-fork files
 ```
@@ -55,9 +55,9 @@ factor into at most these concerns:
 
 | domain | tracker dir | upstream | owns tables |
 |--------|-------------|----------|-------------|
-| files | `ea_files-amaze/` | AmazeFileManager v3.11.2 (GPL-3.0, native) | `recent_files`, `transfers` |
-| utils | `ea_files-amaze-utils/` | AmazeFileUtilities v1.94 (GPL-3.0, native) | `storage_summary` |
-| editor | `ea_editor-acode/` | Acode v1.12.4 (MIT, Cordova) | `workspaces`, `recent_files`, `git_repos` |
+| files | `ea_upstreams-sources/files-amaze/` | AmazeFileManager v3.11.2 (GPL-3.0, native) | `recent_files`, `transfers` |
+| utils | `ea_upstreams-sources/files-amaze-utils/` | AmazeFileUtilities v1.94 (GPL-3.0, native) | `storage_summary` |
+| editor | `ea_upstreams-sources/editor-acode/` | Acode v1.12.4 (MIT, Cordova) | `workspaces`, `recent_files`, `git_repos` |
 
 `recent_files` is exported by both editor and files; the hub UNIONs them (every
 row carries `domain` so SuperApp can tell them apart). All tracker dirs match the

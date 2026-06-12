@@ -1,7 +1,7 @@
 // Settings — gradle module graph for the HUB project only.
 // Data-driven from build.json::modules (FIRE rule 6: never hardcode lists).
 // The three FORKS are separate gradle/cordova projects in their materialized
-// tracker clones (ea_files-amaze / ea_files-amaze-utils / ea_editor-acode) —
+// tracker clones (ea_upstreams-sources/{files-amaze,files-amaze-utils,editor-acode}) —
 // built via `./build.sh build-fork <key>`, NEVER included here.
 pluginManagement {
     repositories {
