@@ -65,30 +65,48 @@ _json() { prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"; }
 step_bundle_forks() {
   local assets="$SCRIPT_DIR/hub/src/main/assets/forks"
   mkdir -p "$assets"
-  local key url sha pkg out have
+  local key src url sha out have
   while IFS= read -r key; do
     [ -z "$key" ] && continue
+    # Source mode (data-driven): "build" = OUR patched fork APK (build-fork);
+    # "url" = pinned upstream release (fallback). Default = url when a pinned
+    # url+sha exist. A fork with neither is simply absent from the bundle.
+    src="$(_json ".forks.${key}.embedded.source")"
     url="$(_json ".forks.${key}.embedded.url")"
     sha="$(_json ".forks.${key}.embedded.sha256")"
-    [ -n "$url" ] && [ -n "$sha" ] || continue
     out="$assets/${key}.apk"
-    if [ -f "$out" ]; then
-      have="$(sha256sum "$out" | cut -d' ' -f1)"
-      if [ "$have" = "$sha" ]; then
-        log "bundle-forks: $key already bundled + verified — skip"
+    [ -n "$src" ] || { [ -n "$url" ] && [ -n "$sha" ] && src="url" || continue; }
+
+    if [ "$src" = "build" ]; then
+      # Build our patched fork → embed dist/cloud-ide-<key>.apk. If the build
+      # toolchain isn't available here (e.g. CI without rust/ndk) fall back to
+      # the pinned upstream url so the hub still builds — LOUDLY logged, never
+      # silent. (CI ships our patched APK via the GHCR route once fork-ship lands.)
+      if step_build_fork build-fork "$key" >/dev/null 2>&1; then
+        cp "$SCRIPT_DIR/dist/cloud-ide-${key}.apk" "$out"
+        log "bundle-forks: ✓ $key embedded OUR patched APK ($(wc -c <"$out") B, $(sha256sum "$out" | cut -d' ' -f1 | cut -c1-12)…)"
         continue
+      elif [ -n "$url" ] && [ -n "$sha" ]; then
+        errlog "bundle-forks: $key build-fork failed/unavailable — FALLING BACK to pinned upstream url"
+        src="url"
+      else
+        errlog "bundle-forks: $key source=build failed and no url fallback — refusing"; exit 1
       fi
-      rm -f "$out"
     fi
+
+    # url source (or fallback): pinned upstream release, sha256-verified.
+    if [ -f "$out" ] && [ "$(sha256sum "$out" | cut -d' ' -f1)" = "$sha" ]; then
+      log "bundle-forks: $key already bundled + verified — skip"; continue
+    fi
+    rm -f "$out"
     log "bundle-forks: fetching $key ← $url"
     curl -fsSL --retry 3 -o "$out" "$url"
     have="$(sha256sum "$out" | cut -d' ' -f1)"
     if [ "$have" != "$sha" ]; then
       rm -f "$out"
-      errlog "bundle-forks: sha256 MISMATCH for $key (got $have, pinned $sha) — refusing to bundle"
-      exit 1
+      errlog "bundle-forks: sha256 MISMATCH for $key (got $have, pinned $sha) — refusing to bundle"; exit 1
     fi
-    log "bundle-forks: ✓ $key embedded ($(wc -c <"$out") B, sha verified)"
+    log "bundle-forks: ✓ $key embedded upstream ($(wc -c <"$out") B, sha verified)"
   done < <(prefer_host jq -r '.forks | to_entries[] | select(.key|startswith("_")|not) | .key' "$SCRIPT_DIR/build.json")
   shopt -s nullglob
   local apks=("$assets"/*.apk)
