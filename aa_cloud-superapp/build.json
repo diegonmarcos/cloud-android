@@ -678,6 +678,13 @@
                 "icon": "ic_p_chat_matrix",
                 "target": "extapp:cloud-comms/matrix",
                 "_doc": "Routes to the Cloud-Comms constellation (matrix fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as the Comms bottom-nav section and the Suite/AI IDE tile. Replaces the old app://im.vector.app launcher."
+              },
+              {
+                "id": "dialer",
+                "label": "Dialer",
+                "icon": "ic_p_dialer",
+                "target": "extapp:cloud-comms/dialer",
+                "_doc": "Routes to the Cloud-Comms constellation (Fossify Phone fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as Mail / Mattermost / Matrix above."
               }
             ]
           },
