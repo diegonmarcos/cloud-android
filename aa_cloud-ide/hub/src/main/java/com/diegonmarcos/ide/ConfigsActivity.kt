@@ -1,11 +1,8 @@
 package com.diegonmarcos.ide
 
 import android.os.Bundle
-import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.diegonmarcos.ide.update.UpdateProgress
 import com.diegonmarcos.ide.update.Updater
@@ -15,7 +12,7 @@ import com.diegonmarcos.ide.update.Updater
  * the same WorkManager flow as the periodic auto-updater and shows the fullscreen
  * UpdateOverlay (UpdateProgress-driven). "About" opens AboutActivity — the FULL
  * SuperApp About architecture (12 sections, long-press-copy, Copy All Infos).
- * Data-driven; no per-item hardcoding.
+ * Visual language from Ui (dark surface, purple accent, rounded ripple cards).
  */
 class ConfigsActivity : AppCompatActivity() {
 
@@ -29,29 +26,40 @@ class ConfigsActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         }
+        Ui.screen(this, root)
         NavBar.buildBar(this, packageName)?.let { root.addView(it) }
 
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(20), dp(24), dp(24))
+            setPadding(dp(20), dp(12), dp(20), dp(24))
         }
 
-        // ── Update ────────────────────────────────────────────────────────
-        body.addView(item(getString(R.string.cfg_check_updates)) { startUpdateCheck() })
-        body.addView(TextView(this).apply {
-            text = getString(
+        body.addView(Ui.header(
+            this,
+            getString(R.string.configs_title),
+            getString(
                 R.string.cfg_autoupdate,
                 if (BuildConfig.AUTO_UPDATE_ENABLED) "on" else "off",
                 BuildConfig.AUTO_UPDATE_INTERVAL_HOURS,
                 BuildConfig.AUTO_UPDATE_TAG,
-            )
-            textSize = 12f; alpha = 0.6f; setPadding(dp(20), 0, dp(20), dp(16))
-        })
+            ),
+        ))
+
+        // ── Update ────────────────────────────────────────────────────────
+        body.addView(Ui.appCard(
+            this, "⟳",
+            getString(R.string.cfg_check_updates),
+            "${BuildConfig.GHCR_NAMESPACE}/${BuildConfig.GHCR_IMAGE}:${BuildConfig.AUTO_UPDATE_TAG}",
+            enabled = true,
+        ) { startUpdateCheck() })
 
         // ── About — the FULL SuperApp-architecture page ───────────────────
-        body.addView(item(getString(R.string.cfg_about)) {
-            startActivity(android.content.Intent(this, AboutActivity::class.java))
-        })
+        body.addView(Ui.appCard(
+            this, "ℹ",
+            getString(R.string.cfg_about),
+            "v${BuildConfig.VERSION_NAME} · ${BuildConfig.GIT_SHORT_SHA}",
+            enabled = true,
+        ) { startActivity(android.content.Intent(this, AboutActivity::class.java)) })
 
         root.addView(body)
         setContentView(root)
@@ -72,21 +80,9 @@ class ConfigsActivity : AppCompatActivity() {
         if (supportFragmentManager.findFragmentByTag(UpdateOverlay.TAG) == null) overlayShown = false
     }
 
-    private fun item(label: String, onClick: () -> Unit): TextView =
-        TextView(this).apply {
-            text = label
-            textSize = 16f
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(20))
-            isClickable = true
-            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP)
-            setOnClickListener { onClick() }
-        }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int): Int = Ui.dp(this, v)
 
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
     }
 }

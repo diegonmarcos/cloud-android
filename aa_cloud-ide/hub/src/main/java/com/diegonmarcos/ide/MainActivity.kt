@@ -2,10 +2,9 @@ package com.diegonmarcos.ide
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.ScrollView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
@@ -13,14 +12,14 @@ import androidx.appcompat.app.AppCompatActivity
  * The Cloud-IDE home — a WRAPPER around exactly TWO self-contained apps:
  * Acode (editor) and Amaze File Manager (files). Their real upstream APKs ride
  * INSIDE this APK (assets/forks/, seeded by bundle-forks) and open their own
- * full UIs under our overlay nav bar (NavOverlayService).
+ * full UIs under our persistent overlay nav bar (NavOverlayService).
  *
- *   tile not installed → installs the bundled APK (one system confirm) → ready
- *   tile installed     → launches the app + raises the wrapper bar
+ *   card not installed → installs the bundled APK (one system confirm) → ready
+ *   card installed     → launches the app + raises the wrapper bar
  *
- * Tiles are data-driven from ForkRegistry.homeForks (= forks with an `embedded`
- * block in build.json — exactly Acode + Amaze). Below them: a small Configs row
- * (Update + About, equal to Cloud-SuperApp). Nothing else on the home.
+ * Cards are data-driven from ForkRegistry.homeForks (= forks with an `embedded`
+ * block in build.json — exactly Acode + Amaze). Visual language from Ui (dark
+ * surface, purple accent, rounded ripple cards).
  */
 class MainActivity : AppCompatActivity() {
 
@@ -33,26 +32,26 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
         }
+        Ui.screen(this, root)
+
         // In-app consistency bar (up-chip to Cloud-SuperApp).
         NavBar.buildBar(this, packageName)?.let { root.addView(it) }
 
-        val body = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(20), dp(24), dp(24))
+        val scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
             layoutParams = LinearLayout.LayoutParams(MATCH, MATCH)
         }
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(12), dp(20), dp(24))
+        }
+        scroll.addView(body)
 
-        body.addView(TextView(this).apply {
-            text = getString(R.string.hub_title)
-            textSize = 22f
-            setPadding(0, 0, 0, dp(4))
-        })
-        body.addView(TextView(this).apply {
-            text = getString(R.string.hub_subtitle, BuildConfig.IPC_VERSION, BuildConfig.GIT_SHORT_SHA)
-            textSize = 12f
-            alpha = 0.6f
-            setPadding(0, 0, 0, dp(24))
-        })
+        body.addView(Ui.header(
+            this,
+            getString(R.string.hub_title),
+            getString(R.string.hub_subtitle, BuildConfig.IPC_VERSION, BuildConfig.GIT_SHORT_SHA),
+        ))
 
         // THE two apps — and nothing else.
         tilesHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -60,18 +59,11 @@ class MainActivity : AppCompatActivity() {
         renderTiles()
 
         // Configs (Update + About) — small secondary row.
-        body.addView(TextView(this).apply {
-            text = getString(R.string.tile_configs)
-            textSize = 13f
-            alpha = 0.7f
-            setPadding(dp(20), dp(18), dp(20), dp(12))
-            isClickable = true
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, ConfigsActivity::class.java))
-            }
+        body.addView(Ui.rowCard(this, getString(R.string.tile_configs)) {
+            startActivity(Intent(this, ConfigsActivity::class.java))
         })
 
-        root.addView(body)
+        root.addView(scroll)
         setContentView(root)
     }
 
@@ -88,27 +80,20 @@ class MainActivity : AppCompatActivity() {
     private fun renderTiles() {
         tilesHost.removeAllViews()
         for (fork in ForkRegistry.homeForks) {
-            tilesHost.addView(tileFor(fork))
-        }
-    }
-
-    private fun tileFor(fork: Fork): TextView {
-        val installed = fork.isInstalled(this)
-        val bundled = BundledForkInstaller.isBundled(this, fork)
-        val status = when {
-            installed -> getString(R.string.tile_open)
-            bundled -> getString(R.string.tile_install_bundled)
-            else -> getString(R.string.tile_missing_bundle)
-        }
-        return TextView(this).apply {
-            text = "${fork.displayName}\n$status"
-            textSize = 18f
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(26), dp(20), dp(26))
-            isClickable = true
-            alpha = if (installed || bundled) 1f else 0.5f
-            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(14) }
-            setOnClickListener { onTileTapped(fork, installed, bundled) }
+            val installed = fork.isInstalled(this)
+            val bundled = BundledForkInstaller.isBundled(this, fork)
+            val status = when {
+                installed -> getString(R.string.tile_open)
+                bundled -> getString(R.string.tile_install_bundled)
+                else -> getString(R.string.tile_missing_bundle)
+            }
+            tilesHost.addView(Ui.appCard(
+                this,
+                Ui.glyphFor(fork.displayName),
+                fork.displayName,
+                status,
+                enabled = installed || bundled,
+            ) { onTileTapped(fork, installed, bundled) })
         }
     }
 
@@ -138,10 +123,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int): Int = Ui.dp(this, v)
 
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
     }
 }
