@@ -3514,7 +3514,15 @@
       "company": "LEAFY",
       "location": "Berlin/DE",
       "website": "linktree.diegonmarcos.com",
-      "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |"
+      "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
+      "_doc_repos": "Repo URLs + the consolidated cloud-data config reference, surfaced read-only in Configs/About → Profile. Data-driven (no Kotlin hardcoding) — baked via UI_PROFILE_REPOS_B64 / UI_CONSOLIDATED_CONFIG.",
+      "repos": [
+        { "label": "unix",  "url": "https://github.com/diegonmarcos/unix" },
+        { "label": "cloud", "url": "https://github.com/diegonmarcos/cloud" },
+        { "label": "front", "url": "https://github.com/diegonmarcos/diegonmarcos.github.io" },
+        { "label": "vault", "url": "https://github.com/diegonmarcos/vault" }
+      ],
+      "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
     },
     "_doc_wireguard_default": "Seeds the Configs/WireGuard form on first run. The phone is a mesh spoke; defaults point at the gcp-proxy hub (mesh.json::nodes[0]). Peers is an array so the user can talk to multiple mesh nodes in parallel — first-run we seed only gcp-proxy; in-app the user can Add Peer / Remove Peer to grow or shrink the list. User-editable at runtime via WireGuardFragment (persisted in WireGuardPrefs SharedPreferences); these values are only the FIRST-RUN defaults. interface_private_key, peer.public_key, peer.preshared_key are NOT seeded — generate via the in-app Generate Keypair button, import via a .conf file, or paste manually.",
     "wireguard_default": {

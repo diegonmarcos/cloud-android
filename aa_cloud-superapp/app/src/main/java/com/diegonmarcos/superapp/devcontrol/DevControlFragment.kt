@@ -21,6 +21,7 @@ import com.diegonmarcos.superapp.PermAskTracker
 import com.diegonmarcos.superapp.ScreenLocker
 import com.diegonmarcos.superapp.Sections
 import com.diegonmarcos.superapp.SysfsProc
+import com.diegonmarcos.superapp.ProfilePrefs
 import com.diegonmarcos.superapp.WgState
 import com.diegonmarcos.superapp.WireGuardPrefs
 import com.diegonmarcos.superapp.health.HealthConnectGateway
@@ -349,6 +350,33 @@ class DevControlFragment : Fragment() {
         scroll.addView(column)
 
         column.addView(title(ctx, "About Cloud SuperApp"))
+
+        // ══ CLOUD macro section — who/what this device is in the cloud
+        //    mesh: the owner profile + repos + consolidated config, and
+        //    the live WireGuard/mesh reachability.
+        column.addView(macroHeader(ctx, "☁  CLOUD"))
+
+        section(ctx, column, "Profile") {
+            val prof = ProfilePrefs(ctxAny())
+            row(ctx, it, "Name",     prof.name.ifBlank { BuildConfig.UI_PROFILE_NAME })
+            row(ctx, it, "Email",    prof.email.ifBlank { BuildConfig.UI_PROFILE_EMAIL })
+            row(ctx, it, "Company",  prof.company.ifBlank { BuildConfig.UI_PROFILE_COMPANY })
+            row(ctx, it, "Location", prof.location.ifBlank { BuildConfig.UI_PROFILE_LOCATION })
+            val site = prof.website.ifBlank { BuildConfig.UI_PROFILE_WEBSITE }
+            if (site.isNotBlank()) row(ctx, it, "Website", site)
+            // Repos — data-driven from build.json::ui.profile_default.repos.
+            it.addView(small(ctx, "Repos:"))
+            for ((label, url) in parseProfileRepos()) row(ctx, it, label, url)
+            // The consolidated cloud-data config that feeds the mesh.
+            it.addView(small(ctx, "Config source:"))
+            row(ctx, it, "Consolidated", BuildConfig.UI_CONSOLIDATED_CONFIG.ifBlank { "—" })
+        }
+
+        section(ctx, column, "VPN / WireGuard / Mesh") { renderVpnMesh(ctx, it) }
+
+        // ══ PHONE macro section — everything about THIS Android device:
+        //    the app build, perms, battery, memory, network, etc.
+        column.addView(macroHeader(ctx, "📱  PHONE"))
 
         section(ctx, column, "App") {
             row(ctx, it, "Name",         BuildConfig.APPLICATION_ID)
@@ -829,76 +857,8 @@ class DevControlFragment : Fragment() {
             it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak. Storage = data partition (where the app + caches live). Swap is typically zRAM on Android — counts AGAINST physical RAM but appears as virtual."))
         }
 
-        section(ctx, column, "VPN / WireGuard / Mesh") {
-            // Reads the shared GoBackend that WireGuardFragment uses.
-            // getState() reflects the runtime tunnel; getStatistics()
-            // returns per-peer rx/tx bytes + last handshake epoch.
-            val wgPrefs = WgState.prefs(ctxAny())
-            val backend = runCatching { WgState.backend(ctxAny()) }.getOrNull()
-            val tunnel  = WgState.tunnel
-            val state   = runCatching { backend?.getState(tunnel) }.getOrNull()
-            row(ctx, it, "Tunnel name", wgPrefs.tunnelName.ifBlank { "—" })
-            row(ctx, it, "State",       state?.name ?: "—")
-            row(ctx, it, "Backend",     "libwg-go ${runCatching { backend?.version }.getOrNull() ?: "—"}")
-            row(ctx, it, "Always-on",   runCatching { backend?.isAlwaysOn?.toString() }.getOrNull() ?: "—")
-            row(ctx, it, "Lockdown",    runCatching { backend?.isLockdownEnabled?.toString() }.getOrNull() ?: "—")
-            val peers = wgPrefs.peers()
-            row(ctx, it, "Configured peers", peers.size.toString())
-
-            // Live per-peer rx/tx + handshake (only when tunnel UP),
-            // keyed by base64 public key for matching against prefs.
-            val statsByKey = HashMap<String, com.wireguard.android.backend.Statistics.PeerStats?>()
-            if (state == Tunnel.State.UP) {
-                runCatching { backend?.getStatistics(tunnel) }.getOrNull()?.let { stats ->
-                    for (key in stats.peers()) {
-                        val k64 = runCatching { key.toBase64() }.getOrDefault("")
-                        if (k64.isNotEmpty()) statsByKey[k64] = stats.peer(key)
-                    }
-                }
-            }
-
-            // Render EVERY configured peer in full (name, endpoint, allowed
-            // IPs, pubkey) regardless of tunnel state, + a live ping. The
-            // ping rows start as "pinging…" and are filled async from a
-            // background thread (ICMP/TCP reachability of the peer's mesh
-            // IP) — same idea as the KDE Connect wg0 reachability probe.
-            it.addView(small(ctx, "Per-peer full data + live reachability ping (mesh IP over the tunnel):"))
-            val pingTargets = ArrayList<Pair<String, TextView>>()
-            for ((i, p) in peers.withIndex()) {
-                val name = p.name.ifBlank { "peer #${i + 1}" }
-                it.addView(small(ctx, "— $name —"))
-                row(ctx, it, "$name · endpoint",  p.endpoint.ifBlank { "—" })
-                row(ctx, it, "$name · allowed",   p.allowedIps.ifBlank { "—" })
-                val pk = p.publicKey.trim()
-                if (pk.isNotEmpty()) row(ctx, it, "$name · pubkey", pk.take(8) + "…" + pk.takeLast(6))
-                statsByKey[pk]?.let { ps ->
-                    val hsAge = if (ps.latestHandshakeEpochMillis > 0)
-                        fmtDuration(System.currentTimeMillis() - ps.latestHandshakeEpochMillis) + " ago"
-                    else "never"
-                    row(ctx, it, "$name · rx/tx",     "${sizeStr(ps.rxBytes)} / ${sizeStr(ps.txBytes)}")
-                    row(ctx, it, "$name · handshake", hsAge)
-                }
-                val meshIp = meshIpOf(p)
-                if (meshIp != null) {
-                    val pingRow = row(ctx, it, "$name · ping $meshIp", "pinging…")
-                    pingTargets.add(meshIp to pingRow)
-                } else {
-                    row(ctx, it, "$name · ping", "no mesh IP in allowed-IPs / endpoint")
-                }
-            }
-            if (peers.isEmpty()) it.addView(small(ctx, "No peers configured. Add them in the WireGuard page."))
-
-            // Ping all peers off the main thread; update each row on arrival.
-            if (pingTargets.isNotEmpty()) {
-                Thread {
-                    for ((ip, view) in pingTargets) {
-                        val res = pingHost(ip, 1500)
-                        view.post { view.text = res }
-                    }
-                }.start()
-            }
-            it.addView(actionButton(ctx, "Re-ping all peers") { rebuildFragment() })
-        }
+        // (VPN / WireGuard / Mesh moved up under the "Cloud" macro header,
+        //  rendered via renderVpnMesh — see the reorg right after the title.)
 
         // IPC Contract — the cross-app intent/IPC surface Cloud SuperApp
         // exposes/consumes (the constellation hub ↔ ea_cloud-comms /
@@ -1629,6 +1589,104 @@ class DevControlFragment : Fragment() {
             val remainingMs = runCatching { bm.computeChargeTimeRemaining() }.getOrDefault(-1L)
             if (remainingMs > 0) row(ctx, host, "Time to full", fmtDuration(remainingMs))
         }
+    }
+
+    /** Big macro-section divider ("☁ CLOUD", "📱 PHONE") splitting the
+     *  About page into the cloud-identity half and the phone-device half. */
+    private fun macroHeader(ctx: Context, text: String) = TextView(ctx).apply {
+        this.text = text
+        setTextColor(0xFFE9D8FD.toInt())
+        textSize = 17f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setBackgroundColor(0x22B794F4.toInt())
+        val p = dp(8)
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(20) }
+        layoutParams = lp
+        setPadding(p, dp(12), p, dp(10))
+    }
+
+    /** Repo {label,url} list for the Profile section — data-driven from
+     *  build.json::ui.profile_default.repos (UI_PROFILE_REPOS_B64). */
+    private fun parseProfileRepos(): List<Pair<String, String>> = runCatching {
+        val json = String(android.util.Base64.decode(BuildConfig.UI_PROFILE_REPOS_B64, android.util.Base64.NO_WRAP))
+        val arr = org.json.JSONArray(json)
+        (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            o.optString("label").ifBlank { "repo" } to o.optString("url")
+        }
+    }.getOrDefault(emptyList())
+
+    /** VPN / WireGuard / Mesh body — the WG interface state PLUS a live
+     *  reachability ping of EVERY declared mesh member (Sections.mesh()
+     *  nodes, baked from the consolidated cloud-data config), not just
+     *  the configured WG peers. Live rx/tx + handshake attach to a node
+     *  when its wg-IP matches a configured peer's tunnel and the tunnel
+     *  is UP. Rendered inside a section() under the Cloud macro header. */
+    private fun renderVpnMesh(ctx: Context, host: LinearLayout) {
+        val wgPrefs = WgState.prefs(ctx)
+        val backend = runCatching { WgState.backend(ctx) }.getOrNull()
+        val tunnel  = WgState.tunnel
+        val state   = runCatching { backend?.getState(tunnel) }.getOrNull()
+        row(ctx, host, "Tunnel name", wgPrefs.tunnelName.ifBlank { "—" })
+        row(ctx, host, "State",       state?.name ?: "—")
+        row(ctx, host, "Backend",     "libwg-go ${runCatching { backend?.version }.getOrNull() ?: "—"}")
+        row(ctx, host, "Always-on",   runCatching { backend?.isAlwaysOn?.toString() }.getOrNull() ?: "—")
+        row(ctx, host, "Lockdown",    runCatching { backend?.isLockdownEnabled?.toString() }.getOrNull() ?: "—")
+        row(ctx, host, "Configured peers", wgPrefs.peers().size.toString())
+
+        // Live per-peer stats keyed by pubkey (only when tunnel UP), then
+        // re-keyed by the peer's mesh IP so we can attach to mesh nodes.
+        val statsByKey = HashMap<String, com.wireguard.android.backend.Statistics.PeerStats?>()
+        if (state == Tunnel.State.UP) {
+            runCatching { backend?.getStatistics(tunnel) }.getOrNull()?.let { stats ->
+                for (key in stats.peers()) {
+                    val k64 = runCatching { key.toBase64() }.getOrDefault("")
+                    if (k64.isNotEmpty()) statsByKey[k64] = stats.peer(key)
+                }
+            }
+        }
+        val statsByMeshIp = HashMap<String, com.wireguard.android.backend.Statistics.PeerStats>()
+        for (p in wgPrefs.peers()) {
+            val ip = meshIpOf(p) ?: continue
+            statsByKey[p.publicKey.trim()]?.let { statsByMeshIp[ip] = it }
+        }
+
+        // FULL mesh — every declared member from the baked consolidated config.
+        val nodes = runCatching { com.diegonmarcos.superapp.Sections.mesh().nodes }.getOrDefault(emptyList())
+        host.addView(small(ctx, "Full mesh — ${nodes.size} declared members (consolidated config). Live wg0 reachability ping:"))
+        val pingTargets = ArrayList<Pair<String, TextView>>()
+        for (n in nodes) {
+            val name = "${n.alias.ifBlank { n.name }} · ${n.role}"
+            host.addView(small(ctx, "— $name —"))
+            row(ctx, host, "$name · wg ip", n.wgIp.ifBlank { "—" })
+            if (n.publicIp.isNotBlank()) row(ctx, host, "$name · public ip", n.publicIp)
+            val provReg = listOf(n.provider, n.region).filter { it.isNotBlank() }.joinToString(" · ")
+            if (provReg.isNotBlank()) row(ctx, host, "$name · provider", provReg)
+            statsByMeshIp[n.wgIp]?.let { ps ->
+                val hsAge = if (ps.latestHandshakeEpochMillis > 0)
+                    fmtDuration(System.currentTimeMillis() - ps.latestHandshakeEpochMillis) + " ago" else "never"
+                row(ctx, host, "$name · rx/tx",     "${sizeStr(ps.rxBytes)} / ${sizeStr(ps.txBytes)}")
+                row(ctx, host, "$name · handshake", hsAge)
+            }
+            if (n.wgIp.isNotBlank()) {
+                val pingRow = row(ctx, host, "$name · ping ${n.wgIp}", "pinging…")
+                pingTargets.add(n.wgIp to pingRow)
+            }
+        }
+        if (nodes.isEmpty()) host.addView(small(ctx, "No mesh members in the baked consolidated config (data/mesh.json)."))
+
+        if (pingTargets.isNotEmpty()) {
+            Thread {
+                for ((ip, view) in pingTargets) {
+                    val res = pingHost(ip, 1500)
+                    view.post { view.text = res }
+                }
+            }.start()
+        }
+        host.addView(actionButton(ctx, "Re-ping all mesh members") { rebuildFragment() })
     }
 
     /** The mesh IP to ping for a WG peer — prefer a /32 allowed-IP,

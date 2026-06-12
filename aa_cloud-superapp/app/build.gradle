@@ -142,6 +142,11 @@ def profileCompany   = (profileDefault.company  ?: '').toString()
 def profileLocation  = (profileDefault.location ?: '').toString()
 def profileWebsite   = (profileDefault.website  ?: '').toString()
 def profileTitles    = (profileDefault.titles   ?: '').toString()
+// Repos + the consolidated cloud-data config reference — shown in the
+// Configs/About → Profile section. Data-driven from build.json.
+def profileReposJson = groovy.json.JsonOutput.toJson(profileDefault.repos ?: [])
+def profileReposB64  = profileReposJson.bytes.encodeBase64().toString()
+def consolidatedCfg  = (profileDefault.consolidated_config ?: '').toString()
 // WireGuard defaults — first-run seed for WireGuardPrefs. User edits at
 // runtime via Configs → WireGuard. Private key + peer public/preshared
 // keys are NOT seeded — generated, imported, or pasted by the user.
@@ -342,6 +347,8 @@ android {
         buildConfigField "String", "UI_PROFILE_LOCATION",   "\"${profileLocation}\""
         buildConfigField "String", "UI_PROFILE_WEBSITE",    "\"${profileWebsite}\""
         buildConfigField "String", "UI_PROFILE_TITLES",     "\"${profileTitles}\""
+        buildConfigField "String", "UI_PROFILE_REPOS_B64",  "\"${profileReposB64}\""
+        buildConfigField "String", "UI_CONSOLIDATED_CONFIG", "\"${consolidatedCfg}\""
         buildConfigField "String", "UI_WG_TUNNEL_NAME",              "\"${wgTunnelName}\""
         buildConfigField "String", "UI_WG_INTERFACE_ADDRESS",        "\"${wgIfAddress}\""
         buildConfigField "String", "UI_WG_INTERFACE_DNS",            "\"${wgIfDns}\""
