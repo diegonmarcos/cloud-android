@@ -1798,6 +1798,18 @@ class MainActivity : AppCompatActivity(),
     private var nowPlayingMonitor: NowPlayingMonitor? = null
     private var musicControlsPopup: MusicControlsPopup? = null
 
+    // Foreground energy sampler — fine-resolution watchdog samples while
+    // the screen is on / the app is resumed. Background coarse samples
+    // come from BatterySessionWorker (15-min). Stopped in onPause so it
+    // never runs while backgrounded.
+    private val energySamplerHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val energySamplerRunnable = object : Runnable {
+        override fun run() {
+            runCatching { EnergyWatchdog.sample(this@MainActivity) }
+            energySamplerHandler.postDelayed(this, 60_000L)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
@@ -1898,6 +1910,9 @@ class MainActivity : AppCompatActivity(),
             }
         }
         nowPlayingMonitor?.start()
+        // Kick a sample now + every 60s while resumed.
+        energySamplerHandler.removeCallbacks(energySamplerRunnable)
+        energySamplerHandler.post(energySamplerRunnable)
     }
 
     override fun onPause() {
@@ -1906,6 +1921,7 @@ class MainActivity : AppCompatActivity(),
         cancelHamburgerJitter()
         nowPlayingMonitor?.stop()
         musicControlsPopup?.dismiss()
+        energySamplerHandler.removeCallbacks(energySamplerRunnable)
         super.onPause()
     }
 

@@ -50,7 +50,12 @@ class BatterySessionWorker(
 ) : Worker(appContext, params) {
 
     override fun doWork(): Result {
+        EnergyLedger.wake("bg.battery_worker")
         runCatching { BatterySessionStats.read(applicationContext) }
+        // Piggyback the energy watchdog on the same 15-min wakeup — one
+        // coarse background sample per tick (cheap; the screen-on
+        // foreground sampler adds the fine resolution).
+        runCatching { EnergyWatchdog.sample(applicationContext) }
         return Result.success()
     }
 

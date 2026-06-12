@@ -81,6 +81,10 @@ class GalaxyBackdropView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        EnergyLedger.track("ui.galaxy") { drawScene(canvas) }
+    }
+
+    private fun drawScene(canvas: Canvas) {
         val w = width.toFloat(); val h = height.toFloat()
 
         // ── twinkling stars ────────────────────────────────────────

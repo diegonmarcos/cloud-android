@@ -231,6 +231,14 @@ object DevControlServer {
                 }
                 "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
                 "battery/properties" -> { reply(writer, "200 OK", batteryPropertiesJson(ctx), "application/json") }
+                "energy/self" -> { reply(writer, "200 OK", energySelfJson(), "application/json") }
+                "energy/attribution" -> { reply(writer, "200 OK", energyAttributionJson(ctx), "application/json") }
+                "energy/samples" -> { reply(writer, "200 OK", energySamplesJson(ctx), "application/json") }
+                "energy/reset" -> {
+                    com.diegonmarcos.superapp.EnergyLedger.reset()
+                    runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).clear() }
+                    reply(writer, "200 OK", """{"ok":true,"message":"energy ledger + sample store cleared"}""", "application/json")
+                }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
@@ -288,6 +296,10 @@ object DevControlServer {
             Spec("battery/reset_anchor","GET",  true,  "DELETE the persisted session anchor (both unplug/plug). Next read mints a fresh first_read_fallback; the next real plug/unplug cycle overwrites with an authoritative receiver-event anchor. Equivalent to a fresh install for the battery-session machinery.", ""),
             Spec("sysfs/diagnostic",    "GET",  true,  "Per-path readability check for every kernel sysfs/proc file the app touches. Returns ✓ OK + preview when readable, ✗ does-not-exist / not-readable / read-failed otherwise. THIS is the answer to 'why isn't sysfs working even though no perm is needed' — hardened Androids block specific power_supply nodes via SELinux.", ""),
             Spec("battery/properties",  "GET",  true,  "Full dump of every BatteryManager.BATTERY_PROPERTY_* getter + every sticky ACTION_BATTERY_CHANGED extra. This is the path AccuBattery and similar gauges use when sysfs is hardened (Samsung One UI 7+, Pixel A15+) — system-service surface that bypasses the SELinux block. Use it to identify which fields ARE exposed on the current device so we can wire them into BatterySessionStats.", ""),
+            Spec("energy/self",         "GET",  true,  "Intra-app energy ledger — which subsystem INSIDE Cloud SuperApp spent the most CPU-ms / wakeups / bytes since the window start (ui.galaxy, music.session, bg.battery_worker, bg.energy_sampler, …). Answers 'what in our own app drains battery'.", ""),
+            Spec("energy/attribution",  "GET",  true,  "Device-level Tier-1 watchdog attribution over stored samples: idle baseline mA, marginal mA per state (screen-on / audio / weak-cellular / high-cpu / bright-screen), per-foreground-app avg draw + energy proxy, and our own self cpu/net cost over the window.", ""),
+            Spec("energy/samples",      "GET",  true,  "Raw recent energy-watchdog samples (last 200): per-sample whole-device draw_ma + state vector (screen, brightness, foreground pkg, cpu load, signal, wifi, audio).", ""),
+            Spec("energy/reset",        "GET",  true,  "Clear the intra-app ledger + the watchdog sample store to start a fresh measurement window.", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -379,6 +391,71 @@ object DevControlServer {
     /** Walk every launchable activity + report the folder
      *  PhoneAppClassifier routes it to. Debug surface for the Home
      *  Apps/Phone tab — directly answers "why is app X in folder Y?". */
+    /** Intra-app energy ledger — which subsystem inside Cloud SuperApp
+     *  spent the most CPU / wakeups / bytes since the window start. */
+    private fun energySelfJson(): String {
+        val (since, stats) = com.diegonmarcos.superapp.EnergyLedger.snapshot()
+        val sorted = stats.entries.sortedByDescending { it.value.cpuNanos }
+        val sb = StringBuilder("""{"since_ms":""").append(since).append(',')
+        sb.append(""""tags":[""")
+        var first = true
+        for ((tag, s) in sorted) {
+            if (!first) sb.append(','); first = false
+            sb.append("""{"tag":"""").append(jsonEscape(tag)).append('"').append(',')
+            sb.append(""""cpu_ms":""").append(s.cpuNanos / 1_000_000L).append(',')
+            sb.append(""""calls":""").append(s.calls).append(',')
+            sb.append(""""wakeups":""").append(s.wakeups).append(',')
+            sb.append(""""bytes":""").append(s.bytes).append('}')
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    /** Device-level state → draw attribution + per-foreground-app +
+     *  our own self cost, computed over the stored sample window. */
+    private fun energyAttributionJson(ctx: Context): String {
+        val m = com.diegonmarcos.superapp.EnergyWatchdog.attribution(ctx)
+        return mapToJson(m)
+    }
+
+    /** Raw recent watchdog samples (last 200). */
+    private fun energySamplesJson(ctx: Context): String {
+        val rows = runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).recent(200) }
+            .getOrDefault(emptyList())
+        val sb = StringBuilder("[")
+        var first = true
+        for (s in rows) {
+            if (!first) sb.append(','); first = false
+            sb.append('{')
+            sb.append(""""ts":""").append(s.ts).append(',')
+            sb.append(""""draw_ma":""").append(s.drawMa).append(',')
+            sb.append(""""batt_pct":""").append(s.battPct).append(',')
+            sb.append(""""screen_on":""").append(s.screenOn).append(',')
+            sb.append(""""brightness":""").append(s.brightness).append(',')
+            sb.append(""""charging":""").append(s.charging).append(',')
+            sb.append(""""fg_pkg":"""").append(jsonEscape(s.fgPkg)).append('"').append(',')
+            sb.append(""""cpu_load":""").append(s.cpuLoadPct).append(',')
+            sb.append(""""mobile_dbm":""").append(s.mobileSignalDbm).append(',')
+            sb.append(""""wifi_rssi":""").append(s.wifiRssi).append(',')
+            sb.append(""""audio":""").append(s.audioActive).append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    /** Minimal recursive Map/List/primitive → JSON for the attribution
+     *  payload (it's already a clean Map<String,Any> tree). */
+    private fun mapToJson(v: Any?): String = when (v) {
+        null -> "null"
+        is String -> "\"${jsonEscape(v)}\""
+        is Boolean, is Int, is Long, is Double, is Float -> v.toString()
+        is Map<*, *> -> v.entries.joinToString(",", "{", "}") {
+            "\"${jsonEscape(it.key.toString())}\":${mapToJson(it.value)}"
+        }
+        is List<*> -> v.joinToString(",", "[", "]") { mapToJson(it) }
+        else -> "\"${jsonEscape(v.toString())}\""
+    }
+
     private fun phoneClassifyJson(ctx: Context): String {
         val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
         val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)

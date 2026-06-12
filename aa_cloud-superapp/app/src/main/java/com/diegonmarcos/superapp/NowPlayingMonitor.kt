@@ -132,7 +132,7 @@ class NowPlayingMonitor(
         tracked = controllers
     }
 
-    private fun evaluateAndDispatch() {
+    private fun evaluateAndDispatch() = EnergyLedger.track("music.session") {
         // Pick the FIRST controller in PLAYING state. Most users have
         // exactly one media app playing at a time; even when several
         // are listed (e.g. when one was paused but the system still
