@@ -1,4 +1,4 @@
-From 067c90b53d4e59e64741f28581e5a3c109203d4c Mon Sep 17 00:00:00 2001
+From e8b3e5572d1b4e193a9a746d4d358f08dafe8be2 Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Fri, 12 Jun 2026 14:41:00 +0200
 Subject: [PATCH] =?UTF-8?q?cloud-ide:=20wrapper=20chrome=20+=20identity=20?=
@@ -19,8 +19,9 @@ Cloud-IDE files-fork patch (concern 1 branding + concern 5 wrapper chrome):
  app/build.gradle                              |   7 +-
  .../filemanager/cloudide/CloudIdeNavBar.java  | 131 ++++++++++++++++++
  .../ui/activities/MainActivity.java           |   2 +
+ file_operations/build.gradle                  |   3 +-
  gradle/libs.versions.toml                     |   2 +-
- 4 files changed, 139 insertions(+), 3 deletions(-)
+ 5 files changed, 141 insertions(+), 4 deletions(-)
  create mode 100644 app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java
 
 diff --git a/app/build.gradle b/app/build.gradle
@@ -198,6 +199,20 @@ index 2e835df77..a8425a775 100644
  
      intent = getIntent();
  
+diff --git a/file_operations/build.gradle b/file_operations/build.gradle
+index 5400d6445..c43faf89f 100644
+--- a/file_operations/build.gradle
++++ b/file_operations/build.gradle
+@@ -51,7 +51,8 @@ android {
+ cargo {
+     module = "./"
+     libname = "rootoperations"
+-    targets = ["arm", "arm64", "x86", "x86_64"]
++    // Cloud-IDE fork patch: constellation ships arm64-v8a only (hub abi_filters).
++    targets = ["arm64"]
+     profile = "release"
+     
+     // Optional: Use cargo and rustc from the path
 diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
 index e475d17e4..4c4201531 100644
 --- a/gradle/libs.versions.toml

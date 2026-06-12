@@ -4,17 +4,30 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     flake-utils.url = "github:numtide/flake-utils";
+    # Rust with Android cross std — Amaze's :file_operations is a Rust cdylib
+    # (mozilla rust-android-gradle); host rustc has no aarch64-linux-android std.
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
+          overlays = [ rust-overlay.overlays.default ];
           config = {
             allowUnfree = true;
             android_sdk.accept_license = true;
           };
+        };
+
+        # Pinned stable Rust + the one Android target the constellation ships
+        # (arm64-v8a — the files-fork patch limits cargo targets to arm64).
+        rustAndroid = pkgs.rust-bin.stable.latest.default.override {
+          targets = [ "aarch64-linux-android" ];
         };
 
         # Toolchain pinned in one place. Mirrored in build.json::toolchain —
@@ -48,6 +61,8 @@
             kotlin
             androidSdk
             android-tools     # adb, fastboot
+            rustAndroid       # rustc+cargo with aarch64-linux-android std (files fork)
+            python3           # rust-android-gradle plugin's pythonCommand
             # Node toolchain for the Acode (Cordova) editor fork: the Cordova
             # CLI + JS plugin build. The hub + native forks don't need it, but
             # `./build.sh build-fork editor` does.
