@@ -59,6 +59,7 @@ class FloatingNavService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         startForeground(NOTIF_ID, buildNotification())
         main.post(pollTick)
@@ -67,6 +68,7 @@ class FloatingNavService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
+        isRunning = false
         main.removeCallbacksAndMessages(null)
         removeBubble(); removeBar()
         super.onDestroy()
@@ -263,14 +265,22 @@ class FloatingNavService : Service() {
         private const val CHANNEL_ID = "floating_nav"
         private const val NOTIF_ID = 0xF1
 
+        /** True while the overlay service is alive — drives the single
+         *  Start/Stop toggle in Configs → Permissions. */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
         /** Start the overlay iff enabled in build.json AND the user has
-         *  granted "display over other apps". No-op otherwise. */
-        fun startIfPermitted(ctx: Context) {
-            if (!FloatingNavConfig.get().enabled) return
-            if (!Settings.canDrawOverlays(ctx)) return
+         *  granted "display over other apps". Returns whether it started
+         *  (false = feature disabled or overlay permission missing). */
+        fun startIfPermitted(ctx: Context): Boolean {
+            if (!FloatingNavConfig.get().enabled) return false
+            if (!Settings.canDrawOverlays(ctx)) return false
             val i = Intent(ctx, FloatingNavService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(i)
             else ctx.startService(i)
+            return true
         }
 
         fun stop(ctx: Context) {

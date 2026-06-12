@@ -1,8 +1,12 @@
 package com.diegonmarcos.superapp
 
+import android.provider.Settings
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.diegonmarcos.superapp.floatingnav.FloatingNavConfig
+import com.diegonmarcos.superapp.floatingnav.FloatingNavService
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -62,6 +66,23 @@ class FloatingNavConfigTest {
         assertEquals("com.diegonmarcos.comms", byLabel["Cloud-Comms"]?.pkg)
         assertEquals("cloud-comms", byLabel["Cloud-Comms"]?.installApp)
         assertEquals("com.diegonmarcos.ide", byLabel["Cloud-IDE"]?.pkg)
+    }
+
+    /**
+     * The single Start/Stop toggle in Configs → Permissions styles itself
+     * from FloatingNavService.isRunning, and only starts when the overlay
+     * permission is granted. In the instrumentation environment that perm is
+     * not held, so startIfPermitted must refuse and isRunning stay false —
+     * the exact contract the toggle's light/dark styling reads.
+     */
+    @Test fun toggleContract_startsOnlyWhenOverlayGranted() {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        if (!Settings.canDrawOverlays(ctx)) {
+            assertFalse("must refuse to start without 'display over other apps'",
+                FloatingNavService.startIfPermitted(ctx))
+            assertFalse("isRunning must stay false when start is refused",
+                FloatingNavService.isRunning)
+        }
     }
 
     @Test fun everyDefaultInstallAppResolvesInExternalApps() {

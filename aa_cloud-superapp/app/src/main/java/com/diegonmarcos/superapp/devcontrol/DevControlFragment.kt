@@ -504,6 +504,8 @@ class DevControlFragment : Fragment() {
         }
 
         section(ctx, column, "Permissions") {
+            // Re-skinned async once the Health Connect grant count resolves.
+            var hcGrantBtn: TextView? = null
             // ── Runtime perms — data-driven from build.json::ui.permissions.runtime[].
             //    See BuildConfig.UI_PERMISSIONS_RUNTIME_B64. Replaces the
             //    previously hardcoded Pair list (FIRE rule 6).
@@ -602,11 +604,17 @@ class DevControlFragment : Fragment() {
             it.addView(small(ctx, "Health Connect perms — granted in the Health Connect app, NOT here. checkSelfPermission can't see them; we query HC's PermissionController directly."))
             val hcTotal = HealthMetrics.allPermissions.size
             val hcRow = row(ctx, it, "HC perms granted", "checking… / $hcTotal")
+            // hcGrantBtn is created below in the GRANT row; HC grant state is
+            // async (PermissionController), so we re-skin the button to the
+            // dark "granted" shade once everything is granted. The coroutine
+            // resumes after this synchronous block builds the button, so the
+            // ref is assigned by then.
             viewLifecycleOwner.lifecycleScope.launch {
                 val n = runCatching {
                     HealthConnectGateway.grantedPermissions(requireContext()).size
                 }.getOrDefault(0)
                 hcRow.text = if (n > 0) "✓ $n / $hcTotal granted" else "◯ 0 / $hcTotal — none granted"
+                hcGrantBtn?.let { b -> stylePermButton(b, "Grant Health Perms", n >= hcTotal && hcTotal > 0) }
             }
             // ── System auto-granted — perms declared in the manifest that
             //    Android grants at install time without a user prompt.
@@ -640,7 +648,7 @@ class DevControlFragment : Fragment() {
             //    the perm is held.
             it.addView(small(ctx, "Grant — one-tap system dialog:"))
             it.addView(permButtonRow(ctx,
-                permButton(ctx, "Grant Health Perms", null) { openHealthConnectPerms() },
+                permButton(ctx, "Grant Health Perms", null) { openHealthConnectPerms() }.also { b -> hcGrantBtn = b },
                 permButton(ctx, "Grant Notif. (write)", grantedNotifWrite(ctxAny())) { requestNotificationsPermission() },
                 permButton(ctx, "Request All Perms", null) {
                     requestAllPermissions(perms.map { p -> p.second }.toTypedArray())
@@ -669,25 +677,21 @@ class DevControlFragment : Fragment() {
                 permButton(ctx, "Set Default Apps (Phone · Spam)", null) { openDefaultAppsSettings() },
             ))
             // ── Floating Top Nav Bar — SYSTEM_ALERT_WINDOW ("Display over
-            //    other apps") gates the cross-app overlay. Grant it, then
-            //    "Start Floating Nav" launches FloatingNavService now (it also
-            //    auto-starts on the next app resume).
-            it.addView(small(ctx, "Floating nav — grant 'Display over other apps', then start the overlay:"))
+            //    other apps") gates the cross-app overlay. Grant it, then the
+            //    single Start/Stop toggle starts/stops FloatingNavService (it
+            //    also auto-starts on the next app resume). The toggle re-skins
+            //    itself: dark "running" shade ↔ light "start me" shade.
+            it.addView(small(ctx, "Floating nav — grant 'Display over other apps', then toggle the overlay:"))
+            lateinit var navToggle: TextView
+            navToggle = permButton(ctx, "Floating Nav", null) { toggleFloatingNav(navToggle) }
+            styleNavToggle(navToggle, com.diegonmarcos.superapp.floatingnav.FloatingNavService.isRunning)
             it.addView(permButtonRow(ctx,
                 permButton(ctx, "Set Display-over-apps", android.provider.Settings.canDrawOverlays(ctxAny())) { openOverlaySettings() },
-                permButton(ctx, "Start Floating Nav", null) {
-                    com.diegonmarcos.superapp.floatingnav.FloatingNavService.startIfPermitted(ctxAny())
-                    Toast.makeText(ctxAny(),
-                        if (android.provider.Settings.canDrawOverlays(ctxAny())) "Floating nav started"
-                        else "Grant 'Display over other apps' first", Toast.LENGTH_SHORT).show()
-                },
-                permButton(ctx, "Stop Floating Nav", null) {
-                    com.diegonmarcos.superapp.floatingnav.FloatingNavService.stop(ctxAny())
-                    Toast.makeText(ctxAny(), "Floating nav stopped", Toast.LENGTH_SHORT).show()
-                },
+                navToggle,
             ))
             // ── Copy the full status block (matches what's rendered above).
-            it.addView(actionButton(ctx, "Copy All Perms Status") {
+            //    Utility action (not a pending grant) → darker violet.
+            it.addView(actionButton(ctx, "Copy All Perms Status", DARK_VIOLET) {
                 copy(ctxAny(), buildAllPermsStatus(ctxAny()))
                 Toast.makeText(ctxAny(), "Copied full permission status", Toast.LENGTH_SHORT).show()
             })
@@ -1550,10 +1554,14 @@ class DevControlFragment : Fragment() {
         setPadding(0, dp(4), 0, dp(4))
     }
 
-    private fun actionButton(ctx: Context, label: String, onClick: () -> Unit) = TextView(ctx).apply {
+    // bg defaults to the light-violet "action needed" shade; pass
+    // DARK_VIOLET for utility buttons that aren't a pending grant (e.g.
+    // "Copy All Perms Status") so the light violet stays reserved for the
+    // rows that still need the user to act.
+    private fun actionButton(ctx: Context, label: String, bg: Int = 0xFF7C3AED.toInt(), onClick: () -> Unit) = TextView(ctx).apply {
         text = label
         setTextColor(0xFFFFFFFF.toInt())
-        setBackgroundColor(0xFF7C3AED.toInt())
+        setBackgroundColor(bg)
         gravity = android.view.Gravity.CENTER
         setPadding(dp(12), dp(10), dp(12), dp(10))
         val lp = LinearLayout.LayoutParams(
@@ -1825,9 +1833,6 @@ class DevControlFragment : Fragment() {
      *   null  → purple (a plain action with no grant state, e.g. bulk). */
     private fun permButton(ctx: Context, label: String, granted: Boolean?, onClick: () -> Unit) =
         TextView(ctx).apply {
-            text = if (granted == true) "✓ $label" else label
-            setTextColor(if (granted == true) 0xFF9CA3AF.toInt() else 0xFFFFFFFF.toInt())
-            setBackgroundColor(if (granted == true) 0xFF2A2A33.toInt() else 0xFF7C3AED.toInt())
             gravity = android.view.Gravity.CENTER
             textSize = 12f
             setPadding(dp(8), dp(10), dp(8), dp(10))
@@ -1836,8 +1841,43 @@ class DevControlFragment : Fragment() {
             val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             layoutParams = lp
             isClickable = true; isFocusable = true
+            stylePermButton(this, label, granted)
             setOnClickListener { onClick() }
         }
+
+    /** Paint a perm button by grant state — extracted so async-resolved
+     *  states (Health Connect) and live toggles (Floating Nav) can re-skin
+     *  the same view after creation. Palette convention:
+     *    • granted / satisfied → dark slate (0xFF2A2A33), grey ✓ text
+     *    • still needs action  → light violet (0xFF7C3AED), white text */
+    private fun stylePermButton(tv: TextView, label: String, granted: Boolean?) {
+        tv.text = if (granted == true) "✓ $label" else label
+        tv.setTextColor(if (granted == true) 0xFF9CA3AF.toInt() else 0xFFFFFFFF.toInt())
+        tv.setBackgroundColor(if (granted == true) 0xFF2A2A33.toInt() else 0xFF7C3AED.toInt())
+    }
+
+    /** Single Start/Stop toggle for the Floating Nav overlay. Running = dark
+     *  "Stop" state; stopped = light "Start" state. Same palette as
+     *  [stylePermButton] but no ✓ (it's a verb, not a grant). */
+    private fun styleNavToggle(tv: TextView, running: Boolean) {
+        tv.text = if (running) "Stop Floating Nav" else "Start Floating Nav"
+        tv.setTextColor(if (running) 0xFF9CA3AF.toInt() else 0xFFFFFFFF.toInt())
+        tv.setBackgroundColor(if (running) 0xFF2A2A33.toInt() else 0xFF7C3AED.toInt())
+    }
+
+    private fun toggleFloatingNav(tv: TextView) {
+        if (com.diegonmarcos.superapp.floatingnav.FloatingNavService.isRunning) {
+            com.diegonmarcos.superapp.floatingnav.FloatingNavService.stop(ctxAny())
+            Toast.makeText(ctxAny(), "Floating nav stopped", Toast.LENGTH_SHORT).show()
+            styleNavToggle(tv, running = false)
+        } else {
+            val ok = com.diegonmarcos.superapp.floatingnav.FloatingNavService.startIfPermitted(ctxAny())
+            Toast.makeText(ctxAny(),
+                if (ok) "Floating nav started" else "Grant 'Display over other apps' first",
+                Toast.LENGTH_SHORT).show()
+            styleNavToggle(tv, running = ok)
+        }
+    }
 
     /** Lay out perm buttons in a weighted horizontal row (4dp gaps). */
     private fun permButtonRow(ctx: Context, vararg btns: View): View {
@@ -2157,5 +2197,12 @@ class DevControlFragment : Fragment() {
         }
     }
 
-    companion object { fun newInstance() = DevControlFragment() }
+    companion object {
+        fun newInstance() = DevControlFragment()
+
+        /** Deep violet for utility buttons (Copy) — distinct from the light
+         *  "action needed" violet (0xFF7C3AED) so light stays reserved for
+         *  rows that still need a user action. */
+        private val DARK_VIOLET = 0xFF4C1D95.toInt()
+    }
 }
