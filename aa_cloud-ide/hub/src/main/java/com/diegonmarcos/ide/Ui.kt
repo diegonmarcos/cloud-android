@@ -38,10 +38,11 @@ object Ui {
         return RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), shape, null)
     }
 
-    /** Big app card: glyph bubble + title + status line. */
+    /** Big app card: glyph bubble + title + status line. Optional long-press
+     *  (e.g. replace a foreign phone copy with our bundled child APK). */
     fun appCard(
         a: Activity, glyph: String, titleText: String, statusText: String,
-        enabled: Boolean, onTap: () -> Unit,
+        enabled: Boolean, onLongPress: (() -> Unit)? = null, onTap: () -> Unit,
     ): View {
         val row = LinearLayout(a).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -55,6 +56,9 @@ object Ui {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(a, 14) }
             setOnClickListener { onTap() }
+            if (onLongPress != null) {
+                setOnLongClickListener { onLongPress(); true }
+            }
         }
         // Glyph bubble.
         row.addView(TextView(a).apply {

@@ -81,18 +81,32 @@ class MainActivity : AppCompatActivity() {
         tilesHost.removeAllViews()
         for (fork in ForkRegistry.homeForks) {
             val installed = fork.isInstalled(this)
+            val child = installed && fork.isChildInstall(this)
             val bundled = BundledForkInstaller.isBundled(this, fork)
             val status = when {
-                installed -> getString(R.string.tile_open)
+                child -> getString(R.string.tile_open_child)
+                installed -> getString(
+                    R.string.tile_open_foreign, fork.installerOf(this) ?: "unknown")
                 bundled -> getString(R.string.tile_install_bundled)
                 else -> getString(R.string.tile_missing_bundle)
             }
+            // Long-press on a FOREIGN phone copy: replace it with OUR bundled
+            // child APK (PackageInstaller update; signature conflicts surface
+            // via the receiver instead of failing silently).
+            val replace: (() -> Unit)? = if (installed && !child && bundled) {
+                {
+                    Toast.makeText(this,
+                        getString(R.string.tile_installing, fork.displayName), Toast.LENGTH_SHORT).show()
+                    BundledForkInstaller.install(this, fork)
+                }
+            } else null
             tilesHost.addView(Ui.appCard(
                 this,
                 Ui.glyphFor(fork.displayName),
                 fork.displayName,
                 status,
                 enabled = installed || bundled,
+                onLongPress = replace,
             ) { onTileTapped(fork, installed, bundled) })
         }
     }

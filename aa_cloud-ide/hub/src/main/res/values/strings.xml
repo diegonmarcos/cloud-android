@@ -4,6 +4,8 @@
     <string name="hub_title">Cloud-IDE</string>
     <string name="hub_subtitle">IPC v%1$d · %2$s</string>
     <string name="tile_open">Tap to open</string>
+    <string name="tile_open_child">Tap to open · child APK (installed from our bundle)</string>
+    <string name="tile_open_foreign">PHONE copy (installer: %1$s) · tap to open · long-press to replace with our child APK</string>
     <string name="tile_install_bundled">Tap to install — bundled inside Cloud-IDE</string>
     <string name="tile_missing_bundle">Bundle missing from this build — update Cloud-IDE</string>
     <string name="tile_installing">Installing %1$s — confirm the system prompt…</string>

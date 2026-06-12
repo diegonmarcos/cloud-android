@@ -42,6 +42,18 @@ data class Fork(
         } catch (e: PackageManager.NameNotFoundException) {
             false
         }
+
+    /** Who installed the on-device copy (Android records the installer pkg). */
+    fun installerOf(ctx: Context): String? = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= 30)
+            ctx.packageManager.getInstallSourceInfo(launchPackage).installingPackageName
+        else @Suppress("DEPRECATION") ctx.packageManager.getInstallerPackageName(launchPackage)
+    }.getOrNull()
+
+    /** TRUE child APK: installed on this phone BY the Cloud-IDE wrapper (from
+     *  its internal bundle) — not a pre-existing store/F-Droid copy. */
+    fun isChildInstall(ctx: Context): Boolean =
+        isInstalled(ctx) && installerOf(ctx) == ctx.packageName
 }
 
 object ForkRegistry {
