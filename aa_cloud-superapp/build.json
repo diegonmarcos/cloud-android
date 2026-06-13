@@ -4588,13 +4588,6 @@
       ],
       "_doc_actions": "Global utility actions, identical in every context. The COMPACT menu shows the first `compact_action_count` (3); the EXPANDED view shows ALL of them (up to 5) plus a now-playing album-art card. Targets: `torch` toggles the flashlight (CameraManager.setTorchMode, no camera perm); `calc` opens the device calculator (Intent CATEGORY_APP_CALCULATOR); `screensaver` starts ScreensaverService (full-black cover overlay — see ui.screensaver); `lock` locks the screen (ScreenLocker); `action:<id>` routes through Cloud-SuperApp. Add/replace/reorder = edit here.",
       "compact_action_count": 3,
-      "_doc_expanded_mock": "Placeholder now-playing card shown in the Expanded view so the UI is visualizable without a live media session. Replaced by the real MediaSession metadata when one is playing (future).",
-      "expanded_mock": {
-        "title": "Midnight City",
-        "artist": "M83 — Hurry Up, We're Dreaming",
-        "art_color_top": "#7C3AED",
-        "art_color_bottom": "#2563EB"
-      },
       "actions": [
         { "label": "Light",       "target": "torch" },
         { "label": "Screensaver", "target": "screensaver" },

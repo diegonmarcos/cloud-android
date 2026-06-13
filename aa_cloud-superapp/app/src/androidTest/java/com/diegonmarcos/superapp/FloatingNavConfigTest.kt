@@ -89,10 +89,6 @@ class FloatingNavConfigTest {
         assertEquals("calc", byLabel["Calc"]?.target)
     }
 
-    @Test fun expandedViewHasMockAlbum() {
-        assertTrue("mock album title for the Expanded view", cfg.expandedMock.title.isNotBlank())
-    }
-
     @Test fun toggleContract_startsOnlyWhenOverlayGranted() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         if (!Settings.canDrawOverlays(ctx)) {

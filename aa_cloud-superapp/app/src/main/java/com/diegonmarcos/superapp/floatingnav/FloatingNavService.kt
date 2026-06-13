@@ -85,6 +85,16 @@ class FloatingNavService : Service() {
                 // tapped — run it, no menu.
                 intent.getStringExtra(EXTRA_TARGET)?.let { dispatch(it, "") }
             }
+            ACTION_RENOTIFY -> {
+                // User swiped the (supposedly persistent) notification away on
+                // Android 14+ — re-post it immediately.
+                main.post {
+                    runCatching {
+                        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                            .notify(NOTIF_ID, buildNotification())
+                    }
+                }
+            }
         }
         return START_STICKY
     }
@@ -427,14 +437,16 @@ class FloatingNavService : Service() {
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val m = cfg.expandedMock
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setLargeIcon(albumArtBitmap(m))
-            .setContentTitle(m.title)
-            .setContentText(m.artist)
+            .setContentTitle("Cloud SuperApp - Notification Center")
+            .setContentText("Quick actions")
             .setOngoing(true).setOnlyAlertOnce(true)
             .setContentIntent(open)
+            // Android 14+ lets the user swipe-dismiss even an ongoing FGS
+            // notification; re-post it immediately when that happens so it
+            // stays effectively un-removable.
+            .setDeleteIntent(serviceAction(ACTION_RENOTIFY))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
         val acts = cfg.actions.take(5)
@@ -455,33 +467,20 @@ class FloatingNavService : Service() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    private fun actionIcon(target: String): Int = when (target) {
-        "torch" -> android.R.drawable.star_big_on
-        "screensaver" -> android.R.drawable.ic_menu_view
-        "calc" -> android.R.drawable.ic_menu_sort_by_size
-        "lock" -> android.R.drawable.ic_lock_lock
-        else -> android.R.drawable.ic_menu_search
-    }
+    /** PendingIntent for a bare service action (e.g. re-notify on dismiss). */
+    private fun serviceAction(action: String): PendingIntent = PendingIntent.getService(
+        this, action.hashCode(),
+        Intent(this, FloatingNavService::class.java).setAction(action),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
-    /** Mock album-art bitmap (gradient + ♪) for the expanded notification —
-     *  visualizable without a live MediaSession; data-driven colours. */
-    private fun albumArtBitmap(m: FloatingNavConfig.AlbumMock): android.graphics.Bitmap {
-        val size = dp(128).coerceAtLeast(96)
-        val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bmp)
-        canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(),
-            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                shader = android.graphics.LinearGradient(
-                    0f, 0f, size.toFloat(), size.toFloat(),
-                    m.artTop, m.artBottom, android.graphics.Shader.TileMode.CLAMP,
-                )
-            })
-        val tp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xCCFFFFFF.toInt(); textAlign = android.graphics.Paint.Align.CENTER
-            textSize = size * 0.42f
-        }
-        canvas.drawText("♪", size / 2f, size / 2f - (tp.ascent() + tp.descent()) / 2f, tp)
-        return bmp
+    /** Refined thin-line action icons (One-UI style), tinted by the system. */
+    private fun actionIcon(target: String): Int = when (target) {
+        "torch" -> R.drawable.ic_nav_torch
+        "screensaver" -> R.drawable.ic_nav_screensaver
+        "calc" -> R.drawable.ic_nav_calc
+        "lock" -> R.drawable.ic_nav_lock
+        else -> R.drawable.ic_nav_search
     }
 
     companion object {
@@ -489,6 +488,7 @@ class FloatingNavService : Service() {
         private const val NOTIF_ID = 0xF1
         const val ACTION_SHOW_MENU = "com.diegonmarcos.superapp.floatingnav.SHOW_MENU"
         private const val ACTION_NAV = "com.diegonmarcos.superapp.floatingnav.NAV_ACTION"
+        private const val ACTION_RENOTIFY = "com.diegonmarcos.superapp.floatingnav.RENOTIFY"
         private const val EXTRA_TARGET = "target"
 
         /** Force-open the nav menu (the Sirius Star on the home screen). Starts
