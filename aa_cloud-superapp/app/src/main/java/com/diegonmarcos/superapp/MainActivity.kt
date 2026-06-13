@@ -319,6 +319,16 @@ class MainActivity : AppCompatActivity(),
 
     private lateinit var navSwipeGesture: android.view.GestureDetector
 
+    /** The literal Home Screen (launcher root): the "home" section with an
+     *  EMPTY back-stack — i.e. not a pushed home sub-page (Section menu, the
+     *  Home-Apps sheet, Configs/Tabs, etc.). The swipe-up-to-open-Home-Apps
+     *  shortcut must fire ONLY here; on every other page (including other
+     *  pages inside the home section) a vertical scroll must stay with the
+     *  fragment, never be hijacked as a swipe-up. Single source of truth so
+     *  the gesture gate and the toolbar (`atHomeRoot`) can't drift apart. */
+    private fun isAtHomeScreen(): Boolean =
+        currentSection == "home" && supportFragmentManager.backStackEntryCount == 0
+
     private fun installNavSwipeGesture() {
         val edgeIgnorePx = (24f * resources.displayMetrics.density)
         val minSwipePx   = (100f * resources.displayMetrics.density)
@@ -341,20 +351,21 @@ class MainActivity : AppCompatActivity(),
                     val dy = e2.y - e1.y
                     val absDx = Math.abs(dx); val absDy = Math.abs(dy)
 
-                    // VERTICAL swipes — ONLY meaningful when on the Home
-                    // section (where swipe-up opens AppDrawerSheet) and
-                    // the sheet itself isn't already up. Off-home, the
-                    // activity-level detector MUST defer entirely to
-                    // the fragment so list scrolling, pull-to-refresh,
-                    // sheet drag-close, WebView pan, etc. all own
-                    // their own vertical gestures cleanly. Short-circuit
-                    // BEFORE evaluating the vertical-fling thresholds
-                    // so the detector doesn't even claim to have seen
-                    // a vertical gesture off-home — eliminating the
-                    // conflict the user reported.
-                    val sheetIsUp = supportFragmentManager
-                        .findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null
-                    if (currentSection == "home" && !sheetIsUp &&
+                    // VERTICAL swipes — ONLY meaningful on the literal Home
+                    // Screen root (home section, empty back-stack). On EVERY
+                    // other page — including pushed sub-pages still inside the
+                    // home section (Section menu, the Home-Apps sheet,
+                    // Configs/Tabs) and all off-home sections — the
+                    // activity-level detector MUST defer entirely to the
+                    // fragment so list scrolling, pull-to-refresh, sheet
+                    // drag-close, WebView pan, etc. all own their own vertical
+                    // gestures cleanly. Short-circuit BEFORE evaluating the
+                    // vertical-fling thresholds so the detector doesn't even
+                    // claim to have seen a vertical gesture off the home root —
+                    // eliminating the scroll-vs-swipe-up conflict the user
+                    // reported. (Empty back-stack already implies the
+                    // Home-Apps sheet is not up, since it pushes a back entry.)
+                    if (isAtHomeScreen() &&
                         absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
                         val consumed = handleVerticalFling(dy)
                         if (consumed) Haptics.tap(bottomNav)
@@ -398,14 +409,11 @@ class MainActivity : AppCompatActivity(),
         if ((cur as? SuppressVerticalSwipe)?.suppressVerticalSwipe() == true) {
             return false
         }
-        val sheetIsUp = supportFragmentManager.findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null ||
-                        supportFragmentManager.backStackEntryCount > 0 &&
-                          (0 until supportFragmentManager.backStackEntryCount).any {
-                              supportFragmentManager.getBackStackEntryAt(it).name ==
-                                  AppDrawerSheetFragment.BACK_STACK_TAG
-                          }
         return when {
-            dy < 0 && currentSection == "home" && !sheetIsUp -> {
+            // Only the literal Home Screen root opens the Home-Apps sheet on
+            // swipe-up. An empty back-stack guarantees we're not on a pushed
+            // home sub-page (and that the sheet itself isn't already up).
+            dy < 0 && isAtHomeScreen() -> {
                 openAppDrawerSheet(); true
             }
             // swipe-down (dy > 0) was here to close the sheet — removed
@@ -1699,8 +1707,7 @@ class MainActivity : AppCompatActivity(),
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         // action_back: anywhere except a clean Home (Home with no
         // back-stack entries is the "root" — back is meaningless there).
-        val atHomeRoot = currentSection == "home" &&
-            supportFragmentManager.backStackEntryCount == 0
+        val atHomeRoot = isAtHomeScreen()
         menu.findItem(R.id.action_back)?.isVisible = !atHomeRoot
         // action_wallet: ONLY at the Home root (mirror of action_back).
         // Slots into the same top-right toolbar position so the user
