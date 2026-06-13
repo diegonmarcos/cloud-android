@@ -11,7 +11,6 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Build
-import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import com.diegonmarcos.superapp.PhoneNotificationListenerService
 import com.diegonmarcos.superapp.R
@@ -31,14 +30,23 @@ class MediaProxy(private val ctx: Context) {
 
     private fun nm() = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    /** The active controller — the playing one if any, else the first. Throws
-     *  SecurityException without notification access → caught → null. */
-    fun activeController(): MediaController? = runCatching {
-        val msm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-        val comp = ComponentName(ctx, PhoneNotificationListenerService::class.java)
-        val list = msm.getActiveSessions(comp)
-        list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: list.firstOrNull()
-    }.getOrNull()
+    /** Whether the app's NotificationListener is enabled — REQUIRED for
+     *  getActiveSessions to read the playing media (a separate grant from the
+     *  POST_NOTIFICATIONS permission the other notifications use). */
+    fun listenerEnabled(): Boolean =
+        androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
+
+    /** The active controller — the playing one if any, else the first. Null
+     *  without notification-listener access or when nothing is playing. */
+    fun activeController(): MediaController? {
+        if (!listenerEnabled()) return null
+        return runCatching {
+            val msm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val comp = ComponentName(ctx, PhoneNotificationListenerService::class.java)
+            val list = msm.getActiveSessions(comp)
+            list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: list.firstOrNull()
+        }.getOrNull()
+    }
 
     /** Forward a `media:*` action to the active session's transport. */
     fun transport(target: String) {
@@ -84,10 +92,13 @@ class MediaProxy(private val ctx: Context) {
             if (playing) "Pause" else "Play", pi("media:playpause"),
         )
         b.addAction(android.R.drawable.ic_media_next, "Next", pi("media:next"))
+        // NOTE: deliberately NOT calling setMediaSession(token). Linking our
+        // notification to the playing app's session token makes Android MERGE
+        // it into that app's existing media card (so our distinct "NC Media"
+        // entry never appears). Without it, this is a standalone media-styled
+        // notification in the list, which is what we want here.
         b.setStyle(
-            androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2)
-                .setMediaSession(MediaSessionCompat.Token.fromToken(c.sessionToken)),
+            androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(0, 1, 2),
         )
         runCatching { nm().notify(NOTIF_MEDIA, b.build()) }
     }
