@@ -1,4 +1,4 @@
-From e3abd963836014429188ec8292f02dd2dd490dc2 Mon Sep 17 00:00:00 2001
+From c9ea7476c5e6b6e4ec7ef8d16e287462e721600e Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Fri, 12 Jun 2026 14:41:00 +0200
 Subject: [PATCH] =?UTF-8?q?cloud-ide:=20wrapper=20chrome=20+=20identity=20?=
@@ -19,9 +19,9 @@ Cloud-IDE files-fork patch (concern 1 branding + concern 5 wrapper chrome):
  app/build.gradle                              |  22 ++-
  .../filemanager/cloudide/CloudIdeNavBar.java  | 131 ++++++++++++++++++
  .../ui/activities/MainActivity.java           |   2 +
- file_operations/build.gradle                  |   3 +-
+ file_operations/build.gradle                  |   4 +-
  gradle/libs.versions.toml                     |   2 +-
- 5 files changed, 154 insertions(+), 6 deletions(-)
+ 5 files changed, 155 insertions(+), 6 deletions(-)
  create mode 100644 app/src/main/java/com/amaze/filemanager/cloudide/CloudIdeNavBar.java
 
 diff --git a/app/build.gradle b/app/build.gradle
@@ -229,16 +229,17 @@ index 2e835df77..a8425a775 100644
      intent = getIntent();
  
 diff --git a/file_operations/build.gradle b/file_operations/build.gradle
-index 5400d6445..c43faf89f 100644
+index 5400d6445..0ceb57aaf 100644
 --- a/file_operations/build.gradle
 +++ b/file_operations/build.gradle
-@@ -51,7 +51,8 @@ android {
+@@ -51,7 +51,9 @@ android {
  cargo {
      module = "./"
      libname = "rootoperations"
 -    targets = ["arm", "arm64", "x86", "x86_64"]
-+    // Cloud-IDE fork patch: constellation ships arm64-v8a only (hub abi_filters).
-+    targets = ["arm64"]
++    // Cloud-IDE fork patch: ABI selected per build via -PcloudIdeRustTargets
++    // (data-driven from ea_cloud-ide/build.json::release.abis). Default arm64.
++    targets = (project.findProperty("cloudIdeRustTargets") ?: "arm64").toString().split(",").collect { it.trim() }
      profile = "release"
      
      // Optional: Use cargo and rustc from the path

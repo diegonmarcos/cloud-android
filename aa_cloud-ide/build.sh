@@ -62,7 +62,21 @@ _json() { prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"; }
 # the pin is not re-downloaded. Mirrors ea_cloud-comms' bundle-forks, with the
 # source swapped from GHCR to the pinned upstream release (until our patched
 # forks publish). Called automatically by build/release.
+# Resolve an ABI (explicit arg, or build.json::release.abis default) into
+# "abi|rust_target|artifact_suffix". Single source of truth = build.json.
+_abi_fields() {
+  local abi="${1:-}"
+  [ -n "$abi" ] || abi="$(prefer_host jq -r '[.release.abis | to_entries[] | select((.key|startswith("_")|not) and (.value|type=="object") and (.value.default==true)) | .key][0] // "arm64-v8a"' "$SCRIPT_DIR/build.json")"
+  local rt def
+  rt="$(_json ".release.abis[\"$abi\"].rust_target")"
+  def="$(_json ".release.abis[\"$abi\"].default")"
+  [ -n "$rt" ] || { errlog "unknown abi '$abi' — not in build.json::release.abis"; return 1; }
+  local suffix=""; [ "$def" = "true" ] || suffix="-$abi"
+  echo "${abi}|${rt}|${suffix}"
+}
+
 step_bundle_forks() {
+  local abi_in="${1:-}"
   local assets="$SCRIPT_DIR/hub/src/main/assets/forks"
   mkdir -p "$assets"
   local key src url sha out have
@@ -82,7 +96,7 @@ step_bundle_forks() {
       # toolchain isn't available here (e.g. CI without rust/ndk) fall back to
       # the pinned upstream url so the hub still builds — LOUDLY logged, never
       # silent. (CI ships our patched APK via the GHCR route once fork-ship lands.)
-      if step_build_fork build-fork "$key" >/dev/null 2>&1; then
+      if step_build_fork build-fork "$key" "$abi_in" >/dev/null 2>&1; then
         cp "$SCRIPT_DIR/dist/cloud-ide-${key}.apk" "$out"
         log "bundle-forks: ✓ $key embedded OUR patched APK ($(wc -c <"$out") B, $(sha256sum "$out" | cut -d' ' -f1 | cut -c1-12)…)"
         continue
@@ -116,21 +130,29 @@ step_bundle_forks() {
 
 # ── hub build/test ─────────────────────────────────────────────────────
 step_build() {
-  step_bundle_forks
-  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, debug APK)"
+  local abifields abi suffix
+  abifields="$(_abi_fields "${2:-}")" || exit 1
+  abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f3)"
+  step_bundle_forks "$abi"
+  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, debug APK, abi $abi)"
   in_nix gradle :hub:assembleDebug
   mkdir -p "$DIST_DIR"
-  local out="$DIST_DIR/$(_json '.release.artifact.debug')"
+  local base out; base="$(_json '.release.artifact.debug')"
+  out="$DIST_DIR/${base%.apk}${suffix}.apk"
   cp "$SCRIPT_DIR/hub/build/outputs/apk/debug/hub-debug.apk" "$out"
   log "→ $out"
 }
 
 step_release() {
-  step_bundle_forks
-  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, release APK)"
+  local abifields abi suffix
+  abifields="$(_abi_fields "${2:-}")" || exit 1
+  abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f3)"
+  step_bundle_forks "$abi"
+  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, release APK, abi $abi)"
   in_nix gradle :hub:assembleRelease
   mkdir -p "$DIST_DIR"
-  local out="$DIST_DIR/$(_json '.release.artifact.release')"
+  local base out; base="$(_json '.release.artifact.release')"
+  out="$DIST_DIR/${base%.apk}${suffix}.apk"
   cp "$SCRIPT_DIR/hub/build/outputs/apk/release/hub-release.apk" "$out" 2>/dev/null \
     || cp "$SCRIPT_DIR/hub/build/outputs/apk/release/hub-release-unsigned.apk" "${out%.apk}-unsigned.apk"
   log "→ $DIST_DIR/"
@@ -254,7 +276,13 @@ step_materialize_fork() {
 # from build.json::forks.<key>.build.apk_glob → dist/cloud-ide-<key>.apk.
 step_build_fork() {
   local key="${2:-}"
-  [ -n "$key" ] || { errlog "usage: build.sh build-fork <files|utils|editor>"; exit 1; }
+  [ -n "$key" ] || { errlog "usage: build.sh build-fork <files|utils|editor> [abi]"; exit 1; }
+  # ABI → rust cargo target (data-driven). Passed to the fork's gradle as
+  # -PcloudIdeRustTargets so the patched native module builds for this ABI only.
+  local abifields abi rust_target gprops=()
+  abifields="$(_abi_fields "${3:-}")" || exit 1
+  abi="${abifields%%|*}"; rust_target="$(echo "$abifields" | cut -d'|' -f2)"
+  [ -n "$rust_target" ] && gprops+=("-PcloudIdeRustTargets=$rust_target")
   local tracker dest task glob
   tracker="$(_json ".forks.${key}.tracker_dir")"
   task="$(_json ".forks.${key}.build.task")"; task="${task:-assembleRelease}"
@@ -281,12 +309,25 @@ step_build_fork() {
     fi
   fi
 
-  log "build-fork[$key]: $tracker → $task (fork's own gradle wrapper)"
-  if [ -x "$dest/gradlew" ]; then
-    ( cd "$dest" && in_nix ./gradlew --no-daemon "$task" )
-  else
-    ( cd "$dest" && in_nix gradle "$task" )
+  # ABI-switch clean: rust-android-gradle leaves prior-ABI .so in
+  # build/rustJniLibs and AGP's mergeNativeLibs is cached, so switching ABI
+  # without a clean packages a STALE ABI. Track the last-built target in a
+  # marker (gitignored tracker file); clean when it changes → each per-ABI APK
+  # contains exactly its own ABI.
+  local marker="$dest/.cloud-ide-built-target"
+  if [ ! -f "$marker" ] || [ "$(cat "$marker" 2>/dev/null)" != "$rust_target" ]; then
+    log "build-fork[$key]: ABI is $rust_target (was $(cat "$marker" 2>/dev/null || echo none)) — gradle clean for a pure single-ABI APK"
+    if [ -x "$dest/gradlew" ]; then ( cd "$dest" && in_nix ./gradlew --no-daemon clean ); else ( cd "$dest" && in_nix gradle clean ); fi
+    rm -f "$marker"
   fi
+
+  log "build-fork[$key]: $tracker → $task (abi $abi, rust $rust_target)"
+  if [ -x "$dest/gradlew" ]; then
+    ( cd "$dest" && in_nix ./gradlew --no-daemon "$task" "${gprops[@]}" )
+  else
+    ( cd "$dest" && in_nix gradle "$task" "${gprops[@]}" )
+  fi
+  echo "$rust_target" > "$marker"
   mkdir -p "$DIST_DIR"
   local apk=""
   if [ -n "$glob" ]; then
@@ -312,22 +353,35 @@ _resolve_template() {
 
 step_oras_push() {
   [ "$(_json '.release.ghcr.enabled')" = "true" ] || { log "oras-push: disabled — skip"; return 0; }
-  local registry namespace image media_type artifact
+  local registry namespace image media_type
   registry="$(_json '.release.ghcr.registry')"
   namespace="$(_json '.release.ghcr.namespace')"
   image="$(_json '.release.ghcr.image')"
   media_type="$(_json '.release.ghcr.media_type')"
-  if   [ -f "$DIST_DIR/$(_json '.release.artifact.release')" ]; then artifact="$DIST_DIR/$(_json '.release.artifact.release')"
-  elif [ -f "$DIST_DIR/$(_json '.release.artifact.debug')" ];   then artifact="$DIST_DIR/$(_json '.release.artifact.debug')"
-  else errlog "oras-push: no APK in $DIST_DIR — run build/release first"; exit 1; fi
-  local adir aname; adir="$(dirname "$artifact")"; aname="$(basename "$artifact")"
-  local tmpl tag ref
-  while IFS= read -r tmpl; do
-    [ -z "$tmpl" ] && continue
-    tag="$(_resolve_template "$tmpl")"; ref="$registry/$namespace/$image:$tag"
-    log "oras push $ref ← $aname"
-    ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" )
-  done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
+
+  # ABI-aware publish: for EACH abi whose hub artifact exists in dist, push it
+  # under the configured tags each suffixed with the abi suffix (default abi →
+  # no suffix → the plain `latest`). The ABI-aware updater pulls <tag><suffix>.
+  local base_debug base_release pushed=0 abi suffix art aname adir tmpl tag ref
+  base_debug="$(_json '.release.artifact.debug')"      # e.g. Cloud-IDE-Hub.apk
+  base_release="$(_json '.release.artifact.release')"
+  while IFS= read -r abi; do
+    [ -z "$abi" ] && continue
+    suffix="$(_abi_fields "$abi" | cut -d'|' -f3)"
+    # Prefer the release artifact, else the debug one, for this abi.
+    if   [ -f "$DIST_DIR/${base_release%.apk}${suffix}.apk" ]; then art="$DIST_DIR/${base_release%.apk}${suffix}.apk"
+    elif [ -f "$DIST_DIR/${base_debug%.apk}${suffix}.apk" ];   then art="$DIST_DIR/${base_debug%.apk}${suffix}.apk"
+    else log "oras-push: no artifact for abi $abi (suffix '${suffix}') — skip"; continue; fi
+    adir="$(dirname "$art")"; aname="$(basename "$art")"
+    while IFS= read -r tmpl; do
+      [ -z "$tmpl" ] && continue
+      tag="$(_resolve_template "$tmpl")${suffix}"; ref="$registry/$namespace/$image:$tag"
+      log "oras push $ref ← $aname"
+      ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" )
+    done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
+    pushed=$((pushed+1))
+  done < <(prefer_host jq -r '.release.abis | to_entries[] | select(.key|startswith("_")|not) | .key' "$SCRIPT_DIR/build.json")
+  [ "$pushed" -ge 1 ] || { errlog "oras-push: no per-abi APK in $DIST_DIR — run build/release first"; exit 1; }
 }
 
 step_oras_pull() {
@@ -420,8 +474,8 @@ step_gh_release() {
 }
 
 case "$CMD" in
-  build)            step_build ;;
-  release)          step_release ;;
+  build)            step_build "$@" ;;
+  release)          step_release "$@" ;;
   dev)              step_dev ;;
   test)             step_test ;;
   instrument)       step_instrument ;;
@@ -430,7 +484,7 @@ case "$CMD" in
   shell)            step_shell ;;
   ship)             step_ship ;;
   verify-contract)  step_verify_contract ;;
-  bundle-forks)     step_bundle_forks ;;
+  bundle-forks)     step_bundle_forks "${2:-}" ;;
   materialize-fork) step_materialize_fork "$@" ;;
   build-fork)       step_build_fork "$@" ;;
   oras-push)        step_oras_push ;;

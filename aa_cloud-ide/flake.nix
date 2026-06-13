@@ -24,10 +24,12 @@
           };
         };
 
-        # Pinned stable Rust + the one Android target the constellation ships
-        # (arm64-v8a — the files-fork patch limits cargo targets to arm64).
+        # Pinned stable Rust + every Android ABI the constellation can ship
+        # (arm64-v8a default + x86_64 variant — the files-fork's cargo targets
+        # are selected per-build via -PcloudIdeRustTargets, data-driven from
+        # build.json::release.abis).
         rustAndroid = pkgs.rust-bin.stable.latest.default.override {
-          targets = [ "aarch64-linux-android" ];
+          targets = [ "aarch64-linux-android" "x86_64-linux-android" ];
         };
 
         # Toolchain pinned in one place. Mirrored in build.json::toolchain —

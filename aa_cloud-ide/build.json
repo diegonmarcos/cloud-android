@@ -34,6 +34,10 @@
     "aidl_service": "com.diegonmarcos.ide.IIdeService",
     "open_fork_action": "com.diegonmarcos.ide.action.OPEN_FORK"
   },
+  "ui": {
+    "_doc": "Hub UI defaults baked into BuildConfig. overlay_nav_bar_default: the floating cross-app wrapper bar (NavOverlayService) is DISABLED by default — Cloud-SuperApp now owns the system-wide bar. The code stays; Configs has a toggle (persisted in prefs) for users who run Cloud-IDE standalone.",
+    "overlay_nav_bar_default": false
+  },
   "modules": {
     "_doc": "Gradle module graph — settings.gradle iterates this (FIRE rule 6: never hardcode the list). Only the hub is an in-tree gradle module; the three forks are SEPARATE gradle/cordova projects living in their materialized tracker clones, built via `./build.sh build-fork <name>`, never included here.",
     "hub": {
@@ -108,6 +112,11 @@
   },
   "release": {
     "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as ea_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
+    "abis": {
+      "_doc": "ABI build axis. The hub is pure-JVM (ABI-agnostic); the ONLY native-bearing bundled app is the patched Amaze fork (Rust :file_operations). `build.sh build [abi]` / `build-fork <k> [abi]` / `bundle-forks [abi]` select one. `default:true` is what bare `build` / the CI artifact use; non-default abis get a -<abi> artifact suffix. rust_target = the rust-android-gradle cargo target key (passed as -PcloudIdeRustTargets).",
+      "arm64-v8a": { "rust_target": "arm64",   "default": true },
+      "x86_64":    { "rust_target": "x86_64" }
+    },
     "artifact": {
       "_doc": "Path under dist/ to publish. `debug` is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — THE hub app, not a side-by-side variant. asset_name matches `debug` so the engine skips a redundant copy.",
       "debug": "Cloud-IDE-Hub.apk",

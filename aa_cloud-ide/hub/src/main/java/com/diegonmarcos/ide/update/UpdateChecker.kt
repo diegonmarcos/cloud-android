@@ -21,12 +21,15 @@ internal class UpdateChecker(private val context: Context) {
     fun check(): Update? {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         try {
+            // ABI-aware: pull the GHCR tag matching THIS device's ABI so an x86
+            // device updates from the x86_64 artifact, arm64 from arm64, etc.
+            val abiTag = com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG + deviceAbiSuffix()
             val token = client.token()
-            val layer = client.manifest(com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG, token)
+            val layer = client.manifest(abiTag, token)
             val currentDigest = "sha256:" + currentInstalledApkSha256()
             if (currentDigest == layer.digest) {
-                Log.i(tag, "up to date: $currentDigest")
-                UpdateProgress.update(UpdateProgress.State.UpToDate(com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG))
+                Log.i(tag, "up to date: $currentDigest ($abiTag)")
+                UpdateProgress.update(UpdateProgress.State.UpToDate(abiTag))
                 return null
             }
             Log.i(tag, "update available: $currentDigest → ${layer.digest}")
@@ -52,6 +55,20 @@ internal class UpdateChecker(private val context: Context) {
             throw t
         }
     }
+
+    /** GHCR tag suffix for this device's ABI, from the baked build.json::release.abis
+     *  map. First matching Build.SUPPORTED_ABIS entry wins; its default abi → ""
+     *  (the `latest` tag), others → "-<abi>". Unknown device ABI → "" (default). */
+    private fun deviceAbiSuffix(): String = runCatching {
+        val abis = org.json.JSONObject(
+            String(android.util.Base64.decode(
+                com.diegonmarcos.ide.BuildConfig.ABIS_JSON_B64, android.util.Base64.DEFAULT)))
+        for (abi in android.os.Build.SUPPORTED_ABIS) {
+            val o = abis.optJSONObject(abi) ?: continue
+            return if (o.optBoolean("default", false)) "" else "-$abi"
+        }
+        ""
+    }.getOrDefault("")
 
     private fun currentInstalledApkSha256(): String {
         @Suppress("DEPRECATION")

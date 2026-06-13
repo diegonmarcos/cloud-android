@@ -120,6 +120,14 @@ android {
         buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
         buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
+
+        // UI defaults (build.json::ui). Floating wrapper bar off by default —
+        // Cloud-SuperApp owns the system bar; Configs toggle re-enables it.
+        buildConfigField "boolean", "OVERLAY_NAVBAR_DEFAULT", "${buildJson.ui.overlay_nav_bar_default}"
+
+        // ABI map (build.json::release.abis) — the ABI-aware updater picks the
+        // GHCR tag matching the device's ABI (default abi → no suffix).
+        buildConfigField "String", "ABIS_JSON_B64", "\"${groovy.json.JsonOutput.toJson(buildJson.release.abis.findAll { k, v -> !k.startsWith('_') }).bytes.encodeBase64().toString()}\""
         buildConfigField "String", "BUILD_TIMESTAMP",  "\"${buildTimestamp}\""
 
         // Navigation (one-icon + wrapper chrome) — data-driven from contract.

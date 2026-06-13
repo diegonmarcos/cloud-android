@@ -12,6 +12,9 @@
     <string name="tile_configs">⚙ Configs — Update · About</string>
     <string name="tile_launch_failed">Could not launch</string>
     <string name="overlay_grant_hint">Allow “Display over other apps” so the Cloud-IDE bar can stay on top</string>
+    <string name="cfg_overlay_bar">Floating nav bar</string>
+    <string name="cfg_overlay_on">ON · tap to disable (Cloud-SuperApp normally provides it)</string>
+    <string name="cfg_overlay_off">OFF · Cloud-SuperApp provides the bar · tap to enable for standalone use</string>
 
     <!-- Configs -->
     <string name="configs_title">Configs</string>

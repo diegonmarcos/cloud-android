@@ -61,8 +61,29 @@ class ConfigsActivity : AppCompatActivity() {
             enabled = true,
         ) { startActivity(android.content.Intent(this, AboutActivity::class.java)) })
 
+        // ── Floating nav bar toggle (OFF by default; SuperApp owns the bar) ─
+        val navOn = IdePrefs.overlayNavBar(this)
+        body.addView(Ui.appCard(
+            this, if (navOn) "▣" else "▢",
+            getString(R.string.cfg_overlay_bar),
+            getString(if (navOn) R.string.cfg_overlay_on else R.string.cfg_overlay_off),
+            enabled = true,
+        ) { toggleOverlayBar(navOn) })
+
         root.addView(body)
         setContentView(root)
+    }
+
+    private fun toggleOverlayBar(wasOn: Boolean) {
+        val nowOn = !wasOn
+        IdePrefs.setOverlayNavBar(this, nowOn)
+        if (nowOn && !NavOverlayService.hasPermission(this)) {
+            android.widget.Toast.makeText(this, getString(R.string.overlay_grant_hint),
+                android.widget.Toast.LENGTH_LONG).show()
+            NavOverlayService.requestPermission(this)
+        }
+        if (!nowOn) NavOverlayService.hide(this)
+        recreate()   // refresh the card's on/off state
     }
 
     private fun startUpdateCheck() {

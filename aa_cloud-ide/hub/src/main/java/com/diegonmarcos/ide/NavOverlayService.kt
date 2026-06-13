@@ -157,6 +157,9 @@ class NavOverlayService : Service() {
 
         /** Raise/refresh the persistent bar with [currentPkg] marked. */
         fun show(ctx: Context, currentPkg: String) {
+            // Disabled by default — Cloud-SuperApp owns the system-wide bar.
+            // Re-enabled via Configs (IdePrefs). All rendering code below stays.
+            if (!IdePrefs.overlayNavBar(ctx)) return
             ctx.startService(Intent(ctx, NavOverlayService::class.java).apply {
                 putExtra(EXTRA_CURRENT_PKG, currentPkg)
             })
