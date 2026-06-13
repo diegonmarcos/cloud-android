@@ -84,6 +84,7 @@ class MediaProxy(private val ctx: Context) {
             .setSubText("Cloud SuperApp - NC Media")
             .setOnlyAlertOnce(true)
             .setOngoing(playing)
+            .setGroup("nc_media") // own group → not auto-bundled with the others
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         if (art != null) b.setLargeIcon(art)
         b.addAction(android.R.drawable.ic_media_previous, "Prev", pi("media:prev"))

@@ -502,6 +502,10 @@ class FloatingNavService : Service() {
             .setDeleteIntent(serviceAction(ACTION_RENOTIFY))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            // Own group so Android doesn't auto-bundle the NC notifications
+            // together (it can't be force-expanded; keeping them separate is
+            // the reliable way to avoid a collapsed bundle).
+            .setGroup("nc_quick_actions")
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(collapsed)
             .setCustomBigContentView(expanded)

@@ -15,7 +15,6 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -93,7 +92,8 @@ class ScreensaverService : Service() {
                 typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             }
             dateLabel = TextView(this@ScreensaverService).apply {
-                setTextColor(0x99FFFFFF.toInt()); textSize = 16f
+                setTextColor(0xCCFFFFFF.toInt()); textSize = 18f
+                gravity = Gravity.CENTER_HORIZONTAL
                 setPadding(0, dp(6), 0, 0)
             }
             addView(clock); addView(dateLabel)
@@ -115,7 +115,7 @@ class ScreensaverService : Service() {
             isClickable = true
             setOnClickListener { stopSelf() }
             layoutParams = FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-                .apply { bottomMargin = dp(64) }
+                .apply { bottomMargin = dp(96) } // clear the system nav bar
         })
 
         runCatching { wm.addView(root, overlayParams()) }
@@ -128,12 +128,33 @@ class ScreensaverService : Service() {
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_FULLSCREEN
+        // Use the REAL screen size (incl. the system-bar regions) so the black
+        // covers edge-to-edge — MATCH_PARENT gets clipped to the content frame,
+        // leaving the app's purple gradient + nav bar area showing.
+        val (w, h) = realScreenSize()
         return WindowManager.LayoutParams(
-            MATCH_PARENT, MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             flags, android.graphics.PixelFormat.OPAQUE,
-        ).apply { gravity = Gravity.TOP or Gravity.START }
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 0; y = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            }
+        }
     }
+
+    /** Full physical screen size, including the status- and nav-bar regions. */
+    private fun realScreenSize(): Pair<Int, Int> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val b = wm.maximumWindowMetrics.bounds
+            b.width() to b.height()
+        } else {
+            val dm = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION") wm.defaultDisplay.getRealMetrics(dm)
+            dm.widthPixels to dm.heightPixels
+        }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 

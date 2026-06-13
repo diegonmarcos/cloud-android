@@ -364,6 +364,7 @@ class LocationTrackerService : Service() {
             .setOnlyAlertOnce(true)
             .setContentIntent(openMain)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setGroup("nc_maps") // own group → not auto-bundled with the other NC notifications
             .build()
             // Persistent in the notification centre: FLAG_NO_CLEAR blocks
             // swipe-to-dismiss + "clear all" while tracking is active.
