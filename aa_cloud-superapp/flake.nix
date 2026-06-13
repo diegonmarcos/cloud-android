@@ -20,8 +20,10 @@
         };
 
         # ── Pin SDK/build-tools/NDK in one place. Toolchain versions are
-        #    mirrored in build.json::toolchain — keep them in sync.
-        androidEnv = pkgs.androidenv.composeAndroidPackages {
+        #    mirrored in build.json::toolchain — keep them in sync. These are
+        #    the args common to BOTH the lean build SDK and the heavy emulator
+        #    SDK (DRY — change once).
+        baseAndroidArgs = {
           toolsVersion        = "26.1.1";
           platformToolsVersion = "35.0.2";
           # build-tools 35.0.0 required by compileSdk 35 (driven by
@@ -37,20 +39,27 @@
           includeNDK          = true;
           ndkVersions         = [ "26.1.10909125" ];
           cmakeVersions       = [ "3.22.1" ];
-          # Emulator + an arm64 system image for FULL-FIDELITY testing of the
-          # arm64-v8a APK (`./build.sh emulator`). On this x86_64 host the
-          # emulator emulates arm64 wholesale (TCG/software — slow but faithful),
-          # so it needs NO libhoudini translation, unlike the Waydroid path.
-          # The image ABI + API here must match build.json::emulator.system_image
-          # (system-images;android-34;google_apis;arm64-v8a).
+        };
+
+        # Lean BUILD SDK — NO emulator, NO system images. Used by
+        # devShells.default (i.e. `build.sh build`), so a plain APK build never
+        # pulls the ~hundreds-of-MB emulator + system-image closure.
+        androidEnv = pkgs.androidenv.composeAndroidPackages baseAndroidArgs;
+        androidSdk = androidEnv.androidsdk;
+
+        # Heavy EMULATOR SDK — adds the emulator + an arm64 system image, ONLY
+        # for `build.sh emulator` (full-fidelity arm64 testing, no libhoudini).
+        # Kept out of the default build shell. ABI/API must match
+        # build.json::emulator.system_image
+        # (system-images;android-34;google_apis;arm64-v8a). One composition →
+        # emulator + avdmanager + image share a single ANDROID_HOME (required).
+        emulatorEnv = pkgs.androidenv.composeAndroidPackages (baseAndroidArgs // {
           includeEmulator     = true;
           includeSystemImages = true;
           systemImageTypes    = [ "google_apis" ];
           abiVersions         = [ "arm64-v8a" ];
-        };
-
-        # Convenience env vars Gradle expects to find.
-        androidSdk = androidEnv.androidsdk;
+        });
+        emulatorSdk = emulatorEnv.androidsdk;
       in {
         devShells.default = pkgs.mkShell {
           name = "superapp-devshell";
@@ -79,6 +88,22 @@
             echo "  android-sdk=$ANDROID_HOME"
             echo "Commands: ./build.sh {build|release|dev|test|lint|clean|shell|ship}"
           '';
+        };
+
+        # Separate, heavy shell for `build.sh emulator` only. Carries the
+        # emulator + arm64 system image (emulatorSdk) so the default build
+        # shell stays lean. build.sh reaches it via `nix develop .#emulator`.
+        devShells.emulator = pkgs.mkShell {
+          name = "superapp-emulator-devshell";
+          buildInputs = with pkgs; [
+            jdk17
+            emulatorSdk       # emulator + avdmanager + arm64 system image
+            android-tools     # adb
+            jq                # build.sh reads build.json::emulator
+          ];
+          ANDROID_HOME = "${emulatorSdk}/libexec/android-sdk";
+          ANDROID_SDK_ROOT = "${emulatorSdk}/libexec/android-sdk";
+          JAVA_HOME = "${pkgs.jdk17}/lib/openjdk";
         };
 
         # ── APK package (placeholder — needs gradle wrapper + lockfile to be

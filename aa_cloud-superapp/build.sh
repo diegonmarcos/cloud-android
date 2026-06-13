@@ -48,6 +48,19 @@ in_nix() {
   fi
 }
 
+# Like in_nix but uses the heavy `.#emulator` devShell (emulator binary +
+# arm64 system image). Only `build.sh emulator` needs it — keeping these out
+# of the default shell means a plain `build.sh build` never realises the
+# ~hundreds-of-MB emulator/system-image closure.
+in_nix_emulator() {
+  if [ "${BYPASS_NIX:-0}" = "1" ]; then
+    "$@"
+  else
+    command -v nix >/dev/null 2>&1 || { errlog "nix not on PATH; install nix or set BYPASS_NIX=1"; exit 1; }
+    nix develop "$SCRIPT_DIR#emulator" --command "$@"
+  fi
+}
+
 # Lightweight metadata commands (jq for build.json, git for HEAD sha, etc.)
 # don't need the Android devShell. On hosts where the devShell isn't
 # usable (e.g. aarch64 Termux — the Android SDK derivation is x86-only),
@@ -141,12 +154,12 @@ step_emulator() {
 
   # Create the AVD once (idempotent). avdmanager prompts for a custom hardware
   # profile → answer "no".
-  if ! in_nix avdmanager list avd 2>/dev/null | grep -q "Name: $avd"; then
+  if ! in_nix_emulator avdmanager list avd 2>/dev/null | grep -q "Name: $avd"; then
     log "Creating AVD '$avd' ($img${device:+, device=$device})"
     if [ -n "$device" ]; then
-      printf 'no\n' | in_nix avdmanager create avd -n "$avd" -k "$img" --device "$device" --force
+      printf 'no\n' | in_nix_emulator avdmanager create avd -n "$avd" -k "$img" --device "$device" --force
     else
-      printf 'no\n' | in_nix avdmanager create avd -n "$avd" -k "$img" --force
+      printf 'no\n' | in_nix_emulator avdmanager create avd -n "$avd" -k "$img" --force
     fi
   fi
 
@@ -156,7 +169,7 @@ step_emulator() {
 
   log "Booting emulator '$avd' (arm64 — software-emulated; first boot is slow)"
   log "  → in another shell: ./build.sh ship   (build + adb install into it)"
-  in_nix emulator -avd "$avd" "${boot_args[@]}" "$@"
+  in_nix_emulator emulator -avd "$avd" "${boot_args[@]}" "$@"
 }
 
 # ── data-driven release helpers ────────────────────────────────────────
