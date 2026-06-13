@@ -482,7 +482,7 @@ class FloatingNavService : Service() {
         )
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_cloud)
-            .setContentTitle("Cloud SuperApp - Notification Center")
+            .setContentTitle("Cloud SuperApp - NC Quick Actions")
             .setContentText("Quick actions")
             .setOngoing(true).setOnlyAlertOnce(true)
             .setContentIntent(open)

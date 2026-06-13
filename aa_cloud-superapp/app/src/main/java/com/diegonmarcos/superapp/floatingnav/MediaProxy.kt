@@ -73,7 +73,7 @@ class MediaProxy(private val ctx: Context) {
             .setSmallIcon(R.drawable.ic_stat_cloud)
             .setContentTitle(title)
             .setContentText(artist)
-            .setSubText("Cloud SuperApp - Notification Center")
+            .setSubText("Cloud SuperApp - NC Media")
             .setOnlyAlertOnce(true)
             .setOngoing(playing)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
