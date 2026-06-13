@@ -70,9 +70,10 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         renderTiles()   // refresh installed-state after a PackageInstaller round-trip
-        // The bar is PERSISTENT across all our apps — raise it (current = hub)
-        // whenever the hub comes forward and the overlay grant exists.
-        if (NavOverlayService.hasPermission(this)) {
+        // The wrapper bar is OFF by default (Cloud-SuperApp owns the single
+        // cross-app bar). Only raise it when the user explicitly enabled it in
+        // Configs (IdePrefs.overlayNavBar, default false) AND granted overlay.
+        if (IdePrefs.overlayNavBar(this) && NavOverlayService.hasPermission(this)) {
             NavOverlayService.show(this, packageName)
         }
     }

@@ -27,8 +27,9 @@ object ForkLauncher {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         configure(intent)
         ctx.startActivity(intent)
-        // Wrapper chrome: the persistent cross-app bar, current chip = this app.
-        NavOverlayService.show(ctx, fork.launchPackage)
+        // Wrapper chrome is OFF by default (Cloud-SuperApp owns the cross-app
+        // bar) — only raise it when the user opted in via Configs.
+        if (IdePrefs.overlayNavBar(ctx)) NavOverlayService.show(ctx, fork.launchPackage)
         return true
     }
 }

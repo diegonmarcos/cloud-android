@@ -797,6 +797,9 @@ class MainActivity : AppCompatActivity(),
         val star = findViewById<android.widget.TextView?>(R.id.sirius_star) ?: return
         if (!BuildConfig.SIRIUS_STAR_ENABLED) { star.visibility = View.GONE; return }
         star.text = BuildConfig.SIRIUS_STAR_GLYPH
+        // Data-driven size (build.json::ui.sirius_star.size_sp) — keep it small,
+        // just a touch bigger than the galaxy backdrop's stars.
+        star.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, BuildConfig.SIRIUS_STAR_SIZE_SP)
         star.setOnClickListener {
             if (!com.diegonmarcos.superapp.floatingnav.FloatingNavService.showMenu(this)) {
                 Toast.makeText(this,
@@ -813,11 +816,12 @@ class MainActivity : AppCompatActivity(),
         if (show) {
             star.visibility = View.VISIBLE
             if (siriusPulse == null) {
-                val sx = android.animation.ObjectAnimator.ofFloat(star, "scaleX", 1f, 1.12f)
-                val sy = android.animation.ObjectAnimator.ofFloat(star, "scaleY", 1f, 1.12f)
-                val al = android.animation.ObjectAnimator.ofFloat(star, "alpha", 0.82f, 1f)
+                // Subtle twinkle only — no big scale pulse.
+                val sx = android.animation.ObjectAnimator.ofFloat(star, "scaleX", 1f, 1.05f)
+                val sy = android.animation.ObjectAnimator.ofFloat(star, "scaleY", 1f, 1.05f)
+                val al = android.animation.ObjectAnimator.ofFloat(star, "alpha", 0.7f, 1f)
                 for (a in listOf(sx, sy, al)) {
-                    a.duration = 1500
+                    a.duration = 1800
                     a.repeatCount = android.animation.ObjectAnimator.INFINITE
                     a.repeatMode = android.animation.ObjectAnimator.REVERSE
                 }

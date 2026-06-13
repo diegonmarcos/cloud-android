@@ -158,32 +158,27 @@ class FloatingNavService : Service() {
      */
     private fun bubbleTouch(lp: WindowManager.LayoutParams): View.OnTouchListener {
         val slop = android.view.ViewConfiguration.get(this).scaledTouchSlop
-        val longPressMs = android.view.ViewConfiguration.getLongPressTimeout().toLong()
         return object : View.OnTouchListener {
             private var downX = 0f; private var downY = 0f
             private var startX = 0; private var startY = 0
-            private var dragArmed = false
-            private var movedFar = false
-            private var arm: Runnable? = null
+            private var dragging = false
 
             override fun onTouch(view: View, e: MotionEvent): Boolean {
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y
-                        dragArmed = false; movedFar = false
-                        arm = Runnable {
-                            dragArmed = true
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                        }.also { main.postDelayed(it, longPressMs) }
+                        dragging = false
                         return true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         val dx = e.rawX - downX; val dy = e.rawY - downY
-                        if (!movedFar && Math.hypot(dx.toDouble(), dy.toDouble()) > slop) {
-                            movedFar = true
-                            if (!dragArmed) { arm?.let(main::removeCallbacks); arm = null } // scroll before hold → not a drag
+                        // Free-drag: as soon as the finger travels past touch-slop
+                        // it's a move (no long-press wait). First haptic = nice cue.
+                        if (!dragging && Math.hypot(dx.toDouble(), dy.toDouble()) > slop) {
+                            dragging = true
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
                         }
-                        if (dragArmed) {
+                        if (dragging) {
                             lp.x = (startX + dx).toInt().coerceIn(0, maxBubbleX(view.width))
                             lp.y = (startY + dy).toInt().coerceIn(0, maxBubbleY(view.height))
                             runCatching { wm.updateViewLayout(view, lp) }
@@ -191,10 +186,10 @@ class FloatingNavService : Service() {
                         return true
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        arm?.let(main::removeCallbacks); arm = null
-                        if (dragArmed) {
+                        if (dragging) {
                             bubbleX = lp.x; bubbleY = lp.y; savePos()
-                        } else if (!movedFar && e.actionMasked == MotionEvent.ACTION_UP) {
+                        } else if (e.actionMasked == MotionEvent.ACTION_UP) {
+                            // No drag → a tap → open the menu.
                             view.performClick()
                             cfg.contextFor(lastForeground)?.let { showBar(it) }
                         }
