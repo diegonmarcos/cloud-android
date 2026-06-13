@@ -252,6 +252,16 @@
                 android:value="Floating cross-app navigation bar overlay for the Cloud SuperApp launcher" />
         </service>
 
+        <!-- Invisible trampoline for notification action buttons — performs
+             the action + finishes, which closes the notification shade. -->
+        <activity
+            android:name=".floatingnav.NavActionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:noHistory="true" />
+
         <!-- ScreensaverService — full-black cover overlay (Black-Screen-style;
              keeps apps playing underneath, no lock). Started from the
              floating-nav Screensaver action; same overlay + FGS perms. -->

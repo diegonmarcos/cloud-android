@@ -460,10 +460,14 @@ class FloatingNavService : Service() {
         }
     }
 
-    /** PendingIntent that runs an action target via onStartCommand(ACTION_NAV). */
-    private fun actionPi(target: String): PendingIntent = PendingIntent.getService(
+    /** PendingIntent for a notification action — routed through the invisible
+     *  NavActionActivity so tapping it ALSO closes the notification shade
+     *  (a service PendingIntent would leave the shade open). */
+    private fun actionPi(target: String): PendingIntent = PendingIntent.getActivity(
         this, target.hashCode(),
-        Intent(this, FloatingNavService::class.java).setAction(ACTION_NAV).putExtra(EXTRA_TARGET, target),
+        Intent(this, NavActionActivity::class.java)
+            .putExtra(NavActionActivity.EXTRA_TARGET, target)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
@@ -523,6 +527,15 @@ class FloatingNavService : Service() {
 
         fun stop(ctx: Context) {
             ctx.stopService(Intent(ctx, FloatingNavService::class.java))
+        }
+
+        /** Run a notification-action target on the service (called by the
+         *  NavActionActivity trampoline after it closes the shade). */
+        fun runAction(ctx: Context, target: String) {
+            val i = Intent(ctx, FloatingNavService::class.java)
+                .setAction(ACTION_NAV).putExtra(EXTRA_TARGET, target)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(i)
+            else ctx.startService(i)
         }
     }
 }
