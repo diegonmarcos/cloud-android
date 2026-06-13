@@ -481,7 +481,7 @@ class FloatingNavService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_cloud)
             .setContentTitle("Cloud SuperApp - Notification Center")
             .setContentText("Quick actions")
             .setOngoing(true).setOnlyAlertOnce(true)

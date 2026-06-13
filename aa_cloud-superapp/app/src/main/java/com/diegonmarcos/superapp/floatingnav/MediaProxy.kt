@@ -70,7 +70,7 @@ class MediaProxy(private val ctx: Context) {
             ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
 
         val b = NotificationCompat.Builder(ctx, MEDIA_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_cloud)
             .setContentTitle(title)
             .setContentText(artist)
             .setSubText("Cloud SuperApp - Notification Center")

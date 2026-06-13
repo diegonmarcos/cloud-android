@@ -38,7 +38,7 @@ class InfosNotifier(private val ctx: Context) {
             g.messages.forEach { inbox.addLine(it) }
             inbox.setSummaryText("${g.messages.size} new")
             val child = NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_stat_cloud)
                 .setContentTitle(g.title)
                 .setContentText(g.messages.firstOrNull() ?: "")
                 .setGroup(GROUP_KEY)
@@ -56,7 +56,7 @@ class InfosNotifier(private val ctx: Context) {
         groups.forEach { summary.addLine("${it.title} · ${it.messages.size} new") }
         summary.setSummaryText("$total alerts")
         val sum = NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_cloud)
             .setContentTitle("Cloud Alerts")
             .setContentText("$total new alerts")
             .setNumber(total)
