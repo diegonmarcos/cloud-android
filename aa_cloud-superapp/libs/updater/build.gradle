@@ -9,6 +9,14 @@ plugins {
 def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def ghcr = buildJson.release.ghcr
 def au   = buildJson.release.auto_update
+// ABI→update-tag map for the ABI-aware updater. Flattened from
+// release.variants[]: each variant's supported_abis all point at its
+// update_tag. The updater resolves the device's tag by the first
+// Build.SUPPORTED_ABIS entry present in this map, falling back to
+// AUTO_UPDATE_TAG (arm64 `latest`). Format: "abi=tag;abi=tag;…".
+def auTagMap = (buildJson.release.variants ?: []).collectMany { v ->
+    (v.supported_abis ?: []).collect { abi -> "${abi}=${v.update_tag}" }
+}.join(';')
 
 android {
     namespace 'com.diegonmarcos.superapp.updater'
@@ -23,6 +31,7 @@ android {
         buildConfigField "String",  "GHCR_IMAGE",           "\"${ghcr.image}\""
         buildConfigField "String",  "GHCR_MEDIA_TYPE",      "\"${ghcr.media_type}\""
         buildConfigField "String",  "AUTO_UPDATE_TAG",      "\"${au.tag}\""
+        buildConfigField "String",  "AUTO_UPDATE_TAG_MAP",  "\"${auTagMap}\""
         buildConfigField "long",    "AUTO_UPDATE_INTERVAL_HOURS",  "${au.interval_hours}L"
         buildConfigField "boolean", "AUTO_UPDATE_ENABLED",         "${au.enabled}"
         buildConfigField "boolean", "AU_REQUIRE_UNMETERED",        "${au.require_unmetered_network}"

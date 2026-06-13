@@ -4749,6 +4749,27 @@
       "debug": "Cloud-SuperApp.apk",
       "release": "Cloud-SuperApp-release.apk"
     },
+    "_doc_variants": "Per-ABI build variants. The CI workflow runs one job per variant (matrix); the engine reads SUPERAPP_VARIANT to override the ABI filter (→ gradle env SUPERAPP_ABIS), the dist artifact name, the GHCR tag suffix, and the GitHub-release asset name. `arm64` is the DEFAULT — when SUPERAPP_VARIANT is unset the engine behaves exactly as before (arm64-v8a, Cloud-SuperApp.apk, ghcr :latest). `x86_64` adds a parallel artifact for Waydroid / desktop emulators, published to the SAME rolling `latest` GitHub release under a distinct filename, and to GHCR under tag suffix `-x86_64`. `supported_abis` drives the updater's ABI→tag map (AUTO_UPDATE_TAG_MAP, baked in libs/updater): a device resolves its update tag by the first Build.SUPPORTED_ABIS entry that matches — native ABIs precede libhoudini-translated ones, so an x86_64 Waydroid correctly pulls `latest-x86_64`. `update_tag` MUST equal `latest` + `ghcr_tag_suffix` so the updater and the publisher agree. Add an ABI = append a variant here; no Kotlin/gradle/workflow edits beyond the matrix list.",
+    "variants": [
+      {
+        "id": "arm64",
+        "abis": [ "arm64-v8a" ],
+        "supported_abis": [ "arm64-v8a", "armeabi-v7a" ],
+        "artifact_debug": "Cloud-SuperApp.apk",
+        "gh_asset": "Cloud-SuperApp.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": [ "x86_64" ],
+        "supported_abis": [ "x86_64", "x86" ],
+        "artifact_debug": "Cloud-SuperApp-x86_64.apk",
+        "gh_asset": "Cloud-SuperApp-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ],
     "ghcr": {
       "_doc": "ORAS push as an OCI artifact (not a container — APK is a blob). One :latest tag plus per-commit sha + per-version tags. Image renamed from `superapp` to `cloud-superapp` — old package becomes orphan.",
       "enabled": true,

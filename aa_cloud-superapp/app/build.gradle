@@ -318,7 +318,14 @@ android {
         // 4 ABIs to ~15 MB for one ABI. Trades older-32-bit-device + x86-
         // emulator support for ~45 MB APK savings.
         ndk {
-            def abis = buildJson.android.abi_filters ?: ['arm64-v8a']
+            // ABI is data-driven with an env override: the engine exports
+            // SUPERAPP_ABIS (CSV) per release.variants[] when SUPERAPP_VARIANT
+            // is set (CI builds one job per ABI). Unset → build.json default
+            // (arm64-v8a), i.e. the phone build is byte-identical to before.
+            def abiOverride = System.getenv('SUPERAPP_ABIS')
+            def abis = (abiOverride?.trim()) \
+                ? abiOverride.split(',').collect { it.trim() }.findAll { it } \
+                : (buildJson.android.abi_filters ?: ['arm64-v8a'])
             abiFilters.addAll(abis as List)
         }
         buildConfigField "String", "GIT_SHORT_SHA",         "\"${shortSha}\""

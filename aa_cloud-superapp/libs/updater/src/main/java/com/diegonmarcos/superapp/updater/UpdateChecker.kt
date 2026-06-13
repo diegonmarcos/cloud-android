@@ -26,7 +26,9 @@ internal class UpdateChecker(private val context: Context) {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         try {
             val token = client.token()
-            val layer = client.manifest(BuildConfig.AUTO_UPDATE_TAG, token)
+            // ABI-aware: x86_64 (Waydroid/emulator) pulls `latest-x86_64`,
+            // arm64 phones pull `latest`. See AbiUpdateTag.
+            val layer = client.manifest(AbiUpdateTag.current(), token)
             val currentDigest = "sha256:" + currentInstalledApkSha256()
             if (currentDigest == layer.digest) {
                 Log.i(tag, "current matches remote: $currentDigest")
@@ -51,6 +53,18 @@ internal class UpdateChecker(private val context: Context) {
                 error("downloaded digest $downloadedSha != manifest ${layer.digest}")
             }
             return Update(layer.digest, layer.size, layer.title, target)
+        } catch (e: GhcrClient.HttpException) {
+            // A 404 means the GHCR tag for THIS device's ABI hasn't been
+            // published yet (e.g. an x86_64 build before its CI variant has
+            // shipped). That's "no update available", NOT a failure — don't
+            // surface a scary URL error. Any other status is a real failure.
+            if (e.code == 404) {
+                Log.i(tag, "no remote build for this ABI yet (404: ${e.target}) — treating as up to date")
+                UpdateProgress.reset()
+                return null
+            }
+            UpdateProgress.update(UpdateProgress.State.Failed(e.message ?: e.toString()))
+            throw e
         } catch (t: Throwable) {
             UpdateProgress.update(UpdateProgress.State.Failed(t.message ?: t.toString()))
             throw t

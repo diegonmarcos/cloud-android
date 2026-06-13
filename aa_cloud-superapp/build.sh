@@ -63,9 +63,10 @@ prefer_host() {
 
 step_build() {
   log "Build: $(_release_var '.name') (debug APK)"
+  _export_variant_abis
   in_nix gradle :app:assembleDebug
   mkdir -p "$DIST_DIR"
-  local out="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  local out="$DIST_DIR/$(_variant_artifact)"
   cp "$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$out"
   log "→ $out"
 }
@@ -103,11 +104,14 @@ step_waydroid_install() {
   # Build + install the APK into a running Waydroid session on THIS host.
   # `waydroid` is a system command (NixOS host flake), not part of the Android
   # devShell — call it directly, not via in_nix. Artifact + app-id come from
-  # build.json (data-driven). Requires the ARM bridge: arm64-only APK + x86_64
-  # Waydroid ⇒ libhoudini, installed by the host's waydroid-arm-bootstrap.
+  # build.json (data-driven), honouring SUPERAPP_VARIANT.
+  #   • Default (arm64) install on x86_64 Waydroid needs the ARM bridge
+  #     (libhoudini / libndk_translation) from the host's waydroid bootstrap.
+  #   • SUPERAPP_VARIANT=x86_64 builds a NATIVE x86_64 APK — no bridge needed;
+  #     this is the recommended path on the Surface desktop.
   step_build
   local apk app_id
-  apk="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  apk="$DIST_DIR/$(_variant_artifact)"
   app_id="$(_release_var '.android.application_id')"
 
   command -v waydroid >/dev/null 2>&1 || {
@@ -163,6 +167,49 @@ _release_var() {
   prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"
 }
 
+# ── ABI variant helpers ────────────────────────────────────────────────
+# SUPERAPP_VARIANT (env) selects a release.variants[] entry. Unset = arm64
+# default → every helper falls back to the legacy single-variant keys, so
+# the arm64 path is byte-identical to before. _variant_field reads one
+# field off the selected variant (empty when unset / not found).
+_variant_field() {
+  local v="${SUPERAPP_VARIANT:-}"
+  [ -z "$v" ] && return 0
+  prefer_host jq -r --arg v "$v" \
+    '(.release.variants[]? | select(.id==$v) | '"$1"') // empty' "$SCRIPT_DIR/build.json"
+}
+
+# dist/ artifact filename for the active variant (default: legacy debug key).
+_variant_artifact() {
+  local n; n="$(_variant_field '.artifact_debug')"
+  [ -n "$n" ] && { echo "$n"; return; }
+  _release_var '.release.artifact.debug'
+}
+
+# GitHub-release asset filename for the active variant.
+_variant_gh_asset() {
+  local n; n="$(_variant_field '.gh_asset')"
+  [ -n "$n" ] && { echo "$n"; return; }
+  _resolve_template "$(_release_var '.release.gh_release.asset_name')"
+}
+
+# GHCR tag suffix for the active variant ("" for arm64).
+_variant_tag_suffix() { _variant_field '.ghcr_tag_suffix'; }
+
+# Export SUPERAPP_ABIS (CSV) for gradle from the active variant. No-op when
+# unset → gradle reads build.json::android.abi_filters.
+_export_variant_abis() {
+  # NOTE: must end with a TRUE status. Called bare in step_build under
+  # `set -e`; a trailing `[ -n "$csv" ] && {…}` returns 1 on the default
+  # (no-variant) path where csv is empty → aborts the build. Use an if-block.
+  local csv; csv="$(_variant_field '.abis | join(",")')"
+  if [ -n "$csv" ]; then
+    export SUPERAPP_ABIS="$csv"
+    log "Variant ${SUPERAPP_VARIANT:-}: ABIs=$csv"
+  fi
+  return 0
+}
+
 _resolve_template() {
   # Expand {sha} → GITHUB_SHA[:8] (or git rev-parse --short=8), {version_name} → build.json
   local tmpl="$1"
@@ -181,8 +228,11 @@ step_oras_push() {
   image="$(_release_var '.release.ghcr.image')"
   media_type="$(_release_var '.release.ghcr.media_type')"
 
-  # Prefer release apk if it exists, else debug.
-  if   [ -f "$DIST_DIR/$(_release_var '.release.artifact.release')" ]; then
+  # Active-variant artifact first (x86_64 build only produces that one),
+  # then release, then legacy debug.
+  if   [ -f "$DIST_DIR/$(_variant_artifact)" ]; then
+    artifact="$DIST_DIR/$(_variant_artifact)"
+  elif [ -f "$DIST_DIR/$(_release_var '.release.artifact.release')" ]; then
     artifact="$DIST_DIR/$(_release_var '.release.artifact.release')"
   elif [ -f "$DIST_DIR/$(_release_var '.release.artifact.debug')" ]; then
     artifact="$DIST_DIR/$(_release_var '.release.artifact.debug')"
@@ -199,10 +249,13 @@ step_oras_push() {
   # Iterate templated tags from build.json (data-driven, NO hardcoded list).
   local tags
   tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
+  local suffix; suffix="$(_variant_tag_suffix)"
   while IFS= read -r tmpl; do
     [ -z "$tmpl" ] && continue
     local tag ref
-    tag="$(_resolve_template "$tmpl")"
+    # Append the variant's GHCR tag suffix ("" for arm64) so x86_64 lands
+    # on :latest-x86_64 / :sha-<sha>-x86_64 / :v<ver>-x86_64.
+    tag="$(_resolve_template "$tmpl")${suffix}"
     ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $artifact_name"
     ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
@@ -289,7 +342,8 @@ step_gh_release() {
   prerelease="$(_release_var '.release.gh_release.prerelease')"
   notes="$(_release_var '.release.gh_release.generate_release_notes')"
   asset_tmpl="$(_release_var '.release.gh_release.asset_name')"
-  asset="$(_resolve_template "$asset_tmpl")"
+  # Variant's asset filename (falls back to the resolved default asset_name).
+  asset="$(_variant_gh_asset)"
   rolling_tag="$(_release_var '.release.gh_release.rolling_tag')"
 
   # Stage asset with the requested filename. Prefer the release-variant
@@ -298,10 +352,15 @@ step_gh_release() {
   # when asset_name equals one of the artifact filenames (e.g. rolling
   # mode where we set asset_name="Cloud-SuperApp.apk" matching the debug
   # artifact name directly).
+  local src_variant="$DIST_DIR/$(_variant_artifact)"
   local src_release="$DIST_DIR/$(_release_var '.release.artifact.release')"
   local src_debug="$DIST_DIR/$(_release_var '.release.artifact.debug')"
   local dst="$DIST_DIR/$asset"
-  if   [ -f "$src_release" ] && [ "$src_release" != "$dst" ]; then cp "$src_release" "$dst"
+  # Active-variant APK first (x86_64 only produces that), then release, then
+  # legacy debug. The cp is skipped when source == destination (the common
+  # case: asset_name already equals the artifact filename).
+  if   [ -f "$src_variant" ] && [ "$src_variant" != "$dst" ]; then cp "$src_variant" "$dst"
+  elif [ -f "$src_release" ] && [ "$src_release" != "$dst" ]; then cp "$src_release" "$dst"
   elif [ -f "$src_debug"   ] && [ "$src_debug"   != "$dst" ]; then cp "$src_debug"   "$dst"
   fi
   [ -f "$dst" ] || { errlog "gh-release: staged asset $dst missing — no APK in $DIST_DIR?"; exit 1; }

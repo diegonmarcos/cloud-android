@@ -25,6 +25,12 @@ internal class GhcrClient(
     private val repo = "$namespace/$image"
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Non-2xx GHCR response, carrying the status code so callers can tell a
+     *  genuinely-absent tag (404 — e.g. an ABI variant not published yet)
+     *  from a transient/auth failure. */
+    class HttpException(val code: Int, val target: String, body: String?) :
+        java.io.IOException("HTTP $code for $target: $body")
+
     /** Anonymous bearer token for pull. Public packages: this just works. */
     fun token(): String {
         val url = URL("https://$registry/token?service=$registry&scope=repository:$repo:pull")
@@ -111,7 +117,7 @@ internal class GhcrClient(
             headers.forEach { (k, v) -> setRequestProperty(k, v) }
             if (responseCode !in 200..299) {
                 val msg = errorStream?.bufferedReader()?.readText()
-                throw java.io.IOException("HTTP $responseCode for $url: $msg")
+                throw HttpException(responseCode, url.toString(), msg)
             }
         }.inputStream
 }
