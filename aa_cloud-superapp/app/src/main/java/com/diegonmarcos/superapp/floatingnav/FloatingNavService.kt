@@ -47,6 +47,7 @@ class FloatingNavService : Service() {
 
     private val cfg by lazy { FloatingNavConfig.get() }
     private val media by lazy { MediaProxy(this) }
+    private val infos by lazy { InfosNotifier(this) }
     private lateinit var wm: WindowManager
     private val main = Handler(Looper.getMainLooper())
 
@@ -70,6 +71,7 @@ class FloatingNavService : Service() {
         isRunning = true
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         startForeground(NOTIF_ID, buildNotification())
+        runCatching { infos.refresh() } // grouped Infos notification (sample data)
         main.post(pollTick)
     }
 
@@ -105,6 +107,7 @@ class FloatingNavService : Service() {
         main.removeCallbacksAndMessages(null)
         removeBubble(); removeBar()
         runCatching { media.cancel() }
+        runCatching { infos.cancel() }
         super.onDestroy()
     }
 

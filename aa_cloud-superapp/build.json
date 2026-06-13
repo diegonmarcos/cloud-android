@@ -4575,6 +4575,15 @@
       "date_format": "EEE, d MMM",
       "unlock_label": "Unlock"
     },
+    "_doc_notification_infos": "'Cloud SuperApp - Notification Center Infos' — a WhatsApp-style grouped notification (InfosNotifier). Collapsed = a summary listing the groups; expanding the bundle reveals one child notification per group, each itself expandable to show that group's messages. Data-driven sample for now (point it at a real feed later). Each group: title + messages[].",
+    "notification_infos": {
+      "enabled": true,
+      "groups": [
+        { "title": "Comms", "messages": [ "Diego: ping?", "Team: standup at 10:00", "Alice: shared a file" ] },
+        { "title": "Cloud", "messages": [ "oci-apps: all services healthy", "backup: restic → OCI done 03:00" ] },
+        { "title": "Alerts", "messages": [ "No open incidents" ] }
+      ]
+    },
     "_doc_floating_nav": "Floating Top Nav Bar — a SYSTEM_ALERT_WINDOW overlay (FloatingNavService) shown whenever the user has left Cloud-SuperApp. Collapsed = a small transparent circle, top-centre; tapped = expands to a top rectangle bar of links. The bar is CONTEXT-AWARE: FloatingNavService polls the foreground package (UsageStatsManager, poll_ms) and picks the first context whose `match_prefixes` matches (prefix = pkg == p || pkg startsWith p + '.'); the `default` context (empty match_prefixes) is the fallback. Each context shows `home_label` (the ✲ primary, brings `home_package` to front — 'self' = Cloud-SuperApp) then its `links` (label → package; tap launches getLaunchIntentForPackage, or installs via `install_app` external_apps id when absent). When the foreground IS Cloud-SuperApp the overlay hides entirely (we're already home). Packages mirror ui.external_apps forks + ui.permissions.roles (Fossy = the comms dialer fork). Add a context / link = edit here; nothing in Kotlin hardcodes a package.",
     "floating_nav": {
       "enabled": true,
