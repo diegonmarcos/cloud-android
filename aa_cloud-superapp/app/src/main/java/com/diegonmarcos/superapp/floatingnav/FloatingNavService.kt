@@ -481,6 +481,9 @@ class FloatingNavService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
+            // Persistent: FLAG_NO_CLEAR blocks swipe-to-dismiss + "clear all";
+            // FLAG_ONGOING_EVENT keeps it pinned while the service runs.
+            .apply { flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT }
     }
 
     companion object {
