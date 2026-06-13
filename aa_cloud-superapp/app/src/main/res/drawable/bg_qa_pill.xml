@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Circular accent pill behind each quick-action icon in the custom
-     notification view, so the white icons are visible on any notification
-     background (light or dark theme). -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <solid android:color="#7C3AED" />
-</shape>
