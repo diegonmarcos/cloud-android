@@ -86,8 +86,13 @@ class MainActivity : AppCompatActivity(),
     private lateinit var drawerTabs: TabLayout
     private lateinit var drawerPageTabs: TabLayout
 
+    // Custom setter = single chokepoint: every section change re-evaluates
+    // the Sirius Star's visibility (shown only on `home`). findViewById is
+    // null-safe so the very first assignment (before setContentView) no-ops.
     private var currentSection: String = ""
+        set(value) { field = value; updateSiriusStar() }
     private var currentLabel:   String = ""
+    private var siriusPulse: android.animation.AnimatorSet? = null
 
     /** Re-entrancy guards: both drawerTabs.selectTab() AND
      *  bottomNav.selectedItemId fire their selection listeners. When the
@@ -140,6 +145,7 @@ class MainActivity : AppCompatActivity(),
             setContentView(R.layout.activity_main)
             modePrefs = ModePrefs(this)
             currentLabel = getString(R.string.section_home)
+            setupSiriusStar()
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
@@ -319,16 +325,6 @@ class MainActivity : AppCompatActivity(),
 
     private lateinit var navSwipeGesture: android.view.GestureDetector
 
-    /** The literal Home Screen (launcher root): the "home" section with an
-     *  EMPTY back-stack — i.e. not a pushed home sub-page (Section menu, the
-     *  Home-Apps sheet, Configs/Tabs, etc.). The swipe-up-to-open-Home-Apps
-     *  shortcut must fire ONLY here; on every other page (including other
-     *  pages inside the home section) a vertical scroll must stay with the
-     *  fragment, never be hijacked as a swipe-up. Single source of truth so
-     *  the gesture gate and the toolbar (`atHomeRoot`) can't drift apart. */
-    private fun isAtHomeScreen(): Boolean =
-        currentSection == "home" && supportFragmentManager.backStackEntryCount == 0
-
     private fun installNavSwipeGesture() {
         val edgeIgnorePx = (24f * resources.displayMetrics.density)
         val minSwipePx   = (100f * resources.displayMetrics.density)
@@ -351,21 +347,20 @@ class MainActivity : AppCompatActivity(),
                     val dy = e2.y - e1.y
                     val absDx = Math.abs(dx); val absDy = Math.abs(dy)
 
-                    // VERTICAL swipes — ONLY meaningful on the literal Home
-                    // Screen root (home section, empty back-stack). On EVERY
-                    // other page — including pushed sub-pages still inside the
-                    // home section (Section menu, the Home-Apps sheet,
-                    // Configs/Tabs) and all off-home sections — the
-                    // activity-level detector MUST defer entirely to the
-                    // fragment so list scrolling, pull-to-refresh, sheet
-                    // drag-close, WebView pan, etc. all own their own vertical
-                    // gestures cleanly. Short-circuit BEFORE evaluating the
-                    // vertical-fling thresholds so the detector doesn't even
-                    // claim to have seen a vertical gesture off the home root —
-                    // eliminating the scroll-vs-swipe-up conflict the user
-                    // reported. (Empty back-stack already implies the
-                    // Home-Apps sheet is not up, since it pushes a back entry.)
-                    if (isAtHomeScreen() &&
+                    // VERTICAL swipes — ONLY meaningful when on the Home
+                    // section (where swipe-up opens AppDrawerSheet) and
+                    // the sheet itself isn't already up. Off-home, the
+                    // activity-level detector MUST defer entirely to
+                    // the fragment so list scrolling, pull-to-refresh,
+                    // sheet drag-close, WebView pan, etc. all own
+                    // their own vertical gestures cleanly. Short-circuit
+                    // BEFORE evaluating the vertical-fling thresholds
+                    // so the detector doesn't even claim to have seen
+                    // a vertical gesture off-home — eliminating the
+                    // conflict the user reported.
+                    val sheetIsUp = supportFragmentManager
+                        .findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null
+                    if (currentSection == "home" && !sheetIsUp &&
                         absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
                         val consumed = handleVerticalFling(dy)
                         if (consumed) Haptics.tap(bottomNav)
@@ -409,11 +404,14 @@ class MainActivity : AppCompatActivity(),
         if ((cur as? SuppressVerticalSwipe)?.suppressVerticalSwipe() == true) {
             return false
         }
+        val sheetIsUp = supportFragmentManager.findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null ||
+                        supportFragmentManager.backStackEntryCount > 0 &&
+                          (0 until supportFragmentManager.backStackEntryCount).any {
+                              supportFragmentManager.getBackStackEntryAt(it).name ==
+                                  AppDrawerSheetFragment.BACK_STACK_TAG
+                          }
         return when {
-            // Only the literal Home Screen root opens the Home-Apps sheet on
-            // swipe-up. An empty back-stack guarantees we're not on a pushed
-            // home sub-page (and that the sheet itself isn't already up).
-            dy < 0 && isAtHomeScreen() -> {
+            dy < 0 && currentSection == "home" && !sheetIsUp -> {
                 openAppDrawerSheet(); true
             }
             // swipe-down (dy > 0) was here to close the sheet — removed
@@ -792,6 +790,46 @@ class MainActivity : AppCompatActivity(),
     // ── navigation actions ────────────────────────────────────────────────
 
     /** Land the right pane on the master Home TileGrid. */
+    // ── Sirius Star ────────────────────────────────────────────────
+    /** Wire the home-screen star once: set its glyph (data-driven) and its
+     *  tap → force-open the FloatingNav menu (toast if overlay perm absent). */
+    private fun setupSiriusStar() {
+        val star = findViewById<android.widget.TextView?>(R.id.sirius_star) ?: return
+        if (!BuildConfig.SIRIUS_STAR_ENABLED) { star.visibility = View.GONE; return }
+        star.text = BuildConfig.SIRIUS_STAR_GLYPH
+        star.setOnClickListener {
+            if (!com.diegonmarcos.superapp.floatingnav.FloatingNavService.showMenu(this)) {
+                Toast.makeText(this,
+                    "Grant 'Display over other apps' to open the nav menu", Toast.LENGTH_SHORT).show()
+            }
+        }
+        updateSiriusStar()
+    }
+
+    /** Show the star only on the `home` section; pulse it while visible. */
+    private fun updateSiriusStar() {
+        val star = findViewById<android.widget.TextView?>(R.id.sirius_star) ?: return
+        val show = BuildConfig.SIRIUS_STAR_ENABLED && currentSection == "home"
+        if (show) {
+            star.visibility = View.VISIBLE
+            if (siriusPulse == null) {
+                val sx = android.animation.ObjectAnimator.ofFloat(star, "scaleX", 1f, 1.12f)
+                val sy = android.animation.ObjectAnimator.ofFloat(star, "scaleY", 1f, 1.12f)
+                val al = android.animation.ObjectAnimator.ofFloat(star, "alpha", 0.82f, 1f)
+                for (a in listOf(sx, sy, al)) {
+                    a.duration = 1500
+                    a.repeatCount = android.animation.ObjectAnimator.INFINITE
+                    a.repeatMode = android.animation.ObjectAnimator.REVERSE
+                }
+                siriusPulse = android.animation.AnimatorSet().apply { playTogether(sx, sy, al); start() }
+            }
+        } else {
+            star.visibility = View.GONE
+            siriusPulse?.cancel(); siriusPulse = null
+            star.scaleX = 1f; star.scaleY = 1f; star.alpha = 1f
+        }
+    }
+
     private fun goHome() {
         Trace.i(TAG, "goHome  bs=${supportFragmentManager.backStackEntryCount}")
         currentSection = "home"
@@ -1707,7 +1745,8 @@ class MainActivity : AppCompatActivity(),
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         // action_back: anywhere except a clean Home (Home with no
         // back-stack entries is the "root" — back is meaningless there).
-        val atHomeRoot = isAtHomeScreen()
+        val atHomeRoot = currentSection == "home" &&
+            supportFragmentManager.backStackEntryCount == 0
         menu.findItem(R.id.action_back)?.isVisible = !atHomeRoot
         // action_wallet: ONLY at the Home root (mirror of action_back).
         // Slots into the same top-right toolbar position so the user

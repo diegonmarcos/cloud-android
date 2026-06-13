@@ -52,6 +52,9 @@ class FloatingNavService : Service() {
     private var bubble: View? = null      // collapsed circle
     private var bar: View? = null         // expanded nav bar
     private var expanded = false
+    // When the menu was opened explicitly (Sirius Star on the home screen),
+    // keep it shown even while Cloud-SuperApp is foreground; cleared on collapse.
+    private var forced = false
     private var currentContextId: String? = null
     private var lastForeground: String? = null
     // Persisted bubble position (px). Int.MIN_VALUE = unset → default top-centre.
@@ -68,7 +71,15 @@ class FloatingNavService : Service() {
         main.post(pollTick)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_SHOW_MENU) {
+            // Explicit open (Sirius Star). Force the bar even though SuperApp is
+            // foreground; default context (Cloud-Comms | Cloud-IDE) applies here.
+            forced = true
+            main.post { cfg.contextFor(packageName)?.let { showBar(it) } }
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         isRunning = false
@@ -107,8 +118,10 @@ class FloatingNavService : Service() {
     /** Show / hide / re-skin the overlay for the current foreground app. */
     private fun refresh(fg: String?) {
         // We're back home in Cloud-SuperApp → no overlay (reset expand state
-        // so the bubble reappears the next time the user leaves).
+        // so the bubble reappears the next time the user leaves) — UNLESS the
+        // menu was force-opened from the home-screen Sirius Star.
         if (fg == packageName) {
+            if (forced) return
             removeBubble(); removeBar(); expanded = false; currentContextId = null; return
         }
         val ctx = cfg.contextFor(fg) ?: run { removeBubble(); removeBar(); return }
@@ -258,6 +271,7 @@ class FloatingNavService : Service() {
 
     private fun collapse() {
         expanded = false
+        forced = false
         removeBar()
         if (lastForeground != packageName) showBubble()
     }
@@ -353,6 +367,19 @@ class FloatingNavService : Service() {
     companion object {
         private const val CHANNEL_ID = "floating_nav"
         private const val NOTIF_ID = 0xF1
+        const val ACTION_SHOW_MENU = "com.diegonmarcos.superapp.floatingnav.SHOW_MENU"
+
+        /** Force-open the nav menu (the Sirius Star on the home screen). Starts
+         *  the service if needed and force-expands the bar even while SuperApp
+         *  is foreground. Returns false if "display over other apps" isn't
+         *  granted (caller should prompt). */
+        fun showMenu(ctx: Context): Boolean {
+            if (!Settings.canDrawOverlays(ctx)) return false
+            val i = Intent(ctx, FloatingNavService::class.java).setAction(ACTION_SHOW_MENU)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(i)
+            else ctx.startService(i)
+            return true
+        }
 
         /** True while the overlay service is alive — drives the single
          *  Start/Stop toggle in Configs → Permissions. */

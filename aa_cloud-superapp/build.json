@@ -580,7 +580,7 @@
               "com.mattermost.rn",
               "com.beeper.android",
               "com.diegonmarcos.comms.dialer",
-              "com.samsung.android.dialer"
+              "org.fossify.phone"
             ],
             "folders": [
               {
@@ -590,7 +590,8 @@
                   "com.whatsapp.w4b",
                   "com.google.android.gm",
                   "org.telegram.messenger",
-                  "com.instagram.android"
+                  "com.instagram.android",
+                  "com.linkedin.android"
                 ]
               }
             ]
@@ -4561,6 +4562,11 @@
         }
       }
     ],
+    "_doc_sirius_star": "The Sirius Star — a single bright sparkle centred on the home screen (theme-agnostic overlay in activity_main.xml, gated to the `home` section by MainActivity). Tapping it force-opens the FloatingNav menu (FloatingNavService.showMenu). `enabled` toggles it; `glyph` is the character rendered (default ✦). Declarative on/off without touching layout/code.",
+    "sirius_star": {
+      "enabled": true,
+      "glyph": "✦"
+    },
     "_doc_floating_nav": "Floating Top Nav Bar — a SYSTEM_ALERT_WINDOW overlay (FloatingNavService) shown whenever the user has left Cloud-SuperApp. Collapsed = a small transparent circle, top-centre; tapped = expands to a top rectangle bar of links. The bar is CONTEXT-AWARE: FloatingNavService polls the foreground package (UsageStatsManager, poll_ms) and picks the first context whose `match_prefixes` matches (prefix = pkg == p || pkg startsWith p + '.'); the `default` context (empty match_prefixes) is the fallback. Each context shows `home_label` (the ✲ primary, brings `home_package` to front — 'self' = Cloud-SuperApp) then its `links` (label → package; tap launches getLaunchIntentForPackage, or installs via `install_app` external_apps id when absent). When the foreground IS Cloud-SuperApp the overlay hides entirely (we're already home). Packages mirror ui.external_apps forks + ui.permissions.roles (Fossy = the comms dialer fork). Add a context / link = edit here; nothing in Kotlin hardcodes a package.",
     "floating_nav": {
       "enabled": true,

@@ -142,6 +142,10 @@ def externalAppsB64  = externalAppsJson.bytes.encodeBase64().toString()
 // Contexts + links come straight from build.json::ui.floating_nav.
 def floatingNavJson  = groovy.json.JsonOutput.toJson(buildJson.ui.floating_nav ?: [:])
 def floatingNavB64   = floatingNavJson.bytes.encodeBase64().toString()
+// Sirius Star — single decorative home-screen sparkle that opens the
+// FloatingNav menu. Toggle + glyph from build.json::ui.sirius_star.
+def siriusEnabled    = (buildJson.ui.sirius_star?.enabled != false)
+def siriusGlyph      = (buildJson.ui.sirius_star?.glyph ?: '✦')
 // Profile defaults — first-run seed for ProfilePrefs. User can edit at
 // runtime via Configs → Profile.
 def profileDefault   = buildJson.ui.profile_default ?: [:]
@@ -359,6 +363,8 @@ android {
         buildConfigField "String", "MAIL_ACCOUNTS_B64",     "\"${mailAccountsB64}\""
         buildConfigField "String", "EXTERNAL_APPS_B64",     "\"${externalAppsB64}\""
         buildConfigField "String", "UI_FLOATING_NAV_B64",   "\"${floatingNavB64}\""
+        buildConfigField "boolean", "SIRIUS_STAR_ENABLED",  "${siriusEnabled}"
+        buildConfigField "String",  "SIRIUS_STAR_GLYPH",    "\"${siriusGlyph}\""
         buildConfigField "String", "UI_PROFILE_NAME",       "\"${profileName}\""
         buildConfigField "String", "UI_PROFILE_EMAIL",      "\"${profileEmail}\""
         buildConfigField "String", "UI_PROFILE_INITIALS",   "\"${profileInitials}\""

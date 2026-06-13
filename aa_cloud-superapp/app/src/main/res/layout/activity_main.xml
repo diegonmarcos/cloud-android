@@ -51,6 +51,30 @@
             android:paddingBottom="92dp"
             android:clipToPadding="false" />
 
+        <!-- Sirius Star — a single bright, bluish-white sparkle centred on the
+             home screen (theme-agnostic: it floats over whichever home
+             fragment is active). A tap opens the FloatingNav menu. Slightly
+             larger than the home tiles + a soft glow (shadowLayer) for the
+             "shining" look; MainActivity adds a gentle pulse and flips it
+             VISIBLE only on the `home` section. Default gone. -->
+        <TextView
+            android:id="@+id/sirius_star"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="✦"
+            android:textSize="46sp"
+            android:textColor="#EAF2FF"
+            android:shadowColor="#9CC2FF"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="26"
+            android:contentDescription="Sirius Star — open navigation"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="16dp"
+            android:visibility="gone" />
+
         <!-- Launcher status strip — visible ONLY when the SuperApp is
              the default Android launcher AND the active LauncherTheme
              is Cloud. Drawn at the very top edge (where the system
