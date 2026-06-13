@@ -19,8 +19,6 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -54,8 +52,6 @@ class FloatingNavService : Service() {
     private var bubble: View? = null      // collapsed circle
     private var bar: View? = null         // expanded nav bar
     private var expanded = false
-    // Expanded view (album-art card + all 5 actions) vs the compact menu.
-    private var fullView = false
     private var torchOn = false
     // When the menu was opened explicitly (Sirius Star on the home screen),
     // keep it shown even while Cloud-SuperApp is foreground; cleared on collapse.
@@ -77,11 +73,18 @@ class FloatingNavService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_SHOW_MENU) {
-            // Explicit open (Sirius Star). Force the bar even though SuperApp is
-            // foreground; default context (Cloud-Comms | Cloud-IDE) applies here.
-            forced = true
-            main.post { cfg.contextFor(packageName)?.let { showBar(it) } }
+        when (intent?.action) {
+            ACTION_SHOW_MENU -> {
+                // Explicit open (Sirius Star). Force the bar even though SuperApp
+                // is foreground; default context applies here.
+                forced = true
+                main.post { cfg.contextFor(packageName)?.let { showBar(it) } }
+            }
+            ACTION_NAV -> {
+                // A notification action button (Light/Screensaver/Calc/…) was
+                // tapped — run it, no menu.
+                intent.getStringExtra(EXTRA_TARGET)?.let { dispatch(it, "") }
+            }
         }
         return START_STICKY
     }
@@ -253,71 +256,17 @@ class FloatingNavService : Service() {
             }
             val p = dp(12); setPadding(p, dp(10), p, dp(10))
         }
-        // Expanded view only: now-playing album-art card on top (mock data).
-        if (fullView) col.addView(albumCard())
         // Line 1 — the three hubs; bold the current context's hub.
-        col.addView(itemRow(cfg.parents, boldId = ctx.id, topGap = fullView))
-        // Line 2 — the current context's children.
+        col.addView(itemRow(cfg.parents, boldId = ctx.id))
+        // Line 2 — the current context's children. (Actions/album art are NOT
+        // here — they live in the Android notification; see buildNotification.)
         col.addView(itemRow(ctx.children, boldId = null, topGap = true))
-        // Action line(s): compact shows the first N; expanded shows all,
-        // wrapped at 3 chips per row.
-        val acts = if (fullView) cfg.actions else cfg.actions.take(cfg.compactActionCount)
-        for (rowItems in acts.chunked(3)) col.addView(itemRow(rowItems, boldId = null, topGap = true))
-        // Expand / collapse toggle.
-        col.addView(expandToggle(ctx))
 
         runCatching { wm.addView(col, barParams(outsideTouch = true)) }
         col.setOnTouchListener { _, ev ->
             if (ev.action == MotionEvent.ACTION_OUTSIDE) { collapse(); true } else false
         }
         bar = col
-    }
-
-    /** Toggle between the compact menu and the Expanded view (re-renders). */
-    private fun expandToggle(ctx: NavContext): View = TextView(this).apply {
-        text = if (fullView) "⤡  Less" else "⤢  Expanded view"
-        setTextColor(0xFF9CC2FF.toInt()); textSize = 12f
-        gravity = Gravity.CENTER
-        isClickable = true
-        val lp = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
-        lp.topMargin = dp(8); layoutParams = lp
-        setPadding(dp(8), dp(6), dp(8), dp(2))
-        setOnClickListener { fullView = !fullView; showBar(ctx) }
-    }
-
-    /** Mock now-playing card so the Expanded view is visualizable without a
-     *  live media session (real MediaSession metadata replaces it later). */
-    private fun albumCard(): View {
-        val m = cfg.expandedMock
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply {
-                cornerRadius = dp(12).toFloat(); setColor(Color.argb(0x33, 0xFF, 0xFF, 0xFF))
-            }
-            setPadding(dp(8), dp(8), dp(16), dp(8))
-            val lp = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
-            lp.bottomMargin = dp(2); layoutParams = lp
-        }
-        card.addView(View(this).apply {
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR, intArrayOf(m.artTop, m.artBottom),
-            ).apply { cornerRadius = dp(8).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
-        })
-        card.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val lp = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f); lp.leftMargin = dp(12); layoutParams = lp
-            addView(TextView(this@FloatingNavService).apply {
-                text = "♪  ${m.title}"; setTextColor(0xFFFFFFFF.toInt()); textSize = 13.5f
-                maxLines = 1; setTypeface(typeface, android.graphics.Typeface.BOLD)
-            })
-            addView(TextView(this@FloatingNavService).apply {
-                text = m.artist; setTextColor(0xBBFFFFFF.toInt()); textSize = 11f; maxLines = 1
-            })
-        })
-        card.addView(chip("▶", bold = true) { /* mock — no transport yet */ })
-        return card
     }
 
     /** One horizontal row of pipe-separated chips. `boldId` bolds the parent
@@ -351,15 +300,18 @@ class FloatingNavService : Service() {
     private fun collapse() {
         expanded = false
         forced = false
-        fullView = false
         removeBar()
         if (lastForeground != packageName) showBubble()
     }
 
     // ── Item dispatch ──────────────────────────────────────────────
-    /** Route a tapped item by its target scheme. */
-    private fun handleTarget(item: NavItem) {
-        when (val t = item.target) {
+    /** Route a tapped nav item (overlay parents/children). */
+    private fun handleTarget(item: NavItem) = dispatch(item.target, item.installApp)
+
+    /** Shared target dispatch — used by the overlay nav AND the notification
+     *  action buttons (Light/Screensaver/Calc/Lock/Search). */
+    private fun dispatch(target: String, installApp: String) {
+        when (target) {
             "self" -> launchPackage(packageName)
             "torch" -> toggleTorch()
             "calc" -> openCalculator()
@@ -367,8 +319,8 @@ class FloatingNavService : Service() {
             "screensaver" -> ScreensaverService.start(this)
             // section:/action:/page:/… → bring Cloud-SuperApp forward and let
             // its shortcut_action handler (onTileClicked) navigate.
-            else -> if (t.startsWith("app:")) openApp(t.removePrefix("app:"), item.installApp)
-            else openSuperApp(t)
+            else -> if (target.startsWith("app:")) openApp(target.removePrefix("app:"), installApp)
+            else openSuperApp(target)
         }
     }
 
@@ -455,14 +407,17 @@ class FloatingNavService : Service() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    // ── Foreground-service notification ────────────────────────────
+    // ── Foreground-service notification (MediaStyle) ───────────────
+    // Collapsed = the first `compact_action_count` (3) action buttons; expanded
+    // = the album-art card (mock) + ALL action buttons (up to 5). Persistent
+    // (FLAG_NO_CLEAR). Buttons + mock art are data-driven (ui.floating_nav).
     private fun buildNotification(): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             if (nm.getNotificationChannel(CHANNEL_ID) == null) {
                 nm.createNotificationChannel(NotificationChannel(
-                    CHANNEL_ID, "Floating nav bar", NotificationManager.IMPORTANCE_MIN,
-                ).apply { description = "Keeps the floating cross-app nav bar alive."; setShowBadge(false) })
+                    CHANNEL_ID, "Floating nav bar", NotificationManager.IMPORTANCE_LOW,
+                ).apply { description = "Cloud SuperApp floating nav + quick actions."; setShowBadge(false) })
             }
         }
         val open = PendingIntent.getActivity(
@@ -472,24 +427,69 @@ class FloatingNavService : Service() {
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val m = cfg.expandedMock
+        val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Cloud SuperApp — Floating nav")
-            .setContentText("Tap the top-centre bubble to switch apps.")
+            .setLargeIcon(albumArtBitmap(m))
+            .setContentTitle(m.title)
+            .setContentText(m.artist)
             .setOngoing(true).setOnlyAlertOnce(true)
             .setContentIntent(open)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-            // Persistent: FLAG_NO_CLEAR blocks swipe-to-dismiss + "clear all";
-            // FLAG_ONGOING_EVENT keeps it pinned while the service runs.
-            .apply { flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT }
+        val acts = cfg.actions.take(5)
+        for (a in acts) b.addAction(actionIcon(a.target), a.label, actionPi(a.target))
+        // Android shows max 3 buttons collapsed → pick the first N for compact.
+        val compact = IntArray(minOf(cfg.compactActionCount, acts.size)) { it }
+        b.setStyle(androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(*compact))
+        return b.build().apply {
+            // Persistent: blocks swipe-to-dismiss + "clear all".
+            flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+        }
+    }
+
+    /** PendingIntent that runs an action target via onStartCommand(ACTION_NAV). */
+    private fun actionPi(target: String): PendingIntent = PendingIntent.getService(
+        this, target.hashCode(),
+        Intent(this, FloatingNavService::class.java).setAction(ACTION_NAV).putExtra(EXTRA_TARGET, target),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    private fun actionIcon(target: String): Int = when (target) {
+        "torch" -> android.R.drawable.star_big_on
+        "screensaver" -> android.R.drawable.ic_menu_view
+        "calc" -> android.R.drawable.ic_menu_sort_by_size
+        "lock" -> android.R.drawable.ic_lock_lock
+        else -> android.R.drawable.ic_menu_search
+    }
+
+    /** Mock album-art bitmap (gradient + ♪) for the expanded notification —
+     *  visualizable without a live MediaSession; data-driven colours. */
+    private fun albumArtBitmap(m: FloatingNavConfig.AlbumMock): android.graphics.Bitmap {
+        val size = dp(128).coerceAtLeast(96)
+        val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(),
+            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                shader = android.graphics.LinearGradient(
+                    0f, 0f, size.toFloat(), size.toFloat(),
+                    m.artTop, m.artBottom, android.graphics.Shader.TileMode.CLAMP,
+                )
+            })
+        val tp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xCCFFFFFF.toInt(); textAlign = android.graphics.Paint.Align.CENTER
+            textSize = size * 0.42f
+        }
+        canvas.drawText("♪", size / 2f, size / 2f - (tp.ascent() + tp.descent()) / 2f, tp)
+        return bmp
     }
 
     companion object {
         private const val CHANNEL_ID = "floating_nav"
         private const val NOTIF_ID = 0xF1
         const val ACTION_SHOW_MENU = "com.diegonmarcos.superapp.floatingnav.SHOW_MENU"
+        private const val ACTION_NAV = "com.diegonmarcos.superapp.floatingnav.NAV_ACTION"
+        private const val EXTRA_TARGET = "target"
 
         /** Force-open the nav menu (the Sirius Star on the home screen). Starts
          *  the service if needed and force-expands the bar even while SuperApp

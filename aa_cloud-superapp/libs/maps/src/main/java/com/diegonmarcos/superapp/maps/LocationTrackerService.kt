@@ -365,6 +365,9 @@ class LocationTrackerService : Service() {
             .setContentIntent(openMain)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
+            // Persistent in the notification centre: FLAG_NO_CLEAR blocks
+            // swipe-to-dismiss + "clear all" while tracking is active.
+            .apply { flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT }
     }
 
     companion object {
