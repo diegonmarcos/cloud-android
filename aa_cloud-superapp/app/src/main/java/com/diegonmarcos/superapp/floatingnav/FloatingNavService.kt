@@ -485,6 +485,11 @@ class FloatingNavService : Service() {
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        // Custom CENTERED action rows (MediaStyle left-aligns; the user wants
+        // them centred). Collapsed shows the first compact_action_count; the
+        // expanded view shows all (up to 5).
+        val collapsed = qaRow(minOf(cfg.compactActionCount, cfg.actions.size))
+        val expanded = qaRow(minOf(5, cfg.actions.size))
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_cloud)
             .setContentTitle("Cloud SuperApp - NC Quick Actions")
@@ -497,15 +502,30 @@ class FloatingNavService : Service() {
             .setDeleteIntent(serviceAction(ACTION_RENOTIFY))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-        val acts = cfg.actions.take(5)
-        for (a in acts) b.addAction(actionIcon(a.target), a.label, actionPi(a.target))
-        // Android shows max 3 buttons collapsed → pick the first N for compact.
-        val compact = IntArray(minOf(cfg.compactActionCount, acts.size)) { it }
-        b.setStyle(androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(*compact))
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(collapsed)
+            .setCustomBigContentView(expanded)
         return b.build().apply {
             // Persistent: blocks swipe-to-dismiss + "clear all".
             flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
         }
+    }
+
+    /** A centered row of `count` quick-action icon pills (RemoteViews). */
+    private fun qaRow(count: Int): android.widget.RemoteViews {
+        val rv = android.widget.RemoteViews(packageName, R.layout.notif_quick_actions_expanded)
+        val ids = intArrayOf(R.id.qa_0, R.id.qa_1, R.id.qa_2, R.id.qa_3, R.id.qa_4)
+        val acts = cfg.actions
+        for (i in ids.indices) {
+            if (i < count && i < acts.size) {
+                rv.setImageViewResource(ids[i], actionIcon(acts[i].target))
+                rv.setOnClickPendingIntent(ids[i], actionPi(acts[i].target))
+                rv.setViewVisibility(ids[i], View.VISIBLE)
+            } else {
+                rv.setViewVisibility(ids[i], View.GONE)
+            }
+        }
+        return rv
     }
 
     /** PendingIntent for a notification action — routed through the invisible
