@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
+import java.text.DateFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -79,7 +80,7 @@ object CalendarAgendaPopup {
             layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        headerLeft.addView(label(ctx, "Agenda · next 7 days"))
+        headerLeft.addView(label(ctx, "Calendar"))
         val todayLabel = SimpleDateFormat("EEEE  d MMM yyyy", Locale.getDefault())
             .format(Calendar.getInstance().time)
         headerLeft.addView(valueBig(ctx, todayLabel))
@@ -88,8 +89,72 @@ object CalendarAgendaPopup {
         container.addView(headerRow)
         container.addView(spacer(ctx, (8 * d).toInt()))
 
-        // Body — scrollable so the bubble caps height. fixed maxHeight =
-        // 300dp keeps it compact on small screens.
+        // Two views switched by the tab row: "Agenda" (7-day list) is the
+        // original content; "Calendar" is today's month grid. Both are
+        // built up-front and toggled via visibility so switching is
+        // instant and stateless (no rebuild, no flicker).
+        val agendaView = buildAgendaView(ctx, d)
+        val calendarView = buildMonthView(ctx, d)
+        calendarView.visibility = View.GONE
+
+        // Tab row — "Agenda" | "Calendar". Selected tab gets the purple
+        // accent + bold; the other dims. Matches the strip-popup family.
+        val tabAgenda = tab(ctx, d, "Agenda")
+        val tabCalendar = tab(ctx, d, "Calendar")
+        fun selectTab(agenda: Boolean) {
+            styleTab(tabAgenda, agenda)
+            styleTab(tabCalendar, !agenda)
+            agendaView.visibility = if (agenda) View.VISIBLE else View.GONE
+            calendarView.visibility = if (agenda) View.GONE else View.VISIBLE
+        }
+        tabAgenda.setOnClickListener { selectTab(true) }
+        tabCalendar.setOnClickListener { selectTab(false) }
+        val tabRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            addView(tabAgenda)
+            addView(tabCalendar)
+        }
+        selectTab(true)
+        container.addView(tabRow)
+        container.addView(spacer(ctx, (8 * d).toInt()))
+        container.addView(agendaView)
+        container.addView(calendarView)
+
+        val pw = PopupWindow(
+            container,
+            (260 * d).toInt(),
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            true,
+        ).apply {
+            isOutsideTouchable = true
+            isFocusable = true
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            elevation = 8 * d
+        }
+        // Horizontally SCREEN-centered, vertically dropped from the
+        // status strip. showAsDropDown is the right vertical
+        // primitive (matches Battery/SysInfo exactly — same
+        // sub-strip drop). For horizontal centering we compute
+        // xOffset so the popup's left edge lands at
+        // (screenWidth − popupWidth) / 2 regardless of the date/
+        // time anchor's actual screen-x position (which on this
+        // device is right-of-center, so Gravity.CENTER_HORIZONTAL
+        // alone biased the popup rightward).
+        val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        val popupW  = (260 * d).toInt()
+        val xOffset = (screenW - popupW) / 2 - anchorLoc[0]
+        pw.showAsDropDown(anchor, xOffset, (6 * d).toInt(), Gravity.START)
+    }
+
+    /** Agenda tab content: the original scrollable 7-day list (today +
+     *  next 6 days), with placeholder rows until libs:cal slice D
+     *  (CalDAV) lands. Capped at 300dp so the bubble stays compact. */
+    private fun buildAgendaView(ctx: Context, d: Float): View {
         val scroll = ScrollView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -100,7 +165,6 @@ object CalendarAgendaPopup {
         val body = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
         }
-
         val dayHeaderFmt = SimpleDateFormat("EEE  d MMM", Locale.getDefault())
         val cal = Calendar.getInstance()
         for (i in 0 until 7) {
@@ -140,33 +204,135 @@ object CalendarAgendaPopup {
             setPadding((2 * d).toInt(), (10 * d).toInt(), (2 * d).toInt(), (2 * d).toInt())
         })
         scroll.addView(body)
-        container.addView(scroll)
+        return scroll
+    }
 
-        val pw = PopupWindow(
-            container,
-            (260 * d).toInt(),
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            true,
-        ).apply {
-            isOutsideTouchable = true
-            isFocusable = true
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            elevation = 8 * d
+    /** Calendar tab content: today's month as a 7-column grid. Weekday
+     *  header (locale first-day-of-week) + week rows; today's cell is
+     *  highlighted with the purple accent. Days outside the current
+     *  month render as empty leading/trailing cells. Events overlay
+     *  lands with libs:cal slice D — for now the grid is the structure. */
+    private fun buildMonthView(ctx: Context, d: Float): View {
+        val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+
+        val now = Calendar.getInstance()
+        val today = now.get(Calendar.DAY_OF_MONTH)
+        val firstDow = now.firstDayOfWeek          // locale: 1=Sun..7=Sat
+        val daysInMonth = now.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+        // Month + year title.
+        col.addView(TextView(ctx).apply {
+            text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(now.time)
+            setTextColor(0xFFE9D8FD.toInt())
+            textSize = 13f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            setPadding(0, 0, 0, (6 * d).toInt())
+        })
+
+        // Weekday header row, rotated to start on the locale's first day.
+        val shortWeekdays = DateFormatSymbols(Locale.getDefault()).shortWeekdays // [_, Sun..Sat]
+        val weekRowLp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        val headerWeek = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL; layoutParams = weekRowLp
         }
-        // Horizontally SCREEN-centered, vertically dropped from the
-        // status strip. showAsDropDown is the right vertical
-        // primitive (matches Battery/SysInfo exactly — same
-        // sub-strip drop). For horizontal centering we compute
-        // xOffset so the popup's left edge lands at
-        // (screenWidth − popupWidth) / 2 regardless of the date/
-        // time anchor's actual screen-x position (which on this
-        // device is right-of-center, so Gravity.CENTER_HORIZONTAL
-        // alone biased the popup rightward).
-        val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
-        val screenW = ctx.resources.displayMetrics.widthPixels
-        val popupW  = (260 * d).toInt()
-        val xOffset = (screenW - popupW) / 2 - anchorLoc[0]
-        pw.showAsDropDown(anchor, xOffset, (6 * d).toInt(), Gravity.START)
+        for (i in 0 until 7) {
+            val dow = ((firstDow - 1 + i) % 7) + 1   // Calendar weekday 1..7
+            val name = shortWeekdays.getOrNull(dow)?.take(1) ?: ""
+            headerWeek.addView(TextView(ctx).apply {
+                text = name
+                setTextColor(0x88FFFFFF.toInt())
+                textSize = 11f
+                gravity = Gravity.CENTER
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setPadding(0, (3 * d).toInt(), 0, (3 * d).toInt())
+            })
+        }
+        col.addView(headerWeek)
+
+        // Leading blanks before day 1, then the day cells, padded to a
+        // full final week so every row has 7 columns.
+        val firstOfMonth = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }
+        val firstWeekday = firstOfMonth.get(Calendar.DAY_OF_WEEK)
+        val leadingBlanks = ((firstWeekday - firstDow) + 7) % 7
+        val totalCells = leadingBlanks + daysInMonth
+        val rows = (totalCells + 6) / 7
+
+        var dayNum = 1
+        for (r in 0 until rows) {
+            val week = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL; layoutParams = weekRowLp
+            }
+            for (c in 0 until 7) {
+                val cellIndex = r * 7 + c
+                val cell = TextView(ctx).apply {
+                    textSize = 12f
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+                    layoutParams = LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        val m = (2 * d).toInt(); setMargins(m, m, m, m)
+                    }
+                    val p = (5 * d).toInt(); setPadding(0, p, 0, p)
+                }
+                if (cellIndex < leadingBlanks || dayNum > daysInMonth) {
+                    cell.text = ""
+                } else {
+                    val isToday = dayNum == today
+                    cell.text = dayNum.toString()
+                    cell.setTextColor(if (isToday) 0xFF111111.toInt() else 0xDDFFFFFF.toInt())
+                    if (isToday) {
+                        cell.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                        cell.background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(0xFFE9D8FD.toInt())
+                        }
+                    } else {
+                        cell.setBackgroundColor(0x221A0033)
+                    }
+                    dayNum++
+                }
+                week.addView(cell)
+            }
+            col.addView(week)
+        }
+
+        col.addView(TextView(ctx).apply {
+            text = "CalDAV event dots via libs:cal land next; the grid is the structure for now."
+            setTextColor(0x55FFFFFF.toInt())
+            textSize = 10f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+            setPadding((2 * d).toInt(), (10 * d).toInt(), (2 * d).toInt(), (2 * d).toInt())
+        })
+        return col
+    }
+
+    /** One pill-less tab label; selection styling applied by [styleTab]. */
+    private fun tab(ctx: Context, d: Float, text: String) = TextView(ctx).apply {
+        this.text = text
+        textSize = 13f
+        gravity = Gravity.CENTER
+        isClickable = true
+        isFocusable = true
+        layoutParams = LinearLayout.LayoutParams(0,
+            LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        val p = (6 * d).toInt(); setPadding(p, p, p, p)
+    }
+
+    /** Selected tab: purple accent text + bold + underline bar via a
+     *  bottom-only accent background. Unselected: dim, no bar. */
+    private fun styleTab(t: TextView, selected: Boolean) {
+        if (selected) {
+            t.setTextColor(0xFFE9D8FD.toInt())
+            t.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            t.setBackgroundColor(0x33E9D8FD)
+        } else {
+            t.setTextColor(0x77FFFFFF.toInt())
+            t.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+            t.setBackgroundColor(0x11FFFFFF)
+        }
     }
 
     /** Top-right stopwatch widget: elapsed mm:ss.t + Start/Stop
