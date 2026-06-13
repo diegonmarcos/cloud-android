@@ -96,7 +96,7 @@ step_bundle_forks() {
       # toolchain isn't available here (e.g. CI without rust/ndk) fall back to
       # the pinned upstream url so the hub still builds — LOUDLY logged, never
       # silent. (CI ships our patched APK via the GHCR route once fork-ship lands.)
-      if step_build_fork build-fork "$key" "$abi_in" >/dev/null 2>&1; then
+      if ( step_build_fork build-fork "$key" "$abi_in" ) >/dev/null 2>&1; then  # subshell: contain any exit→ url fallback works (CI: fork not materialized / no rust)
         cp "$SCRIPT_DIR/dist/cloud-ide-${key}.apk" "$out"
         log "bundle-forks: ✓ $key embedded OUR patched APK ($(wc -c <"$out") B, $(sha256sum "$out" | cut -d' ' -f1 | cut -c1-12)…)"
         continue
