@@ -234,32 +234,58 @@ class FloatingNavService : Service() {
         posPrefs().edit().putInt("x", bubbleX).putInt("y", bubbleY).apply()
     }
 
-    // ── Expanded nav bar ───────────────────────────────────────────
+    // ── Expanded nav bar — the constant 2-line box ─────────────────
     private fun showBar(ctx: NavContext) {
         removeBubble(); removeBar()
         expanded = true
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             background = GradientDrawable().apply {
-                cornerRadius = dp(22).toFloat()
+                cornerRadius = dp(18).toFloat()
                 setColor(Color.argb(0xEE, 0x16, 0x16, 0x1C))
                 setStroke(dp(1), Color.argb(0x55, 0x7C, 0x3A, 0xED))
             }
-            val p = dp(10); setPadding(p + dp(4), dp(6), p + dp(4), dp(6))
+            val p = dp(10); setPadding(p + dp(4), dp(8), p + dp(4), dp(8))
         }
-        // ✲ home chip — brings the context's hub (or Cloud-SuperApp) to front.
-        row.addView(chip("✲ ${ctx.homeLabel}", bold = true) { goHome(ctx) })
-        for (link in ctx.links) {
-            row.addView(divider())
-            row.addView(chip(link.label) { openLink(link); collapse() })
-        }
-        // collapse on a tap outside the bar.
-        runCatching { wm.addView(row, barParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, outsideTouch = true)) }
-        row.setOnTouchListener { _, ev ->
+        // Line 1 — the three hubs (parents), constant everywhere. Bold the one
+        // matching the current context for orientation.
+        col.addView(itemRow(cfg.parents, boldId = ctx.id))
+        // Line 2 — the current context's children.
+        col.addView(itemRow(ctx.children, boldId = null, topGap = true))
+
+        // collapse on a tap outside the box.
+        runCatching { wm.addView(col, barParams(outsideTouch = true)) }
+        col.setOnTouchListener { _, ev ->
             if (ev.action == MotionEvent.ACTION_OUTSIDE) { collapse(); true } else false
         }
-        bar = row
+        bar = col
+    }
+
+    /** One horizontal row of pipe-separated chips. `boldId` bolds the parent
+     *  whose target maps to that context (self→default, app:<pkg-prefix>). */
+    private fun itemRow(items: List<NavItem>, boldId: String?, topGap: Boolean = false): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            if (topGap) setPadding(0, dp(6), 0, 0)
+        }
+        for ((i, item) in items.withIndex()) {
+            if (i > 0) row.addView(divider())
+            val bold = boldId != null && parentMatchesContext(item.target, boldId)
+            row.addView(chip(item.label, bold = bold) { handleTarget(item); collapse() })
+        }
+        return row
+    }
+
+    private fun parentMatchesContext(target: String, ctxId: String): Boolean = when {
+        target == "self" -> ctxId == "default"
+        target.startsWith("app:") -> {
+            val pkg = target.removePrefix("app:")
+            (ctxId == "comms" && pkg.startsWith("com.diegonmarcos.comms")) ||
+                (ctxId == "ide" && pkg.startsWith("com.diegonmarcos.ide"))
+        }
+        else -> false
     }
 
     private fun removeBar() { bar?.let { runCatching { wm.removeView(it) } }; bar = null }
@@ -271,18 +297,23 @@ class FloatingNavService : Service() {
         if (lastForeground != packageName) showBubble()
     }
 
-    // ── Link actions ───────────────────────────────────────────────
-    private fun goHome(ctx: NavContext) {
-        val target = if (ctx.homePackage == "self") packageName else ctx.homePackage
-        launchPackage(target)
-        collapse()
+    // ── Item dispatch ──────────────────────────────────────────────
+    /** Route a tapped item by its target scheme. */
+    private fun handleTarget(item: NavItem) {
+        val t = item.target
+        when {
+            t == "self" -> launchPackage(packageName)
+            t.startsWith("app:") -> openApp(t.removePrefix("app:"), item.installApp)
+            // section:/action:/page:/… → bring Cloud-SuperApp forward and let
+            // its shortcut_action handler (onTileClicked) navigate.
+            else -> openSuperApp(t)
+        }
     }
 
-    private fun openLink(link: NavLink) {
-        if (launchPackage(link.pkg)) return
-        // Not installed → install the companion APK if the link declares one.
-        if (link.installApp.isNotBlank()) {
-            val app = Sections.externalApp(link.installApp)
+    private fun openApp(pkg: String, installApp: String) {
+        if (launchPackage(pkg)) return
+        if (installApp.isNotBlank()) {
+            val app = Sections.externalApp(installApp)
             if (app != null && app.installApkUrl.isNotBlank() && app.installPackage.isNotBlank()) {
                 runCatching {
                     Updater.installApk(applicationContext, app.installApkUrl, app.installPackage, app.label)
@@ -290,8 +321,16 @@ class FloatingNavService : Service() {
                 return
             }
         }
-        // Otherwise bring the user home so they can install it from the grid.
-        launchPackage(packageName)
+        launchPackage(packageName) // fall back to SuperApp so it can be installed there
+    }
+
+    /** Bring Cloud-SuperApp forward carrying a shortcut_action so it navigates
+     *  to the section/action/page (works cold or warm — see MainActivity). */
+    private fun openSuperApp(shortcutAction: String) {
+        val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        intent.putExtra("shortcut_action", shortcutAction)
+        runCatching { startActivity(intent) }
     }
 
     private fun launchPackage(pkg: String): Boolean {
@@ -317,15 +356,17 @@ class FloatingNavService : Service() {
         setPadding(dp(2), 0, dp(2), 0)
     }
 
-    private fun barParams(w: Int, h: Int, outsideTouch: Boolean = false): WindowManager.LayoutParams {
+    private fun barParams(outsideTouch: Boolean = false): WindowManager.LayoutParams {
         val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
         if (outsideTouch) flags = flags or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-        return WindowManager.LayoutParams(w, h, type, flags, android.graphics.PixelFormat.TRANSLUCENT).apply {
+        val wrap = WindowManager.LayoutParams.WRAP_CONTENT
+        return WindowManager.LayoutParams(wrap, wrap, type, flags, android.graphics.PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(6)
+            // Push the box down from the top edge by the data-driven %.
+            y = (resources.displayMetrics.heightPixels * cfg.verticalOffsetPct / 100)
         }
     }
 

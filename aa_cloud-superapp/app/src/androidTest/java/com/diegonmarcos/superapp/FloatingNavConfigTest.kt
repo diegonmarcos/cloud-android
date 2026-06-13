@@ -13,87 +13,74 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Contract test for the Floating Top Nav Bar (build.json::ui.floating_nav →
- * UI_FLOATING_NAV_B64 → BuildConfig → FloatingNavConfig → FloatingNavService).
+ * Contract test for the 2-line Floating Top Nav menu
+ * (build.json::ui.floating_nav → UI_FLOATING_NAV_B64 → FloatingNavConfig →
+ * FloatingNavService).
  *
- * Proves the data path AND the context-resolution rule that FloatingNavService
- * relies on: a foreground package inside Cloud-Comms (hub or any fork) resolves
- * to the comms nav; inside Cloud-IDE to the ide nav; anything else (or nothing)
- * to the default Cloud-Comms | Cloud-IDE nav. A typo in match_prefixes or a
- * dropped link would otherwise render the wrong bar at runtime with no signal.
+ * Line 1 = the three hub parents (constant everywhere). Line 2 = the matched
+ * context's children — Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·
+ * Messenger·Dialer; otherwise the default = Cloud-SuperApp's first-level pages.
  *
- * Run via the engine: ./build.sh test connectedDebugAndroidTest
+ * Run via the engine: ./build.sh instrument
  */
 @RunWith(AndroidJUnit4::class)
 class FloatingNavConfigTest {
 
     private val cfg = FloatingNavConfig.get()
 
-    @Test fun threeContextsDeclared() {
+    @Test fun enabledWithDownwardOffset() {
         assertTrue("floating_nav must be enabled", cfg.enabled)
-        val ids = cfg.contexts.map { it.id }.toSet()
-        assertTrue("expected default/comms/ide contexts, got $ids",
-            ids.containsAll(listOf("default", "comms", "ide")))
+        assertTrue("menu must be pushed down from the top", cfg.verticalOffsetPct > 0)
     }
 
-    @Test fun commsForegroundResolvesToCommsNav() {
-        // A fork package (prefix match) must still land on the comms context.
-        val c = cfg.contextFor("com.diegonmarcos.comms.mail")
-        assertNotNull(c)
-        assertEquals("comms", c!!.id)
-        assertEquals("Cloud-Comms", c.homeLabel)
-        val labels = c.links.map { it.label }
-        assertTrue("comms nav must list Fossy | Element | Mattermost | FairMail, got $labels",
-            labels.containsAll(listOf("Fossy", "Element", "Mattermost", "FairMail")))
+    @Test fun line1IsTheThreeHubs() {
+        val byLabel = cfg.parents.associateBy { it.label }
+        assertEquals("self", byLabel["Cloud SuperApp"]?.target)
+        assertEquals("app:com.diegonmarcos.ide", byLabel["Cloud IDE"]?.target)
+        assertEquals("cloud-ide", byLabel["Cloud IDE"]?.installApp)
+        assertEquals("app:com.diegonmarcos.comms", byLabel["Cloud Comms"]?.target)
+        assertEquals("cloud-comms", byLabel["Cloud Comms"]?.installApp)
     }
 
-    @Test fun ideForegroundResolvesToIdeNav() {
-        val c = cfg.contextFor("com.diegonmarcos.ide.editor")
-        assertNotNull(c)
-        assertEquals("ide", c!!.id)
-        val labels = c.links.map { it.label }
-        assertTrue("ide nav must list Acode + Amaze File, got $labels",
-            labels.containsAll(listOf("Acode", "Amaze File")))
+    @Test fun commsForegroundResolvesToCommsChildren() {
+        val c = cfg.contextFor("com.diegonmarcos.comms.mail")!!
+        assertEquals("comms", c.id)
+        assertEquals(listOf("Mail", "Chat", "Messenger", "Dialer"), c.children.map { it.label })
+        assertTrue("comms children launch packages",
+            c.children.all { it.target.startsWith("app:com.diegonmarcos.comms.") })
     }
 
-    @Test fun unknownForegroundFallsBackToDefaultNav() {
-        val c = cfg.contextFor("com.whatsapp")
-        assertNotNull(c)
-        assertEquals("default", c!!.id)
-        assertEquals("Cloud-SuperApp", c.homeLabel)
-        // Default links point at the installable hubs.
-        val byLabel = c.links.associateBy { it.label }
-        assertEquals("com.diegonmarcos.comms", byLabel["Cloud-Comms"]?.pkg)
-        assertEquals("cloud-comms", byLabel["Cloud-Comms"]?.installApp)
-        assertEquals("com.diegonmarcos.ide", byLabel["Cloud-IDE"]?.pkg)
+    @Test fun ideForegroundResolvesToIdeChildren() {
+        val c = cfg.contextFor("com.diegonmarcos.ide.editor")!!
+        assertEquals("ide", c.id)
+        assertEquals(listOf("Acode", "Amaze File Man"), c.children.map { it.label })
     }
 
-    /**
-     * The single Start/Stop toggle in Configs → Permissions styles itself
-     * from FloatingNavService.isRunning, and only starts when the overlay
-     * permission is granted. In the instrumentation environment that perm is
-     * not held, so startIfPermitted must refuse and isRunning stay false —
-     * the exact contract the toggle's light/dark styling reads.
-     */
-    @Test fun toggleContract_startsOnlyWhenOverlayGranted() {
-        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        if (!Settings.canDrawOverlays(ctx)) {
-            assertFalse("must refuse to start without 'display over other apps'",
-                FloatingNavService.startIfPermitted(ctx))
-            assertFalse("isRunning must stay false when start is refused",
-                FloatingNavService.isRunning)
+    @Test fun unknownForegroundFallsBackToSuperAppPages() {
+        val c = cfg.contextFor("com.whatsapp")!!
+        assertEquals("default", c.id)
+        val byLabel = c.children.associateBy { it.label }
+        assertEquals(listOf("Comms", "Infos", "Home-Apps", "Suite", "Labs", "Configs"),
+            c.children.map { it.label })
+        // SuperApp pages route through the shortcut_action dispatch, not app launch.
+        assertEquals("section:communication", byLabel["Comms"]?.target)
+        assertEquals("section:suite", byLabel["Suite"]?.target)
+        assertEquals("section:config", byLabel["Configs"]?.target)
+        assertEquals("action:open_home_apps", byLabel["Home-Apps"]?.target)
+    }
+
+    @Test fun parentInstallAppsResolveInExternalApps() {
+        for (p in cfg.parents.filter { it.installApp.isNotBlank() }) {
+            assertNotNull("parent '${p.label}' references unknown external app '${p.installApp}'",
+                Sections.externalApp(p.installApp))
         }
     }
 
-    @Test fun everyDefaultInstallAppResolvesInExternalApps() {
-        // The default nav's install_app ids must be real ui.external_apps entries
-        // (so a not-installed hub triggers the companion-APK install flow).
-        val def = cfg.contextFor("com.example.unknown")!!
-        for (link in def.links.filter { it.installApp.isNotBlank() }) {
-            assertNotNull(
-                "floating_nav default link '${link.label}' references unknown external app '${link.installApp}'",
-                Sections.externalApp(link.installApp),
-            )
+    @Test fun toggleContract_startsOnlyWhenOverlayGranted() {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        if (!Settings.canDrawOverlays(ctx)) {
+            assertFalse(FloatingNavService.startIfPermitted(ctx))
+            assertFalse(FloatingNavService.isRunning)
         }
     }
 }

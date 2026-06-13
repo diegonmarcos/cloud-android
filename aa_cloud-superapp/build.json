@@ -4572,37 +4572,42 @@
     "floating_nav": {
       "enabled": true,
       "poll_ms": 1000,
+      "_doc_layout": "The expanded menu renders the SAME 2-line box wherever it is triggered (inside Cloud-SuperApp, Cloud-IDE, Cloud-Comms, or any other app). Line 1 = `parents` (the three hubs), constant everywhere. Line 2 = the `children` of the context matched from the foreground package (Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·Messenger·Dialer; otherwise the `default` context = Cloud-SuperApp's first-level pages). `vertical_offset_pct` shifts the whole box down from the top edge by that % of screen height (tune freely). Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Add a hub / child = edit here; nothing in Kotlin hardcodes a label or package.",
+      "vertical_offset_pct": 9,
+      "parents": [
+        { "label": "Cloud SuperApp", "target": "self" },
+        { "label": "Cloud IDE",      "target": "app:com.diegonmarcos.ide",   "install_app": "cloud-ide" },
+        { "label": "Cloud Comms",    "target": "app:com.diegonmarcos.comms", "install_app": "cloud-comms" }
+      ],
       "contexts": [
         {
           "id": "default",
-          "home_label": "Cloud-SuperApp",
-          "home_package": "self",
           "match_prefixes": [],
-          "links": [
-            { "label": "Cloud-Comms", "package": "com.diegonmarcos.comms", "install_app": "cloud-comms" },
-            { "label": "Cloud-IDE",   "package": "com.diegonmarcos.ide",   "install_app": "cloud-ide" }
-          ]
-        },
-        {
-          "id": "comms",
-          "home_label": "Cloud-Comms",
-          "home_package": "com.diegonmarcos.comms",
-          "match_prefixes": [ "com.diegonmarcos.comms" ],
-          "links": [
-            { "label": "Fossy",      "package": "com.diegonmarcos.comms.dialer" },
-            { "label": "Element",    "package": "com.diegonmarcos.comms.matrix" },
-            { "label": "Mattermost", "package": "com.diegonmarcos.comms.chat" },
-            { "label": "FairMail",   "package": "com.diegonmarcos.comms.mail" }
+          "children": [
+            { "label": "Comms",     "target": "section:communication" },
+            { "label": "Infos",     "target": "section:infos" },
+            { "label": "Home-Apps", "target": "action:open_home_apps" },
+            { "label": "Suite",     "target": "section:suite" },
+            { "label": "Labs",      "target": "section:tools" },
+            { "label": "Configs",   "target": "section:config" }
           ]
         },
         {
           "id": "ide",
-          "home_label": "Cloud-IDE",
-          "home_package": "com.diegonmarcos.ide",
           "match_prefixes": [ "com.diegonmarcos.ide" ],
-          "links": [
-            { "label": "Acode",      "package": "com.diegonmarcos.ide.editor" },
-            { "label": "Amaze File", "package": "com.diegonmarcos.ide.files" }
+          "children": [
+            { "label": "Acode",          "target": "app:com.diegonmarcos.ide.editor" },
+            { "label": "Amaze File Man", "target": "app:com.diegonmarcos.ide.files" }
+          ]
+        },
+        {
+          "id": "comms",
+          "match_prefixes": [ "com.diegonmarcos.comms" ],
+          "children": [
+            { "label": "Mail",      "target": "app:com.diegonmarcos.comms.mail" },
+            { "label": "Chat",      "target": "app:com.diegonmarcos.comms.chat" },
+            { "label": "Messenger", "target": "app:com.diegonmarcos.comms.matrix" },
+            { "label": "Dialer",    "target": "app:com.diegonmarcos.comms.dialer" }
           ]
         }
       ]
