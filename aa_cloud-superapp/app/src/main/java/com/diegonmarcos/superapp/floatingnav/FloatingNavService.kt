@@ -46,6 +46,7 @@ import com.diegonmarcos.superapp.updater.Updater
 class FloatingNavService : Service() {
 
     private val cfg by lazy { FloatingNavConfig.get() }
+    private val media by lazy { MediaProxy(this) }
     private lateinit var wm: WindowManager
     private val main = Handler(Looper.getMainLooper())
 
@@ -103,6 +104,7 @@ class FloatingNavService : Service() {
         isRunning = false
         main.removeCallbacksAndMessages(null)
         removeBubble(); removeBar()
+        runCatching { media.cancel() }
         super.onDestroy()
     }
 
@@ -114,6 +116,9 @@ class FloatingNavService : Service() {
             } else {
                 refresh(foregroundPackage())
             }
+            // Media-session notification tracks the active player independently
+            // of the overlay (it only needs notification access).
+            runCatching { media.refresh() }
             main.postDelayed(this, cfg.pollMs)
         }
     }
@@ -327,10 +332,14 @@ class FloatingNavService : Service() {
             "calc" -> openCalculator()
             "lock" -> runCatching { com.diegonmarcos.superapp.ScreenLocker.lock(this) }
             "screensaver" -> ScreensaverService.start(this)
-            // section:/action:/page:/… → bring Cloud-SuperApp forward and let
-            // its shortcut_action handler (onTileClicked) navigate.
-            else -> if (target.startsWith("app:")) openApp(target.removePrefix("app:"), installApp)
-            else openSuperApp(target)
+            else -> when {
+                // Media transport (Prev/Play-Pause/Next) → active session.
+                target.startsWith("media:") -> media.transport(target)
+                target.startsWith("app:") -> openApp(target.removePrefix("app:"), installApp)
+                // section:/action:/page:/… → bring Cloud-SuperApp forward and
+                // let its shortcut_action handler (onTileClicked) navigate.
+                else -> openSuperApp(target)
+            }
         }
     }
 
@@ -491,9 +500,9 @@ class FloatingNavService : Service() {
         private const val CHANNEL_ID = "floating_nav"
         private const val NOTIF_ID = 0xF1
         const val ACTION_SHOW_MENU = "com.diegonmarcos.superapp.floatingnav.SHOW_MENU"
-        private const val ACTION_NAV = "com.diegonmarcos.superapp.floatingnav.NAV_ACTION"
+        internal const val ACTION_NAV = "com.diegonmarcos.superapp.floatingnav.NAV_ACTION"
         private const val ACTION_RENOTIFY = "com.diegonmarcos.superapp.floatingnav.RENOTIFY"
-        private const val EXTRA_TARGET = "target"
+        internal const val EXTRA_TARGET = "target"
 
         /** Force-open the nav menu (the Sirius Star on the home screen). Starts
          *  the service if needed and force-expands the bar even while SuperApp
