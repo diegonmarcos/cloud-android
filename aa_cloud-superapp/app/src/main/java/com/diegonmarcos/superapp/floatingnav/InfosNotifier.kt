@@ -1,8 +1,11 @@
 package com.diegonmarcos.superapp.floatingnav
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.diegonmarcos.superapp.BuildConfig
@@ -45,23 +48,38 @@ class InfosNotifier(private val ctx: Context) {
             runCatching { nm().notify(NOTIF_BASE + i, child) }
         }
 
-        // Group summary — collapsed bundle shows the group list.
-        val summary = NotificationCompat.InboxStyle()
-            .setBigContentTitle("Cloud SuperApp - Notification Center Infos")
+        // Group summary (the PERSISTENT parent) — collapsed bundle shows the
+        // group list + total alert count. The children above stay dismissable;
+        // only this parent is non-removable (like the Main notification).
+        val total = groups.sumOf { it.messages.size }
+        val summary = NotificationCompat.InboxStyle().setBigContentTitle("Cloud Alerts")
         groups.forEach { summary.addLine("${it.title} · ${it.messages.size} new") }
-        summary.setSummaryText("${groups.size} groups")
+        summary.setSummaryText("$total alerts")
         val sum = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Infos")
-            .setContentText("${groups.size} groups")
+            .setContentTitle("Cloud Alerts")
+            .setContentText("$total new alerts")
+            .setNumber(total)
             .setGroup(GROUP_KEY)
             .setGroupSummary(true)
+            .setOngoing(true)
             .setOnlyAlertOnce(true)
+            // Persistent like Main: re-post when the OS lets the user dismiss it.
+            .setDeleteIntent(reNotifyPi())
             .setStyle(summary)
             .build()
+            .apply { flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT }
         runCatching { nm().notify(NOTIF_SUMMARY, sum) }
         lastCount = groups.size
     }
+
+    /** Re-post the persistent parent if the OS lets the user swipe it away. */
+    private fun reNotifyPi(): PendingIntent = PendingIntent.getService(
+        ctx, 0xF4FF,
+        Intent(ctx, FloatingNavService::class.java)
+            .setAction(FloatingNavService.ACTION_NAV).putExtra(FloatingNavService.EXTRA_TARGET, "infos:renotify"),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     fun cancel() {
         runCatching { nm().cancel(NOTIF_SUMMARY) }

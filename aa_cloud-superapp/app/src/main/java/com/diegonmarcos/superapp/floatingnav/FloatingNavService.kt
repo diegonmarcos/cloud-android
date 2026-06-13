@@ -337,6 +337,7 @@ class FloatingNavService : Service() {
             "dnd" -> toggleDnd()
             "powersave" -> openPowerSaver()
             "screensaver" -> ScreensaverService.start(this)
+            "infos:renotify" -> runCatching { infos.refresh() }
             else -> when {
                 // Media transport (Prev/Play-Pause/Next) → active session.
                 target.startsWith("media:") -> media.transport(target)
