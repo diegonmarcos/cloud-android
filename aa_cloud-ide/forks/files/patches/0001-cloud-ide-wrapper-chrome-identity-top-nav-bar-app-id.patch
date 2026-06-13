@@ -223,8 +223,8 @@ index 2e835df77..a8425a775 100644
    public void onCreate(final Bundle savedInstanceState) {
      super.onCreate(savedInstanceState);
      setContentView(R.layout.main_toolbar);
-+    // Cloud-IDE wrapper chrome (fork patch): persistent top nav bar.
-+    com.amaze.filemanager.cloudide.CloudIdeNavBar.attach(this);
++    // Cloud-IDE wrapper chrome DROPPED (fork patch): Cloud-SuperApp's
++    // FloatingNavService now owns the single cross-app bar (class kept for standalone).
  
      intent = getIntent();
  

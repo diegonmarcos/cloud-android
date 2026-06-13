@@ -54,6 +54,9 @@ class FloatingNavService : Service() {
     private var expanded = false
     private var currentContextId: String? = null
     private var lastForeground: String? = null
+    // Persisted bubble position (px). Int.MIN_VALUE = unset → default top-centre.
+    private var bubbleX = Int.MIN_VALUE
+    private var bubbleY = Int.MIN_VALUE
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -120,6 +123,7 @@ class FloatingNavService : Service() {
     private fun showBubble() {
         if (bubble != null) return
         val size = dp(34)
+        val params = bubbleParams(size)
         val v = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -127,15 +131,100 @@ class FloatingNavService : Service() {
                 setStroke(dp(1), Color.argb(0x55, 0xFF, 0xFF, 0xFF))
             }
             alpha = 0.55f
-            setOnClickListener {
-                cfg.contextFor(lastForeground)?.let { showBar(it) }
-            }
+            setOnTouchListener(bubbleTouch(params))
         }
-        runCatching { wm.addView(v, barParams(size, size)) }
+        runCatching { wm.addView(v, params) }
         bubble = v
     }
 
+    /**
+     * Tap-and-hold to move, quick-tap to open. A long-press arms drag mode
+     * (with haptic feedback); only then does a finger move reposition the
+     * window. A plain tap (no hold, no move) expands the nav bar. The final
+     * position is persisted so it survives re-shows / restarts.
+     */
+    private fun bubbleTouch(lp: WindowManager.LayoutParams): View.OnTouchListener {
+        val slop = android.view.ViewConfiguration.get(this).scaledTouchSlop
+        val longPressMs = android.view.ViewConfiguration.getLongPressTimeout().toLong()
+        return object : View.OnTouchListener {
+            private var downX = 0f; private var downY = 0f
+            private var startX = 0; private var startY = 0
+            private var dragArmed = false
+            private var movedFar = false
+            private var arm: Runnable? = null
+
+            override fun onTouch(view: View, e: MotionEvent): Boolean {
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y
+                        dragArmed = false; movedFar = false
+                        arm = Runnable {
+                            dragArmed = true
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        }.also { main.postDelayed(it, longPressMs) }
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = e.rawX - downX; val dy = e.rawY - downY
+                        if (!movedFar && Math.hypot(dx.toDouble(), dy.toDouble()) > slop) {
+                            movedFar = true
+                            if (!dragArmed) { arm?.let(main::removeCallbacks); arm = null } // scroll before hold → not a drag
+                        }
+                        if (dragArmed) {
+                            lp.x = (startX + dx).toInt().coerceIn(0, maxBubbleX(view.width))
+                            lp.y = (startY + dy).toInt().coerceIn(0, maxBubbleY(view.height))
+                            runCatching { wm.updateViewLayout(view, lp) }
+                        }
+                        return true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        arm?.let(main::removeCallbacks); arm = null
+                        if (dragArmed) {
+                            bubbleX = lp.x; bubbleY = lp.y; savePos()
+                        } else if (!movedFar && e.actionMasked == MotionEvent.ACTION_UP) {
+                            view.performClick()
+                            cfg.contextFor(lastForeground)?.let { showBar(it) }
+                        }
+                        return true
+                    }
+                }
+                return false
+            }
+        }
+    }
+
+    private fun maxBubbleX(w: Int) = (resources.displayMetrics.widthPixels - w).coerceAtLeast(0)
+    private fun maxBubbleY(h: Int) = (resources.displayMetrics.heightPixels - h).coerceAtLeast(0)
+
     private fun removeBubble() { bubble?.let { runCatching { wm.removeView(it) } }; bubble = null }
+
+    /** Window params for the draggable bubble — gravity TOP|START so x/y are
+     *  absolute; defaults to top-centre on first show, then the saved spot. */
+    private fun bubbleParams(size: Int): WindowManager.LayoutParams {
+        if (bubbleX == Int.MIN_VALUE) loadPos()
+        val defX = ((resources.displayMetrics.widthPixels - size) / 2).coerceAtLeast(0)
+        return WindowManager.LayoutParams(
+            size, size,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            android.graphics.PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = if (bubbleX >= 0) bubbleX else defX
+            y = if (bubbleY >= 0) bubbleY else dp(6)
+        }
+    }
+
+    private fun posPrefs() = getSharedPreferences("floating_nav_pos", Context.MODE_PRIVATE)
+    private fun loadPos() {
+        bubbleX = posPrefs().getInt("x", -1)
+        bubbleY = posPrefs().getInt("y", -1)
+    }
+    private fun savePos() {
+        posPrefs().edit().putInt("x", bubbleX).putInt("y", bubbleY).apply()
+    }
 
     // ── Expanded nav bar ───────────────────────────────────────────
     private fun showBar(ctx: NavContext) {
