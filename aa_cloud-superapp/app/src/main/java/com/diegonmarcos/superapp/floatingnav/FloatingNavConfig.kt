@@ -40,8 +40,15 @@ data class FloatingNavConfig(
     /** Push the whole menu box down from the top by this % of screen height. */
     val verticalOffsetPct: Int,
     val parents: List<NavItem>,
+    /** Global utility actions. Compact menu shows the first [compactActionCount];
+     *  the Expanded view shows them all. */
+    val actions: List<NavItem>,
+    val compactActionCount: Int,
+    /** Placeholder now-playing card for the Expanded view. */
+    val expandedMock: AlbumMock,
     val contexts: List<NavContext>,
 ) {
+    data class AlbumMock(val title: String, val artist: String, val artTop: Int, val artBottom: Int)
     /** Context (line 2) for a foreground package; falls back to `default`. */
     fun contextFor(foregroundPkg: String?): NavContext? {
         if (foregroundPkg != null) {
@@ -84,11 +91,22 @@ data class FloatingNavConfig(
                 }
                 contexts.add(NavContext(id, prefixes, items(c.optJSONArray("children"))))
             }
+            val em = o.optJSONObject("expanded_mock") ?: JSONObject()
+            fun color(key: String, def: Long) =
+                runCatching { android.graphics.Color.parseColor(em.optString(key)) }.getOrDefault(def.toInt())
             return FloatingNavConfig(
                 enabled = o.optBoolean("enabled", true),
                 pollMs = o.optLong("poll_ms", 1000L).coerceAtLeast(250L),
                 verticalOffsetPct = o.optInt("vertical_offset_pct", 9).coerceIn(0, 80),
                 parents = items(o.optJSONArray("parents")),
+                actions = items(o.optJSONArray("actions")),
+                compactActionCount = o.optInt("compact_action_count", 3).coerceAtLeast(1),
+                expandedMock = AlbumMock(
+                    title = em.optString("title", "—"),
+                    artist = em.optString("artist", ""),
+                    artTop = color("art_color_top", 0xFF7C3AED),
+                    artBottom = color("art_color_bottom", 0xFF2563EB),
+                ),
                 contexts = contexts,
             )
         }

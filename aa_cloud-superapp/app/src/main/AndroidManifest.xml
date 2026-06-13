@@ -252,6 +252,18 @@
                 android:value="Floating cross-app navigation bar overlay for the Cloud SuperApp launcher" />
         </service>
 
+        <!-- ScreensaverService — full-black cover overlay (Black-Screen-style;
+             keeps apps playing underneath, no lock). Started from the
+             floating-nav Screensaver action; same overlay + FGS perms. -->
+        <service
+            android:name=".floatingnav.ScreensaverService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Full-screen black screensaver overlay for the Cloud SuperApp launcher" />
+        </service>
+
         <!-- Shizuku provider — required by the Shizuku client lib so the
              app can talk to the Shizuku server (binder + permission).
              Backs the exact per-app energy attribution (ShizukuEnergy +

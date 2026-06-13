@@ -19,6 +19,8 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -52,6 +54,9 @@ class FloatingNavService : Service() {
     private var bubble: View? = null      // collapsed circle
     private var bar: View? = null         // expanded nav bar
     private var expanded = false
+    // Expanded view (album-art card + all 5 actions) vs the compact menu.
+    private var fullView = false
+    private var torchOn = false
     // When the menu was opened explicitly (Sirius Star on the home screen),
     // keep it shown even while Cloud-SuperApp is foreground; cleared on collapse.
     private var forced = false
@@ -234,7 +239,7 @@ class FloatingNavService : Service() {
         posPrefs().edit().putInt("x", bubbleX).putInt("y", bubbleY).apply()
     }
 
-    // ── Expanded nav bar — the constant 2-line box ─────────────────
+    // ── The menu box (compact 2-line, or Expanded view) ────────────
     private fun showBar(ctx: NavContext) {
         removeBubble(); removeBar()
         expanded = true
@@ -246,20 +251,73 @@ class FloatingNavService : Service() {
                 setColor(Color.argb(0xEE, 0x16, 0x16, 0x1C))
                 setStroke(dp(1), Color.argb(0x55, 0x7C, 0x3A, 0xED))
             }
-            val p = dp(10); setPadding(p + dp(4), dp(8), p + dp(4), dp(8))
+            val p = dp(12); setPadding(p, dp(10), p, dp(10))
         }
-        // Line 1 — the three hubs (parents), constant everywhere. Bold the one
-        // matching the current context for orientation.
-        col.addView(itemRow(cfg.parents, boldId = ctx.id))
+        // Expanded view only: now-playing album-art card on top (mock data).
+        if (fullView) col.addView(albumCard())
+        // Line 1 — the three hubs; bold the current context's hub.
+        col.addView(itemRow(cfg.parents, boldId = ctx.id, topGap = fullView))
         // Line 2 — the current context's children.
         col.addView(itemRow(ctx.children, boldId = null, topGap = true))
+        // Action line(s): compact shows the first N; expanded shows all,
+        // wrapped at 3 chips per row.
+        val acts = if (fullView) cfg.actions else cfg.actions.take(cfg.compactActionCount)
+        for (rowItems in acts.chunked(3)) col.addView(itemRow(rowItems, boldId = null, topGap = true))
+        // Expand / collapse toggle.
+        col.addView(expandToggle(ctx))
 
-        // collapse on a tap outside the box.
         runCatching { wm.addView(col, barParams(outsideTouch = true)) }
         col.setOnTouchListener { _, ev ->
             if (ev.action == MotionEvent.ACTION_OUTSIDE) { collapse(); true } else false
         }
         bar = col
+    }
+
+    /** Toggle between the compact menu and the Expanded view (re-renders). */
+    private fun expandToggle(ctx: NavContext): View = TextView(this).apply {
+        text = if (fullView) "⤡  Less" else "⤢  Expanded view"
+        setTextColor(0xFF9CC2FF.toInt()); textSize = 12f
+        gravity = Gravity.CENTER
+        isClickable = true
+        val lp = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+        lp.topMargin = dp(8); layoutParams = lp
+        setPadding(dp(8), dp(6), dp(8), dp(2))
+        setOnClickListener { fullView = !fullView; showBar(ctx) }
+    }
+
+    /** Mock now-playing card so the Expanded view is visualizable without a
+     *  live media session (real MediaSession metadata replaces it later). */
+    private fun albumCard(): View {
+        val m = cfg.expandedMock
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat(); setColor(Color.argb(0x33, 0xFF, 0xFF, 0xFF))
+            }
+            setPadding(dp(8), dp(8), dp(16), dp(8))
+            val lp = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            lp.bottomMargin = dp(2); layoutParams = lp
+        }
+        card.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR, intArrayOf(m.artTop, m.artBottom),
+            ).apply { cornerRadius = dp(8).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
+        })
+        card.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val lp = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f); lp.leftMargin = dp(12); layoutParams = lp
+            addView(TextView(this@FloatingNavService).apply {
+                text = "♪  ${m.title}"; setTextColor(0xFFFFFFFF.toInt()); textSize = 13.5f
+                maxLines = 1; setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            addView(TextView(this@FloatingNavService).apply {
+                text = m.artist; setTextColor(0xBBFFFFFF.toInt()); textSize = 11f; maxLines = 1
+            })
+        })
+        card.addView(chip("▶", bold = true) { /* mock — no transport yet */ })
+        return card
     }
 
     /** One horizontal row of pipe-separated chips. `boldId` bolds the parent
@@ -293,6 +351,7 @@ class FloatingNavService : Service() {
     private fun collapse() {
         expanded = false
         forced = false
+        fullView = false
         removeBar()
         if (lastForeground != packageName) showBubble()
     }
@@ -300,14 +359,38 @@ class FloatingNavService : Service() {
     // ── Item dispatch ──────────────────────────────────────────────
     /** Route a tapped item by its target scheme. */
     private fun handleTarget(item: NavItem) {
-        val t = item.target
-        when {
-            t == "self" -> launchPackage(packageName)
-            t.startsWith("app:") -> openApp(t.removePrefix("app:"), item.installApp)
+        when (val t = item.target) {
+            "self" -> launchPackage(packageName)
+            "torch" -> toggleTorch()
+            "calc" -> openCalculator()
+            "lock" -> runCatching { com.diegonmarcos.superapp.ScreenLocker.lock(this) }
+            "screensaver" -> ScreensaverService.start(this)
             // section:/action:/page:/… → bring Cloud-SuperApp forward and let
             // its shortcut_action handler (onTileClicked) navigate.
-            else -> openSuperApp(t)
+            else -> if (t.startsWith("app:")) openApp(t.removePrefix("app:"), item.installApp)
+            else openSuperApp(t)
         }
+    }
+
+    /** Toggle the flashlight — CameraManager.setTorchMode needs no permission. */
+    private fun toggleTorch() {
+        runCatching {
+            val cm = getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+            val id = cm.cameraIdList.firstOrNull { cid ->
+                cm.getCameraCharacteristics(cid)
+                    .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            } ?: return
+            torchOn = !torchOn
+            cm.setTorchMode(id, torchOn)
+        }
+    }
+
+    /** Open the device calculator via the standard CATEGORY_APP_CALCULATOR. */
+    private fun openCalculator() {
+        val intent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (intent.resolveActivity(packageManager) != null) runCatching { startActivity(intent) }
+        else android.widget.Toast.makeText(this, "No calculator app found", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun openApp(pkg: String, installApp: String) {

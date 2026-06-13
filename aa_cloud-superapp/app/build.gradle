@@ -147,6 +147,12 @@ def floatingNavB64   = floatingNavJson.bytes.encodeBase64().toString()
 def siriusEnabled    = (buildJson.ui.sirius_star?.enabled != false)
 def siriusGlyph      = (buildJson.ui.sirius_star?.glyph ?: '✦')
 def siriusSizeSp     = ((buildJson.ui.sirius_star?.size_sp ?: 13) as Number).floatValue()
+// Screensaver (ScreensaverService) — full-black cover overlay config.
+def ssaver           = buildJson.ui.screensaver ?: [:]
+def ssaverEnabled    = (ssaver.enabled != false)
+def ssaverTimeFmt    = (ssaver.time_format ?: 'HH:mm')
+def ssaverDateFmt    = (ssaver.date_format ?: 'EEE, d MMM')
+def ssaverUnlock     = (ssaver.unlock_label ?: 'Unlock')
 // Profile defaults — first-run seed for ProfilePrefs. User can edit at
 // runtime via Configs → Profile.
 def profileDefault   = buildJson.ui.profile_default ?: [:]
@@ -367,6 +373,10 @@ android {
         buildConfigField "boolean", "SIRIUS_STAR_ENABLED",  "${siriusEnabled}"
         buildConfigField "String",  "SIRIUS_STAR_GLYPH",    "\"${siriusGlyph}\""
         buildConfigField "float",   "SIRIUS_STAR_SIZE_SP",  "${siriusSizeSp}f"
+        buildConfigField "boolean", "SCREENSAVER_ENABLED",      "${ssaverEnabled}"
+        buildConfigField "String",  "SCREENSAVER_TIME_FORMAT",  "\"${ssaverTimeFmt}\""
+        buildConfigField "String",  "SCREENSAVER_DATE_FORMAT",  "\"${ssaverDateFmt}\""
+        buildConfigField "String",  "SCREENSAVER_UNLOCK_LABEL",  "\"${ssaverUnlock}\""
         buildConfigField "String", "UI_PROFILE_NAME",       "\"${profileName}\""
         buildConfigField "String", "UI_PROFILE_EMAIL",      "\"${profileEmail}\""
         buildConfigField "String", "UI_PROFILE_INITIALS",   "\"${profileInitials}\""

@@ -76,6 +76,23 @@ class FloatingNavConfigTest {
         }
     }
 
+    @Test fun actionsLine_lightScreensaverCalcThenLockSearch() {
+        val labels = cfg.actions.map { it.label }
+        assertEquals(listOf("Light", "Screensaver", "Calc", "Lock", "Search"), labels)
+        // Compact menu shows the first 3; expanded shows all 5.
+        assertEquals(3, cfg.compactActionCount)
+        assertTrue("expanded view shows more than the compact count",
+            cfg.actions.size > cfg.compactActionCount)
+        val byLabel = cfg.actions.associateBy { it.label }
+        assertEquals("torch", byLabel["Light"]?.target)
+        assertEquals("screensaver", byLabel["Screensaver"]?.target)
+        assertEquals("calc", byLabel["Calc"]?.target)
+    }
+
+    @Test fun expandedViewHasMockAlbum() {
+        assertTrue("mock album title for the Expanded view", cfg.expandedMock.title.isNotBlank())
+    }
+
     @Test fun toggleContract_startsOnlyWhenOverlayGranted() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         if (!Settings.canDrawOverlays(ctx)) {

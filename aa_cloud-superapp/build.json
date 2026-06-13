@@ -4568,6 +4568,13 @@
       "glyph": "✦",
       "size_sp": 13
     },
+    "_doc_screensaver": "The Screensaver (ScreensaverService) — a full-screen OPAQUE BLACK overlay (SYSTEM_ALERT_WINDOW), NOT an Activity and NOT a lock: the app underneath stays resumed, so a playing video/audio keeps going, just hidden. Shows the time + date at the top and an Unlock button at the bottom (the only actionable). Triggered by the floating-nav `screensaver` action. `time_format`/`date_format` are java.text.SimpleDateFormat patterns; `unlock_label` is the dismiss button text.",
+    "screensaver": {
+      "enabled": true,
+      "time_format": "HH:mm",
+      "date_format": "EEE, d MMM",
+      "unlock_label": "Unlock"
+    },
     "_doc_floating_nav": "Floating Top Nav Bar — a SYSTEM_ALERT_WINDOW overlay (FloatingNavService) shown whenever the user has left Cloud-SuperApp. Collapsed = a small transparent circle, top-centre; tapped = expands to a top rectangle bar of links. The bar is CONTEXT-AWARE: FloatingNavService polls the foreground package (UsageStatsManager, poll_ms) and picks the first context whose `match_prefixes` matches (prefix = pkg == p || pkg startsWith p + '.'); the `default` context (empty match_prefixes) is the fallback. Each context shows `home_label` (the ✲ primary, brings `home_package` to front — 'self' = Cloud-SuperApp) then its `links` (label → package; tap launches getLaunchIntentForPackage, or installs via `install_app` external_apps id when absent). When the foreground IS Cloud-SuperApp the overlay hides entirely (we're already home). Packages mirror ui.external_apps forks + ui.permissions.roles (Fossy = the comms dialer fork). Add a context / link = edit here; nothing in Kotlin hardcodes a package.",
     "floating_nav": {
       "enabled": true,
@@ -4578,6 +4585,22 @@
         { "label": "Cloud SuperApp", "target": "self" },
         { "label": "Cloud IDE",      "target": "app:com.diegonmarcos.ide",   "install_app": "cloud-ide" },
         { "label": "Cloud Comms",    "target": "app:com.diegonmarcos.comms", "install_app": "cloud-comms" }
+      ],
+      "_doc_actions": "Global utility actions, identical in every context. The COMPACT menu shows the first `compact_action_count` (3); the EXPANDED view shows ALL of them (up to 5) plus a now-playing album-art card. Targets: `torch` toggles the flashlight (CameraManager.setTorchMode, no camera perm); `calc` opens the device calculator (Intent CATEGORY_APP_CALCULATOR); `screensaver` starts ScreensaverService (full-black cover overlay — see ui.screensaver); `lock` locks the screen (ScreenLocker); `action:<id>` routes through Cloud-SuperApp. Add/replace/reorder = edit here.",
+      "compact_action_count": 3,
+      "_doc_expanded_mock": "Placeholder now-playing card shown in the Expanded view so the UI is visualizable without a live media session. Replaced by the real MediaSession metadata when one is playing (future).",
+      "expanded_mock": {
+        "title": "Midnight City",
+        "artist": "M83 — Hurry Up, We're Dreaming",
+        "art_color_top": "#7C3AED",
+        "art_color_bottom": "#2563EB"
+      },
+      "actions": [
+        { "label": "Light",       "target": "torch" },
+        { "label": "Screensaver", "target": "screensaver" },
+        { "label": "Calc",        "target": "calc" },
+        { "label": "Lock",        "target": "lock" },
+        { "label": "Search",      "target": "action:open_search" }
       ],
       "contexts": [
         {
