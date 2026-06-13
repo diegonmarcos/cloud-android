@@ -76,17 +76,17 @@ class FloatingNavConfigTest {
         }
     }
 
-    @Test fun actionsLine_lightScreensaverCalcThenLockSearch() {
+    @Test fun actionsLine_lightScreensaverCalcThenDndSaver() {
         val labels = cfg.actions.map { it.label }
-        assertEquals(listOf("Light", "Screensaver", "Calc", "Lock", "Search"), labels)
-        // Compact menu shows the first 3; expanded shows all 5.
+        assertEquals(listOf("Light", "Screensaver", "Calc", "DND", "Saver"), labels)
+        // Collapsed notification shows the first 3; expanded shows all 5.
         assertEquals(3, cfg.compactActionCount)
         assertTrue("expanded view shows more than the compact count",
             cfg.actions.size > cfg.compactActionCount)
         val byLabel = cfg.actions.associateBy { it.label }
         assertEquals("torch", byLabel["Light"]?.target)
-        assertEquals("screensaver", byLabel["Screensaver"]?.target)
-        assertEquals("calc", byLabel["Calc"]?.target)
+        assertEquals("dnd", byLabel["DND"]?.target)
+        assertEquals("powersave", byLabel["Saver"]?.target)
     }
 
     @Test fun toggleContract_startsOnlyWhenOverlayGranted() {

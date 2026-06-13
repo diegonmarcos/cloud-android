@@ -4601,8 +4601,8 @@
         { "label": "Light",       "target": "torch" },
         { "label": "Screensaver", "target": "screensaver" },
         { "label": "Calc",        "target": "calc" },
-        { "label": "Lock",        "target": "lock" },
-        { "label": "Search",      "target": "action:open_search" }
+        { "label": "DND",         "target": "dnd" },
+        { "label": "Saver",       "target": "powersave" }
       ],
       "contexts": [
         {

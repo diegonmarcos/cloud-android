@@ -334,6 +334,8 @@ class FloatingNavService : Service() {
             "torch" -> toggleTorch()
             "calc" -> openCalculator()
             "lock" -> runCatching { com.diegonmarcos.superapp.ScreenLocker.lock(this) }
+            "dnd" -> toggleDnd()
+            "powersave" -> openPowerSaver()
             "screensaver" -> ScreensaverService.start(this)
             else -> when {
                 // Media transport (Prev/Play-Pause/Next) → active session.
@@ -356,6 +358,34 @@ class FloatingNavService : Service() {
             } ?: return
             torchOn = !torchOn
             cm.setTorchMode(id, torchOn)
+        }
+    }
+
+    /** Toggle Do-Not-Disturb. Needs notification-policy access; if not granted,
+     *  jump to the grant screen instead. */
+    private fun toggleDnd() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.isNotificationPolicyAccessGranted) {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            return
+        }
+        val dndOn = nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
+        nm.setInterruptionFilter(
+            if (dndOn) NotificationManager.INTERRUPTION_FILTER_ALL
+            else NotificationManager.INTERRUPTION_FILTER_PRIORITY,
+        )
+    }
+
+    /** Battery saver can't be toggled programmatically (system-restricted) —
+     *  open the battery-saver settings so the user flips it. */
+    private fun openPowerSaver() {
+        runCatching {
+            startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure {
+            runCatching { startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }
     }
 
@@ -495,6 +525,8 @@ class FloatingNavService : Service() {
         "torch" -> R.drawable.ic_nav_torch
         "screensaver" -> R.drawable.ic_nav_screensaver
         "calc" -> R.drawable.ic_nav_calc
+        "dnd" -> R.drawable.ic_nav_dnd
+        "powersave" -> R.drawable.ic_nav_powersave
         "lock" -> R.drawable.ic_nav_lock
         else -> R.drawable.ic_nav_search
     }

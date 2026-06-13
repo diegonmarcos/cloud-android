@@ -26,6 +26,10 @@
          foreground service so Android keeps it alive while the user roams other
          apps; FOREGROUND_SERVICE_SPECIAL_USE is the API-34 type for a launcher-
          companion overlay that doesn't fit camera/location/etc. categories. -->
+    <!-- DND toggle from the notification "Do Not Disturb" action. The user
+         additionally grants Notification-policy access in Settings; this
+         declares the app is allowed to change the interruption filter. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
