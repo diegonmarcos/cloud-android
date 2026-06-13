@@ -28,9 +28,10 @@ class FloatingNavConfigTest {
 
     private val cfg = FloatingNavConfig.get()
 
-    @Test fun enabledWithDownwardOffset() {
+    @Test fun enabledWithLayout() {
         assertTrue("floating_nav must be enabled", cfg.enabled)
-        assertTrue("menu must be pushed down from the top", cfg.verticalOffsetPct > 0)
+        assertTrue("menu sits below the top edge", cfg.topOffsetDp > 0)
+        assertTrue("menu width is a sane % of screen", cfg.widthPct in 40..100)
     }
 
     @Test fun line1IsTheThreeHubs() {

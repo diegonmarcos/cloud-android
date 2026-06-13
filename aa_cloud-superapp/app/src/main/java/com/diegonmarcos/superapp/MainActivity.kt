@@ -1866,6 +1866,9 @@ class MainActivity : AppCompatActivity(),
         // build.json AND the user granted "display over other apps". The
         // service self-hides while we're foreground and surfaces the bubble
         // once the user leaves. Idempotent (START_STICKY); no-op otherwise.
+        // hostForeground = reliable "we're in SuperApp" signal so the floating
+        // circle never shows here (the in-app trigger is the Sirius Star).
+        com.diegonmarcos.superapp.floatingnav.FloatingNavService.hostForeground = true
         com.diegonmarcos.superapp.floatingnav.FloatingNavService.startIfPermitted(this)
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener { state ->
@@ -1971,6 +1974,8 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onPause() {
+        // We're leaving SuperApp → the floating circle may now appear.
+        com.diegonmarcos.superapp.floatingnav.FloatingNavService.hostForeground = false
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
         cancelHamburgerJitter()

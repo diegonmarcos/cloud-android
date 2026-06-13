@@ -37,8 +37,10 @@ data class NavContext(
 data class FloatingNavConfig(
     val enabled: Boolean,
     val pollMs: Long,
-    /** Push the whole menu box down from the top by this % of screen height. */
-    val verticalOffsetPct: Int,
+    /** Distance from the top edge (dp) — default just below the dynamic island. */
+    val topOffsetDp: Int,
+    /** Menu box width as a % of screen width. */
+    val widthPct: Int,
     val parents: List<NavItem>,
     /** Global utility actions. Compact menu shows the first [compactActionCount];
      *  the Expanded view shows them all. */
@@ -91,7 +93,8 @@ data class FloatingNavConfig(
             return FloatingNavConfig(
                 enabled = o.optBoolean("enabled", true),
                 pollMs = o.optLong("poll_ms", 1000L).coerceAtLeast(250L),
-                verticalOffsetPct = o.optInt("vertical_offset_pct", 9).coerceIn(0, 80),
+                topOffsetDp = o.optInt("top_offset_dp", 88).coerceIn(0, 600),
+                widthPct = o.optInt("width_pct", 90).coerceIn(40, 100),
                 parents = items(o.optJSONArray("parents")),
                 actions = items(o.optJSONArray("actions")),
                 compactActionCount = o.optInt("compact_action_count", 3).coerceAtLeast(1),

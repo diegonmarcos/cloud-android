@@ -143,10 +143,12 @@ class FloatingNavService : Service() {
 
     /** Show / hide / re-skin the overlay for the current foreground app. */
     private fun refresh(fg: String?) {
-        // We're back home in Cloud-SuperApp → no overlay (reset expand state
-        // so the bubble reappears the next time the user leaves) — UNLESS the
-        // menu was force-opened from the home-screen Sirius Star.
-        if (fg == packageName) {
+        // We're in Cloud-SuperApp → NO bubble (the in-app trigger is the Sirius
+        // Star). hostForeground is the reliable signal from MainActivity's
+        // lifecycle; we also treat an UNKNOWN foreground (fg == null, e.g. fresh
+        // install before UsageStats populates / without usage access) as "still
+        // home" so the circle never wrongly appears over Cloud-SuperApp.
+        if (hostForeground || fg == packageName || fg == null) {
             if (forced) return
             removeBubble(); removeBar(); expanded = false; currentContextId = null; return
         }
@@ -274,11 +276,11 @@ class FloatingNavService : Service() {
             }
             val p = dp(12); setPadding(p, dp(10), p, dp(10))
         }
-        // Line 1 — the three hubs; bold the current context's hub.
-        col.addView(itemRow(cfg.parents, boldId = ctx.id))
-        // Line 2 — the current context's children. (Actions/album art are NOT
-        // here — they live in the Android notification; see buildNotification.)
-        col.addView(itemRow(ctx.children, boldId = null, topGap = true))
+        // Line 1 — the three hubs (centred, larger); bold the current context's hub.
+        col.addView(itemRow(cfg.parents, boldId = ctx.id, size = 14f))
+        // Line 2 — the current context's children (centred, one size smaller).
+        // (Actions/album art live in the Android notification, not here.)
+        col.addView(itemRow(ctx.children, boldId = null, topGap = true, size = 12f))
 
         runCatching { wm.addView(col, barParams(outsideTouch = true)) }
         col.setOnTouchListener { _, ev ->
@@ -289,16 +291,18 @@ class FloatingNavService : Service() {
 
     /** One horizontal row of pipe-separated chips. `boldId` bolds the parent
      *  whose target maps to that context (self→default, app:<pkg-prefix>). */
-    private fun itemRow(items: List<NavItem>, boldId: String?, topGap: Boolean = false): LinearLayout {
+    private fun itemRow(items: List<NavItem>, boldId: String?, topGap: Boolean = false, size: Float = 13f): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER   // centre the chips within the full-width box
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             if (topGap) setPadding(0, dp(6), 0, 0)
         }
         for ((i, item) in items.withIndex()) {
             if (i > 0) row.addView(divider())
             val bold = boldId != null && parentMatchesContext(item.target, boldId)
-            row.addView(chip(item.label, bold = bold) { handleTarget(item); collapse() })
+            row.addView(chip(item.label, bold = bold, size = size) { handleTarget(item); collapse() })
         }
         return row
     }
@@ -428,11 +432,11 @@ class FloatingNavService : Service() {
     }
 
     // ── View helpers ───────────────────────────────────────────────
-    private fun chip(text: String, bold: Boolean = false, onClick: () -> Unit): TextView =
+    private fun chip(text: String, bold: Boolean = false, size: Float = 13f, onClick: () -> Unit): TextView =
         TextView(this).apply {
             this.text = text
             setTextColor(if (bold) 0xFFE9D8FD.toInt() else 0xFFFFFFFF.toInt())
-            textSize = 13f
+            textSize = size
             if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(dp(8), dp(4), dp(8), dp(4))
             isClickable = true
@@ -450,11 +454,12 @@ class FloatingNavService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
         if (outsideTouch) flags = flags or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-        val wrap = WindowManager.LayoutParams.WRAP_CONTENT
-        return WindowManager.LayoutParams(wrap, wrap, type, flags, android.graphics.PixelFormat.TRANSLUCENT).apply {
+        val w = resources.displayMetrics.widthPixels * cfg.widthPct / 100
+        return WindowManager.LayoutParams(w, WindowManager.LayoutParams.WRAP_CONTENT, type, flags,
+            android.graphics.PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            // Push the box down from the top edge by the data-driven %.
-            y = (resources.displayMetrics.heightPixels * cfg.verticalOffsetPct / 100)
+            // Just below the dynamic island (data-driven dp from the top edge).
+            y = dp(cfg.topOffsetDp)
         }
     }
 
@@ -557,6 +562,13 @@ class FloatingNavService : Service() {
         @Volatile
         var isRunning: Boolean = false
             private set
+
+        /** True while Cloud-SuperApp (MainActivity) is in the foreground. The
+         *  reliable signal for "we're home" — the floating circle must never
+         *  show here (the in-app trigger is the Sirius Star). Set from
+         *  MainActivity.onResume / onPause. */
+        @Volatile
+        var hostForeground: Boolean = false
 
         /** Start the overlay iff enabled in build.json AND the user has
          *  granted "display over other apps". Returns whether it started

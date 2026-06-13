@@ -4588,8 +4588,9 @@
     "floating_nav": {
       "enabled": true,
       "poll_ms": 1000,
-      "_doc_layout": "The expanded menu renders the SAME 2-line box wherever it is triggered (inside Cloud-SuperApp, Cloud-IDE, Cloud-Comms, or any other app). Line 1 = `parents` (the three hubs), constant everywhere. Line 2 = the `children` of the context matched from the foreground package (Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·Messenger·Dialer; otherwise the `default` context = Cloud-SuperApp's first-level pages). `vertical_offset_pct` shifts the whole box down from the top edge by that % of screen height (tune freely). Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Add a hub / child = edit here; nothing in Kotlin hardcodes a label or package.",
-      "vertical_offset_pct": 9,
+      "_doc_layout": "The expanded menu renders the SAME 2-line box wherever it is triggered (single engine: FloatingNavService.showBar). Line 1 = `parents` (the three hubs), constant everywhere, centred. Line 2 = the `children` of the context matched from the foreground package (Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·Messenger·Dialer; otherwise the `default` context = Cloud-SuperApp's first-level pages), one font size smaller than line 1. Layout: `top_offset_dp` = distance from the top edge (default just below the dynamic island); `width_pct` = box width as % of screen width. Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Add a hub / child = edit here; nothing in Kotlin hardcodes a label or package.",
+      "top_offset_dp": 88,
+      "width_pct": 90,
       "parents": [
         { "label": "Cloud SuperApp", "target": "self" },
         { "label": "Cloud IDE",      "target": "app:com.diegonmarcos.ide",   "install_app": "cloud-ide" },
