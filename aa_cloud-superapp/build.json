@@ -755,9 +755,9 @@
                 "target": "page:wallet/cards"
               },
               {
-                "_doc": "Native MyMaps section — foreground GPS tracker + MapLibre map + Timeline / Stops / Export pages. Was an external Google Maps deep-link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native fragments. For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
+                "_doc": "Native MyMaps section — foreground GPS tracker + MapLibre map + Timeline / Stops / Export pages. Was an external Google Maps deep-link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native fragments. For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else. Display label is 'Navigation' (id/target stay 'maps' — pure display rename).",
                 "id": "maps",
-                "label": "Maps",
+                "label": "Navigation",
                 "icon": "ic_maps",
                 "target": "section:maps"
               },
@@ -772,6 +772,13 @@
           {
             "title": "Tools Dashboards",
             "tiles": [
+              {
+                "_doc": "PM Boards — the aa-sui_paca project-management tool (Kanban boards). Opens the cloud service over the browser/WebView. Leftmost tile of Tools Dashboards. NOTE: paca is not deployed yet (blocked on the WG mesh) — the route 404s until aa-sui_paca ships.",
+                "id": "pmboards",
+                "label": "PM Boards",
+                "icon": "ic_pm_boards",
+                "target": "https://paca.diegonmarcos.com"
+              },
               {
                 "_doc": "Native MyFin section — beta dashboard rendered from ui.myfin_mock. Was an external GitHub Pages link until libs:fin landed; tile now routes through SectionPages dispatch → MyFinDashboardFragment.",
                 "id": "myfin",
