@@ -20,7 +20,9 @@ class KdeLink(
     val peerName: String,
     val peerIncoming: Set<String>,
     val peerOutgoing: Set<String>,
-    val peerCertificate: Certificate,
+    /** The peer's TLS cert if we captured it (null when we don't request the
+     *  client cert — pairing still works; the desktop pins OUR cert). */
+    val peerCertificate: Certificate?,
     private val listener: Listener,
 ) {
     interface Listener {

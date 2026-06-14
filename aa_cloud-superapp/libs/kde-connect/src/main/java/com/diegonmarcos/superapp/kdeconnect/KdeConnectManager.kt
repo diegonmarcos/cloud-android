@@ -12,7 +12,6 @@ import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.cert.Certificate
-import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.SSLSocket
 
@@ -84,10 +83,11 @@ object KdeConnectManager : KdeLink.Listener {
                 val ssl = KdeCrypto.sslContext(app).socketFactory
                     .createSocket(plain, host, port, true) as SSLSocket
                 ssl.useClientMode = false        // we dialed → we are the TLS server
-                // REQUEST the peer cert but don't REQUIRE it: needClientAuth=true
-                // can abort the handshake (the working probe used no client-auth
-                // requirement); wantClientAuth still hands us the cert KDE sends.
-                ssl.wantClientAuth = true
+                // Do NOT request the peer's client cert. The proven-working
+                // probe used no client-auth at all; requesting it (need/want
+                // ClientAuth) was the one TLS difference that made the desktop
+                // drop us ("connection closed"). The desktop pins OUR cert for
+                // pairing, so we don't need theirs.
                 ssl.startHandshake()
                 register(ssl, host)
             }.onFailure {
@@ -100,10 +100,11 @@ object KdeConnectManager : KdeLink.Listener {
      *  identity packet over TLS). Writes our identity over TLS (prompts the
      *  peer), then starts the read loop so kdeconnect.pair is handled. */
     private fun register(ssl: SSLSocket, host: String): String {
-        val peerCert: Certificate = runCatching { ssl.session.peerCertificates.firstOrNull() }
-            .getOrNull() ?: error("peer presented no certificate")
-        val deviceId = (peerCert as? X509Certificate)?.let { cnOf(it) }
-            ?: error("peer cert has no CN")
+        // We don't request the client cert, so this is usually null — fine.
+        val peerCert: Certificate? = runCatching { ssl.session.peerCertificates.firstOrNull() }
+            .getOrNull()
+        // Key the device off the declared config (its id), NOT the peer cert.
+        val deviceId = idFor(host) ?: "kde-${host.replace('.', '-')}"
 
         // Write our identity over the encrypted channel (this is what prompts
         // the peer to engage), then bring up the link.
@@ -196,13 +197,10 @@ object KdeConnectManager : KdeLink.Listener {
         KdePluginRegistry.incomingCapabilities, KdePluginRegistry.outgoingCapabilities,
     )
 
-    /** CN of an X.509 subject — KDE binds the deviceId to the cert CN. Regex
-     *  over the RFC2253 DN (javax.naming.ldap is absent on Android); KDE
-     *  deviceIds contain no commas, so this is safe. */
-    private fun cnOf(cert: X509Certificate): String? =
-        Regex("(?:^|,)\\s*CN=([^,]+)")
-            .find(cert.subjectX500Principal.name)
-            ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+    /** Stable internal key for the link/trust map — the declared device id
+     *  (build.json::ui.kde_connect.devices[].id). Never sent to the peer. */
+    private fun idFor(host: String): String? =
+        KdeConnectConfig.get().devices.firstOrNull { it.wgIp == host }?.id?.takeIf { it.isNotBlank() }
 
     private fun labelFor(host: String): String? =
         KdeConnectConfig.get().devices.firstOrNull { it.wgIp == host }?.label
