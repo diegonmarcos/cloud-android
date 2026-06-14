@@ -70,6 +70,9 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         }
         for (device in cfg.devices) root.addView(buildCard(ctx, device))
 
+        // ── Plugins catalog (data-driven from build.json) ──────────────────
+        if (cfg.plugins.isNotEmpty()) root.addView(buildPluginsSection(ctx, cfg))
+
         // ── Probe section — wg0 / hosts / peers / LAN reachability ──────────
         root.addView(TextView(ctx).apply {
             text = "Probe"
@@ -238,6 +241,42 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     }
 
     private fun toast(m: String) = Toast.makeText(requireContext(), m, Toast.LENGTH_SHORT).show()
+    /** The full KDE Connect plugin catalog — active (we implement + advertise)
+     *  in lavender, planned in gray. Data-driven from build.json plugins[]. */
+    private fun buildPluginsSection(ctx: android.content.Context, cfg: KdeConnectConfig.Config): View {
+        val active = cfg.plugins.count { it.active }
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = dp(14); setPadding(p, p, p, p)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat(); setColor(0x22FFFFFF)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(12) }
+        }
+        col.addView(TextView(ctx).apply {
+            text = "Plugins  ·  $active active / ${cfg.plugins.size} total"
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, 0, 0, dp(2))
+        })
+        col.addView(TextView(ctx).apply {
+            text = "Active = our app handles it (advertised to the desktop). Planned = a KDE plugin we don't implement yet."
+            setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, 0, 0, dp(8))
+        })
+        for (pl in cfg.plugins.sortedByDescending { it.active }) {
+            col.addView(TextView(ctx).apply {
+                val mark = if (pl.active) "●" else "○"
+                val arrow = when (pl.dir) { "in" -> "↓"; "out" -> "↑"; else -> "↕" }
+                text = "$mark  ${pl.name}  $arrow   ${pl.packet}"
+                setTextColor(if (pl.active) 0xFFE9D8FD.toInt() else 0x66FFFFFF.toInt())
+                typeface = Typeface.MONOSPACE; textSize = 12f
+                setPadding(0, dp(3), 0, dp(3))
+            })
+        }
+        return col
+    }
+
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     companion object { fun newInstance() = KdeConnectFragment() }

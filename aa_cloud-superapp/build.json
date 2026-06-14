@@ -4679,6 +4679,37 @@
           "wg_ip": "10.0.0.5",
           "primary": true
         }
+      ],
+      "_doc_plugins": "Full KDE Connect plugin catalog, shown on the KDE page after pairing. `status`=active means our libs:kde-connect KdePluginRegistry actually implements it (and we advertise its `packet` in our identity capabilities); status=planned is a known KDE plugin we don't handle yet (listed for parity/roadmap, NOT advertised). `dir` is from the phone's view: in=we receive, out=we send, both. `action` (active only) wires an on-device button. Adding a plugin = move it to active here AND add a handler in KdePluginRegistry.",
+      "plugins": [
+        { "id": "ping",                "name": "Ping",                 "packet": "kdeconnect.ping",                 "dir": "both", "status": "active", "action": "ping" },
+        { "id": "clipboard",           "name": "Clipboard sync",       "packet": "kdeconnect.clipboard",            "dir": "both", "status": "active", "action": "clipboard" },
+        { "id": "findmyphone",         "name": "Find my phone",        "packet": "kdeconnect.findmyphone.request",  "dir": "in",   "status": "active" },
+        { "id": "notification",        "name": "Notification sync",    "packet": "kdeconnect.notification",         "dir": "in",   "status": "active" },
+        { "id": "battery",             "name": "Battery report",       "packet": "kdeconnect.battery",              "dir": "both", "status": "planned" },
+        { "id": "mpris",               "name": "Media control (MPRIS)","packet": "kdeconnect.mpris",                "dir": "both", "status": "planned" },
+        { "id": "share",               "name": "Share (files/links)",  "packet": "kdeconnect.share.request",        "dir": "both", "status": "planned" },
+        { "id": "runcommand",          "name": "Run command",          "packet": "kdeconnect.runcommand",           "dir": "both", "status": "planned" },
+        { "id": "telephony",           "name": "Telephony",            "packet": "kdeconnect.telephony",            "dir": "out",  "status": "planned" },
+        { "id": "sms",                 "name": "SMS messaging",        "packet": "kdeconnect.sms.messages",         "dir": "both", "status": "planned" },
+        { "id": "mousepad",            "name": "Remote input",         "packet": "kdeconnect.mousepad.request",     "dir": "both", "status": "planned" },
+        { "id": "presenter",           "name": "Presentation remote",  "packet": "kdeconnect.presenter",            "dir": "out",  "status": "planned" },
+        { "id": "lockdevice",          "name": "Lock device",          "packet": "kdeconnect.lock",                 "dir": "both", "status": "planned" },
+        { "id": "connectivity_report", "name": "Connectivity report",  "packet": "kdeconnect.connectivity_report",  "dir": "out",  "status": "planned" },
+        { "id": "contacts",            "name": "Contacts sync",        "packet": "kdeconnect.contacts",             "dir": "out",  "status": "planned" },
+        { "id": "sftp",                "name": "Remote filesystem",    "packet": "kdeconnect.sftp",                 "dir": "both", "status": "planned" },
+        { "id": "systemvolume",        "name": "System volume",        "packet": "kdeconnect.systemvolume",         "dir": "both", "status": "planned" },
+        { "id": "remotesystemvolume",  "name": "Remote volume",        "packet": "kdeconnect.systemvolume.request", "dir": "out",  "status": "planned" },
+        { "id": "photo",               "name": "Photo capture",        "packet": "kdeconnect.photo.request",        "dir": "both", "status": "planned" },
+        { "id": "mprisremote",         "name": "Media remote",         "packet": "kdeconnect.mpris.request",        "dir": "out",  "status": "planned" },
+        { "id": "remotekeyboard",      "name": "Remote keyboard",      "packet": "kdeconnect.remotekeyboard.echo",  "dir": "both", "status": "planned" },
+        { "id": "presenter_remote",    "name": "Presenter pointer",    "packet": "kdeconnect.presenter.request",    "dir": "out",  "status": "planned" },
+        { "id": "bigscreen",           "name": "Big screen",           "packet": "kdeconnect.bigscreen.stt",        "dir": "out",  "status": "planned" },
+        { "id": "virtualmonitor",      "name": "Virtual monitor",      "packet": "kdeconnect.virtualmonitor.request","dir": "both","status": "planned" },
+        { "id": "findthisdevice",      "name": "Find this device",     "packet": "kdeconnect.findthisdevice",       "dir": "out",  "status": "planned" },
+        { "id": "sftp_browse",         "name": "Browse filesystem",    "packet": "kdeconnect.sftp.request",         "dir": "out",  "status": "planned" },
+        { "id": "screenconnector",     "name": "Remote desktop",       "packet": "kdeconnect.remotedesktop.request","dir": "out",  "status": "planned" },
+        { "id": "sms_request",         "name": "SMS conversations",    "packet": "kdeconnect.sms.request_conversations", "dir": "out", "status": "planned" }
       ]
     },
     "news_feeds": [

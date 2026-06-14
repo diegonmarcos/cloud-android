@@ -20,6 +20,19 @@ object KdeConnectConfig {
         val primary: Boolean,
     )
 
+    /** One entry of the KDE Connect plugin catalog (build.json plugins[]).
+     *  [status] = "active" (we implement + advertise it) or "planned". */
+    data class Plugin(
+        val id: String,
+        val name: String,
+        val packet: String,
+        val dir: String,      // in | out | both (phone's view)
+        val status: String,   // active | planned
+        val action: String,   // on-device button action (active only), or ""
+    ) {
+        val active: Boolean get() = status == "active"
+    }
+
     data class Config(
         /** Official client package handed off to for LAN discovery + pairing. */
         val pkg: String,
@@ -35,6 +48,7 @@ object KdeConnectConfig {
         /** TCP-probe timeout used to decide "is the Surface up over wg0". */
         val probeTimeoutMs: Int,
         val devices: List<Device>,
+        val plugins: List<Plugin>,
     ) {
         val primaryDevice: Device?
             get() = devices.firstOrNull { it.primary } ?: devices.firstOrNull()
@@ -61,6 +75,20 @@ object KdeConnectConfig {
                 )
             }
         }
+        val plugins = mutableListOf<Plugin>()
+        o.optJSONArray("plugins")?.let { pa ->
+            for (i in 0 until pa.length()) {
+                val p = pa.getJSONObject(i)
+                plugins.add(Plugin(
+                    id     = p.optString("id", ""),
+                    name   = p.optString("name", p.optString("id", "")),
+                    packet = p.optString("packet", ""),
+                    dir    = p.optString("dir", "both"),
+                    status = p.optString("status", "planned"),
+                    action = p.optString("action", ""),
+                ))
+            }
+        }
         val parsed = Config(
             pkg            = o.optString("package", "org.kde.kdeconnect_tp"),
             selfName       = o.optString("self_name", ""),
@@ -69,6 +97,7 @@ object KdeConnectConfig {
             lanFallback    = o.optBoolean("lan_fallback", true),
             probeTimeoutMs = o.optInt("probe_timeout_ms", 1500),
             devices        = devices,
+            plugins        = plugins,
         )
         cached = parsed
         return parsed
