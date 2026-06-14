@@ -87,20 +87,16 @@ object KdeConnectManager : KdeLink.Listener {
                 val ssl = KdeCrypto.sslContext(app).socketFactory
                     .createSocket(plain, host, port, true) as SSLSocket
                 ssl.useClientMode = false        // we dialed → we are the TLS server
-                // Pin TLS 1.2: Conscrypt (Android) as a TLS 1.3 server doing
-                // client-auth HANGS against KDE's OpenSSL client (proven — the
-                // handshake never completed). TLS 1.2 client-auth is part of the
-                // main handshake and interoperates cleanly. KDE supports 1.2.
-                ssl.enabledProtocols = arrayOf("TLSv1.2")
-                // REQUEST (don't require) the peer cert so we can pin it AND
-                // compute the verification key. register() keys the device off
-                // config, so a missing/odd cert can't error the flow.
-                ssl.wantClientAuth = true
-                // Bound the handshake so a hang surfaces as an error instead of
-                // "stuck" forever; restore blocking reads for the live link.
-                ssl.soTimeout = 8000
+                // Do NOT request the peer's client cert. Mutual TLS from Android
+                // (Conscrypt) requesting client-auth breaks the handshake against
+                // KDE's OpenSSL on BOTH TLS 1.2 and 1.3 (proven: hang / timeout,
+                // device drops off the desktop list). The desktop pins OUR cert
+                // for pairing, so we don't need theirs. This restores the working
+                // pairing; the verification key is unavailable without the peer
+                // cert (verificationKey() returns null and no key is shown).
+                ssl.soTimeout = 8000             // bound the handshake; no more "stuck"
                 ssl.startHandshake()
-                ssl.soTimeout = 0
+                ssl.soTimeout = 0                // blocking reads for the live link
                 register(ssl, host)
             }.onFailure {
                 Log.w(TAG, "connect($host) failed: ${it.message}")
