@@ -112,7 +112,6 @@ object KdeConnectDiscovery {
 
         val lan = lanAddress()
         steps += Step("LAN", lan?.let { "this device $it" } ?: "no site-local IPv4 (Wi-Fi off?)", lan != null)
-        steps += Step("Inbound server", "listening on :${KdeConnectManager.listenPort()} (peers can dial us)", true)
 
         for (d in cfg.devices) {
             val rtt = probeRtt(vpn, d.wgIp, cfg.discoveryPort, cfg.probeTimeoutMs)

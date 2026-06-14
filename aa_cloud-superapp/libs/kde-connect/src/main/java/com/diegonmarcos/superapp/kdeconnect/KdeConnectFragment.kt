@@ -206,9 +206,6 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     override fun onResume() {
         super.onResume()
         KdeConnectManager.listener = this
-        // Listen for inbound links so a pair request STARTED on the Surface
-        // reaches us (otherwise that direction silently goes nowhere).
-        KdeConnectManager.ensureServer()
     }
 
     override fun onPause() {
