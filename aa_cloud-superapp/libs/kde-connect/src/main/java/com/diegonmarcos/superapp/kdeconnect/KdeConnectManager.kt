@@ -124,15 +124,11 @@ object KdeConnectManager : KdeLink.Listener {
         )
         links.put(deviceId, link)?.close()
         link.start()
+        // Connect just establishes the link (the device now appears on the
+        // desktop). Pairing is explicit — tap Pair here, or initiate from the
+        // desktop. Auto-requesting on every connect double-fired requests and
+        // fed the pair loop.
         emit(deviceId, host, if (alreadyPaired) State.PAIRED else State.NEEDS_PAIRING, name)
-
-        // Not paired yet → request pairing immediately (the proven probe flow:
-        // connect → identity → pair{true,timestamp}). The desktop shows its
-        // accept dialog; accepting there replies {pair:true} and we pin it.
-        if (!alreadyPaired) {
-            emit(deviceId, host, State.NEEDS_PAIRING, "$name — pair request sent, accept on the device")
-            requestPair(deviceId)
-        }
         return deviceId
     }
 
@@ -174,18 +170,23 @@ object KdeConnectManager : KdeLink.Listener {
     }
 
     private fun handlePair(link: KdeLink, packet: NetworkPacket) {
+        val id = link.peerDeviceId
         if (packet.getBoolean("pair")) {
-            trust.trust(link.peerDeviceId, link.peerCertificate)
-            if (link.peerDeviceId !in pairRequested) {
-                // Peer initiated the request → ACCEPT reply is {pair:true} (no
-                // timestamp). We don't re-validate the timestamp (own mesh).
+            // KDE uses an IDENTICAL {pair:true} for both a pairing REQUEST and an
+            // ACCEPT, so blindly replying creates an infinite loop. Reply (accept)
+            // ONLY for a brand-new INCOMING request: the peer started it AND we
+            // weren't already paired. Our own accept, or a re-request from a peer
+            // that already trusts us, gets NO reply.
+            val weAsked = pairRequested.remove(id)
+            val wasPaired = trust.isPaired(id)
+            trust.trust(id, link.peerCertificate)
+            if (!weAsked && !wasPaired) {
                 link.send(NetworkPacket.of(NetworkPacket.TYPE_PAIR) { put("pair", true) })
             }
-            pairRequested -= link.peerDeviceId
-            emit(link.peerDeviceId, null, State.PAIRED, link.peerName)
+            emit(id, null, State.PAIRED, link.peerName)
         } else {
-            trust.untrust(link.peerDeviceId); pairRequested -= link.peerDeviceId
-            emit(link.peerDeviceId, null, State.DISCONNECTED, "unpaired/rejected by ${link.peerName}")
+            trust.untrust(id); pairRequested -= id
+            emit(id, null, State.DISCONNECTED, "unpaired/rejected by ${link.peerName}")
         }
     }
 
