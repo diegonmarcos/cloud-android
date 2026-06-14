@@ -56,6 +56,18 @@ object CloudData {
     fun services(root: JSONObject): JSONObject =
         root.optJSONObject("services") ?: JSONObject()
 
+    /** Synchronous, NETWORK-FREE accessor for callers that must not block
+     *  (e.g. the search index). Returns the in-memory copy, else the
+     *  on-disk cache if a prior [load] populated it, else null. Never
+     *  fetches — the Cloud-Configs search scope simply has no consolidated
+     *  entries until some screen (C3/Health) has fetched once this install. */
+    fun cachedOrNull(ctx: Context): JSONObject? {
+        memCache?.let { return it }
+        val f = File(ctx.cacheDir, CACHE_FILE)
+        if (!f.exists()) return null
+        return runCatching { JSONObject(f.readText()).also { memCache = it } }.getOrNull()
+    }
+
     @Volatile private var memNtfy: List<String>? = null
 
     /** Fetch the canonical ntfy channel registry (cloud-data/ntfy-api/src/
