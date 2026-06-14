@@ -380,10 +380,11 @@ class MainActivity : AppCompatActivity(),
                     if ((cur as? SuppressHorizontalSwipe)?.suppressHorizontalSwipe() == true) {
                         return false
                     }
-                    // Horizontal swipe = section change → full Gemini pattern,
-                    // matches what tapping the bottom-nav slot would do.
+                    // Horizontal swipe = step the circular walk-list (Comms →
+                    // Infos·Apps → Infos·Admin → Home-Apps·Cloud → … → Labs·
+                    // Admin → wrap). Left-swipe (dx<0) = next, right = prev.
                     fireGeminiPattern()
-                    cycleBottomNav(direction = if (dx < 0) +1 else -1)
+                    walkStep(direction = if (dx < 0) +1 else -1)
                     return true
                 }
             })
@@ -435,19 +436,62 @@ class MainActivity : AppCompatActivity(),
             .commit()
     }
 
-    /** Step `direction` positions through the bottom-nav menu, wrapping
-     *  at both ends. +1 = next item (left-swipe), -1 = prev (right-swipe). */
-    private fun cycleBottomNav(direction: Int) {
-        val menu = bottomNav.menu
-        val count = menu.size()
-        if (count <= 1) return
-        var idx = -1
-        for (i in 0 until count) {
-            if (menu.getItem(i).itemId == bottomNav.selectedItemId) { idx = i; break }
+    // ── horizontal-swipe walk-list (build.json::ui.swipe_walk) ───────────
+    //
+    // Cursor into Sections.swipeWalk(). Authoritative for swipe stepping;
+    // re-synced to the matching stop whenever the user navigates by other
+    // means (see the tail of goSection). [inWalkNav] guards that re-sync
+    // from firing while a walk step is itself driving goSection.
+    private var walkIndex: Int = 0
+    private var inWalkNav: Boolean = false
+
+    /** Step `direction` through the circular walk-list, wrapping at both
+     *  ends. +1 = next (left-swipe), -1 = prev (right-swipe). */
+    private fun walkStep(direction: Int) {
+        val stops = Sections.swipeWalk()
+        if (stops.isEmpty()) return
+        val n = stops.size
+        walkIndex = ((walkIndex + direction) % n + n) % n
+        navigateWalkStop(stops[walkIndex])
+    }
+
+    /** Render one walk stop: a section page (optionally with a mode or a
+     *  Suite Cloud/Phone tab) or the Home-Apps overlay sheet. */
+    private fun navigateWalkStop(stop: Sections.WalkStop) {
+        inWalkNav = true
+        try {
+            // Any open Home-Apps sheet must go first — both when leaving it
+            // for a section AND when switching its own Cloud↔Phone tab
+            // (close + reopen on the new tab; the sheet pushes a back entry
+            // so we can't just stack a second one).
+            closeAppDrawerSheetIfOpen()
+            if (stop.sheet != null) {
+                // The sheet is an overlay on the 3D Home — make sure Home is
+                // the host behind it, then open on the requested body tab.
+                if (currentSection != "home") goHome()
+                openAppDrawerSheet(stop.sheet)
+            } else {
+                if (stop.mode != null && modePrefs.mode != stop.mode) {
+                    modePrefs.mode = stop.mode
+                    refreshBottomNavIconsForMode()
+                    invalidateOptionsMenu()
+                }
+                val label = Sections.byId(stop.section)?.label ?: stop.section
+                goSection(stop.section, label, stop.tab.orEmpty())
+            }
+        } finally {
+            inWalkNav = false
         }
-        if (idx < 0) idx = 0
-        val next = ((idx + direction) % count + count) % count
-        bottomNav.selectedItemId = menu.getItem(next).itemId
+        Haptics.tap(bottomNav)
+    }
+
+    private fun closeAppDrawerSheetIfOpen() {
+        if (supportFragmentManager.findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null) {
+            supportFragmentManager.popBackStack(
+                AppDrawerSheetFragment.BACK_STACK_TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE,
+            )
+        }
     }
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
@@ -1060,8 +1104,8 @@ class MainActivity : AppCompatActivity(),
 
     /** Land the right pane on the given section's TileGrid (or placeholder
      *  if the section has no declared sub-pages). */
-    private fun goSection(id: String, label: String) {
-        Trace.i(TAG, "goSection id=$id label=$label bs=${supportFragmentManager.backStackEntryCount}")
+    private fun goSection(id: String, label: String, initialTab: String = "") {
+        Trace.i(TAG, "goSection id=$id label=$label tab=$initialTab bs=${supportFragmentManager.backStackEntryCount}")
         if (id == "home") { goHome(); return }
         currentSection = id
         currentLabel = label
@@ -1106,7 +1150,7 @@ class MainActivity : AppCompatActivity(),
             // apps. Other aggregators bypass the tabs and go straight
             // to GroupedTilesFragment.
             section.isAggregator && section.tileGroups.isNotEmpty() && section.id == "suite" ->
-                SuiteCloudPhoneTabsFragment.newInstance()
+                SuiteCloudPhoneTabsFragment.newInstance(initialTab)
             section.isAggregator && section.tileGroups.isNotEmpty() ->
                 GroupedTilesFragment.newInstance(section.id)
 
@@ -1155,6 +1199,21 @@ class MainActivity : AppCompatActivity(),
         syncBottomNav(id)
         syncDrawerTab(1)
         invalidateOptionsMenu()
+
+        // Keep the swipe walk-list cursor in sync when the user arrives
+        // here by ANY means OTHER than a swipe (bottom-nav tap, tile
+        // dispatch, drawer). Land on the FIRST walk stop that matches this
+        // section + current mode (sheet stops excluded — they're the
+        // Home-Apps overlay, not a section page). Skipped during walk
+        // navigation itself, which sets walkIndex authoritatively.
+        if (!inWalkNav) {
+            val stops = Sections.swipeWalk()
+            val idx = stops.indexOfFirst {
+                it.sheet == null && it.section == id &&
+                    (it.mode == null || it.mode == currentMode)
+            }
+            if (idx >= 0) walkIndex = idx
+        }
     }
 
     private fun syncBottomNav(sectionId: String) {
