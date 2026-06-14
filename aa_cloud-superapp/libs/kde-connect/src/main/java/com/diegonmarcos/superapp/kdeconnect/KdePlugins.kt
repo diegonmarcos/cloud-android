@@ -31,7 +31,7 @@ interface KdePlugin {
 object KdePluginRegistry {
     val plugins: List<KdePlugin> = listOf(
         PingPlugin, ClipboardPlugin, FindMyPhonePlugin, NotificationMirrorPlugin,
-        BatteryPlugin, SharePlugin,
+        BatteryPlugin, SharePlugin, MprisPlugin, SystemVolumePlugin,
     )
     val incomingCapabilities: Set<String> = plugins.flatMap { it.incoming }.toSet()
     val outgoingCapabilities: Set<String> = plugins.flatMap { it.outgoing }.toSet()
@@ -80,7 +80,9 @@ object ClipboardPlugin : KdePlugin {
 /** kdeconnect.findmyphone.request — ring + vibrate so the user can locate it. */
 object FindMyPhonePlugin : KdePlugin {
     override val incoming = setOf(NetworkPacket.TYPE_FINDMYPHONE)
-    override val outgoing = emptySet<String>()
+    override val outgoing = setOf(NetworkPacket.TYPE_FINDMYPHONE)   // we can ring the desktop too
+    /** Ask the paired device to ring (find-this-device). */
+    fun ring() = NetworkPacket.of(NetworkPacket.TYPE_FINDMYPHONE) {}
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
         runCatching {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)

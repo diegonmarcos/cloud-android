@@ -42,6 +42,10 @@ class NetworkPacket private constructor(
         const val TYPE_BATTERY       = "kdeconnect.battery"
         const val TYPE_BATTERY_REQUEST = "kdeconnect.battery.request"
         const val TYPE_SHARE         = "kdeconnect.share.request"
+        const val TYPE_MPRIS         = "kdeconnect.mpris"
+        const val TYPE_MPRIS_REQUEST = "kdeconnect.mpris.request"
+        const val TYPE_SYSTEMVOLUME  = "kdeconnect.systemvolume"
+        const val TYPE_SYSTEMVOLUME_REQUEST = "kdeconnect.systemvolume.request"
 
         /** Build a packet of [type] with a freshly-stamped id. The caller
          *  fills [build] against the body. `id` is wall-clock ms — but
