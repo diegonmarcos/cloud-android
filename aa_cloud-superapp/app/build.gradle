@@ -445,19 +445,24 @@ android {
     }
 
     // Stable signing — required for the in-app updater to install update APKs.
-    // The keystore is generated once in CI (cached forever via GHA) and lives at
-    // app/keystores/debug.keystore. If it's missing locally (developer machine
-    // without the cache), fall back to Android's framework default keystore so
-    // local builds still work — they just won't be installable as updates to
-    // CI-signed APKs (and vice versa).
+    // The SHARED Cloud-constellation key (release.jks + sops passwords) lives in
+    // vault; build.sh resolves it and exports ANDROID_KEYSTORE_FILE / _PASSWORD /
+    // KEY_ALIAS / KEY_PASSWORD (CI does the same via the vault checkout +
+    // SOPS_AGE_KEY). The SAME key signs SuperApp / Cloud-Nav / Cloud-Comms /
+    // Cloud-IDE so local + CI + every app produce a matching signature and the
+    // in-app updater never rejects an install on a signature mismatch.
+    // When that env is absent (pure-local dev, no vault), fall back to the
+    // legacy per-project debug keystore so a bare `gradle` still builds.
     signingConfigs {
         debug {
-            def projectKeystore = file('keystores/debug.keystore')
-            if (projectKeystore.exists()) {
-                storeFile     projectKeystore
-                storePassword 'android'
-                keyAlias      'androiddebugkey'
-                keyPassword   'android'
+            def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
+            def legacy   = file('keystores/debug.keystore')
+            def ks = (envStore != null && !envStore.isEmpty() && file(envStore).exists()) ? file(envStore) : legacy
+            if (ks.exists()) {
+                storeFile     ks
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: 'android'
+                keyAlias      System.getenv("ANDROID_KEY_ALIAS")         ?: 'androiddebugkey'
+                keyPassword   System.getenv("ANDROID_KEY_PASSWORD")      ?: 'android'
             }
         }
     }
@@ -469,6 +474,7 @@ android {
             // (com.diegonmarcos.superapp) so the in-app updater keeps the
             // upgrade chain stable.
             debuggable true
+            signingConfig signingConfigs.debug
         }
         release {
             // Daily-driver app: keep debuggable=true even in release so adb
@@ -478,6 +484,9 @@ android {
             debuggable true
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Same shared key as debug → release APK is signed (no more
+            // app-release-unsigned.apk fallback) and update-compatible.
+            signingConfig signingConfigs.debug
         }
     }
 

@@ -128,12 +128,45 @@ step_bundle_forks() {
   log "bundle-forks: ${#apks[@]} app(s) self-contained in the hub bundle"
 }
 
+# ── signing-key resolver (build.json::signing → vault → env) ──────────
+# Resolves the SHARED Cloud-constellation key from vault and exports the
+# ANDROID_KEYSTORE_* env the gradle signingConfig reads, so local + CI sign
+# identically (and the fleet updater can install updates). Graceful no-op
+# (gradle falls back to the legacy ide keystore) when the vault key / sops
+# / age key isn't available. CI sets VAULT_DIR + SOPS_AGE_KEY.
+_resolve_signing() {
+  local ks_rel sec_rel vault ks store_pw key_pw alias_
+  ks_rel="$(_json '.signing.vault_keystore')"
+  sec_rel="$(_json '.signing.vault_secrets')"
+  [ -n "$ks_rel" ] || return 0
+  vault="${VAULT_DIR:-$HOME/git/vault}"
+  ks="$vault/$ks_rel"
+  if [ ! -f "$ks" ]; then
+    errlog "signing: shared keystore not at $ks — using legacy keystore (local/CI signatures will differ)"
+    return 0
+  fi
+  command -v sops >/dev/null 2>&1 || { errlog "signing: sops not on PATH — using legacy keystore"; return 0; }
+  store_pw="$(sops -d --extract '["keystore_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  key_pw="$(sops   -d --extract '["key_password"]'      "$vault/$sec_rel" 2>/dev/null || true)"
+  alias_="$(sops   -d --extract '["key_alias"]'         "$vault/$sec_rel" 2>/dev/null || true)"
+  if [ -z "$store_pw" ] || [ -z "$alias_" ]; then
+    errlog "signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY[_FILE]) — using legacy keystore"
+    return 0
+  fi
+  export ANDROID_KEYSTORE_FILE="$ks"
+  export ANDROID_KEYSTORE_PASSWORD="$store_pw"
+  export ANDROID_KEY_PASSWORD="$key_pw"
+  export ANDROID_KEY_ALIAS="$alias_"
+  log "signing: shared constellation key (alias $alias_) from vault"
+}
+
 # ── hub build/test ─────────────────────────────────────────────────────
 step_build() {
   local abifields abi suffix
   abifields="$(_abi_fields "${2:-}")" || exit 1
   abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f3)"
   step_bundle_forks "$abi"
+  _resolve_signing
   log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, debug APK, abi $abi)"
   in_nix gradle :hub:assembleDebug
   mkdir -p "$DIST_DIR"
@@ -148,6 +181,7 @@ step_release() {
   abifields="$(_abi_fields "${2:-}")" || exit 1
   abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f3)"
   step_bundle_forks "$abi"
+  _resolve_signing
   log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, release APK, abi $abi)"
   in_nix gradle :hub:assembleRelease
   mkdir -p "$DIST_DIR"

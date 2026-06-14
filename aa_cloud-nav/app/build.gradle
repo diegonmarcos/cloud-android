@@ -190,14 +190,21 @@ android {
         buildConfig = true
     }
 
+    // Shared Cloud-constellation key: build.sh resolves release.jks + sops
+    // passwords from vault and exports ANDROID_KEYSTORE_* (CI does the same via
+    // a vault checkout + SOPS_AGE_KEY). The SAME key signs SuperApp/Cloud-Nav/
+    // Cloud-Comms/Cloud-IDE so the in-app updater never hits a signature
+    // mismatch. Falls back to the legacy debug keystore for pure-local dev.
     signingConfigs {
         debug {
-            def projectKeystore = file('keystores/debug.keystore')
-            if (projectKeystore.exists()) {
-                storeFile     projectKeystore
-                storePassword 'android'
-                keyAlias      'androiddebugkey'
-                keyPassword   'android'
+            def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
+            def legacy   = file('keystores/debug.keystore')
+            def ks = (envStore != null && !envStore.isEmpty() && file(envStore).exists()) ? file(envStore) : legacy
+            if (ks.exists()) {
+                storeFile     ks
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: 'android'
+                keyAlias      System.getenv("ANDROID_KEY_ALIAS")         ?: 'androiddebugkey'
+                keyPassword   System.getenv("ANDROID_KEY_PASSWORD")      ?: 'android'
             }
         }
     }
@@ -205,11 +212,13 @@ android {
     buildTypes {
         debug {
             debuggable true
+            signingConfig signingConfigs.debug
         }
         release {
             debuggable true
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
 

@@ -18,6 +18,11 @@
       "arm64-v8a"
     ]
   },
+  "signing": {
+    "_doc": "Stable SHARED Cloud-constellation signing key — the same key signs SuperApp / Cloud-Nav / Cloud-Comms / Cloud-IDE so cross-app installs + the in-app updater never hit a signature mismatch. The keystore (raw credential) + passwords live ONLY in vault; only these non-secret path refs are here. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts vault_secrets, exporting ANDROID_KEYSTORE_FILE / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. Without the vault key (pure-local dev) gradle falls back to the legacy debug keystore. Paths relative to the vault repo root.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
   "emulator": {
     "_doc": "build.sh emulator boots an arm64 AVD for full-fidelity testing of the arm64-v8a APK. ABI/API must match flake.nix. avd_name created idempotently from system_image.",
     "avd_name": "cloudnav-arm64",

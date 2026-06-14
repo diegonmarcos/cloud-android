@@ -67,8 +67,41 @@ prefer_host() {
   fi
 }
 
+# ── signing-key resolver (build.json::signing → vault → env) ──────────
+# Resolves the SHARED Cloud-constellation key from vault and exports the
+# ANDROID_KEYSTORE_* env that the gradle signingConfig reads, so local +
+# CI sign identically. Graceful no-op (gradle falls back to the legacy
+# debug keystore) when the vault key / sops / age key isn't available.
+# CI sets VAULT_DIR (vault checkout) + SOPS_AGE_KEY so it resolves there too.
+_resolve_signing() {
+  local ks_rel sec_rel vault ks store_pw key_pw alias_
+  ks_rel="$(_release_var '.signing.vault_keystore')"
+  sec_rel="$(_release_var '.signing.vault_secrets')"
+  [ -n "$ks_rel" ] || return 0
+  vault="${VAULT_DIR:-$HOME/git/vault}"
+  ks="$vault/$ks_rel"
+  if [ ! -f "$ks" ]; then
+    errlog "signing: shared keystore not at $ks — using legacy debug keystore (local/CI signatures will differ)"
+    return 0
+  fi
+  command -v sops >/dev/null 2>&1 || { errlog "signing: sops not on PATH — using legacy debug keystore"; return 0; }
+  store_pw="$(sops -d --extract '["keystore_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  key_pw="$(sops   -d --extract '["key_password"]'      "$vault/$sec_rel" 2>/dev/null || true)"
+  alias_="$(sops   -d --extract '["key_alias"]'         "$vault/$sec_rel" 2>/dev/null || true)"
+  if [ -z "$store_pw" ] || [ -z "$alias_" ]; then
+    errlog "signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY[_FILE]) — using legacy debug keystore"
+    return 0
+  fi
+  export ANDROID_KEYSTORE_FILE="$ks"
+  export ANDROID_KEYSTORE_PASSWORD="$store_pw"
+  export ANDROID_KEY_PASSWORD="$key_pw"
+  export ANDROID_KEY_ALIAS="$alias_"
+  log "signing: shared constellation key (alias $alias_) from vault"
+}
+
 step_build() {
   log "Build: $(_release_var '.name') (debug APK)"
+  _resolve_signing
   _export_variant_abis
   in_nix gradle :app:assembleDebug
   mkdir -p "$DIST_DIR"
@@ -79,6 +112,7 @@ step_build() {
 
 step_release() {
   log "Build: $(_release_var '.name') (release APK)"
+  _resolve_signing
   in_nix gradle :app:assembleRelease
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_release_var '.release.artifact.release')"

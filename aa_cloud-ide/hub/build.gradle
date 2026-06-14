@@ -176,12 +176,18 @@ android {
     // (they just can't cross-talk with CI-signed APKs).
     signingConfigs {
         debug {
-            def ks = file('keystores/ide.keystore')
+            // Shared Cloud-constellation key from vault (build.sh exports
+            // ANDROID_KEYSTORE_*; CI via vault checkout + SOPS_AGE_KEY). Same
+            // key across all constellation apps so the fleet updater can install
+            // updates. Falls back to the legacy ide keystore for local dev.
+            def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
+            def legacy   = file('keystores/ide.keystore')
+            def ks = (envStore != null && !envStore.isEmpty() && file(envStore).exists()) ? file(envStore) : legacy
             if (ks.exists()) {
                 storeFile     ks
-                storePassword 'android'
-                keyAlias      'idekey'
-                keyPassword   'android'
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: 'android'
+                keyAlias      System.getenv("ANDROID_KEY_ALIAS")         ?: 'idekey'
+                keyPassword   System.getenv("ANDROID_KEY_PASSWORD")      ?: 'android'
             }
         }
     }
@@ -189,11 +195,13 @@ android {
     buildTypes {
         debug {
             debuggable true
+            signingConfig signingConfigs.debug
         }
         release {
             debuggable true
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
 
