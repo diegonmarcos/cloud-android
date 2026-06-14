@@ -77,10 +77,10 @@
     "kde-connect": {
       "tracker": "ea_net-kdeconnect",
       "repo": "https://github.com/KDE/kdeconnect-android.git",
-      "license": "GPL-2.0",
+      "license": "GPL-2.0 (UPSTREAM REFERENCE ONLY — we do NOT vendor it)",
       "feeds_into": "libs:kde-connect",
-      "primary_lang": "Kotlin+Java",
-      "_doc_phase": "SLICE first: libs/kde-connect currently ships the wg0-preferred discovery of the Surface (ui.kde_connect) + the Configs KDE page, NOT the full upstream. Vendoring the full kdeconnect-android source (TLS pairing + plugins, whole APK -> GPL-2.0) is the documented next phase, cherry-picked into libs/kde-connect from this tracker clone."
+      "primary_lang": "Kotlin",
+      "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED. libs/kde-connect is an ORIGINAL implementation of the KDE Connect LAN protocol written by us (NetworkPacket framing, mutual-TLS handshake with a self-signed device cert, protocol-v8 encrypted identity re-exchange, cert-pinned pairing, plugin registry: ping/clipboard/findmyphone/notification). The KDE repo above is consulted ONLY for the documented interop FACTS (port 1716; the TCP-dialer is the TLS server; pairing = trust-the-cert) — those are functional protocol requirements, not copyrightable expression. NONE of KDE's GPL-2.0 source is copied/vendored, so the app keeps its own license. Connects over wg0 by explicit wg_ip (auto-discovery can't cross WireGuard). Next: a foreground service hosting an inbound TCP server (1716-1764) so peers can also initiate, plus battery/share/mpris plugins."
     },
     "ops": {
       "tracker": null,
@@ -229,7 +229,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "KDE Connect integration (Configs > KDE page). SLICE, SELF-CONTAINED (no dependency on the installed org.kde.kdeconnect_tp): wg0-preferred discovery of the Surface Pro (data-driven from ui.kde_connect — wg_ip 10.0.0.5, port 1716). Binds the probe + identity socket to the native VPN (wg0) Network so packets egress the tunnel with the wg0 source IP (the peer answers to that), then the default route, then a self-contained LAN broadcast. Declared fork of github.com/KDE/kdeconnect-android (GPL-2.0, upstreams.kde-connect); full upstream TLS pairing + plugin link is the documented next phase."
+      "comment": "KDE Connect (Configs > KDE page). FULLY SELF-CONTAINED, CLEAN-ROOM — our own implementation of the KDE Connect LAN protocol, no org.kde.kdeconnect_tp dependency and NO KDE GPL source vendored. Pipeline: dial <wg_ip>:1716 over wg0 → write identity (plaintext) → mutual-TLS handshake AS the TLS server (BouncyCastle self-signed device cert; the dialer is the TLS server per the protocol) → re-exchange identity encrypted (v8) → cert-pinned pairing (KdeTrustStore) → NetworkPacket plugins (ping/clipboard/findmyphone/notification). Data-driven from ui.kde_connect (self_name + devices[].wg_ip); nothing hardcodes an IP. BouncyCastle (bcpkix/bcprov jdk15to18) is the only added dep, for cert generation. Next phase: foreground service + inbound TCP server so peers can initiate too."
     }
   },
   "ui": {
@@ -4638,9 +4638,10 @@
         }
       ]
     },
-    "_doc_kde_connect": "KDE Connect integration config consumed by libs:kde-connect (Configs > KDE page). SELF-CONTAINED — does NOT launch the installed org.kde.kdeconnect_tp. KDE Connect discovery is UDP broadcast on the LAN, which does NOT cross WireGuard; and the peer answers to the packet's SOURCE IP, so the packet must leave over wg0. For each device we declare its wg_ip; libs:kde-connect binds its probe + identity socket to the native VPN (wg0) Network and tries that FIRST (so the source IP is the wg0 address the Surface can route back to), then the default route, then a self-contained LAN broadcast. `package` is retained as metadata for the future vendor phase, not launched. wg_ip values mirror data/mesh.json (Surface Pro = node 'laptop' = 10.0.0.5). Add a device = append here; nothing in Kotlin hardcodes an IP.",
+    "_doc_kde_connect": "KDE Connect config consumed by libs:kde-connect (Configs > KDE page). FULLY SELF-CONTAINED, ORIGINAL (clean-room) implementation of the KDE Connect LAN protocol — NO dependency on org.kde.kdeconnect_tp, NOT its GPL source. Auto-discovery (UDP broadcast / mDNS) does NOT cross WireGuard, so the client connects by explicit wg_ip instead: it dials <wg_ip>:discovery_port (1716) over wg0, writes its identity, runs the KDE Connect mutual-TLS handshake AS THE TLS SERVER (the protocol rule: the side that dials the TCP becomes the TLS server), re-exchanges identity encrypted (protocol v8), then pumps NetworkPackets through the plugin registry (ping/clipboard/findmyphone/notification). Pairing = remembering the peer's certificate; reconnects are cert-pinned. `self_name` is our advertised device name; `package` is retained only for the legacy 'open official app' affordance, never required. `devices[]` = the wg_ip targets we can reach (Surface Pro = mesh node 'laptop' = 10.0.0.5). Add a target = append a device with its wg_ip; nothing in Kotlin hardcodes an IP. The phone running the app advertises itself via self_name (this device = Samsung Galaxy S21 @ wg 10.0.0.9).",
     "kde_connect": {
       "package": "org.kde.kdeconnect_tp",
+      "self_name": "Samsung Galaxy S21",
       "discovery_port": 1716,
       "prefer_wg0": true,
       "lan_fallback": true,
