@@ -20,6 +20,9 @@ interface KdePlugin {
     val outgoing: Set<String>
     /** Handle a packet whose type is in [incoming]. Returns true if consumed. */
     fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean
+    /** Called once a link is established + paired — for plugins that PUSH state
+     *  proactively (e.g. battery reports its level on connect). Default no-op. */
+    fun onLinkReady(ctx: Context, link: KdeLink) {}
 }
 
 /** Static registry — the set of plugins the app supports. Capability lists in
@@ -28,6 +31,7 @@ interface KdePlugin {
 object KdePluginRegistry {
     val plugins: List<KdePlugin> = listOf(
         PingPlugin, ClipboardPlugin, FindMyPhonePlugin, NotificationMirrorPlugin,
+        BatteryPlugin, SharePlugin,
     )
     val incomingCapabilities: Set<String> = plugins.flatMap { it.incoming }.toSet()
     val outgoingCapabilities: Set<String> = plugins.flatMap { it.outgoing }.toSet()
@@ -36,6 +40,10 @@ object KdePluginRegistry {
     fun dispatch(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean =
         plugins.firstOrNull { packet.type in it.incoming }
             ?.onPacket(ctx, link, packet) ?: false
+
+    /** Notify every plugin that a paired link is ready (push initial state). */
+    fun linkReady(ctx: Context, link: KdeLink) =
+        plugins.forEach { runCatching { it.onLinkReady(ctx, link) } }
 }
 
 /** kdeconnect.ping — surface a notification; we can also send one. */
@@ -92,6 +100,62 @@ object FindMyPhonePlugin : KdePlugin {
             vib?.vibrate(VibrationEffect.createOneShot(1500, VibrationEffect.DEFAULT_AMPLITUDE))
         }
         KdeNotifications.post(ctx, "Find My Phone", "Ring requested by ${link.peerName}")
+        return true
+    }
+}
+
+/** kdeconnect.battery — report the phone's charge level to the desktop (on
+ *  connect + on request), and surface the desktop's level back. */
+object BatteryPlugin : KdePlugin {
+    override val incoming = setOf(NetworkPacket.TYPE_BATTERY, NetworkPacket.TYPE_BATTERY_REQUEST)
+    override val outgoing = setOf(NetworkPacket.TYPE_BATTERY, NetworkPacket.TYPE_BATTERY_REQUEST)
+    override fun onLinkReady(ctx: Context, link: KdeLink) { link.send(report(ctx)) }
+    override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        when (packet.type) {
+            NetworkPacket.TYPE_BATTERY_REQUEST -> link.send(report(ctx))
+            NetworkPacket.TYPE_BATTERY ->
+                if (packet.has("currentCharge")) KdeNotifications.post(
+                    ctx, "${link.peerName} battery",
+                    "${packet.getInt("currentCharge")}%" +
+                        if (packet.getBoolean("isCharging")) " · charging" else "")
+        }
+        return true
+    }
+    private fun report(ctx: Context): NetworkPacket {
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
+        val pct = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        val charging = bm.isCharging
+        return NetworkPacket.of(NetworkPacket.TYPE_BATTERY) {
+            put("currentCharge", pct)
+            put("isCharging", charging)
+            put("thresholdEvent", if (pct in 1..15 && !charging) 1 else 0)
+        }
+    }
+}
+
+/** kdeconnect.share.request — receive a shared URL (open it) or text (copy +
+ *  notify). File payloads use KDE's separate transfer channel — not handled. */
+object SharePlugin : KdePlugin {
+    override val incoming = setOf(NetworkPacket.TYPE_SHARE)
+    override val outgoing = setOf(NetworkPacket.TYPE_SHARE)
+    override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        when {
+            packet.getString("url").isNotEmpty() -> runCatching {
+                ctx.startActivity(android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(packet.getString("url")),
+                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            packet.getString("text").isNotEmpty() -> {
+                val text = packet.getString("text")
+                (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                    ?.setPrimaryClip(ClipData.newPlainText("KDE Connect", text))
+                KdeNotifications.post(ctx, "Shared text · ${link.peerName}",
+                    text.take(120) + if (text.length > 120) "…" else "")
+            }
+            packet.has("filename") -> KdeNotifications.post(ctx, "Incoming file · ${link.peerName}",
+                "${packet.getString("filename")} (file transfer not yet supported)")
+        }
         return true
     }
 }

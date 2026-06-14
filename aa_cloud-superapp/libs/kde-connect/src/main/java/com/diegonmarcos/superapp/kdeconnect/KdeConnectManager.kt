@@ -137,6 +137,7 @@ object KdeConnectManager : KdeLink.Listener {
         // desktop. Auto-requesting on every connect double-fired requests and
         // fed the pair loop.
         emit(deviceId, host, if (alreadyPaired) State.PAIRED else State.NEEDS_PAIRING, name)
+        if (alreadyPaired) KdePluginRegistry.linkReady(app, link)
         return deviceId
     }
 
@@ -229,6 +230,7 @@ object KdeConnectManager : KdeLink.Listener {
             }
             val key = verificationKey(id)
             emit(id, null, State.PAIRED, if (key != null) "${link.peerName} · key $key" else link.peerName)
+            KdePluginRegistry.linkReady(app, link)
         } else {
             trust.untrust(id); pairRequested -= id
             emit(id, null, State.DISCONNECTED, "unpaired/rejected by ${link.peerName}")
