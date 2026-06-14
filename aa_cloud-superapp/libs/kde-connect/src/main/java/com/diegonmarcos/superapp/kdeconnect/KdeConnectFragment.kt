@@ -144,11 +144,9 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
 
         connect.setOnClickListener {
             status.text = "connecting…"
-            viewLifecycleOwner.lifecycleScope.launch {
-                val res = KdeConnectManager.connect(device.wgIp, KdeConnectConfig.get().discoveryPort)
-                res.onSuccess { row.deviceId = it }
-                   .onFailure { status.text = "✗ ${it.message}" }
-            }
+            // Fire-and-forget UDP nudge; the Surface dials back to our inbound
+            // server and the result arrives via onState (keyed on wg IP).
+            KdeConnectManager.nudge(device.wgIp, KdeConnectConfig.get().discoveryPort)
         }
         pair.setOnClickListener {
             val id = row.deviceId ?: return@setOnClickListener
@@ -215,12 +213,14 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         if (KdeConnectManager.listener === this) KdeConnectManager.listener = null
     }
 
-    /** State callbacks arrive on the main thread (manager posts them). */
-    override fun onState(deviceId: String, state: KdeConnectManager.State, detail: String) {
-        // Match by discovered deviceId first, else by the host we dialed.
-        val row = rows.firstOrNull { it.deviceId == deviceId } ?: rows.firstOrNull { it.device.wgIp == deviceId }
-        ?: return
-        if (row.deviceId == null && state != KdeConnectManager.State.ERROR) row.deviceId = deviceId
+    /** State callbacks arrive on the main thread (manager posts them). Keyed on
+     *  the peer wg IP ([host]) — known from the first CONNECTING event — and on
+     *  the discovered deviceId once the handshake yields one. */
+    override fun onState(deviceId: String, host: String?, state: KdeConnectManager.State, detail: String) {
+        val row = rows.firstOrNull { host != null && it.device.wgIp == host }
+            ?: rows.firstOrNull { deviceId.isNotBlank() && it.deviceId == deviceId }
+            ?: return
+        if (deviceId.isNotBlank()) row.deviceId = deviceId
         val paired = row.deviceId?.let { KdeConnectManager.isPaired(it) } == true
         row.status.text = when (state) {
             KdeConnectManager.State.CONNECTING   -> "connecting… ($detail)"

@@ -4645,7 +4645,7 @@
       "discovery_port": 1716,
       "prefer_wg0": true,
       "lan_fallback": true,
-      "probe_timeout_ms": 1500,
+      "probe_timeout_ms": 4000,
       "devices": [
         {
           "id": "surface-pro-8",
