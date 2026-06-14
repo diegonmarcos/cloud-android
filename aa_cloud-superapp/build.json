@@ -2290,6 +2290,13 @@
         "label": "Phone"
       }
     ],
+    "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen — same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here — no Kotlin edit.",
+    "search_scopes": [
+      { "id": "cloud-apps",    "label": "Cloud-Apps",    "kind": "cloud_apps" },
+      { "id": "phone-apps",    "label": "Phone-Apps",    "kind": "phone_apps" },
+      { "id": "cloud-configs", "label": "Cloud-Configs", "kind": "cloud_configs" },
+      { "id": "phone-configs", "label": "Phone-Configs", "kind": "phone_configs" }
+    ],
     "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list — the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's sub-pages (mode tabs + Cloud/Phone tabs + the Home-Apps overlay). Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement — `mode` (apps|admin, for Tabbed sections Infos/Labs), `tab` (cloud|phone, for Suite's SuiteCloudPhoneTabsFragment), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body tab). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here — no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
     "swipe_walk": [
       { "id": "comms",           "section": "communication",       "label": "Comms" },
