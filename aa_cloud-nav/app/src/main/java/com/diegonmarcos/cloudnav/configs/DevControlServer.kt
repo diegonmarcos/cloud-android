@@ -1,8 +1,8 @@
-package com.diegonmarcos.superapp.devcontrol
+package com.diegonmarcos.cloudnav.configs
 
 import android.content.Context
 import android.util.Log
-import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.cloudnav.BuildConfig
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -215,11 +215,16 @@ object DevControlServer {
                     writer.flush()
                     DevControlBridge.runOnMain { DevControlBridge.restartApp(ctx) }
                 }
-                "phone/classify" -> { reply(writer, "200 OK", phoneClassifyJson(ctx), "application/json") }
-                "phone/new_apps" -> { reply(writer, "200 OK", phoneNewAppsJson(ctx), "application/json") }
+                "tracker/prefs"  -> { reply(writer, "200 OK", trackerPrefsJson(ctx), "application/json") }
+                "tracker/points" -> {
+                    val n = query["n"]?.toIntOrNull() ?: 20
+                    reply(writer, "200 OK", trackerPointsJson(ctx, n), "application/json")
+                }
+                "tracker/stops"  -> { reply(writer, "200 OK", trackerStopsJson(ctx), "application/json") }
+                "tracker/counts" -> { reply(writer, "200 OK", trackerCountsJson(ctx), "application/json") }
                 "battery/state" -> { reply(writer, "200 OK", batteryStateJson(ctx), "application/json") }
                 "battery/reset_anchor" -> {
-                    com.diegonmarcos.superapp.BatterySessionStats.resetAnchor(ctx)
+                    com.diegonmarcos.cloudnav.BatterySessionStats.resetAnchor(ctx)
                     reply(writer, "200 OK", """{"ok":true,"message":"anchor cleared — next plug/unplug will re-mint via PowerStateReceiver"}""", "application/json")
                 }
                 "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
@@ -227,10 +232,9 @@ object DevControlServer {
                 "energy/self" -> { reply(writer, "200 OK", energySelfJson(), "application/json") }
                 "energy/attribution" -> { reply(writer, "200 OK", energyAttributionJson(ctx), "application/json") }
                 "energy/samples" -> { reply(writer, "200 OK", energySamplesJson(ctx), "application/json") }
-                "energy/shizuku" -> { reply(writer, "200 OK", energyShizukuJson(ctx), "application/json") }
                 "energy/reset" -> {
-                    com.diegonmarcos.superapp.EnergyLedger.reset()
-                    runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).clear() }
+                    com.diegonmarcos.cloudnav.EnergyLedger.reset()
+                    runCatching { com.diegonmarcos.cloudnav.EnergyStore(ctx).clear() }
                     reply(writer, "200 OK", """{"ok":true,"message":"energy ledger + sample store cleared"}""", "application/json")
                 }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
@@ -271,8 +275,8 @@ object DevControlServer {
             Spec("docs",                "GET",  false, "This endpoint — JSON catalog of every route, method, and auth requirement", ""),
             Spec("system/ping",         "GET",  false, "Health probe — returns 'pong'", ""),
             Spec("system/info",         "GET",  false, "App build info: version, vc, sha, port", ""),
-            Spec("system/update",       "POST", true,  "Trigger an in-app update check (libs:updater)", ""),
-            Spec("system/restart",      "POST", true,  "Restart the SuperApp process", ""),
+            Spec("system/update",       "POST", true,  "Trigger an in-app update check", ""),
+            Spec("system/restart",      "POST", true,  "Restart the Cloud Nav process", ""),
             Spec("diagnostics/logcat",  "GET",  false, "Recent logcat lines, threadtime format", "n=lines (default 300)"),
             Spec("diagnostics/trace",   "GET",  false, "Tail of Trace.kt's trace.log", "n=lines (default 300)"),
             Spec("diagnostics/crashes", "GET",  false, "All crash files concatenated, newest first", ""),
@@ -280,17 +284,18 @@ object DevControlServer {
             Spec("haptic",              "POST", true,  "Fire a named haptic preset on the device", "preset=name (default 'tick')"),
             Spec("nav/goto",            "POST", true,  "Navigate to a tile target (section:X / page:X/Y / action:X / url)", "target=string"),
             Spec("nav/action",          "POST", true,  "Fire one of MainActivity.onActionFromServer's verbs", "type=string"),
-            Spec("phone/classify",      "GET",  true,  "Every launchable installed app + the folder PhoneAppClassifier routes it to (debug surface for the Home Apps/Phone tab)", ""),
-            Spec("phone/new_apps",      "GET",  true,  "Just the apps that fell to the sink folder (_New Apps) — direct view of what's not yet covered by phone_folders.match_keywords", ""),
+            Spec("tracker/prefs",       "GET",  true,  "Tracker calibration prefs + enabled flag + last fix coords", ""),
+            Spec("tracker/counts",      "GET",  true,  "DB row counts: points + stops + last-fix timestamp", ""),
+            Spec("tracker/points",      "GET",  true,  "Recent GPS points reverse-chrono with accuracy + speed", "n=count (default 20)"),
+            Spec("tracker/stops",       "GET",  true,  "All stops in the local DB with start/end + reverse-geocoded place", ""),
             Spec("battery/state",       "GET",  true,  "Full BatterySessionStats.Snapshot — current pct, anchor source (disconnect_event / connect_event / first_read_fallback / (none)), elapsed since anchor, rate, ETA, raw + rescaled current_now, chargerSpec including sysfs liveInputW. The single source of truth for debugging 'why is the rate computing from the moment I opened the page' and similar regressions.", ""),
             Spec("battery/reset_anchor","GET",  true,  "DELETE the persisted session anchor (both unplug/plug). Next read mints a fresh first_read_fallback; the next real plug/unplug cycle overwrites with an authoritative receiver-event anchor. Equivalent to a fresh install for the battery-session machinery.", ""),
             Spec("sysfs/diagnostic",    "GET",  true,  "Per-path readability check for every kernel sysfs/proc file the app touches. Returns ✓ OK + preview when readable, ✗ does-not-exist / not-readable / read-failed otherwise. THIS is the answer to 'why isn't sysfs working even though no perm is needed' — hardened Androids block specific power_supply nodes via SELinux.", ""),
             Spec("battery/properties",  "GET",  true,  "Full dump of every BatteryManager.BATTERY_PROPERTY_* getter + every sticky ACTION_BATTERY_CHANGED extra. This is the path AccuBattery and similar gauges use when sysfs is hardened (Samsung One UI 7+, Pixel A15+) — system-service surface that bypasses the SELinux block. Use it to identify which fields ARE exposed on the current device so we can wire them into BatterySessionStats.", ""),
-            Spec("energy/self",         "GET",  true,  "Intra-app energy ledger — which subsystem INSIDE Cloud SuperApp spent the most CPU-ms / wakeups / bytes since the window start (ui.galaxy, music.session, bg.battery_worker, bg.energy_sampler, …). Answers 'what in our own app drains battery'.", ""),
+            Spec("energy/self",         "GET",  true,  "Intra-app energy ledger — which subsystem INSIDE Cloud Nav spent the most CPU-ms / wakeups / bytes since the window start (ui.galaxy, bg.battery_worker, bg.energy_sampler, location.tracker, …). Answers 'what in our own app drains battery'.", ""),
             Spec("energy/attribution",  "GET",  true,  "Device-level Tier-1 watchdog attribution over stored samples: idle baseline mA, marginal mA per state (screen-on / audio / weak-cellular / high-cpu / bright-screen), per-foreground-app avg draw + energy proxy, and our own self cpu/net cost over the window.", ""),
             Spec("energy/samples",      "GET",  true,  "Raw recent energy-watchdog samples (last 200): per-sample whole-device draw_ma + state vector (screen, brightness, foreground pkg, cpu load, signal, wifi, audio).", ""),
             Spec("energy/reset",        "GET",  true,  "Clear the intra-app ledger + the watchdog sample store to start a fresh measurement window.", ""),
-            Spec("energy/shizuku",      "GET",  true,  "EXACT per-app mAh via Shizuku (Tier 2) — runs `dumpsys batterystats --charged` in shell context (uid 2000) through the bound ShizukuUserService and parses the per-uid 'Estimated power use (mAh)' section. Returns available/granted/status + the per-app list, or apps=null while binding / when Shizuku isn't running. Ground truth the Tier-1 correlation calibrates against.", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -321,13 +326,68 @@ object DevControlServer {
         val params: String,
     )
 
-    /** Walk every launchable activity + report the folder
-     *  PhoneAppClassifier routes it to. Debug surface for the Home
-     *  Apps/Phone tab — directly answers "why is app X in folder Y?". */
-    /** Intra-app energy ledger — which subsystem inside Cloud SuperApp
+    // ── Tracker DB read helpers (libs:maps consumers) ───────────────
+
+    private fun trackerPrefsJson(ctx: Context): String {
+        val tp = com.diegonmarcos.cloudnav.maps.MapsTrackingPrefs(ctx)
+        val st = com.diegonmarcos.cloudnav.maps.MapsTrackerPrefs(ctx)
+        return """{"enabled":${st.enabled},"last_fix_lat":${st.lastFixLat},"last_fix_lon":${st.lastFixLon},""" +
+            """"last_fix_ts":${st.lastFixTs},"interval_moving_ms":${tp.intervalMovingMs},""" +
+            """"interval_stopped_ms":${tp.intervalStoppedMs},"moving_threshold_mps":${tp.movingThresholdMps},""" +
+            """"stops_radius_m":${tp.stopsRadiusM},"stops_dwell_min":${tp.stopsDwellMin}}"""
+    }
+
+    private fun trackerCountsJson(ctx: Context): String {
+        val db = com.diegonmarcos.cloudnav.maps.MapsDb.get(ctx)
+        val st = com.diegonmarcos.cloudnav.maps.MapsTrackerPrefs(ctx)
+        return """{"points":${db.pointCount()},"stops":${db.stopCount()},"last_fix_ts":${st.lastFixTs}}"""
+    }
+
+    private fun trackerPointsJson(ctx: Context, n: Int): String {
+        val db = com.diegonmarcos.cloudnav.maps.MapsDb.get(ctx)
+        val rows = db.recentPoints(n)
+        val sb = StringBuilder("[")
+        rows.asReversed().forEachIndexed { i, p ->
+            if (i > 0) sb.append(',')
+            sb.append("""{"ts":""").append(p.ts).append(',')
+            sb.append(""""lat":""").append(p.lat).append(',')
+            sb.append(""""lon":""").append(p.lon).append(',')
+            sb.append(""""accuracy":""").append(p.accuracy ?: "null").append(',')
+            sb.append(""""speed":""").append(p.speed ?: "null").append(',')
+            sb.append(""""bearing":""").append(p.bearing ?: "null").append(',')
+            sb.append(""""altitude":""").append(p.altitude ?: "null")
+            sb.append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    private fun trackerStopsJson(ctx: Context): String {
+        val db = com.diegonmarcos.cloudnav.maps.MapsDb.get(ctx)
+        val now = System.currentTimeMillis()
+        val rows = db.stopsBetween(now - 5L * 365L * 24L * 3600_000L, now)
+        val sb = StringBuilder("[")
+        rows.forEachIndexed { i, s ->
+            if (i > 0) sb.append(',')
+            sb.append("""{"id":""").append(s.id).append(',')
+            sb.append(""""started_at":""").append(s.startedAt).append(',')
+            sb.append(""""ended_at":""").append(s.endedAt ?: "null").append(',')
+            sb.append(""""lat":""").append(s.lat).append(',')
+            sb.append(""""lon":""").append(s.lon).append(',')
+            sb.append(""""place_name":""").append(s.placeName?.let { "\"" + jsonEscape(it) + "\"" } ?: "null").append(',')
+            sb.append(""""neighborhood":""").append(s.neighborhood?.let { "\"" + jsonEscape(it) + "\"" } ?: "null").append(',')
+            sb.append(""""city":""").append(s.city?.let { "\"" + jsonEscape(it) + "\"" } ?: "null").append(',')
+            sb.append(""""country":""").append(s.country?.let { "\"" + jsonEscape(it) + "\"" } ?: "null")
+            sb.append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    /** Intra-app energy ledger — which subsystem inside Cloud Nav
      *  spent the most CPU / wakeups / bytes since the window start. */
     private fun energySelfJson(): String {
-        val (since, stats) = com.diegonmarcos.superapp.EnergyLedger.snapshot()
+        val (since, stats) = com.diegonmarcos.cloudnav.EnergyLedger.snapshot()
         val sorted = stats.entries.sortedByDescending { it.value.cpuNanos }
         val sb = StringBuilder("""{"since_ms":""").append(since).append(',')
         sb.append(""""tags":[""")
@@ -344,42 +404,16 @@ object DevControlServer {
         return sb.toString()
     }
 
-    /** Shizuku exact per-app mAh from dumpsys batterystats (Tier 2). */
-    private fun energyShizukuJson(ctx: Context): String {
-        val se = com.diegonmarcos.superapp.ShizukuEnergy
-        val sb = StringBuilder("{")
-        sb.append(""""available":""").append(se.isAvailable()).append(',')
-        sb.append(""""granted":""").append(se.isGranted()).append(',')
-        sb.append(""""status":"""").append(jsonEscape(se.status())).append('"').append(',')
-        val exact = runCatching { se.exact(ctx) }.getOrNull()
-        sb.append(""""apps":""")
-        if (exact == null) sb.append("null")
-        else {
-            sb.append('[')
-            var first = true
-            for (a in exact) {
-                if (!first) sb.append(','); first = false
-                sb.append("""{"pkg":"""").append(jsonEscape(a.pkg)).append('"').append(',')
-                sb.append(""""label":"""").append(jsonEscape(a.label)).append('"').append(',')
-                sb.append(""""uid":""").append(a.uid).append(',')
-                sb.append(""""mah":""").append("%.2f".format(a.mAh)).append('}')
-            }
-            sb.append(']')
-        }
-        sb.append('}')
-        return sb.toString()
-    }
-
     /** Device-level state → draw attribution + per-foreground-app +
      *  our own self cost, computed over the stored sample window. */
     private fun energyAttributionJson(ctx: Context): String {
-        val m = com.diegonmarcos.superapp.EnergyWatchdog.attribution(ctx)
+        val m = com.diegonmarcos.cloudnav.EnergyWatchdog.attribution(ctx)
         return mapToJson(m)
     }
 
     /** Raw recent watchdog samples (last 200). */
     private fun energySamplesJson(ctx: Context): String {
-        val rows = runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).recent(200) }
+        val rows = runCatching { com.diegonmarcos.cloudnav.EnergyStore(ctx).recent(200) }
             .getOrDefault(emptyList())
         val sb = StringBuilder("[")
         var first = true
@@ -415,88 +449,13 @@ object DevControlServer {
         else -> "\"${jsonEscape(v.toString())}\""
     }
 
-    private fun phoneClassifyJson(ctx: Context): String {
-        val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
-        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
-            as android.content.pm.LauncherApps
-        val me = android.os.Process.myUserHandle()
-        val pm = ctx.packageManager
-        val sb = StringBuilder("[")
-        var first = true
-        for (info in launcher.getActivityList(null, me)) {
-            val pkg = info.applicationInfo.packageName
-            val label = info.label.toString()
-            val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
-                .classify(pkg, label, folders)
-            // Install-source debug fields — exactly what
-            // PhoneSmartFolders.install_source_not reads, so we can see
-            // why a given app does/doesn't land in Alternative Sources.
-            var installing: String? = null
-            var initiating: String? = null
-            var isSystem = false
-            runCatching {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                isSystem = (ai.flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or
-                    android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
-            }
-            runCatching {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    val src = pm.getInstallSourceInfo(pkg)
-                    installing = src.installingPackageName
-                    initiating = src.initiatingPackageName
-                } else {
-                    @Suppress("DEPRECATION")
-                    installing = pm.getInstallerPackageName(pkg)
-                }
-            }
-            if (!first) sb.append(','); first = false
-            sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
-            sb.append(""""label":"""").append(jsonEscape(label)).append('"').append(',')
-            sb.append(""""folder":"""").append(jsonEscape(folderId)).append('"').append(',')
-            sb.append(""""installing":""")
-                .append(if (installing == null) "null" else "\"${jsonEscape(installing!!)}\"").append(',')
-            sb.append(""""initiating":""")
-                .append(if (initiating == null) "null" else "\"${jsonEscape(initiating!!)}\"").append(',')
-            sb.append(""""system":""").append(isSystem)
-            sb.append('}')
-        }
-        sb.append(']')
-        return sb.toString()
-    }
-
-    /** Only the apps that landed in the sink folder (new_apps by
-     *  default) — focused view for "what's still uncategorised?". */
-    private fun phoneNewAppsJson(ctx: Context): String {
-        val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
-        val sinkId = com.diegonmarcos.superapp.PhoneFolders.sinkFolderId(folders)
-        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
-            as android.content.pm.LauncherApps
-        val me = android.os.Process.myUserHandle()
-        val sb = StringBuilder("""{"sink_folder_id":"""")
-        sb.append(jsonEscape(sinkId)).append('"').append(',')
-        sb.append(""""apps":[""")
-        var first = true
-        for (info in launcher.getActivityList(null, me)) {
-            val pkg = info.applicationInfo.packageName
-            val label = info.label.toString()
-            val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
-                .classify(pkg, label, folders)
-            if (folderId != sinkId) continue
-            if (!first) sb.append(','); first = false
-            sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
-            sb.append(""""label":"""").append(jsonEscape(label)).append('"').append('}')
-        }
-        sb.append("]}")
-        return sb.toString()
-    }
-
     /** Full BatterySessionStats.Snapshot as JSON. The single source of
      *  truth for debugging battery-rate / anchor regressions —
      *  surfaces EVERY field of the Snapshot data class plus the
      *  derived chargerSpec subobject (so callers can see whether
      *  liveInputW came from sysfs or only from dumpsys). */
     private fun batteryStateJson(ctx: Context): String {
-        val s = com.diegonmarcos.superapp.BatterySessionStats.read(ctx)
+        val s = com.diegonmarcos.cloudnav.BatterySessionStats.read(ctx)
         val sb = StringBuilder("{")
         sb.append(""""isCharging":""").append(s.isCharging).append(',')
         sb.append(""""curPct":""").append(s.curPct).append(',')
@@ -645,7 +604,7 @@ object DevControlServer {
      *  for me" — exposes whether the kernel actually allows the
      *  read or whether SELinux is denying it. */
     private fun sysfsDiagnosticJson(): String {
-        val all = com.diegonmarcos.superapp.SysfsProc.sysfsReadDiagnostic()
+        val all = com.diegonmarcos.cloudnav.SysfsProc.sysfsReadDiagnostic()
         val sorted = all.sortedBy { (_, status) -> if (status.startsWith("✗")) 0 else 1 }
         val sb = StringBuilder("""{"paths":[""")
         var first = true

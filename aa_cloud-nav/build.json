@@ -1,0 +1,466 @@
+{
+  "name": "cloud-nav",
+  "description": "Diego's Cloud Nav — dedicated maps/navigation/tracker Android app. Single APK, gradle multi-module (app/ Google-Maps-style shell + libs/{core,maps}). MapLibre Native renderer, GPS tracker + Stop detection, multi-stop routing, driving navigation view, place-category browsing, and a timeline of visited places. Lifted out of Cloud SuperApp's libs:maps into its own focused app. Build via Nix devShell, one APK out.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.cloudnav",
+    "compile_sdk": 35,
+    "min_sdk": 26,
+    "target_sdk": 34,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "_doc_abi_filters": "arm64-v8a only — MapLibre Native ships ~15-18MB of .so per ABI. Every Samsung Galaxy from S8 + every modern Pixel is arm64. Add armeabi-v7a/x86_64 here for 32-bit/emulator support; no Kotlin/gradle edits needed.",
+    "abi_filters": [
+      "arm64-v8a"
+    ]
+  },
+  "emulator": {
+    "_doc": "build.sh emulator boots an arm64 AVD for full-fidelity testing of the arm64-v8a APK. ABI/API must match flake.nix. avd_name created idempotently from system_image.",
+    "avd_name": "cloudnav-arm64",
+    "system_image": "system-images;android-34;google_apis;arm64-v8a",
+    "device": "pixel_6",
+    "boot_args": [
+      "-no-snapshot-save",
+      "-gpu",
+      "swiftshader_indirect"
+    ]
+  },
+  "toolchain": {
+    "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
+    "agp": "8.7.3",
+    "gradle": "8.10.2",
+    "kotlin": "1.9.24",
+    "jdk": "17"
+  },
+  "modules": {
+    "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list. Adding a new feature module = one entry here + mkdir + minimal build.gradle.",
+    "app": {
+      "type": "application",
+      "depends_on": [
+        "libs:core",
+        "libs:maps"
+      ]
+    },
+    "libs:core": {
+      "type": "library"
+    },
+    "libs:maps": {
+      "type": "library"
+    }
+  },
+  "ui": {
+    "_doc_nav_tabs": "Bottom navigation tabs. Order = display order. id maps to a Fragment in MainActivity.fragmentForTab(); icon maps to R.drawable.ic_nav_<icon>.",
+    "nav_tabs": [
+      {
+        "id": "routes",
+        "label": "Routes",
+        "icon": "routes"
+      },
+      {
+        "id": "navigation",
+        "label": "Navigation",
+        "icon": "navigation"
+      },
+      {
+        "id": "timeline",
+        "label": "Timeline",
+        "icon": "timeline"
+      },
+      {
+        "id": "places",
+        "label": "Places",
+        "icon": "places"
+      },
+      {
+        "id": "configs",
+        "label": "Configs",
+        "icon": "configs"
+      }
+    ],
+    "default_tab": "routes",
+    "_doc_search_islands": "Small round 'island' shortcut chips rendered in a row beneath the top search bar (Google-Maps style). action is parsed by the active fragment.",
+    "search_islands": [
+      {
+        "id": "home",
+        "label": "Home",
+        "icon": "home",
+        "action": "saved:home"
+      },
+      {
+        "id": "work",
+        "label": "Work",
+        "icon": "work",
+        "action": "saved:work"
+      },
+      {
+        "id": "saved",
+        "label": "Saved",
+        "icon": "star",
+        "action": "list:saved"
+      },
+      {
+        "id": "recent",
+        "label": "Recent",
+        "icon": "history",
+        "action": "list:recent"
+      },
+      {
+        "id": "share_loc",
+        "label": "Share",
+        "icon": "share",
+        "action": "share:location"
+      }
+    ],
+    "_doc_places_categories": "Place categories for the Places tab. query is the Overpass/POI tag filter used when the POI provider is wired; icon maps to R.drawable.ic_place_<icon>.",
+    "places_categories": [
+      {
+        "id": "bars",
+        "label": "Bars",
+        "icon": "bar",
+        "query": "amenity=bar"
+      },
+      {
+        "id": "nightlife",
+        "label": "Nightlife",
+        "icon": "nightlife",
+        "query": "amenity=nightclub"
+      },
+      {
+        "id": "restaurants",
+        "label": "Restaurants",
+        "icon": "restaurant",
+        "query": "amenity=restaurant"
+      },
+      {
+        "id": "cafes",
+        "label": "Cafés",
+        "icon": "cafe",
+        "query": "amenity=cafe"
+      },
+      {
+        "id": "supermarkets",
+        "label": "Supermarkets",
+        "icon": "supermarket",
+        "query": "shop=supermarket"
+      },
+      {
+        "id": "beaches",
+        "label": "Beaches",
+        "icon": "beach",
+        "query": "natural=beach"
+      },
+      {
+        "id": "nature",
+        "label": "Natural Wonders",
+        "icon": "nature",
+        "query": "leisure=park"
+      },
+      {
+        "id": "gyms",
+        "label": "Gyms",
+        "icon": "gym",
+        "query": "leisure=fitness_centre"
+      },
+      {
+        "id": "atms",
+        "label": "ATMs",
+        "icon": "atm",
+        "query": "amenity=atm"
+      },
+      {
+        "id": "fuel",
+        "label": "Fuel",
+        "icon": "fuel",
+        "query": "amenity=fuel"
+      },
+      {
+        "id": "pharmacies",
+        "label": "Pharmacies",
+        "icon": "pharmacy",
+        "query": "amenity=pharmacy"
+      },
+      {
+        "id": "hotels",
+        "label": "Hotels",
+        "icon": "hotel",
+        "query": "tourism=hotel"
+      }
+    ],
+    "maps_active": {
+      "reverse": "nominatim_public",
+      "poi": "overpass_public"
+    },
+    "maps_tracking": {
+      "interval_moving_ms": 30000,
+      "interval_stopped_ms": 300000,
+      "moving_threshold_mps": 2,
+      "stops_radius_m": 100,
+      "stops_dwell_min": 2
+    },
+    "maps_providers": [
+      {
+        "id": "nominatim_public",
+        "label": "Nominatim (osm.org)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+      },
+      {
+        "id": "photon_public",
+        "label": "Photon (komoot.io)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}"
+      },
+      {
+        "id": "locationiq",
+        "label": "LocationIQ",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "5k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json"
+      },
+      {
+        "id": "geoapify",
+        "label": "Geoapify",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "3k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={key}"
+      },
+      {
+        "id": "opencage",
+        "label": "OpenCage",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "2.5k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://api.opencagedata.com/geocode/v1/json?q={lat}+{lon}&key={key}"
+      },
+      {
+        "id": "nominatim_self",
+        "label": "Nominatim (self)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+      },
+      {
+        "id": "photon_self",
+        "label": "Photon (self)",
+        "kind": [
+          "reverse"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}"
+      },
+      {
+        "id": "overpass_public",
+        "label": "Overpass (osm.org)",
+        "kind": [
+          "poi"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://overpass-api.de/api/interpreter"
+      },
+      {
+        "id": "overpass_self",
+        "label": "Overpass (self)",
+        "kind": [
+          "poi"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/overpass/api/interpreter"
+      },
+      {
+        "id": "radar",
+        "label": "Radar.io",
+        "kind": [
+          "reverse",
+          "poi"
+        ],
+        "host": "free-account",
+        "free_tier": "100k req/month",
+        "requires_api_key": true,
+        "endpoint": "https://api.radar.io/v1/geocode/reverse?coordinates={lat},{lon}"
+      },
+      {
+        "id": "google_places",
+        "label": "Google Places",
+        "kind": [
+          "reverse",
+          "poi"
+        ],
+        "host": "paid",
+        "free_tier": "$200/mo credit",
+        "requires_api_key": true,
+        "endpoint": "https://places.googleapis.com/v1/places:searchNearby"
+      }
+    ],
+    "profile_default": {
+      "name": "Diego Coelho Marcos",
+      "email": "me@diegonmarcos.com",
+      "initials": "DCM",
+      "company": "LEAFY",
+      "location": "Berlin/DE",
+      "website": "linktree.diegonmarcos.com",
+      "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
+      "_doc_repos": "Repo URLs + the consolidated cloud-data config reference, surfaced read-only in Configs/About → Profile. Data-driven (no Kotlin hardcoding) — baked via UI_PROFILE_REPOS_B64 / UI_CONSOLIDATED_CONFIG.",
+      "repos": [
+        {
+          "label": "unix",
+          "url": "https://github.com/diegonmarcos/unix"
+        },
+        {
+          "label": "cloud",
+          "url": "https://github.com/diegonmarcos/cloud"
+        },
+        {
+          "label": "front",
+          "url": "https://github.com/diegonmarcos/diegonmarcos.github.io"
+        },
+        {
+          "label": "vault",
+          "url": "https://github.com/diegonmarcos/vault"
+        }
+      ],
+      "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
+    },
+    "permissions": {
+      "runtime": [
+        {
+          "label": "Camera",
+          "perm": "android.permission.CAMERA"
+        },
+        {
+          "label": "Microphone",
+          "perm": "android.permission.RECORD_AUDIO"
+        },
+        {
+          "label": "Notifications",
+          "perm": "android.permission.POST_NOTIFICATIONS"
+        },
+        {
+          "label": "Location (fine)",
+          "perm": "android.permission.ACCESS_FINE_LOCATION"
+        },
+        {
+          "label": "Location (coarse)",
+          "perm": "android.permission.ACCESS_COARSE_LOCATION"
+        },
+        {
+          "label": "Nearby Devices",
+          "perm": "android.permission.BLUETOOTH_SCAN"
+        },
+        {
+          "label": "Bluetooth Connect",
+          "perm": "android.permission.BLUETOOTH_CONNECT"
+        },
+        {
+          "label": "Contacts",
+          "perm": "android.permission.READ_CONTACTS"
+        },
+        {
+          "label": "Music and Audio",
+          "perm": "android.permission.READ_MEDIA_AUDIO"
+        },
+        {
+          "label": "Photos and Videos (img)",
+          "perm": "android.permission.READ_MEDIA_IMAGES"
+        },
+        {
+          "label": "Photos and Videos (vid)",
+          "perm": "android.permission.READ_MEDIA_VIDEO"
+        },
+        {
+          "label": "SMS",
+          "perm": "android.permission.READ_SMS"
+        },
+        {
+          "label": "Phone",
+          "perm": "android.permission.READ_PHONE_STATE"
+        }
+      ],
+      "_doc_roles": "Single-holder RoleManager roles surfaced as Special-access rows on Configs/About → Permissions. These are NOT held by the SuperApp (it's a launcher with no dialer / call-screening service) — the holder is the Cloud-Comms phone fork (or Fossify Phone in the interim). The SuperApp cannot grant another app a role programmatically (createRequestRoleIntent only ever targets the calling app), so each row (a) reads the LIVE holder via RoleManager.getRoleHolders / TelecomManager.getDefaultDialerPackage and shows ✓ when the holder is one of `expected_holders`, and (b) the 'Set Default Apps' button deep-links to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS so the user picks Cloud-Comms there. `role` is the literal android.app.role.* constant passed straight to RoleManager. When our own fork ships, add its package to the relevant expected_holders[] — zero code change.",
+      "roles": [
+        {
+          "label": "Default phone app",
+          "role": "android.app.role.DIALER",
+          "expected_holders": [
+            "com.diegonmarcos.comms.dialer",
+            "org.fossify.phone"
+          ]
+        },
+        {
+          "label": "Spam filter (call screening)",
+          "role": "android.app.role.CALL_SCREENING",
+          "expected_holders": [
+            "com.diegonmarcos.comms.dialer",
+            "org.fossify.phone"
+          ]
+        }
+      ]
+    }
+  },
+  "release": {
+    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + gh-release read this block.",
+    "artifact": {
+      "debug": "Cloud-Nav.apk",
+      "release": "Cloud-Nav-release.apk"
+    },
+    "ghcr": {
+      "enabled": false,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-nav",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "enabled": false,
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": true,
+      "rolling_tag": "cloud-nav-latest",
+      "asset_name": "Cloud-Nav.apk"
+    },
+    "phone_install": {
+      "default_tag": "latest",
+      "target_dir": "~/storage/downloads",
+      "asset_name": "Cloud-Nav.apk"
+    }
+  }
+}

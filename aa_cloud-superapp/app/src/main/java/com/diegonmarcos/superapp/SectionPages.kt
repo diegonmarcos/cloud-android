@@ -5,11 +5,6 @@ import com.diegonmarcos.superapp.health.HealthFragment
 import com.diegonmarcos.superapp.chat.ChatPages
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.ops.OpsPages
-import com.diegonmarcos.superapp.maps.MapsConfigFragment
-import com.diegonmarcos.superapp.maps.MapsMapFragment
-import com.diegonmarcos.superapp.maps.MapsTimelineTabsFragment
-import com.diegonmarcos.superapp.maps.MytripsDashboardFragment
-import com.diegonmarcos.superapp.maps.MytripsStatsFragment
 import com.diegonmarcos.superapp.fin.MyFinDashboardFragment
 import com.diegonmarcos.superapp.wallet.WalletFragment
 
@@ -47,11 +42,6 @@ object SectionPages {
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
         sectionId == "config" && pageId == "kde"       -> com.diegonmarcos.superapp.kdeconnect.KdeConnectFragment.newInstance()
-        sectionId == "maps"    && pageId == "configs"   -> MapsConfigFragment.newInstance()
-        sectionId == "maps"    && pageId == "map"       -> MapsMapFragment.newInstance()
-        sectionId == "maps"    && pageId == "timeline"  -> MapsTimelineTabsFragment.newInstance()
-        sectionId == "mytrips" && pageId == "dashboard" -> MytripsDashboardFragment.newInstance()
-        sectionId == "mytrips" && pageId == "stats"     -> MytripsStatsFragment.newInstance()
         sectionId == "myfin"   && pageId == "dashboard" -> MyFinDashboardFragment.newInstance()
         sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
         sectionId == "health"                           -> HealthFragment.newInstance(pageId)

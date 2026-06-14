@@ -500,7 +500,6 @@ dependencies {
     implementation project(':libs:chat')
     implementation project(':libs:wallet')
     implementation project(':libs:health')
-    implementation project(':libs:maps')
     implementation project(':libs:fin')
     implementation project(':libs:kde-connect')
 
@@ -564,10 +563,11 @@ dependencies {
     // picker (ActivityResultContracts.GetContent).
     implementation 'androidx.activity:activity-compose:1.9.0'
 
-    // ── Maps / Tracker stack moved to :libs:maps ────────────────
-    // MapLibre Native SDK + Play Services Location now live inside
-    // libs:maps (its own build.gradle). app/ pulls them transitively
-    // via the project(':libs:maps') line above.
+    // ── Maps / Tracker stack lifted OUT to the ea_cloud-nav app ──
+    // libs:maps (MapLibre Native + tracker + timeline + MyTrips) was moved
+    // to the dedicated Cloud Nav app (../ea_cloud-nav/). SuperApp no longer
+    // ships maps; BackgroundOrchestrator still issues a best-effort stop
+    // intent by string to LocationTrackerService (no compile dep).
 
     // Instrumented tests — proves the build.json → BuildConfig → Sections
     // wiring for the companion external-apps registry (ExternalAppsTest).

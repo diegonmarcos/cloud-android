@@ -196,13 +196,6 @@
       ],
       "comment": "MyHealth — native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device — single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface — pages declared in build.json::ui.sections[id=health]."
     },
-    "libs:maps": {
-      "type": "library",
-      "depends_on": [
-        "libs:core"
-      ],
-      "comment": "MyMaps — native GPS tracker + MapLibre Native renderer + SQLite store. Foreground LocationTrackerService writes points; StopDetector emits dwell-events; StopsEnricher resolves each Stop via the active provider (build.json::ui.maps_providers, default Nominatim public). MyTrips Dashboard + Stats read the same SQLite. All Maps* / Mytrips* / LocationTrackerService / StopsEnricher / MapsProviderClient code lives here; app/ only retains the SectionPages dispatch that imports the fragments. Native deps: org.maplibre.gl:android-sdk + play-services-location — both heavy in native .so (arm64-only via build.json::android.abi_filters)."
-    },
     "libs:browser": {
       "type": "library",
       "depends_on": [
@@ -755,13 +748,6 @@
                 "target": "page:wallet/cards"
               },
               {
-                "_doc": "Native MyMaps section — foreground GPS tracker + MapLibre map + Timeline / Stops / Export pages. Was an external Google Maps deep-link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native fragments. For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else. Display label is 'Navigation' (id/target stay 'maps' — pure display rename).",
-                "id": "maps",
-                "label": "Navigation",
-                "icon": "ic_maps",
-                "target": "section:maps"
-              },
-              {
                 "id": "vault",
                 "label": "Vault",
                 "icon": "ic_vault",
@@ -785,13 +771,6 @@
                 "label": "MyFin",
                 "icon": "ic_fin",
                 "target": "page:myfin/dashboard"
-              },
-              {
-                "_doc": "Native MyTrips section — Dashboard + Stats layered on top of MyMaps's local SQLite Stop store. Was an external GitHub Pages link until the in-app section landed in Push 2-3; tile now routes through SectionPages dispatch to the native Compose-less fragments (MytripsDashboardFragment / MytripsStatsFragment).",
-                "id": "mytrips",
-                "label": "MyTrips",
-                "icon": "ic_world",
-                "target": "page:mytrips/dashboard"
               },
               {
                 "id": "myhealth",
@@ -1660,51 +1639,6 @@
         ]
       },
       {
-        "_doc": "MyMaps — native GPS tracker + MapLibre map. Foreground-service LocationTrackerService writes points into a local SQLite DB; stop-detector emits Stop rows (centroid + min-dwell). Pages: map (MapLibre Native view), timeline (Daily | Stops tabs), configs (folds Tracker control + provider picker + API keys + calibration + Export buttons into one page). Export was a separate page until merged into Configs alongside Tracker — every Maps knob lives in one scroll now.",
-        "id": "maps",
-        "label": "MyMaps",
-        "icon": "ic_settings",
-        "module": null,
-        "bottom_nav": false,
-        "pages": [
-          {
-            "id": "map",
-            "label": "Map",
-            "icon": "ic_settings"
-          },
-          {
-            "id": "timeline",
-            "label": "Timeline",
-            "icon": "ic_settings"
-          },
-          {
-            "id": "configs",
-            "label": "Configs",
-            "icon": "ic_settings"
-          }
-        ]
-      },
-      {
-        "_doc": "MyTrips — dashboard layered on top of MyMaps's local SQLite tracker DB. Reads stops + points to render a daily-city-per-day list + 5-year rollup stats + heatmap. Push 3 fills this in; Push 2 ships a placeholder.",
-        "id": "mytrips",
-        "label": "MyTrips",
-        "icon": "ic_settings",
-        "module": null,
-        "bottom_nav": false,
-        "pages": [
-          {
-            "id": "dashboard",
-            "label": "Dashboard",
-            "icon": "ic_settings"
-          },
-          {
-            "id": "stats",
-            "label": "Stats",
-            "icon": "ic_settings"
-          }
-        ]
-      },
-      {
         "_doc": "MyFin — personal finance dashboard (beta). Reads from build.json::ui.myfin_mock until a real aggregator lands. MyFinDashboardFragment in libs:fin reads UI_MYFIN_MOCK_B64 from BuildConfig (data-driven — edit JSON, rebuild, see new numbers).",
         "id": "myfin",
         "label": "MyFin",
@@ -2025,145 +1959,6 @@
         }
       }
     ],
-    "_doc_maps_providers": "Available geocoding providers. The user picks one per slot in Configs → Maps (kind: 'reverse' = city/neighborhood, 'poi' = restaurant/shop). 'host': 'free-noauth' = public free endpoint, no account, fair-use rate limit; 'free-account' = free tier behind signup; 'paid' = billing required; 'self' = our own deployment at endpoint URL. requires_api_key=true means we look up the key in MapsApiKeyPrefs. New providers: add a JSON entry + supply the key (if any) in Configs → Maps → API Keys; no Kotlin edits.",
-    "maps_providers": [
-      {
-        "id": "nominatim_public",
-        "label": "Nominatim (osm.org)",
-        "kind": [
-          "reverse"
-        ],
-        "host": "free-noauth",
-        "free_tier": "fair use",
-        "requires_api_key": false,
-        "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
-      },
-      {
-        "id": "photon_public",
-        "label": "Photon (komoot.io)",
-        "kind": [
-          "reverse"
-        ],
-        "host": "free-noauth",
-        "free_tier": "fair use",
-        "requires_api_key": false,
-        "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}"
-      },
-      {
-        "id": "locationiq",
-        "label": "LocationIQ",
-        "kind": [
-          "reverse"
-        ],
-        "host": "free-account",
-        "free_tier": "5k req/day",
-        "requires_api_key": true,
-        "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json"
-      },
-      {
-        "id": "geoapify",
-        "label": "Geoapify",
-        "kind": [
-          "reverse"
-        ],
-        "host": "free-account",
-        "free_tier": "3k req/day",
-        "requires_api_key": true,
-        "endpoint": "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={key}"
-      },
-      {
-        "id": "opencage",
-        "label": "OpenCage",
-        "kind": [
-          "reverse"
-        ],
-        "host": "free-account",
-        "free_tier": "2.5k req/day",
-        "requires_api_key": true,
-        "endpoint": "https://api.opencagedata.com/geocode/v1/json?q={lat}+{lon}&key={key}"
-      },
-      {
-        "id": "nominatim_self",
-        "label": "Nominatim (self)",
-        "kind": [
-          "reverse"
-        ],
-        "host": "self",
-        "free_tier": "unlimited (self)",
-        "requires_api_key": false,
-        "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
-      },
-      {
-        "id": "photon_self",
-        "label": "Photon (self)",
-        "kind": [
-          "reverse"
-        ],
-        "host": "self",
-        "free_tier": "unlimited (self)",
-        "requires_api_key": false,
-        "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}"
-      },
-      {
-        "id": "overpass_public",
-        "label": "Overpass (osm.org)",
-        "kind": [
-          "poi"
-        ],
-        "host": "free-noauth",
-        "free_tier": "fair use",
-        "requires_api_key": false,
-        "endpoint": "https://overpass-api.de/api/interpreter"
-      },
-      {
-        "id": "overpass_self",
-        "label": "Overpass (self)",
-        "kind": [
-          "poi"
-        ],
-        "host": "self",
-        "free_tier": "unlimited (self)",
-        "requires_api_key": false,
-        "endpoint": "https://geo.diegonmarcos.com/overpass/api/interpreter"
-      },
-      {
-        "id": "radar",
-        "label": "Radar.io",
-        "kind": [
-          "reverse",
-          "poi"
-        ],
-        "host": "free-account",
-        "free_tier": "100k req/month",
-        "requires_api_key": true,
-        "endpoint": "https://api.radar.io/v1/geocode/reverse?coordinates={lat},{lon}"
-      },
-      {
-        "id": "google_places",
-        "label": "Google Places",
-        "kind": [
-          "reverse",
-          "poi"
-        ],
-        "host": "paid",
-        "free_tier": "$200/mo credit",
-        "requires_api_key": true,
-        "endpoint": "https://places.googleapis.com/v1/places:searchNearby"
-      }
-    ],
-    "_doc_maps_active": "Default-selected provider per slot at first launch. User changes them at runtime in Configs → Maps (persisted in MapsProviderPrefs). Defaults are free-noauth = zero account / zero key — works out of the box on a fresh install.",
-    "maps_active": {
-      "reverse": "nominatim_public",
-      "poi": "overpass_public"
-    },
-    "_doc_maps_tracking": "Tracker calibration — first-run defaults for the foreground GPS service. User tunes via Configs → Maps → Calibration sliders, persisted in MapsTrackingPrefs. `interval_moving_ms` = GPS poll cadence when speed > moving_threshold_mps. `interval_stopped_ms` = poll cadence when below threshold. `stops_radius_m` + `stops_dwell_min` = the Stop detector: must dwell within radius for at least dwell_min minutes to register a Stop event (the only event that fires a reverse-geocode + POI lookup — the 'batching trick').",
-    "maps_tracking": {
-      "interval_moving_ms": 30000,
-      "interval_stopped_ms": 300000,
-      "moving_threshold_mps": 2,
-      "stops_radius_m": 100,
-      "stops_dwell_min": 2
-    },
     "_doc_myfin_mock": "MyFin beta dashboard data — fully editable here, baked into libs:fin's BuildConfig at gradle config time so MyFinDashboardFragment reads it via BuildConfig.UI_MYFIN_MOCK_B64. Currency strings are display-only (the fragment just prints what's here); flip to a real aggregator by swapping the loader, not by replacing this block. Numbers are illustrative.",
     "myfin_mock": {
       "currency": "EUR",
@@ -2299,22 +2094,82 @@
     ],
     "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen — same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here — no Kotlin edit.",
     "search_scopes": [
-      { "id": "cloud-apps",    "label": "Cloud-Apps",    "kind": "cloud_apps" },
-      { "id": "phone-apps",    "label": "Phone-Apps",    "kind": "phone_apps" },
-      { "id": "cloud-configs", "label": "Cloud-Configs", "kind": "cloud_configs" },
-      { "id": "phone-configs", "label": "Phone-Configs", "kind": "phone_configs" }
+      {
+        "id": "cloud-apps",
+        "label": "Cloud-Apps",
+        "kind": "cloud_apps"
+      },
+      {
+        "id": "phone-apps",
+        "label": "Phone-Apps",
+        "kind": "phone_apps"
+      },
+      {
+        "id": "cloud-configs",
+        "label": "Cloud-Configs",
+        "kind": "cloud_configs"
+      },
+      {
+        "id": "phone-configs",
+        "label": "Phone-Configs",
+        "kind": "phone_configs"
+      }
     ],
     "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list — the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's sub-pages (mode tabs + Cloud/Phone tabs + the Home-Apps overlay). Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement — `mode` (apps|admin, for Tabbed sections Infos/Labs), `tab` (cloud|phone, for Suite's SuiteCloudPhoneTabsFragment), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body tab). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here — no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
     "swipe_walk": [
-      { "id": "comms",           "section": "communication",       "label": "Comms" },
-      { "id": "infos-apps",      "section": "infos", "mode": "apps",  "label": "Infos · Apps" },
-      { "id": "infos-admin",     "section": "infos", "mode": "admin", "label": "Infos · Admin" },
-      { "id": "home-apps-cloud", "section": "home",  "sheet": "cloud", "label": "Home Apps · Cloud" },
-      { "id": "home-apps-phone", "section": "home",  "sheet": "phone", "label": "Home Apps · Phone" },
-      { "id": "suite-cloud",     "section": "suite", "tab": "cloud",  "label": "Suite · Cloud" },
-      { "id": "suite-phone",     "section": "suite", "tab": "phone",  "label": "Suite · Phone" },
-      { "id": "labs-apps",       "section": "tools", "mode": "apps",  "label": "Labs · Apps" },
-      { "id": "labs-admin",      "section": "tools", "mode": "admin", "label": "Labs · Admin" }
+      {
+        "id": "comms",
+        "section": "communication",
+        "label": "Comms"
+      },
+      {
+        "id": "infos-apps",
+        "section": "infos",
+        "mode": "apps",
+        "label": "Infos · Apps"
+      },
+      {
+        "id": "infos-admin",
+        "section": "infos",
+        "mode": "admin",
+        "label": "Infos · Admin"
+      },
+      {
+        "id": "home-apps-cloud",
+        "section": "home",
+        "sheet": "cloud",
+        "label": "Home Apps · Cloud"
+      },
+      {
+        "id": "home-apps-phone",
+        "section": "home",
+        "sheet": "phone",
+        "label": "Home Apps · Phone"
+      },
+      {
+        "id": "suite-cloud",
+        "section": "suite",
+        "tab": "cloud",
+        "label": "Suite · Cloud"
+      },
+      {
+        "id": "suite-phone",
+        "section": "suite",
+        "tab": "phone",
+        "label": "Suite · Phone"
+      },
+      {
+        "id": "labs-apps",
+        "section": "tools",
+        "mode": "apps",
+        "label": "Labs · Apps"
+      },
+      {
+        "id": "labs-admin",
+        "section": "tools",
+        "mode": "admin",
+        "label": "Labs · Admin"
+      }
     ],
     "_doc_phone_grid_columns": "Column count for the Phone tab's folder grid. Mirrors tile_columns (6) so the two tabs share the same density rhythm.",
     "phone_grid_columns": 6,
@@ -3581,10 +3436,22 @@
       "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
       "_doc_repos": "Repo URLs + the consolidated cloud-data config reference, surfaced read-only in Configs/About → Profile. Data-driven (no Kotlin hardcoding) — baked via UI_PROFILE_REPOS_B64 / UI_CONSOLIDATED_CONFIG.",
       "repos": [
-        { "label": "unix",  "url": "https://github.com/diegonmarcos/unix" },
-        { "label": "cloud", "url": "https://github.com/diegonmarcos/cloud" },
-        { "label": "front", "url": "https://github.com/diegonmarcos/diegonmarcos.github.io" },
-        { "label": "vault", "url": "https://github.com/diegonmarcos/vault" }
+        {
+          "label": "unix",
+          "url": "https://github.com/diegonmarcos/unix"
+        },
+        {
+          "label": "cloud",
+          "url": "https://github.com/diegonmarcos/cloud"
+        },
+        {
+          "label": "front",
+          "url": "https://github.com/diegonmarcos/diegonmarcos.github.io"
+        },
+        {
+          "label": "vault",
+          "url": "https://github.com/diegonmarcos/vault"
+        }
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
     },
@@ -4605,9 +4472,27 @@
     "notification_infos": {
       "enabled": true,
       "groups": [
-        { "title": "Comms", "messages": [ "Diego: ping?", "Team: standup at 10:00", "Alice: shared a file" ] },
-        { "title": "Cloud", "messages": [ "oci-apps: all services healthy", "backup: restic → OCI done 03:00" ] },
-        { "title": "Alerts", "messages": [ "No open incidents" ] }
+        {
+          "title": "Comms",
+          "messages": [
+            "Diego: ping?",
+            "Team: standup at 10:00",
+            "Alice: shared a file"
+          ]
+        },
+        {
+          "title": "Cloud",
+          "messages": [
+            "oci-apps: all services healthy",
+            "backup: restic → OCI done 03:00"
+          ]
+        },
+        {
+          "title": "Alerts",
+          "messages": [
+            "No open incidents"
+          ]
+        }
       ]
     },
     "_doc_floating_nav": "Floating Top Nav Bar — a SYSTEM_ALERT_WINDOW overlay (FloatingNavService) shown whenever the user has left Cloud-SuperApp. Collapsed = a small transparent circle, top-centre; tapped = expands to a top rectangle bar of links. The bar is CONTEXT-AWARE: FloatingNavService polls the foreground package (UsageStatsManager, poll_ms) and picks the first context whose `match_prefixes` matches (prefix = pkg == p || pkg startsWith p + '.'); the `default` context (empty match_prefixes) is the fallback. Each context shows `home_label` (the ✲ primary, brings `home_package` to front — 'self' = Cloud-SuperApp) then its `links` (label → package; tap launches getLaunchIntentForPackage, or installs via `install_app` external_apps id when absent). When the foreground IS Cloud-SuperApp the overlay hides entirely (we're already home). Packages mirror ui.external_apps forks + ui.permissions.roles (Fossy = the comms dialer fork). Add a context / link = edit here; nothing in Kotlin hardcodes a package.",
@@ -4618,48 +4503,114 @@
       "top_offset_dp": 88,
       "width_pct": 90,
       "parents": [
-        { "label": "Cloud SuperApp", "target": "self" },
-        { "label": "Cloud IDE",      "target": "app:com.diegonmarcos.ide",   "install_app": "cloud-ide" },
-        { "label": "Cloud Comms",    "target": "app:com.diegonmarcos.comms", "install_app": "cloud-comms" }
+        {
+          "label": "Cloud SuperApp",
+          "target": "self"
+        },
+        {
+          "label": "Cloud IDE",
+          "target": "app:com.diegonmarcos.ide",
+          "install_app": "cloud-ide"
+        },
+        {
+          "label": "Cloud Comms",
+          "target": "app:com.diegonmarcos.comms",
+          "install_app": "cloud-comms"
+        }
       ],
       "_doc_actions": "Global utility actions, identical in every context. The COMPACT menu shows the first `compact_action_count` (3); the EXPANDED view shows ALL of them (up to 5) plus a now-playing album-art card. Targets: `torch` toggles the flashlight (CameraManager.setTorchMode, no camera perm); `calc` opens the device calculator (Intent CATEGORY_APP_CALCULATOR); `screensaver` starts ScreensaverService (full-black cover overlay — see ui.screensaver); `lock` locks the screen (ScreenLocker); `action:<id>` routes through Cloud-SuperApp. Add/replace/reorder = edit here.",
       "compact_action_count": 3,
       "actions": [
-        { "label": "Light",       "target": "torch" },
-        { "label": "Screensaver", "target": "screensaver" },
-        { "label": "Calc",        "target": "calc" },
-        { "label": "DND",         "target": "dnd" },
-        { "label": "Saver",       "target": "powersave" }
+        {
+          "label": "Light",
+          "target": "torch"
+        },
+        {
+          "label": "Screensaver",
+          "target": "screensaver"
+        },
+        {
+          "label": "Calc",
+          "target": "calc"
+        },
+        {
+          "label": "DND",
+          "target": "dnd"
+        },
+        {
+          "label": "Saver",
+          "target": "powersave"
+        }
       ],
       "contexts": [
         {
           "id": "default",
           "match_prefixes": [],
           "children": [
-            { "label": "Comms",     "target": "section:communication" },
-            { "label": "Infos",     "target": "section:infos" },
-            { "label": "Home-Apps", "target": "action:open_home_apps" },
-            { "label": "Suite",     "target": "section:suite" },
-            { "label": "Labs",      "target": "section:tools" },
-            { "label": "Configs",   "target": "section:config" }
+            {
+              "label": "Comms",
+              "target": "section:communication"
+            },
+            {
+              "label": "Infos",
+              "target": "section:infos"
+            },
+            {
+              "label": "Home-Apps",
+              "target": "action:open_home_apps"
+            },
+            {
+              "label": "Suite",
+              "target": "section:suite"
+            },
+            {
+              "label": "Labs",
+              "target": "section:tools"
+            },
+            {
+              "label": "Configs",
+              "target": "section:config"
+            }
           ]
         },
         {
           "id": "ide",
-          "match_prefixes": [ "com.diegonmarcos.ide" ],
+          "match_prefixes": [
+            "com.diegonmarcos.ide"
+          ],
           "children": [
-            { "label": "Acode",          "target": "app:com.diegonmarcos.ide.editor" },
-            { "label": "Amaze File Man", "target": "app:com.diegonmarcos.ide.files" }
+            {
+              "label": "Acode",
+              "target": "app:com.diegonmarcos.ide.editor"
+            },
+            {
+              "label": "Amaze File Man",
+              "target": "app:com.diegonmarcos.ide.files"
+            }
           ]
         },
         {
           "id": "comms",
-          "match_prefixes": [ "com.diegonmarcos.comms" ],
+          "match_prefixes": [
+            "com.diegonmarcos.comms"
+          ],
           "children": [
-            { "label": "Mail",      "target": "app:com.diegonmarcos.comms.mail" },
-            { "label": "Chat",      "target": "app:com.diegonmarcos.comms.chat" },
-            { "label": "Messenger", "target": "app:com.diegonmarcos.comms.matrix" },
-            { "label": "Dialer",    "target": "app:com.diegonmarcos.comms.dialer" }
+            {
+              "label": "Mail",
+              "target": "app:com.diegonmarcos.comms.mail"
+            },
+            {
+              "label": "Chat",
+              "target": "app:com.diegonmarcos.comms.chat"
+            },
+            {
+              "label": "Messenger",
+              "target": "app:com.diegonmarcos.comms.matrix"
+            },
+            {
+              "label": "Dialer",
+              "target": "app:com.diegonmarcos.comms.dialer"
+            }
           ]
         }
       ]
@@ -4849,8 +4800,13 @@
     "variants": [
       {
         "id": "arm64",
-        "abis": [ "arm64-v8a" ],
-        "supported_abis": [ "arm64-v8a", "armeabi-v7a" ],
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "artifact_debug": "Cloud-SuperApp.apk",
         "gh_asset": "Cloud-SuperApp.apk",
         "ghcr_tag_suffix": "",
@@ -4858,8 +4814,13 @@
       },
       {
         "id": "x86_64",
-        "abis": [ "x86_64" ],
-        "supported_abis": [ "x86_64", "x86" ],
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
         "artifact_debug": "Cloud-SuperApp-x86_64.apk",
         "gh_asset": "Cloud-SuperApp-x86_64.apk",
         "ghcr_tag_suffix": "-x86_64",

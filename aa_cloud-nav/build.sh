@@ -1,0 +1,370 @@
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║ Cloud Nav — Universal Build Dispatcher                            ║
+# ║                                                                  ║
+# ║ Modularized monolith Android app (maps/navigation/tracker).      ║
+# ║ Single APK, gradle multi-module. All toolchain (AGP, gradle,      ║
+# ║ kotlin, JDK, android-sdk) comes from flake.nix — never assume     ║
+# ║ host has them.                                                    ║
+# ║                                                                  ║
+# ║ Commands:                                                        ║
+# ║   build       gradle assembleDebug → dist/<release.artifact.debug>║
+# ║   release     gradle assembleRelease (signed if keystore present) ║
+# ║   dev         install + launch on connected device (adb)          ║
+# ║   test        gradle test (JVM unit tests)                        ║
+# ║   instrument  gradle connectedAndroidTest (needs device)          ║
+# ║   lint        gradle lint                                         ║
+# ║   clean       gradle clean + rm -rf dist/                         ║
+# ║   shell       enter Nix devShell (gradle + sdk + jdk)             ║
+# ║   ship        build + side-load via adb (USB-connected device)    ║
+# ║   oras-push   push APK as OCI artifact → ghcr (release.ghcr block)║
+# ║   oras-pull   pull APK from ghcr → dist/  [tag=latest]            ║
+# ║   phone-install pull + copy to Android shared storage Download     ║
+# ║   waydroid-install build + install APK into running Waydroid       ║
+# ║   emulator    boot arm64 AVD (full-fidelity test; then `ship`)     ║
+# ║   gh-release  attach APK to GitHub Release (release.gh_release)   ║
+# ║                                                                  ║
+# ║ NEVER bypass this script for build operations.                    ║
+# ╚══════════════════════════════════════════════════════════════════╝
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DIST_DIR="$SCRIPT_DIR/dist"
+CMD="${1:-help}"
+APP_MAIN="com.diegonmarcos.cloudnav.MainActivity"
+
+log()    { printf "[%s] %s\n" "$(date '+%H:%M:%S')" "$1"; }
+errlog() { printf "\033[0;31m[%s] ERROR: %s\033[0m\n" "$(date '+%H:%M:%S')" "$1" >&2; }
+
+# Nix-wrapped invocation: every gradle call goes through `nix develop` so the
+# JDK / AGP / Android SDK are reproducible per the flake. Set BYPASS_NIX=1 to
+# use host tools (only for IDE / dev — never CI).
+in_nix() {
+  if [ "${BYPASS_NIX:-0}" = "1" ]; then
+    "$@"
+  else
+    command -v nix >/dev/null 2>&1 || { errlog "nix not on PATH; install nix or set BYPASS_NIX=1"; exit 1; }
+    nix develop "$SCRIPT_DIR" --command "$@"
+  fi
+}
+
+# Heavy `.#emulator` devShell (emulator binary + arm64 system image).
+in_nix_emulator() {
+  if [ "${BYPASS_NIX:-0}" = "1" ]; then
+    "$@"
+  else
+    command -v nix >/dev/null 2>&1 || { errlog "nix not on PATH; install nix or set BYPASS_NIX=1"; exit 1; }
+    nix develop "$SCRIPT_DIR#emulator" --command "$@"
+  fi
+}
+
+# Lightweight metadata commands (jq/git) prefer the host binary when present.
+prefer_host() {
+  if command -v "$1" >/dev/null 2>&1; then
+    "$@"
+  else
+    in_nix "$@"
+  fi
+}
+
+step_build() {
+  log "Build: $(_release_var '.name') (debug APK)"
+  _export_variant_abis
+  in_nix gradle :app:assembleDebug
+  mkdir -p "$DIST_DIR"
+  local out="$DIST_DIR/$(_variant_artifact)"
+  cp "$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$out"
+  log "→ $out"
+}
+
+step_release() {
+  log "Build: $(_release_var '.name') (release APK)"
+  in_nix gradle :app:assembleRelease
+  mkdir -p "$DIST_DIR"
+  local out="$DIST_DIR/$(_release_var '.release.artifact.release')"
+  cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release.apk" "$out" 2>/dev/null \
+    || cp "$SCRIPT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk" "${out%.apk}-unsigned.apk"
+  log "→ $DIST_DIR/"
+}
+
+step_dev() {
+  log "Dev: launching on connected device (adb)"
+  command -v adb >/dev/null || in_nix adb devices
+  in_nix gradle :app:installDebug
+  in_nix adb shell am start -n "$(_release_var '.android.application_id')/$APP_MAIN"
+}
+
+step_test()       { log "Test: JVM unit tests"; in_nix gradle test; }
+step_instrument() { log "Test: instrumented (needs device)"; in_nix gradle connectedAndroidTest; }
+step_lint()       { log "Lint"; in_nix gradle lint; }
+step_clean()      { log "Clean"; in_nix gradle clean; rm -rf "$DIST_DIR"; }
+step_shell()      { log "Entering Nix devShell"; exec nix develop "$SCRIPT_DIR"; }
+
+step_ship() {
+  step_build
+  log "Ship: side-loading via adb"
+  in_nix adb install -r "$DIST_DIR/$(_variant_artifact)"
+}
+
+step_waydroid_install() {
+  # Build + install the APK into a running Waydroid session on THIS host.
+  step_build
+  local apk app_id
+  apk="$DIST_DIR/$(_variant_artifact)"
+  app_id="$(_release_var '.android.application_id')"
+
+  command -v waydroid >/dev/null 2>&1 || {
+    errlog "waydroid not on PATH — enable it in the NixOS host flake"; exit 1; }
+  if ! waydroid status 2>/dev/null | grep -q "Session.*RUNNING"; then
+    errlog "no running Waydroid session — start one first: waydroid-launch"; exit 1
+  fi
+  [ -f "$apk" ] || { errlog "APK not found: $apk (step_build failed?)"; exit 1; }
+
+  log "Waydroid: installing $apk"
+  waydroid app install "$apk"
+  log "✓ installed → launch with: waydroid app launch $app_id"
+}
+
+step_emulator() {
+  # Boot an arm64 AVD for full-fidelity testing. Data-driven from
+  # build.json::emulator. Once up it registers as an adb device, so
+  # `./build.sh ship` installs straight into it.
+  local avd img device
+  avd="$(_release_var '.emulator.avd_name')"
+  img="$(_release_var '.emulator.system_image')"
+  device="$(_release_var '.emulator.device')"
+  [ -n "$avd" ] || { errlog "build.json .emulator.avd_name missing"; exit 1; }
+  [ -n "$img" ] || { errlog "build.json .emulator.system_image missing"; exit 1; }
+
+  if ! in_nix_emulator avdmanager list avd 2>/dev/null | grep -q "Name: $avd"; then
+    log "Creating AVD '$avd' ($img${device:+, device=$device})"
+    if [ -n "$device" ]; then
+      printf 'no\n' | in_nix_emulator avdmanager create avd -n "$avd" -k "$img" --device "$device" --force
+    else
+      printf 'no\n' | in_nix_emulator avdmanager create avd -n "$avd" -k "$img" --force
+    fi
+  fi
+
+  local boot_args=()
+  mapfile -t boot_args < <(prefer_host jq -r '.emulator.boot_args[]? // empty' "$SCRIPT_DIR/build.json")
+
+  log "Booting emulator '$avd' (arm64 — software-emulated; first boot is slow)"
+  log "  → in another shell: ./build.sh ship   (build + adb install into it)"
+  in_nix_emulator emulator -avd "$avd" "${boot_args[@]}" "$@"
+}
+
+# ── data-driven release helpers ────────────────────────────────────────
+_release_var() {
+  prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"
+}
+
+# ── ABI variant helpers ────────────────────────────────────────────────
+# CLOUDNAV_VARIANT (env) selects a release.variants[] entry. Unset = arm64
+# default → every helper falls back to the legacy single-variant keys.
+_variant_field() {
+  local v="${CLOUDNAV_VARIANT:-}"
+  [ -z "$v" ] && return 0
+  prefer_host jq -r --arg v "$v" \
+    '(.release.variants[]? | select(.id==$v) | '"$1"') // empty' "$SCRIPT_DIR/build.json"
+}
+
+_variant_artifact() {
+  local n; n="$(_variant_field '.artifact_debug')"
+  [ -n "$n" ] && { echo "$n"; return; }
+  _release_var '.release.artifact.debug'
+}
+
+_variant_gh_asset() {
+  local n; n="$(_variant_field '.gh_asset')"
+  [ -n "$n" ] && { echo "$n"; return; }
+  _resolve_template "$(_release_var '.release.gh_release.asset_name')"
+}
+
+_variant_tag_suffix() { _variant_field '.ghcr_tag_suffix'; }
+
+# Export CLOUDNAV_ABIS (CSV) for gradle from the active variant. No-op when
+# unset → gradle reads build.json::android.abi_filters.
+_export_variant_abis() {
+  local csv; csv="$(_variant_field '.abis | join(",")')"
+  if [ -n "$csv" ]; then
+    export CLOUDNAV_ABIS="$csv"
+    log "Variant ${CLOUDNAV_VARIANT:-}: ABIs=$csv"
+  fi
+  return 0
+}
+
+_resolve_template() {
+  local tmpl="$1"
+  local sha="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)}"
+  local ver="$(_release_var '.android.version_name')"
+  echo "${tmpl//\{sha\}/${sha:0:8}}" | sed "s|{version_name}|$ver|g"
+}
+
+step_oras_push() {
+  local enabled registry namespace image media_type artifact
+  enabled="$(_release_var '.release.ghcr.enabled')"
+  [ "$enabled" = "true" ] || { log "oras-push: release.ghcr.enabled=false — skip"; return 0; }
+
+  registry="$(_release_var '.release.ghcr.registry')"
+  namespace="$(_release_var '.release.ghcr.namespace')"
+  image="$(_release_var '.release.ghcr.image')"
+  media_type="$(_release_var '.release.ghcr.media_type')"
+
+  if   [ -f "$DIST_DIR/$(_variant_artifact)" ]; then
+    artifact="$DIST_DIR/$(_variant_artifact)"
+  elif [ -f "$DIST_DIR/$(_release_var '.release.artifact.release')" ]; then
+    artifact="$DIST_DIR/$(_release_var '.release.artifact.release')"
+  elif [ -f "$DIST_DIR/$(_release_var '.release.artifact.debug')" ]; then
+    artifact="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  else
+    errlog "oras-push: no APK found in $DIST_DIR — run build/release first"; exit 1
+  fi
+
+  local artifact_dir artifact_name
+  artifact_dir="$(dirname "$artifact")"
+  artifact_name="$(basename "$artifact")"
+
+  local tags
+  tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
+  local suffix; suffix="$(_variant_tag_suffix)"
+  while IFS= read -r tmpl; do
+    [ -z "$tmpl" ] && continue
+    local tag ref
+    tag="$(_resolve_template "$tmpl")${suffix}"
+    ref="$registry/$namespace/$image:$tag"
+    log "oras push $ref ← $artifact_name"
+    ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
+        --artifact-type "$media_type" )
+  done <<< "$tags"
+}
+
+step_oras_pull() {
+  local registry namespace image tag
+  registry="$(_release_var '.release.ghcr.registry')"
+  namespace="$(_release_var '.release.ghcr.namespace')"
+  image="$(_release_var '.release.ghcr.image')"
+  tag="${2:-$(_release_var '.release.phone_install.default_tag')}"
+  tag="${tag:-latest}"
+
+  local repo="$namespace/$image"
+  local token manifest digest size asset_title
+  log "oras-pull: $registry/$repo:$tag (via OCI HTTP API)"
+
+  token="$(curl -sf "https://$registry/token?service=$registry&scope=repository:$repo:pull" | jq -r .token)"
+  [ -n "$token" ] && [ "$token" != "null" ] || { errlog "no bearer token"; exit 1; }
+
+  mkdir -p "$DIST_DIR"
+  manifest="$(curl -sfL \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+    "https://$registry/v2/$repo/manifests/$tag")"
+  digest="$(jq -r '.layers[0].digest' <<<"$manifest")"
+  size="$(jq -r '.layers[0].size' <<<"$manifest")"
+  asset_title="$(jq -r '.layers[0].annotations["org.opencontainers.image.title"] // "cloud-nav.apk"' <<<"$manifest")"
+  [ -n "$digest" ] && [ "$digest" != "null" ] || { errlog "manifest has no layers"; exit 1; }
+
+  local out="$DIST_DIR/$asset_title"
+  log "  pulling $digest ($size bytes) → $out"
+  curl -sfL -H "Authorization: Bearer $token" \
+    "https://$registry/v2/$repo/blobs/$digest" -o "$out"
+
+  local got_sha
+  got_sha="$(sha256sum "$out" | cut -d' ' -f1)"
+  if [ "sha256:$got_sha" != "$digest" ]; then
+    errlog "digest mismatch — got sha256:$got_sha, expected $digest"
+    exit 1
+  fi
+  log "  ✓ $out (sha256:$got_sha)"
+}
+
+step_phone_install() {
+  step_oras_pull "$@"
+
+  local target_dir asset_name src
+  target_dir="${PHONE_TARGET:-$(_release_var '.release.phone_install.target_dir')}"
+  target_dir="${target_dir/#\~/$HOME}"
+  asset_name="$(_release_var '.release.phone_install.asset_name')"
+
+  src="$(ls -1t "$DIST_DIR"/*.apk 2>/dev/null | head -1)"
+  [ -f "$src" ] || { errlog "no APK in $DIST_DIR — oras-pull failed silently"; exit 1; }
+
+  if [ ! -d "$target_dir" ]; then
+    errlog "phone-install: $target_dir does not exist"
+    errlog "  Termux: run 'termux-setup-storage' on the phone and accept the prompt"
+    errlog "  Other:  set PHONE_TARGET=/path/to/dir env var"
+    exit 1
+  fi
+
+  cp "$src" "$target_dir/$asset_name"
+  log "✓ $target_dir/$asset_name"
+  log "  Open Files app → Download → tap APK → install"
+}
+
+step_gh_release() {
+  local enabled draft prerelease notes asset rolling_tag
+  enabled="$(_release_var '.release.gh_release.enabled')"
+  [ "$enabled" = "true" ] || { log "gh-release: enabled=false — skip"; return 0; }
+
+  draft="$(_release_var '.release.gh_release.draft')"
+  prerelease="$(_release_var '.release.gh_release.prerelease')"
+  notes="$(_release_var '.release.gh_release.generate_release_notes')"
+  asset="$(_variant_gh_asset)"
+  rolling_tag="$(_release_var '.release.gh_release.rolling_tag')"
+
+  local src_variant="$DIST_DIR/$(_variant_artifact)"
+  local src_release="$DIST_DIR/$(_release_var '.release.artifact.release')"
+  local src_debug="$DIST_DIR/$(_release_var '.release.artifact.debug')"
+  local dst="$DIST_DIR/$asset"
+  if   [ -f "$src_variant" ] && [ "$src_variant" != "$dst" ]; then cp "$src_variant" "$dst"
+  elif [ -f "$src_release" ] && [ "$src_release" != "$dst" ]; then cp "$src_release" "$dst"
+  elif [ -f "$src_debug"   ] && [ "$src_debug"   != "$dst" ]; then cp "$src_debug"   "$dst"
+  fi
+  [ -f "$dst" ] || { errlog "gh-release: staged asset $dst missing — no APK in $DIST_DIR?"; exit 1; }
+
+  if [ -n "$rolling_tag" ] && [ "$rolling_tag" != "null" ]; then
+    log "gh-release: rolling mode — tag=$rolling_tag ← $asset"
+    if ! in_nix gh release view "$rolling_tag" >/dev/null 2>&1; then
+      local create_flags=("$rolling_tag" --title "$rolling_tag" --target "${GITHUB_SHA:-main}" --notes "Rolling release — overwritten on every main push." --latest)
+      [ "$draft" = "true" ]      && create_flags+=(--draft)
+      [ "$prerelease" = "true" ] && create_flags+=(--prerelease)
+      in_nix gh release create "${create_flags[@]}"
+    fi
+    in_nix gh release upload "$rolling_tag" "$DIST_DIR/$asset" --clobber
+    in_nix gh release edit "$rolling_tag" --latest >/dev/null 2>&1 || true
+  fi
+
+  local is_tag_push=0
+  case "${GITHUB_REF:-}" in refs/tags/*) is_tag_push=1 ;; esac
+  if [ "$is_tag_push" = "1" ] && [ -n "${GITHUB_REF_NAME:-}" ]; then
+    local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" --title "$GITHUB_REF_NAME")
+    [ "$draft" = "true" ]      && flags+=(--draft)
+    [ "$prerelease" = "true" ] && flags+=(--prerelease)
+    [ "$notes" = "true" ]      && flags+=(--generate-notes)
+    log "gh release create $GITHUB_REF_NAME ← $asset"
+    in_nix gh release create "${flags[@]}"
+  elif [ -z "$rolling_tag" ] || [ "$rolling_tag" = "null" ]; then
+    errlog "gh-release: neither rolling_tag set nor under a tag push — nothing to publish"
+    exit 1
+  fi
+}
+
+case "$CMD" in
+  build)      step_build ;;
+  release)    step_release ;;
+  dev)        step_dev ;;
+  test)       step_test ;;
+  instrument) step_instrument ;;
+  lint)       step_lint ;;
+  clean)      step_clean ;;
+  shell)      step_shell ;;
+  ship)       step_ship ;;
+  oras-push)    step_oras_push ;;
+  oras-pull)    step_oras_pull "$@" ;;
+  phone-install) step_phone_install "$@" ;;
+  waydroid-install) step_waydroid_install "$@" ;;
+  emulator)     step_emulator "$@" ;;
+  gh-release)   step_gh_release ;;
+  help|*)
+    sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
+    ;;
+esac
