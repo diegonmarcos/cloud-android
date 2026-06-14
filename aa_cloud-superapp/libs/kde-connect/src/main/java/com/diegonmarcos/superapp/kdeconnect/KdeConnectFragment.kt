@@ -70,6 +70,31 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         }
         for (device in cfg.devices) root.addView(buildCard(ctx, device))
 
+        // ── Probe section — wg0 / hosts / peers / LAN reachability ──────────
+        root.addView(TextView(ctx).apply {
+            text = "Probe"
+            textSize = 16f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt()); setPadding(0, dp(8), 0, dp(4))
+        })
+        val probeBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(Button(ctx).apply {
+            text = "Probe wg0 · hosts · peers · LAN"; isAllCaps = false; textSize = 12f
+            setOnClickListener { runProbe(probeBox) }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        })
+        root.addView(probeBox)
+
+        // Explicit hand-off to the official client (separate from our own
+        // self-contained pairing) — opens it if installed, else a toast.
+        root.addView(Button(ctx).apply {
+            text = "Open KDE Connect (App)"; isAllCaps = false; textSize = 12f
+            setOnClickListener { openClient(cfg.pkg) }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+        })
+
         root.addView(TextView(ctx).apply {
             text = "Connect dials <device>:${cfg.discoveryPort} over wg0, runs the KDE Connect " +
                 "TLS handshake (we are the TLS server), and re-exchanges identity encrypted. " +
@@ -141,9 +166,48 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         return card
     }
 
+    /** Run the read-only reachability probe and render its step trace. */
+    private fun runProbe(box: LinearLayout) {
+        val ctx = requireContext()
+        box.removeAllViews()
+        box.addView(TextView(ctx).apply {
+            text = "• probing…"; setTextColor(0xCCFFFFFF.toInt())
+            typeface = Typeface.MONOSPACE; textSize = 12.5f
+        })
+        viewLifecycleOwner.lifecycleScope.launch {
+            val steps = KdeConnectDiscovery.probeAll(ctx)
+            box.removeAllViews()
+            for (s in steps) box.addView(stepRow(s))
+        }
+    }
+
+    private fun stepRow(step: KdeConnectDiscovery.Step): View {
+        val mark = when (step.ok) { true -> "✓"; false -> "✗"; null -> "•" }
+        val color = when (step.ok) {
+            true -> 0xFF8BE9A0.toInt(); false -> 0xFFFF8B8B.toInt(); null -> 0xCCFFFFFF.toInt()
+        }
+        return TextView(requireContext()).apply {
+            text = "$mark  ${step.label}: ${step.detail}"
+            setTextColor(color); typeface = Typeface.MONOSPACE; textSize = 12.5f
+            setPadding(0, dp(3), 0, dp(3))
+        }
+    }
+
+    /** Open the installed official client, or toast if absent. */
+    private fun openClient(pkg: String) {
+        val intent = requireContext().packageManager.getLaunchIntentForPackage(pkg)
+        if (intent != null) {
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } else toast("KDE Connect ($pkg) is not installed")
+    }
+
     override fun onResume() {
         super.onResume()
         KdeConnectManager.listener = this
+        // Listen for inbound links so a pair request STARTED on the Surface
+        // reaches us (otherwise that direction silently goes nowhere).
+        KdeConnectManager.ensureServer()
     }
 
     override fun onPause() {
