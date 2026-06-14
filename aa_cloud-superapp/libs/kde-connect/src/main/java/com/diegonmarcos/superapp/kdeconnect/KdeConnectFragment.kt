@@ -26,6 +26,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
 
     private class Row(
         val device: KdeConnectConfig.Device,
+        val dot: View,
         val status: TextView,
         val connect: Button,
         val pair: Button,
@@ -33,6 +34,18 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         val unpair: Button,
         var deviceId: String? = null,
     )
+
+    // Status light colours.
+    private val DOT_IDLE = 0xFF9E9E9E.toInt()      // gray  — not connected
+    private val DOT_BUSY = 0xFFFFB300.toInt()      // amber — connecting/handshaking
+    private val DOT_LINK = 0xFF42A5F5.toInt()      // blue  — connected, not paired
+    private val DOT_OK   = 0xFF4CAF50.toInt()      // green — connected & paired
+    private val DOT_ERR  = 0xFFE53935.toInt()      // red   — error
+
+    private fun setLight(row: Row, color: Int, text: String) {
+        (row.dot.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
+        row.status.text = text
+    }
 
     private val rows = mutableListOf<Row>()
 
@@ -123,12 +136,27 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             text = "${device.label}  ·  ${device.wgIp}:${KdeConnectConfig.get().discoveryPort}"
             setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
         })
-        val status = TextView(ctx).apply {
-            text = if (KdeConnectManager.pairedDeviceIds().isNotEmpty()) "paired (tap Connect)" else "not connected"
-            setTextColor(0xFFE9D8FD.toInt()); textSize = 12.5f; typeface = Typeface.MONOSPACE
-            setPadding(0, dp(4), 0, dp(10))
+        // Status line: a coloured light + plain-language text.
+        val statusRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(6), 0, dp(10))
         }
-        card.addView(status)
+        val pairedBefore = device.id.isNotBlank() && KdeConnectManager.isPaired(device.id)
+        val dot = View(ctx).apply {
+            val sz = dp(10)
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(8) }
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(if (pairedBefore) DOT_IDLE else DOT_IDLE)
+            }
+        }
+        val status = TextView(ctx).apply {
+            text = if (pairedBefore) "Paired — tap Connect to link" else "Not connected — tap Connect"
+            setTextColor(0xFFE9D8FD.toInt()); textSize = 12.5f
+        }
+        statusRow.addView(dot); statusRow.addView(status)
+        card.addView(statusRow)
 
         val btnRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         fun mkBtn(label: String): Button = Button(ctx).apply {
@@ -142,22 +170,20 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         btnRow.addView(connect); btnRow.addView(pair); btnRow.addView(ping); btnRow.addView(unpair)
         card.addView(btnRow)
 
-        val row = Row(device, status, connect, pair, ping, unpair)
+        val row = Row(device, dot, status, connect, pair, ping, unpair)
         rows += row
 
         connect.setOnClickListener {
-            status.text = "connecting…"
-            // Direct dial over wg0 (the Surface does NOT dial back to a UDP
-            // nudge — proven by live probing); result arrives via onState.
+            setLight(row, DOT_BUSY, "Connecting…")
             viewLifecycleOwner.lifecycleScope.launch {
                 KdeConnectManager.connect(device.wgIp, KdeConnectConfig.get().discoveryPort)
-                    .onFailure { status.text = "✗ ${it.message}" }
+                    .onFailure { setLight(row, DOT_ERR, "Couldn't connect: ${it.message}") }
             }
         }
         pair.setOnClickListener {
             val id = row.deviceId ?: return@setOnClickListener
-            if (!KdeConnectManager.requestPair(id)) toast("Not connected")
-            else status.text = "pair request sent — accept on ${device.label}"
+            if (!KdeConnectManager.requestPair(id)) toast("Connect first")
+            else setLight(row, DOT_BUSY, "Pair request sent — accept on ${device.label}")
         }
         ping.setOnClickListener {
             val id = row.deviceId ?: return@setOnClickListener
@@ -225,13 +251,16 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             ?: return
         if (deviceId.isNotBlank()) row.deviceId = deviceId
         val paired = row.deviceId?.let { KdeConnectManager.isPaired(it) } == true
-        row.status.text = when (state) {
-            KdeConnectManager.State.CONNECTING   -> "connecting… ($detail)"
-            KdeConnectManager.State.HANDSHAKING  -> "TLS handshake…"
-            KdeConnectManager.State.NEEDS_PAIRING -> "✓ connected to $detail — not paired"
-            KdeConnectManager.State.PAIRED       -> "✓ paired & connected — $detail"
-            KdeConnectManager.State.DISCONNECTED -> "disconnected ($detail)"
-            KdeConnectManager.State.ERROR        -> "✗ $detail"
+        when (state) {
+            KdeConnectManager.State.CONNECTING   -> setLight(row, DOT_BUSY, "Connecting…")
+            KdeConnectManager.State.HANDSHAKING  -> setLight(row, DOT_BUSY, "Connecting (securing link)…")
+            KdeConnectManager.State.NEEDS_PAIRING -> setLight(row, DOT_LINK, "Connected — tap Pair to pair")
+            KdeConnectManager.State.PAIRED       -> {
+                val keyPart = detail.substringAfter(" · ", "")  // "key XXXX" if present
+                setLight(row, DOT_OK, "Connected & paired ✓" + if (keyPart.isNotBlank()) "  ·  $keyPart" else "")
+            }
+            KdeConnectManager.State.DISCONNECTED -> setLight(row, DOT_IDLE, "Disconnected — tap Connect")
+            KdeConnectManager.State.ERROR        -> setLight(row, DOT_ERR, "Error: $detail")
         }
         val connected = state == KdeConnectManager.State.NEEDS_PAIRING ||
             state == KdeConnectManager.State.PAIRED
