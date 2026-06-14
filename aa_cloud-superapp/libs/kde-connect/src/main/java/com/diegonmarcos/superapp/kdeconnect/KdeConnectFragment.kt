@@ -144,9 +144,12 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
 
         connect.setOnClickListener {
             status.text = "connecting…"
-            // Fire-and-forget UDP nudge; the Surface dials back to our inbound
-            // server and the result arrives via onState (keyed on wg IP).
-            KdeConnectManager.nudge(device.wgIp, KdeConnectConfig.get().discoveryPort)
+            // Direct dial over wg0 (the Surface does NOT dial back to a UDP
+            // nudge — proven by live probing); result arrives via onState.
+            viewLifecycleOwner.lifecycleScope.launch {
+                KdeConnectManager.connect(device.wgIp, KdeConnectConfig.get().discoveryPort)
+                    .onFailure { status.text = "✗ ${it.message}" }
+            }
         }
         pair.setOnClickListener {
             val id = row.deviceId ?: return@setOnClickListener

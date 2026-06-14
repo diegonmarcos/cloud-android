@@ -7,36 +7,35 @@ import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import org.json.JSONArray
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.InputStream
-import java.net.DatagramPacket
-import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.cert.Certificate
+import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.SSLSocket
 
 /**
  * Self-contained KDE-Connect client — OUR code, no org.kde app, no GPL source.
  *
- * Uses the canonical, version-robust KDE handshake where WE are always the
- * TCP-accepter / TLS-client (the "receiver connects back" model):
+ * The handshake is the REAL one, established by live protocol probing against
+ * the Surface (kdeconnectd, Plasma 6.x, TLSv1.3):
+ *   1. Dial <peer>:1716 over wg0 (socket BOUND to the wg0 transport, else the
+ *      dial leaks to the default route → wrong host → "connection refused").
+ *   2. Write our identity in plaintext (the TCP dialer sends identity first).
+ *   3. TLS handshake as the SERVER (the peer sends ClientHello → it is the TLS
+ *      client); request its certificate (mutual TLS).
+ *   4. The peer's deviceId is the CN of its certificate — the peer does NOT
+ *      send an identity packet over TLS (observed: it sends kdeconnect.pair).
+ *   5. Write our identity over the encrypted channel (this is what prompts the
+ *      peer to react), then pump packets — the peer's kdeconnect.pair drives
+ *      pairing. Pairing = remembering the peer cert; reconnects are pinned.
  *
- *   Connect  →  send a UDP identity NUDGE to <peer>:1716 over wg0 (source =
- *               our wg0 IP, advertising our inbound tcpPort)  →  the peer dials
- *               BACK to us  →  our ServerSocket accepts  →  we read the peer's
- *               identity in PLAINTEXT (works for protocol v7 AND v8) →
- *               TLS handshake as the CLIENT (mutual TLS captures the peer
- *               cert)  →  for v8 only, re-exchange identity encrypted  →  pin
- *               known peers  →  plugins.
- *
- * The same accept path also serves pair requests STARTED on the desktop. The
- * earlier direct-TCP-dial path was v8-only (it never learned a v7 peer's
- * identity → "peer sent no deviceId"); the nudge model fixes that.
- *
- * Pairing = remembering the peer's certificate; reconnects are cert-pinned.
+ * An inbound server also accepts peer-initiated connections (best-effort; the
+ * desktop must be able to reach us back over wg0).
  */
 object KdeConnectManager : KdeLink.Listener {
 
@@ -46,8 +45,8 @@ object KdeConnectManager : KdeLink.Listener {
 
     enum class State { CONNECTING, HANDSHAKING, NEEDS_PAIRING, PAIRED, DISCONNECTED, ERROR }
 
-    /** [host] is the peer's wg IP (so the UI can map a callback back to the
-     *  declared device even before a deviceId is known). */
+    /** [host] = the peer wg IP, so the UI can map an async callback to the
+     *  declared device before a deviceId is known. */
     interface Listener { fun onState(deviceId: String, host: String?, state: State, detail: String) }
 
     @Volatile var listener: Listener? = null
@@ -72,104 +71,102 @@ object KdeConnectManager : KdeLink.Listener {
     fun ownDeviceId(): String = KdeIdentity.deviceId(app)
     fun listenPort(): Int = serverPort
 
-    /** Start the inbound link server (idempotent) on the first free port in
-     *  1716-1764 (1716 itself is often the installed official app). Both the
-     *  nudge-callback and desktop-initiated pairing land here. */
-    @Synchronized
+    /** Dial [host]:[port] over wg0 and bring up the link. Returns the peer
+     *  deviceId (its cert CN). Blocking I/O — runs off the main thread. */
+    suspend fun connect(host: String, port: Int = MIN_PORT): Result<String> =
+        withContext(Dispatchers.IO) {
+            emit("", host, State.CONNECTING, "dialing $host:$port over wg0")
+            runCatching {
+                val plain = Socket()
+                vpnNetwork()?.bindSocket(plain)   // egress over wg0 (source = our wg IP)
+                plain.connect(InetSocketAddress(host, port), 6000)
+                plain.getOutputStream().apply {
+                    write(myIdentity().serialize().toByteArray(Charsets.UTF_8)); flush()
+                }
+                emit("", host, State.HANDSHAKING, "TLS handshake")
+                val ssl = KdeCrypto.sslContext(app).socketFactory
+                    .createSocket(plain, host, port, true) as SSLSocket
+                ssl.useClientMode = false        // we dialed → we are the TLS server
+                ssl.needClientAuth = true        // request the peer cert (its deviceId source)
+                ssl.startHandshake()
+                register(ssl, host, plainIdentity = null)
+            }.onFailure {
+                Log.w(TAG, "connect($host) failed: ${it.message}")
+                emit("", host, State.ERROR, it.message ?: "connect failed")
+            }
+        }
+
+    /** Inbound (peer-initiated) link. The peer is the TCP dialer (wrote its
+     *  identity first) so WE are the TLS client. */
     fun ensureServer() {
         if (server != null) return
-        val srv = openServerSocket() ?: return
-        server = srv
-        serverPort = srv.localPort
-        Thread({
-            while (!srv.isClosed) {
-                val sock = try { srv.accept() } catch (t: Throwable) { break }
-                Thread({ handleInbound(sock) }, "kde-inbound").apply { isDaemon = true }.start()
-            }
-        }, "kde-server").apply { isDaemon = true; start() }
-        Log.i(TAG, "inbound server listening on :$serverPort")
+        synchronized(this) {
+            if (server != null) return
+            val srv = openServerSocket() ?: return
+            server = srv; serverPort = srv.localPort
+            Thread({
+                while (!srv.isClosed) {
+                    val s = try { srv.accept() } catch (t: Throwable) { break }
+                    Thread({ handleInbound(s) }, "kde-inbound").apply { isDaemon = true }.start()
+                }
+            }, "kde-server").apply { isDaemon = true; start() }
+            Log.i(TAG, "inbound server on :$serverPort")
+        }
     }
 
     private fun openServerSocket(): ServerSocket? {
         for (p in MIN_PORT..MAX_PORT) runCatching { return ServerSocket(p) }
-        Log.w(TAG, "no free port in $MIN_PORT-$MAX_PORT")
         return null
     }
 
-    /** Connect to a peer: ensure our server is up, then UDP-nudge it so it
-     *  dials back. The actual link is reported asynchronously via [Listener]
-     *  keyed on [host]. */
-    fun nudge(host: String, port: Int = MIN_PORT) {
-        ensureServer()
-        emit("", host, State.CONNECTING, "nudging $host — waiting for it to connect back to :$serverPort")
-        Thread({
-            runCatching { sendUdpIdentity(host, port) }
-                .onFailure { emit("", host, State.ERROR, "udp nudge failed: ${it.message}") }
-        }, "kde-nudge").apply { isDaemon = true }.start()
-    }
-
-    /** A peer dialed us (nudge-callback or desktop-initiated). The peer is the
-     *  TCP dialer, so it wrote its identity first and WE are the TLS client. */
     private fun handleInbound(plain: Socket) {
         val host = plain.inetAddress?.hostAddress ?: "?"
         runCatching {
-            // Plaintext identity the dialer wrote — the ONLY identity for v7,
-            // and the protocolVersion that decides whether v8 re-exchange runs.
-            val plainLine = readLine(plain.getInputStream()) ?: error("no identity from $host")
-            val plainIdentity = NetworkPacket.parse(plainLine) ?: error("malformed identity from $host")
-            finishHandshake(plain, host, plain.port, plainIdentity)
+            val line = readLine(plain.getInputStream()) ?: error("no identity from $host")
+            val plainIdentity = NetworkPacket.parse(line)
+            val ssl = KdeCrypto.sslContext(app).socketFactory
+                .createSocket(plain, host, plain.port, true) as SSLSocket
+            ssl.useClientMode = true             // peer dialed → peer is TLS server
+            ssl.startHandshake()
+            register(ssl, host, plainIdentity)
         }.onFailure {
-            Log.i(TAG, "inbound from $host failed: ${it.message}")
-            emit("", host, State.ERROR, it.message ?: "handshake failed")
+            Log.i(TAG, "inbound $host failed: ${it.message}")
             runCatching { plain.close() }
         }
     }
 
-    /** TLS bring-up as the CLIENT, then resolve the peer identity (v8 encrypted
-     *  re-exchange, else the v7 plaintext one), pin-check, and register. */
-    private fun finishHandshake(plain: Socket, host: String, port: Int, plainIdentity: NetworkPacket): String {
-        emit("", host, State.HANDSHAKING, "TLS handshake with $host")
-        val ssl = KdeCrypto.sslContext(app).socketFactory
-            .createSocket(plain, host, port, true) as SSLSocket
-        ssl.useClientMode = true               // peer dialed us → peer is TLS server, we are client
-        ssl.startHandshake()
+    /** Common post-handshake registration. deviceId = peer cert CN (the peer
+     *  doesn't send an identity packet over TLS); [plainIdentity] (inbound
+     *  only) just enriches the display name. */
+    private fun register(ssl: SSLSocket, host: String, plainIdentity: NetworkPacket?): String {
         val peerCert: Certificate = ssl.session.peerCertificates.firstOrNull()
             ?: error("peer presented no certificate")
+        val deviceId = (peerCert as? X509Certificate)?.let { cnOf(it) }
+            ?: plainIdentity?.getString("deviceId")?.takeIf { it.isNotBlank() }
+            ?: error("peer cert has no CN and no identity deviceId")
 
-        val peerProtocol = plainIdentity.getInt("protocolVersion", 7)
-        val peerIdentity: NetworkPacket = if (peerProtocol >= 8) {
-            // v8: re-exchange identity over the encrypted channel.
-            ssl.outputStream.apply {
-                write(myIdentity().serialize().toByteArray(Charsets.UTF_8)); flush()
-            }
-            val secureLine = readLine(ssl.inputStream) ?: error("no secure identity")
-            NetworkPacket.parse(secureLine) ?: error("malformed secure identity")
-        } else {
-            // v7: the plaintext identity IS the identity (no re-exchange).
-            plainIdentity
+        // Writing our identity over the encrypted channel is what prompts the
+        // peer to proceed (observed: it then sends kdeconnect.pair).
+        ssl.outputStream.apply {
+            write(myIdentity().serialize().toByteArray(Charsets.UTF_8)); flush()
         }
 
-        val peerDeviceId = peerIdentity.getString("deviceId")
-        require(peerDeviceId.isNotBlank()) { "peer sent no deviceId" }
-        if (trust.isPaired(peerDeviceId) && !trust.matchesPinned(peerDeviceId, peerCert)) {
-            ssl.close(); error("certificate mismatch for $peerDeviceId — refusing")
+        if (trust.isPaired(deviceId) && !trust.matchesPinned(deviceId, peerCert)) {
+            ssl.close(); error("certificate mismatch for $deviceId — refusing")
         }
 
+        val name = plainIdentity?.getString("deviceName")?.takeIf { it.isNotBlank() }
+            ?: labelFor(host) ?: deviceId
         val link = KdeLink(
-            socket = ssl,
-            peerDeviceId = peerDeviceId,
-            peerName = peerIdentity.getString("deviceName", peerDeviceId),
-            peerIncoming = caps(peerIdentity, "incomingCapabilities"),
-            peerOutgoing = caps(peerIdentity, "outgoingCapabilities"),
-            peerCertificate = peerCert,
-            listener = this,
+            socket = ssl, peerDeviceId = deviceId, peerName = name,
+            peerIncoming = emptySet(), peerOutgoing = emptySet(),
+            peerCertificate = peerCert, listener = this,
         )
-        links.put(peerDeviceId, link)?.close()
+        links.put(deviceId, link)?.close()
         link.start()
-        emit(peerDeviceId, host,
-            if (trust.isPaired(peerDeviceId)) State.PAIRED else State.NEEDS_PAIRING,
-            link.peerName)
-        return peerDeviceId
+        emit(deviceId, host,
+            if (trust.isPaired(deviceId)) State.PAIRED else State.NEEDS_PAIRING, name)
+        return deviceId
     }
 
     fun requestPair(deviceId: String): Boolean {
@@ -180,8 +177,7 @@ object KdeConnectManager : KdeLink.Listener {
 
     fun unpair(deviceId: String) {
         links[deviceId]?.send(NetworkPacket.of(NetworkPacket.TYPE_PAIR) { put("pair", false) })
-        trust.untrust(deviceId)
-        pairRequested -= deviceId
+        trust.untrust(deviceId); pairRequested -= deviceId
         emit(deviceId, null, State.DISCONNECTED, "unpaired")
     }
 
@@ -196,9 +192,7 @@ object KdeConnectManager : KdeLink.Listener {
             NetworkPacket.TYPE_PAIR -> handlePair(link, packet)
             else -> if (trust.isPaired(link.peerDeviceId)) {
                 KdePluginRegistry.dispatch(app, link, packet)
-            } else {
-                Log.i(TAG, "ignoring ${packet.type} from unpaired ${link.peerDeviceId}")
-            }
+            } else Log.i(TAG, "ignoring ${packet.type} from unpaired ${link.peerDeviceId}")
         }
     }
 
@@ -216,8 +210,7 @@ object KdeConnectManager : KdeLink.Listener {
             pairRequested -= link.peerDeviceId
             emit(link.peerDeviceId, null, State.PAIRED, link.peerName)
         } else {
-            trust.untrust(link.peerDeviceId)
-            pairRequested -= link.peerDeviceId
+            trust.untrust(link.peerDeviceId); pairRequested -= link.peerDeviceId
             emit(link.peerDeviceId, null, State.DISCONNECTED, "unpaired by ${link.peerName}")
         }
     }
@@ -228,16 +221,16 @@ object KdeConnectManager : KdeLink.Listener {
         KdePluginRegistry.incomingCapabilities, KdePluginRegistry.outgoingCapabilities,
     )
 
-    /** Unicast our identity to [host]:[port] over wg0 so the source IP is our
-     *  wg0 address (the peer dials back to it on our advertised tcpPort). */
-    private fun sendUdpIdentity(host: String, port: Int) {
-        DatagramSocket().use { sock ->
-            vpnNetwork()?.bindSocket(sock)
-            val bytes = myIdentity().serialize().toByteArray(Charsets.UTF_8)
-            sock.send(DatagramPacket(bytes, bytes.size, InetSocketAddress(host, port)))
-        }
-        Log.i(TAG, "sent UDP identity nudge to $host:$port (advertised tcpPort=$serverPort)")
-    }
+    /** CN of an X.509 subject — KDE binds the deviceId to the cert CN.
+     *  Regex over the RFC2253 DN (javax.naming.ldap.LdapName is absent on
+     *  Android); KDE deviceIds contain no commas, so this is safe. */
+    private fun cnOf(cert: X509Certificate): String? =
+        Regex("(?:^|,)\\s*CN=([^,]+)")
+            .find(cert.subjectX500Principal.name)
+            ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+
+    private fun labelFor(host: String): String? =
+        KdeConnectConfig.get().devices.firstOrNull { it.wgIp == host }?.label
 
     private fun vpnNetwork(): Network? {
         val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -250,11 +243,6 @@ object KdeConnectManager : KdeLink.Listener {
 
     private fun emit(id: String, host: String?, state: State, detail: String) =
         main.post { listener?.onState(id, host, state, detail) }
-
-    private fun caps(p: NetworkPacket, key: String): Set<String> {
-        val arr = p.body.optJSONArray(key) ?: JSONArray()
-        return (0 until arr.length()).mapNotNull { arr.optString(it).takeIf(String::isNotBlank) }.toSet()
-    }
 
     private fun readLine(input: InputStream): String? {
         val buf = StringBuilder()
