@@ -23,6 +23,9 @@ object KdeConnectConfig {
     data class Config(
         /** Official client package handed off to for LAN discovery + pairing. */
         val pkg: String,
+        /** Our advertised device name on the mesh (build.json self_name);
+         *  blank → fall back to the phone model at runtime. */
+        val selfName: String,
         /** KDE Connect's fixed discovery/identity port (1716). */
         val discoveryPort: Int,
         /** Try the wg0 route before LAN broadcast. */
@@ -60,6 +63,7 @@ object KdeConnectConfig {
         }
         val parsed = Config(
             pkg            = o.optString("package", "org.kde.kdeconnect_tp"),
+            selfName       = o.optString("self_name", ""),
             discoveryPort  = o.optInt("discovery_port", 1716),
             preferWg0      = o.optBoolean("prefer_wg0", true),
             lanFallback    = o.optBoolean("lan_fallback", true),

@@ -95,6 +95,44 @@ object KdeConnectDiscovery {
         Report(Result.Unreachable, steps)
     }
 
+    /** Full diagnostic for the Probe section: wg0 tunnel, LAN, inbound server,
+     *  each declared KDE host, and every mesh peer (TCP reachability over wg0).
+     *  Pure read-only — never mutates link state. */
+    suspend fun probeAll(context: Context): List<Step> = withContext(Dispatchers.IO) {
+        val cfg = KdeConnectConfig.get()
+        val steps = mutableListOf<Step>()
+
+        val vpn = vpnNetwork(context)
+        if (vpn != null) {
+            val (iface, localIp) = vpnLink(context, vpn)
+            steps += Step("wg0 tunnel", "up · iface=${iface ?: "?"} · local=${localIp ?: "?"}", true)
+        } else {
+            steps += Step("wg0 tunnel", "no VPN-transport network is up (turn WireGuard on)", false)
+        }
+
+        val lan = lanAddress()
+        steps += Step("LAN", lan?.let { "this device $it" } ?: "no site-local IPv4 (Wi-Fi off?)", lan != null)
+        steps += Step("Inbound server", "listening on :${KdeConnectManager.listenPort()} (peers can dial us)", true)
+
+        for (d in cfg.devices) {
+            val rtt = probeRtt(vpn, d.wgIp, cfg.discoveryPort, cfg.probeTimeoutMs)
+            steps += Step("Host ${d.label} (${d.wgIp}:${cfg.discoveryPort})",
+                rtt?.let { "✓ KDE port reachable · ${it} ms" } ?: "✗ no answer (${cfg.probeTimeoutMs} ms)",
+                rtt != null)
+        }
+
+        val primaryIp = cfg.primaryDevice?.wgIp
+        for (n in KdeMesh.nodes()) {
+            // The KDE peer answers on 1716; the rest are probed on SSH/22, the
+            // generically wg0-open port across the mesh.
+            val port = if (n.wgIp == primaryIp) cfg.discoveryPort else 22
+            val rtt = probeRtt(vpn, n.wgIp, port, cfg.probeTimeoutMs)
+            steps += Step("Peer ${n.name} (${n.wgIp}:$port)",
+                rtt?.let { "✓ reachable · ${it} ms" } ?: "✗ no answer", rtt != null)
+        }
+        steps
+    }
+
     /** The active VPN-transport network (the native WireGuard), or null. */
     private fun vpnNetwork(context: Context): Network? {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager

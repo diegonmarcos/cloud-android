@@ -10,6 +10,12 @@ def buildJson  = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def kdeConnect = buildJson.ui.kde_connect ?: [:]
 def kdeJson    = groovy.json.JsonOutput.toJson(kdeConnect)
 def kdeB64     = kdeJson.bytes.encodeBase64().toString()
+// Mesh topology snapshot (data/mesh.json) — the Probe section pings every
+// declared wg0 peer. Same source the app bakes; read here so the module
+// stays self-contained (no back-reference to app's BuildConfig).
+def kdeMeshFile = file('../../data/mesh.json')
+def kdeMeshJson = kdeMeshFile.exists() ? kdeMeshFile.text : '{}'
+def kdeMeshB64  = kdeMeshJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp.kdeconnect'
@@ -17,6 +23,7 @@ android {
     defaultConfig {
         minSdk 26
         buildConfigField "String", "KDE_CONNECT_B64", "\"${kdeB64}\""
+        buildConfigField "String", "MESH_JSON_B64", "\"${kdeMeshB64}\""
     }
     buildFeatures {
         buildConfig = true
@@ -35,6 +42,14 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    // Clean-room self-signed X.509 generation for the device-identity
+    // certificate (mutual-TLS pairing). The jdk15to18 variant coexists with
+    // Android's repackaged com.android.org.bouncycastle, so it never clashes
+    // with the platform provider. Standard crypto library — NOT KDE Connect's
+    // GPL source; all protocol code here is original.
+    implementation 'org.bouncycastle:bcpkix-jdk15to18:1.78.1'
+    implementation 'org.bouncycastle:bcprov-jdk15to18:1.78.1'
 
     androidTestImplementation 'androidx.test:runner:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
