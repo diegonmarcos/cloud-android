@@ -113,7 +113,6 @@
         "libs:chat",
         "libs:wallet",
         "libs:health",
-        "libs:maps",
         "libs:fin",
         "libs:browser",
         "libs:apptabs",
