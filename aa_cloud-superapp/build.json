@@ -752,6 +752,13 @@
                 "target": "page:wallet/cards"
               },
               {
+                "_doc": "Navigation — hands off to the dedicated Cloud-Nav app (ea_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav → MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
+                "id": "maps",
+                "label": "Navigation",
+                "icon": "ic_nav",
+                "target": "extapp:cloud-nav"
+              },
+              {
                 "id": "vault",
                 "label": "Vault",
                 "icon": "ic_vault",
@@ -4457,6 +4464,15 @@
           "utils": "com.diegonmarcos.ide.utils",
           "editor": "com.diegonmarcos.ide.editor"
         }
+      },
+      {
+        "_doc": "Cloud-Nav — the dedicated maps/navigation/tracker app (ea_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Suite/Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors ea_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
+        "id": "cloud-nav",
+        "label": "Cloud-Nav",
+        "hub_package": "com.diegonmarcos.cloudnav",
+        "install_package": "com.diegonmarcos.cloudnav",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
+        "forks": {}
       }
     ],
     "_doc_sirius_star": "The Sirius Star — a single bright sparkle centred on the home screen (theme-agnostic overlay in activity_main.xml, gated to the `home` section by MainActivity). Tapping it force-opens the FloatingNav menu (FloatingNavService.showMenu). `enabled` toggles it; `glyph` is the character rendered (default ✦). Declarative on/off without touching layout/code.",
