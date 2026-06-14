@@ -84,7 +84,10 @@ object KdeConnectManager : KdeLink.Listener {
                 val ssl = KdeCrypto.sslContext(app).socketFactory
                     .createSocket(plain, host, port, true) as SSLSocket
                 ssl.useClientMode = false        // we dialed → we are the TLS server
-                ssl.needClientAuth = true        // request the peer cert (its deviceId source)
+                // REQUEST the peer cert but don't REQUIRE it: needClientAuth=true
+                // can abort the handshake (the working probe used no client-auth
+                // requirement); wantClientAuth still hands us the cert KDE sends.
+                ssl.wantClientAuth = true
                 ssl.startHandshake()
                 register(ssl, host)
             }.onFailure {
@@ -97,15 +100,18 @@ object KdeConnectManager : KdeLink.Listener {
      *  identity packet over TLS). Writes our identity over TLS (prompts the
      *  peer), then starts the read loop so kdeconnect.pair is handled. */
     private fun register(ssl: SSLSocket, host: String): String {
-        val peerCert: Certificate = ssl.session.peerCertificates.firstOrNull()
-            ?: error("peer presented no certificate")
+        val peerCert: Certificate = runCatching { ssl.session.peerCertificates.firstOrNull() }
+            .getOrNull() ?: error("peer presented no certificate")
         val deviceId = (peerCert as? X509Certificate)?.let { cnOf(it) }
             ?: error("peer cert has no CN")
 
+        // Write our identity over the encrypted channel (this is what prompts
+        // the peer to engage), then bring up the link.
         ssl.outputStream.apply {
             write(myIdentity().serialize().toByteArray(Charsets.UTF_8)); flush()
         }
-        if (trust.isPaired(deviceId) && !trust.matchesPinned(deviceId, peerCert)) {
+        val alreadyPaired = trust.isPaired(deviceId)
+        if (alreadyPaired && !trust.matchesPinned(deviceId, peerCert)) {
             ssl.close(); error("certificate mismatch for $deviceId — refusing")
         }
 
@@ -117,8 +123,15 @@ object KdeConnectManager : KdeLink.Listener {
         )
         links.put(deviceId, link)?.close()
         link.start()
-        emit(deviceId, host,
-            if (trust.isPaired(deviceId)) State.PAIRED else State.NEEDS_PAIRING, name)
+        emit(deviceId, host, if (alreadyPaired) State.PAIRED else State.NEEDS_PAIRING, name)
+
+        // Not paired yet → request pairing immediately (the proven probe flow:
+        // connect → identity → pair{true,timestamp}). The desktop shows its
+        // accept dialog; accepting there replies {pair:true} and we pin it.
+        if (!alreadyPaired) {
+            emit(deviceId, host, State.NEEDS_PAIRING, "$name — pair request sent, accept on the device")
+            requestPair(deviceId)
+        }
         return deviceId
     }
 
