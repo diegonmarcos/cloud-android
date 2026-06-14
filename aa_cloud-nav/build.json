@@ -432,13 +432,35 @@
     }
   },
   "release": {
-    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + gh-release read this block.",
+    "_doc": "Data-driven publish targets. build.sh oras-push + gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-nav.yml) invokes those engine commands. No libs:updater in Cloud Nav, so no auto_update/update_tag fields.",
     "artifact": {
       "debug": "Cloud-Nav.apk",
       "release": "Cloud-Nav-release.apk"
     },
+    "_doc_variants": "Per-ABI build variants — CI runs one matrix job per variant. arm64 is the DEFAULT (engine behaves as before when CLOUDNAV_VARIANT is unset). x86_64 is the Waydroid / desktop-emulator artifact, published to the SAME rolling 'latest' GH release under a distinct filename and to GHCR under tag suffix -x86_64. Engine reads each variant's abis (→ CLOUDNAV_ABIS), artifact_debug, gh_asset, ghcr_tag_suffix. Add an ABI = append a variant + the matrix entry.",
+    "variants": [
+      {
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "artifact_debug": "Cloud-Nav.apk",
+        "gh_asset": "Cloud-Nav.apk",
+        "ghcr_tag_suffix": ""
+      },
+      {
+        "id": "x86_64",
+        "abis": [
+          "x86_64"
+        ],
+        "artifact_debug": "Cloud-Nav-x86_64.apk",
+        "gh_asset": "Cloud-Nav-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64"
+      }
+    ],
     "ghcr": {
-      "enabled": false,
+      "_doc": "ORAS push as an OCI artifact (APK blob, not a container). one :latest + per-sha + per-version tags; per-variant suffix -x86_64 for the x86 artifact.",
+      "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "image": "cloud-nav",
@@ -450,12 +472,13 @@
       ]
     },
     "gh_release": {
-      "enabled": false,
+      "_doc": "Rolling GH release named 'latest' (shared across the ea_cloud-* apps; each contributes distinctly-named APK assets), overwritten every main push so /releases/latest/download/Cloud-Nav.apk stays stable.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "Cloud-Nav.apk",
       "draft": false,
       "prerelease": false,
-      "generate_release_notes": true,
-      "rolling_tag": "cloud-nav-latest",
-      "asset_name": "Cloud-Nav.apk"
+      "generate_release_notes": false
     },
     "phone_install": {
       "default_tag": "latest",
