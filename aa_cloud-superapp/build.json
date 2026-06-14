@@ -4660,7 +4660,7 @@
         { "id": "battery",             "name": "Battery report",       "packet": "kdeconnect.battery",              "dir": "both", "status": "active" },
         { "id": "mpris",               "name": "Media control (MPRIS)","packet": "kdeconnect.mpris",                "dir": "both", "status": "active" },
         { "id": "share",               "name": "Share (text/links)",   "packet": "kdeconnect.share.request",        "dir": "both", "status": "active" },
-        { "id": "runcommand",          "name": "Run command",          "packet": "kdeconnect.runcommand",           "dir": "both", "status": "planned" },
+        { "id": "runcommand",          "name": "Run command",          "packet": "kdeconnect.runcommand",           "dir": "both", "status": "active" },
         { "id": "telephony",           "name": "Telephony",            "packet": "kdeconnect.telephony",            "dir": "out",  "status": "planned" },
         { "id": "sms",                 "name": "SMS messaging",        "packet": "kdeconnect.sms.messages",         "dir": "both", "status": "planned" },
         { "id": "mousepad",            "name": "Remote input",         "packet": "kdeconnect.mousepad.request",     "dir": "both", "status": "planned" },
@@ -4681,6 +4681,12 @@
         { "id": "sftp_browse",         "name": "Browse filesystem",    "packet": "kdeconnect.sftp.request",         "dir": "out",  "status": "planned" },
         { "id": "screenconnector",     "name": "Remote desktop",       "packet": "kdeconnect.remotedesktop.request","dir": "out",  "status": "planned" },
         { "id": "sms_request",         "name": "SMS conversations",    "packet": "kdeconnect.sms.request_conversations", "dir": "out", "status": "planned" }
+      ],
+      "_doc_commands": "RunCommandPlugin command list — the desktop can trigger these on the phone (kdeconnect.runcommand). `type`: app=launch package `value`; url=open `value` in the browser. Data-driven; add a row, the desktop sees it. No permission needed.",
+      "commands": [
+        { "key": "open-superapp", "name": "Open Cloud SuperApp", "type": "app", "value": "com.diegonmarcos.superapp" },
+        { "key": "open-termux",   "name": "Open Termux",         "type": "app", "value": "com.termux.nix" },
+        { "key": "open-cloud",    "name": "Open Cloud portal",   "type": "url", "value": "https://diegonmarcos.com" }
       ]
     },
     "news_feeds": [

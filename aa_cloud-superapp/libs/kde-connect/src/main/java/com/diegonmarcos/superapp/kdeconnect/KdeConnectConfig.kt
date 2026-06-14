@@ -33,6 +33,9 @@ object KdeConnectConfig {
         val active: Boolean get() = status == "active"
     }
 
+    /** One RunCommand entry (build.json commands[]). [type]=app|url. */
+    data class Command(val key: String, val name: String, val type: String, val value: String)
+
     data class Config(
         /** Official client package handed off to for LAN discovery + pairing. */
         val pkg: String,
@@ -49,6 +52,7 @@ object KdeConnectConfig {
         val probeTimeoutMs: Int,
         val devices: List<Device>,
         val plugins: List<Plugin>,
+        val commands: List<Command>,
     ) {
         val primaryDevice: Device?
             get() = devices.firstOrNull { it.primary } ?: devices.firstOrNull()
@@ -89,6 +93,18 @@ object KdeConnectConfig {
                 ))
             }
         }
+        val commands = mutableListOf<Command>()
+        o.optJSONArray("commands")?.let { ca ->
+            for (i in 0 until ca.length()) {
+                val c = ca.getJSONObject(i)
+                commands.add(Command(
+                    key   = c.optString("key", ""),
+                    name  = c.optString("name", c.optString("key", "")),
+                    type  = c.optString("type", "app"),
+                    value = c.optString("value", ""),
+                ))
+            }
+        }
         val parsed = Config(
             pkg            = o.optString("package", "org.kde.kdeconnect_tp"),
             selfName       = o.optString("self_name", ""),
@@ -98,6 +114,7 @@ object KdeConnectConfig {
             probeTimeoutMs = o.optInt("probe_timeout_ms", 1500),
             devices        = devices,
             plugins        = plugins,
+            commands       = commands,
         )
         cached = parsed
         return parsed
