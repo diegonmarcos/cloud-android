@@ -515,46 +515,6 @@ object Sections {
         return parsed
     }
 
-    /** One stop in the horizontal-swipe walk-list (build.json::ui.swipe_walk).
-     *  [section] is a ui.sections id, or "home" for the Home-Apps overlay.
-     *  Exactly one refinement is set per stop:
-     *   • [mode]  apps|admin — Tabbed sections (Infos, Labs).
-     *   • [tab]   cloud|phone — Suite's Cloud|Phone tab strip.
-     *   • [sheet] cloud|phone — open the Home-Apps AppDrawerSheet on that tab.
-     *  All null = land on the section's default page (e.g. Comms). */
-    data class WalkStop(
-        val id: String,
-        val section: String,
-        val mode: String? = null,
-        val tab: String? = null,
-        val sheet: String? = null,
-        val label: String = "",
-    )
-
-    @Volatile private var cachedWalk: List<WalkStop>? = null
-
-    /** build.json::ui.swipe_walk — the circular nav-stop order the
-     *  bottom-nav swipe-cycle walks. Empty list ⇒ swipe-cycle is a no-op. */
-    fun swipeWalk(): List<WalkStop> {
-        cachedWalk?.let { return it }
-        val json = String(Base64.decode(BuildConfig.UI_SWIPE_WALK_B64, Base64.NO_WRAP))
-        val arr = JSONArray(json)
-        val out = mutableListOf<WalkStop>()
-        for (i in 0 until arr.length()) {
-            val o = arr.getJSONObject(i)
-            out.add(WalkStop(
-                id      = o.optString("id", ""),
-                section = o.getString("section"),
-                mode    = o.optString("mode", "").takeIf { it.isNotBlank() },
-                tab     = o.optString("tab", "").takeIf { it.isNotBlank() },
-                sheet   = o.optString("sheet", "").takeIf { it.isNotBlank() },
-                label   = o.optString("label", ""),
-            ))
-        }
-        cachedWalk = out
-        return out
-    }
-
     fun byId(id: String): Section? = all().firstOrNull { it.id == id }
 
     fun defaultSectionId(): String = BuildConfig.UI_DEFAULT_SECTION

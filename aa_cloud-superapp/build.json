@@ -2290,25 +2290,6 @@
         "label": "Phone"
       }
     ],
-    "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen — same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here — no Kotlin edit.",
-    "search_scopes": [
-      { "id": "cloud-apps",    "label": "Cloud-Apps",    "kind": "cloud_apps" },
-      { "id": "phone-apps",    "label": "Phone-Apps",    "kind": "phone_apps" },
-      { "id": "cloud-configs", "label": "Cloud-Configs", "kind": "cloud_configs" },
-      { "id": "phone-configs", "label": "Phone-Configs", "kind": "phone_configs" }
-    ],
-    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list — the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's sub-pages (mode tabs + Cloud/Phone tabs + the Home-Apps overlay). Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement — `mode` (apps|admin, for Tabbed sections Infos/Labs), `tab` (cloud|phone, for Suite's SuiteCloudPhoneTabsFragment), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body tab). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here — no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
-    "swipe_walk": [
-      { "id": "comms",           "section": "communication",       "label": "Comms" },
-      { "id": "infos-apps",      "section": "infos", "mode": "apps",  "label": "Infos · Apps" },
-      { "id": "infos-admin",     "section": "infos", "mode": "admin", "label": "Infos · Admin" },
-      { "id": "home-apps-cloud", "section": "home",  "sheet": "cloud", "label": "Home Apps · Cloud" },
-      { "id": "home-apps-phone", "section": "home",  "sheet": "phone", "label": "Home Apps · Phone" },
-      { "id": "suite-cloud",     "section": "suite", "tab": "cloud",  "label": "Suite · Cloud" },
-      { "id": "suite-phone",     "section": "suite", "tab": "phone",  "label": "Suite · Phone" },
-      { "id": "labs-apps",       "section": "tools", "mode": "apps",  "label": "Labs · Apps" },
-      { "id": "labs-admin",      "section": "tools", "mode": "admin", "label": "Labs · Admin" }
-    ],
     "_doc_phone_grid_columns": "Column count for the Phone tab's folder grid. Mirrors tile_columns (6) so the two tabs share the same density rhythm.",
     "phone_grid_columns": 6,
     "_doc_phone_folders": "Folder taxonomy for the Phone tab — categorised by function (main purpose of the app), not by manufacturer. The `label` keeps the user's prefix sort markers verbatim (_#, _, -, .#, .a, .b, >) so the order reads identically to native One UI. `order` is the lexicographic sort key (two-digit blocks let new folders slot between existing ones). `match_keywords` are case-insensitive matches against the app's `packageName` and `label`. Five syntaxes (PhoneAppClassifier.matches): (1) `pkg:com.foo.bar` = exact packageName; (2) `pkg^com.foo.` = packageName.startsWith; (3) `lbl:Exact Label` = label exact; (4) `lbl~substring` = label contains (min 3 chars); (5) plain string = legacy substring on `pkg + label` (REQUIRES min length 4 to suppress catastrophic false-positives like `bb` matching `bbva` AND every package containing the letters `bb` anywhere). First matching folder wins, first matching keyword inside a folder wins. PREFER `pkg:` for known installed apps — it's the only form that can't false-match. TWO distinct sinks, different roles: (a) `_New Apps` (id=new_apps, order=98, empty keywords) is the AUTOMATIC sink — anything our keyword list doesn't know yet lands here, signal to the user that a new app needs triage / a new keyword / a new folder; (b) `_Misc` (id=misc, order=99) is the MANUAL sink — give it specific keywords to deliberately push hand-picked apps there. New Apps shrinks as keywords improve; Misc only grows when the user adds something to it on purpose. Manufacturer (Google / Samsung / non-Play-Store) is metadata for Smart Folders (see phone_smart_folders below) — NOT a primary grouping criterion.",

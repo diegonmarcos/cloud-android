@@ -73,15 +73,6 @@ def uiLauncherProfilesB64  = uiLauncherProfilesJson.bytes.encodeBase64().toStrin
 // build.json::ui.home_apps_tabs.
 def uiHomeAppsTabsJson = groovy.json.JsonOutput.toJson(buildJson.ui.home_apps_tabs ?: [])
 def uiHomeAppsTabsB64  = uiHomeAppsTabsJson.bytes.encodeBase64().toString()
-// Horizontal-swipe walk-list (circular nav stops). Source of truth =
-// build.json::ui.swipe_walk. Consumed by Sections.swipeWalk() +
-// MainActivity.walkStep.
-def uiSwipeWalkJson = groovy.json.JsonOutput.toJson(buildJson.ui.swipe_walk ?: [])
-def uiSwipeWalkB64  = uiSwipeWalkJson.bytes.encodeBase64().toString()
-// Top search-sheet scope chips. Source of truth = build.json::ui.search_scopes.
-// Decoupled from home_apps_tabs. Consumed by SearchScopes / SearchSheetFragment.
-def uiSearchScopesJson = groovy.json.JsonOutput.toJson(buildJson.ui.search_scopes ?: [])
-def uiSearchScopesB64  = uiSearchScopesJson.bytes.encodeBase64().toString()
 // Phone tab folder taxonomy (Android-launcher grouping). Smart
 // classification keywords baked in too — see PhoneAppClassifier.
 def uiPhoneFoldersJson = groovy.json.JsonOutput.toJson(buildJson.ui.phone_folders ?: [])
@@ -367,8 +358,6 @@ android {
         buildConfigField "String", "UI_LAUNCHER_THEMES_B64", "\"${uiLauncherThemesB64}\""
         buildConfigField "String", "UI_LAUNCHER_PROFILES_B64", "\"${uiLauncherProfilesB64}\""
         buildConfigField "String", "UI_HOME_APPS_TABS_B64",   "\"${uiHomeAppsTabsB64}\""
-        buildConfigField "String", "UI_SWIPE_WALK_B64",       "\"${uiSwipeWalkB64}\""
-        buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""
         buildConfigField "String", "UI_PHONE_FOLDERS_B64",    "\"${uiPhoneFoldersB64}\""
         buildConfigField "String", "UI_PHONE_SECTIONS_B64",   "\"${uiPhoneSectionsB64}\""
         buildConfigField "String", "UI_PHONE_SMART_FOLDERS_B64", "\"${uiPhoneSmartFoldersB64}\""

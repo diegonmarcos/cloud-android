@@ -54,15 +54,9 @@ class SuiteCloudPhoneTabsFragment : Fragment() {
         root.addView(tabs)
         root.addView(host)
 
-        // Honour the requested initial tab (swipe-walk: Suite·Cloud /
-        // Suite·Phone). Default = Cloud (tab 0). The visual TabLayout
-        // selection is set BEFORE the listener is attached so it doesn't
-        // double-fire showTab.
-        val initialPos = if (arguments?.getString(ARG_INITIAL_TAB) == "phone") 1 else 0
         if (s == null && childFragmentManager.findFragmentById(host.id) == null) {
-            showTab(initialPos)
+            showTab(0)
         }
-        if (initialPos != 0) tabs.getTabAt(initialPos)?.select()
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 Haptics.tap(tabs)
@@ -84,16 +78,5 @@ class SuiteCloudPhoneTabsFragment : Fragment() {
             .commitAllowingStateLoss()
     }
 
-    companion object {
-        private const val ARG_INITIAL_TAB = "initial_tab"
-
-        /** [initialTab] = "cloud" | "phone" — the body tab to open on.
-         *  Blank/unknown → Cloud (first tab), preserving the prior default. */
-        fun newInstance(initialTab: String = ""): SuiteCloudPhoneTabsFragment =
-            SuiteCloudPhoneTabsFragment().apply {
-                if (initialTab.isNotBlank()) {
-                    arguments = Bundle().apply { putString(ARG_INITIAL_TAB, initialTab) }
-                }
-            }
-    }
+    companion object { fun newInstance() = SuiteCloudPhoneTabsFragment() }
 }
