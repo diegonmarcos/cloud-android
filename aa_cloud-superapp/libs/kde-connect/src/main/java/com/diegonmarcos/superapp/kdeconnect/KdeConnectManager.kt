@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.security.MessageDigest
 import java.security.cert.Certificate
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.SSLSocket
@@ -55,6 +56,9 @@ object KdeConnectManager : KdeLink.Listener {
     private lateinit var app: Context
     private val links = ConcurrentHashMap<String, KdeLink>()
     private val pairRequested = ConcurrentHashMap.newKeySet<String>()
+    /** Pairing timestamp (unix sec) per device — set when we send or receive a
+     *  pair request; needed to compute the verification key. */
+    private val pairTimestamps = ConcurrentHashMap<String, Long>()
     private val trust by lazy { KdeTrustStore(app) }
 
     fun init(ctx: Context) {
@@ -83,11 +87,12 @@ object KdeConnectManager : KdeLink.Listener {
                 val ssl = KdeCrypto.sslContext(app).socketFactory
                     .createSocket(plain, host, port, true) as SSLSocket
                 ssl.useClientMode = false        // we dialed → we are the TLS server
-                // Do NOT request the peer's client cert. The proven-working
-                // probe used no client-auth at all; requesting it (need/want
-                // ClientAuth) was the one TLS difference that made the desktop
-                // drop us ("connection closed"). The desktop pins OUR cert for
-                // pairing, so we don't need theirs.
+                // REQUEST (don't require) the peer cert so we can pin it AND
+                // compute the pairing verification key. register() keys the
+                // device off config (not the cert), so a missing/odd cert can
+                // no longer error the flow — only a true TLS break would, which
+                // is exactly what this re-enable tests for.
+                ssl.wantClientAuth = true
                 ssl.startHandshake()
                 register(ssl, host)
             }.onFailure {
@@ -137,10 +142,43 @@ object KdeConnectManager : KdeLink.Listener {
     fun requestPair(deviceId: String): Boolean {
         val link = links[deviceId] ?: return false
         pairRequested += deviceId
-        return link.send(NetworkPacket.of(NetworkPacket.TYPE_PAIR) {
+        val ts = System.currentTimeMillis() / 1000L
+        pairTimestamps[deviceId] = ts
+        val ok = link.send(NetworkPacket.of(NetworkPacket.TYPE_PAIR) {
             put("pair", true)
-            put("timestamp", System.currentTimeMillis() / 1000L)
+            put("timestamp", ts)
         })
+        verificationKey(deviceId)?.let {
+            emit(deviceId, null, State.NEEDS_PAIRING, "verify key $it matches the desktop, then accept there")
+        }
+        return ok
+    }
+
+    /** KDE pairing verification key (SAS): first 8 hex of SHA-256 over the two
+     *  public keys (deterministically ordered) + the pairing timestamp. Both
+     *  ends compute the same value — the user confirms they match. Null until
+     *  we have the peer cert AND the timestamp. */
+    fun verificationKey(deviceId: String): String? {
+        val their = links[deviceId]?.peerCertificate ?: return null
+        val ts = pairTimestamps[deviceId] ?: return null
+        val our = runCatching { KdeCrypto.ownCertificate(app) }.getOrNull() ?: return null
+        val a = our.publicKey.encoded
+        val b = their.publicKey.encoded
+        // KDE sortedConcat: compareUnsigned(a,b) < 0 ? b+a : a+b
+        val concat = if (compareUnsigned(a, b) < 0) b + a else a + b
+        val digest = MessageDigest.getInstance("SHA-256").digest(concat + ts.toString().toByteArray())
+        return digest.joinToString("") { "%02x".format(it) }.substring(0, 8).uppercase()
+    }
+
+    /** Unsigned lexicographic byte-array compare (Arrays.compareUnsigned needs
+     *  API 33; minSdk is 26). */
+    private fun compareUnsigned(a: ByteArray, b: ByteArray): Int {
+        val n = minOf(a.size, b.size)
+        for (i in 0 until n) {
+            val d = (a[i].toInt() and 0xFF) - (b[i].toInt() and 0xFF)
+            if (d != 0) return d
+        }
+        return a.size - b.size
     }
 
     fun unpair(deviceId: String) {
@@ -172,6 +210,9 @@ object KdeConnectManager : KdeLink.Listener {
     private fun handlePair(link: KdeLink, packet: NetworkPacket) {
         val id = link.peerDeviceId
         if (packet.getBoolean("pair")) {
+            // An INCOMING request carries the timestamp → capture it so our
+            // verification key matches the desktop's.
+            packet.body.optLong("timestamp", -1L).takeIf { it > 0 }?.let { pairTimestamps[id] = it }
             // KDE uses an IDENTICAL {pair:true} for both a pairing REQUEST and an
             // ACCEPT, so blindly replying creates an infinite loop. Reply (accept)
             // ONLY for a brand-new INCOMING request: the peer started it AND we
@@ -183,7 +224,8 @@ object KdeConnectManager : KdeLink.Listener {
             if (!weAsked && !wasPaired) {
                 link.send(NetworkPacket.of(NetworkPacket.TYPE_PAIR) { put("pair", true) })
             }
-            emit(id, null, State.PAIRED, link.peerName)
+            val key = verificationKey(id)
+            emit(id, null, State.PAIRED, if (key != null) "${link.peerName} · key $key" else link.peerName)
         } else {
             trust.untrust(id); pairRequested -= id
             emit(id, null, State.DISCONNECTED, "unpaired/rejected by ${link.peerName}")
