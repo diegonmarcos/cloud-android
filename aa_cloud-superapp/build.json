@@ -538,6 +538,10 @@
           {
             "title": "Myhealth",
             "subtitle": "Health & fitness news"
+          },
+          {
+            "title": "Nav Maps Tracker",
+            "subtitle": "Cloud-Nav location tracker data"
           }
         ]
       },
@@ -548,6 +552,14 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "_doc_tiles_shared": "Home-Apps Suite index — ONE icon per Suite category (mirrors the Labs master index). homeGroups renders tiles_shared in preference to tile_groups, so the Home-Apps Suite strip shows these 5 category icons instead of flattening every app. The grouped apps still live on the bottom-nav Suite SECTION page (SuiteCloudPhoneTabsFragment, driven by tile_groups). All five open the full Suite section (target section:suite) per the user's choice; switch a target to page:suite/<cat> later to drill per-category.",
+        "tiles_shared": [
+          { "id": "suite-ai",        "label": "AI",              "icon": "ic_ai_sparkle",     "target": "section:suite" },
+          { "id": "suite-comms",     "label": "Comms",           "icon": "ic_chat",           "target": "section:suite" },
+          { "id": "suite-data",      "label": "Data Apps",       "icon": "ic_database",       "target": "section:suite" },
+          { "id": "suite-tools",     "label": "Tools Primary",   "icon": "ic_p_sol_tools",    "target": "section:suite" },
+          { "id": "suite-dash",      "label": "Tools Dashboard", "icon": "ic_p_c3_workflows", "target": "section:suite" }
+        ],
         "_doc_footers": "Centered 'More' affordance rendered below the LAST group on each Suite surface. section_footer → Suite/Cloud (GroupedTilesFragment, below 'Tools Dashboards'); phone_footer → Suite/Phone (SuitePhoneAppsFragment, below 'Configs'). Each is a tile {id,label,icon,target} dispatched through the same onTileClicked grammar as any tile. Targets jump to the full Home Apps drawer: action:open_home_apps lands on the Cloud tab; action:open_home_apps_phone lands on the Phone tab.",
         "section_footer": {
           "id": "more-cloud",

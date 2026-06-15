@@ -784,19 +784,11 @@ object Sections {
             val derivedTiles = mutableListOf<HomeTile>()
             if (referenced != null) {
                 when {
-                    referenced.tileGroups.isNotEmpty() -> {
-                        // FLATTEN: all tile_groups' tiles in declaration
-                        // order become ONE HomeGroup card. Used by Suite
-                        // so its 18 tiles ride a single horizontal
-                        // scroll strip.
-                        referenced.tileGroups.forEach { grp ->
-                            grp.tiles.forEach { agg ->
-                                derivedTiles += HomeTile(
-                                    id = agg.target, label = agg.label, iconName = agg.iconName,
-                                )
-                            }
-                        }
-                    }
+                    // tiles_shared = an explicit "home index" (one icon per
+                    // category). Checked BEFORE tile_groups so a section that
+                    // declares both (Suite) shows its category icons on the
+                    // Home-Apps strip rather than flattening every app — the
+                    // grouped apps still live on the bottom-nav section page.
                     referenced.tilesShared.isNotEmpty() -> {
                         referenced.tilesShared.forEach { agg ->
                             derivedTiles += HomeTile(
@@ -804,6 +796,18 @@ object Sections {
                                 label    = agg.label,
                                 iconName = agg.iconName,
                             )
+                        }
+                    }
+                    referenced.tileGroups.isNotEmpty() -> {
+                        // FLATTEN: all tile_groups' tiles in declaration
+                        // order become ONE HomeGroup card (sections with
+                        // tile_groups but no tiles_shared index).
+                        referenced.tileGroups.forEach { grp ->
+                            grp.tiles.forEach { agg ->
+                                derivedTiles += HomeTile(
+                                    id = agg.target, label = agg.label, iconName = agg.iconName,
+                                )
+                            }
                         }
                     }
                     referenced.pages.isNotEmpty() -> {
