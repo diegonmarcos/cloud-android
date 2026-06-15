@@ -49,6 +49,24 @@
              form factors — only the content host swaps. -->
         <include layout="@layout/view_content_panes" />
 
+        <!-- Full-bleed modal overlay host. Notification Center, Search and
+             the update overlay are added here (not into the content host)
+             so they ALWAYS span the full screen width — on tablets they
+             cover both master + detail panes instead of being trapped in
+             the 40% master column. Same island paddings as the content
+             host so they stay clear of the top/bottom islands exactly as
+             before; empty + non-clickable → touch-transparent to the
+             content underneath until an overlay is added. -->
+        <FrameLayout
+            android:id="@+id/overlay_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingTop="84dp"
+            android:paddingBottom="92dp"
+            android:clipToPadding="false"
+            android:clickable="false"
+            android:focusable="false" />
+
         <!-- Sirius Star — a single bright, bluish-white sparkle centred on the
              home screen (theme-agnostic: it floats over whichever home
              fragment is active). A tap opens the FloatingNav menu. Slightly

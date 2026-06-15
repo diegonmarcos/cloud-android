@@ -341,7 +341,12 @@ class MainActivity : AppCompatActivity(),
             // exclusive with addToBackStack, so we use the listener instead.
             supportFragmentManager.addOnBackStackChangedListener {
                 val frag = supportFragmentManager.findFragmentById(R.id.fragment_container)
-                frag?.let { applyChrome(it) }
+                // A full-bleed modal overlay (Notification Center / Search),
+                // when present, dictates the shell chrome; otherwise the
+                // primary content does. Keeps islands correct whether or not
+                // the underlying section is a ShellOverride.
+                val chromeFrag = supportFragmentManager.findFragmentById(R.id.overlay_container) ?: frag
+                chromeFrag?.let { applyChrome(it) }
                 // When the back stack drains AND the resulting visible
                 // fragment is the originally-committed Home3DFragment,
                 // sync currentSection back to "home". popBackStack()
@@ -1328,7 +1333,7 @@ class MainActivity : AppCompatActivity(),
                 R.anim.slide_in_up,  R.anim.fade_out,
                 R.anim.fade_in,      R.anim.slide_out_down,
             )
-            .add(R.id.fragment_container, NotificationCenterFragment.newInstance(),
+            .add(R.id.overlay_container, NotificationCenterFragment.newInstance(),
                 NotificationCenterFragment.BACK_STACK_TAG)
             .addToBackStack(NotificationCenterFragment.BACK_STACK_TAG)
             .commit()
@@ -1486,7 +1491,7 @@ class MainActivity : AppCompatActivity(),
                 R.anim.slide_in_up,  R.anim.fade_out,
                 R.anim.fade_in,      R.anim.slide_out_down,
             )
-            .add(R.id.fragment_container, SearchSheetFragment.newInstance(),
+            .add(R.id.overlay_container, SearchSheetFragment.newInstance(),
                 SearchSheetFragment.BACK_STACK_TAG)
             .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
             .commit()
@@ -1565,7 +1570,7 @@ class MainActivity : AppCompatActivity(),
                     if (existing == null) {
                         val frag = UpdateOverlayFragment.newInstance()
                         supportFragmentManager.beginTransaction()
-                            .add(R.id.fragment_container, frag, tag)
+                            .add(R.id.overlay_container, frag, tag)
                             .commitAllowingStateLoss()
                     } else {
                         existing.applyState(state)
