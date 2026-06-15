@@ -32,6 +32,7 @@ import android.widget.TextView
  *   • Android  — version (SDK API)
  *   • App      — versionName · git sha · build timestamp (BuildConfig)
  *   • Memory   — used / total · free
+ *   • Swap     — used / total · free (/proc/meminfo; "none" if no swap)
  *   • Storage  — used / total · free (/data)
  *   • CPU      — cores · arch
  *   • Uptime   — process uptime (AppProcessUptime)
@@ -67,6 +68,10 @@ object SystemInfoPopup {
 
         container.addView(label(ctx, "Memory"))
         container.addView(valueSmall(ctx, readMemory(ctx)))
+        container.addView(spacer(ctx, (4 * d).toInt()))
+
+        container.addView(label(ctx, "Swap"))
+        container.addView(valueSmall(ctx, readSwap()))
         container.addView(spacer(ctx, (4 * d).toInt()))
 
         container.addView(label(ctx, "Storage"))
@@ -125,6 +130,15 @@ object SystemInfoPopup {
             "${fmtBytes(used)} / ${fmtBytes(total)} · $pct% used · ${fmtBytes(avail)} free"
         } catch (_: Throwable) { "—" }
     }
+
+    private fun readSwap(): String = try {
+        val (total, free) = SysfsProc.swapBytes() ?: return "—"
+        if (total <= 0L) "none" else {
+            val used = (total - free).coerceAtLeast(0L)
+            val pct = (used * 100 / total).toInt()
+            "${fmtBytes(used)} / ${fmtBytes(total)} · $pct% used · ${fmtBytes(free)} free"
+        }
+    } catch (_: Throwable) { "—" }
 
     private fun readStorage(): String = try {
         val stat = StatFs(Environment.getDataDirectory().path)

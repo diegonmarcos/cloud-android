@@ -342,6 +342,24 @@ object SysfsProc {
         return want.mapNotNull { k -> parsed[k]?.let { k to it } }
     }
 
+    /** Swap usage from `/proc/meminfo`, as (totalBytes, freeBytes).
+     *  Returns null when `/proc/meminfo` is unreadable; (0, 0) when the
+     *  kernel has no swap configured (rare on Android — most ship zram). */
+    fun swapBytes(): Pair<Long, Long>? {
+        val txt = readText("/proc/meminfo") ?: return null
+        var totalKb = -1L; var freeKb = -1L
+        for (line in txt.lineSequence()) {
+            val idx = line.indexOf(':'); if (idx <= 0) continue
+            val v = { line.substring(idx + 1).trim().split(' ').firstOrNull { it.isNotBlank() }?.toLongOrNull() ?: -1L }
+            when (line.substring(0, idx).trim()) {
+                "SwapTotal" -> totalKb = v()
+                "SwapFree"  -> freeKb = v()
+            }
+        }
+        if (totalKb < 0L || freeKb < 0L) return null
+        return (totalKb * 1024L) to (freeKb * 1024L)
+    }
+
     // ─────────────────────── network ───────────────────────
 
     fun network(): List<Pair<String, String>> {
