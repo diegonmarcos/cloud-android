@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp.media
+import com.diegonmarcos.superapp.App
+import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.cloud.CalendarAgendaPopup
 
 import android.content.Context

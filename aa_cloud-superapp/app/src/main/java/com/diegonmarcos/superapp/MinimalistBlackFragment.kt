@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.settings.LauncherTheme
 
 import android.content.Context
 import android.content.pm.LauncherApps

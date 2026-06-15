@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.updater
+import com.diegonmarcos.superapp.MainActivity
 
 import android.graphics.Typeface
 import android.os.Bundle

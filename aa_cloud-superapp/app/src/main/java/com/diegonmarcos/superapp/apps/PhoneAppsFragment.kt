@@ -1,4 +1,11 @@
 package com.diegonmarcos.superapp.apps
+import com.diegonmarcos.superapp.App
+import com.diegonmarcos.superapp.AppLongPressMenu
+import com.diegonmarcos.superapp.Haptics
+import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.settings.LauncherProfile
+import com.diegonmarcos.superapp.settings.LauncherProfiles
 import com.diegonmarcos.superapp.settings.LauncherProfilePrefs
 import com.diegonmarcos.superapp.search.SearchSheetFragment
 

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.settings
+import com.diegonmarcos.superapp.R
 
 import android.net.Uri
 import android.os.Bundle

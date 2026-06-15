@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp.notificationcenter
+import com.diegonmarcos.superapp.App
+import com.diegonmarcos.superapp.CrashLogger
 
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.core.NotificationStore

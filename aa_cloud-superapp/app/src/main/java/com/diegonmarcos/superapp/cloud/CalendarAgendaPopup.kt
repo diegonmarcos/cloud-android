@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.cloud
+import com.diegonmarcos.superapp.SystemInfoPopup
 import com.diegonmarcos.superapp.battery.BatteryEstimatePopup
 import com.diegonmarcos.superapp.network.NetworkInfoPopup
 

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.network
+import com.diegonmarcos.superapp.settings.LauncherProfiles
 
 import android.content.Context
 import com.wireguard.android.backend.GoBackend

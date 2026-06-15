@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp.settings
+import com.diegonmarcos.superapp.BackgroundOrchestrator
+import com.diegonmarcos.superapp.Haptics
+import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 
 import android.content.Intent

@@ -1,4 +1,11 @@
 package com.diegonmarcos.superapp.apps
+import com.diegonmarcos.superapp.App
+import com.diegonmarcos.superapp.AppLongPressMenu
+import com.diegonmarcos.superapp.GroupedTilesFragment
+import com.diegonmarcos.superapp.Haptics
+import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.Sections
+import com.diegonmarcos.superapp.TileGridFragment
 
 import android.app.Dialog
 import android.content.Context

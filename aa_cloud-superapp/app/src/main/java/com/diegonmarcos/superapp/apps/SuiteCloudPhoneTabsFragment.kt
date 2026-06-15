@@ -1,4 +1,9 @@
 package com.diegonmarcos.superapp.apps
+import com.diegonmarcos.superapp.AppDrawerSheetFragment
+import com.diegonmarcos.superapp.AppTabsStyle
+import com.diegonmarcos.superapp.GroupedTilesFragment
+import com.diegonmarcos.superapp.Haptics
+import com.diegonmarcos.superapp.R
 
 import android.os.Bundle
 import android.view.LayoutInflater

@@ -1,4 +1,8 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.devcontrol.DevControlBridge
+import com.diegonmarcos.superapp.settings.LauncherProfiles
+import com.diegonmarcos.superapp.settings.LauncherTheme
+import com.diegonmarcos.superapp.settings.LauncherThemes
 import com.diegonmarcos.superapp.updater.UpdateOverlayFragment
 import com.diegonmarcos.superapp.settings.LauncherThemePrefs
 import com.diegonmarcos.superapp.settings.LauncherProfilePrefs

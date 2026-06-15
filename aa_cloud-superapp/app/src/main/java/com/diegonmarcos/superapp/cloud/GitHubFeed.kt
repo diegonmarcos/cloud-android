@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.cloud
+import com.diegonmarcos.superapp.AggregatorStackFragment
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers

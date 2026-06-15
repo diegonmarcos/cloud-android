@@ -1,4 +1,9 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.App
+import com.diegonmarcos.superapp.CrashLogger
+import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.ShizukuUserService
+import com.diegonmarcos.superapp.Trace
 import com.diegonmarcos.superapp.apps.PhoneSmartFolders
 import com.diegonmarcos.superapp.apps.PhoneFolders
 import com.diegonmarcos.superapp.apps.PhoneAppClassifier

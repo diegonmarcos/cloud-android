@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.battery
+import com.diegonmarcos.superapp.ShizukuUserService
 
 import android.content.ComponentName
 import android.content.Context

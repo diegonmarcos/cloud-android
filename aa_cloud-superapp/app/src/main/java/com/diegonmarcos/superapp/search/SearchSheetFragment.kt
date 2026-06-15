@@ -1,4 +1,9 @@
 package com.diegonmarcos.superapp.search
+import com.diegonmarcos.superapp.Haptics
+import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.Sections
+import com.diegonmarcos.superapp.TileGridFragment
+import com.diegonmarcos.superapp.apps.PhoneApp
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.cloud.CloudData
 

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.rss
+import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.cloud.CloudData
 
 import android.os.Bundle

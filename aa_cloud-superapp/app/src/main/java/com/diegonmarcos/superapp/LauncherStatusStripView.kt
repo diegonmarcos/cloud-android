@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.settings.LauncherTheme
 import com.diegonmarcos.superapp.cloud.CalendarAgendaPopup
 import com.diegonmarcos.superapp.battery.BatteryIconView
 import com.diegonmarcos.superapp.battery.BatteryEstimatePopup

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.media
+import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.battery.EnergyLedger
 
 import com.diegonmarcos.superapp.notificationcenter.PhoneNotificationListenerService

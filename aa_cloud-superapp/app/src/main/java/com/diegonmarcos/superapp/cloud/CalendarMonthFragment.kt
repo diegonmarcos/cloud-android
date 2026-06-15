@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp.cloud
+import com.diegonmarcos.superapp.AggregatorStackFragment
+import com.diegonmarcos.superapp.R
 
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
