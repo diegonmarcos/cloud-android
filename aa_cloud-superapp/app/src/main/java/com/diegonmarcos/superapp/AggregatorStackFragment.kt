@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import com.diegonmarcos.superapp.core.Collapsible
+import com.diegonmarcos.superapp.notificationcenter.PhoneNotificationStore
 
 import android.content.Intent
 import android.graphics.Typeface

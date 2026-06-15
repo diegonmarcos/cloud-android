@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.notificationcenter
 
 import android.app.Notification
 import android.service.notification.NotificationListenerService

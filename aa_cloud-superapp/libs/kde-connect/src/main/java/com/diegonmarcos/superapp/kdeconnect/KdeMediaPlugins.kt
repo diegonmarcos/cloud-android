@@ -17,7 +17,7 @@ import org.json.JSONArray
  * mpris packet contract.
  */
 object MprisPlugin : KdePlugin {
-    private const val LISTENER = "com.diegonmarcos.superapp.PhoneNotificationListenerService"
+    private const val LISTENER = "com.diegonmarcos.superapp.notificationcenter.PhoneNotificationListenerService"
 
     override val id = "mpris"
     override val incoming = setOf(NetworkPacket.TYPE_MPRIS_REQUEST, NetworkPacket.TYPE_MPRIS)

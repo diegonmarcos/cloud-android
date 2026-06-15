@@ -12,7 +12,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.diegonmarcos.superapp.PhoneNotificationListenerService
+import com.diegonmarcos.superapp.notificationcenter.PhoneNotificationListenerService
 import com.diegonmarcos.superapp.R
 
 /**

@@ -236,7 +236,7 @@
              Settings → Special access → Notification access. The panel
              surfaces a CTA button that opens that screen directly. -->
         <service
-            android:name=".PhoneNotificationListenerService"
+            android:name=".notificationcenter.PhoneNotificationListenerService"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
