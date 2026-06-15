@@ -313,7 +313,7 @@
     "sections": [
       {
         "id": "communication",
-        "label": "Comms",
+        "label": "Inboxes",
         "icon": "ic_chat",
         "module": null,
         "bottom_nav": true,
@@ -350,6 +350,14 @@
           {
             "kind": "chat_mattermost",
             "title": "Chat · Mattermost"
+          },
+          {
+            "title": "Messenger (Element)",
+            "subtitle": "Matrix · Element"
+          },
+          {
+            "title": "Dialer (Fossy)",
+            "subtitle": "Fossify Phone"
           }
         ]
       },
@@ -522,6 +530,14 @@
             "kind": "news_feeds",
             "title": "News & RSS",
             "subtitle": "Curated open channels (not ntfy)"
+          },
+          {
+            "title": "Myfin",
+            "subtitle": "Personal finance news"
+          },
+          {
+            "title": "Myhealth",
+            "subtitle": "Health & fitness news"
           }
         ]
       },
@@ -2140,7 +2156,7 @@
       {
         "id": "comms",
         "section": "communication",
-        "label": "Comms"
+        "label": "Inboxes"
       },
       {
         "id": "infos-apps",
@@ -3660,7 +3676,7 @@
         "tiles": [
           {
             "id": "section:communication",
-            "label": "Comms",
+            "label": "Inboxes",
             "icon": "ic_chat"
           },
           {
@@ -4556,7 +4572,7 @@
           "match_prefixes": [],
           "children": [
             {
-              "label": "Comms",
+              "label": "Inboxes",
               "target": "section:communication"
             },
             {
