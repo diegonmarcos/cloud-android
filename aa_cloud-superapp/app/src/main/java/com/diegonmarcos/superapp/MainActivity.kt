@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.updater.UpdateOverlayFragment
 import com.diegonmarcos.superapp.settings.LauncherThemePrefs
 import com.diegonmarcos.superapp.settings.LauncherProfilePrefs
 import com.diegonmarcos.superapp.settings.LauncherConfigFragment
