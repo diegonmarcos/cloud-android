@@ -41,6 +41,7 @@ import com.diegonmarcos.superapp.profile.BusinessCardFragment
 
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
 import com.diegonmarcos.superapp.launcher.LauncherToolbarFx
+import com.diegonmarcos.superapp.launcher.LauncherNavController
 import com.diegonmarcos.superapp.launcher.SiriusStar
 import com.diegonmarcos.superapp.media.MusicIslandController
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
@@ -98,7 +99,11 @@ class MainActivity : AppCompatActivity(),
     MailHost,
     WalletHost,
     SearchOpener,
-    com.diegonmarcos.superapp.apptabs.AppTabsHost {
+    com.diegonmarcos.superapp.apptabs.AppTabsHost,
+    LauncherNavController.NavHost {
+
+    /** Navigation policy + walk-list state; the Activity is its view host. */
+    private val nav = LauncherNavController(this)
 
     /** [AppTabsHost] — card-tap callback from libs:apptabs. Routes a
      *  recorded LRU entry back to its original destination. Sections
@@ -133,9 +138,9 @@ class MainActivity : AppCompatActivity(),
     // Custom setter = single chokepoint: every section change re-evaluates
     // the Sirius Star's visibility (shown only on `home`). findViewById is
     // null-safe so the very first assignment (before setContentView) no-ops.
-    private var currentSection: String = ""
+    override var currentSection: String = ""
         set(value) { field = value; siriusStar.update(value) }
-    private var currentLabel:   String = ""
+    override var currentLabel:   String = ""
     private val siriusStar by lazy { SiriusStar(this) }
 
     /** Re-entrancy guards: both drawerTabs.selectTab() AND
@@ -162,7 +167,7 @@ class MainActivity : AppCompatActivity(),
     /** Global UI mode (apps | admin). Hot-swaps which aggregator
      *  tile-list renders in Communication/Infos/Suite/Tools. */
     private lateinit var modePrefs: ModePrefs
-    private val currentMode: String get() = modePrefs.mode
+    override val currentMode: String get() = modePrefs.mode
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.i(TAG, "onCreate enter")
@@ -467,7 +472,7 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    private fun openAppDrawerSheet(initialTab: String = "") {
+    override fun openAppDrawerSheet(initialTab: String = "") {
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(
                 R.anim.slide_in_up,  R.anim.fade_out,
@@ -479,56 +484,11 @@ class MainActivity : AppCompatActivity(),
             .commit()
     }
 
-    // ── horizontal-swipe walk-list (build.json::ui.swipe_walk) ───────────
-    //
-    // Cursor into Sections.swipeWalk(). Authoritative for swipe stepping;
-    // re-synced to the matching stop whenever the user navigates by other
-    // means (see the tail of goSection). [inWalkNav] guards that re-sync
-    // from firing while a walk step is itself driving goSection.
-    private var walkIndex: Int = 0
-    private var inWalkNav: Boolean = false
-
     /** Step `direction` through the circular walk-list, wrapping at both
      *  ends. +1 = next (left-swipe), -1 = prev (right-swipe). */
-    private fun walkStep(direction: Int) {
-        val stops = Sections.swipeWalk()
-        if (stops.isEmpty()) return
-        val n = stops.size
-        walkIndex = ((walkIndex + direction) % n + n) % n
-        navigateWalkStop(stops[walkIndex])
-    }
+    private fun walkStep(direction: Int) = nav.walkStep(direction)
 
-    /** Render one walk stop: a section page (optionally with a mode or a
-     *  Suite Cloud/Phone tab) or the Home-Apps overlay sheet. */
-    private fun navigateWalkStop(stop: Sections.WalkStop) {
-        inWalkNav = true
-        try {
-            // Any open Home-Apps sheet must go first — both when leaving it
-            // for a section AND when switching its own Cloud↔Phone tab
-            // (close + reopen on the new tab; the sheet pushes a back entry
-            // so we can't just stack a second one).
-            closeAppDrawerSheetIfOpen()
-            if (stop.sheet != null) {
-                // The sheet is an overlay on the 3D Home — make sure Home is
-                // the host behind it, then open on the requested body tab.
-                if (currentSection != "home") goHome()
-                openAppDrawerSheet(stop.sheet)
-            } else {
-                if (stop.mode != null && modePrefs.mode != stop.mode) {
-                    modePrefs.mode = stop.mode
-                    refreshBottomNavIconsForMode()
-                    invalidateOptionsMenu()
-                }
-                val label = Sections.byId(stop.section)?.label ?: stop.section
-                goSection(stop.section, label, stop.tab.orEmpty())
-            }
-        } finally {
-            inWalkNav = false
-        }
-        Haptics.tap(bottomNav)
-    }
-
-    private fun closeAppDrawerSheetIfOpen() {
+    override fun closeAppDrawerSheetIfOpen() {
         if (supportFragmentManager.findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null) {
             supportFragmentManager.popBackStack(
                 AppDrawerSheetFragment.BACK_STACK_TAG,
@@ -608,31 +568,7 @@ class MainActivity : AppCompatActivity(),
 
     /** Land the right pane on the master Home TileGrid. */
 
-    private fun goHome() {
-        Trace.i(TAG, "goHome  bs=${supportFragmentManager.backStackEntryCount}")
-        currentSection = "home"
-        currentLabel = getString(R.string.section_home)
-        supportActionBar?.title = currentLabel
-
-        // Pick the home pane fragment based on launcher state + theme:
-        //   • SuperApp is the active launcher AND theme = MinimalistBlack
-        //     → terminal-style monospace app list (MinimalistBlackFragment)
-        //   • Otherwise → existing 3D cube home (Home3DFragment).
-        // Either way, applyLauncherChrome() handles the surrounding
-        // chrome (system bar / status strip visibility).
-        val themePrefs = LauncherThemePrefs(this)
-        val homePane: androidx.fragment.app.Fragment =
-            if (isDefaultLauncher() && themePrefs.theme == LauncherTheme.CloudMinimalistBlack)
-                MinimalistBlackFragment.newInstance()
-            else
-                Home3DFragment.newInstance()
-        swapContent(homePane, clearBackStack = true)
-
-        syncBottomNav("home")
-        syncDrawerTab(0)
-        invalidateOptionsMenu()
-        applyLauncherChrome()
-    }
+    private fun goHome() = nav.goHome()
 
     /** Apply launcher-mode chrome based on (isDefaultLauncher, theme):
      *
@@ -648,7 +584,7 @@ class MainActivity : AppCompatActivity(),
      *
      * Idempotent — safe to call from onResume, theme changes, and
      * goHome / goSection. */
-    fun applyLauncherChrome() {
+    override fun applyLauncherChrome() {
         val isLauncher = isDefaultLauncher()
         val theme = LauncherThemePrefs(this).theme
         val strip = findViewById<View>(R.id.launcher_status_strip)
@@ -824,7 +760,7 @@ class MainActivity : AppCompatActivity(),
      *  default Home Screen handler. Mirrored from
      *  [LauncherConfigFragment.isDefaultLauncher] so the chrome
      *  decision flow can stay local to the activity. */
-    private fun isDefaultLauncher(): Boolean {
+    override fun isDefaultLauncher(): Boolean {
         val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
             addCategory(android.content.Intent.CATEGORY_HOME)
         }
@@ -834,119 +770,10 @@ class MainActivity : AppCompatActivity(),
 
     /** Land the right pane on the given section's TileGrid (or placeholder
      *  if the section has no declared sub-pages). */
-    private fun goSection(id: String, label: String, initialTab: String = "") {
-        Trace.i(TAG, "goSection id=$id label=$label tab=$initialTab bs=${supportFragmentManager.backStackEntryCount}")
-        if (id == "home") { goHome(); return }
-        currentSection = id
-        currentLabel = label
-        supportActionBar?.title = label
-        // Record into App Tabs LRU — skips the apptabs section itself so
-        // bouncing back from the Tabs shelf doesn't recursively log.
-        if (id != "apptabs") runCatching {
-            val sec = Sections.byId(id)
-            com.diegonmarcos.superapp.apptabs.AppTabPrefs(this)
-                .recordSection(id, label, sec?.iconName ?: "")
-        }
+    private fun goSection(id: String, label: String, initialTab: String = "") =
+        nav.goSection(id, label, initialTab)
 
-        val section = Sections.byId(id)
-        val content: Fragment = when {
-            section == null -> SectionFragment.forSection(id, label)
-            // Aggregator with BOTH Apps and Admin variants — wrap with
-            // a TabbedSectionFragment so the page carries its own
-            // "Apps · Admin" tab strip at the top. Replaces the old
-            // global drawer swap-icon switcher for these sections
-            // (Infos, Labs today). Predicate matches tile-shaped OR
-            // stack-shaped variants — covers every section that has a
-            // meaningful mode distinction.
-            section.isAggregator && (
-                (section.tilesApps.isNotEmpty()  && section.tilesAdmin.isNotEmpty()) ||
-                (section.stackApps.isNotEmpty()  && section.stackAdmin.isNotEmpty())
-            ) -> TabbedSectionFragment.newInstance(section.id, label)
-            // Aggregator: if stack_* is declared for the current mode →
-            // scrollable collapsable-card view. Otherwise fall back to the
-            // tile-grid (still data-driven via tiles_* in build.json).
-            section.isAggregator && Sections.aggregatorIsStack(section, currentMode) ->
-                AggregatorStackFragment.newInstance(section.id, label, currentMode)
-
-            // Aggregator with themed sub-groups (Suite today) → render
-            // them as titled rows in a GroupedTilesFragment instead of
-            // flattening into one grid. Same data, same TileClickListener
-            // contract, just structured.
-            //
-            // Suite is the ONE aggregator that also has a phone_apps
-            // curated list — wrap the tile grid in a Cloud | Phone
-            // TabLayout host so the user can swipe between the cloud
-            // services view (default) and a flat grid of their phone
-            // apps. Other aggregators bypass the tabs and go straight
-            // to GroupedTilesFragment.
-            section.isAggregator && section.tileGroups.isNotEmpty() && section.id == "suite" ->
-                SuiteCloudPhoneTabsFragment.newInstance(initialTab)
-            section.isAggregator && section.tileGroups.isNotEmpty() ->
-                GroupedTilesFragment.newInstance(section.id)
-
-            section.isAggregator -> {
-                val aggTiles = Sections.aggregatorTilesFor(section, currentMode).map { t ->
-                    TileGridFragment.Tile(
-                        // The tile id is the TARGET so onTileClicked's existing
-                        // section:/page:/action: grammar handles it directly.
-                        id      = t.target,
-                        label   = t.label,
-                        iconRes = Sections.iconResFor(this, t.iconName),
-                    )
-                }
-                val titleSuffix = if (currentMode == "admin") " · Admin" else " · Apps"
-                TileGridFragment.newInstance(label + titleSuffix, aggTiles)
-            }
-            section.pages.isNotEmpty() -> TileGridFragment.newInstance(
-                title = label,
-                tiles = section.pages.map { p ->
-                    // If the page declares an `action`, the tile id IS
-                    // that action so onTileClicked routes it directly
-                    // (http://, intent://, action:check_updates, stub:…
-                    // — same grammar tiles use). Else: open the sub-page
-                    // via the normal section/page dispatcher.
-                    TileGridFragment.Tile(
-                        id      = if (p.action.isNotBlank()) p.action else "page:${p.id}",
-                        label   = p.label,
-                        iconRes = p.iconName?.let { Sections.iconResFor(this, it) } ?: 0,
-                    )
-                },
-            )
-            section.defaultChildren.isNotEmpty() -> TileGridFragment.newInstance(
-                title = label,
-                tiles = section.defaultChildren.mapIndexed { i, lbl ->
-                    TileGridFragment.Tile(
-                        id = "stub:$id:$i",
-                        label = lbl,
-                        iconRes = 0,
-                    )
-                },
-            )
-            else -> SectionFragment.forSection(id, label)
-        }
-        swapContent(content, clearBackStack = true)
-
-        syncBottomNav(id)
-        syncDrawerTab(1)
-        invalidateOptionsMenu()
-
-        // Keep the swipe walk-list cursor in sync when the user arrives
-        // here by ANY means OTHER than a swipe (bottom-nav tap, tile
-        // dispatch, drawer). Land on the FIRST walk stop that matches this
-        // section + current mode (sheet stops excluded — they're the
-        // Home-Apps overlay, not a section page). Skipped during walk
-        // navigation itself, which sets walkIndex authoritatively.
-        if (!inWalkNav) {
-            val stops = Sections.swipeWalk()
-            val idx = stops.indexOfFirst {
-                it.sheet == null && it.section == id &&
-                    (it.mode == null || it.mode == currentMode)
-            }
-            if (idx >= 0) walkIndex = idx
-        }
-    }
-
-    private fun syncBottomNav(sectionId: String) {
+    override fun syncBottomNav(sectionId: String) {
         val navId = idForSectionId(sectionId) ?: return
         if (bottomNav.selectedItemId != navId) {
             suppressBottomNavReentry = true
@@ -955,7 +782,7 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    private fun syncDrawerTab(index: Int) {
+    override fun syncDrawerTab(index: Int) {
         if (index == 1) drawerTabs.getTabAt(1)?.text = currentLabel
         if (drawerTabs.selectedTabPosition != index) {
             suppressTabReentry = true
@@ -965,7 +792,38 @@ class MainActivity : AppCompatActivity(),
         showDrawerPage(if (index == 0) DrawerPage.HOME else DrawerPage.SECTION)
     }
 
-    private fun swapContent(content: Fragment, clearBackStack: Boolean) {
+    // ── NavHost view-mechanism (orchestrated by LauncherNavController) ───
+    override fun navContext(): android.content.Context = this
+    override fun setSectionTitle(label: String) { supportActionBar?.title = label }
+    override fun invalidateMenu() = invalidateOptionsMenu()
+    override fun dispatchTarget(target: String) = onTileClicked(target)
+    override fun tabHaptic() = Haptics.tap(bottomNav)
+    override fun closeDrawerIfOpen() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+    }
+    override fun applyMode(mode: String) {
+        modePrefs.mode = mode
+        refreshBottomNavIconsForMode()
+        invalidateOptionsMenu()
+    }
+    override fun pushContent(content: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+            .replace(R.id.fragment_container, content)
+            .addToBackStack(null)
+            .commit()
+    }
+    override fun recordSection(id: String, label: String, icon: String) {
+        runCatching { com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).recordSection(id, label, icon) }
+    }
+    override fun recordPage(sectionId: String, pageId: String, label: String, icon: String) {
+        runCatching {
+            com.diegonmarcos.superapp.apptabs.AppTabPrefs(this)
+                .recordPage(sectionId, pageId, label = label, iconName = icon)
+        }
+    }
+
+    override fun swapContent(content: Fragment, clearBackStack: Boolean) {
         if (clearBackStack) {
             supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         }
@@ -1043,7 +901,7 @@ class MainActivity : AppCompatActivity(),
      * can hide our shell chrome so it renders its own. Default (no interface
      * implementation) keeps everything visible.
      */
-    private fun applyChrome(fragment: Fragment) {
+    override fun applyChrome(fragment: Fragment) {
         val override = fragment as? ShellOverride
         val ownsToolbar = override?.ownsToolbar() ?: false
         val ownsBottom  = override?.ownsBottomNav() ?: false
@@ -1359,51 +1217,8 @@ class MainActivity : AppCompatActivity(),
      *  MailHost bridge. The page fragment is resolved via the per-section
      *  factory in [SectionPages]; mail pages with args (e.g. MESSAGES carrying
      *  folder_id) go through [MailPages.fragmentFor]. */
-    fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) {
-        // Pages that declare an `action` in build.json (e.g. config/update
-        // → "action:check_updates", config/import → "action:import_configs")
-        // must dispatch the action instead of opening a fragment. Before
-        // we did this here, only the drawer's onDrawerPageSelected honoured
-        // the action — Home Apps tiles using `page:config/import` ended up
-        // at SectionFragment's "Coming soon" placeholder. Now both surfaces
-        // route the same way.
-        val pageAction = Sections.byId(sectionId)?.pages
-            ?.firstOrNull { it.id == pageId }?.action.orEmpty()
-        if (pageAction.isNotBlank()) {
-            onTileClicked(pageAction)
-            return
-        }
-        // Record into App Tabs LRU — skips the apptabs section so opening
-        // the shelf itself doesn't pollute the list.
-        if (sectionId != "apptabs") runCatching {
-            val pageEntry = Sections.byId(sectionId)?.pages?.firstOrNull { it.id == pageId }
-            com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).recordPage(
-                sectionId, pageId,
-                label    = pageEntry?.label ?: pageId,
-                iconName = pageEntry?.iconName ?: "",
-            )
-        }
-        if (currentSection != sectionId) {
-            currentSection = sectionId
-            currentLabel = Sections.byId(sectionId)?.label ?: sectionId
-            supportActionBar?.title = currentLabel
-            syncBottomNav(sectionId)
-            syncDrawerTab(1)
-        }
-        val frag = when (sectionId) {
-            "mail" -> MailPages.fragmentFor(pageId, args)
-            else   -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
-                ?.factory?.invoke()
-                ?: SectionFragment.forSection(sectionId, pageId)
-        }
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
-        applyChrome(frag)
-        supportFragmentManager.beginTransaction()
-            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-            .replace(R.id.fragment_container, frag)
-            .addToBackStack(null)
-            .commit()
-    }
+    fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) =
+        nav.openSectionPage(sectionId, pageId, args)
 
     // ── HomeDrawerFragment delegate (data-driven from Sections) ──────────
 
