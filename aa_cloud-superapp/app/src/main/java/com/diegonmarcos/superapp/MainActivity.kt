@@ -41,6 +41,7 @@ import com.diegonmarcos.superapp.profile.BusinessCardFragment
 
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
 import com.diegonmarcos.superapp.launcher.LauncherToolbarFx
+import com.diegonmarcos.superapp.launcher.SiriusStar
 import com.diegonmarcos.superapp.media.MusicIslandController
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
 
@@ -133,9 +134,9 @@ class MainActivity : AppCompatActivity(),
     // the Sirius Star's visibility (shown only on `home`). findViewById is
     // null-safe so the very first assignment (before setContentView) no-ops.
     private var currentSection: String = ""
-        set(value) { field = value; updateSiriusStar() }
+        set(value) { field = value; siriusStar.update(value) }
     private var currentLabel:   String = ""
-    private var siriusPulse: android.animation.AnimatorSet? = null
+    private val siriusStar by lazy { SiriusStar(this) }
 
     /** Re-entrancy guards: both drawerTabs.selectTab() AND
      *  bottomNav.selectedItemId fire their selection listeners. When the
@@ -188,7 +189,7 @@ class MainActivity : AppCompatActivity(),
             setContentView(R.layout.activity_main)
             modePrefs = ModePrefs(this)
             currentLabel = getString(R.string.section_home)
-            setupSiriusStar()
+            siriusStar.setup(); siriusStar.update(currentSection)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
@@ -606,49 +607,6 @@ class MainActivity : AppCompatActivity(),
     // ── navigation actions ────────────────────────────────────────────────
 
     /** Land the right pane on the master Home TileGrid. */
-    // ── Sirius Star ────────────────────────────────────────────────
-    /** Wire the home-screen star once: set its glyph (data-driven) and its
-     *  tap → force-open the FloatingNav menu (toast if overlay perm absent). */
-    private fun setupSiriusStar() {
-        val star = findViewById<android.widget.TextView?>(R.id.sirius_star) ?: return
-        if (!BuildConfig.SIRIUS_STAR_ENABLED) { star.visibility = View.GONE; return }
-        star.text = BuildConfig.SIRIUS_STAR_GLYPH
-        // Data-driven size (build.json::ui.sirius_star.size_sp) — keep it small,
-        // just a touch bigger than the galaxy backdrop's stars.
-        star.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, BuildConfig.SIRIUS_STAR_SIZE_SP)
-        star.setOnClickListener {
-            if (!com.diegonmarcos.superapp.floatingnav.FloatingNavService.showMenu(this)) {
-                Toast.makeText(this,
-                    "Grant 'Display over other apps' to open the nav menu", Toast.LENGTH_SHORT).show()
-            }
-        }
-        updateSiriusStar()
-    }
-
-    /** Show the star only on the `home` section; pulse it while visible. */
-    private fun updateSiriusStar() {
-        val star = findViewById<android.widget.TextView?>(R.id.sirius_star) ?: return
-        val show = BuildConfig.SIRIUS_STAR_ENABLED && currentSection == "home"
-        if (show) {
-            star.visibility = View.VISIBLE
-            if (siriusPulse == null) {
-                // Subtle twinkle only — no big scale pulse.
-                val sx = android.animation.ObjectAnimator.ofFloat(star, "scaleX", 1f, 1.05f)
-                val sy = android.animation.ObjectAnimator.ofFloat(star, "scaleY", 1f, 1.05f)
-                val al = android.animation.ObjectAnimator.ofFloat(star, "alpha", 0.7f, 1f)
-                for (a in listOf(sx, sy, al)) {
-                    a.duration = 1800
-                    a.repeatCount = android.animation.ObjectAnimator.INFINITE
-                    a.repeatMode = android.animation.ObjectAnimator.REVERSE
-                }
-                siriusPulse = android.animation.AnimatorSet().apply { playTogether(sx, sy, al); start() }
-            }
-        } else {
-            star.visibility = View.GONE
-            siriusPulse?.cancel(); siriusPulse = null
-            star.scaleX = 1f; star.scaleY = 1f; star.alpha = 1f
-        }
-    }
 
     private fun goHome() {
         Trace.i(TAG, "goHome  bs=${supportFragmentManager.backStackEntryCount}")
