@@ -114,7 +114,14 @@ object Sections {
          *  surface commits / workflow runs from. Each entry resolves to
          *  api.github.com/repos/<owner>/<repo>/... at render time. */
         val repos: List<RepoRef> = emptyList(),
+        /** Used by kind=stats — static label/value rows. A placeholder
+         *  dashboard surface: mock numbers declared in build.json today,
+         *  swapped for a live fetch once the card's module is plumbed. */
+        val rows: List<StatRow> = emptyList(),
     )
+
+    /** One label/value line in a kind=stats dashboard card. */
+    data class StatRow(val label: String, val value: String)
 
     /** One row in a kind=repos / gha_runs panel. `label` is the short
      *  display name; `owner`/`repo` build the API URL. */
@@ -468,6 +475,16 @@ object Sections {
                             )
                         }
                     }
+                    // Optional rows array for kind=stats (label/value lines).
+                    val rowsJson = p.optJSONArray("rows")
+                    val rowsList = mutableListOf<StatRow>()
+                    if (rowsJson != null) {
+                        for (k in 0 until rowsJson.length()) {
+                            val r = rowsJson.optJSONObject(k) ?: continue
+                            val lbl = r.optString("label"); val v = r.optString("value")
+                            if (lbl.isNotBlank()) rowsList += StatRow(lbl, v)
+                        }
+                    }
                     out.add(StackPanel(
                         kind            = p.optString("kind", "placeholder"),
                         title           = p.optString("title", ""),
@@ -481,6 +498,7 @@ object Sections {
                         url             = p.optString("url", ""),
                         iconName        = p.optString("icon", ""),
                         repos           = reposList,
+                        rows            = rowsList,
                     ))
                 }
                 return out

@@ -352,12 +352,26 @@
             "title": "Chat · Mattermost"
           },
           {
+            "kind": "stats",
             "title": "Messenger (Element)",
-            "subtitle": "Matrix · Element"
+            "subtitle": "Matrix · Element",
+            "rows": [
+              { "label": "Rooms", "value": "14" },
+              { "label": "Unread", "value": "6" },
+              { "label": "Mentions", "value": "2" },
+              { "label": "Last sync", "value": "2 min ago" }
+            ]
           },
           {
+            "kind": "stats",
             "title": "Dialer (Fossy)",
-            "subtitle": "Fossify Phone"
+            "subtitle": "Fossify Phone",
+            "rows": [
+              { "label": "Missed calls", "value": "2" },
+              { "label": "Recent", "value": "8" },
+              { "label": "Contacts", "value": "341" },
+              { "label": "Voicemail", "value": "1" }
+            ]
           }
         ]
       },
@@ -532,16 +546,37 @@
             "subtitle": "Curated open channels (not ntfy)"
           },
           {
+            "kind": "stats",
             "title": "Myfin",
-            "subtitle": "Personal finance news"
+            "subtitle": "Personal finance",
+            "rows": [
+              { "label": "Net worth", "value": "€42,310" },
+              { "label": "This month", "value": "+€1,240" },
+              { "label": "Spending", "value": "€2,180" },
+              { "label": "Holdings", "value": "12" }
+            ]
           },
           {
+            "kind": "stats",
             "title": "Myhealth",
-            "subtitle": "Health & fitness news"
+            "subtitle": "Health & fitness",
+            "rows": [
+              { "label": "Steps today", "value": "8,432" },
+              { "label": "Sleep", "value": "7h 12m" },
+              { "label": "Resting HR", "value": "58 bpm" },
+              { "label": "Workouts (wk)", "value": "3" }
+            ]
           },
           {
+            "kind": "stats",
             "title": "Nav Maps Tracker",
-            "subtitle": "Cloud-Nav location tracker data"
+            "subtitle": "Cloud-Nav location tracker",
+            "rows": [
+              { "label": "Last location", "value": "Madrid, ES" },
+              { "label": "Trips this week", "value": "5" },
+              { "label": "Distance (wk)", "value": "142 km" },
+              { "label": "Places logged", "value": "27" }
+            ]
           }
         ]
       },

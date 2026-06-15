@@ -224,6 +224,7 @@ class AggregatorStackFragment : Fragment(),
         "phone_notifications" -> renderPhoneNotifications(ctx, body)
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
+        "stats"              -> renderStats(ctx, body, panel)
         else                 -> renderPlaceholder(ctx, body, panel)
     }
 
@@ -775,6 +776,36 @@ class AggregatorStackFragment : Fragment(),
         ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
     ) {
         body.addView(caption(ctx, panel.subtitle.ifBlank { "Coming soon" }))
+    }
+
+    /** kind=stats — a mock dashboard surface: one label/value line per
+     *  declared row, with a "mock data" footer so it's clear the numbers
+     *  are placeholders until the card's live fetch is plumbed in. */
+    private fun renderStats(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ) {
+        if (panel.subtitle.isNotBlank()) body.addView(caption(ctx, panel.subtitle))
+        for (r in panel.rows) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                val p = dp(5); setPadding(0, p, 0, p)
+            }
+            row.addView(TextView(ctx).apply {
+                text = r.label
+                setTextColor(0x99FFFFFF.toInt())
+                textSize = 13f
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            row.addView(TextView(ctx).apply {
+                text = r.value
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            body.addView(row)
+        }
+        body.addView(caption(ctx, "Mock data — live fetch pending"))
     }
 
     // ── Row builders ───────────────────────────────────────────────────
