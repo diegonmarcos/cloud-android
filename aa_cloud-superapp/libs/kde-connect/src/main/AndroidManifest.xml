@@ -7,6 +7,11 @@
     <!-- Surface pings + mirrored desktop notifications from paired devices
          (KdeNotifications). Runtime-requested by the host app on API 33+. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Contacts sync (ContactsPlugin) + connectivity/signal report
+         (ConnectivityReportPlugin). Runtime-gated: the plugins respond empty
+         until the host app grants these, so the desktop never hangs. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <!-- Package visibility for the explicit "Open KDE-Connect (App)" button
          (getLaunchIntentForPackage). Scoped — no QUERY_ALL_PACKAGES needed. -->

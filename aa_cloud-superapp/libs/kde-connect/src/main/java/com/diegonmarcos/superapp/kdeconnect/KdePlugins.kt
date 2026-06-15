@@ -32,6 +32,7 @@ object KdePluginRegistry {
     val plugins: List<KdePlugin> = listOf(
         PingPlugin, ClipboardPlugin, FindMyPhonePlugin, NotificationMirrorPlugin,
         BatteryPlugin, SharePlugin, MprisPlugin, SystemVolumePlugin, RunCommandPlugin,
+        ContactsPlugin, ConnectivityReportPlugin,
     )
     val incomingCapabilities: Set<String> = plugins.flatMap { it.incoming }.toSet()
     val outgoingCapabilities: Set<String> = plugins.flatMap { it.outgoing }.toSet()
