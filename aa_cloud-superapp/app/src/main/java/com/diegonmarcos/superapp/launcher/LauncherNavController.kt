@@ -121,12 +121,12 @@ class LauncherNavController(private val host: NavHost) {
             val pageEntry = Sections.byId(sectionId)?.pages?.firstOrNull { it.id == pageId }
             host.recordPage(sectionId, pageId, pageEntry?.label ?: pageId, pageEntry?.iconName ?: "")
         }
+        // Establish the section grid as the back-stack BASE so Back from this
+        // child returns to its parent section (e.g. Configs), not wherever it
+        // was launched from (Home, the Home-Apps sheet). No-op when already in
+        // the section — preserves any existing in-section back stack.
         if (host.currentSection != sectionId) {
-            host.currentSection = sectionId
-            host.currentLabel = Sections.byId(sectionId)?.label ?: sectionId
-            host.setSectionTitle(host.currentLabel)
-            host.syncBottomNav(sectionId)
-            host.syncDrawerTab(1)
+            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
         }
         val frag = when (sectionId) {
             "mail" -> MailPages.fragmentFor(pageId, args)

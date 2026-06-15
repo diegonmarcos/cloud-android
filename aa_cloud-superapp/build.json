@@ -1847,6 +1847,13 @@
             "icon": "ic_settings"
           },
           {
+            "_doc": "WireGuard is a CHILD of Configs. It lives in its own module-backed section (sections[wg], module libs:net) but is surfaced here as a real config page so it appears in the Configs grid + Home-Apps Configs row in order. action=section:wg opens that section; sections[wg].parent=config makes Back from it return to Configs (MainActivity.navigateUpToParent).",
+            "id": "wg",
+            "label": "WireGuard",
+            "icon": "ic_wg",
+            "action": "section:wg"
+          },
+          {
             "id": "kde",
             "label": "KDE",
             "icon": "ic_kde"
@@ -2182,6 +2189,11 @@
         "section": "tools",
         "mode": "admin",
         "label": "Labs · Admin"
+      },
+      {
+        "id": "configs",
+        "section": "config",
+        "label": "Configs"
       }
     ],
     "_doc_phone_grid_columns": "Column count for the Phone tab's folder grid. Mirrors tile_columns (6) so the two tabs share the same density rhythm.",
@@ -3718,18 +3730,11 @@
         "tiles": []
       },
       {
-        "_doc": "Configs Home-Apps group — DATA-DRIVEN. tiles_from_section='config' pulls every page from sections[config].pages in array order — that array is the single source of truth, NEVER re-listed here (an enumerated copy drifts and lies). The explicit `tiles` field adds cross-section shortcuts the derived list can't reach (WireGuard lives in its own section:wg), each positioned declaratively by insert_after_id.",
+        "_doc": "Configs Home-Apps group — DATA-DRIVEN. tiles_from_section='config' pulls every page from sections[config].pages in array order — that array is the single source of truth, NEVER re-listed here (an enumerated copy drifts and lies). WireGuard is now a real config page (sections[config].pages id=wg, action=section:wg) so it flows in here automatically — no explicit `tiles` shortcut needed.",
         "title": "Configs",
         "scroll": "horizontal",
         "tiles_from_section": "config",
-        "tiles": [
-          {
-            "id": "section:wg",
-            "label": "WireGuard",
-            "icon": "ic_wg",
-            "insert_after_id": "page:config/profile"
-          }
-        ]
+        "tiles": []
       }
     ],
     "_doc_page_samples": "Per-page sample content shown by PageContentFragment until the real module fragment lands. Key format: '<section>/<page>'. Each entry is a list of {title, subtitle} rows. Ties to the real CLAUDE.md stack so each section already feels like the user's infra.",
