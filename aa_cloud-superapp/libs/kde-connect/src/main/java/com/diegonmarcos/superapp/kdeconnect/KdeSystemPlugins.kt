@@ -16,7 +16,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 import org.json.JSONObject
 
-private fun granted(ctx: Context, perm: String): Boolean =
+internal fun granted(ctx: Context, perm: String): Boolean =
     ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED
 
 /**

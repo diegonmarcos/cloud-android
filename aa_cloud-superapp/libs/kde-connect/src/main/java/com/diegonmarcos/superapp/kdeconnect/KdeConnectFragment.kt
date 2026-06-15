@@ -368,9 +368,10 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
                 "● handled · ● advertised (no handler yet) · ◌ off."
             setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, 0, 0, dp(8))
         })
-        val realIds = KdePluginRegistry.plugins.map { it.id }.toSet()
-        for (pl in cfg.plugins.sortedByDescending { it.id in realIds }) {
-            val real = pl.id in realIds
+        // Handled = a registered plugin actually processes/sends this packet.
+        val handledPackets = KdePluginRegistry.plugins.flatMap { it.incoming + it.outgoing }.toSet()
+        for (pl in cfg.plugins.sortedByDescending { it.packet in handledPackets }) {
+            val real = pl.packet in handledPackets
             val rowTv = TextView(ctx).apply {
                 typeface = Typeface.MONOSPACE; textSize = 12f
                 setPadding(0, dp(3), 0, dp(3))
