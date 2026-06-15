@@ -4493,7 +4493,7 @@
       "enabled": true,
       "groups": [
         {
-          "title": "Comms",
+          "title": "Cloud SA - Alerts/Comms",
           "messages": [
             "Diego: ping?",
             "Team: standup at 10:00",
@@ -4501,14 +4501,20 @@
           ]
         },
         {
-          "title": "Cloud",
+          "title": "Cloud SA - Alerts/Cloud",
           "messages": [
             "oci-apps: all services healthy",
             "backup: restic → OCI done 03:00"
           ]
         },
         {
-          "title": "Alerts",
+          "title": "Cloud SA - Alerts/App",
+          "messages": [
+            "App up to date"
+          ]
+        },
+        {
+          "title": "Cloud SA - Alerts",
           "messages": [
             "No open incidents"
           ]
