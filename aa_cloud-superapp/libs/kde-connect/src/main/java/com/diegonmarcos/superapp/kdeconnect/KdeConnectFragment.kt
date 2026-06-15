@@ -110,8 +110,14 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         root.addView(buildMediaCard(ctx))
         // ── Presenter (laser pointer + slide nav) ──────────────────────────
         root.addView(buildPresenterCard(ctx))
-        // ── One-shot actions (ring / browse / virtual monitor / remote dt) ─
+        // ── One-shot actions (ring / browse / virtual monitor) ─────────────
         root.addView(buildActionsCard(ctx))
+        // ── Remote Desktop control (session + mouse/keyboard surface) ──────
+        root.addView(buildRemoteDesktopCard(ctx))
+        // ── Share text/links to the desktop (share sender) ─────────────────
+        root.addView(buildShareCard(ctx))
+        // ── Photo capture (open camera) ────────────────────────────────────
+        root.addView(buildPhotoCard(ctx))
 
         // ── Plugins catalog (data-driven from build.json) ──────────────────
         if (cfg.plugins.isNotEmpty()) root.addView(buildPluginsSection(ctx, cfg))
@@ -629,10 +635,111 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         col.addView(btnRow(ctx,
             "🔔 Ring" to { toTarget(FindMyPhonePlugin.ring()) },
             "📁 Files" to { toTarget(SftpPlugin.request()) },
+            "🖥 Monitor" to { toTarget(VirtualMonitorPlugin.request()) },
+        ))
+        return col
+    }
+
+    /** Remote Desktop control — asks Plasma to start a remote-desktop session
+     *  (kdeconnect.remotedesktop), then exposes a full mouse + keyboard surface
+     *  to drive it (mousepad senders: move/click/right-click/keys/arrows). */
+    private fun buildRemoteDesktopCard(ctx: android.content.Context): View {
+        fun tgt(): String? = KdeConnectManager.connectedIds().firstOrNull()
+        val col = card(ctx, "Remote Desktop control",
+            "Start a session, then drag to move · tap = click · long-press = right-click.")
+        col.addView(btnRow(ctx,
+            "▶ Start session" to { toTarget(RemoteDesktopPlugin.request()) },
+        ))
+        // Mouse surface.
+        val pad = View(ctx).apply {
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat(); setColor(0x33000000); setStroke(maxOf(1, dp(1)), 0x44FFFFFF)
+            }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(140))
+                .apply { topMargin = dp(6) }
+        }
+        var lastX = 0f; var lastY = 0f; var moved = false; var downT = 0L
+        pad.setOnTouchListener { v, e ->
+            val id = tgt()
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    lastX = e.x; lastY = e.y; moved = false; downT = android.os.SystemClock.uptimeMillis(); true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = e.x - lastX; val dy = e.y - lastY; lastX = e.x; lastY = e.y
+                    if (kotlin.math.abs(dx) > 2 || kotlin.math.abs(dy) > 2) moved = true
+                    if (id != null) KdeConnectManager.send(id, RemoteInputPlugin.move(dx, dy))
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    val held = android.os.SystemClock.uptimeMillis() - downT
+                    if (!moved && id != null)
+                        KdeConnectManager.send(id, if (held > 500) RemoteInputPlugin.rightClick() else RemoteInputPlugin.click())
+                    if (id == null) toastUnit("Connect & pair first")
+                    v.performClick(); true
+                }
+                else -> false
+            }
+        }
+        col.addView(pad)
+        // Keyboard + navigation keys (KDE special-key codes).
+        val keyF = android.widget.EditText(ctx).apply {
+            hint = "Type, then Send"; isSingleLine = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6) }
+        }
+        col.addView(keyF)
+        col.addView(btnRow(ctx,
+            "Send" to {
+                val id = tgt()
+                val t = keyF.text.toString()
+                if (id == null) toastUnit("Connect & pair first")
+                else if (t.isNotEmpty()) { KdeConnectManager.send(id, RemoteInputPlugin.key(t)); keyF.setText("") }
+            },
+            "⌫" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(1)) } },
+            "⏎" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(12)) } },
+            "Esc" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(14)) } },
         ))
         col.addView(btnRow(ctx,
-            "🖥 Monitor" to { toTarget(VirtualMonitorPlugin.request()) },
-            "🖱 Desktop" to { toTarget(RemoteDesktopPlugin.request()) },
+            "←" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(3)) } },
+            "↑" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(4)) } },
+            "↓" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(6)) } },
+            "→" to { tgt()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(5)) } },
+        ))
+        return col
+    }
+
+    /** Share — push text or a link to the connected desktop (kdeconnect.share).
+     *  A link opens in the desktop browser; text lands on its clipboard. */
+    private fun buildShareCard(ctx: android.content.Context): View {
+        val col = card(ctx, "Share", "Send text or a link to the connected desktop.")
+        val f = android.widget.EditText(ctx).apply {
+            hint = "Text or https://link"; isSingleLine = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        col.addView(f)
+        col.addView(btnRow(ctx,
+            "Send text" to {
+                val t = f.text.toString()
+                if (t.isNotBlank()) { toTarget(SharePlugin.text(t)); f.setText("") }
+            },
+            "Send link" to {
+                val t = f.text.toString().trim()
+                if (t.isNotBlank()) { toTarget(SharePlugin.url(t)); f.setText("") }
+            },
+        ))
+        return col
+    }
+
+    /** Photo capture — opens the camera (the desktop normally triggers this via
+     *  kdeconnect.photo.request; the button lets you fire it locally too). */
+    private fun buildPhotoCard(ctx: android.content.Context): View {
+        val col = card(ctx, "Photo capture",
+            "Open the camera. (Desktop sends kdeconnect.photo.request to trigger it remotely.)")
+        col.addView(btnRow(ctx,
+            "📷 Open camera" to { PhotoPlugin.capture(ctx) },
         ))
         return col
     }

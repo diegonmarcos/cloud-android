@@ -194,6 +194,9 @@ object SharePlugin : KdePlugin {
         }
         return true
     }
+    /** Sender builders — push text / a link to the desktop. */
+    fun text(value: String) = NetworkPacket.of(NetworkPacket.TYPE_SHARE) { put("text", value) }
+    fun url(value: String) = NetworkPacket.of(NetworkPacket.TYPE_SHARE) { put("url", value) }
 }
 
 /** kdeconnect.notification — mirror a desktop notification onto the phone. */
