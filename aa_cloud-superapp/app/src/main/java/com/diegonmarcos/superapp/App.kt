@@ -35,6 +35,8 @@ class App : Application() {
         runCatching { CrashLogger.install(this) }
         runCatching { DynamicColors.applyToActivitiesIfAvailable(this) }
         runCatching { detectVersionBump() }
+        // Persistent "Cloud SA - KDE" status notification, live-updated.
+        runCatching { KdeStatusNotifier.init(this) }
         // Schedule the periodic battery-session tick (15 min cadence).
         // Idempotent — KEEP policy ensures re-scheduling on every cold
         // start is a no-op. Without this the discharge anchor only

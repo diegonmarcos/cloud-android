@@ -273,6 +273,14 @@ object KdeConnectManager : KdeLink.Listener {
         }
     }
 
+    /** A second, always-on observer (independent of the UI [listener]) — used by
+     *  the persistent KDE status notification so it updates live regardless of
+     *  which fragment is on screen. */
+    @Volatile var statusObserver: ((String, String?, State, String) -> Unit)? = null
+
     private fun emit(id: String, host: String?, state: State, detail: String) =
-        main.post { listener?.onState(id, host, state, detail) }
+        main.post {
+            listener?.onState(id, host, state, detail)
+            statusObserver?.invoke(id, host, state, detail)
+        }
 }

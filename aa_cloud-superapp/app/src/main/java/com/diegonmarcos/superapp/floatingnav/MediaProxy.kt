@@ -81,7 +81,7 @@ class MediaProxy(private val ctx: Context) {
             .setSmallIcon(R.drawable.ic_stat_cloud)
             .setContentTitle(title)
             .setContentText(artist)
-            .setSubText("Cloud SuperApp - NC Media")
+            .setSubText("Cloud SA - Media")
             .setOnlyAlertOnce(true)
             .setOngoing(playing)
             .setGroup("nc_media") // own group → not auto-bundled with the others
