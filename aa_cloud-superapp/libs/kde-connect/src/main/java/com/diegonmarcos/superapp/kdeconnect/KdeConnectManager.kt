@@ -242,7 +242,7 @@ object KdeConnectManager : KdeLink.Listener {
     // peer never dials us back over wg, so this is informational only.
     private fun myIdentity(): NetworkPacket = KdeIdentity.packet(
         app, DEFAULT_PORT,
-        KdePluginRegistry.incomingCapabilities, KdePluginRegistry.outgoingCapabilities,
+        KdePluginRegistry.incomingCapabilities(app), KdePluginRegistry.outgoingCapabilities(app),
     )
 
     /** Stable internal key for the link/trust map — the declared device id

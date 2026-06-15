@@ -16,6 +16,8 @@ import android.util.Log
  * the documented packet contracts.
  */
 interface KdePlugin {
+    /** Catalog id (build.json plugins[].id) — the per-plugin enable/disable key. */
+    val id: String
     val incoming: Set<String>
     val outgoing: Set<String>
     /** Handle a packet whose type is in [incoming]. Returns true if consumed. */
@@ -34,21 +36,30 @@ object KdePluginRegistry {
         BatteryPlugin, SharePlugin, MprisPlugin, SystemVolumePlugin, RunCommandPlugin,
         ContactsPlugin, ConnectivityReportPlugin, LockDevicePlugin, TelephonyPlugin,
     )
-    val incomingCapabilities: Set<String> = plugins.flatMap { it.incoming }.toSet()
-    val outgoingCapabilities: Set<String> = plugins.flatMap { it.outgoing }.toSet()
+    /** Only the user-enabled plugins (default all). */
+    private fun enabled(ctx: Context): List<KdePlugin> {
+        val prefs = KdePluginPrefs(ctx)
+        return plugins.filter { prefs.isEnabled(it.id) }
+    }
 
-    /** Dispatch an inbound packet to the first plugin that owns its type. */
+    /** Capabilities we ADVERTISE — only enabled plugins, so a disabled plugin
+     *  is invisible to the desktop on the next connect. */
+    fun incomingCapabilities(ctx: Context): Set<String> = enabled(ctx).flatMap { it.incoming }.toSet()
+    fun outgoingCapabilities(ctx: Context): Set<String> = enabled(ctx).flatMap { it.outgoing }.toSet()
+
+    /** Dispatch an inbound packet to the first ENABLED plugin that owns its type. */
     fun dispatch(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean =
-        plugins.firstOrNull { packet.type in it.incoming }
+        enabled(ctx).firstOrNull { packet.type in it.incoming }
             ?.onPacket(ctx, link, packet) ?: false
 
-    /** Notify every plugin that a paired link is ready (push initial state). */
+    /** Notify every enabled plugin that a paired link is ready. */
     fun linkReady(ctx: Context, link: KdeLink) =
-        plugins.forEach { runCatching { it.onLinkReady(ctx, link) } }
+        enabled(ctx).forEach { runCatching { it.onLinkReady(ctx, link) } }
 }
 
 /** kdeconnect.ping — surface a notification; we can also send one. */
 object PingPlugin : KdePlugin {
+    override val id = "ping"
     override val incoming = setOf(NetworkPacket.TYPE_PING)
     override val outgoing = setOf(NetworkPacket.TYPE_PING)
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
@@ -64,6 +75,7 @@ object PingPlugin : KdePlugin {
 /** kdeconnect.clipboard — apply the peer's clipboard locally. (Android 10+
  *  restricts background clipboard writes; best-effort while foregrounded.) */
 object ClipboardPlugin : KdePlugin {
+    override val id = "clipboard"
     override val incoming = setOf(NetworkPacket.TYPE_CLIPBOARD, NetworkPacket.TYPE_CLIPBOARD_CONNECT)
     override val outgoing = setOf(NetworkPacket.TYPE_CLIPBOARD)
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
@@ -80,6 +92,7 @@ object ClipboardPlugin : KdePlugin {
 
 /** kdeconnect.findmyphone.request — ring + vibrate so the user can locate it. */
 object FindMyPhonePlugin : KdePlugin {
+    override val id = "findmyphone"
     override val incoming = setOf(NetworkPacket.TYPE_FINDMYPHONE, "kdeconnect.findthisdevice")
     override val outgoing = setOf(NetworkPacket.TYPE_FINDMYPHONE)   // we can ring the desktop too
     /** Ask the paired device to ring (find-this-device). */
@@ -110,6 +123,7 @@ object FindMyPhonePlugin : KdePlugin {
 /** kdeconnect.battery — report the phone's charge level to the desktop (on
  *  connect + on request), and surface the desktop's level back. */
 object BatteryPlugin : KdePlugin {
+    override val id = "battery"
     override val incoming = setOf(NetworkPacket.TYPE_BATTERY, NetworkPacket.TYPE_BATTERY_REQUEST)
     override val outgoing = setOf(NetworkPacket.TYPE_BATTERY, NetworkPacket.TYPE_BATTERY_REQUEST)
     override fun onLinkReady(ctx: Context, link: KdeLink) { link.send(report(ctx)) }
@@ -139,6 +153,7 @@ object BatteryPlugin : KdePlugin {
 /** kdeconnect.share.request — receive a shared URL (open it) or text (copy +
  *  notify). File payloads use KDE's separate transfer channel — not handled. */
 object SharePlugin : KdePlugin {
+    override val id = "share"
     override val incoming = setOf(NetworkPacket.TYPE_SHARE)
     override val outgoing = setOf(NetworkPacket.TYPE_SHARE)
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
@@ -165,6 +180,7 @@ object SharePlugin : KdePlugin {
 
 /** kdeconnect.notification — mirror a desktop notification onto the phone. */
 object NotificationMirrorPlugin : KdePlugin {
+    override val id = "notification"
     override val incoming = setOf(NetworkPacket.TYPE_NOTIFICATION)
     override val outgoing = emptySet<String>()
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {

@@ -26,6 +26,7 @@ private fun granted(ctx: Context, perm: String): Boolean =
  * KDE's contract.
  */
 object RunCommandPlugin : KdePlugin {
+    override val id = "runcommand"
     override val incoming = setOf("kdeconnect.runcommand.request")
     override val outgoing = setOf("kdeconnect.runcommand")
 
@@ -71,6 +72,7 @@ object ContactsPlugin : KdePlugin {
     private const val RES_UIDS   = "kdeconnect.contacts.response_uids_timestamps"
     private const val RES_VCARDS = "kdeconnect.contacts.response_vcards"
 
+    override val id = "contacts"
     override val incoming = setOf(REQ_UIDS, REQ_VCARDS)
     override val outgoing = setOf(RES_UIDS, RES_VCARDS)
 
@@ -149,6 +151,7 @@ object ContactsPlugin : KdePlugin {
  * report an UNKNOWN/0 entry so the desktop still shows the device.
  */
 object ConnectivityReportPlugin : KdePlugin {
+    override val id = "connectivity_report"
     override val incoming = setOf("kdeconnect.connectivity_report.request")
     override val outgoing = setOf("kdeconnect.connectivity_report")
 
@@ -191,6 +194,7 @@ object LockDevicePlugin : KdePlugin {
     private const val REQUEST = "kdeconnect.lock.request"
     private const val STATE   = "kdeconnect.lock"
 
+    override val id = "lockdevice"
     override val incoming = setOf(REQUEST, STATE)
     override val outgoing = setOf(STATE)
 
@@ -235,6 +239,7 @@ object LockDevicePlugin : KdePlugin {
  * notification-policy access on newer Android; if denied it's a no-op.
  */
 object TelephonyPlugin : KdePlugin {
+    override val id = "telephony"
     override val incoming = setOf("kdeconnect.telephony.request_mute")
     override val outgoing = setOf("kdeconnect.telephony")
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {

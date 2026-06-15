@@ -290,18 +290,32 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             setPadding(0, 0, 0, dp(2))
         })
         col.addView(TextView(ctx).apply {
-            text = "Active = our app handles it (advertised to the desktop). Planned = a KDE plugin we don't implement yet."
+            text = "Tap an active plugin to enable/disable it (● on · ◌ off). Planned = not implemented yet."
             setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, 0, 0, dp(8))
         })
+        val prefs = KdePluginPrefs(ctx)
         for (pl in cfg.plugins.sortedByDescending { it.active }) {
-            col.addView(TextView(ctx).apply {
-                val mark = if (pl.active) "●" else "○"
-                val arrow = when (pl.dir) { "in" -> "↓"; "out" -> "↑"; else -> "↕" }
-                text = "$mark  ${pl.name}  $arrow   ${pl.packet}"
-                setTextColor(if (pl.active) 0xFFE9D8FD.toInt() else 0x66FFFFFF.toInt())
+            val rowTv = TextView(ctx).apply {
                 typeface = Typeface.MONOSPACE; textSize = 12f
                 setPadding(0, dp(3), 0, dp(3))
-            })
+            }
+            fun render() {
+                val on = pl.active && prefs.isEnabled(pl.id)
+                val mark = when { !pl.active -> "○"; on -> "●"; else -> "◌" }
+                val arrow = when (pl.dir) { "in" -> "↓"; "out" -> "↑"; else -> "↕" }
+                rowTv.text = "$mark  ${pl.name}  $arrow   ${pl.packet}"
+                rowTv.setTextColor(when {
+                    !pl.active -> 0x66FFFFFF.toInt()      // planned — gray
+                    on        -> 0xFFE9D8FD.toInt()       // enabled — lavender
+                    else      -> 0x88FFFFFF.toInt()       // disabled — dim
+                })
+            }
+            render()
+            if (pl.active) rowTv.setOnClickListener {
+                prefs.toggle(pl.id); render()
+                rowTv.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+            }
+            col.addView(rowTv)
         }
         return col
     }

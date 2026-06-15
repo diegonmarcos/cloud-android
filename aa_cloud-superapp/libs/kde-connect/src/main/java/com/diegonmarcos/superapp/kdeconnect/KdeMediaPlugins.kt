@@ -19,6 +19,7 @@ import org.json.JSONArray
 object MprisPlugin : KdePlugin {
     private const val LISTENER = "com.diegonmarcos.superapp.PhoneNotificationListenerService"
 
+    override val id = "mpris"
     override val incoming = setOf(NetworkPacket.TYPE_MPRIS_REQUEST)
     override val outgoing = setOf(NetworkPacket.TYPE_MPRIS)
 
@@ -109,6 +110,7 @@ object MprisPlugin : KdePlugin {
  * permission). Volume values are raw stream units (0..maxVolume), per KDE.
  */
 object SystemVolumePlugin : KdePlugin {
+    override val id = "systemvolume"
     override val incoming = setOf(NetworkPacket.TYPE_SYSTEMVOLUME_REQUEST)
     override val outgoing = setOf(NetworkPacket.TYPE_SYSTEMVOLUME)
 
