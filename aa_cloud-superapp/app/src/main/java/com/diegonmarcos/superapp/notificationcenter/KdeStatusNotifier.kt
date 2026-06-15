@@ -7,9 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
@@ -94,28 +91,16 @@ object KdeStatusNotifier {
                 .addAction(android.R.drawable.ic_popup_sync, "Ping", KdeQuickActionReceiver.pi(ctx, "ping"))
                 .addAction(android.R.drawable.stat_notify_sync, "Connect", KdeQuickActionReceiver.pi(ctx, "connect"))
                 .addAction(android.R.drawable.ic_menu_compass, "Find", KdeQuickActionReceiver.pi(ctx, "find"))
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                // Same layout as "Cloud SA - Quick Actions": MediaStyle with NO
+                // media-session token → clean action-button row (3 compact / 5
+                // expanded), not the media-player chrome.
                 .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                    .setMediaSession(sessionToken(ctx))
                     .setShowActionsInCompactView(0, 1, 2))
                 .build()
             nm.notify(NOTIF_ID, n)
         }
-    }
-
-    // A lightweight (inactive) media session — its token gives MediaStyle the
-    // full media-template layout (3 compact + 5 expanded action icons).
-    private var session: MediaSessionCompat? = null
-    private fun sessionToken(ctx: Context): MediaSessionCompat.Token {
-        session?.let { return it.sessionToken }
-        val s = MediaSessionCompat(ctx, "CloudSA-KDE").apply {
-            setMetadata(MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "Cloud SA - KDE")
-                .build())
-            setPlaybackState(PlaybackStateCompat.Builder()
-                .setState(PlaybackStateCompat.STATE_PAUSED, 0, 0f).build())
-        }
-        session = s
-        return s.sessionToken
     }
 
     private fun ensureChannel(ctx: Context) {
