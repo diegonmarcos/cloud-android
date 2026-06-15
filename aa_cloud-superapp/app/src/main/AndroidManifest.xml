@@ -109,6 +109,10 @@
         android:theme="@style/Theme.Superapp"
         android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false">
+        <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
+        <receiver
+            android:name=".KdeQuickActionReceiver"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

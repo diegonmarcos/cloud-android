@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectConfig
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectManager
+import com.diegonmarcos.superapp.kdeconnect.KdeIdentity
 import com.diegonmarcos.superapp.kdeconnect.KdePluginPrefs
 
 /**
@@ -61,7 +62,9 @@ object KdeStatusNotifier {
                     .append(if (paired) "Paired" else "Not paired").append('\n')
             }
             big.append("🔌 $on/${cfg.plugins.size} plugins enabled · ")
-                .append("${KdeConnectManager.pairedDeviceIds().size} paired")
+                .append("${KdeConnectManager.pairedDeviceIds().size} paired").append('\n')
+            // Extra info (we have the room in BigText).
+            big.append("🆔 ${KdeIdentity.deviceName(ctx)} · ${KdeConnectManager.ownDeviceId().take(14)}…")
 
             val n: Notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_cloud)
@@ -72,6 +75,15 @@ object KdeStatusNotifier {
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
                 .setGroup("nc_kde")
+                // Quick actions (Android shows the first ~3 collapsed, all expanded).
+                .addAction(android.R.drawable.ic_menu_share, "Share",
+                    KdeQuickActionReceiver.pi(ctx, "share"))
+                .addAction(android.R.drawable.ic_menu_view, "Desktop",
+                    KdeQuickActionReceiver.pi(ctx, "desktop"))
+                .addAction(android.R.drawable.ic_popup_sync, "Ping",
+                    KdeQuickActionReceiver.pi(ctx, "ping"))
+                .addAction(android.R.drawable.stat_notify_sync, "Connect",
+                    KdeQuickActionReceiver.pi(ctx, "connect"))
                 .build()
             nm.notify(NOTIF_ID, n)
         }

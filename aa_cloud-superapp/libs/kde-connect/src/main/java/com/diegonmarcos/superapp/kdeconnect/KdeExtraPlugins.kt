@@ -155,6 +155,9 @@ object VirtualMonitorPlugin : KdePlugin {
     fun request() = NetworkPacket.of("kdeconnect.virtualmonitor.request") {
         put("resolution", "1920x1080"); put("scale", 1.0)
     }
+    /** Tell the desktop to tear the virtual monitor down (it stops on receiving
+     *  a plain kdeconnect.virtualmonitor — see virtualmonitorplugin.cpp). */
+    fun stop() = NetworkPacket.of("kdeconnect.virtualmonitor") { put("stop", true) }
 }
 
 /** kdeconnect.remotedesktop — Plasma-6 remote desktop (screen + input). Full
@@ -166,6 +169,8 @@ object RemoteDesktopPlugin : KdePlugin {
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket) = true
     /** Ask the desktop to begin a remote-desktop session. */
     fun request() = NetworkPacket.of("kdeconnect.remotedesktop.request") { put("requestSession", true) }
+    /** Ask the desktop to end the remote-desktop session. */
+    fun stop() = NetworkPacket.of("kdeconnect.remotedesktop.request") { put("stopSession", true) }
 }
 
 /** Remote system volume — the phone controls the DESKTOP's master volume. We

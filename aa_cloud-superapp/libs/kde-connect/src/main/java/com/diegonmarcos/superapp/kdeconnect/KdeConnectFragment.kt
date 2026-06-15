@@ -439,7 +439,10 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
      *  tap-click), keyboard, and Big Screen text. Senders: RemoteInputPlugin /
      *  BigScreenPlugin. Targets the first connected device. */
     private fun buildRemoteSection(ctx: android.content.Context): View {
-        fun target(): String? = KdeConnectManager.connectedIds().firstOrNull()
+        // Master input-share gate: when OFF the pad/keys send nothing (so the
+        // phone in your pocket can't nudge the desktop cursor). Tap Start to arm.
+        var inputOn = false
+        fun target(): String? = if (inputOn) KdeConnectManager.connectedIds().firstOrNull() else null
 
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -459,6 +462,21 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             text = "Controls the connected desktop. Drag the pad to move the cursor · tap = click · long-press area = right-click."
             setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, dp(2), 0, dp(8))
         })
+
+        // ── Share toggle — arm/disarm sending input to the desktop ────────
+        val shareBtn = Button(ctx).apply {
+            text = "▶ Start control"; isAllCaps = false; textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(6) }
+        }
+        shareBtn.setOnClickListener {
+            inputOn = !inputOn
+            shareBtn.text = if (inputOn) "■ Stop control" else "▶ Start control"
+            toastUnit(if (inputOn) "Input control ON — pad & keys drive the desktop"
+                      else "Input control OFF")
+        }
+        col.addView(shareBtn)
 
         // ── Touchpad ────────────────────────────────────────────────────
         val pad = View(ctx).apply {
@@ -487,7 +505,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
                     if (!moved && id != null) {
                         KdeConnectManager.send(id, if (held > 500) RemoteInputPlugin.rightClick() else RemoteInputPlugin.click())
                     }
-                    if (id == null) toast("Connect & pair first")
+                    if (id == null) toast(if (!inputOn) "Tap 'Start control' first" else "Connect & pair first")
                     v.performClick(); true
                 }
                 else -> false
@@ -689,10 +707,26 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     private fun buildRemoteDesktopCard(ctx: android.content.Context): View {
         fun tgt(): String? = KdeConnectManager.connectedIds().firstOrNull()
         val col = card(ctx, "Remote Desktop control",
-            "Start a session, then drag to move · tap = click · long-press = right-click.")
-        col.addView(btnRow(ctx,
-            "▶ Start session" to { toTarget(RemoteDesktopPlugin.request()) },
-        ))
+            "Asks Plasma to start a remote-desktop session (KDE streams the screen via an RDP/virtual-monitor portal). Drive it with the pad/keys below; full on-phone viewing needs an RDP client.")
+        // Stateful start/stop — label follows the session state.
+        var rdpActive = false
+        val sessionBtn = Button(ctx).apply {
+            text = "▶ Start Remote Desktop Control"; isAllCaps = false; textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        sessionBtn.setOnClickListener {
+            if (!rdpActive) {
+                toTarget(RemoteDesktopPlugin.request())
+                rdpActive = true; sessionBtn.text = "■ Stop Remote Desktop Control"
+                toastUnit("Requested a remote-desktop session on the desktop")
+            } else {
+                toTarget(RemoteDesktopPlugin.stop())
+                rdpActive = false; sessionBtn.text = "▶ Start Remote Desktop Control"
+                toastUnit("Stopped the remote-desktop session")
+            }
+        }
+        col.addView(sessionBtn)
         // Mouse surface.
         val pad = View(ctx).apply {
             background = android.graphics.drawable.GradientDrawable().apply {

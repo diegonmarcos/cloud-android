@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -219,6 +220,23 @@ object KdeConnectManager : KdeLink.Listener {
     /** The currently-connected device ids — the remote-control UI targets the
      *  first one. */
     fun connectedIds(): Set<String> = links.filterValues { it.isOpen }.keys
+
+    /** First live link id (for fire-and-forget quick actions). */
+    fun firstConnectedId(): String? = connectedIds().firstOrNull()
+
+    /** Background scope for fire-and-forget actions (notification buttons). */
+    private val bgScope = kotlinx.coroutines.CoroutineScope(
+        Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+
+    /** Dial the first declared device (honouring any host/port override) off the
+     *  main thread — used by the persistent notification's Connect action. */
+    fun connectFirstAsync() {
+        val dev = KdeConnectConfig.get().devices.firstOrNull() ?: return
+        val dprefs = KdeDevicePrefs(app)
+        val host = dprefs.host(dev.id, dev.wgIp)
+        val port = dprefs.port(dev.id, DEFAULT_PORT)
+        bgScope.launch { connect(host, port) }
+    }
 
     fun disconnect(deviceId: String) { links.remove(deviceId)?.close() }
 
