@@ -1056,15 +1056,21 @@ class DevControlFragment : Fragment() {
             //    whether each is running an sshd we can reach on localhost.
             //    Installed-check is synchronous (PackageManager); the port
             //    probe is async (no network on the main thread).
-            it.addView(small(ctx, "SSH servers on this device — terminal apps + whether their sshd is listening on localhost (probe 127.0.0.1:port)."))
+            it.addView(small(ctx, "SSH servers on this device — terminal apps + whether their sshd is listening on localhost (probes 127.0.0.1 across common ports)."))
             for (term in SSH_TERMINALS) {
                 val installed = isPackageInstalled(ctx, term.pkg)
+                val portList = term.ports.joinToString(",")
                 val valueView = row(ctx, it, term.label,
-                    if (!installed) "not installed" else "installed · sshd :${term.port} checking…")
+                    if (!installed) "not installed" else "installed · probing :$portList…")
                 if (installed) viewLifecycleOwner.lifecycleScope.launch {
-                    val up = withContext(Dispatchers.IO) { portOpen("127.0.0.1", term.port) }
-                    valueView.text = "installed · sshd :${term.port} " + if (up) "✓ up" else "✗ down"
-                    valueView.setTextColor(if (up) 0xFF8BE9A0.toInt() else 0xFFFFB199.toInt())
+                    val open = withContext(Dispatchers.IO) { term.ports.filter { p -> portOpen("127.0.0.1", p) } }
+                    if (open.isNotEmpty()) {
+                        valueView.text = "installed · sshd ✓ up :${open.joinToString(",")}"
+                        valueView.setTextColor(0xFF8BE9A0.toInt())
+                    } else {
+                        valueView.text = "installed · sshd ✗ down (tried :$portList)"
+                        valueView.setTextColor(0xFFFFB199.toInt())
+                    }
                 }
             }
 
@@ -1505,13 +1511,15 @@ class DevControlFragment : Fragment() {
 
     // ── helpers ──────────────────────────────────────────────────────
 
-    // Known on-device terminal emulators that can run an sshd, + default port.
-    private data class SshTerminal(val label: String, val pkg: String, val port: Int)
+    // Known on-device terminal emulators that can run an sshd. The sshd port is
+    // user-configurable, so each probes a list of common candidates (8022 is the
+    // Termux/nix default; 8024 and 22 are common manual choices).
+    private data class SshTerminal(val label: String, val pkg: String, val ports: List<Int>)
     private val SSH_TERMINALS = listOf(
-        SshTerminal("Termux", "com.termux", 8022),
-        SshTerminal("Nix-on-droid", "com.termux.nix", 8022),
-        SshTerminal("Termux (F-Droid)", "com.termux.fdroid", 8022),
-        SshTerminal("UserLAnd", "tech.ula", 2022),
+        SshTerminal("Termux", "com.termux", listOf(8022, 8024, 22)),
+        SshTerminal("Nix-on-droid", "com.termux.nix", listOf(8022, 8024, 22)),
+        SshTerminal("Termux (F-Droid)", "com.termux.fdroid", listOf(8022, 8024, 22)),
+        SshTerminal("UserLAnd", "tech.ula", listOf(2022, 8022, 22)),
     )
 
     /** Installed? Needs a <queries> entry in the manifest on API 30+ (added). */
