@@ -64,14 +64,21 @@ object SmsPlugin : KdePlugin {
     }
 
     private fun sendSms(ctx: Context, packet: NetworkPacket) {
-        if (!granted(ctx, Manifest.permission.SEND_SMS)) return
         val body = packet.getString("messageBody").ifBlank { packet.getString("sendSms") }
         val addr = packet.body.optJSONArray("addresses")?.optJSONObject(0)?.optString("address").orEmpty()
-        if (addr.isBlank() || body.isBlank()) return
-        runCatching {
+        sendDirect(ctx, addr, body)
+    }
+
+    /** Send an SMS straight from this phone (used by the desktop's send request
+     *  AND the Send SMS card). Gated on SEND_SMS — returns false if not granted
+     *  or the inputs are blank. */
+    fun sendDirect(ctx: Context, address: String, body: String): Boolean {
+        if (!granted(ctx, Manifest.permission.SEND_SMS)) return false
+        if (address.isBlank() || body.isBlank()) return false
+        return runCatching {
             @Suppress("DEPRECATION") val sm = android.telephony.SmsManager.getDefault()
-            sm.sendTextMessage(addr, null, body, null, null)
-        }
+            sm.sendTextMessage(address, null, body, null, null); true
+        }.getOrDefault(false)
     }
 }
 

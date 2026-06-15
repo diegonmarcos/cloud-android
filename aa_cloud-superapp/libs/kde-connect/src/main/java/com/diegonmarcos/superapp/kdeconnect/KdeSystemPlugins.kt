@@ -196,7 +196,12 @@ object LockDevicePlugin : KdePlugin {
 
     override val id = "lockdevice"
     override val incoming = setOf(REQUEST, STATE)
-    override val outgoing = setOf(STATE)
+    override val outgoing = setOf(STATE, REQUEST)
+
+    /** Sender — ask the desktop to lock (or unlock) itself. */
+    fun lockRemote(locked: Boolean = true) =
+        NetworkPacket.of(REQUEST) { put("setLocked", locked) }
+    fun requestState() = NetworkPacket.of(REQUEST) { put("requestLocked", true) }
 
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
         when (packet.type) {

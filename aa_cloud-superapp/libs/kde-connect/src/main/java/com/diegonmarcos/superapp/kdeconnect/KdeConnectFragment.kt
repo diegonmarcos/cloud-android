@@ -118,6 +118,8 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         root.addView(buildShareCard(ctx))
         // ── Photo capture (open camera) ────────────────────────────────────
         root.addView(buildPhotoCard(ctx))
+        // ── Send SMS (this phone sends it) ─────────────────────────────────
+        root.addView(buildSmsCard(ctx))
 
         // ── Plugins catalog (data-driven from build.json) ──────────────────
         if (cfg.plugins.isNotEmpty()) root.addView(buildPluginsSection(ctx, cfg))
@@ -635,7 +637,10 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         col.addView(btnRow(ctx,
             "🔔 Ring" to { toTarget(FindMyPhonePlugin.ring()) },
             "📁 Files" to { toTarget(SftpPlugin.request()) },
+        ))
+        col.addView(btnRow(ctx,
             "🖥 Monitor" to { toTarget(VirtualMonitorPlugin.request()) },
+            "🔒 Lock desktop" to { toTarget(LockDevicePlugin.lockRemote(true)) },
         ))
         return col
     }
@@ -733,6 +738,37 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         return col
     }
 
+    /** Send SMS — this phone sends the message directly via SmsManager (the
+     *  phone is the SMS device; the desktop normally drives this via
+     *  kdeconnect.sms.request). Needs the runtime SEND_SMS grant. */
+    private fun buildSmsCard(ctx: android.content.Context): View {
+        val col = card(ctx, "Send SMS", "This phone sends the text (needs SMS permission).")
+        val toF = android.widget.EditText(ctx).apply {
+            hint = "Recipient number"; isSingleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_PHONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        val bodyF = android.widget.EditText(ctx).apply {
+            hint = "Message"; isSingleLine = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(4) }
+        }
+        col.addView(toF); col.addView(bodyF)
+        col.addView(btnRow(ctx,
+            "Send SMS" to {
+                val to = toF.text.toString().trim(); val body = bodyF.text.toString()
+                when {
+                    to.isBlank() || body.isBlank() -> toastUnit("Recipient and message required")
+                    SmsPlugin.sendDirect(ctx, to, body) -> { toastUnit("SMS sent"); bodyF.setText("") }
+                    else -> toastUnit("Couldn't send — grant SMS permission")
+                }
+            },
+        ))
+        return col
+    }
+
     /** Photo capture — opens the camera (the desktop normally triggers this via
      *  kdeconnect.photo.request; the button lets you fire it locally too). */
     private fun buildPhotoCard(ctx: android.content.Context): View {
@@ -777,6 +813,8 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             "sftp_browse"        to { SftpPlugin.request() },
             "virtualmonitor"     to { VirtualMonitorPlugin.request() },
             "screenconnector"    to { RemoteDesktopPlugin.request() },
+            "lockdevice"         to { LockDevicePlugin.requestState() },  // queries, won't lock
+            // sms is intentionally NOT probed — never send a real text during a self-test.
         )
         var pass = 0; var fail = 0
         for (pl in cfg.plugins) {
