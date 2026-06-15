@@ -547,77 +547,6 @@ step_sync_net() {
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/net/"
 }
 
-# ── step_refresh_tree ─────────────────────────────────────────────────
-# Snapshot the L3 folder topology of every ea_* sibling clone under
-# ~/git/unix/ and write to data/folder-tree.txt. Re-run whenever the
-# topology of an upstream changes (or whenever a new sibling gets
-# cloned). The file is read by app/build.gradle at config time and
-# baked into BuildConfig so the Stack section in About can render it
-# even when GHA builds the APK (where ea_* siblings aren't present —
-# they're gitignored).
-step_refresh_tree() {
-  local unix_root="${UNIX_REPO:-$HOME/git/unix}"
-  local out="$SCRIPT_DIR/data/folder-tree.txt"
-  [ -d "$unix_root" ] || { errlog "refresh-tree: $unix_root not found"; exit 1; }
-  mkdir -p "$(dirname "$out")"
-
-  {
-    echo "${unix_root##*/}/"
-    # Find all ea_* sibling dirs at depth 1, sorted.
-    local sibs=()
-    while IFS= read -r d; do sibs+=("$d"); done < <(
-      find "$unix_root" -maxdepth 1 -type d -name 'ea_*' -printf '%f\n' | sort
-    )
-    local n="${#sibs[@]}"
-    local i=0
-    for sib in "${sibs[@]}"; do
-      i=$((i + 1))
-      local last1="false"; [ "$i" = "$n" ] && last1="true"
-      local head1="├── "; [ "$last1" = "true" ] && head1="└── "
-      echo "${head1}${sib}/"
-      # Depth-2 children of this sibling, skipping dotfiles + common
-      # build/output dirs.
-      local children=()
-      # Skip the parent's own name as a child — guards against the
-      # accidental doubly-nested ea_cloud-superapp/ea_cloud-superapp/
-      # (empty leftover from an old sync experiment) showing up here.
-      while IFS= read -r c; do children+=("$c"); done < <(
-        find "$unix_root/$sib" -mindepth 1 -maxdepth 1 -type d \
-          ! -name '.*' ! -name 'build' ! -name 'dist' ! -name 'node_modules' \
-          ! -name '.gradle' ! -name '.result' \
-          ! -name "$sib" -printf '%f\n' | sort
-      )
-      local m="${#children[@]}"
-      local j=0
-      local prefix2="│   "; [ "$last1" = "true" ] && prefix2="    "
-      for c in "${children[@]}"; do
-        j=$((j + 1))
-        local last2="false"; [ "$j" = "$m" ] && last2="true"
-        local head2="├── "; [ "$last2" = "true" ] && head2="└── "
-        echo "${prefix2}${head2}${c}/"
-        # L3 grand-children — direct sub-dirs of this depth-2 dir.
-        # Skip the same set of build/output dirs as depth-2.
-        local grand=()
-        while IFS= read -r g; do grand+=("$g"); done < <(
-          find "$unix_root/$sib/$c" -mindepth 1 -maxdepth 1 -type d \
-            ! -name '.*' ! -name 'build' ! -name 'dist' ! -name 'node_modules' \
-            ! -name '.gradle' ! -name '.result' -printf '%f\n' | sort
-        )
-        local p="${#grand[@]}"
-        local k=0
-        local prefix3="${prefix2}│   "; [ "$last2" = "true" ] && prefix3="${prefix2}    "
-        for g in "${grand[@]}"; do
-          k=$((k + 1))
-          local head3="├── "; [ "$k" = "$p" ] && head3="└── "
-          echo "${prefix3}${head3}${g}/"
-        done
-      done
-    done
-  } > "$out"
-
-  log "refresh-tree: wrote $out ($(wc -l < "$out") lines)"
-}
-
 case "$CMD" in
   build)      step_build ;;
   release)    step_release ;;
@@ -636,7 +565,6 @@ case "$CMD" in
   gh-release)   step_gh_release ;;
   sync-qrcodes) step_sync_qrcodes ;;
   sync-net)     step_sync_net ;;
-  refresh-tree) step_refresh_tree ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;
