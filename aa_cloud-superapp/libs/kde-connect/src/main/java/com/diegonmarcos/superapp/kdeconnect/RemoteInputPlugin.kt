@@ -27,22 +27,3 @@ object RemoteInputPlugin : KdePlugin {
     /** KDE special keys: 1=Backspace, 12=Return, 13=Esc … (KeyListenerView map). */
     fun specialKey(code: Int) = NetworkPacket.of(PKT) { put("specialKey", code) }
 }
-
-/** kdeconnect.remotekeyboard.request — advertise the dedicated remote-keyboard
- *  capability too; key delivery rides the mousepad `key` field above. */
-object RemoteKeyboardPlugin : KdePlugin {
-    override val id = "remotekeyboard"
-    override val incoming = setOf("kdeconnect.remotekeyboard.echo")
-    override val outgoing = setOf("kdeconnect.remotekeyboard.request")
-    override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket) = true
-}
-
-/** kdeconnect.bigscreen.stt — push a line of text (or dictated speech) to a
- *  Plasma Big Screen. */
-object BigScreenPlugin : KdePlugin {
-    override val id = "bigscreen"
-    override val incoming = emptySet<String>()
-    override val outgoing = setOf("kdeconnect.bigscreen.stt")
-    override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket) = true
-    fun stt(content: String) = NetworkPacket.of("kdeconnect.bigscreen.stt") { put("content", content) }
-}
