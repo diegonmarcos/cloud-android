@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import androidx.fragment.app.Fragment
+import com.diegonmarcos.superapp.ai.AiFragment
 import com.diegonmarcos.superapp.health.HealthFragment
 import com.diegonmarcos.superapp.chat.ChatPages
 import com.diegonmarcos.superapp.mail.MailPages

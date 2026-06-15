@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.ai
 
 import android.content.Context
 import android.graphics.Typeface
