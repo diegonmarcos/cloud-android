@@ -1845,6 +1845,11 @@
             "icon": "ic_settings"
           },
           {
+            "id": "kde",
+            "label": "KDE",
+            "icon": "ic_kde"
+          },
+          {
             "id": "ai",
             "label": "AI",
             "icon": "ic_ai_sparkle"
@@ -1865,11 +1870,6 @@
             "label": "Update",
             "icon": "ic_refresh",
             "action": "action:check_updates"
-          },
-          {
-            "id": "kde",
-            "label": "KDE",
-            "icon": "ic_kde"
           },
           {
             "id": "about",
@@ -3716,7 +3716,7 @@
         "tiles": []
       },
       {
-        "_doc": "Configs Home-Apps group — DATA-DRIVEN. tiles_from_section pulls every page declared on sections[config].pages (Profile · AI · Update · Import · Launcher · About; new pages flow in automatically). The explicit `tiles` field carries cross-section shortcuts the derived list can't reach — today just WireGuard, which lives in its own bottom-nav section but the user wants reachable from the Configs row.",
+        "_doc": "Configs Home-Apps group — DATA-DRIVEN. tiles_from_section='config' pulls every page from sections[config].pages in array order — that array is the single source of truth, NEVER re-listed here (an enumerated copy drifts and lies). The explicit `tiles` field adds cross-section shortcuts the derived list can't reach (WireGuard lives in its own section:wg), each positioned declaratively by insert_after_id.",
         "title": "Configs",
         "scroll": "horizontal",
         "tiles_from_section": "config",
