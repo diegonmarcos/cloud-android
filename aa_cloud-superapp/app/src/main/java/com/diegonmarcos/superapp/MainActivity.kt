@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.network.WgState
 import com.diegonmarcos.superapp.profile.BusinessCardFragment
 import com.diegonmarcos.superapp.media.MusicControlsPopup
 import com.diegonmarcos.superapp.media.NowPlayingMonitor

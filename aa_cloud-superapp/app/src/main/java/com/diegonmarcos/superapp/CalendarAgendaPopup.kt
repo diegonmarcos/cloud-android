@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.network.NetworkInfoPopup
 
 import android.content.Context
 import android.graphics.Color

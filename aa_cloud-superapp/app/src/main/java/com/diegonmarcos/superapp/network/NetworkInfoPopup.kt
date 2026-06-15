@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.network
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager

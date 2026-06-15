@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.network.WgState
+import com.diegonmarcos.superapp.network.WireGuardPrefs
 import com.diegonmarcos.superapp.profile.ProfilePrefs
 
 import android.content.ClipData

@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.network
 
 import android.content.Context
 import com.wireguard.android.backend.GoBackend

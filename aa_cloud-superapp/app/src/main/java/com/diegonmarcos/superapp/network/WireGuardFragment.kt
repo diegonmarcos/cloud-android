@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.network
 import com.diegonmarcos.superapp.profile.ProfileFragment
 
 import android.app.Activity
