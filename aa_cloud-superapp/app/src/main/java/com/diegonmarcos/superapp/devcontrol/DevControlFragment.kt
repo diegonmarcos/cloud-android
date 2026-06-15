@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.profile.ProfilePrefs
 
 import android.content.ClipData
 import android.content.ClipboardManager

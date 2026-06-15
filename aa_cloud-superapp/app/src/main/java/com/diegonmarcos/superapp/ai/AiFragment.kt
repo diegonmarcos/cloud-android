@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.ai
+import com.diegonmarcos.superapp.profile.ProfileFragment
 
 import android.content.Context
 import android.graphics.Typeface

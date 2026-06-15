@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.profile.ProfilePrefs
 
 import android.os.Bundle
 import android.view.LayoutInflater

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.profile.ProfileFragment
 
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.ai.AiFragment

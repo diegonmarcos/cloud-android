@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.profile.ProfileFragment
 
 import android.app.Activity
 import android.content.Intent

@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.profile
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
