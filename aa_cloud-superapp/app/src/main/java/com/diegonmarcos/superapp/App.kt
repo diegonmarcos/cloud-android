@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.system.Trace
+import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.superapp.system.AppProcessUptime
 import com.diegonmarcos.superapp.battery.PowerStateReceiver
 import com.diegonmarcos.superapp.battery.BatterySessionWorker
 import com.diegonmarcos.superapp.battery.BatterySessionStats

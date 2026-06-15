@@ -193,7 +193,7 @@
              wipe / reset warnings. BIND_DEVICE_ADMIN is signature-level;
              the receiver MUST require it to be a valid admin target. -->
         <receiver
-            android:name=".LockScreenAdminReceiver"
+            android:name=".system.LockScreenAdminReceiver"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:exported="true">
@@ -216,7 +216,7 @@
              scraping, no gestures) lives in
              res/xml/lock_screen_accessibility_service.xml. -->
         <service
-            android:name=".LockScreenAccessibilityService"
+            android:name=".system.LockScreenAccessibilityService"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false">

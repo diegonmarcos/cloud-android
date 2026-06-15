@@ -1,6 +1,6 @@
 package com.diegonmarcos.superapp.network
-import com.diegonmarcos.superapp.Sections
-import com.diegonmarcos.superapp.SystemInfoPopup
+import com.diegonmarcos.superapp.ui.SystemInfoPopup
+import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.battery.SysfsProc
 import com.diegonmarcos.superapp.battery.BatterySessionStats
 import com.diegonmarcos.superapp.battery.BatteryEstimatePopup

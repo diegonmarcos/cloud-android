@@ -1,6 +1,6 @@
 package com.diegonmarcos.superapp.cloud
+import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.Sections
 
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle

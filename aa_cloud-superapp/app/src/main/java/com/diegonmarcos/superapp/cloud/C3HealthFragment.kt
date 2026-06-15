@@ -1,7 +1,7 @@
 package com.diegonmarcos.superapp.cloud
-import com.diegonmarcos.superapp.AggregatorStackFragment
+import com.diegonmarcos.superapp.launcher.Sections
+import com.diegonmarcos.superapp.launcher.AggregatorStackFragment
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.Sections
 
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable

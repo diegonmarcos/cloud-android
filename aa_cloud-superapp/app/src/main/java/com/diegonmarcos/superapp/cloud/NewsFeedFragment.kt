@@ -1,8 +1,8 @@
 package com.diegonmarcos.superapp.cloud
+import com.diegonmarcos.superapp.launcher.TileGridFragment
+import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.Sections
-import com.diegonmarcos.superapp.TileGridFragment
 
 import android.graphics.Typeface
 import android.os.Bundle

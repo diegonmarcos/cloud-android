@@ -1,8 +1,12 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.system.Trace
+import com.diegonmarcos.superapp.system.ScreenLocker
+import com.diegonmarcos.superapp.system.PermAskTracker
+import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.superapp.system.AppProcessUptime
+import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.App
-import com.diegonmarcos.superapp.CrashLogger
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.Trace
 import com.diegonmarcos.superapp.floatingnav.FloatingNavService
 import com.diegonmarcos.superapp.battery.SysfsProc
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
@@ -29,12 +33,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.diegonmarcos.superapp.AppProcessUptime
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
-import com.diegonmarcos.superapp.PermAskTracker
-import com.diegonmarcos.superapp.ScreenLocker
-import com.diegonmarcos.superapp.Sections
 import com.diegonmarcos.superapp.health.HealthConnectGateway
 import com.diegonmarcos.superapp.health.HealthMetrics
 import com.wireguard.android.backend.Tunnel

@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp.floatingnav
+import com.diegonmarcos.superapp.system.ScreenLocker
+import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.MainActivity
 
 import android.app.Notification
@@ -25,7 +27,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.Sections
 import com.diegonmarcos.superapp.updater.Updater
 
 /**

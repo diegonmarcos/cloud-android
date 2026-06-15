@@ -34,7 +34,7 @@
              live. On non-home pages most fragments overlay opaque
              content so the galaxy only peeks through transparent zones
              (the system bars, fragment-transition fade, etc.). -->
-        <com.diegonmarcos.superapp.GalaxyBackdropView
+        <com.diegonmarcos.superapp.ui.GalaxyBackdropView
             android:id="@+id/galaxy_backdrop"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -81,7 +81,7 @@
              status bar used to live before MainActivity hid it).
              Default visibility is gone; MainActivity.applyLauncherChrome
              flips it on per the (isLauncher, theme) state. -->
-        <com.diegonmarcos.superapp.LauncherStatusStripView
+        <com.diegonmarcos.superapp.launcher.LauncherStatusStripView
             android:id="@+id/launcher_status_strip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -146,7 +146,7 @@
                      carrier, producing a subtle beating effect that
                      doesn't compete with the marquee text. Self-managing
                      animator (onAttachedToWindow / onDetachedFromWindow). -->
-                <com.diegonmarcos.superapp.WaveLineView
+                <com.diegonmarcos.superapp.ui.WaveLineView
                     android:id="@+id/music_playing_wave"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -218,7 +218,7 @@
                      refreshDynamicIsland's findViewById<TextView>
                      short-circuits gracefully (returns null → early
                      return) without any code change. -->
-                <com.diegonmarcos.superapp.IslandWaveView
+                <com.diegonmarcos.superapp.ui.IslandWaveView
                     android:id="@+id/dynamic_island_wave"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -231,7 +231,7 @@
                      match_parent so it covers the island exactly.
                      clickable=false so taps pass through to the parent
                      island FrameLayout's notification-center handler. -->
-                <com.diegonmarcos.superapp.PrismaticShimmerView
+                <com.diegonmarcos.superapp.ui.PrismaticShimmerView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:clickable="false"

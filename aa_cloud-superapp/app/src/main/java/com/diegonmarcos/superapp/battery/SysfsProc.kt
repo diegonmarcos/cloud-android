@@ -1,5 +1,5 @@
 package com.diegonmarcos.superapp.battery
-import com.diegonmarcos.superapp.SystemInfoPopup
+import com.diegonmarcos.superapp.ui.SystemInfoPopup
 
 import java.io.File
 

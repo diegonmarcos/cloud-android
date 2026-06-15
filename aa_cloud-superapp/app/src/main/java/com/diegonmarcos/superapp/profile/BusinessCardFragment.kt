@@ -1,5 +1,5 @@
 package com.diegonmarcos.superapp.profile
-import com.diegonmarcos.superapp.Haptics
+import com.diegonmarcos.superapp.ui.Haptics
 import com.diegonmarcos.superapp.R
 
 import android.graphics.Bitmap
