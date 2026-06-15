@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.rss.RssFeedFragment
 import com.diegonmarcos.superapp.cloud.CalendarMonthFragment
 import com.diegonmarcos.superapp.cloud.CalendarAgendaFragment
 import com.diegonmarcos.superapp.cloud.TasksFragment

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.rss.RssFeedFragment
 import com.diegonmarcos.superapp.apps.SuitePhoneAppsFragment
 import com.diegonmarcos.superapp.cloud.NewsFeedFragment
 
