@@ -111,7 +111,7 @@
         android:allowBackup="false">
         <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
         <receiver
-            android:name=".KdeQuickActionReceiver"
+            android:name=".notificationcenter.KdeQuickActionReceiver"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.notificationcenter
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,6 +11,8 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
+import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectConfig
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectManager
 import com.diegonmarcos.superapp.kdeconnect.KdeIdentity

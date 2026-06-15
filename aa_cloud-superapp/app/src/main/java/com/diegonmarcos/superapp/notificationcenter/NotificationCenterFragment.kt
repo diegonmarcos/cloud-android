@@ -1,5 +1,6 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.notificationcenter
 
+import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectConfig
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectManager

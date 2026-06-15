@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp
 
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
+import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
 
 import com.diegonmarcos.superapp.core.SuppressHorizontalSwipe
 

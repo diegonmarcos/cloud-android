@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.devcontrol.DevControlServer
+import com.diegonmarcos.superapp.notificationcenter.KdeStatusNotifier
 import com.google.android.material.color.DynamicColors
 
 /**
