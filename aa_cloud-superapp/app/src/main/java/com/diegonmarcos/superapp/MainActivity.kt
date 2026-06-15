@@ -125,6 +125,7 @@ class MainActivity : AppCompatActivity(),
     private val TAG = "MainActivity"
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var bottomNav: BottomNavigationView
+    private lateinit var toolbarFx: com.diegonmarcos.superapp.launcher.LauncherToolbarFx
     private lateinit var drawerTabs: TabLayout
     private lateinit var drawerPageTabs: TabLayout
 
@@ -351,9 +352,8 @@ class MainActivity : AppCompatActivity(),
             }
 
             installNavSwipeGesture()
-            installHomeLongPressFan()
-            installTooltipConsumer()
-            installHamburgerJitter()
+            toolbarFx = LauncherToolbarFx(this, bottomNav) { onTileClicked(it) }
+            toolbarFx.install()
 
             Updater.start(applicationContext)
             Trace.i(TAG, "onCreate done")
@@ -541,276 +541,6 @@ class MainActivity : AppCompatActivity(),
         return super.dispatchTouchEvent(ev)
     }
 
-    /**
-     * Long-press of the Home bottom-nav slot opens the [HomeFanMenu] —
-     * a folder-widget-style overlay with two icons (Configs, Tabs).
-     * BottomNavigationView doesn't have a per-item long-press hook,
-     * so we install a touch listener that watches for a press lasting
-     * >500ms inside the home tab's hit-rect and, when it fires, throws
-     * up the fan. The normal tap path still works because we never
-     * consume the event (return false).
-     */
-    /**
-     * iOS-style continuous press-drag-release on the Home slot:
-     *   • Press + hold ≥ 380ms inside the Home tab area → fan opens
-     *   • Without lifting, slide finger over Tabs (left) or Configs (right)
-     *   • Release ON a bubble → fires its action
-     *   • Release elsewhere → dismiss without commit
-     *
-     * BottomNavigationView's own click dispatcher is preserved for short
-     * taps — we only start consuming MotionEvents AFTER the long-press
-     * timer fires (return false until then).
-     */
-    private fun installHomeLongPressFan() {
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-        var pending: Runnable? = null
-        var fanCtrl: HomeFanMenu.Controller? = null
-        var downX = 0f; var downY = 0f
-
-        // BNV's inner BottomNavigationItemView captures touches before our
-        // listener on the container fires, so we attach to the Home child
-        // directly. post {} ensures the BNV has laid out its menu views.
-        bottomNav.post {
-            val homeView = findHomeNavView()
-            if (homeView == null) {
-                Trace.w(TAG, "fan install: no homeView — long-press disabled")
-                return@post
-            }
-            Trace.i(TAG, "fan install: attaching listener to home item view")
-            attachHomeFanTouchListener(homeView, handler,
-                getPending = { pending }, setPending = { pending = it },
-                getFanCtrl = { fanCtrl }, setFanCtrl = { fanCtrl = it },
-                getDownX = { downX }, setDownX = { downX = it },
-                getDownY = { downY }, setDownY = { downY = it })
-        }
-    }
-
-    @Suppress("LongParameterList")
-    private fun attachHomeFanTouchListener(
-        homeView: View,
-        handler: android.os.Handler,
-        getPending: () -> Runnable?, setPending: (Runnable?) -> Unit,
-        getFanCtrl: () -> HomeFanMenu.Controller?, setFanCtrl: (HomeFanMenu.Controller?) -> Unit,
-        getDownX: () -> Float, setDownX: (Float) -> Unit,
-        getDownY: () -> Float, setDownY: (Float) -> Unit,
-    ) {
-        homeView.setOnTouchListener { _, ev ->
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    Trace.i(TAG, "fan DOWN x=${ev.x} y=${ev.y}")
-                    setDownX(ev.x); setDownY(ev.y)
-                    getPending()?.let { handler.removeCallbacks(it) }
-                    setFanCtrl(null)
-                    val newPending = Runnable {
-                        Trace.i(TAG, "fan FIRE — long-press timer reached")
-                        homeView.performHapticFeedback(
-                            android.view.HapticFeedbackConstants.LONG_PRESS)
-                        setFanCtrl(HomeFanMenu.show(homeView) { target -> onTileClicked(target) })
-                    }
-                    setPending(newPending)
-                    handler.postDelayed(newPending, 380)
-                    false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val ctrl = getFanCtrl()
-                    if (ctrl != null) {
-                        ctrl.updateFinger(ev.rawX, ev.rawY)
-                        true
-                    } else {
-                        if (Math.abs(ev.x - getDownX()) > 140 || Math.abs(ev.y - getDownY()) > 140) {
-                            Trace.i(TAG, "fan MOVE — drift cancel dx=${ev.x - getDownX()} dy=${ev.y - getDownY()}")
-                            getPending()?.let { handler.removeCallbacks(it) }
-                            setPending(null)
-                        }
-                        false
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    Trace.i(TAG, "fan UP/CANCEL fanCtrl=${getFanCtrl() != null}")
-                    getPending()?.let { handler.removeCallbacks(it) }
-                    setPending(null)
-                    val c = getFanCtrl()
-                    setFanCtrl(null)
-                    if (c != null) {
-                        if (ev.actionMasked == MotionEvent.ACTION_UP) c.commit() else c.dismiss()
-                        true
-                    } else {
-                        false
-                    }
-                }
-                else -> false
-            }
-        }
-    }
-
-    /** Fallback for OEMs that ignore android:tooltipFrameBackground in
-     *  the theme (Samsung One UI). For just the BottomNav item views +
-     *  Toolbar action items, register an OnLongClickListener that
-     *  returns true → View.performLongClick() then skips the tooltip
-     *  branch entirely.
-     *
-     *  Why this DOESN'T cause the lag we saw earlier: setting
-     *  OnLongClickListener doesn't make the framework wait the full
-     *  long-press timeout on ACTION_UP — short taps still register
-     *  immediately. The earlier lag came from OnGlobalLayoutListener
-     *  walking the tree on every layout pass, NOT from this listener
-     *  itself. Hooked via OnHierarchyChangeListener so we re-attach
-     *  only on actual structural changes (BNV menu rebind, toolbar
-     *  invalidate) — fires a handful of times, never per-frame. */
-    private fun installTooltipConsumer() {
-        val consumer = View.OnLongClickListener {
-            // Returning true tells the framework the long-press is
-            // handled, so it doesn't fall through to the tooltip path.
-            Trace.i(TAG, "tooltip consumer fired on view id=${it.id}")
-            true
-        }
-        fun applyToChildren(vg: ViewGroup) {
-            for (i in 0 until vg.childCount) {
-                vg.getChildAt(i).setOnLongClickListener(consumer)
-            }
-        }
-        val hookListener = object : ViewGroup.OnHierarchyChangeListener {
-            override fun onChildViewAdded(parent: View?, child: View?) {
-                child?.setOnLongClickListener(consumer)
-                Trace.i(TAG, "tooltip-consumer: child added to ${parent?.javaClass?.simpleName}")
-            }
-            override fun onChildViewRemoved(parent: View?, child: View?) = Unit
-        }
-        // BNV: items live inside the menu view (getChildAt(0)).
-        bottomNav.post {
-            (bottomNav.getChildAt(0) as? ViewGroup)?.let {
-                it.setOnHierarchyChangeListener(hookListener)
-                applyToChildren(it)
-                Trace.i(TAG, "tooltip-consumer: attached to BNV menu view, n=${it.childCount}")
-            }
-        }
-        // Toolbar action items live inside an inner ActionMenuView. We
-        // can't easily reach it before the toolbar inflates the menu, so
-        // attach via the toolbar itself + walk one level deep on each
-        // child-add (the ActionMenuView is itself a direct toolbar child).
-        val toolbar = findViewById<View>(R.id.toolbar) as? ViewGroup ?: return
-        toolbar.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
-            override fun onChildViewAdded(parent: View?, child: View?) {
-                child?.setOnLongClickListener(consumer)
-                if (child is ViewGroup) {
-                    child.setOnHierarchyChangeListener(hookListener)
-                    applyToChildren(child)
-                }
-                Trace.i(TAG, "tooltip-consumer: child added to toolbar (${child?.javaClass?.simpleName})")
-            }
-            override fun onChildViewRemoved(parent: View?, child: View?) = Unit
-        })
-        applyToChildren(toolbar)
-    }
-
-    // ── hamburger jitter ─────────────────────────────────────────────────
-    //
-    // The drawer-toggle hamburger sits in the same spot for hours of use
-    // and never has anything to "say". Give it a tiny lifelike tic — a
-    // random, short, low-amplitude shake every 3–5 seconds — so the
-    // toolbar feels alive without being annoying. Animation is the
-    // ImageButton's transform only (translation + rotation), nothing
-    // about hit-test or click handling changes.
-    //
-    // Lifecycle: scheduled in onResume, cancelled in onPause — no work
-    // happens while the activity is backgrounded.
-
-    private val jitterHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var jitterRunnable: Runnable? = null
-    private val jitterRng = java.util.Random()
-
-    /** Hook the runnable into the lifecycle-tracked toolbar. Idempotent. */
-    private fun installHamburgerJitter() {
-        // Nothing to do here at construction time — the scheduling is
-        // driven by onResume / onPause so the loop pauses cleanly when
-        // the activity is backgrounded. Kept as a stub for symmetry with
-        // installNavSwipeGesture / installHomeLongPressFan / install-
-        // TooltipConsumer.
-    }
-
-    private fun scheduleHamburgerJitter() {
-        cancelHamburgerJitter()
-        val toolbar: com.google.android.material.appbar.MaterialToolbar =
-            findViewById(R.id.toolbar) ?: return
-        // Wait one layout pass so the navigation ImageButton is in the
-        // toolbar's child list.
-        toolbar.post {
-            val navIcon = findToolbarNavIcon(toolbar) ?: return@post
-            postNextJitter(navIcon)
-        }
-    }
-
-    private fun cancelHamburgerJitter() {
-        jitterRunnable?.let { jitterHandler.removeCallbacks(it) }
-        jitterRunnable = null
-    }
-
-    private fun findToolbarNavIcon(toolbar: ViewGroup): View? {
-        // The drawer-toggle ImageButton is the toolbar's first child whose
-        // drawable IS the navigation icon. Defending against future child
-        // ordering by matching on (ImageButton, drawable == nav icon).
-        val navDrawable =
-            (toolbar as? com.google.android.material.appbar.MaterialToolbar)?.navigationIcon
-        for (i in 0 until toolbar.childCount) {
-            val v = toolbar.getChildAt(i)
-            if (v is android.widget.ImageButton) {
-                if (navDrawable == null || v.drawable == navDrawable) return v
-            }
-        }
-        return null
-    }
-
-    private fun postNextJitter(view: View) {
-        // Random 3–5 second pause between tics.
-        val delayMs = 3000L + jitterRng.nextInt(2000)
-        jitterRunnable = Runnable {
-            playHamburgerJitter(view)
-            postNextJitter(view)
-        }
-        jitterHandler.postDelayed(jitterRunnable!!, delayMs)
-    }
-
-    private fun playHamburgerJitter(view: View) {
-        // Three flavours rolled randomly so it doesn't read as a loop:
-        //   0 → side-shake (translateX)
-        //   1 → head-shake (rotation)
-        //   2 → mixed jitter (both)
-        val flavour = jitterRng.nextInt(3)
-        val durMs = 240L + jitterRng.nextInt(160) // 240–400ms
-        val rotPeak = (jitterRng.nextFloat() * 8f + 4f) * if (jitterRng.nextBoolean()) 1f else -1f
-        val xPeak = (jitterRng.nextFloat() * 4f + 2f) * if (jitterRng.nextBoolean()) 1f else -1f
-        val animators = mutableListOf<android.animation.ObjectAnimator>()
-        if (flavour != 1) {
-            animators += android.animation.ObjectAnimator.ofFloat(
-                view, "translationX",
-                0f, xPeak, -xPeak * 0.6f, xPeak * 0.25f, 0f,
-            ).apply { duration = durMs }
-        }
-        if (flavour != 0) {
-            animators += android.animation.ObjectAnimator.ofFloat(
-                view, "rotation",
-                0f, rotPeak, -rotPeak * 0.6f, rotPeak * 0.25f, 0f,
-            ).apply { duration = durMs }
-        }
-        android.animation.AnimatorSet().apply {
-            playTogether(*animators.toTypedArray())
-            start()
-        }
-    }
-
-    /** Best-effort hit-test: return the View of the Home menu item
-     *  inside BottomNavigationView, or null if the internal hierarchy
-     *  isn't what we expect. */
-    private fun findHomeNavView(): View? {
-        val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: return null
-        val items = bottomNav.menu
-        for (i in 0 until items.size()) {
-            if (items.getItem(i).itemId == R.id.nav_home) {
-                return menuView.getChildAt(i)
-            }
-        }
-        return null
-    }
 
     // ── bottom nav ────────────────────────────────────────────────────────
 
@@ -1975,7 +1705,7 @@ class MainActivity : AppCompatActivity(),
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener { state ->
             runOnUiThread { handleUpdateState(state) }
         }
-        scheduleHamburgerJitter()
+        if (::toolbarFx.isInitialized) toolbarFx.resume()
         // Re-apply launcher chrome — user may have toggled us as the
         // default Home handler from system Settings while we were
         // backgrounded, and the system status bar / our strip need to
@@ -2079,7 +1809,7 @@ class MainActivity : AppCompatActivity(),
         com.diegonmarcos.superapp.floatingnav.FloatingNavService.hostForeground = false
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
-        cancelHamburgerJitter()
+        if (::toolbarFx.isInitialized) toolbarFx.pause()
         nowPlayingMonitor?.stop()
         musicControlsPopup?.dismiss()
         energySamplerHandler.removeCallbacks(energySamplerRunnable)
