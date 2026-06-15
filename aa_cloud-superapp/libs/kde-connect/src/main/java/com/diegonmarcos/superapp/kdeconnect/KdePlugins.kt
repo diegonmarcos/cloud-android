@@ -80,7 +80,7 @@ object ClipboardPlugin : KdePlugin {
 
 /** kdeconnect.findmyphone.request — ring + vibrate so the user can locate it. */
 object FindMyPhonePlugin : KdePlugin {
-    override val incoming = setOf(NetworkPacket.TYPE_FINDMYPHONE)
+    override val incoming = setOf(NetworkPacket.TYPE_FINDMYPHONE, "kdeconnect.findthisdevice")
     override val outgoing = setOf(NetworkPacket.TYPE_FINDMYPHONE)   // we can ring the desktop too
     /** Ask the paired device to ring (find-this-device). */
     fun ring() = NetworkPacket.of(NetworkPacket.TYPE_FINDMYPHONE) {}
