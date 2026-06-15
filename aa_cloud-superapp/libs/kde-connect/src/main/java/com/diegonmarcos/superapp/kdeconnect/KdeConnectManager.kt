@@ -139,8 +139,23 @@ object KdeConnectManager : KdeLink.Listener {
         // desktop. Auto-requesting on every connect double-fired requests and
         // fed the pair loop.
         emit(deviceId, host, if (alreadyPaired) State.PAIRED else State.NEEDS_PAIRING, name)
-        if (alreadyPaired) KdePluginRegistry.linkReady(app, link)
+        // Do NOT push our plugin state on a merely-cached "paired" belief. Per the
+        // KDE daemon (device.cpp: a non-pair packet from a device IT considers
+        // unpaired triggers unpair()+ignore), a speculative onLinkReady burst on a
+        // desync (we think paired, desktop doesn't — e.g. after an unpair or a
+        // daemon restart) makes the desktop drop us. We fire onLinkReady ONLY once
+        // the desktop proves it trusts us: it accepts/【sends】 a packet (see
+        // onPacket / handlePair → fireLinkReadyOnce). The desktop pushes its own
+        // battery/connectivity on link-up, so this resolves promptly.
         return deviceId
+    }
+
+    /** Plugin onLinkReady must fire at most once per live link, and ONLY after the
+     *  desktop has demonstrated it trusts us (a received packet or a completed
+     *  pair). Tracked per deviceId; cleared on disconnect. */
+    private val linkReadyFired = ConcurrentHashMap.newKeySet<String>()
+    private fun fireLinkReadyOnce(link: KdeLink) {
+        if (linkReadyFired.add(link.peerDeviceId)) KdePluginRegistry.linkReady(app, link)
     }
 
     /** Request pairing (v8): {pair:true, timestamp:<unix seconds>}. The peer
@@ -212,6 +227,9 @@ object KdeConnectManager : KdeLink.Listener {
         when (packet.type) {
             NetworkPacket.TYPE_PAIR -> handlePair(link, packet)
             else -> if (trust.isPaired(link.peerDeviceId)) {
+                // The desktop is sending us a non-pair packet → it treats us as
+                // paired → it's now SAFE to push our own plugin state.
+                fireLinkReadyOnce(link)
                 KdePluginRegistry.dispatch(app, link, packet)
             } else Log.i(TAG, "ignoring ${packet.type} from unpaired ${link.peerDeviceId}")
         }
@@ -219,6 +237,7 @@ object KdeConnectManager : KdeLink.Listener {
 
     override fun onDisconnect(link: KdeLink) {
         links.remove(link.peerDeviceId, link)
+        linkReadyFired.remove(link.peerDeviceId)   // re-arm onLinkReady for the next link
         emit(link.peerDeviceId, null, State.DISCONNECTED, "link closed")
     }
 
@@ -241,7 +260,7 @@ object KdeConnectManager : KdeLink.Listener {
             }
             val key = verificationKey(id)
             emit(id, null, State.PAIRED, if (key != null) "${link.peerName} · key $key" else link.peerName)
-            KdePluginRegistry.linkReady(app, link)
+            fireLinkReadyOnce(link)   // pairing confirmed this session → safe to push state
         } else {
             trust.untrust(id); pairRequested -= id
             emit(id, null, State.DISCONNECTED, "unpaired/rejected by ${link.peerName}")
