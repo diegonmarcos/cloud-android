@@ -4667,7 +4667,7 @@
         { "id": "presenter",           "name": "Presentation remote",  "packet": "kdeconnect.presenter",            "dir": "out",  "status": "active" },
         { "id": "lockdevice",          "name": "Lock device",          "packet": "kdeconnect.lock",                 "dir": "both", "status": "active" },
         { "id": "connectivity_report", "name": "Connectivity report",  "packet": "kdeconnect.connectivity_report",  "dir": "out",  "status": "active" },
-        { "id": "contacts",            "name": "Contacts sync",        "packet": "kdeconnect.contacts",             "dir": "out",  "status": "active" },
+        { "id": "contacts",            "name": "Contacts sync",        "packet": "kdeconnect.contacts.response_uids_timestamps", "dir": "out",  "status": "active" },
         { "id": "sftp",                "name": "Remote filesystem",    "packet": "kdeconnect.sftp",                 "dir": "both", "status": "active" },
         { "id": "systemvolume",        "name": "System volume",        "packet": "kdeconnect.systemvolume",         "dir": "both", "status": "active" },
         { "id": "remotesystemvolume",  "name": "Remote volume",        "packet": "kdeconnect.systemvolume.request", "dir": "out",  "status": "active" },

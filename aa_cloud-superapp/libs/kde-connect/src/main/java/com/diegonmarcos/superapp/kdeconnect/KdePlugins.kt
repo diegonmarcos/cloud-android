@@ -37,6 +37,7 @@ object KdePluginRegistry {
         ContactsPlugin, ConnectivityReportPlugin, LockDevicePlugin, TelephonyPlugin,
         RemoteInputPlugin, RemoteKeyboardPlugin, BigScreenPlugin,
         SmsPlugin, PresenterPlugin, PhotoPlugin, SftpPlugin, VirtualMonitorPlugin, RemoteDesktopPlugin,
+        RemoteSystemVolumePlugin,
     )
     /** Only the user-enabled plugins (default all). */
     private fun enabled(ctx: Context): List<KdePlugin> {

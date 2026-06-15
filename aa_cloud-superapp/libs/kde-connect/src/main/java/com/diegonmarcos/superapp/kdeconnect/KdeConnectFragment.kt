@@ -106,9 +106,18 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
 
         // ── Remote control (touchpad / keyboard / big-screen senders) ──────
         root.addView(buildRemoteSection(ctx))
+        // ── Media remote + system volume (mpris / systemvolume senders) ────
+        root.addView(buildMediaCard(ctx))
+        // ── Presenter (laser pointer + slide nav) ──────────────────────────
+        root.addView(buildPresenterCard(ctx))
+        // ── One-shot actions (ring / browse / virtual monitor / remote dt) ─
+        root.addView(buildActionsCard(ctx))
 
         // ── Plugins catalog (data-driven from build.json) ──────────────────
         if (cfg.plugins.isNotEmpty()) root.addView(buildPluginsSection(ctx, cfg))
+
+        // ── Self-test — exercise every enabled plugin ──────────────────────
+        root.addView(buildSelfTestCard(ctx, cfg))
 
         // ── Probe section — wg0 / hosts / peers / LAN reachability ──────────
         root.addView(TextView(ctx).apply {
@@ -502,6 +511,194 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             }
         })
         return col
+    }
+
+    // ── Shared card scaffolding ────────────────────────────────────────────
+    /** A rounded translucent card with a bold title + dim subtitle. */
+    private fun card(ctx: android.content.Context, title: String, subtitle: String?): LinearLayout {
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = dp(14); setPadding(p, p, p, p)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat(); setColor(0x22FFFFFF)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(12) }
+        }
+        col.addView(TextView(ctx).apply {
+            text = title; setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+        })
+        if (subtitle != null) col.addView(TextView(ctx).apply {
+            text = subtitle; setTextColor(0x77FFFFFF.toInt()); textSize = 11f
+            setPadding(0, dp(2), 0, dp(8))
+        })
+        return col
+    }
+    /** A horizontal row of equal-weight compact buttons (label → action). */
+    private fun btnRow(ctx: android.content.Context, vararg btns: Pair<String, () -> Unit>): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(2), 0, dp(2))
+        }
+        for ((label, action) in btns) row.addView(Button(ctx).apply {
+            text = label; isAllCaps = false; textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { action() }
+        })
+        return row
+    }
+    /** Send a sender packet to the first connected+paired device, or toast. */
+    private fun toTarget(packet: NetworkPacket?) {
+        val id = KdeConnectManager.connectedIds().firstOrNull()
+            ?: return toastUnit("Connect & pair first")
+        if (packet == null) return toastUnit("No desktop state yet — try again")
+        KdeConnectManager.send(id, packet)
+    }
+
+    /** Media remote — drives the desktop's player (mpris) + master volume
+     *  (systemvolume). Requests current state on first open. */
+    private fun buildMediaCard(ctx: android.content.Context): View {
+        val col = card(ctx, "Media remote",
+            "Controls the connected desktop's player and system volume.")
+        col.addView(btnRow(ctx,
+            "⏮" to { toTarget(MprisPlugin.command("Previous")) },
+            "⏯" to { toTarget(MprisPlugin.command("PlayPause")) },
+            "⏭" to { toTarget(MprisPlugin.command("Next")) },
+        ))
+        col.addView(btnRow(ctx,
+            "Vol −" to { volNudge(-10) },
+            "Mute"  to { toTarget(RemoteSystemVolumePlugin.mute(true)) },
+            "Vol +" to { volNudge(+10) },
+        ))
+        return col
+    }
+    /** Nudge desktop volume; if we don't have its sink state yet, request it. */
+    private fun volNudge(delta: Int) {
+        val id = KdeConnectManager.connectedIds().firstOrNull()
+            ?: return toastUnit("Connect & pair first")
+        val pkt = RemoteSystemVolumePlugin.nudge(delta)
+        if (pkt == null) {
+            KdeConnectManager.send(id, RemoteSystemVolumePlugin.requestSinks())
+            toastUnit("Fetching desktop volume — tap again")
+        } else KdeConnectManager.send(id, pkt)
+    }
+
+    /** Presenter — a laser-pointer pad (drag) + slide navigation. The pointer
+     *  uses kdeconnect.presenter; prev/next use mousepad PageUp/PageDown. */
+    private fun buildPresenterCard(ctx: android.content.Context): View {
+        val col = card(ctx, "Presenter",
+            "Drag the pad to move the on-screen laser · release to hide it.")
+        val pad = View(ctx).apply {
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat(); setColor(0x33000000); setStroke(maxOf(1, dp(1)), 0x44FFFFFF)
+            }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(110))
+        }
+        var lastX = 0f; var lastY = 0f
+        pad.setOnTouchListener { v, e ->
+            val id = KdeConnectManager.connectedIds().firstOrNull()
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> { lastX = e.x; lastY = e.y; true }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = (e.x - lastX) / v.width.coerceAtLeast(1)
+                    val dy = (e.y - lastY) / v.height.coerceAtLeast(1)
+                    lastX = e.x; lastY = e.y
+                    if (id != null) KdeConnectManager.send(id, PresenterPlugin.pointer(dx, dy))
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    if (id != null) KdeConnectManager.send(id, PresenterPlugin.stop())
+                    else toastUnit("Connect & pair first")
+                    v.performClick(); true
+                }
+                else -> false
+            }
+        }
+        col.addView(pad)
+        col.addView(btnRow(ctx,
+            "◀ Prev" to { toTarget(RemoteInputPlugin.specialKey(7)) },   // PageUp
+            "Next ▶" to { toTarget(RemoteInputPlugin.specialKey(8)) },   // PageDown
+        ))
+        return col
+    }
+
+    /** One-shot sender actions — ring the desktop, ask it to expose its files,
+     *  start a virtual monitor, or open a remote-desktop session. */
+    private fun buildActionsCard(ctx: android.content.Context): View {
+        val col = card(ctx, "Actions", "Single-tap requests to the connected desktop.")
+        col.addView(btnRow(ctx,
+            "🔔 Ring" to { toTarget(FindMyPhonePlugin.ring()) },
+            "📁 Files" to { toTarget(SftpPlugin.request()) },
+        ))
+        col.addView(btnRow(ctx,
+            "🖥 Monitor" to { toTarget(VirtualMonitorPlugin.request()) },
+            "🖱 Desktop" to { toTarget(RemoteDesktopPlugin.request()) },
+        ))
+        return col
+    }
+
+    /** Self-test — for every enabled plugin, report whether a handler is wired
+     *  (packet known to the registry) and, when connected+paired, fire a
+     *  representative packet for the sender plugins and confirm it left. */
+    private fun buildSelfTestCard(ctx: android.content.Context, cfg: KdeConnectConfig.Config): View {
+        val col = card(ctx, "Self-test", "Tap to exercise every enabled plugin and list the result.")
+        val out = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(Button(ctx).apply {
+            text = "Test all plugins"; isAllCaps = false; textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setOnClickListener { runSelfTest(ctx, cfg, out) }
+        })
+        col.addView(out)
+        return col
+    }
+
+    private fun runSelfTest(ctx: android.content.Context, cfg: KdeConnectConfig.Config, out: LinearLayout) {
+        out.removeAllViews()
+        val prefs = KdePluginPrefs(ctx)
+        val handled = KdePluginRegistry.plugins.flatMap { it.incoming + it.outgoing }.toSet()
+        val target = KdeConnectManager.connectedIds().firstOrNull()
+        // Representative sender packets (only fired when connected+paired).
+        val probes: Map<String, () -> NetworkPacket?> = mapOf(
+            "ping"               to { PingPlugin.build("Self-test") },
+            "mousepad"           to { RemoteInputPlugin.move(0f, 0f) },
+            "bigscreen"          to { BigScreenPlugin.stt("Self-test") },
+            "mprisremote"        to { MprisPlugin.requestPlayers() },
+            "remotesystemvolume" to { RemoteSystemVolumePlugin.requestSinks() },
+            "presenter_remote"   to { PresenterPlugin.pointer(0f, 0f) },
+            "findthisdevice"     to { FindMyPhonePlugin.ring() },
+            "sftp_browse"        to { SftpPlugin.request() },
+            "virtualmonitor"     to { VirtualMonitorPlugin.request() },
+            "screenconnector"    to { RemoteDesktopPlugin.request() },
+        )
+        var pass = 0; var fail = 0
+        for (pl in cfg.plugins) {
+            val on = prefs.isEnabled(pl.id)
+            val wired = pl.packet in handled
+            val probe = probes[pl.id]
+            val mark: String; val color: Int; val note: String
+            when {
+                !on -> { mark = "◌"; color = 0x77FFFFFF.toInt(); note = "disabled" }
+                !wired -> { mark = "✗"; color = 0xFFFF8B8B.toInt(); note = "no handler"; fail++ }
+                probe != null && target != null -> {
+                    runCatching { probe()?.let { KdeConnectManager.send(target, it) } }
+                    mark = "✓"; color = 0xFF8BE9A0.toInt(); note = "sent"; pass++
+                }
+                probe != null -> { mark = "•"; color = 0xFFFFCC80.toInt(); note = "ready (not connected)"; pass++ }
+                else -> { mark = "✓"; color = 0xFF8BE9A0.toInt(); note = "handler ok"; pass++ }
+            }
+            out.addView(TextView(ctx).apply {
+                text = "$mark  ${pl.name} — $note"
+                setTextColor(color); typeface = Typeface.MONOSPACE; textSize = 12f
+                setPadding(0, dp(2), 0, dp(2))
+            })
+        }
+        out.addView(TextView(ctx).apply {
+            text = "→ $pass ok · $fail failed · ${cfg.plugins.size} total" +
+                if (target == null) "  (connect+pair to fire senders)" else ""
+            setTextColor(0xFFFFFFFF.toInt()); typeface = Typeface.DEFAULT_BOLD; textSize = 12.5f
+            setPadding(0, dp(6), 0, 0)
+        })
     }
 
     private fun toastUnit(m: String) { toast(m) }

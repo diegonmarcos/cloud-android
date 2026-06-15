@@ -106,40 +106,95 @@ object PhotoPlugin : KdePlugin {
     }
 }
 
-/** kdeconnect.sftp — the desktop wants to mount the phone filesystem. Running
- *  an on-device SFTP server isn't supported here; acknowledge + notify so the
- *  desktop doesn't hang. */
+/** kdeconnect.sftp — two roles. As a RECEIVER the desktop would mount our
+ *  filesystem (we can't run an SFTP server, so we ack). As a SENDER (the phone
+ *  asks the desktop to expose ITS filesystem) we emit sftp.request and notify;
+ *  a full SFTP client UI is future work. */
 object SftpPlugin : KdePlugin {
     override val id = "sftp"
-    override val incoming = setOf("kdeconnect.sftp.request")
-    override val outgoing = setOf("kdeconnect.sftp")
+    override val incoming = setOf("kdeconnect.sftp.request", "kdeconnect.sftp")
+    override val outgoing = setOf("kdeconnect.sftp", "kdeconnect.sftp.request")
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        if (packet.type == "kdeconnect.sftp") return true   // desktop's mount info — ignore (no client yet)
         link.send(NetworkPacket.of("kdeconnect.sftp") {
             put("errorMessage", "SFTP server not supported on this client yet")
         })
         return true
     }
+    /** Ask the desktop to start its SFTP server so we could browse it. */
+    fun request() = NetworkPacket.of("kdeconnect.sftp.request") { put("startBrowsing", true) }
 }
 
 /** kdeconnect.virtualmonitor — the desktop offers a virtual monitor stream;
- *  displaying it needs a video decoder + surface we don't have yet. Ack. */
+ *  displaying it needs a video decoder + surface we don't have yet. As a sender
+ *  we can still ASK the desktop to start one. */
 object VirtualMonitorPlugin : KdePlugin {
     override val id = "virtualmonitor"
     override val incoming = setOf("kdeconnect.virtualmonitor.request", "kdeconnect.virtualmonitor")
     override val outgoing = setOf("kdeconnect.virtualmonitor.request")
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        if (packet.type == "kdeconnect.virtualmonitor") return true
         link.send(NetworkPacket.of("kdeconnect.virtualmonitor.request") {
             put("failed", "Virtual monitor display not supported on this client yet")
         })
         return true
     }
+    /** Ask the desktop to start a virtual monitor (resolution hint). */
+    fun request() = NetworkPacket.of("kdeconnect.virtualmonitor.request") {
+        put("resolution", "1920x1080"); put("scale", 1.0)
+    }
 }
 
 /** kdeconnect.remotedesktop — Plasma-6 remote desktop (screen + input). Full
- *  streaming isn't implemented; acknowledge the request. */
+ *  streaming isn't implemented; we acknowledge inbound and can request a start. */
 object RemoteDesktopPlugin : KdePlugin {
     override val id = "screenconnector"
-    override val incoming = setOf("kdeconnect.remotedesktop.request")
-    override val outgoing = setOf("kdeconnect.remotedesktop")
+    override val incoming = setOf("kdeconnect.remotedesktop", "kdeconnect.remotedesktop.request")
+    override val outgoing = setOf("kdeconnect.remotedesktop.request")
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket) = true
+    /** Ask the desktop to begin a remote-desktop session. */
+    fun request() = NetworkPacket.of("kdeconnect.remotedesktop.request") { put("requestSession", true) }
+}
+
+/** Remote system volume — the phone controls the DESKTOP's master volume. We
+ *  receive the desktop's sink list (kdeconnect.systemvolume), cache the primary
+ *  sink, and send absolute/mute changes (kdeconnect.systemvolume.request). */
+object RemoteSystemVolumePlugin : KdePlugin {
+    override val id = "remotesystemvolume"
+    override val incoming = setOf("kdeconnect.systemvolume")
+    override val outgoing = setOf("kdeconnect.systemvolume.request")
+
+    data class Sink(val name: String, val volume: Int, val maxVolume: Int, val muted: Boolean)
+    @Volatile var primary: Sink? = null
+        private set
+
+    override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        val sinks = packet.body.optJSONArray("sinkList") ?: return true
+        val s = sinks.optJSONObject(0) ?: return true
+        primary = Sink(
+            name = s.optString("name"),
+            volume = s.optInt("volume"),
+            maxVolume = s.optInt("maxVolume", 100).coerceAtLeast(1),
+            muted = s.optBoolean("muted"),
+        )
+        return true
+    }
+
+    fun requestSinks() = NetworkPacket.of("kdeconnect.systemvolume.request") { put("requestSinks", true) }
+    fun setVolume(raw: Int): NetworkPacket {
+        val s = primary
+        return NetworkPacket.of("kdeconnect.systemvolume.request") {
+            put("name", s?.name ?: "")
+            put("volume", if (s != null) raw.coerceIn(0, s.maxVolume) else raw)
+        }
+    }
+    fun mute(muted: Boolean) = NetworkPacket.of("kdeconnect.systemvolume.request") {
+        put("name", primary?.name ?: ""); put("muted", muted)
+    }
+    /** Nudge the desktop volume by ±step% of its max, from the cached level. */
+    fun nudge(deltaPct: Int): NetworkPacket? {
+        val s = primary ?: return null
+        val step = (s.maxVolume * deltaPct) / 100
+        return setVolume(s.volume + step)
+    }
 }

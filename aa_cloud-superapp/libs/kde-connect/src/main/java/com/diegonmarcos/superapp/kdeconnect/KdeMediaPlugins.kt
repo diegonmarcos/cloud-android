@@ -20,15 +20,40 @@ object MprisPlugin : KdePlugin {
     private const val LISTENER = "com.diegonmarcos.superapp.PhoneNotificationListenerService"
 
     override val id = "mpris"
-    override val incoming = setOf(NetworkPacket.TYPE_MPRIS_REQUEST)
-    override val outgoing = setOf(NetworkPacket.TYPE_MPRIS)
+    override val incoming = setOf(NetworkPacket.TYPE_MPRIS_REQUEST, NetworkPacket.TYPE_MPRIS)
+    override val outgoing = setOf(NetworkPacket.TYPE_MPRIS, NetworkPacket.TYPE_MPRIS_REQUEST)
+
+    /** Sender (remote) builders — control the DESKTOP's player from the phone. */
+    fun command(action: String, player: String? = null) =
+        NetworkPacket.of(NetworkPacket.TYPE_MPRIS_REQUEST) {
+            put("action", action); if (player != null) put("player", player)
+        }
+    fun setRemoteVolume(pct: Int, player: String? = null) =
+        NetworkPacket.of(NetworkPacket.TYPE_MPRIS_REQUEST) {
+            put("setVolume", pct.coerceIn(0, 100)); if (player != null) put("player", player)
+        }
+    fun requestPlayers() =
+        NetworkPacket.of(NetworkPacket.TYPE_MPRIS_REQUEST) { put("requestPlayerList", true) }
 
     override fun onLinkReady(ctx: Context, link: KdeLink) {
         sendPlayerList(ctx, link)
         controllers(ctx).firstOrNull()?.let { sendNowPlaying(ctx, link, it) }
     }
 
+    /** Last now-playing the DESKTOP reported (when we drive it as a remote). */
+    @Volatile var remoteNowPlaying: String = ""
+        private set
+    @Volatile var remotePlayer: String = ""
+        private set
+
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        // Inbound now-playing from the desktop (remote-control view) — cache it.
+        if (packet.type == NetworkPacket.TYPE_MPRIS) {
+            packet.getString("player").takeIf { it.isNotBlank() }?.let { remotePlayer = it }
+            val np = packet.getString("nowPlaying")
+            if (np.isNotBlank()) remoteNowPlaying = np
+            return true
+        }
         if (packet.getBoolean("requestPlayerList")) { sendPlayerList(ctx, link); return true }
         val c = controllerFor(ctx, packet.getString("player")) ?: controllers(ctx).firstOrNull() ?: return true
         when (packet.getString("action")) {
