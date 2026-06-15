@@ -34,7 +34,7 @@ class KdeQuickActionReceiver : BroadcastReceiver() {
             // "share" opens the in-app KDE page directly (an Activity PendingIntent
             // built in KdeStatusNotifier), so it never reaches this receiver.
         }
-        KdeStatusNotifier.refresh()
+        KdeStatusService.refresh(app)
     }
 
     companion object {

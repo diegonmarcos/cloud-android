@@ -282,6 +282,21 @@
                 android:value="Full-screen black screensaver overlay for the Cloud SuperApp launcher" />
         </service>
 
+        <!-- KdeStatusService — pins the persistent "Cloud SA - KDE" status
+             notification via startForeground (parity with FloatingNavService's
+             "Cloud SA - Quick Actions"). type=specialUse: a KDE-Connect
+             connection/pairing status badge doesn't map to a predefined FGS
+             category. Not exported — only App.onCreate / KdeQuickActionReceiver
+             start it. -->
+        <service
+            android:name=".notificationcenter.KdeStatusService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Persistent KDE Connect connection + pairing status notification for the Cloud SuperApp" />
+        </service>
+
         <!-- Shizuku provider — required by the Shizuku client lib so the
              app can talk to the Shizuku server (binder + permission).
              Backs the exact per-app energy attribution (ShizukuEnergy +

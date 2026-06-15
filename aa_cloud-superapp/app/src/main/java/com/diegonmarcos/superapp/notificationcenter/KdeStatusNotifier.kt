@@ -16,94 +16,84 @@ import com.diegonmarcos.superapp.kdeconnect.KdeIdentity
 import com.diegonmarcos.superapp.kdeconnect.KdePluginPrefs
 
 /**
- * Persistent "Cloud SA - KDE" status notification — the ongoing shade entry that
- * mirrors the in-app KDE badge, kept in sync live via
- * [KdeConnectManager.statusObserver] (independent of whichever fragment is on
- * screen). Like the other "Cloud SA -" ongoing notifications (Quick Actions,
- * Alerts, Media), it stays put and refreshes in place.
+ * Builds the persistent "Cloud SA - KDE" status notification — the ongoing
+ * shade entry that mirrors the in-app KDE badge. Its persistence is owned by
+ * [KdeStatusService] (a foreground service, exactly like "Cloud SA - Quick
+ * Actions" / FloatingNavService): the service calls [build] for startForeground
+ * and re-posts it on every [KdeConnectManager.statusObserver] change. This
+ * object is now a pure notification FACTORY + channel manager — no lifecycle.
  */
 object KdeStatusNotifier {
-    private const val CHANNEL_ID = "kde_status"
-    private const val NOTIF_ID = 7711
-    private var appCtx: Context? = null
+    const val CHANNEL_ID = "kde_status"
 
-    /** Wire once at app start: subscribe to KDE state changes + post the badge. */
-    fun init(ctx: Context) {
-        if (appCtx != null) { refresh(); return }
-        val app = ctx.applicationContext
-        appCtx = app
-        ensureChannel(app)
-        KdeConnectManager.init(app)
-        KdeConnectManager.statusObserver = { _, _, _, _ -> refresh() }
-        refresh()
-    }
+    /** Build the current "Cloud SA - KDE" notification from live KDE state. */
+    fun build(ctx: Context): Notification {
+        val cfg = KdeConnectConfig.get()
+        val prefs = KdePluginPrefs(ctx)
+        val on = cfg.plugins.count { prefs.isEnabled(it.id) }
 
-    /** Recompute the summary from live state and (re)post the ongoing entry. */
-    fun refresh() {
-        val ctx = appCtx ?: return
-        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        runCatching {
-            val cfg = KdeConnectConfig.get()
-            val prefs = KdePluginPrefs(ctx)
-            val on = cfg.plugins.count { prefs.isEnabled(it.id) }
-
-            val anyConnected = cfg.devices.any { it.id.isNotBlank() && KdeConnectManager.isConnected(it.id) }
-            val anyPaired = cfg.devices.any { it.id.isNotBlank() && KdeConnectManager.isPaired(it.id) }
-            val summary = when {
-                anyConnected -> "Connected"
-                anyPaired -> "Paired · tap KDE page to connect"
-                else -> "Offline"
-            }
-
-            // MediaStyle has no big-text expand → keep it concise: one device
-            // line + a sub-text with the tally and identity.
-            val dev = cfg.devices.firstOrNull()
-            val line = if (dev != null) {
-                val connected = dev.id.isNotBlank() && KdeConnectManager.isConnected(dev.id)
-                val paired = dev.id.isNotBlank() && KdeConnectManager.isPaired(dev.id)
-                "${dev.label} · ${if (connected) "Connected" else "Offline"} · ${if (paired) "Paired" else "Unpaired"}"
-            } else "No device declared"
-            val sub = "$on/${cfg.plugins.size} plugins · ${KdeConnectManager.pairedDeviceIds().size} paired · " +
-                "${KdeIdentity.deviceName(ctx)} ${KdeConnectManager.ownDeviceId().take(10)}…"
-
-            // Share opens the in-app KDE page (its Share card has a text box) —
-            // MediaStyle action buttons can't host an inline reply input.
-            val sharePi = PendingIntent.getActivity(
-                ctx, 0x4B4445,
-                Intent(ctx, MainActivity::class.java)
-                    .putExtra("shortcut_action", "page:config/kde")
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-
-            // MediaStyle: 5 actions total, first 3 shown in the compact view.
-            val n: Notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_stat_cloud)
-                .setContentTitle("Cloud SA - KDE · $summary")
-                .setContentText(line)
-                .setSubText(sub)
-                .setContentIntent(sharePi)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setShowWhen(false)
-                .setGroup("nc_kde")
-                .addAction(android.R.drawable.ic_menu_share, "Share", sharePi)
-                .addAction(android.R.drawable.ic_menu_view, "Desktop", KdeQuickActionReceiver.pi(ctx, "desktop"))
-                .addAction(android.R.drawable.ic_popup_sync, "Ping", KdeQuickActionReceiver.pi(ctx, "ping"))
-                .addAction(android.R.drawable.stat_notify_sync, "Connect", KdeQuickActionReceiver.pi(ctx, "connect"))
-                .addAction(android.R.drawable.ic_menu_compass, "Find", KdeQuickActionReceiver.pi(ctx, "find"))
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                // Same layout as "Cloud SA - Quick Actions": MediaStyle with NO
-                // media-session token → clean action-button row (3 compact / 5
-                // expanded), not the media-player chrome.
-                .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                    .setShowActionsInCompactView(0, 1, 2))
-                .build()
-            nm.notify(NOTIF_ID, n)
+        val anyConnected = cfg.devices.any { it.id.isNotBlank() && KdeConnectManager.isConnected(it.id) }
+        val anyPaired = cfg.devices.any { it.id.isNotBlank() && KdeConnectManager.isPaired(it.id) }
+        val summary = when {
+            anyConnected -> "Connected"
+            anyPaired -> "Paired · tap KDE page to connect"
+            else -> "Offline"
         }
+
+        // MediaStyle has no big-text expand → keep it concise: one device
+        // line + a sub-text with the tally and identity.
+        val dev = cfg.devices.firstOrNull()
+        val line = if (dev != null) {
+            val connected = dev.id.isNotBlank() && KdeConnectManager.isConnected(dev.id)
+            val paired = dev.id.isNotBlank() && KdeConnectManager.isPaired(dev.id)
+            "${dev.label} · ${if (connected) "Connected" else "Offline"} · ${if (paired) "Paired" else "Unpaired"}"
+        } else "No device declared"
+        val sub = "$on/${cfg.plugins.size} plugins · ${KdeConnectManager.pairedDeviceIds().size} paired · " +
+            "${KdeIdentity.deviceName(ctx)} ${KdeConnectManager.ownDeviceId().take(10)}…"
+
+        // Share opens the in-app KDE page (its Share card has a text box) —
+        // MediaStyle action buttons can't host an inline reply input.
+        val sharePi = PendingIntent.getActivity(
+            ctx, 0x4B4445,
+            Intent(ctx, MainActivity::class.java)
+                .putExtra("shortcut_action", "page:config/kde")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+        // MediaStyle: 5 actions total, first 3 shown in the compact view. Icons
+        // are the same fine thin-line One-UI set as "Cloud SA - Quick Actions".
+        return NotificationCompat.Builder(ctx, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_cloud)
+            .setContentTitle("Cloud SA - KDE · $summary")
+            .setContentText(line)
+            .setSubText(sub)
+            .setContentIntent(sharePi)
+            .setDeleteIntent(KdeStatusService.renotifyPi(ctx))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
+            .setGroup("nc_kde")
+            .addAction(R.drawable.ic_kde_share, "Share", sharePi)
+            .addAction(R.drawable.ic_kde_desktop, "Desktop", KdeQuickActionReceiver.pi(ctx, "desktop"))
+            .addAction(R.drawable.ic_kde_ping, "Ping", KdeQuickActionReceiver.pi(ctx, "ping"))
+            .addAction(R.drawable.ic_kde_connect, "Connect", KdeQuickActionReceiver.pi(ctx, "connect"))
+            .addAction(R.drawable.ic_kde_find, "Find", KdeQuickActionReceiver.pi(ctx, "find"))
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            // Same layout as "Cloud SA - Quick Actions": MediaStyle with NO
+            // media-session token → clean action-button row (3 compact / 5
+            // expanded), not the media-player chrome.
+            .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(0, 1, 2))
+            .build()
+            .apply {
+                // Reinforce persistence (parity with FloatingNavService): block
+                // swipe-to-dismiss + "clear all".
+                flags = flags or Notification.FLAG_NO_CLEAR or Notification.FLAG_ONGOING_EVENT
+            }
     }
 
-    private fun ensureChannel(ctx: Context) {
+    fun ensureChannel(ctx: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {

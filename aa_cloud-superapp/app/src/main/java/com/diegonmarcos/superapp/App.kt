@@ -10,7 +10,7 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.devcontrol.DevControlServer
-import com.diegonmarcos.superapp.notificationcenter.KdeStatusNotifier
+import com.diegonmarcos.superapp.notificationcenter.KdeStatusService
 import com.google.android.material.color.DynamicColors
 
 /**
@@ -42,8 +42,11 @@ class App : Application() {
         runCatching { CrashLogger.install(this) }
         runCatching { DynamicColors.applyToActivitiesIfAvailable(this) }
         runCatching { detectVersionBump() }
-        // Persistent "Cloud SA - KDE" status notification, live-updated.
-        runCatching { KdeStatusNotifier.init(this) }
+        // Persistent "Cloud SA - KDE" status notification, live-updated. Owned
+        // by a foreground service (parity with "Cloud SA - Quick Actions") so it
+        // survives "clear all" / process death instead of being a droppable
+        // plain ongoing notify.
+        runCatching { KdeStatusService.start(this) }
         // Schedule the periodic battery-session tick (15 min cadence).
         // Idempotent — KEEP policy ensures re-scheduling on every cold
         // start is a no-op. Without this the discharge anchor only
