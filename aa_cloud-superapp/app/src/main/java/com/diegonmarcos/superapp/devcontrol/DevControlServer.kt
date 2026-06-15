@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.battery.EnergyStore
 import com.diegonmarcos.superapp.system.Trace
 import com.diegonmarcos.superapp.system.ShizukuUserService
 import com.diegonmarcos.superapp.system.CrashLogger

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.ui.snack
 import com.diegonmarcos.superapp.system.Trace
 import com.diegonmarcos.superapp.system.ShellOverride
 import com.diegonmarcos.superapp.system.ModePrefs

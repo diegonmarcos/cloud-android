@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.settings
+import com.diegonmarcos.superapp.ui.snack
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.R
 
