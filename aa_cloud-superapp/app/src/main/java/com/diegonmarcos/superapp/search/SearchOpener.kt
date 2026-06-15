@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.search
 
 /**
  * Implemented by the host Activity so child fragments (currently

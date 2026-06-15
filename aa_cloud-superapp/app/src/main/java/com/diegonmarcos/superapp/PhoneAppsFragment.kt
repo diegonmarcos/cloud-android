@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.search.SearchSheetFragment
 
 import android.app.Dialog
 import android.content.Context

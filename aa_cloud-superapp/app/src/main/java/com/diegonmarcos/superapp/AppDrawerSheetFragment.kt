@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.search.SearchOpener
 
 import android.os.Bundle
 import android.view.LayoutInflater

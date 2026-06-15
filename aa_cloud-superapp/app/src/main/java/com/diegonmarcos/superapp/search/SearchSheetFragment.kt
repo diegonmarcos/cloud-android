@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.search
 
 import android.content.ClipData
 import android.content.ClipboardManager
