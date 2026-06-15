@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.apps
+import com.diegonmarcos.superapp.settings.LauncherProfilePrefs
 import com.diegonmarcos.superapp.search.SearchSheetFragment
 
 import android.app.Dialog

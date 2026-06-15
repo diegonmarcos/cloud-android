@@ -1,4 +1,8 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.settings.LauncherThemePrefs
+import com.diegonmarcos.superapp.settings.LauncherProfilePrefs
+import com.diegonmarcos.superapp.settings.LauncherConfigFragment
+import com.diegonmarcos.superapp.settings.ImportConfigsFragment
 import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.battery.EnergyWatchdog

@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.settings
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 
 import android.content.Intent

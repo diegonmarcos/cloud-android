@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.settings.LauncherConfigFragment
 import com.diegonmarcos.superapp.cloud.DriveConnectionsFragment
 import com.diegonmarcos.superapp.cloud.C3MeshFragment
 import com.diegonmarcos.superapp.cloud.C3HealthFragment
