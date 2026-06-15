@@ -273,7 +273,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     /** The full KDE Connect plugin catalog — active (we implement + advertise)
      *  in lavender, planned in gray. Data-driven from build.json plugins[]. */
     private fun buildPluginsSection(ctx: android.content.Context, cfg: KdeConnectConfig.Config): View {
-        val active = cfg.plugins.count { it.active }
+        val handled = cfg.plugins.count { it.id in KdePluginRegistry.plugins.map { p -> p.id } }
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val p = dp(14); setPadding(p, p, p, p)
@@ -285,33 +285,34 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             ).apply { bottomMargin = dp(12) }
         }
         col.addView(TextView(ctx).apply {
-            text = "Plugins  ·  $active active / ${cfg.plugins.size} total"
+            text = "Plugins  ·  $handled handled / ${cfg.plugins.size} advertised"
             setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
             setPadding(0, 0, 0, dp(2))
         })
         col.addView(TextView(ctx).apply {
-            text = "Tap an active plugin to enable/disable it (● on · ◌ off). Planned = not implemented yet."
+            text = "Tap a plugin to enable/disable it. ● handled & on · ● advertised (no handler yet) · ◌ off."
             setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, 0, 0, dp(8))
         })
         val prefs = KdePluginPrefs(ctx)
-        for (pl in cfg.plugins.sortedByDescending { it.active }) {
+        val realIds = KdePluginRegistry.plugins.map { it.id }.toSet()
+        for (pl in cfg.plugins.sortedByDescending { it.id in realIds }) {
+            val real = pl.id in realIds
             val rowTv = TextView(ctx).apply {
                 typeface = Typeface.MONOSPACE; textSize = 12f
                 setPadding(0, dp(3), 0, dp(3))
             }
             fun render() {
-                val on = pl.active && prefs.isEnabled(pl.id)
-                val mark = when { !pl.active -> "○"; on -> "●"; else -> "◌" }
+                val on = prefs.isEnabled(pl.id)
                 val arrow = when (pl.dir) { "in" -> "↓"; "out" -> "↑"; else -> "↕" }
-                rowTv.text = "$mark  ${pl.name}  $arrow   ${pl.packet}"
+                rowTv.text = "${if (on) "●" else "◌"}  ${pl.name}  $arrow   ${pl.packet}"
                 rowTv.setTextColor(when {
-                    !pl.active -> 0x66FFFFFF.toInt()      // planned — gray
-                    on        -> 0xFFE9D8FD.toInt()       // enabled — lavender
-                    else      -> 0x88FFFFFF.toInt()       // disabled — dim
+                    !on   -> 0x77FFFFFF.toInt()           // off — dim
+                    real  -> 0xFFE9D8FD.toInt()           // handled — lavender
+                    else  -> 0xFFFFCC80.toInt()           // advertised-only — amber
                 })
             }
             render()
-            if (pl.active) rowTv.setOnClickListener {
+            rowTv.setOnClickListener {
                 prefs.toggle(pl.id); render()
                 rowTv.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
             }

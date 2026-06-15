@@ -42,10 +42,25 @@ object KdePluginRegistry {
         return plugins.filter { prefs.isEnabled(it.id) }
     }
 
-    /** Capabilities we ADVERTISE — only enabled plugins, so a disabled plugin
-     *  is invisible to the desktop on the next connect. */
-    fun incomingCapabilities(ctx: Context): Set<String> = enabled(ctx).flatMap { it.incoming }.toSet()
-    fun outgoingCapabilities(ctx: Context): Set<String> = enabled(ctx).flatMap { it.outgoing }.toSet()
+    /** Capabilities we ADVERTISE so the desktop shows every enabled plugin:
+     *  the union of REAL plugins' packet types and the catalog's packet for
+     *  active entries that don't (yet) have a Kotlin handler. Both are gated by
+     *  the per-plugin toggle, so disabling one drops it from the desktop on the
+     *  next connect. (Stub entries are advertised for visibility/testing; their
+     *  inbound packets are simply ignored until a handler lands.) */
+    fun incomingCapabilities(ctx: Context): Set<String> = caps(ctx, outgoingDir = false)
+    fun outgoingCapabilities(ctx: Context): Set<String> = caps(ctx, outgoingDir = true)
+
+    private fun caps(ctx: Context, outgoingDir: Boolean): Set<String> {
+        val prefs = KdePluginPrefs(ctx)
+        val realIds = plugins.map { it.id }.toSet()
+        val real = enabled(ctx).flatMap { if (outgoingDir) it.outgoing else it.incoming }
+        val excludedDir = if (outgoingDir) "in" else "out"
+        val stub = KdeConnectConfig.get().plugins
+            .filter { it.active && it.id !in realIds && it.dir != excludedDir && prefs.isEnabled(it.id) }
+            .map { it.packet }
+        return (real + stub).toSet()
+    }
 
     /** Dispatch an inbound packet to the first ENABLED plugin that owns its type. */
     fun dispatch(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean =
