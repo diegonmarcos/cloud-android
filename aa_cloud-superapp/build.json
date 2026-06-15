@@ -4661,7 +4661,7 @@
         { "id": "mpris",               "name": "Media control (MPRIS)","packet": "kdeconnect.mpris",                "dir": "both", "status": "active" },
         { "id": "share",               "name": "Share (text/links)",   "packet": "kdeconnect.share.request",        "dir": "both", "status": "active" },
         { "id": "runcommand",          "name": "Run command",          "packet": "kdeconnect.runcommand",           "dir": "both", "status": "active" },
-        { "id": "telephony",           "name": "Telephony",            "packet": "kdeconnect.telephony",            "dir": "out",  "status": "planned" },
+        { "id": "telephony",           "name": "Telephony (mute)",     "packet": "kdeconnect.telephony",            "dir": "both", "status": "active" },
         { "id": "sms",                 "name": "SMS messaging",        "packet": "kdeconnect.sms.messages",         "dir": "both", "status": "planned" },
         { "id": "mousepad",            "name": "Remote input",         "packet": "kdeconnect.mousepad.request",     "dir": "both", "status": "planned" },
         { "id": "presenter",           "name": "Presentation remote",  "packet": "kdeconnect.presenter",            "dir": "out",  "status": "planned" },

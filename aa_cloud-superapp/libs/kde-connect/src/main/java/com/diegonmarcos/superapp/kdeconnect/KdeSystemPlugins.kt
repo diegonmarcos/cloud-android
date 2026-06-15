@@ -5,6 +5,7 @@ import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.media.AudioManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -225,5 +226,22 @@ object LockDevicePlugin : KdePlugin {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }
+    }
+}
+
+/**
+ * kdeconnect.telephony — the desktop can mute the phone's ringer for an
+ * incoming call (request_mute). Best-effort: silencing the ringer needs DND /
+ * notification-policy access on newer Android; if denied it's a no-op.
+ */
+object TelephonyPlugin : KdePlugin {
+    override val incoming = setOf("kdeconnect.telephony.request_mute")
+    override val outgoing = setOf("kdeconnect.telephony")
+    override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
+        runCatching {
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
+        }
+        return true
     }
 }
