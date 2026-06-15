@@ -41,15 +41,13 @@
             android:clickable="false"
             android:focusable="false" />
 
-        <!-- Fragment fills the whole shell; paddings carve out room for
-             both islands so content stays clear of them. -->
-        <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/fragment_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingTop="84dp"
-            android:paddingBottom="92dp"
-            android:clipToPadding="false" />
+        <!-- Content host — responsive. Phone (default): a single
+             full-bleed @id/fragment_container. Tablet (sw600dp): a
+             master (@id/fragment_container) + detail (@id/detail_container)
+             split. See res/layout[-sw600dp]/view_content_panes.xml. The
+             chrome below (islands, sirius star, drawer) is shared by BOTH
+             form factors — only the content host swaps. -->
+        <include layout="@layout/view_content_panes" />
 
         <!-- Sirius Star — a single bright, bluish-white sparkle centred on the
              home screen (theme-agnostic: it floats over whichever home

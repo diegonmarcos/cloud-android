@@ -134,7 +134,10 @@ class LauncherNavController(private val host: NavHost) {
                 ?.factory?.invoke() ?: SectionFragment.forSection(sectionId, pageId)
         }
         host.closeDrawerIfOpen()
-        host.applyChrome(frag)
+        // On tablets the page opens in the side-by-side DETAIL pane; the MASTER
+        // (section grid) keeps owning the shell chrome, so a ShellOverride page
+        // must NOT take it over there. Single-pane phones apply chrome as usual.
+        if (!host.isTwoPane()) host.applyChrome(frag)
         host.pushContent(frag)
     }
 
@@ -178,6 +181,9 @@ class LauncherNavController(private val host: NavHost) {
         val currentMode: String
         fun navContext(): Context
         fun isDefaultLauncher(): Boolean
+        /** True on tablets (sw600dp) where opened pages render in a side-by-side
+         *  DETAIL pane and the section grid (master) stays visible. */
+        fun isTwoPane(): Boolean
         fun setSectionTitle(label: String)
         fun swapContent(content: Fragment, clearBackStack: Boolean)
         fun pushContent(content: Fragment)

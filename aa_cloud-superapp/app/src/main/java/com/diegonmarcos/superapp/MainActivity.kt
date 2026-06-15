@@ -18,6 +18,7 @@ import com.diegonmarcos.superapp.launcher.LauncherStatusStripView
 import com.diegonmarcos.superapp.launcher.HomeFanMenu
 import com.diegonmarcos.superapp.launcher.HomeDrawerFragment
 import com.diegonmarcos.superapp.launcher.Home3DFragment
+import com.diegonmarcos.superapp.launcher.DetailPlaceholderFragment
 import com.diegonmarcos.superapp.launcher.GroupedTilesFragment
 import com.diegonmarcos.superapp.launcher.AppDrawerSheetFragment
 import com.diegonmarcos.superapp.launcher.AggregatorStackFragment
@@ -351,6 +352,16 @@ class MainActivity : AppCompatActivity(),
                     currentSection = "home"
                     currentLabel = getString(R.string.section_home)
                     supportActionBar?.title = currentLabel
+                }
+                // Tablet: popping the last DETAIL page leaves the detail pane
+                // empty — restore the "Select an item" placeholder so the
+                // master-detail split never shows a blank right column.
+                if (isTwoPane() && supportFragmentManager.backStackEntryCount == 0 &&
+                    currentSection != "home" &&
+                    supportFragmentManager.findFragmentById(R.id.detail_container) !is DetailPlaceholderFragment) {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.detail_container, DetailPlaceholderFragment.newInstance())
+                        .commitAllowingStateLoss()
                 }
                 // Toolbar's right-side Back action toggles visibility with
                 // the back-stack depth; invalidate to redraw.
@@ -806,10 +817,22 @@ class MainActivity : AppCompatActivity(),
         refreshBottomNavIconsForMode()
         invalidateOptionsMenu()
     }
+    /** sw600dp tablet → master-detail split (see view_content_panes.xml).
+     *  Declarative breakpoint via the bool resource qualifier — no dp math. */
+    private val twoPane: Boolean by lazy { resources.getBoolean(R.bool.two_pane) }
+    /** The detail pane only exists in the tablet layout; null on phones. */
+    private val hasDetailPane: Boolean get() = findViewById<View?>(R.id.detail_container) != null
+    override fun isTwoPane(): Boolean = twoPane && hasDetailPane
+
     override fun pushContent(content: Fragment) {
+        // Tablet master-detail: opened pages render in the right-hand DETAIL
+        // pane while the master (section grid) stays visible on the left.
+        // They still go on the shared back stack so Back pops the detail
+        // page first, exactly like the phone single-pane flow.
+        val target = if (isTwoPane()) R.id.detail_container else R.id.fragment_container
         supportFragmentManager.beginTransaction()
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-            .replace(R.id.fragment_container, content)
+            .replace(target, content)
             .addToBackStack(null)
             .commit()
     }
@@ -840,6 +863,32 @@ class MainActivity : AppCompatActivity(),
             )
             .replace(R.id.fragment_container, content)
             .commit()
+        if (isTwoPane()) syncDetailPaneForMaster()
+    }
+
+    /**
+     * Keep the tablet DETAIL pane consistent with the freshly-swapped MASTER:
+     *   • Home → collapse the detail column (GONE). The master is then the
+     *     only visible weighted child, so it expands to fill the full width
+     *     and Home renders edge-to-edge like on phones.
+     *   • Any section → show the detail column with the "Select an item"
+     *     placeholder, ready for the first page the user opens from the grid.
+     * Called only when [isTwoPane]; uses [currentSection] which the
+     * controller sets before swapContent.
+     */
+    private fun syncDetailPaneForMaster() {
+        val detail = findViewById<View>(R.id.detail_container) ?: return
+        val divider = findViewById<View?>(R.id.pane_divider)
+        if (currentSection == "home") {
+            detail.visibility = View.GONE
+            divider?.visibility = View.GONE
+        } else {
+            detail.visibility = View.VISIBLE
+            divider?.visibility = View.VISIBLE
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.detail_container, DetailPlaceholderFragment.newInstance())
+                .commitAllowingStateLoss()
+        }
     }
 
     /** Glassmorphism: enable window background-blur on API 31+ so the
