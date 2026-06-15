@@ -27,7 +27,9 @@ import com.diegonmarcos.superapp.WireGuardPrefs
 import com.diegonmarcos.superapp.health.HealthConnectGateway
 import com.diegonmarcos.superapp.health.HealthMetrics
 import com.wireguard.android.backend.Tunnel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
@@ -1034,7 +1036,7 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Default section", Sections.defaultSectionId())
         }
 
-        section(ctx, column, "Dev control HTTP") {
+        section(ctx, column, "Dev Control - Http (API) & SSH (Termux)") {
             val prefs = DevControlPrefs(requireContext())
             val running = DevControlServer.isRunning()
             val bound   = DevControlServer.boundHost()
@@ -1049,6 +1051,22 @@ class DevControlFragment : Fragment() {
             })
             row(ctx, it, "Token",    prefs.token)
             it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints follow /api/{group}/{op} (e.g. /api/system/info, /api/diagnostics/logcat, /api/tracker/counts). Full catalog: GET /api/docs."))
+
+            // ── SSH (Termux & co.) — detect installed terminal emulators and
+            //    whether each is running an sshd we can reach on localhost.
+            //    Installed-check is synchronous (PackageManager); the port
+            //    probe is async (no network on the main thread).
+            it.addView(small(ctx, "SSH servers on this device — terminal apps + whether their sshd is listening on localhost (probe 127.0.0.1:port)."))
+            for (term in SSH_TERMINALS) {
+                val installed = isPackageInstalled(ctx, term.pkg)
+                val valueView = row(ctx, it, term.label,
+                    if (!installed) "not installed" else "installed · sshd :${term.port} checking…")
+                if (installed) viewLifecycleOwner.lifecycleScope.launch {
+                    val up = withContext(Dispatchers.IO) { portOpen("127.0.0.1", term.port) }
+                    valueView.text = "installed · sshd :${term.port} " + if (up) "✓ up" else "✗ down"
+                    valueView.setTextColor(if (up) 0xFF8BE9A0.toInt() else 0xFFFFB199.toInt())
+                }
+            }
 
             // Toggle Switch: persists pref + start/stop the server live.
             it.addView(android.widget.Switch(ctx).apply {
@@ -1486,6 +1504,26 @@ class DevControlFragment : Fragment() {
     }
 
     // ── helpers ──────────────────────────────────────────────────────
+
+    // Known on-device terminal emulators that can run an sshd, + default port.
+    private data class SshTerminal(val label: String, val pkg: String, val port: Int)
+    private val SSH_TERMINALS = listOf(
+        SshTerminal("Termux", "com.termux", 8022),
+        SshTerminal("Nix-on-droid", "com.termux.nix", 8022),
+        SshTerminal("Termux (F-Droid)", "com.termux.fdroid", 8022),
+        SshTerminal("UserLAnd", "tech.ula", 2022),
+    )
+
+    /** Installed? Needs a <queries> entry in the manifest on API 30+ (added). */
+    private fun isPackageInstalled(ctx: Context, pkg: String): Boolean = runCatching {
+        ctx.packageManager.getPackageInfo(pkg, 0); true
+    }.getOrDefault(false)
+
+    /** Is something listening on host:port? Short-timeout TCP connect.
+     *  MUST run off the main thread (Android blocks network on the UI thread). */
+    private fun portOpen(host: String, port: Int): Boolean = runCatching {
+        java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 350); true }
+    }.getOrDefault(false)
 
     private fun section(ctx: Context, host: LinearLayout, head: String, body: (LinearLayout) -> Unit) {
         infoBuf.append("\n## ").append(head).append("\n")
