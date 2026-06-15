@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.apps
 import com.diegonmarcos.superapp.search.SearchSheetFragment
 
 import android.app.Dialog

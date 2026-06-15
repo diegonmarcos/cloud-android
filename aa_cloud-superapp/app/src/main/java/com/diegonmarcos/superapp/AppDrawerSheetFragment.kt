@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.apps.PhoneAppClassifier
+import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.search.SearchOpener
 
 import android.os.Bundle

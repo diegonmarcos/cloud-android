@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.apps
 
 import android.os.Bundle
 import android.view.LayoutInflater

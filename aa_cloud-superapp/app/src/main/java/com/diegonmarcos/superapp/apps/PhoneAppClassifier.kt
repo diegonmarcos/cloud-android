@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.apps
 
 /**
  * Pure function: given an installed Android app's `packageName` + user-

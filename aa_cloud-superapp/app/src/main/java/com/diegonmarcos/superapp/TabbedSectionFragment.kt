@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 
 import com.diegonmarcos.superapp.core.Collapsible
 

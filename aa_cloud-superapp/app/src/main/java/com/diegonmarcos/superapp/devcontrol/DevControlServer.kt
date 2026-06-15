@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.apps.PhoneSmartFolders
+import com.diegonmarcos.superapp.apps.PhoneFolders
+import com.diegonmarcos.superapp.apps.PhoneAppClassifier
 import com.diegonmarcos.superapp.battery.SysfsProc
 import com.diegonmarcos.superapp.battery.ShizukuEnergy
 import com.diegonmarcos.superapp.battery.PowerStateReceiver

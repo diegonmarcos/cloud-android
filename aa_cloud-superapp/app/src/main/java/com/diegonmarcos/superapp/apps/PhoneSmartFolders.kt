@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.apps
 
 import android.content.Context
 import android.content.pm.ApplicationInfo

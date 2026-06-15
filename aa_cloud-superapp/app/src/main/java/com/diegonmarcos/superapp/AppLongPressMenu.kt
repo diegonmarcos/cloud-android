@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.apps.SuitePhoneAppsFragment
+import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.battery.BatteryEstimatePopup
 
 import android.app.Dialog
