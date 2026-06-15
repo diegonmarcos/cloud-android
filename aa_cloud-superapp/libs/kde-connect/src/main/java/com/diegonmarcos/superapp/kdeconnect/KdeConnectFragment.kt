@@ -104,6 +104,9 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         }
         for (device in cfg.devices) root.addView(buildCard(ctx, device))
 
+        // ── Remote control (touchpad / keyboard / big-screen senders) ──────
+        root.addView(buildRemoteSection(ctx))
+
         // ── Plugins catalog (data-driven from build.json) ──────────────────
         if (cfg.plugins.isNotEmpty()) root.addView(buildPluginsSection(ctx, cfg))
 
@@ -392,6 +395,115 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         return col
     }
 
+    /** Remote control card — drives the connected desktop: touchpad (move +
+     *  tap-click), keyboard, and Big Screen text. Senders: RemoteInputPlugin /
+     *  BigScreenPlugin. Targets the first connected device. */
+    private fun buildRemoteSection(ctx: android.content.Context): View {
+        fun target(): String? = KdeConnectManager.connectedIds().firstOrNull()
+
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = dp(14); setPadding(p, p, p, p)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat(); setColor(0x22FFFFFF)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(12) }
+        }
+        col.addView(TextView(ctx).apply {
+            text = "Remote control"
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+        })
+        col.addView(TextView(ctx).apply {
+            text = "Controls the connected desktop. Drag the pad to move the cursor · tap = click · long-press area = right-click."
+            setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, dp(2), 0, dp(8))
+        })
+
+        // ── Touchpad ────────────────────────────────────────────────────
+        val pad = View(ctx).apply {
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat(); setColor(0x33000000)
+                setStroke(maxOf(1, dp(1)), 0x44FFFFFF)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(150))
+        }
+        var lastX = 0f; var lastY = 0f; var moved = false; var downT = 0L
+        pad.setOnTouchListener { v, e ->
+            val id = target()
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    lastX = e.x; lastY = e.y; moved = false; downT = android.os.SystemClock.uptimeMillis(); true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = e.x - lastX; val dy = e.y - lastY; lastX = e.x; lastY = e.y
+                    if (kotlin.math.abs(dx) > 2 || kotlin.math.abs(dy) > 2) moved = true
+                    if (id != null) KdeConnectManager.send(id, RemoteInputPlugin.move(dx, dy))
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    val held = android.os.SystemClock.uptimeMillis() - downT
+                    if (!moved && id != null) {
+                        KdeConnectManager.send(id, if (held > 500) RemoteInputPlugin.rightClick() else RemoteInputPlugin.click())
+                    }
+                    if (id == null) toast("Connect & pair first")
+                    v.performClick(); true
+                }
+                else -> false
+            }
+        }
+        col.addView(pad)
+
+        // ── Keyboard ────────────────────────────────────────────────────
+        val keyF = android.widget.EditText(ctx).apply {
+            hint = "Type, then Send keys"; isSingleLine = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+        }
+        col.addView(keyF)
+        val keyRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        fun mkBtn(label: String, weight: Float = 1f) = Button(ctx).apply {
+            text = label; isAllCaps = false; textSize = 12f
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, weight)
+        }
+        val sendKeys = mkBtn("Send keys", 2f)
+        val backspace = mkBtn("⌫")
+        val enter = mkBtn("⏎")
+        sendKeys.setOnClickListener {
+            val id = target() ?: return@setOnClickListener toastUnit("Connect & pair first")
+            val t = keyF.text.toString()
+            if (t.isNotEmpty()) { KdeConnectManager.send(id, RemoteInputPlugin.key(t)); keyF.setText("") }
+        }
+        // KDE special keys: 1 = Backspace, 12 = Enter/Return.
+        backspace.setOnClickListener { target()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(1)) } }
+        enter.setOnClickListener { target()?.let { KdeConnectManager.send(it, RemoteInputPlugin.specialKey(12)) } }
+        keyRow.addView(sendKeys); keyRow.addView(backspace); keyRow.addView(enter)
+        col.addView(keyRow)
+
+        // ── Big Screen ──────────────────────────────────────────────────
+        val bsF = android.widget.EditText(ctx).apply {
+            hint = "Send a line to Plasma Big Screen"; isSingleLine = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+        }
+        col.addView(bsF)
+        col.addView(Button(ctx).apply {
+            text = "Send to Big Screen"; isAllCaps = false; textSize = 12f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            setOnClickListener {
+                val id = target() ?: return@setOnClickListener toastUnit("Connect & pair first")
+                val t = bsF.text.toString()
+                if (t.isNotEmpty()) { KdeConnectManager.send(id, BigScreenPlugin.stt(t)); bsF.setText("") }
+            }
+        })
+        return col
+    }
+
+    private fun toastUnit(m: String) { toast(m) }
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     companion object { fun newInstance() = KdeConnectFragment() }
