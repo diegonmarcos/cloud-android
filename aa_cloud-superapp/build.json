@@ -1487,6 +1487,8 @@
         "module": "libs:net",
         "supports_accounts": false,
         "bottom_nav": false,
+        "_doc_parent": "WireGuard is its own (non-bottom-nav) section but is surfaced from the Configs Home-Apps row (home_groups Configs → section:wg). parent=config makes the toolbar/system Back at the WG root return to the Configs section instead of Home — consumed by MainActivity.navigateUpToParent (data-driven, sections[*].parent).",
+        "parent": "config",
         "drawer_default_children": [
           "Mesh",
           "+ Import"

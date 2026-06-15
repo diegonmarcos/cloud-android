@@ -34,6 +34,12 @@ object Sections {
         val iconAdmin: String? = null,
         val module: String?,
         val bottomNav: Boolean,
+        /** Optional parent section id. When set, the toolbar/system Back at
+         *  this section's root returns to the parent section instead of Home —
+         *  e.g. WireGuard (its own bottom-nav section) declares parent="config"
+         *  so Back from it lands on Configs, matching how it's surfaced there.
+         *  Source: build.json::sections[*].parent. */
+        val parent: String? = null,
         val isMasterIndex: Boolean,
         val pages: List<Page>,
         val defaultChildren: List<String>,
@@ -502,6 +508,7 @@ object Sections {
                     iconAdmin       = o.optString("icon_admin", "").takeIf { it.isNotBlank() },
                     module          = module,
                     bottomNav       = o.optBoolean("bottom_nav", false),
+                    parent          = o.optString("parent", "").takeIf { it.isNotBlank() },
                     isMasterIndex   = o.optBoolean("is_master_index", false),
                     pages           = pages,
                     defaultChildren = kids,

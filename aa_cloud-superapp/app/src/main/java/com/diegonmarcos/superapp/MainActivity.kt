@@ -1439,7 +1439,7 @@ class MainActivity : AppCompatActivity(),
                 // composes — tap twice to skip two levels.
                 if (supportFragmentManager.backStackEntryCount > 0) {
                     supportFragmentManager.popBackStack()
-                } else if (currentSection != "home") {
+                } else if (!navigateUpToParent() && currentSection != "home") {
                     goHome()
                 }
                 return true
@@ -1457,11 +1457,24 @@ class MainActivity : AppCompatActivity(),
         return super.onOptionsItemSelected(item)
     }
 
+    /** Back at a section ROOT (empty back stack): if the current section
+     *  declares a parent (build.json::sections[*].parent), navigate UP to it
+     *  instead of Home/exit. Data-driven — e.g. WireGuard → Configs. Returns
+     *  true when it navigated to a parent. */
+    private fun navigateUpToParent(): Boolean {
+        if (supportFragmentManager.backStackEntryCount > 0) return false
+        val parentId = Sections.byId(currentSection)?.parent ?: return false
+        goSection(parentId, Sections.byId(parentId)?.label ?: parentId)
+        return true
+    }
+
     override fun onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
         } else if (supportFragmentManager.backStackEntryCount > 0) {
             supportFragmentManager.popBackStack()
+        } else if (navigateUpToParent()) {
+            // handled — landed on the parent section
         } else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
