@@ -672,7 +672,7 @@ class DevControlFragment : Fragment() {
             it.addView(small(ctx, "Set — open the menu and toggle manually:"))
             it.addView(permButtonRow(ctx,
                 permButton(ctx, "Set Notif. (read)", grantedNotifRead(ctxAny())) { openNotificationListenerSettings() },
-                permButton(ctx, "Set Usage Access", com.diegonmarcos.superapp.EnergyWatchdog.hasUsageAccess(ctxAny())) { openUsageAccessSettings() },
+                permButton(ctx, "Set Usage Access", com.diegonmarcos.superapp.battery.EnergyWatchdog.hasUsageAccess(ctxAny())) { openUsageAccessSettings() },
                 permButton(ctx, "Set Files Access", grantedFiles()) { openManageAllFilesSettings() },
             ))
             it.addView(permButtonRow(ctx,
@@ -764,7 +764,7 @@ class DevControlFragment : Fragment() {
             // in BatterySessionStats — same source the status-strip
             // BatteryEstimatePopup reads from when the user taps the
             // icon. Single calc, two surfaces.
-            val bs = com.diegonmarcos.superapp.BatterySessionStats.read(ctxAny)
+            val bs = com.diegonmarcos.superapp.battery.BatterySessionStats.read(ctxAny)
             // Row labels auto-flip on charging state. Discharging: "Since
             // last charge / % battery/min consumed / Estimated battery last
             // / ETA battery drained". Charging: same shape, charge-flavoured
@@ -780,29 +780,29 @@ class DevControlFragment : Fragment() {
             val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
             val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
             row(ctx, it, labelSince,
-                com.diegonmarcos.superapp.BatterySessionStats.fmtSinceAnchor(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtSinceAnchor(bs))
             row(ctx, it, labelRate,
-                com.diegonmarcos.superapp.BatterySessionStats.fmtRateUnified(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtRateUnified(bs))
             row(ctx, it, labelPower,
-                com.diegonmarcos.superapp.BatterySessionStats.fmtPowerRow(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtPowerRow(bs))
             if (bs.isCharging) {
                 row(ctx, it, "Charger input",
-                    com.diegonmarcos.superapp.BatterySessionStats.fmtChargerSpec(bs))
-                val phone = com.diegonmarcos.superapp.BatterySessionStats.fmtPhoneConsumption(bs)
+                    com.diegonmarcos.superapp.battery.BatterySessionStats.fmtChargerSpec(bs))
+                val phone = com.diegonmarcos.superapp.battery.BatterySessionStats.fmtPhoneConsumption(bs)
                 if (phone.isNotEmpty()) {
                     row(ctx, it, "Phone consumption", "$phone  (charger − battery)")
                 }
             }
             row(ctx, it, labelEta,
-                com.diegonmarcos.superapp.BatterySessionStats.fmtEtaDuration(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtEtaDuration(bs))
             row(ctx, it, labelWall,
-                com.diegonmarcos.superapp.BatterySessionStats.fmtEtaWallClock(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtEtaWallClock(bs))
             // BatteryManager / sticky-intent surface — works on hardened
             // Samsung where /sys/class/power_supply/* is SELinux-blocked.
             row(ctx, it, "Battery temp",
-                com.diegonmarcos.superapp.BatterySessionStats.fmtBatteryTemp(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtBatteryTemp(bs))
             row(ctx, it, "Cycle count",
-                com.diegonmarcos.superapp.BatterySessionStats.fmtCycleCount(bs))
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtCycleCount(bs))
             // Debug rows so the user can see WHICH path the power
             // figure came from + the anchor provenance.
             row(ctx, it, "Power source",      bs.powerWSource)
@@ -820,8 +820,8 @@ class DevControlFragment : Fragment() {
             // EnergyWatchdog Tier-1 sampler + EnergyLedger.
             it.addView(actionButton(ctx, "⚡ Open Energy Usage (AccuBattery-style)") {
                 runCatching {
-                    com.diegonmarcos.superapp.EnergyUsageDialog()
-                        .show(parentFragmentManager, com.diegonmarcos.superapp.EnergyUsageDialog.TAG)
+                    com.diegonmarcos.superapp.battery.EnergyUsageDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.battery.EnergyUsageDialog.TAG)
                 }
             })
         }
@@ -1804,7 +1804,7 @@ class DevControlFragment : Fragment() {
         }
 
         // FULL mesh — every declared member from the baked consolidated config.
-        val nodes = runCatching { com.diegonmarcos.superapp.Sections.mesh().nodes }.getOrDefault(emptyList())
+        val nodes = runCatching { com.diegonmarcos.superapp.launcher.Sections.mesh().nodes }.getOrDefault(emptyList())
         host.addView(small(ctx, "Full mesh — ${nodes.size} declared members (consolidated config). Live wg0 reachability ping:"))
         val pingTargets = ArrayList<Pair<String, TextView>>()
         for (n in nodes) {

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.apps
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.ui.Haptics
 import com.diegonmarcos.superapp.launcher.AppLongPressMenu
 import com.diegonmarcos.superapp.App

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.settings
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.system.BackgroundOrchestrator
 import com.diegonmarcos.superapp.ui.Haptics
 import com.diegonmarcos.superapp.MainActivity

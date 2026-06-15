@@ -339,7 +339,7 @@ class FloatingNavService : Service() {
             "self" -> launchPackage(packageName)
             "torch" -> toggleTorch()
             "calc" -> openCalculator()
-            "lock" -> runCatching { com.diegonmarcos.superapp.ScreenLocker.lock(this) }
+            "lock" -> runCatching { com.diegonmarcos.superapp.system.ScreenLocker.lock(this) }
             "dnd" -> toggleDnd()
             "powersave" -> openPowerSaver()
             "screensaver" -> ScreensaverService.start(this)

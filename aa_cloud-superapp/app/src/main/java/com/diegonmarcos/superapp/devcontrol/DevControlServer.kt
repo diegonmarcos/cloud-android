@@ -233,7 +233,7 @@ object DevControlServer {
                 "phone/new_apps" -> { reply(writer, "200 OK", phoneNewAppsJson(ctx), "application/json") }
                 "battery/state" -> { reply(writer, "200 OK", batteryStateJson(ctx), "application/json") }
                 "battery/reset_anchor" -> {
-                    com.diegonmarcos.superapp.BatterySessionStats.resetAnchor(ctx)
+                    com.diegonmarcos.superapp.battery.BatterySessionStats.resetAnchor(ctx)
                     reply(writer, "200 OK", """{"ok":true,"message":"anchor cleared — next plug/unplug will re-mint via PowerStateReceiver"}""", "application/json")
                 }
                 "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
@@ -243,8 +243,8 @@ object DevControlServer {
                 "energy/samples" -> { reply(writer, "200 OK", energySamplesJson(ctx), "application/json") }
                 "energy/shizuku" -> { reply(writer, "200 OK", energyShizukuJson(ctx), "application/json") }
                 "energy/reset" -> {
-                    com.diegonmarcos.superapp.EnergyLedger.reset()
-                    runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).clear() }
+                    com.diegonmarcos.superapp.battery.EnergyLedger.reset()
+                    runCatching { com.diegonmarcos.superapp.battery.EnergyStore(ctx).clear() }
                     reply(writer, "200 OK", """{"ok":true,"message":"energy ledger + sample store cleared"}""", "application/json")
                 }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
@@ -341,7 +341,7 @@ object DevControlServer {
     /** Intra-app energy ledger — which subsystem inside Cloud SuperApp
      *  spent the most CPU / wakeups / bytes since the window start. */
     private fun energySelfJson(): String {
-        val (since, stats) = com.diegonmarcos.superapp.EnergyLedger.snapshot()
+        val (since, stats) = com.diegonmarcos.superapp.battery.EnergyLedger.snapshot()
         val sorted = stats.entries.sortedByDescending { it.value.cpuNanos }
         val sb = StringBuilder("""{"since_ms":""").append(since).append(',')
         sb.append(""""tags":[""")
@@ -360,7 +360,7 @@ object DevControlServer {
 
     /** Shizuku exact per-app mAh from dumpsys batterystats (Tier 2). */
     private fun energyShizukuJson(ctx: Context): String {
-        val se = com.diegonmarcos.superapp.ShizukuEnergy
+        val se = com.diegonmarcos.superapp.battery.ShizukuEnergy
         val sb = StringBuilder("{")
         sb.append(""""available":""").append(se.isAvailable()).append(',')
         sb.append(""""granted":""").append(se.isGranted()).append(',')
@@ -387,13 +387,13 @@ object DevControlServer {
     /** Device-level state → draw attribution + per-foreground-app +
      *  our own self cost, computed over the stored sample window. */
     private fun energyAttributionJson(ctx: Context): String {
-        val m = com.diegonmarcos.superapp.EnergyWatchdog.attribution(ctx)
+        val m = com.diegonmarcos.superapp.battery.EnergyWatchdog.attribution(ctx)
         return mapToJson(m)
     }
 
     /** Raw recent watchdog samples (last 200). */
     private fun energySamplesJson(ctx: Context): String {
-        val rows = runCatching { com.diegonmarcos.superapp.EnergyStore(ctx).recent(200) }
+        val rows = runCatching { com.diegonmarcos.superapp.battery.EnergyStore(ctx).recent(200) }
             .getOrDefault(emptyList())
         val sb = StringBuilder("[")
         var first = true
@@ -430,7 +430,7 @@ object DevControlServer {
     }
 
     private fun phoneClassifyJson(ctx: Context): String {
-        val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
+        val folders = com.diegonmarcos.superapp.apps.PhoneFolders.loadFromBuildConfig()
         val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
             as android.content.pm.LauncherApps
         val me = android.os.Process.myUserHandle()
@@ -440,7 +440,7 @@ object DevControlServer {
         for (info in launcher.getActivityList(null, me)) {
             val pkg = info.applicationInfo.packageName
             val label = info.label.toString()
-            val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
+            val folderId = com.diegonmarcos.superapp.apps.PhoneAppClassifier
                 .classify(pkg, label, folders)
             // Install-source debug fields — exactly what
             // PhoneSmartFolders.install_source_not reads, so we can see
@@ -481,8 +481,8 @@ object DevControlServer {
     /** Only the apps that landed in the sink folder (new_apps by
      *  default) — focused view for "what's still uncategorised?". */
     private fun phoneNewAppsJson(ctx: Context): String {
-        val folders = com.diegonmarcos.superapp.PhoneFolders.loadFromBuildConfig()
-        val sinkId = com.diegonmarcos.superapp.PhoneFolders.sinkFolderId(folders)
+        val folders = com.diegonmarcos.superapp.apps.PhoneFolders.loadFromBuildConfig()
+        val sinkId = com.diegonmarcos.superapp.apps.PhoneFolders.sinkFolderId(folders)
         val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
             as android.content.pm.LauncherApps
         val me = android.os.Process.myUserHandle()
@@ -493,7 +493,7 @@ object DevControlServer {
         for (info in launcher.getActivityList(null, me)) {
             val pkg = info.applicationInfo.packageName
             val label = info.label.toString()
-            val folderId = com.diegonmarcos.superapp.PhoneAppClassifier
+            val folderId = com.diegonmarcos.superapp.apps.PhoneAppClassifier
                 .classify(pkg, label, folders)
             if (folderId != sinkId) continue
             if (!first) sb.append(','); first = false
@@ -510,7 +510,7 @@ object DevControlServer {
      *  derived chargerSpec subobject (so callers can see whether
      *  liveInputW came from sysfs or only from dumpsys). */
     private fun batteryStateJson(ctx: Context): String {
-        val s = com.diegonmarcos.superapp.BatterySessionStats.read(ctx)
+        val s = com.diegonmarcos.superapp.battery.BatterySessionStats.read(ctx)
         val sb = StringBuilder("{")
         sb.append(""""isCharging":""").append(s.isCharging).append(',')
         sb.append(""""curPct":""").append(s.curPct).append(',')
@@ -659,7 +659,7 @@ object DevControlServer {
      *  for me" — exposes whether the kernel actually allows the
      *  read or whether SELinux is denying it. */
     private fun sysfsDiagnosticJson(): String {
-        val all = com.diegonmarcos.superapp.SysfsProc.sysfsReadDiagnostic()
+        val all = com.diegonmarcos.superapp.battery.SysfsProc.sysfsReadDiagnostic()
         val sorted = all.sortedBy { (_, status) -> if (status.startsWith("✗")) 0 else 1 }
         val sb = StringBuilder("""{"paths":[""")
         var first = true

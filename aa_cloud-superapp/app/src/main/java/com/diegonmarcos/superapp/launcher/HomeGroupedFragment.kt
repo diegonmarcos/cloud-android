@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.launcher
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.system.ModePrefs

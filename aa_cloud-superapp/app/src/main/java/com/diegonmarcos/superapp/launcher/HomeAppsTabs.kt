@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.launcher
+import com.diegonmarcos.superapp.BuildConfig
 
 import android.util.Base64
 import org.json.JSONArray

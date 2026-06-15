@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.ai
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.network.WireGuardPrefs
 import com.diegonmarcos.superapp.profile.ProfilePrefs
 

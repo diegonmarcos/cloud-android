@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.ui
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.App
 import com.diegonmarcos.superapp.system.AppProcessUptime
 import com.diegonmarcos.superapp.battery.SysfsProc

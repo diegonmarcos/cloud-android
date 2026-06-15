@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.launcher
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.R
 
 import android.content.res.ColorStateList

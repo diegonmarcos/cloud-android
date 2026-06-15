@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.system
+import com.diegonmarcos.superapp.IUserService
 
 /**
  * Shizuku UserService implementation — instantiated by the Shizuku

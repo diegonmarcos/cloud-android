@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.search
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.launcher.HomeAppsTabs
 
 import android.util.Base64

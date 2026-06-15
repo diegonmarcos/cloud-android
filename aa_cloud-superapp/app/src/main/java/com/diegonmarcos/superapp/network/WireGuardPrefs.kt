@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.network
+import com.diegonmarcos.superapp.BuildConfig
 
 import android.content.Context
 import android.content.SharedPreferences

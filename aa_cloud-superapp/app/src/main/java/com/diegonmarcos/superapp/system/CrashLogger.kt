@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.system
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.App
 
 import com.diegonmarcos.superapp.core.NotificationStore

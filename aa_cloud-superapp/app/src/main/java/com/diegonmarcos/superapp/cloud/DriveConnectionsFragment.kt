@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.cloud
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.R
 
