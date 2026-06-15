@@ -131,14 +131,16 @@ object SystemInfoPopup {
         } catch (_: Throwable) { "—" }
     }
 
-    private fun readSwap(): String = try {
-        val (total, free) = SysfsProc.swapBytes() ?: return "—"
-        if (total <= 0L) "none" else {
-            val used = (total - free).coerceAtLeast(0L)
-            val pct = (used * 100 / total).toInt()
-            "${fmtBytes(used)} / ${fmtBytes(total)} · $pct% used · ${fmtBytes(free)} free"
-        }
-    } catch (_: Throwable) { "—" }
+    private fun readSwap(): String {
+        return try {
+            val (total, free) = SysfsProc.swapBytes() ?: return "—"
+            if (total <= 0L) "none" else {
+                val used = (total - free).coerceAtLeast(0L)
+                val pct = (used * 100 / total).toInt()
+                "${fmtBytes(used)} / ${fmtBytes(total)} · $pct% used · ${fmtBytes(free)} free"
+            }
+        } catch (_: Throwable) { "—" }
+    }
 
     private fun readStorage(): String = try {
         val stat = StatFs(Environment.getDataDirectory().path)
