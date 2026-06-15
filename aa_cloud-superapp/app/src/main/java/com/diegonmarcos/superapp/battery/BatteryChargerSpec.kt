@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.battery
 
 /**
  * Shell-out reader for `dumpsys battery` — surfaces the negotiated

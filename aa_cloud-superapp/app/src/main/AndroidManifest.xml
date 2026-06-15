@@ -177,7 +177,7 @@
              reads it directly via registerReceiver(null, ...) inside
              onReceive when needed). -->
         <receiver
-            android:name=".PowerStateReceiver"
+            android:name=".battery.PowerStateReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />

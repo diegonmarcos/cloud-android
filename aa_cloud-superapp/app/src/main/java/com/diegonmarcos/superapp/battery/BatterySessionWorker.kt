@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.battery
 
 import android.content.Context
 import androidx.work.Constraints

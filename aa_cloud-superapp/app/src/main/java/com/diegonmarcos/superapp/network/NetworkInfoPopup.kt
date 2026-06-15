@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp.network
+import com.diegonmarcos.superapp.battery.SysfsProc
+import com.diegonmarcos.superapp.battery.BatterySessionStats
+import com.diegonmarcos.superapp.battery.BatteryEstimatePopup
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager

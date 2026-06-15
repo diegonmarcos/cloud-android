@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.battery.PowerStateReceiver
+import com.diegonmarcos.superapp.battery.BatterySessionWorker
+import com.diegonmarcos.superapp.battery.BatterySessionStats
 
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate

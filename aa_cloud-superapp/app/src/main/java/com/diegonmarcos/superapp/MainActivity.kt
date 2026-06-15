@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.battery.EnergyWatchdog
+import com.diegonmarcos.superapp.battery.BatterySessionWorker
 import com.diegonmarcos.superapp.search.SearchSheetFragment
 import com.diegonmarcos.superapp.search.SearchOpener
 import com.diegonmarcos.superapp.network.WgState

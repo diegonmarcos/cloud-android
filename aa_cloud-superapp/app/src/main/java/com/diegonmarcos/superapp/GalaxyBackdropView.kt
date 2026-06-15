@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.battery.EnergyLedger
 
 import android.animation.ValueAnimator
 import android.content.Context

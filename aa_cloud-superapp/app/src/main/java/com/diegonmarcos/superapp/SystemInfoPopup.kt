@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.battery.SysfsProc
 
 import android.app.ActivityManager
 import android.content.Context

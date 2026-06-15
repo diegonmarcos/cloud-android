@@ -1,4 +1,10 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.battery.SysfsProc
+import com.diegonmarcos.superapp.battery.ShizukuEnergy
+import com.diegonmarcos.superapp.battery.PowerStateReceiver
+import com.diegonmarcos.superapp.battery.EnergyWatchdog
+import com.diegonmarcos.superapp.battery.EnergyLedger
+import com.diegonmarcos.superapp.battery.BatterySessionStats
 
 import android.content.Context
 import android.util.Log

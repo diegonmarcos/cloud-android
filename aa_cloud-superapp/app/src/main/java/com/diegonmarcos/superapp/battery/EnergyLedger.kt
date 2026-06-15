@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.battery
 
 import android.os.Debug
 import java.util.concurrent.ConcurrentHashMap

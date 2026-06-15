@@ -1,4 +1,11 @@
 package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.battery.SysfsProc
+import com.diegonmarcos.superapp.battery.EnergyWatchdog
+import com.diegonmarcos.superapp.battery.EnergyUsageDialog
+import com.diegonmarcos.superapp.battery.EnergyLedger
+import com.diegonmarcos.superapp.battery.BatterySessionStats
+import com.diegonmarcos.superapp.battery.BatteryEstimatePopup
+import com.diegonmarcos.superapp.battery.BatteryChargerSpec
 import com.diegonmarcos.superapp.network.WgState
 import com.diegonmarcos.superapp.network.WireGuardPrefs
 import com.diegonmarcos.superapp.profile.ProfilePrefs
