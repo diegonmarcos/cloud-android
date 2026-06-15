@@ -3677,41 +3677,11 @@
             "id": "section:tools",
             "label": "Labs",
             "icon": "ic_p_sol_tools"
-          }
-        ]
-      },
-      {
-        "title": "Comms",
-        "tiles": [
-          {
-            "id": "section:mail",
-            "label": "Mail",
-            "icon": "ic_mail"
           },
           {
-            "id": "page:chat/matrix",
-            "label": "Chat-Matrix",
-            "icon": "ic_p_chat_matrix"
-          },
-          {
-            "id": "page:chat/mattermost",
-            "label": "Chat-Mattermost",
-            "icon": "ic_p_chat_mattermost"
-          }
-        ]
-      },
-      {
-        "title": "Infos",
-        "tiles": [
-          {
-            "id": "section:cal",
-            "label": "Calendar",
-            "icon": "ic_calendar"
-          },
-          {
-            "id": "section:feed",
-            "label": "RSS",
-            "icon": "ic_rss"
+            "id": "section:config",
+            "label": "Configs",
+            "icon": "ic_settings"
           }
         ]
       },
