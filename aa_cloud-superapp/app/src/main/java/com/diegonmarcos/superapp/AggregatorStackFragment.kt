@@ -1,4 +1,12 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.cloud.CalendarMonthFragment
+import com.diegonmarcos.superapp.cloud.CalendarAgendaFragment
+import com.diegonmarcos.superapp.cloud.TasksFragment
+import com.diegonmarcos.superapp.cloud.NewsFeedFragment
+import com.diegonmarcos.superapp.cloud.GitHubFeed
+import com.diegonmarcos.superapp.cloud.DriveConnectionsFragment
+import com.diegonmarcos.superapp.cloud.C3MeshFragment
+import com.diegonmarcos.superapp.cloud.C3HealthFragment
 
 import com.diegonmarcos.superapp.core.Collapsible
 import com.diegonmarcos.superapp.notificationcenter.PhoneNotificationStore

@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.search
+import com.diegonmarcos.superapp.cloud.CloudData
 
 import android.content.ClipData
 import android.content.ClipboardManager

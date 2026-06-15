@@ -1,4 +1,7 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.cloud.DriveConnectionsFragment
+import com.diegonmarcos.superapp.cloud.C3MeshFragment
+import com.diegonmarcos.superapp.cloud.C3HealthFragment
 import com.diegonmarcos.superapp.network.WireGuardFragment
 import com.diegonmarcos.superapp.profile.ProfileFragment
 

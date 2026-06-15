@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.cloud
 
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle

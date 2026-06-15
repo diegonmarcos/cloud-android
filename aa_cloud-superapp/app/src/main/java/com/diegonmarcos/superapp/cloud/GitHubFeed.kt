@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.cloud
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
