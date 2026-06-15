@@ -4665,7 +4665,7 @@
         { "id": "sms",                 "name": "SMS messaging",        "packet": "kdeconnect.sms.messages",         "dir": "both", "status": "planned" },
         { "id": "mousepad",            "name": "Remote input",         "packet": "kdeconnect.mousepad.request",     "dir": "both", "status": "planned" },
         { "id": "presenter",           "name": "Presentation remote",  "packet": "kdeconnect.presenter",            "dir": "out",  "status": "planned" },
-        { "id": "lockdevice",          "name": "Lock device",          "packet": "kdeconnect.lock",                 "dir": "both", "status": "planned" },
+        { "id": "lockdevice",          "name": "Lock device",          "packet": "kdeconnect.lock",                 "dir": "both", "status": "active" },
         { "id": "connectivity_report", "name": "Connectivity report",  "packet": "kdeconnect.connectivity_report",  "dir": "out",  "status": "active" },
         { "id": "contacts",            "name": "Contacts sync",        "packet": "kdeconnect.contacts",             "dir": "out",  "status": "active" },
         { "id": "sftp",                "name": "Remote filesystem",    "packet": "kdeconnect.sftp",                 "dir": "both", "status": "planned" },
