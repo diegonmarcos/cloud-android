@@ -151,7 +151,7 @@ object ConnectivityReportPlugin : KdePlugin {
     override val incoming = setOf("kdeconnect.connectivity_report.request")
     override val outgoing = setOf("kdeconnect.connectivity_report")
 
-    override fun onLinkReady(ctx: Context, link: KdeLink) = link.send(report(ctx))
+    override fun onLinkReady(ctx: Context, link: KdeLink) { link.send(report(ctx)) }
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
         link.send(report(ctx)); return true
     }
