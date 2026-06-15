@@ -38,11 +38,10 @@ import com.diegonmarcos.superapp.search.SearchSheetFragment
 import com.diegonmarcos.superapp.search.SearchOpener
 import com.diegonmarcos.superapp.network.WgState
 import com.diegonmarcos.superapp.profile.BusinessCardFragment
-import com.diegonmarcos.superapp.media.MusicControlsPopup
-import com.diegonmarcos.superapp.media.NowPlayingMonitor
 
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
 import com.diegonmarcos.superapp.launcher.LauncherToolbarFx
+import com.diegonmarcos.superapp.media.MusicIslandController
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
 
 import com.diegonmarcos.superapp.core.SuppressHorizontalSwipe
@@ -1673,12 +1672,8 @@ class MainActivity : AppCompatActivity(),
 
     // ── DevControlBridge.ActivityHost ────────────────────────────────────
 
-    /** Drives the music-playing indicator above the Dynamic Island.
-     *  Initialised lazily on first onResume so we don't allocate the
-     *  MediaSessionManager binder + listener until the activity is
-     *  actually visible. */
-    private var nowPlayingMonitor: NowPlayingMonitor? = null
-    private var musicControlsPopup: MusicControlsPopup? = null
+    /** Music-playing mini-island controller (lazy: allocated on first resume). */
+    private val musicIsland by lazy { MusicIslandController(this) }
 
     // Foreground energy sampler — fine-resolution watchdog samples while
     // the screen is on / the app is resumed. Background coarse samples
@@ -1712,94 +1707,7 @@ class MainActivity : AppCompatActivity(),
         // backgrounded, and the system status bar / our strip need to
         // sync. Idempotent.
         applyLauncherChrome()
-        // Music-playing mini-island. NotificationListener perm gates
-        // the MediaSessionManager query; when it's not granted the
-        // monitor silently reports no sessions and the island stays
-        // GONE. Starting on every onResume + stopping on onPause
-        // means the listener doesn't burn cycles while backgrounded.
-        // Tap → open the app whose controller is currently PLAYING
-        // (NowPlayingMonitor.currentPackage). Falls back to a Toast
-        // when the package has no launch intent (rare — Android
-        // surface apps without a launcher activity).
-        val island = findViewById<android.widget.FrameLayout>(R.id.music_playing_island)
-        val islandIcon = findViewById<android.widget.ImageView>(R.id.music_playing_icon)
-        val islandTitle = findViewById<android.widget.TextView>(R.id.music_playing_title)
-        val islandWave = findViewById<android.view.View>(R.id.music_playing_wave)
-        // Island is PERMANENTLY visible. When nothing's playing it
-        // renders as a plain black pill (icon + text + wave hidden);
-        // when music plays the contents light up. Set here (every
-        // onResume) so it stays visible even when the Notification-
-        // Listener permission isn't granted yet and the monitor never
-        // dispatches.
-        island?.visibility = android.view.View.VISIBLE
-        // Default idle look — black pill, contents hidden — until the
-        // monitor dispatches a playing session. Without this the
-        // wave/icon would show empty before the first dispatch (or
-        // forever, when notification access isn't granted).
-        if (nowPlayingMonitor == null) {
-            islandIcon?.visibility = android.view.View.GONE
-            islandTitle?.visibility = android.view.View.GONE
-            islandWave?.visibility = android.view.View.GONE
-        }
-        if (island != null && nowPlayingMonitor == null) {
-            nowPlayingMonitor = NowPlayingMonitor(this) { playingPackage, title, artist ->
-                // Toggle the CONTENTS, not the island itself — the pill
-                // stays visible (black) when nothing's playing.
-                if (playingPackage != null) {
-                    islandIcon?.visibility = android.view.View.VISIBLE
-                    islandTitle?.visibility = android.view.View.VISIBLE
-                    islandWave?.visibility = android.view.View.VISIBLE
-                    // Icon — load the playing app's launcher icon; fall back
-                    // to null when the package has no application icon
-                    // (rare; e.g. system surfaces that publish a media
-                    // session without an APK icon).
-                    runCatching {
-                        islandIcon?.setImageDrawable(
-                            packageManager.getApplicationIcon(playingPackage))
-                    }.onFailure { islandIcon?.setImageDrawable(null) }
-                    // Marquee text — "Artist — Title" when both exist,
-                    // else whichever single field is present, else the
-                    // app label so the strip never reads blank.
-                    val song = title ?: runCatching {
-                        packageManager.getApplicationLabel(
-                            packageManager.getApplicationInfo(playingPackage, 0)
-                        ).toString()
-                    }.getOrDefault("Playing")
-                    val text = if (!artist.isNullOrBlank()) "$artist — $song" else song
-                    islandTitle?.text = text
-                    // Marquee only animates when the TextView is selected
-                    // or focused. setSelected(true) is the canonical
-                    // "kick the scroll off without stealing focus"
-                    // pattern. Re-applied on every title change so the
-                    // animation restarts from the start of the new
-                    // string instead of continuing mid-scroll.
-                    islandTitle?.isSelected = false
-                    islandTitle?.isSelected = true
-                } else {
-                    // Nothing playing → fully black pill.
-                    islandIcon?.setImageDrawable(null)
-                    islandIcon?.visibility = android.view.View.GONE
-                    islandTitle?.text = ""
-                    islandTitle?.visibility = android.view.View.GONE
-                    islandWave?.visibility = android.view.View.GONE
-                }
-            }
-            island.setOnClickListener {
-                // Tap → Samsung-style controls popup anchored under the
-                // mini-island (album art + title/artist + progress +
-                // prev/play-pause/next). The popup's own app-icon tap
-                // is what opens the playing app. ALWAYS opens — even
-                // when nothing is playing (pkg/ctrl null), the popup
-                // renders an idle "Nothing playing" card.
-                val pkg = nowPlayingMonitor?.currentPackage
-                val ctrl = nowPlayingMonitor?.currentController
-                if (musicControlsPopup == null) {
-                    musicControlsPopup = MusicControlsPopup(this)
-                }
-                musicControlsPopup?.show(island, ctrl, pkg)
-            }
-        }
-        nowPlayingMonitor?.start()
+        musicIsland.resume()
         // Kick a sample now + every 60s while resumed.
         energySamplerHandler.removeCallbacks(energySamplerRunnable)
         energySamplerHandler.post(energySamplerRunnable)
@@ -1811,8 +1719,7 @@ class MainActivity : AppCompatActivity(),
         com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
         if (::toolbarFx.isInitialized) toolbarFx.pause()
-        nowPlayingMonitor?.stop()
-        musicControlsPopup?.dismiss()
+        musicIsland.pause()
         energySamplerHandler.removeCallbacks(energySamplerRunnable)
         super.onPause()
     }
