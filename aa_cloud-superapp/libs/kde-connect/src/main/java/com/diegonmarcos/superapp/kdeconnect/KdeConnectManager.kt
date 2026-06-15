@@ -194,6 +194,15 @@ object KdeConnectManager : KdeLink.Listener {
     fun sendPing(deviceId: String, message: String? = null): Boolean =
         links[deviceId]?.send(PingPlugin.build(message)) ?: false
 
+    /** Send an arbitrary packet to a paired device (used by the remote-control
+     *  UI: touchpad, keyboard, big-screen). False if not connected. */
+    fun send(deviceId: String, packet: NetworkPacket): Boolean =
+        links[deviceId]?.send(packet) ?: false
+
+    /** The currently-connected device ids — the remote-control UI targets the
+     *  first one. */
+    fun connectedIds(): Set<String> = links.filterValues { it.isOpen }.keys
+
     fun disconnect(deviceId: String) { links.remove(deviceId)?.close() }
 
     // ── KdeLink.Listener ─────────────────────────────────────────────────

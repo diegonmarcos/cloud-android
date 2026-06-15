@@ -26,12 +26,13 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
 
     private class Row(
         val device: KdeConnectConfig.Device,
-        val dot: View,
-        val status: TextView,
-        val connect: Button,
-        val pair: Button,
-        val ping: Button,
-        val unpair: Button,
+        val title: TextView,
+        val connDot: View, val connText: TextView,
+        val pairDot: View, val pairText: TextView,
+        val connect: Button, val pairBtn: Button, val ping: Button, val edit: Button,
+        var host: String,           // effective (override or default) wg ip
+        var port: Int,
+        var label: String,
         var deviceId: String? = null,
     )
 
@@ -42,10 +43,30 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     private val DOT_OK   = 0xFF4CAF50.toInt()      // green — connected & paired
     private val DOT_ERR  = 0xFFE53935.toInt()      // red   — error
 
-    private fun setLight(row: Row, color: Int, text: String) {
-        (row.dot.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
-        row.status.text = text
+    private fun dotColor(dot: View, color: Int) {
+        (dot.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
     }
+    private fun setConn(row: Row, color: Int, text: String) {
+        dotColor(row.connDot, color); row.connText.text = text
+    }
+    private fun setPair(row: Row, color: Int, text: String) {
+        dotColor(row.pairDot, color); row.pairText.text = text
+    }
+    /** A small round status light view. */
+    private fun lightDot(ctx: android.content.Context, color: Int): View = View(ctx).apply {
+        val sz = dp(9)
+        layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(7) }
+        background = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(color)
+        }
+    }
+    private fun lightRow(ctx: android.content.Context, dot: View, text: TextView): View =
+        LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(3), 0, dp(3))
+            addView(dot); addView(text)
+        }
 
     private val rows = mutableListOf<Row>()
 
@@ -132,31 +153,28 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(12) }
         }
-        card.addView(TextView(ctx).apply {
-            text = "${device.label}  ·  ${device.wgIp}:${KdeConnectConfig.get().discoveryPort}"
+        // Effective name/host/port — build.json defaults, overridable via Edit.
+        val dprefs = KdeDevicePrefs(ctx)
+        var effLabel = dprefs.label(device.id, device.label)
+        var effHost = dprefs.host(device.id, device.wgIp)
+        var effPort = dprefs.port(device.id, KdeConnectConfig.get().discoveryPort)
+        val title = TextView(ctx).apply {
+            text = "$effLabel  ·  $effHost:$effPort"
             setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
-        })
-        // Status line: a coloured light + plain-language text.
-        val statusRow = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, dp(10))
         }
+        card.addView(title)
+
+        // Two status lights: connection + pairing.
         val pairedBefore = device.id.isNotBlank() && KdeConnectManager.isPaired(device.id)
-        val dot = View(ctx).apply {
-            val sz = dp(10)
-            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(8) }
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(if (pairedBefore) DOT_IDLE else DOT_IDLE)
-            }
-        }
-        val status = TextView(ctx).apply {
-            text = if (pairedBefore) "Paired — tap Connect to link" else "Not connected — tap Connect"
-            setTextColor(0xFFE9D8FD.toInt()); textSize = 12.5f
-        }
-        statusRow.addView(dot); statusRow.addView(status)
-        card.addView(statusRow)
+        val connDot = lightDot(ctx, DOT_IDLE)
+        val connText = TextView(ctx).apply { setTextColor(0xFFE9D8FD.toInt()); textSize = 12.5f
+            text = "Not connected" }
+        val pairDot = lightDot(ctx, if (pairedBefore) DOT_OK else DOT_IDLE)
+        val pairText = TextView(ctx).apply { setTextColor(0xFFE9D8FD.toInt()); textSize = 12.5f
+            text = if (pairedBefore) "Paired" else "Not paired" }
+        card.addView(lightRow(ctx, connDot, connText))
+        card.addView(LinearLayout(ctx).apply { addView(lightRow(ctx, pairDot, pairText))
+            setPadding(0, 0, 0, dp(8)) })
 
         val btnRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         fun mkBtn(label: String): Button = Button(ctx).apply {
@@ -164,36 +182,81 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val connect = mkBtn("Connect")
-        val pair = mkBtn("Pair").apply { isEnabled = false }
+        val pairBtn = mkBtn("Pair")
         val ping = mkBtn("Ping").apply { isEnabled = false }
-        val unpair = mkBtn("Unpair")
-        btnRow.addView(connect); btnRow.addView(pair); btnRow.addView(ping); btnRow.addView(unpair)
+        val edit = mkBtn("Edit")
+        btnRow.addView(connect); btnRow.addView(pairBtn); btnRow.addView(ping); btnRow.addView(edit)
         card.addView(btnRow)
 
-        val row = Row(device, dot, status, connect, pair, ping, unpair)
+        val row = Row(device, title, connDot, connText, pairDot, pairText,
+            connect, pairBtn, ping, edit, effHost, effPort, effLabel)
         rows += row
+        refreshPairButton(row)
 
         connect.setOnClickListener {
-            setLight(row, DOT_BUSY, "Connecting…")
+            setConn(row, DOT_BUSY, "Connecting…")
             viewLifecycleOwner.lifecycleScope.launch {
-                KdeConnectManager.connect(device.wgIp, KdeConnectConfig.get().discoveryPort)
-                    .onFailure { setLight(row, DOT_ERR, "Couldn't connect: ${it.message}") }
+                KdeConnectManager.connect(row.host, row.port)
+                    .onFailure { setConn(row, DOT_ERR, "Couldn't connect: ${it.message}") }
             }
         }
-        pair.setOnClickListener {
-            val id = row.deviceId ?: return@setOnClickListener
-            if (!KdeConnectManager.requestPair(id)) toast("Connect first")
-            else setLight(row, DOT_BUSY, "Pair request sent — accept on ${device.label}")
+        // Merged Pair/Unpair: label follows the paired state.
+        pairBtn.setOnClickListener {
+            val id = row.deviceId
+            if (id != null && KdeConnectManager.isPaired(id)) {
+                KdeConnectManager.unpair(id)
+            } else if (id != null) {
+                if (!KdeConnectManager.requestPair(id)) toast("Connect first")
+                else setPair(row, DOT_BUSY, "Pair request sent — accept on ${row.label}")
+            } else toast("Connect first")
         }
         ping.setOnClickListener {
             val id = row.deviceId ?: return@setOnClickListener
             if (!KdeConnectManager.sendPing(id, "Ping from ${KdeIdentity.deviceName(requireContext())}"))
                 toast("Not connected")
         }
-        unpair.setOnClickListener {
-            row.deviceId?.let { KdeConnectManager.unpair(it) }
-        }
+        edit.setOnClickListener { showEditDialog(ctx, row, dprefs) }
         return card
+    }
+
+    /** Pair button shows "Unpair" when paired, "Pair" otherwise. */
+    private fun refreshPairButton(row: Row) {
+        val paired = row.deviceId?.let { KdeConnectManager.isPaired(it) } == true
+        row.pairBtn.text = if (paired) "Unpair" else "Pair"
+    }
+
+    /** Edit dialog for the device Name / IP / Port — persists an override on
+     *  top of the build.json default. */
+    private fun showEditDialog(ctx: android.content.Context, row: Row, dprefs: KdeDevicePrefs) {
+        val pad = dp(16)
+        val box = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, 0) }
+        fun field(hint: String, value: String, numeric: Boolean) = android.widget.EditText(ctx).apply {
+            this.hint = hint; setText(value); isSingleLine = true
+            if (numeric) inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+        val nameF = field("Name", row.label, false)
+        val ipF   = field("IP (wg)", row.host, false)
+        val portF = field("Port", row.port.toString(), true)
+        box.addView(nameF); box.addView(ipF); box.addView(portF)
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
+            .setTitle("Edit ${row.device.label}")
+            .setView(box)
+            .setPositiveButton("Save") { _, _ ->
+                row.label = nameF.text.toString().ifBlank { row.label }
+                row.host = ipF.text.toString().ifBlank { row.host }
+                row.port = portF.text.toString().toIntOrNull() ?: row.port
+                dprefs.save(row.device.id, row.label, row.host, row.port)
+                row.title.text = "${row.label}  ·  ${row.host}:${row.port}"
+            }
+            .setNeutralButton("Reset to default") { _, _ ->
+                dprefs.save(row.device.id, row.device.label, row.device.wgIp,
+                    KdeConnectConfig.get().discoveryPort)
+                row.label = row.device.label; row.host = row.device.wgIp
+                row.port = KdeConnectConfig.get().discoveryPort
+                row.title.text = "${row.label}  ·  ${row.host}:${row.port}"
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /** Run the read-only reachability probe and render its step trace. */
@@ -246,34 +309,36 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
      *  the peer wg IP ([host]) — known from the first CONNECTING event — and on
      *  the discovered deviceId once the handshake yields one. */
     override fun onState(deviceId: String, host: String?, state: KdeConnectManager.State, detail: String) {
-        val row = rows.firstOrNull { host != null && it.device.wgIp == host }
+        val row = rows.firstOrNull { host != null && it.host == host }
             ?: rows.firstOrNull { deviceId.isNotBlank() && it.deviceId == deviceId }
             ?: return
         if (deviceId.isNotBlank()) row.deviceId = deviceId
         val paired = row.deviceId?.let { KdeConnectManager.isPaired(it) } == true
         when (state) {
-            KdeConnectManager.State.CONNECTING   -> setLight(row, DOT_BUSY, "Connecting…")
-            KdeConnectManager.State.HANDSHAKING  -> setLight(row, DOT_BUSY, "Connecting (securing link)…")
-            KdeConnectManager.State.NEEDS_PAIRING -> setLight(row, DOT_LINK, "Connected — tap Pair to pair")
-            KdeConnectManager.State.PAIRED       -> {
-                val keyPart = detail.substringAfter(" · ", "")  // "key XXXX" if present
-                setLight(row, DOT_OK, "Connected & paired ✓" + if (keyPart.isNotBlank()) "  ·  $keyPart" else "")
+            KdeConnectManager.State.CONNECTING   -> setConn(row, DOT_BUSY, "Connecting…")
+            KdeConnectManager.State.HANDSHAKING  -> setConn(row, DOT_BUSY, "Connecting (securing)…")
+            KdeConnectManager.State.NEEDS_PAIRING -> {
+                setConn(row, DOT_OK, "Connected"); setPair(row, DOT_IDLE, "Not paired")
             }
-            KdeConnectManager.State.DISCONNECTED -> setLight(row, DOT_IDLE, "Disconnected — tap Connect")
-            KdeConnectManager.State.ERROR        -> setLight(row, DOT_ERR, "Error: $detail")
+            KdeConnectManager.State.PAIRED       -> {
+                val keyPart = detail.substringAfter(" · ", "")
+                setConn(row, DOT_OK, "Connected")
+                setPair(row, DOT_OK, "Paired" + if (keyPart.isNotBlank()) " · $keyPart" else "")
+            }
+            KdeConnectManager.State.DISCONNECTED -> {
+                setConn(row, DOT_IDLE, "Not connected")
+                setPair(row, if (paired) DOT_OK else DOT_IDLE, if (paired) "Paired" else "Not paired")
+            }
+            KdeConnectManager.State.ERROR        -> setConn(row, DOT_ERR, "Error: $detail")
         }
-        val connected = state == KdeConnectManager.State.NEEDS_PAIRING ||
-            state == KdeConnectManager.State.PAIRED
-        row.pair.isEnabled = connected && !paired
         row.ping.isEnabled = state == KdeConnectManager.State.PAIRED
-        row.unpair.isEnabled = paired
+        refreshPairButton(row)
     }
 
     private fun toast(m: String) = Toast.makeText(requireContext(), m, Toast.LENGTH_SHORT).show()
     /** The full KDE Connect plugin catalog — active (we implement + advertise)
      *  in lavender, planned in gray. Data-driven from build.json plugins[]. */
     private fun buildPluginsSection(ctx: android.content.Context, cfg: KdeConnectConfig.Config): View {
-        val handled = cfg.plugins.count { it.id in KdePluginRegistry.plugins.map { p -> p.id } }
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val p = dp(14); setPadding(p, p, p, p)
@@ -284,16 +349,22 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(12) }
         }
-        col.addView(TextView(ctx).apply {
-            text = "Plugins  ·  $handled handled / ${cfg.plugins.size} advertised"
+        val prefs = KdePluginPrefs(ctx)
+        val header = TextView(ctx).apply {
             setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
             setPadding(0, 0, 0, dp(2))
-        })
+        }
+        fun updateHeader() {
+            val on = cfg.plugins.count { prefs.isEnabled(it.id) }
+            header.text = "Plugins  ·  $on enabled / ${cfg.plugins.size} total"
+        }
+        updateHeader()
+        col.addView(header)
         col.addView(TextView(ctx).apply {
-            text = "Tap a plugin to enable/disable it. ● handled & on · ● advertised (no handler yet) · ◌ off."
+            text = "Tap a plugin to enable/disable it (counts above update live). " +
+                "● handled · ● advertised (no handler yet) · ◌ off."
             setTextColor(0x77FFFFFF.toInt()); textSize = 11f; setPadding(0, 0, 0, dp(8))
         })
-        val prefs = KdePluginPrefs(ctx)
         val realIds = KdePluginRegistry.plugins.map { it.id }.toSet()
         for (pl in cfg.plugins.sortedByDescending { it.id in realIds }) {
             val real = pl.id in realIds
@@ -313,7 +384,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             }
             render()
             rowTv.setOnClickListener {
-                prefs.toggle(pl.id); render()
+                prefs.toggle(pl.id); render(); updateHeader()
                 rowTv.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
             }
             col.addView(rowTv)
