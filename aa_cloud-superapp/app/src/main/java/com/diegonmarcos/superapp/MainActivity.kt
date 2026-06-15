@@ -472,7 +472,7 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    override fun openAppDrawerSheet(initialTab: String = "") {
+    override fun openAppDrawerSheet(initialTab: String) {
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(
                 R.anim.slide_in_up,  R.anim.fade_out,

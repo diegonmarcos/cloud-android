@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.SectionPages
+import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.settings.LauncherTheme
 import com.diegonmarcos.superapp.settings.LauncherThemePrefs
@@ -186,7 +186,7 @@ class LauncherNavController(private val host: NavHost) {
         fun syncBottomNav(sectionId: String)
         fun syncDrawerTab(index: Int)
         fun invalidateMenu()
-        fun openAppDrawerSheet(initialTab: String)
+        fun openAppDrawerSheet(initialTab: String = "")
         fun closeAppDrawerSheetIfOpen()
         fun closeDrawerIfOpen()
         fun dispatchTarget(target: String)
