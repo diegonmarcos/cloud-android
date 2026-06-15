@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.media.NowPlayingMonitor
 
 import android.animation.ValueAnimator
 import android.content.Context

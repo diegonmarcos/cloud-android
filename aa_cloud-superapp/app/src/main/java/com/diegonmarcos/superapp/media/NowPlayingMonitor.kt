@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.media
 
 import com.diegonmarcos.superapp.notificationcenter.PhoneNotificationListenerService
 import android.content.ComponentName

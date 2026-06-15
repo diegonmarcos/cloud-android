@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp
+package com.diegonmarcos.superapp.media
 
 import android.content.Context
 import android.media.MediaMetadata

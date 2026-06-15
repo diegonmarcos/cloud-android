@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp
+import com.diegonmarcos.superapp.media.MusicControlsPopup
+import com.diegonmarcos.superapp.media.NowPlayingMonitor
 
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
