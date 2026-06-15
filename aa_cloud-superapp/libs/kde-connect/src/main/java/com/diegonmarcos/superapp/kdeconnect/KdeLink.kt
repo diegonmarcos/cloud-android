@@ -51,8 +51,7 @@ class KdeLink(
         } catch (t: Throwable) {
             if (!closed) Log.i(TAG, "read loop ended for $peerDeviceId: ${t.message}")
         } finally {
-            if (!closed) listener.onDisconnect(this)
-            close()
+            close()   // close() notifies the listener exactly once
         }
     }
 
@@ -76,6 +75,7 @@ class KdeLink(
         if (closed) return
         closed = true
         runCatching { socket.close() }
+        runCatching { listener.onDisconnect(this) }   // single source of disconnect notification
     }
 
     val isOpen: Boolean get() = !closed

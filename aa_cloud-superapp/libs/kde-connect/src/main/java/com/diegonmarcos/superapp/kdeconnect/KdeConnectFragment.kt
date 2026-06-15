@@ -203,7 +203,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         }
         val connect = mkBtn("Connect")
         val pairBtn = mkBtn("Pair")
-        val ping = mkBtn("Ping").apply { isEnabled = false }
+        val ping = mkBtn("Ping").apply { isEnabled = pairedBefore }   // tappable once paired (auto-reconnects)
         val edit = mkBtn("Edit")
         btnRow.addView(connect); btnRow.addView(pairBtn); btnRow.addView(ping); btnRow.addView(edit)
         card.addView(btnRow)
@@ -220,28 +220,49 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
                     .onFailure { setConn(row, DOT_ERR, "Couldn't connect: ${it.message}") }
             }
         }
-        // Merged Pair/Unpair: label follows the paired state.
+        // Merged Pair/Unpair: label follows the paired state. Pairing is keyed
+        // by the persistent device id (row.device.id == manager's idFor(host)),
+        // so Unpair works even before connecting; Pair needs a live link.
         pairBtn.setOnClickListener {
-            val id = row.deviceId
-            if (id != null && KdeConnectManager.isPaired(id)) {
-                KdeConnectManager.unpair(id)
-            } else if (id != null) {
-                if (!KdeConnectManager.requestPair(id)) toast("Connect first")
-                else setPair(row, DOT_BUSY, "Pair request sent — accept on ${row.label}")
-            } else toast("Connect first")
+            val liveId = row.deviceId
+            val key = (liveId ?: row.device.id).takeIf { it.isNotBlank() }
+            when {
+                key != null && KdeConnectManager.isPaired(key) -> {
+                    KdeConnectManager.unpair(key)
+                    setPair(row, DOT_IDLE, "Not paired"); refreshPairButton(row)
+                }
+                liveId != null -> {
+                    if (!KdeConnectManager.requestPair(liveId)) toast("Connect first")
+                    else setPair(row, DOT_BUSY, "Pair request sent — accept on ${row.label}")
+                }
+                else -> toast("Connect first")
+            }
         }
         ping.setOnClickListener {
-            val id = row.deviceId ?: return@setOnClickListener
-            if (!KdeConnectManager.sendPing(id, "Ping from ${KdeIdentity.deviceName(requireContext())}"))
-                toast("Not connected")
+            val msg = "Ping from ${KdeIdentity.deviceName(requireContext())}"
+            val live = row.deviceId?.takeIf { KdeConnectManager.isConnected(it) }
+            if (live != null) {
+                if (!KdeConnectManager.sendPing(live, msg)) toast("Send failed — reconnecting…")
+                else return@setOnClickListener
+            }
+            // No live link (dropped or first use) — re-dial this device, then ping.
+            toast("Reconnecting…")
+            viewLifecycleOwner.lifecycleScope.launch {
+                KdeConnectManager.connect(row.host, row.port)
+                    .onSuccess { id -> KdeConnectManager.sendPing(id, msg) }
+                    .onFailure { toast("Couldn't reconnect: ${it.message}") }
+            }
         }
         edit.setOnClickListener { showEditDialog(ctx, row, dprefs) }
         return card
     }
 
-    /** Pair button shows "Unpair" when paired, "Pair" otherwise. */
+    /** Pair button shows "Unpair" when paired, "Pair" otherwise. Falls back to
+     *  the persistent device id (the key the manager + the pair light both use)
+     *  so a remembered pairing reads "Unpair" before this session connects. */
     private fun refreshPairButton(row: Row) {
-        val paired = row.deviceId?.let { KdeConnectManager.isPaired(it) } == true
+        val key = row.deviceId ?: row.device.id
+        val paired = key.isNotBlank() && KdeConnectManager.isPaired(key)
         row.pairBtn.text = if (paired) "Unpair" else "Pair"
     }
 
@@ -333,7 +354,8 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             ?: rows.firstOrNull { deviceId.isNotBlank() && it.deviceId == deviceId }
             ?: return
         if (deviceId.isNotBlank()) row.deviceId = deviceId
-        val paired = row.deviceId?.let { KdeConnectManager.isPaired(it) } == true
+        val pairKey = row.deviceId ?: row.device.id
+        val paired = pairKey.isNotBlank() && KdeConnectManager.isPaired(pairKey)
         when (state) {
             KdeConnectManager.State.CONNECTING   -> setConn(row, DOT_BUSY, "Connecting…")
             KdeConnectManager.State.HANDSHAKING  -> setConn(row, DOT_BUSY, "Connecting (securing)…")
@@ -351,7 +373,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             }
             KdeConnectManager.State.ERROR        -> setConn(row, DOT_ERR, "Error: $detail")
         }
-        row.ping.isEnabled = state == KdeConnectManager.State.PAIRED
+        row.ping.isEnabled = paired   // paired → tappable; the handler auto-reconnects if the link dropped
         refreshPairButton(row)
     }
 
@@ -555,12 +577,30 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         })
         return row
     }
-    /** Send a sender packet to the first connected+paired device, or toast. */
+    /** Run [then] against a live link; if the link dropped, transparently
+     *  re-dial the first device first (KDE reconnects on demand rather than
+     *  holding one socket forever). */
+    private fun targetOrReconnect(then: (String) -> Unit) {
+        val live = KdeConnectManager.connectedIds().firstOrNull()
+        if (live != null) { then(live); return }
+        val row = rows.firstOrNull() ?: return toastUnit("No device")
+        if (row.deviceId?.let { KdeConnectManager.isPaired(it) } != true &&
+            !KdeConnectManager.isPaired(row.device.id)) return toastUnit("Pair first")
+        toastUnit("Reconnecting…")
+        viewLifecycleOwner.lifecycleScope.launch {
+            KdeConnectManager.connect(row.host, row.port)
+                .onSuccess { id ->
+                    if (KdeConnectManager.isConnected(id)) then(id)
+                    else toastUnit("Reconnected — tap again")
+                }
+                .onFailure { toastUnit("Couldn't reconnect: ${it.message}") }
+        }
+    }
+
+    /** Send a sender packet to a live link (reconnecting if needed). */
     private fun toTarget(packet: NetworkPacket?) {
-        val id = KdeConnectManager.connectedIds().firstOrNull()
-            ?: return toastUnit("Connect & pair first")
         if (packet == null) return toastUnit("No desktop state yet — try again")
-        KdeConnectManager.send(id, packet)
+        targetOrReconnect { id -> KdeConnectManager.send(id, packet) }
     }
 
     /** Media remote — drives the desktop's player (mpris) + master volume
@@ -581,9 +621,7 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         return col
     }
     /** Nudge desktop volume; if we don't have its sink state yet, request it. */
-    private fun volNudge(delta: Int) {
-        val id = KdeConnectManager.connectedIds().firstOrNull()
-            ?: return toastUnit("Connect & pair first")
+    private fun volNudge(delta: Int) = targetOrReconnect { id ->
         val pkt = RemoteSystemVolumePlugin.nudge(delta)
         if (pkt == null) {
             KdeConnectManager.send(id, RemoteSystemVolumePlugin.requestSinks())

@@ -79,6 +79,8 @@ object KdeConnectManager : KdeLink.Listener {
             runCatching {
                 val plain = Socket()
                 vpnNetwork()?.bindSocket(plain)   // egress over wg0 (source = our wg IP)
+                plain.keepAlive = true            // TCP keepalive — survive idle, detect death (KDE does this)
+                plain.tcpNoDelay = true           // flush small control packets immediately
                 plain.connect(InetSocketAddress(host, port), 6000)
                 plain.getOutputStream().apply {
                     write(myIdentity().serialize().toByteArray(Charsets.UTF_8)); flush()
