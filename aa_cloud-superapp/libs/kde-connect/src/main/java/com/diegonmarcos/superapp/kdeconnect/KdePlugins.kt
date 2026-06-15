@@ -150,7 +150,7 @@ object BatteryPlugin : KdePlugin {
             NetworkPacket.TYPE_BATTERY_REQUEST -> link.send(report(ctx))
             NetworkPacket.TYPE_BATTERY ->
                 if (packet.has("currentCharge")) KdeNotifications.post(
-                    ctx, "${link.peerName} battery",
+                    ctx, "Cloud SA - KDE/${link.peerName} Battery",
                     "${packet.getInt("currentCharge")}%" +
                         if (packet.getBoolean("isCharging")) " · charging" else "")
         }

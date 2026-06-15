@@ -52,12 +52,12 @@ class InfosNotifier(private val ctx: Context) {
         // group list + total alert count. The children above stay dismissable;
         // only this parent is non-removable (like the Main notification).
         val total = groups.sumOf { it.messages.size }
-        val summary = NotificationCompat.InboxStyle().setBigContentTitle("Cloud SuperApp - NC Alerts")
+        val summary = NotificationCompat.InboxStyle().setBigContentTitle("Cloud SA - Alerts")
         groups.forEach { summary.addLine("${it.title} · ${it.messages.size} new") }
         summary.setSummaryText("$total alerts")
         val sum = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_cloud)
-            .setContentTitle("Cloud SuperApp - NC Alerts")
+            .setContentTitle("Cloud SA - Alerts")
             .setContentText("$total new alerts")
             .setNumber(total)
             .setGroup(GROUP_KEY)

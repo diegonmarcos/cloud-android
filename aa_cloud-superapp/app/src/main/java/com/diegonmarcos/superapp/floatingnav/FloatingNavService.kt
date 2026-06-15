@@ -490,7 +490,7 @@ class FloatingNavService : Service() {
         // Collapsed shows the first compact_action_count; expanded shows all 5.
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_cloud)
-            .setContentTitle("Cloud SuperApp - NC Quick Actions")
+            .setContentTitle("Cloud SA - Quick Actions")
             .setContentText("Quick actions")
             .setOngoing(true).setOnlyAlertOnce(true)
             .setContentIntent(open)
