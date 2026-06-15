@@ -8,9 +8,12 @@ import org.json.JSONObject
  * Data-driven model for the Floating Top Nav Bar, decoded from
  * BuildConfig.UI_FLOATING_NAV_B64 (baked from build.json::ui.floating_nav).
  *
- * The expanded menu is a constant 2-line box, identical wherever it's shown:
- *   line 1 = [parents]  (the three hubs — same everywhere)
- *   line 2 = the matched context's [NavContext.children]
+ * The expanded menu is a constant 3-line box, identical wherever it's shown,
+ * with a strictly decreasing font size per line:
+ *   line 1 = [root]     (the apex — Cloud SuperApp — biggest)
+ *   line 2 = [parents]  (the sibling hubs — same everywhere — medium)
+ *   line 3 = the matched context's [NavContext.children] (smallest; omitted
+ *            when the context has none, e.g. forkless Cloud-Nav)
  * [FloatingNavService] renders these verbatim and dispatches each item by its
  * [NavItem.target] scheme. Add a hub / child = edit build.json only.
  */
@@ -41,6 +44,9 @@ data class FloatingNavConfig(
     val topOffsetDp: Int,
     /** Menu box width as a % of screen width. */
     val widthPct: Int,
+    /** Line 1 apex — the constellation root (Cloud SuperApp), biggest font. */
+    val root: NavItem?,
+    /** Line 2 — the sibling hubs (Cloud IDE · Comms · Nav), medium font. */
     val parents: List<NavItem>,
     /** Global utility actions. Compact menu shows the first [compactActionCount];
      *  the Expanded view shows them all. */
@@ -75,6 +81,14 @@ data class FloatingNavConfig(
             return out
         }
 
+        /** Parse a single NavItem object (e.g. the `root` apex), or null. */
+        private fun item(o: JSONObject?): NavItem? {
+            if (o == null) return null
+            val label = o.optString("label"); val target = o.optString("target")
+            if (label.isBlank() || target.isBlank()) return null
+            return NavItem(label, target, o.optString("install_app"))
+        }
+
         /** Visible for tests — parse a raw JSON object string. */
         fun parse(raw: String): FloatingNavConfig {
             val o = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
@@ -95,6 +109,7 @@ data class FloatingNavConfig(
                 pollMs = o.optLong("poll_ms", 1000L).coerceAtLeast(250L),
                 topOffsetDp = o.optInt("top_offset_dp", 88).coerceIn(0, 600),
                 widthPct = o.optInt("width_pct", 90).coerceIn(40, 100),
+                root = item(o.optJSONObject("root")),
                 parents = items(o.optJSONArray("parents")),
                 actions = items(o.optJSONArray("actions")),
                 compactActionCount = o.optInt("compact_action_count", 3).coerceAtLeast(1),

@@ -278,11 +278,16 @@ class FloatingNavService : Service() {
             }
             val p = dp(12); setPadding(p, dp(10), p, dp(10))
         }
-        // Line 1 — the three hubs (centred, larger); bold the current context's hub.
-        col.addView(itemRow(cfg.parents, boldId = ctx.id, size = 14f))
-        // Line 2 — the current context's children (centred, one size smaller).
-        // (Actions/album art live in the Android notification, not here.)
-        col.addView(itemRow(ctx.children, boldId = null, topGap = true, size = 12f))
+        // Line 1 — the constellation apex (Cloud SuperApp), BIGGEST; bold when
+        // SuperApp itself is foreground (the default context).
+        cfg.root?.let { col.addView(itemRow(listOf(it), boldCtx = ctx, size = 16f)) }
+        // Line 2 — the sibling hubs (Cloud IDE · Comms · Nav), medium; bold the
+        // hub matching the current foreground app.
+        col.addView(itemRow(cfg.parents, boldCtx = ctx, topGap = true, size = 13f))
+        // Line 3 — the current context's children, SMALLEST. Omitted when the
+        // context has none (e.g. the forkless Cloud-Nav). Font decreases per line.
+        if (ctx.children.isNotEmpty())
+            col.addView(itemRow(ctx.children, boldCtx = null, topGap = true, size = 11f))
 
         runCatching { wm.addView(col, barParams(outsideTouch = true)) }
         col.setOnTouchListener { _, ev ->
@@ -291,9 +296,10 @@ class FloatingNavService : Service() {
         bar = col
     }
 
-    /** One horizontal row of pipe-separated chips. `boldId` bolds the parent
-     *  whose target maps to that context (self→default, app:<pkg-prefix>). */
-    private fun itemRow(items: List<NavItem>, boldId: String?, topGap: Boolean = false, size: Float = 13f): LinearLayout {
+    /** One horizontal row of pipe-separated chips. When [boldCtx] is non-null,
+     *  the item whose target maps to that context is bold (self→default hub,
+     *  app:<pkg> → the matching context by its match_prefixes). */
+    private fun itemRow(items: List<NavItem>, boldCtx: NavContext?, topGap: Boolean = false, size: Float = 13f): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER   // centre the chips within the full-width box
@@ -303,18 +309,21 @@ class FloatingNavService : Service() {
         }
         for ((i, item) in items.withIndex()) {
             if (i > 0) row.addView(divider())
-            val bold = boldId != null && parentMatchesContext(item.target, boldId)
+            val bold = boldCtx != null && parentMatchesContext(item.target, boldCtx)
             row.addView(chip(item.label, bold = bold, size = size) { handleTarget(item); collapse() })
         }
         return row
     }
 
-    private fun parentMatchesContext(target: String, ctxId: String): Boolean = when {
-        target == "self" -> ctxId == "default"
+    /** Data-driven hub→context match (no hardcoded package list): a `self`
+     *  target is current in the default context (empty match_prefixes); an
+     *  `app:<pkg>` target is current when the active context's match_prefixes
+     *  cover that package. Add a hub + its context in build.json → bolds here. */
+    private fun parentMatchesContext(target: String, ctx: NavContext): Boolean = when {
+        target == "self" -> ctx.matchPrefixes.isEmpty()
         target.startsWith("app:") -> {
             val pkg = target.removePrefix("app:")
-            (ctxId == "comms" && pkg.startsWith("com.diegonmarcos.comms")) ||
-                (ctxId == "ide" && pkg.startsWith("com.diegonmarcos.ide"))
+            ctx.matchPrefixes.any { pkg == it || pkg.startsWith("$it.") || it.startsWith("$pkg.") }
         }
         else -> false
     }

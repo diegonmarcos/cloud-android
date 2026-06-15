@@ -4525,14 +4525,14 @@
     "floating_nav": {
       "enabled": true,
       "poll_ms": 1000,
-      "_doc_layout": "The expanded menu renders the SAME 2-line box wherever it is triggered (single engine: FloatingNavService.showBar). Line 1 = `parents` (the three hubs), constant everywhere, centred. Line 2 = the `children` of the context matched from the foreground package (Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·Messenger·Dialer; otherwise the `default` context = Cloud-SuperApp's first-level pages), one font size smaller than line 1. Layout: `top_offset_dp` = distance from the top edge (default just below the dynamic island); `width_pct` = box width as % of screen width. Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Add a hub / child = edit here; nothing in Kotlin hardcodes a label or package.",
-      "top_offset_dp": 88,
+      "_doc_layout": "The expanded menu renders the SAME 3-line box wherever it is triggered (single engine: FloatingNavService.showBar). Line 1 = `root` (the constellation apex, BIGGEST font) = Cloud SuperApp. Line 2 = `parents` (the sibling hubs Cloud IDE · Cloud Comms · Cloud Nav, medium font), constant everywhere, centred; the hub matching the current foreground app is bold. Line 3 = the `children` of the context matched from the foreground package (Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·Messenger·Dialer; Cloud-Nav → none; otherwise the `default` context = Cloud-SuperApp's first-level pages), SMALLEST font. Font size strictly decreases per line (root > parents > children). Layout: `top_offset_dp` = distance from the top edge (renders below the centred island cluster); `width_pct` = box width as % of screen width. Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Bolding of the current hub is data-driven from each context's `match_prefixes` — nothing in Kotlin hardcodes a label or package. Add a hub / child = edit here.",
+      "top_offset_dp": 150,
       "width_pct": 90,
+      "root": {
+        "label": "Cloud SuperApp",
+        "target": "self"
+      },
       "parents": [
-        {
-          "label": "Cloud SuperApp",
-          "target": "self"
-        },
         {
           "label": "Cloud IDE",
           "target": "app:com.diegonmarcos.ide",
@@ -4542,6 +4542,11 @@
           "label": "Cloud Comms",
           "target": "app:com.diegonmarcos.comms",
           "install_app": "cloud-comms"
+        },
+        {
+          "label": "Cloud Nav",
+          "target": "app:com.diegonmarcos.cloudnav",
+          "install_app": "cloud-nav"
         }
       ],
       "_doc_actions": "Global utility actions, identical in every context. The COMPACT menu shows the first `compact_action_count` (3); the EXPANDED view shows ALL of them (up to 5) plus a now-playing album-art card. Targets: `torch` toggles the flashlight (CameraManager.setTorchMode, no camera perm); `calc` opens the device calculator (Intent CATEGORY_APP_CALCULATOR); `screensaver` starts ScreensaverService (full-black cover overlay — see ui.screensaver); `lock` locks the screen (ScreenLocker); `action:<id>` routes through Cloud-SuperApp. Add/replace/reorder = edit here.",
@@ -4638,6 +4643,14 @@
               "target": "app:com.diegonmarcos.comms.dialer"
             }
           ]
+        },
+        {
+          "_doc": "Cloud-Nav is a single forkless app, so it has NO child apps — `children` is empty and line 3 is omitted when it is foreground. This context exists only so the Cloud Nav hub on line 2 bolds (match via match_prefixes) when com.diegonmarcos.cloudnav is in the foreground.",
+          "id": "nav",
+          "match_prefixes": [
+            "com.diegonmarcos.cloudnav"
+          ],
+          "children": []
         }
       ]
     },
