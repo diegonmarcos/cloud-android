@@ -42,6 +42,7 @@ import com.diegonmarcos.superapp.media.MusicControlsPopup
 import com.diegonmarcos.superapp.media.NowPlayingMonitor
 
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
+import com.diegonmarcos.superapp.launcher.LauncherToolbarFx
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
 
 import com.diegonmarcos.superapp.core.SuppressHorizontalSwipe
@@ -125,7 +126,7 @@ class MainActivity : AppCompatActivity(),
     private val TAG = "MainActivity"
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var bottomNav: BottomNavigationView
-    private lateinit var toolbarFx: com.diegonmarcos.superapp.launcher.LauncherToolbarFx
+    private lateinit var toolbarFx: LauncherToolbarFx
     private lateinit var drawerTabs: TabLayout
     private lateinit var drawerPageTabs: TabLayout
 
