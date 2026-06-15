@@ -3,8 +3,13 @@ package com.diegonmarcos.superapp
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectConfig
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectManager
@@ -51,42 +56,64 @@ object KdeStatusNotifier {
                 else -> "Offline"
             }
 
-            val big = StringBuilder()
-            for (dev in cfg.devices) {
+            // MediaStyle has no big-text expand → keep it concise: one device
+            // line + a sub-text with the tally and identity.
+            val dev = cfg.devices.firstOrNull()
+            val line = if (dev != null) {
                 val connected = dev.id.isNotBlank() && KdeConnectManager.isConnected(dev.id)
                 val paired = dev.id.isNotBlank() && KdeConnectManager.isPaired(dev.id)
-                val cMark = if (connected) "🔗" else "▫"
-                val pMark = if (paired) "🔒" else "▫"
-                big.append("$cMark $pMark ${dev.label} — ")
-                    .append(if (connected) "Connected" else "Not connected").append(" · ")
-                    .append(if (paired) "Paired" else "Not paired").append('\n')
-            }
-            big.append("🔌 $on/${cfg.plugins.size} plugins enabled · ")
-                .append("${KdeConnectManager.pairedDeviceIds().size} paired").append('\n')
-            // Extra info (we have the room in BigText).
-            big.append("🆔 ${KdeIdentity.deviceName(ctx)} · ${KdeConnectManager.ownDeviceId().take(14)}…")
+                "${dev.label} · ${if (connected) "Connected" else "Offline"} · ${if (paired) "Paired" else "Unpaired"}"
+            } else "No device declared"
+            val sub = "$on/${cfg.plugins.size} plugins · ${KdeConnectManager.pairedDeviceIds().size} paired · " +
+                "${KdeIdentity.deviceName(ctx)} ${KdeConnectManager.ownDeviceId().take(10)}…"
 
+            // Share opens the in-app KDE page (its Share card has a text box) —
+            // MediaStyle action buttons can't host an inline reply input.
+            val sharePi = PendingIntent.getActivity(
+                ctx, 0x4B4445,
+                Intent(ctx, MainActivity::class.java)
+                    .putExtra("shortcut_action", "page:config/kde")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+            // MediaStyle: 5 actions total, first 3 shown in the compact view.
             val n: Notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_cloud)
-                .setContentTitle("Cloud SA - KDE")
-                .setContentText(summary)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(big.toString()))
+                .setContentTitle("Cloud SA - KDE · $summary")
+                .setContentText(line)
+                .setSubText(sub)
+                .setContentIntent(sharePi)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
                 .setGroup("nc_kde")
-                // Quick actions (Android shows the first ~3 collapsed, all expanded).
-                .addAction(android.R.drawable.ic_menu_share, "Share",
-                    KdeQuickActionReceiver.pi(ctx, "share"))
-                .addAction(android.R.drawable.ic_menu_view, "Desktop",
-                    KdeQuickActionReceiver.pi(ctx, "desktop"))
-                .addAction(android.R.drawable.ic_popup_sync, "Ping",
-                    KdeQuickActionReceiver.pi(ctx, "ping"))
-                .addAction(android.R.drawable.stat_notify_sync, "Connect",
-                    KdeQuickActionReceiver.pi(ctx, "connect"))
+                .addAction(android.R.drawable.ic_menu_share, "Share", sharePi)
+                .addAction(android.R.drawable.ic_menu_view, "Desktop", KdeQuickActionReceiver.pi(ctx, "desktop"))
+                .addAction(android.R.drawable.ic_popup_sync, "Ping", KdeQuickActionReceiver.pi(ctx, "ping"))
+                .addAction(android.R.drawable.stat_notify_sync, "Connect", KdeQuickActionReceiver.pi(ctx, "connect"))
+                .addAction(android.R.drawable.ic_menu_compass, "Find", KdeQuickActionReceiver.pi(ctx, "find"))
+                .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
+                    .setMediaSession(sessionToken(ctx))
+                    .setShowActionsInCompactView(0, 1, 2))
                 .build()
             nm.notify(NOTIF_ID, n)
         }
+    }
+
+    // A lightweight (inactive) media session — its token gives MediaStyle the
+    // full media-template layout (3 compact + 5 expanded action icons).
+    private var session: MediaSessionCompat? = null
+    private fun sessionToken(ctx: Context): MediaSessionCompat.Token {
+        session?.let { return it.sessionToken }
+        val s = MediaSessionCompat(ctx, "CloudSA-KDE").apply {
+            setMetadata(MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "Cloud SA - KDE")
+                .build())
+            setPlaybackState(PlaybackStateCompat.Builder()
+                .setState(PlaybackStateCompat.STATE_PAUSED, 0, 0f).build())
+        }
+        session = s
+        return s.sessionToken
     }
 
     private fun ensureChannel(ctx: Context) {

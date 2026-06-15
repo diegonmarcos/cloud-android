@@ -2,13 +2,12 @@ package com.diegonmarcos.superapp
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import com.diegonmarcos.superapp.kdeconnect.FindMyPhonePlugin
 import com.diegonmarcos.superapp.kdeconnect.KdeConnectManager
 import com.diegonmarcos.superapp.kdeconnect.KdeIdentity
 import com.diegonmarcos.superapp.kdeconnect.RemoteDesktopPlugin
-import com.diegonmarcos.superapp.kdeconnect.SharePlugin
 
 /**
  * Handles the quick-action buttons on the persistent "Cloud SA - KDE"
@@ -29,14 +28,11 @@ class KdeQuickActionReceiver : BroadcastReceiver() {
             "desktop" ->
                 if (id != null) KdeConnectManager.send(id, RemoteDesktopPlugin.request())
                 else KdeConnectManager.connectFirstAsync()
-            "share" -> {
-                val clip = (app.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-                    ?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(app)?.toString().orEmpty()
-                when {
-                    id == null -> KdeConnectManager.connectFirstAsync()
-                    clip.isNotBlank() -> KdeConnectManager.send(id, SharePlugin.text(clip))
-                }
-            }
+            "find" ->
+                if (id != null) KdeConnectManager.send(id, FindMyPhonePlugin.ring())
+                else KdeConnectManager.connectFirstAsync()
+            // "share" opens the in-app KDE page directly (an Activity PendingIntent
+            // built in KdeStatusNotifier), so it never reaches this receiver.
         }
         KdeStatusNotifier.refresh()
     }
