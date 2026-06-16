@@ -159,6 +159,23 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Open Developer options (where Wireless Debugging lives) so the user can
+     *  enable it and read the pairing/connect ports for the self-contained
+     *  embedded-adb channel (libs:shizuku-adb-debug-tools). There is no public
+     *  direct action for the Wireless-Debugging sub-screen, so we jump to
+     *  Developer options; falls back to the top-level Settings if an OEM
+     *  hides/locks the dev-settings action. */
+    private fun openWirelessDebuggingSettings() {
+        val dev = android.content.Intent(
+            android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS,
+        )
+        if (dev.resolveActivity(requireContext().packageManager) != null) {
+            runCatching { startActivity(dev) }
+        } else {
+            runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS)) }
+        }
+    }
+
     /** Open Settings → "Display over other apps" scoped to this app, so the
      *  user grants SYSTEM_ALERT_WINDOW for the Floating Top Nav Bar overlay.
      *  Falls back to the global list, then this app's details screen. */
@@ -679,6 +696,15 @@ class DevControlFragment : Fragment() {
                 permButton(ctx, "Set Battery No-Optim", grantedBatteryOptim(ctxAny())) { openBatteryOptimizationSettings() },
                 permButton(ctx, "Set Samsung Never-Sleep", null) { openSamsungNeverSleepingSettings() },
                 permButton(ctx, "Set App Settings", null) { openAppSettings() },
+            ))
+            // ── Self-contained ADB (libs:shizuku-adb-debug-tools) — jump to
+            //    Developer options to flip Wireless Debugging ON, then read the
+            //    pairing/connect ports for /api/adb/pair + /api/adb/connect.
+            //    The OS toggle can't be flipped by an app (no API), so this is
+            //    a deep-link, not a one-tap grant.
+            it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Open Wireless Debugging", null) { openWirelessDebuggingSettings() },
             ))
             // ── Default Phone / Spam filter — single-holder roles whose holder
             //    is the Cloud-Comms phone fork (see Special-access rows above).
