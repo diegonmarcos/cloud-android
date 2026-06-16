@@ -8,11 +8,14 @@ import android.content.Context
  * `/sys/class/power_supply/` nodes on a stock, non-rooted device
  * (untrusted_app is denied regardless of the DUMP permission).
  *
- * Two implementations form a ladder (first ready wins):
- *   1. [LocalShellChannel]   — OUR OWN app_process server (AdbShellServer),
- *                              started once per boot via the adb one-liner.
- *                              Self-contained: no third-party app.
- *   2. [ShizukuShellChannel] — optional fallback when the Shizuku app is
+ * Three implementations form a ladder (first ready wins):
+ *   1. [EmbeddedAdbChannel]  — PRIMARY. Embedded on-device adb client that
+ *                              pairs with localhost Wireless-Debugging adbd
+ *                              (the LADB approach). Fully self-contained:
+ *                              no third-party app, no PC. "We ARE Shizuku."
+ *   2. [LocalShellChannel]   — OUR app_process server (AdbShellServer),
+ *                              if started via the adb one-liner.
+ *   3. [ShizukuShellChannel] — optional fallback when the Shizuku app is
  *                              already running + granted.
  */
 interface ShellChannel {
@@ -32,7 +35,7 @@ interface ShellChannel {
 
 /** The execution ladder. Order = preference. */
 object ShellChannels {
-    val all: List<ShellChannel> = listOf(LocalShellChannel, ShizukuShellChannel)
+    val all: List<ShellChannel> = listOf(EmbeddedAdbChannel, LocalShellChannel, ShizukuShellChannel)
 
     /** First channel that's ready, or null when neither is available. */
     fun active(ctx: Context): ShellChannel? = all.firstOrNull { it.isReady(ctx) }

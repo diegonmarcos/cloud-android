@@ -14,6 +14,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // JitPack — libadb-android (com.github.MuntashirAkon). FAIL_ON_PROJECT_REPOS
+        // forbids per-module repos, so the central declaration lives here.
+        maven { url 'https://jitpack.io' }
     }
 }
 

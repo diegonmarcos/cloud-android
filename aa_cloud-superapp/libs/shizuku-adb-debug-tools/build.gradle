@@ -53,11 +53,23 @@ dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'
 
-    // Shizuku — the elevated shell channel. api = client binder;
+    // Shizuku — OPTIONAL fallback channel only. api = client binder;
     // provider = the ShizukuProvider already declared in app/'s manifest
     // (same authority, shared across the whole APK). Pinned identically
     // to app/'s existing ShizukuEnergy deps so there's one Shizuku
     // version in the merged APK.
     implementation 'dev.rikka.shizuku:api:13.1.5'
     implementation 'dev.rikka.shizuku:provider:13.1.5'
+
+    // ── Embedded on-device ADB client (the LADB approach) ───────────
+    // THIS is what makes the app a self-contained "Shizuku": it pairs
+    // with the phone's OWN Wireless-Debugging adbd on 127.0.0.1 (user
+    // enters the 6-digit code) and opens a `shell:` stream as uid 2000
+    // — no third-party Shizuku app, no PC. conscrypt provides the TLS
+    // stack libadb needs for the pairing handshake; BouncyCastle mints
+    // the device keypair + self-signed cert (same recipe as KdeCrypto).
+    implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
+    implementation 'org.conscrypt:conscrypt-android:2.5.3'
+    implementation 'org.bouncycastle:bcpkix-jdk15to18:1.78.1'
+    implementation 'org.bouncycastle:bcprov-jdk15to18:1.78.1'
 }
