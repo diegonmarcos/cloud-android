@@ -168,14 +168,39 @@ class WireGuardFragment : Fragment() {
         col.addView(addPeerButton(ctx, peers))
 
         // ── Connect/Disconnect ──────────────────────────────────────
-        col.addView(sectionHeader(ctx, "Status"))
+        // Status header carries a live colour dot (green = tunnel UP).
+        val tunnelUp = (goBackend?.getState(tunnel) == Tunnel.State.UP)
+        col.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(sectionHeader(ctx, "Status"))
+            addView(View(ctx).apply {
+                val d = dp(ctx, 13)
+                layoutParams = LinearLayout.LayoutParams(d, d).apply { leftMargin = dp(ctx, 10) }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(if (tunnelUp) 0xFF34C759.toInt() else 0xFF888888.toInt())
+                }
+            })
+        })
         col.addView(Switch(ctx).apply {
             text = "Connect"
-            isChecked = (goBackend?.getState(tunnel) == Tunnel.State.UP)
+            isChecked = tunnelUp
             val pad = dp(ctx, 6); setPadding(pad, pad, pad, pad)
             setOnCheckedChangeListener { _, checked ->
                 if (checked) requestConnect() else requestDisconnect()
             }
+        })
+
+        // ── Mesh — all infos folded onto this one page ───────────────
+        // The canonical wg-mesh table (data/mesh.json) rendered inline via
+        // the shared MeshView builder, so Configs → WireGuard is a single
+        // page: config + import + status + the full mesh topology.
+        col.addView(sectionHeader(ctx, "Mesh"))
+        col.addView(caption(ctx, com.diegonmarcos.superapp.cloud.MeshView.statusText(ctx)))
+        col.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            com.diegonmarcos.superapp.cloud.MeshView.render(ctx, inflater, this)
         })
 
         return scroll

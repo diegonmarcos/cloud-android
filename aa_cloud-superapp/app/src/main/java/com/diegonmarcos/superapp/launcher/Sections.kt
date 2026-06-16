@@ -43,6 +43,11 @@ object Sections {
         val isMasterIndex: Boolean,
         val pages: List<Page>,
         val defaultChildren: List<String>,
+        /** When true AND the section has exactly one non-action page, opening
+         *  the section lands directly on that page instead of a 1-tile grid —
+         *  the section IS its page (e.g. WireGuard). Source:
+         *  build.json::sections[*].single_page. */
+        val singlePage: Boolean = false,
         /** Aggregator sections live ONLY in the bottom nav (Communication,
          *  Infos, Suite, Tools today). Their `tiles*` lists are deep-link
          *  pointers into real content sections, not pages of their own. */
@@ -563,6 +568,7 @@ object Sections {
                     isMasterIndex   = o.optBoolean("is_master_index", false),
                     pages           = pages,
                     defaultChildren = kids,
+                    singlePage      = o.optBoolean("single_page", false),
                     isAggregator    = o.optBoolean("is_aggregator", false),
                     tilesShared     = parseTiles("tiles_shared"),
                     tilesApps       = parseTiles("tiles_apps"),

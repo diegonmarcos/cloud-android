@@ -1570,40 +1570,16 @@
         "bottom_nav": false,
         "_doc_parent": "WireGuard is its own (non-bottom-nav) section but is surfaced from the Configs Home-Apps row (home_groups Configs → section:wg). parent=config makes the toolbar/system Back at the WG root return to the Configs section instead of Home — consumed by MainActivity.navigateUpToParent (data-driven, sections[*].parent).",
         "parent": "config",
+        "single_page": true,
         "drawer_default_children": [
-          "Mesh",
-          "+ Import"
+          "WireGuard"
         ],
-        "_doc_merge": "tunnels + status merged into a single `status` (Mesh status) page rendered by C3MeshFragment — a rich peer table (VM · WG-IP · public endpoint · role · live status). The previous Tunnels page is gone; the Mesh table covers both.",
+        "_doc_merge": "SINGLE-PAGE section. Everything — tunnel config, Generate/Import/Export buttons, Connect status (live colour dot) AND the full wg-mesh topology table (data/mesh.json via the shared MeshView) — lives on ONE page rendered by WireGuardFragment. No page grid: a section with exactly one non-action page opens that page directly (LauncherNavController.goSection single-page rule). The old Mesh/Logs/+Import/Settings sub-pages were folded in; Import is now a button on the page. Back returns to Configs (parent=config).",
         "pages": [
           {
-            "id": "status",
-            "label": "Mesh",
-            "icon": "ic_p_wg_tunnels",
-            "upstream": "WgMesh"
-          },
-          {
-            "id": "logs",
-            "label": "Logs",
-            "icon": "ic_p_logs",
-            "upstream": "WgLogs"
-          },
-          {
-            "id": "add",
-            "label": "+ Import",
-            "icon": "ic_p_add",
-            "upstream": "WgImport"
-          },
-          {
             "id": "config",
-            "label": "Config",
+            "label": "WireGuard",
             "icon": "ic_wg"
-          },
-          {
-            "id": "settings",
-            "label": "Settings",
-            "icon": "ic_settings",
-            "upstream": "WgSettings"
           }
         ]
       },

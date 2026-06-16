@@ -82,6 +82,17 @@ class LauncherNavController(private val host: NavHost) {
                 val titleSuffix = if (mode == "admin") " · Admin" else " · Apps"
                 TileGridFragment.newInstance(label + titleSuffix, aggTiles)
             }
+            // Single-page section (e.g. wg) — the section IS that page: open
+            // it directly instead of rendering a pointless 1-tile grid. Opt-in
+            // via build.json single_page; action pages still need the grid tap.
+            section.singlePage && section.pages.size == 1 && section.pages.first().action.isBlank() -> {
+                val pg = section.pages.first()
+                if (id != "apptabs") runCatching {
+                    host.recordPage(id, pg.id, pg.label, pg.iconName ?: "")
+                }
+                (SectionPages.pagesFor(id).firstOrNull { it.id == pg.id }?.factory?.invoke())
+                    ?: SectionFragment.forSection(id, pg.id)
+            }
             section.pages.isNotEmpty() -> TileGridFragment.newInstance(
                 title = label,
                 tiles = section.pages.map { p ->
