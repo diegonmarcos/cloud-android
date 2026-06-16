@@ -29,6 +29,7 @@ class UpdateOverlayFragment : Fragment() {
     private lateinit var titleView: TextView
     private lateinit var detailView: TextView
     private lateinit var progressBar: ProgressBar
+    private lateinit var dismissButton: TextView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -68,9 +69,30 @@ class UpdateOverlayFragment : Fragment() {
             setTextAppearance(android.R.style.TextAppearance_Material_Body1)
             text = ""
         }
+        // Dismiss control — shown ONLY on terminal states (Failed / Done) so
+        // the user can read the error and hand controls back. During an active
+        // check/download/install it stays hidden (the scrim blocks input on
+        // purpose). Tapping it drives UpdateProgress → Idle, which makes
+        // MainActivity remove this overlay.
+        dismissButton = TextView(ctx).apply {
+            text = "OK"
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF7C3AED.toInt())
+            setPadding(dp(28), dp(12), dp(28), dp(12))
+            isClickable = true; isFocusable = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(28) }
+            setOnClickListener { UpdateProgress.reset() }
+        }
         column.addView(titleView)
         column.addView(progressBar)
         column.addView(detailView)
+        column.addView(dismissButton)
         root.addView(column)
 
         applyState(UpdateProgress.state)
@@ -78,6 +100,11 @@ class UpdateOverlayFragment : Fragment() {
     }
 
     fun applyState(state: UpdateProgress.State) {
+        // Terminal states (Failed / Done) get the OK button + hidden bar;
+        // in-progress states show the bar and hide the button.
+        val terminal = state is UpdateProgress.State.Failed || state is UpdateProgress.State.Done
+        dismissButton.visibility = if (terminal) View.VISIBLE else View.GONE
+        progressBar.visibility = if (terminal) View.GONE else View.VISIBLE
         when (state) {
             is UpdateProgress.State.Idle -> { /* about to dismiss */ }
             is UpdateProgress.State.CheckingManifest -> {
@@ -99,14 +126,12 @@ class UpdateOverlayFragment : Fragment() {
             is UpdateProgress.State.Done -> {
                 titleView.text = "Done"
                 detailView.text = "Update complete"
-                progressBar.isIndeterminate = false
-                progressBar.progress = 100
+                dismissButton.text = "OK"
             }
             is UpdateProgress.State.Failed -> {
                 titleView.text = "Update failed"
                 detailView.text = state.message
-                progressBar.isIndeterminate = false
-                progressBar.progress = 0
+                dismissButton.text = "OK"
             }
         }
     }
