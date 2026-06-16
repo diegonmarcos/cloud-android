@@ -19,8 +19,9 @@ AROOT = os.environ.get("A_SOLUTIONS",
     os.path.expanduser("~/git/cloud/a_solutions"))
 
 # ── pull dns + app port + api display-name from every build.json ──────────
-APP = {}      # name -> (dns, port)
-API = {}      # name -> api display_name
+APP = {}        # name -> (dns, port)
+API = {}        # name -> api display_name
+MCP_NAMES = set()  # every service whose name contains "mcp" (data-driven)
 for d in sorted(glob.glob(f"{AROOT}/*/")):
     fld = d.rstrip("/").split("/")[-1]
     if fld.startswith(("z_archive", "_shared")):
@@ -36,13 +37,15 @@ for d in sorted(glob.glob(f"{AROOT}/*/")):
     ports = b.get("ports") if isinstance(b.get("ports"), dict) else {}
     port = ports.get("app") or next((v for v in ports.values() if isinstance(v, int)), None)
     suffix = fld.split("_", 1)[1] if "_" in fld else fld
+    canon = b.get("name") or suffix
     for k in {b.get("name", ""), suffix, suffix.replace("tools-", "")}:
         if k:
             APP.setdefault(k, (dns, port))
     api = b.get("api") or {}
     if api:                                    # one entry per service (canonical name)
-        canon = b.get("name") or suffix
         API.setdefault(canon, api.get("display_name") or canon)
+    if "mcp" in suffix:                        # every MCP service (data-driven,
+        MCP_NAMES.add(suffix)                  # by folder id — name may drop "mcp")
 
 # ── real DB / storage containers, straight from a_solutions build.json's
 #    `containers` map (every non-app container whose key or image is a DB) ──
@@ -123,7 +126,7 @@ INFRA = [
     ("Observability", [app(n) for n in ["matomo", "umami", "openobserve", "dagu", "nocodb", "dbgate", "ntfy", "sauron-forwarder", "cloud-spec"]]),
     ("Databases", [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]),
     ("Data", [app(n) for n in ["gitea", "backup-borg", "backup-bup", "backup-gitea"]]),
-    ("APIs & MCPs", [app(n) for n in ["c3-analytics-api", "c3-infra-api", "c3-public-api", "c3-services-api", "c3-infra-mcp", "c3-infra-mcp-api", "c3-services-mcp", "c3-services-mcp-api", "c3-specs-docs-mcp", "cloud-cgc-mcp", "c3-diego-personal-data-mcp", "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp", "http-to-smtp-proxy-api"]]),
+    ("APIs & MCPs", [app(n) for n in ["c3-analytics-api", "c3-infra-api", "c3-public-api", "c3-services-api", "c3-infra-mcp", "c3-services-mcp", "cloud-cgc-mcp", "c3-diego-personal-data-mcp", "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp", "http-to-smtp-proxy-api"]]),
     ("Build", [app("cloud-builder-x")]),
 ]
 USER = [
@@ -141,9 +144,7 @@ USER = [
 # Others/APIs = EVERY service that declares an `api` in build.json (the full
 # real list — many app containers expose their own API), labelled by api name.
 API_SVCS = sorted(API.keys())
-MCP_SVCS = ["c3-infra-mcp", "c3-infra-mcp-api", "c3-services-mcp", "c3-services-mcp-api",
-            "c3-specs-docs-mcp", "cloud-cgc-mcp", "c3-diego-personal-data-mcp",
-            "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp"]
+MCP_SVCS = sorted(MCP_NAMES)   # every *mcp* service, discovered — incl. all google MCPs
 # Full DB list = the real sidecar DB containers (discovery order) + the
 # standalone DB services (redis / postlite are their service's `app`).
 DB_ALL = [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]

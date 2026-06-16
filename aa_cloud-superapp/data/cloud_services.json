@@ -272,25 +272,10 @@
               "port": 3100
             },
             {
-              "name": "c3-infra-mcp-api",
-              "label": "C3 Infra Mcp Api",
-              "url": "c3-infra-mcp-api.app"
-            },
-            {
               "name": "c3-services-mcp",
               "label": "C3 Services Mcp",
               "url": "c3-services-mcp.app",
               "port": 3101
-            },
-            {
-              "name": "c3-services-mcp-api",
-              "label": "C3 Services Mcp Api",
-              "url": "c3-services-mcp-api.app"
-            },
-            {
-              "name": "c3-specs-docs-mcp",
-              "label": "C3 Specs Docs Mcp",
-              "url": "c3-specs-docs-mcp.app"
             },
             {
               "name": "cloud-cgc-mcp",
@@ -1017,15 +1002,15 @@
           "icon": "ic_p_c3_workflows",
           "containers": [
             {
+              "name": "c3-diego-personal-data-mcp",
+              "label": "C3 Diego Personal Data Mcp",
+              "url": "c3-diego-personal-data-mcp.app"
+            },
+            {
               "name": "c3-infra-mcp",
               "label": "C3 Infra Mcp",
               "url": "c3-infra-mcp.app",
               "port": 3100
-            },
-            {
-              "name": "c3-infra-mcp-api",
-              "label": "C3 Infra Mcp Api",
-              "url": "c3-infra-mcp-api.app"
             },
             {
               "name": "c3-services-mcp",
@@ -1034,25 +1019,10 @@
               "port": 3101
             },
             {
-              "name": "c3-services-mcp-api",
-              "label": "C3 Services Mcp Api",
-              "url": "c3-services-mcp-api.app"
-            },
-            {
-              "name": "c3-specs-docs-mcp",
-              "label": "C3 Specs Docs Mcp",
-              "url": "c3-specs-docs-mcp.app"
-            },
-            {
               "name": "cloud-cgc-mcp",
               "label": "Cloud Cgc Mcp",
               "url": "cloud-cgc-mcp.app",
               "port": 3105
-            },
-            {
-              "name": "c3-diego-personal-data-mcp",
-              "label": "C3 Diego Personal Data Mcp",
-              "url": "c3-diego-personal-data-mcp.app"
             },
             {
               "name": "google-personal-mcp",
