@@ -113,7 +113,8 @@ IC = {"Security": "ic_lock", "Network": "ic_wg", "Observability": "ic_p_logs",
       "APIs & MCPs": "ic_code", "Communications": "ic_chat", "Productivity": "ic_mode_apps",
       "Media": "ic_suite", "Finance": "ic_p_c3_stack", "AI & Agents": "ic_ai_sparkle",
       "Vault": "ic_lock", "News": "ic_p_logs", "Web": "ic_world", "Storage": "ic_database",
-      "DBs": "ic_database", "APIs": "ic_code", "MCPs": "ic_p_c3_workflows", "VMs": "ic_p_c3_vms"}
+      "DBs": "ic_database", "APIs": "ic_code", "MCPs": "ic_p_c3_workflows", "VMs": "ic_p_c3_vms",
+      "Runners": "ic_p_sol_tools"}
 
 # ── canonical partition: every container exactly once across Infra + User ──
 INFRA = [
@@ -152,12 +153,20 @@ DB_ALL = [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]
 MESH = json.load(open(os.path.join(HERE, "mesh.json")))
 def vm(name, ip, label=None):
     return {"name": name, "label": label or name, "url": ip, "port": 22}
+NODE_IP = {n.get("name"): n.get("wg_ip") for n in (MESH.get("nodes") or [])}
 VMS = []
 for n in (MESH.get("nodes") or []):
     nm, ip = n.get("name"), n.get("wg_ip")
     if nm and ip:
         VMS.append(vm(nm, ip, "Surface Pro" if nm == "laptop" else nm))
 VMS.append(vm("galaxy-s21", "10.0.0.9", "Galaxy S21"))
+
+# CI build runners: ARM = cloud-builder-x on oci-apps (ping its wg_ip:22),
+# x86 = GitHub-hosted GHA runners (external link to the workflow runs).
+RUNNERS = [
+    vm("runner-arm", NODE_IP.get("oci-apps", "10.0.0.6"), "ARM (Oci-Apps)"),
+    ext("x86 (GHA)", "https://github.com/diegonmarcos/unix/actions"),
+]
 
 
 def grp(gid, gl, subs, **extra):
@@ -167,7 +176,7 @@ def grp(gid, gl, subs, **extra):
 
 
 groups = [grp("infra", "Infra Apps", INFRA), grp("user", "User Apps", USER),
-          grp("providers", "Providers (VPS)", [("VMs", VMS)], icon="ic_world", providers=[
+          grp("providers", "Providers (VPS)", [("VMs", VMS), ("Runners", RUNNERS)], icon="ic_world", providers=[
               {"label": "Oracle", "url": "https://cloud.oracle.com"},
               {"label": "GCloud", "url": "https://console.cloud.google.com"},
               {"label": "Cloudflare", "url": "https://dash.cloudflare.com"},

@@ -663,6 +663,24 @@
               "port": 22
             }
           ]
+        },
+        {
+          "label": "Runners",
+          "icon": "ic_p_sol_tools",
+          "containers": [
+            {
+              "name": "runner-arm",
+              "label": "ARM (Oci-Apps)",
+              "url": "10.0.0.6",
+              "port": 22
+            },
+            {
+              "name": "x86 (GHA)",
+              "label": "x86 (GHA)",
+              "url": "https://github.com/diegonmarcos/unix/actions",
+              "external": true
+            }
+          ]
         }
       ],
       "icon": "ic_world",
