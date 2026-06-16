@@ -1481,9 +1481,9 @@ class DevControlFragment : Fragment() {
             val trees = listOf(
                 Triple("Sitemap", listOf("" to dec(BuildConfig.UI_ASM_TREE_B64)), false),
                 Triple("Folders", listOf(
-                    "L2" to dec(BuildConfig.UI_STACK_FOLDER_TREE_L2_B64),
                     "L3" to dec(BuildConfig.UI_STACK_FOLDER_TREE_L3_B64),
-                    "L4" to dec(BuildConfig.UI_STACK_FOLDER_TREE_B64),
+                    "L4" to dec(BuildConfig.UI_STACK_FOLDER_TREE_L4_B64),
+                    "L5" to dec(BuildConfig.UI_STACK_FOLDER_TREE_B64),
                 ), true),
                 Triple("AST", listOf("" to dec(BuildConfig.UI_AST_TREE_B64)), false),
             )

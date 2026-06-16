@@ -334,9 +334,9 @@ def folderTree = { int maxDepth ->
     }
     sb.toString()
 }
-def stackTreeL2B64 = folderTree(2).bytes.encodeBase64().toString()
 def stackTreeL3B64 = folderTree(3).bytes.encodeBase64().toString()
-def stackTreeB64   = folderTree(4).bytes.encodeBase64().toString()   // full (L4)
+def stackTreeL4B64 = folderTree(4).bytes.encodeBase64().toString()
+def stackTreeB64   = folderTree(5).bytes.encodeBase64().toString()   // full (L5)
 
 // ── ASM tree (app navigation sitemap) — static, hand-authored ─────────
 // data/asm-tree.txt is the full page/section map shown behind the
@@ -505,8 +505,8 @@ android {
         buildConfigField "String", "UI_STACK_LANGUAGES_JSON_B64",    "\"${stackLanguagesB64}\""
         buildConfigField "String", "UI_STACK_FRAMEWORKS_JSON_B64",   "\"${stackFrameworksB64}\""
         buildConfigField "String", "UI_STACK_FOLDER_TREE_B64",       "\"${stackTreeB64}\""
-        buildConfigField "String", "UI_STACK_FOLDER_TREE_L2_B64",    "\"${stackTreeL2B64}\""
         buildConfigField "String", "UI_STACK_FOLDER_TREE_L3_B64",    "\"${stackTreeL3B64}\""
+        buildConfigField "String", "UI_STACK_FOLDER_TREE_L4_B64",    "\"${stackTreeL4B64}\""
         buildConfigField "String", "UI_ASM_TREE_B64",                "\"${asmTreeB64}\""
         buildConfigField "String", "UI_AST_TREE_B64",                "\"${astTreeB64}\""
         // Wall-clock elapsed for app/build.gradle's config phase. Only a
@@ -607,6 +607,11 @@ dependencies {
     implementation project(':libs:health')
     implementation project(':libs:fin')
     implementation project(':libs:kde-connect')
+    // libs:shizuku-adb-debug-tools — self-contained "adb shell" surface
+    // via Shizuku (ShizukuAdb + AdbDiagnostics). DevControlServer exposes
+    // it at /api/adb/*. Carries its own IShellService.aidl + UserService,
+    // independent of app/'s energy-specific ShizukuEnergy.
+    implementation project(':libs:shizuku-adb-debug-tools')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
