@@ -1478,6 +1478,38 @@ class DevControlFragment : Fragment() {
                 setBackgroundColor(0x33000000)
                 setTextIsSelectable(true)
             })
+
+            // ASM Tree Pages — full app navigation sitemap (data/asm-tree.txt,
+            // BuildConfig.UI_ASM_TREE_B64). Behind a toggle button + a
+            // horizontal scroller so the wide ASCII map doesn't bloat the page.
+            val asmStr = runCatching {
+                String(android.util.Base64.decode(BuildConfig.UI_ASM_TREE_B64, android.util.Base64.DEFAULT))
+            }.getOrDefault("—")
+            val asmScroll = android.widget.HorizontalScrollView(ctx).apply {
+                visibility = android.view.View.GONE
+                addView(TextView(ctx).apply {
+                    text = asmStr
+                    setTextColor(0xFFE9D8FD.toInt())
+                    typeface = Typeface.MONOSPACE
+                    textSize = 9f
+                    setPadding(dp(8), dp(8), dp(8), dp(8))
+                    setBackgroundColor(0x33000000)
+                    setTextIsSelectable(true)
+                })
+            }
+            it.addView(TextView(ctx).apply {
+                text = "▸ ASM Tree Pages"
+                setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(dp(8), dp(12), dp(8), dp(10))
+                isClickable = true; isFocusable = true
+                setOnClickListener {
+                    val show = asmScroll.visibility != android.view.View.VISIBLE
+                    asmScroll.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+                    text = if (show) "▾ ASM Tree Pages" else "▸ ASM Tree Pages"
+                }
+            })
+            it.addView(asmScroll)
         }
 
         section(ctx, column, "Locale & time") {

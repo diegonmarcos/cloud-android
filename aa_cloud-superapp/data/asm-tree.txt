@@ -1,0 +1,289 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  BOTTOM NAV  [Inboxes] [Infos] [⌂ Home] [Suite] [Labs]                        ║
+║  GLOBAL CHROME: Drawer (← swipe) · Toolbar (Dynamic Island · Search · Mode)   ║
+║  SWIPE WALK (circular L→R):                                                    ║
+║  Inboxes → Infos·Apps → Infos·Admin → Home-Apps·Cloud → Home-Apps·Phone →     ║
+║  Suite·Cloud → Suite·Phone → Labs·Apps → Labs·Admin → Configs                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOTTOM NAV — 5 AGGREGATOR SECTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[1] INBOXES (Communication)  ── aggregator, no own pages ──────────────────────────
+    ┌── Tile grid (shared) ────────────────────────────────────────────────────────
+    │   Mail              → extapp:cloud-comms/mail    (Cloud-Comms fork)
+    │   Chat-Matrix       → extapp:cloud-comms/matrix  (Cloud-Comms fork)
+    │   Chat-Mattermost   → extapp:cloud-comms/chat    (Cloud-Comms fork)
+    └── Stack panels (shared) ────────────────────────────────────────────────────
+        Mail · accounts       [kind=mail_accounts]
+        Chat · Matrix         [kind=chat_matrix]
+        Chat · Mattermost     [kind=chat_mattermost]
+        Messenger (Element)   [kind=stats]  Rooms / Unread / Mentions / Last sync
+        Dialer (Fossify)      [kind=stats]  Missed calls / Recent / Contacts / Voicemail
+
+[2] INFOS  ── mode-split aggregator ──────────────────────────────────────────────
+    ┌── APPS MODE (icon: ic_p_logs) ───────────────────────────────────────────────
+    │   Tile grid:
+    │     Calendar        → section:cal
+    │     RSS feeds       → page:feed/all
+    │   Stack panels:
+    │     Calendar        [kind=calendar_month]   Month view · CalDAV sync pending
+    │     Tasks           [kind=tasks]             Agenda · Day · ToDo tab strip
+    │     News & RSS      [kind=news_feeds]        Curated open channels
+    │     Myfin           [kind=stats]  Net worth / This month / Spending / Holdings
+    │     Myhealth        [kind=stats]  Steps / Sleep / Resting HR / Workouts
+    │     Nav Maps Tracker [kind=stats] Last location / Trips / Distance / Places
+    └── ADMIN MODE (icon: ic_p_c3_workflows) ────────────────────────────────────
+        Tile grid:
+          Workflows cal   → page:c3/workflows
+          GHA events      → page:c3/gha
+          Dagu events     → page:c3/dagu
+          C3 ntfy         → page:feed/all
+          C3 health       → page:c3/health
+          WG mesh         → page:wg/status
+        Stack panels:
+          SuperApp Notifications  [kind=notifications]   in-app updater + crash feed
+          Phone Notifications     [kind=phone_notifications]  live system feed (50 deduped)
+          C3 Health · Public      [kind=c3_public]       Caddy-proxied services table
+          C3 Health · Private     [kind=c3_private]      internal compose-network table
+          WG Mesh                 [kind=wg_mesh]         wg0 UDP + wg0-tcp wstunnel
+          Drive · Connections     [kind=drive_connections] storage backends
+          RSS · ntfy channels     [kind=rss]
+          GHA · Workflow runs     [kind=gha_runs]        repos: unix / cloud / front
+          Repos · Commits         [kind=repos]           repos: unix / cloud / front
+          Dagu · Workflow runs    [kind=open_link]       → page:c3/dagu (native DaguFragment)
+
+[3] HOME  ── master index ─────────────────────────────────────────────────────────
+    Master tile grid (all other sections as icon tiles)
+    ┌── Home-Apps sheet (swipe-up) ── AppDrawerSheetFragment ─────────────────────
+    │   Tab: Cloud ── HomeGroupedFragment ── groups from home_groups ─────────────
+    │     Infos           (mode-aware icon)
+    │     Suite           (5 category icons: AI / Comms / Data Apps / Tools Primary / Tools Dashboards)
+    │     Labs→C3         (6 lab tiles — one HomeGroup per lab: C3 / Data & ML / Engineering / Quant / Aero / Circus)
+    │     Configs         (tiles derived from config.pages: Profile / WireGuard / KDE / AI / Launcher / Import / Update / About)
+    │     [+ other home_group cards per build.json::ui.home_groups]
+    └── Tab: Phone ── PhoneAppsFragment ── phone folder grid ───────────────────
+          Installed apps matched to folders (phone_folders from build.json):
+            _#SYSTEM · _Security · _Sys_Info · _SysTools · …
+          [Auto-sink: _New Apps (unmatched) / _Misc (manual)]
+
+[4] SUITE  ── tab-split aggregator (SuiteCloudPhoneTabsFragment) ─────────────────
+    ┌── Cloud tab ── GroupedTilesFragment ─────────────────────────────────────────
+    │   tile_groups (5 themed rows):
+    │     AI ──────── AI-Chat (web)=Gemini   │ AI-Chat (local)=localhost:8080 │ IDE=Cloud-IDE
+    │     Communications ── Mail │ Chat-Mattermost │ Chat-Matrix │ Dialer
+    │     Data Apps ─── Calendar │ Contacts │ Notes(Obsidian) │ Sheets │ Photos │ Music(Tidal)
+    │     Tools Primary ─── Browser │ Tabs(AppTabs) │ Wallet │ Navigation(Cloud-Nav) │ Vault
+    │     Tools Dashboards ── PM Boards(paca) │ MyFin │ MyHealth │ MyData
+    │   Footer: "More" → action:open_home_apps  (opens Home-Apps / Cloud tab)
+    └── Phone tab ── SuitePhoneAppsFragment ── phone_app_groups ──────────────────
+          AI  ─────────────── Claude · Gemini · Termux  +  folder: Files Editor
+          Communications ──── FairEmail · Ltt.rs · Mattermost · Beeper · Dialer · Fossify Phone
+                              +  folder: Others (WhatsApp / Telegram / Gmail / Instagram / LinkedIn)
+          Data Apps ───────── Obsidian · Gallery · Calendar · Contacts · Tidal · Bitwarden
+          Tools Primary ────── Brave · Google Maps · Google Wallet · Translate · Clock · Calculator
+          Tools Dashboards ─── SuperApp (self)
+          Configs ─────────── Play Store · F-Droid · Settings
+          Footer: "More" → action:open_home_apps_phone  (opens Home-Apps / Phone tab)
+
+[5] LABS (id=tools)  ── mode-split aggregator + pages ────────────────────────────
+    pages: C3 / Data & ML / Engineering / Quant & Markets / Aero & Space / Circus
+    ┌── APPS MODE ── stack_apps ──────────────────────────────────────────────────
+    │   Data & ML      [kind=link_grid]  Datasets · ML pipelines · model registry
+    │   Engineering    [kind=link_grid]  Build systems · ops tooling · infra notes
+    │   Quant & Markets [kind=link_grid] Market data · strategies · backtests
+    │   Aero & Space   [kind=link_grid]  Mission tracking · orbital data · launches
+    │   Circus         [kind=link_grid]  Misc experiments / side quests
+    └── ADMIN MODE ── stack_admin ── Cloud Dashboard ───────────────────────────
+        § Containers
+          Infra Apps   [kind=cloud_dashboard, group=infra]  ← data/cloud_services.json
+            subgroups: Security / Network / Databases / APIs & MCPs / Monitoring / …
+            each icon: status light (TCP-ping) + tap opens URL in browser
+          User Apps    [kind=cloud_dashboard, group=user]
+        § Stack
+          Stack        [kind=cloud_dashboard, groups=[providers, dbs, mcpapi]]
+            Providers / DBs / MCP & API (free cross-cut lists)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DRAWER SECTIONS  (not in bottom nav)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[MAIL]  libs:mail · FairEmail-derived + JMAP (jmap.diegonmarcos.com) ──────────────
+    Folders          ← FragmentFolders
+    Inbox            ← FragmentMessages
+    Accounts         ← FragmentAccounts (JMAP login form — server / email / password)
+    Identities
+    Rules
+    Answers          (canned reply templates)
+    Contacts
+    Settings ┬─ Behavior
+             ├─ Display
+             ├─ Sync
+             ├─ Notifications
+             ├─ Send
+             ├─ Connection
+             ├─ Encryption
+             ├─ Privacy
+             ├─ Integrations
+             ├─ Backup
+             └─ Misc
+    More ────┬─ Order
+             ├─ Operations
+             ├─ Logs
+             ├─ Certificates
+             ├─ Pro
+             ├─ Legend
+             ├─ About
+             └─ EULA
+
+[RSS / FEED]  libs:feed · Feeder-derived ─────────────────────────────────────────
+    All feeds        ← RssFeedFragment
+    Unread
+    Saved
+    Subscriptions
+    + Subscribe
+    Settings
+
+[CALENDAR / CAL]  libs:cal · DAVx5-derived (cal.diegonmarcos.com) ─────────────────
+    Day
+    Week
+    Month
+    Agenda
+    Calendars
+    + Add CalDAV
+    Settings
+
+[DRIVE]  unified file hub ──────────────────────────────────────────────────────────
+    My files         ← filebrowser
+    Photos           ← photoprism
+    Connections      ← DriveConnectionsFragment  (S3 / GDrive / rclone / borg / HTTP)
+    Recent
+    Shared
+    Trash
+    Backups          ← borg-server
+    + Upload
+    Settings
+
+[VAULT]  libs:vault · KeePassDX-derived (vault.diegonmarcos.com) ──────────────────
+    Passwords        ← KdxPasswords
+    TOTP             ← KdxTotp
+    Generator
+    Identities
+    Vaults
+    Settings
+
+[CHAT]  libs:chat · Mattermost (chat.diegonmarcos.com) ────────────────────────────
+    Mattermost       (chat.diegonmarcos.com — pre-filled login form)
+    Matrix-Bridges   (TG / WhatsApp / Signal / IRC ↔ Matrix)
+    Direct messages
+    Channels
+    Servers
+    + Add server
+    Settings
+
+[WG]  libs:net · WireGuard-derived  ·  parent=config (Back→Configs) ──────────────
+    Mesh             ← C3MeshFragment  (peer table: VM · WG-IP · endpoint · role · status)
+    Logs
+    + Import
+    Config           ← WireGuardFragment
+    Settings
+
+[SOLUTIONS]  front-end app launcher (mirrors ~/git/front/ folders) ────────────────
+    Professional     (a-Companies / Individual / Portals)
+    Personal         (b-* personal projects)
+    Tools            (c-* tooling)
+    Cloud            (d-Cloud services)
+    Other            (e-Others)
+
+[C3]  libs:ops · cloud ops dashboard ──────────────────────────────────────────────
+    Reports          ← PageContentFragment (placeholder → C3 reports)
+    Stack            ← PageContentFragment
+    Health           ← C3HealthFragment     (public services table)
+    Workflows        ← PageContentFragment
+    VMs              ← PageContentFragment
+      └─ Runners sub-section: ARM oci-apps │ x86 GHA
+         Pilot VMs: tap icon → opens :7680 (VM dashboard URL)
+    Logs             ← PageContentFragment
+    [dagu]           ← OpsPages/DaguFragment  (REST API DAG list w/ per-DAG status dot)
+    [gha]            ← PageContentFragment   (GitHub Actions events)
+
+[BROWSER]  libs:browser · in-app WebView ─────────────────────────────────────────
+    Open Tabs        ← BrowserHostFragment (GRID of open-tab cards / DETAIL fullscreen WebView)
+    Linktree         → https://linktree.diegonmarcos.com/
+
+[APP TABS]  libs:apptabs · LRU shelf ─────────────────────────────────────────────
+    Tabs             ← AppTabsFragment  (last-6 sections / pages / external apps; 2-col grid)
+
+[MYFIN]  libs:fin · personal finance ─────────────────────────────────────────────
+    Dashboard        ← MyFinDashboardFragment
+      (Accounts / Monthly stats / Top expense categories / Recent transactions / Net worth)
+
+[WALLET]  libs:wallet · Jetpack Compose ──────────────────────────────────────────
+    Cards            ← WalletFragment (Compose — Apple-Wallet-style stack-overlap deck)
+
+[MyHEALTH]  libs:health · Health Connect ─────────────────────────────────────────
+    Summary          ← HealthFragment(summary)   per-metric tile grid + 7d/30d tables
+      └─ drill-in per metric: Activity / Vitals / Body / Nutrition / Cycle / Sleep
+    Timeline         ← HealthFragment(timeline)  date-picker → day's metrics
+    Configs          ← HealthFragment(configs)   Sources · Permissions · Stats · Raw · About
+    [Metrics: Activity · Vitals · Body · Nutrition · Cycle · Sleep]
+
+[CONFIGS]  ─────────────────────────────────────────────────────────────────────────
+    Profile          ← ProfileFragment  (QR gallery, avatar, display name)
+    WireGuard        → action:section:wg  (navigates to [WG] section; Back returns here)
+    KDE              ← KdeConnectFragment  (clean-room KDE Connect over wg_ip:1716)
+    AI               ← AiFragment
+    Launcher         ← LauncherConfigFragment
+      ├─ Themes:  Cloud Theme (default) │ Cloud Minimalist Black │ Cloud Power Saving
+      └─ Profiles: Personal │ Work │ Guest (locked-down, WG off)
+    Import           → action:import_configs  (ImportConfigsFragment)
+    Update           → action:check_updates   (UpdateOverlayFragment via libs:updater)
+    About / Dev      ← DevControlFragment
+      └─ Permissions: Runtime perms (Camera / Mic / Notifications / Location / Contacts …)
+                      Roles (Default phone / Spam filter) · Health Connect perms
+                      Special-access (battery whitelist / usage stats / default launcher)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GLOBAL CHROME & SERVICES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Drawer (← swipe) ── HomeDrawerFragment
+  [Home] → master index
+  + prepend actions (home_drawer_prepend)
+  All sections listed with 2-level expand
+
+Dynamic Island pill ── toolbar
+  Tap → opens Termux (com.termux.nix) per ui.dynamic_island_action
+
+Search sheet ── SearchSheetFragment (scope chips)
+  Cloud-Apps    = cloud sections + tiles + home actions
+  Phone-Apps    = installed launchable apps (LauncherApps)
+  Cloud-Configs = sub-pages + consolidated.json service entries
+  Phone-Configs = exported Settings activities
+
+Floating Nav ── FloatingNavService  (always-on-top overlay)
+
+Screensaver  ── ScreensaverService  (configurable, wired to Launcher)
+
+Background   ── BackgroundOrchestrator  (sync, updater WorkManager)
+             ── LockScreenAccessibilityService + LockScreenAdminReceiver
+
+In-app Updater ── libs:updater  (OCI/GHCR HTTP API → WorkManager → PackageInstaller)
+  Shared signing key across SuperApp / Cloud-Nav / Cloud-Comms / Cloud-IDE
+
+External App Launcher  (extapp: grammar)
+  cloud-comms  hub → mail fork / matrix fork / chat fork / dialer fork
+  cloud-ide    hub → files fork
+  cloud-nav    dedicated Maps/Nav APK (ea_cloud-nav)
+  (install fallback: libs:updater fetches APK from installApkUrl if not installed)
+
+Notification Centre ── NotificationStore (in-app feed)
+  producers: UpdateWorker · crash reporters
+
+Mode toggle (global, persists ModePrefs)
+  Apps   ← everyday front-end view
+  Admin  ← cloud ops / infra view
+  (affects Infos tile grid, Labs tile grid, section icons, home_groups icons)
+
+App Long-press Menu ── AppLongPressMenu  (context actions on tiles)
