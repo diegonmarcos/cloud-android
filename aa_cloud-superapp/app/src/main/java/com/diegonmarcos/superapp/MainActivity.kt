@@ -353,7 +353,12 @@ class MainActivity : AppCompatActivity(),
                 // itself doesn't go through goHome(), so without this
                 // the field stays stale and onPrepareOptionsMenu keeps
                 // showing the Back arrow at the Home root.
-                if (supportFragmentManager.backStackEntryCount == 0 && frag is Home3DFragment) {
+                // GUARD: skip during a goSection swap — its clearBackStack pop
+                // fires this listener while the OLD Home3DFragment is still
+                // mounted (the replace hasn't run yet), which would clobber the
+                // just-set currentSection back to "home" (broke Home→Configs:
+                // no Back arrow + dead page:<id> tiles).
+                if (!inSectionSwap && supportFragmentManager.backStackEntryCount == 0 && frag is Home3DFragment) {
                     currentSection = "home"
                     currentLabel = getString(R.string.section_home)
                     supportActionBar?.title = currentLabel
@@ -851,8 +856,16 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
+    /** True while a [swapContent] section change is mid-flight — the
+     *  clearBackStack pop fires the OnBackStackChangedListener BEFORE the
+     *  content replace runs, so without this guard the listener sees the old
+     *  Home3DFragment + an empty stack and wrongly resets currentSection to
+     *  "home". Cleared via runOnCommit after the new content is in place. */
+    private var inSectionSwap = false
+
     override fun swapContent(content: Fragment, clearBackStack: Boolean) {
         if (clearBackStack) {
+            inSectionSwap = true
             supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         }
         // applyChrome before commit — runOnCommit is mutually exclusive with
@@ -867,6 +880,10 @@ class MainActivity : AppCompatActivity(),
                 R.anim.fade_in,  R.anim.fade_out,
             )
             .replace(R.id.fragment_container, content)
+            // Clears AFTER the replace commits — by then the stale-Home3D pop
+            // listener has already fired (and been skipped). A no-op swap with
+            // clearBackStack=false never sets the flag, so this is safe.
+            .runOnCommit { inSectionSwap = false }
             .commit()
         if (isTwoPane()) syncDetailPaneForMaster()
     }
