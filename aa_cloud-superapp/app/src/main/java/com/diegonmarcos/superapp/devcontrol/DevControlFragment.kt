@@ -1472,10 +1472,20 @@ class DevControlFragment : Fragment() {
                 orientation = LinearLayout.HORIZONTAL
                 setPadding(0, dp(10), 0, dp(4))
             }
+            fun dec(b64: String) = runCatching {
+                String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+            }.getOrDefault("—")
+            // Each tree is a list of (column-header, text) columns. Sitemap and
+            // AST are single-column; Folders is three columns — L2 / L3 / L4 —
+            // each a depth-bounded view of the same ea_* scan.
             val trees = listOf(
-                Triple("Sitemap", BuildConfig.UI_ASM_TREE_B64, false),
-                Triple("Folders", BuildConfig.UI_STACK_FOLDER_TREE_B64, true),
-                Triple("AST", BuildConfig.UI_AST_TREE_B64, false),
+                Triple("Sitemap", listOf("" to dec(BuildConfig.UI_ASM_TREE_B64)), false),
+                Triple("Folders", listOf(
+                    "L2" to dec(BuildConfig.UI_STACK_FOLDER_TREE_L2_B64),
+                    "L3" to dec(BuildConfig.UI_STACK_FOLDER_TREE_L3_B64),
+                    "L4" to dec(BuildConfig.UI_STACK_FOLDER_TREE_B64),
+                ), true),
+                Triple("AST", listOf("" to dec(BuildConfig.UI_AST_TREE_B64)), false),
             )
             val buttons = mutableListOf<TextView>()
             val scrollers = mutableListOf<View>()
@@ -1495,28 +1505,51 @@ class DevControlFragment : Fragment() {
                 }
             }
             for ((idx, t) in trees.withIndex()) {
-                val (label, b64, intoBuf) = t
-                val str = runCatching {
-                    String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
-                }.getOrDefault("—")
-                if (intoBuf) infoBuf.append("\n```\n").append(str).append("\n```\n")
+                val (label, cols, intoBuf) = t
+                if (intoBuf) infoBuf.append("\n```\n").append(cols.last().second).append("\n```\n")
                 labels += label
-                val scroll = android.widget.HorizontalScrollView(ctx).apply {
+                val tsize = if (cols.size > 1) 7f else 9f
+                // One horizontal row of weighted columns. Single-column trees
+                // fill the width; Folders splits into 3 equal columns. Each
+                // column scrolls horizontally on its own and LONG-PRESS-copies.
+                val colRow = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
                     visibility = android.view.View.GONE
-                    // No setTextIsSelectable — it would hijack the long-press
-                    // into a text-selection gesture. Long-press copies instead.
-                    addView(TextView(ctx).apply {
-                        text = str
-                        setTextColor(0xFFE9D8FD.toInt())
-                        typeface = Typeface.MONOSPACE
-                        textSize = 9f
-                        setPadding(dp(8), dp(8), dp(8), dp(8))
-                        setBackgroundColor(0x33000000)
-                        isLongClickable = true
-                        setOnLongClickListener { copyTree(label, str); true }
-                    })
                 }
-                scrollers += scroll
+                for ((sub, txt) in cols) {
+                    val colName = if (sub.isBlank()) label else "$label · $sub"
+                    val cell = LinearLayout(ctx).apply {
+                        orientation = LinearLayout.VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                        ).apply { rightMargin = if (cols.size > 1) dp(3) else 0 }
+                    }
+                    if (sub.isNotBlank()) cell.addView(TextView(ctx).apply {
+                        text = sub
+                        setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
+                        typeface = Typeface.DEFAULT_BOLD
+                        textSize = 10f
+                        setPadding(dp(4), dp(4), dp(4), dp(2))
+                    })
+                    cell.addView(android.widget.HorizontalScrollView(ctx).apply {
+                        // No setTextIsSelectable — it would hijack the long-press
+                        // into a text-selection gesture. Long-press copies instead.
+                        addView(TextView(ctx).apply {
+                            text = txt
+                            setTextColor(0xFFE9D8FD.toInt())
+                            typeface = Typeface.MONOSPACE
+                            textSize = tsize
+                            setPadding(dp(8), dp(8), dp(8), dp(8))
+                            setBackgroundColor(0x33000000)
+                            isLongClickable = true
+                            setOnLongClickListener { copyTree(colName, txt); true }
+                        })
+                    })
+                    colRow.addView(cell)
+                }
+                scrollers += colRow
+                val btnCopy = if (cols.size == 1) cols[0].second
+                    else cols.joinToString("\n\n") { "## ${it.first}\n${it.second}" }
                 val btn = TextView(ctx).apply {
                     text = "▸ $label"
                     gravity = android.view.Gravity.CENTER
@@ -1534,7 +1567,7 @@ class DevControlFragment : Fragment() {
                         val wasOpen = scrollers[idx].visibility == android.view.View.VISIBLE
                         setOpen(if (wasOpen) -1 else idx)
                     }
-                    setOnLongClickListener { copyTree(label, str); true }
+                    setOnLongClickListener { copyTree(label, btnCopy); true }
                 }
                 buttons += btn
                 btnRow.addView(btn)
