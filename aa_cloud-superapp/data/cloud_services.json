@@ -278,12 +278,6 @@
               "port": 3101
             },
             {
-              "name": "cloud-cgc-mcp",
-              "label": "Cloud Cgc Mcp",
-              "url": "cloud-cgc-mcp.app",
-              "port": 3105
-            },
-            {
               "name": "c3-diego-personal-data-mcp",
               "label": "C3 Diego Personal Data Mcp",
               "url": "c3-diego-personal-data-mcp.app"
@@ -539,6 +533,18 @@
               "label": "Kg Graph",
               "url": "kg-graph.app",
               "port": 8001
+            },
+            {
+              "name": "claude-openai-bridge",
+              "label": "Claude Openai Bridge",
+              "url": "claude-openai-bridge.app",
+              "port": 3107
+            },
+            {
+              "name": "cloud-cgc-mcp",
+              "label": "Octocode (CGC)",
+              "url": "cloud-cgc-mcp.app",
+              "port": 3105
             }
           ]
         },

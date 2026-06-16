@@ -126,7 +126,7 @@ INFRA = [
     ("Observability", [app(n) for n in ["matomo", "umami", "openobserve", "dagu", "nocodb", "dbgate", "ntfy", "sauron-forwarder", "cloud-spec"]]),
     ("Databases", [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]),
     ("Data", [app(n) for n in ["gitea", "backup-borg", "backup-bup", "backup-gitea"]]),
-    ("APIs & MCPs", [app(n) for n in ["c3-analytics-api", "c3-infra-api", "c3-public-api", "c3-services-api", "c3-infra-mcp", "c3-services-mcp", "cloud-cgc-mcp", "c3-diego-personal-data-mcp", "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp", "http-to-smtp-proxy-api"]]),
+    ("APIs & MCPs", [app(n) for n in ["c3-analytics-api", "c3-infra-api", "c3-public-api", "c3-services-api", "c3-infra-mcp", "c3-services-mcp", "c3-diego-personal-data-mcp", "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp", "http-to-smtp-proxy-api"]]),
     ("Build", [app("cloud-builder-x")]),
 ]
 USER = [
@@ -134,7 +134,7 @@ USER = [
     ("Productivity", [app(n) for n in ["etherpad", "hedgedoc", "grist", "calendar-radicale", "contacts-radicale", "revealmd", "code-server", "filebrowser", "paca"]]),
     ("Media", [app("photoprism")]),
     ("Finance", [app("crawlee-cloud"), app("fin-api")]),
-    ("AI & Agents", [app(n) for n in ["ollama", "ollama-arm", "ollama-hai", "rig-agentic", "rig-agentic-hai-1.5bq4", "rig-agentic-sonn-14bq8", "db-agent", "kg-graph"]]),
+    ("AI & Agents", [app(n) for n in ["ollama", "ollama-arm", "ollama-hai", "rig-agentic", "rig-agentic-hai-1.5bq4", "rig-agentic-sonn-14bq8", "db-agent", "kg-graph", "claude-openai-bridge"]] + [app("cloud-cgc-mcp", "Octocode (CGC)")]),
     ("Vault", [app("vaultwarden")]),
     ("News", [app("news-gdelt")]),
     ("Web", [app("front-end")]),
