@@ -249,6 +249,44 @@ object DevControlServer {
                     runCatching { com.diegonmarcos.superapp.battery.EnergyStore(ctx).clear() }
                     reply(writer, "200 OK", """{"ok":true,"message":"energy ledger + sample store cleared"}""", "application/json")
                 }
+                // ── libs:shizuku-adb-debug-tools — self-contained adb shell ──
+                "adb/status" -> { reply(writer, "200 OK", adbStatusJson(ctx), "application/json") }
+                "adb/server-command" -> {
+                    // The one-liner to run ONCE per boot (via adb / Wireless
+                    // Debugging) to start OUR shell-domain app_process server.
+                    val cmd = com.diegonmarcos.superapp.adbdebug.AdbShellBootstrap.serverCommand(ctx)
+                    val body = """{"command":"${jsonEscape(cmd)}","port":${com.diegonmarcos.superapp.adbdebug.AdbShellBootstrap.port()},"note":"Run once per boot. Grants the SHELL SELinux domain our server needs; after this the app is self-contained (no Shizuku app)."}"""
+                    reply(writer, "200 OK", body, "application/json")
+                }
+                "adb/diagnostics" -> {
+                    val bundle = query["bundle"] ?: "charger"
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.adbdebug.AdbDiagnostics.runBundle(ctx, bundle),
+                        "application/json")
+                }
+                "adb/exec" -> {
+                    val cmd = query["cmd"]
+                    if (cmd.isNullOrBlank()) {
+                        reply(writer, "400 Bad Request", "missing cmd\n")
+                    } else {
+                        val ch = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)
+                        val out = ch?.exec(ctx, cmd)
+                            ?: "ERR: no shell channel ready — ${com.diegonmarcos.superapp.adbdebug.LocalShellChannel.status(ctx)}\n"
+                        reply(writer, "200 OK", out)
+                    }
+                }
+                "adb/grant-dump" -> {
+                    // Self-grant DUMP through whichever shell channel is up
+                    // (the local server or Shizuku) so dumpsys also works
+                    // in-process. Signature|privileged|DEVELOPMENT perm, so
+                    // `pm grant` is allowed from the shell domain.
+                    val ch = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)
+                    val out = ch?.exec(ctx, "pm grant ${ctx.packageName} android.permission.DUMP")
+                    val held = ctx.checkSelfPermission("android.permission.DUMP") ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+                    val body = """{"channel":"${jsonEscape(ch?.name() ?: "none")}","ran":${out != null},"held":$held,"output":"${jsonEscape(out ?: "no shell channel ready")}"}"""
+                    reply(writer, "200 OK", body, "application/json")
+                }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
@@ -309,6 +347,11 @@ object DevControlServer {
             Spec("energy/samples",      "GET",  true,  "Raw recent energy-watchdog samples (last 200): per-sample whole-device draw_ma + state vector (screen, brightness, foreground pkg, cpu load, signal, wifi, audio).", ""),
             Spec("energy/reset",        "GET",  true,  "Clear the intra-app ledger + the watchdog sample store to start a fresh measurement window.", ""),
             Spec("energy/shizuku",      "GET",  true,  "EXACT per-app mAh via Shizuku (Tier 2) — runs `dumpsys batterystats --charged` in shell context (uid 2000) through the bound ShizukuUserService and parses the per-uid 'Estimated power use (mAh)' section. Returns available/granted/status + the per-app list, or apps=null while binding / when Shizuku isn't running. Ground truth the Tier-1 correlation calibrates against.", ""),
+            Spec("adb/status",          "GET",  true,  "libs:shizuku-adb-debug-tools shell-channel ladder: per-channel ready/status for 'local-server' (OUR self-contained app_process server, shell domain) and 'shizuku' (fallback), which one is active, whether DUMP is held for in-process dumpsys, and the data-driven bundle ids runnable via /api/adb/diagnostics.", ""),
+            Spec("adb/server-command",  "GET",  true,  "Returns the exact one-liner to run ONCE per boot (via adb / Wireless Debugging) to start OUR self-contained shell-domain app_process server (AdbShellServer). This is the only privilege bootstrap; after it the app needs no third-party Shizuku app. {command,port,note}.", ""),
+            Spec("adb/diagnostics",     "GET",  true,  "Run a DATA-DRIVEN diagnostic bundle (build.json::shizuku_diagnostics.bundles[]) through the shell-channel ladder (local-server first, Shizuku fallback) and return {bundle,label,channel,ok,results:[{id,cmd,out}]}. Bundles: charger (dumpsys battery+usb, power_supply nodes, typec, charge props), battery, usb, thermal, pd. THE endpoint that surfaces the USB-PD/PPS negotiation behind 'why is the charger at 3W not 35W' when SELinux blocks /sys/class/power_supply/*.", "bundle=charger|battery|usb|thermal|pd (default charger)"),
+            Spec("adb/exec",            "GET",  true,  "Generic 'adb shell' passthrough — runs `sh -c <cmd>` in shell context (uid 2000) through the active channel and returns raw stdout. Full adb-equivalent power; token-gated + loopback-only. Use for one-off commands not covered by a bundle.", "cmd=<shell command>"),
+            Spec("adb/grant-dump",      "GET",  true,  "Self-grant android.permission.DUMP via `pm grant` through the active shell channel, so dumpsys also works IN-PROCESS. DUMP is signature|privileged|DEVELOPMENT, so pm grant from the shell domain is allowed. Returns {channel,ran,held,output}.", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')
@@ -681,6 +724,37 @@ object DevControlServer {
         sb.append(""""ok":""").append(ok).append(',')
         sb.append(""""blocked":""").append(total - ok).append('}')
         sb.append('}')
+        return sb.toString()
+    }
+
+    /** Shell-channel ladder status (self-contained local-server first,
+     *  Shizuku fallback) + the data-driven bundle ids available via
+     *  /api/adb/diagnostics. */
+    private fun adbStatusJson(ctx: Context): String {
+        val channels = com.diegonmarcos.superapp.adbdebug.ShellChannels.all
+        val active = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)
+        val bundles = com.diegonmarcos.superapp.adbdebug.AdbDiagnostics.bundleIds()
+        val dumpHeld = ctx.checkSelfPermission("android.permission.DUMP") ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        val sb = StringBuilder("{")
+        sb.append(""""active":"""").append(jsonEscape(active?.name() ?: "none")).append('"').append(',')
+        sb.append(""""dump_in_process":""").append(dumpHeld).append(',')
+        sb.append(""""channels":[""")
+        channels.forEachIndexed { i, c ->
+            if (i > 0) sb.append(',')
+            sb.append('{')
+            sb.append(""""name":"""").append(jsonEscape(c.name())).append('"').append(',')
+            sb.append(""""ready":""").append(c.isReady(ctx)).append(',')
+            sb.append(""""status":"""").append(jsonEscape(c.status(ctx))).append('"')
+            sb.append('}')
+        }
+        sb.append("],")
+        sb.append(""""bundles":[""")
+        bundles.forEachIndexed { i, b ->
+            if (i > 0) sb.append(',')
+            sb.append('"').append(jsonEscape(b)).append('"')
+        }
+        sb.append("]}")
         return sb.toString()
     }
 

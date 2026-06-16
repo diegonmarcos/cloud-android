@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- libs:shizuku-adb-debug-tools — self-contained "adb shell" surface.
+
+     The actual elevated execution happens in the Shizuku UserService
+     (ShellUserService) which runs as uid 2000 (shell) — that needs NO
+     manifest permission, because it IS the shell. DUMP below is only for
+     the SELF-CONTAINED mode: after /api/adb/grant-dump runs
+     `pm grant <pkg> android.permission.DUMP` through the shell channel,
+     the app can call `dumpsys` IN-PROCESS (own uid) even with Shizuku
+     stopped. It's a signature|privileged perm, so it can ONLY be held
+     via that pm-grant path — never auto-granted at install. Declaring it
+     here keeps the lib self-describing; the merger dedups against the
+     identical declaration already in app/'s manifest.
+
+     The ShizukuProvider (rikka.shizuku.ShizukuProvider) is declared once
+     in app/'s manifest and shared across the merged APK — the lib reuses
+     it, so it is intentionally NOT re-declared here. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.DUMP"
+        tools:ignore="ProtectedPermissions" />
+
+</manifest>

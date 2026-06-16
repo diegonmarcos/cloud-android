@@ -1,0 +1,63 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// ── Shizuku diagnostic catalog ──────────────────────────────────────
+// Read build.json once at config time, base64-encode the
+// shizuku_diagnostics.bundles[] block, and expose it as a BuildConfig
+// string. AdbDiagnostics decodes it once at runtime and runs the chosen
+// bundle through the Shizuku shell channel. Adding/removing a diagnostic
+// bundle = one entry in build.json::shizuku_diagnostics.bundles[] — no
+// Kotlin edit (Pillar: DATA-DRIVEN).
+def adbBuildJson  = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def adbDiag       = adbBuildJson.shizuku_diagnostics ?: [:]
+def adbBundlesRaw = adbDiag.bundles ?: []
+def adbBundlesJson = groovy.json.JsonOutput.toJson(adbBundlesRaw)
+def adbBundlesB64  = adbBundlesJson.bytes.encodeBase64().toString()
+
+// Self-contained app_process server config (data-driven).
+def adbServer     = adbDiag.local_server ?: [:]
+def adbServerPort = (adbServer.port ?: 38099) as int
+// NB: adbServer['class'] (bracket) — Groovy's `.class` returns getClass().
+def adbServerClass = adbServer['class'] ?: 'com.diegonmarcos.superapp.adbdebug.AdbShellServer'
+def adbServerNice = adbServer.nice_name ?: 'superapp-adb'
+
+android {
+    namespace 'com.diegonmarcos.superapp.adbdebug'
+    compileSdk 35
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+        buildConfigField "String", "ADB_DIAG_BUNDLES_B64", "\"${adbBundlesB64}\""
+        buildConfigField "int",    "ADB_SHELL_SERVER_PORT",  "${adbServerPort}"
+        buildConfigField "String", "ADB_SHELL_SERVER_CLASS", "\"${adbServerClass}\""
+        buildConfigField "String", "ADB_SHELL_SERVER_NICE",  "\"${adbServerNice}\""
+    }
+    buildFeatures {
+        buildConfig = true
+        // AIDL — the Shizuku UserService interface (IShellService.aidl)
+        // whose impl (ShellUserService) runs in shell context (uid 2000)
+        // so exec() can run privileged dumpsys / getprop / sysfs reads.
+        aidl = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+
+    // Shizuku — the elevated shell channel. api = client binder;
+    // provider = the ShizukuProvider already declared in app/'s manifest
+    // (same authority, shared across the whole APK). Pinned identically
+    // to app/'s existing ShizukuEnergy deps so there's one Shizuku
+    // version in the merged APK.
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
+}

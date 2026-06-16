@@ -121,7 +121,8 @@
         "libs:fin",
         "libs:browser",
         "libs:apptabs",
-        "libs:kde-connect"
+        "libs:kde-connect",
+        "libs:shizuku-adb-debug-tools"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -227,7 +228,68 @@
         "libs:core"
       ],
       "comment": "KDE Connect (Configs > KDE page). FULLY SELF-CONTAINED, CLEAN-ROOM — our own implementation of the KDE Connect LAN protocol, no org.kde.kdeconnect_tp dependency and NO KDE GPL source vendored. Pipeline: dial <wg_ip>:1716 over wg0 → write identity (plaintext) → mutual-TLS handshake AS the TLS server (BouncyCastle self-signed device cert; the dialer is the TLS server per the protocol) → re-exchange identity encrypted (v8) → cert-pinned pairing (KdeTrustStore) → NetworkPacket plugins (ping/clipboard/findmyphone/notification). Data-driven from ui.kde_connect (self_name + devices[].wg_ip); nothing hardcodes an IP. BouncyCastle (bcpkix/bcprov jdk15to18) is the only added dep, for cert generation. Next phase: foreground service + inbound TCP server so peers can initiate too."
+    },
+    "libs:shizuku-adb-debug-tools": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "Shizuku ADB debug tools — makes the SuperApp a SELF-CONTAINED 'adb shell' surface. A Shizuku UserService (IShellService.aidl + ShellUserService) runs in SHELL context (uid 2000) when Shizuku is running + granted, so it executes arbitrary `dumpsys` / `getprop` / `cat /sys/...` that the app's own uid + the SELinux-hardened proc/sys path can't reach (One UI 7+/Pixel A15+ block /sys/class/power_supply/*). ShizukuAdb is the binder facade (bindBlocking + exec + grantDump self-grant of android.permission.DUMP via `pm grant`). AdbDiagnostics runs DATA-DRIVEN command bundles declared in build.json::shizuku_diagnostics.bundles[] (charger/usb/battery/thermal/pd) and returns them as JSON. Exposed over the loopback DevControlServer at /api/adb/* (token-gated). This is the path that finally surfaces the USB-PD/PPS negotiation needed to debug 'why is the charger at 3W not 35W'."
     }
+  },
+  "shizuku_diagnostics": {
+    "_doc": "Data-driven catalog of shell-domain diagnostic bundles run by libs:shizuku-adb-debug-tools. Two execution channels share this catalog (ladder, first ready wins): (1) local_server — OUR OWN app_process server (AdbShellServer) started once per boot via the adb one-liner from /api/adb/server-command; it runs in the SHELL SELinux domain (uid 2000) so dumpsys/usb/sysfs that untrusted_app is denied all work. NO third-party app. (2) Shizuku UserService — optional fallback when its app happens to be running. The lib's build.gradle base64-encodes bundles[] into BuildConfig.ADB_DIAG_BUNDLES_B64; AdbDiagnostics decodes + runs the chosen bundle, returning {bundle,label,channel,ok,results:[{id,cmd,out}]}. Adding a diagnostic = one entry here, no Kotlin edit (Pillar: DATA-DRIVEN). READ-ONLY diagnostics only — never a write/mutation.",
+    "local_server": {
+      "_doc": "OUR app_process shell-domain server. Started by `adb shell CLASSPATH=<apk> app_process /system/bin <class> <token> <port>` (the /api/adb/server-command one-liner, run once per boot via wireless debugging). Loopback + per-boot random token. This is the self-contained replacement for the Shizuku app.",
+      "port": 38099,
+      "class": "com.diegonmarcos.superapp.adbdebug.AdbShellServer",
+      "nice_name": "superapp-adb"
+    },
+    "bundles": [
+      {
+        "id": "charger",
+        "label": "Charger / USB-PD negotiation",
+        "commands": [
+          { "id": "dumpsys_battery", "cmd": "dumpsys battery" },
+          { "id": "dumpsys_usb", "cmd": "dumpsys usb" },
+          { "id": "power_supply", "cmd": "for d in /sys/class/power_supply/*; do echo \"== ${d##*/} ==\"; for f in type online present status charge_type usb_type voltage_now current_now current_max voltage_max input_current_limit constant_charge_current_max power_now temp; do v=$(cat \"$d/$f\" 2>/dev/null) && echo \"$f=$v\"; done; done" },
+          { "id": "typec", "cmd": "for d in /sys/class/typec/port*; do echo \"== ${d##*/} ==\"; for f in power_role data_role vconn_source power_operation_mode; do v=$(cat \"$d/$f\" 2>/dev/null) && echo \"$f=$v\"; done; done" },
+          { "id": "props", "cmd": "getprop | grep -iE 'charg|battery|usb|afc|pps|pdo|hv_charge|fast'" }
+        ]
+      },
+      {
+        "id": "battery",
+        "label": "Battery state",
+        "commands": [
+          { "id": "dumpsys_battery", "cmd": "dumpsys battery" },
+          { "id": "batterystats_charged", "cmd": "dumpsys batterystats --charged | sed -n '1,80p'" }
+        ]
+      },
+      {
+        "id": "usb",
+        "label": "USB / gadget state",
+        "commands": [
+          { "id": "dumpsys_usb", "cmd": "dumpsys usb" },
+          { "id": "gadget_state", "cmd": "for f in /sys/class/android_usb/android0/state /sys/class/udc/*/state; do echo \"$f=$(cat $f 2>/dev/null)\"; done" }
+        ]
+      },
+      {
+        "id": "thermal",
+        "label": "Thermal zones (charge throttle suspect)",
+        "commands": [
+          { "id": "thermal_zones", "cmd": "for z in /sys/class/thermal/thermal_zone*; do t=$(cat \"$z/type\" 2>/dev/null); v=$(cat \"$z/temp\" 2>/dev/null); echo \"$t=$v\"; done" },
+          { "id": "dumpsys_thermal", "cmd": "dumpsys thermalservice" }
+        ]
+      },
+      {
+        "id": "pd",
+        "label": "USB-PD contract (typec + tcpm)",
+        "commands": [
+          { "id": "typec_full", "cmd": "for d in /sys/class/typec/*; do echo \"== $d ==\"; grep -sr . \"$d\" 2>/dev/null | sed 's#/sys/class/typec/##'; done" },
+          { "id": "tcpm_log", "cmd": "dmesg 2>/dev/null | grep -iE 'tcpm|pd_|pdo|usbpd|typec' | tail -60" }
+        ]
+      }
+    ]
   },
   "ui": {
     "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
