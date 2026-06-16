@@ -324,6 +324,47 @@
               "url": "cloud-builder-x.app"
             }
           ]
+        },
+        {
+          "label": "Pilots",
+          "icon": "ic_p_c3_workflows",
+          "containers": [
+            {
+              "name": "pilot-gcp-proxy",
+              "label": "Pilot · gcp-proxy",
+              "url": "10.0.0.1",
+              "port": 7680,
+              "link": "http://10.0.0.1:7680"
+            },
+            {
+              "name": "pilot-oci-mail",
+              "label": "Pilot · oci-mail",
+              "url": "10.0.0.3",
+              "port": 7680,
+              "link": "http://10.0.0.3:7680"
+            },
+            {
+              "name": "pilot-oci-analytics",
+              "label": "Pilot · oci-analytics",
+              "url": "10.0.0.4",
+              "port": 7680,
+              "link": "http://10.0.0.4:7680"
+            },
+            {
+              "name": "pilot-oci-apps",
+              "label": "Pilot · oci-apps",
+              "url": "10.0.0.6",
+              "port": 7680,
+              "link": "http://10.0.0.6:7680"
+            },
+            {
+              "name": "pilot-gcp-t4",
+              "label": "Pilot · gcp-t4",
+              "url": "10.0.0.8",
+              "port": 7680,
+              "link": "http://10.0.0.8:7680"
+            }
+          ]
         }
       ]
     },
@@ -615,31 +656,36 @@
               "name": "gcp-proxy",
               "label": "gcp-proxy",
               "url": "10.0.0.1",
-              "port": 22
+              "port": 7680,
+              "link": "http://10.0.0.1:7680"
             },
             {
               "name": "oci-mail",
               "label": "oci-mail",
               "url": "10.0.0.3",
-              "port": 22
+              "port": 7680,
+              "link": "http://10.0.0.3:7680"
             },
             {
               "name": "oci-analytics",
               "label": "oci-analytics",
               "url": "10.0.0.4",
-              "port": 22
+              "port": 7680,
+              "link": "http://10.0.0.4:7680"
             },
             {
               "name": "oci-apps",
               "label": "oci-apps",
               "url": "10.0.0.6",
-              "port": 22
+              "port": 7680,
+              "link": "http://10.0.0.6:7680"
             },
             {
               "name": "gcp-t4",
               "label": "gcp-t4",
               "url": "10.0.0.8",
-              "port": 22
+              "port": 7680,
+              "link": "http://10.0.0.8:7680"
             },
             {
               "name": "laptop",

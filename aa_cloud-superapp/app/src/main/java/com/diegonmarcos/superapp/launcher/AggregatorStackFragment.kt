@@ -853,9 +853,15 @@ class AggregatorStackFragment : Fragment(),
                 if (sub.containers.isEmpty()) continue
                 body.addView(subHeader(ctx, sub.label))
                 addCloudGrid(ctx, body, cols, executor, sub.containers.map {
-                    if (it.external) CloudTile(it.label, sub.icon, it.url, showLight = false, ping = null)
-                    else CloudTile(it.label, sub.icon, "https://${it.url}", showLight = true,
-                        ping = if (it.port in 1..65535) it.url to it.port else null)
+                    when {
+                        // Explicit open-URL (e.g. VM dashboard) — open it verbatim
+                        // but still light up from the url:port ping.
+                        it.link.isNotBlank() -> CloudTile(it.label, sub.icon, it.link, showLight = true,
+                            ping = if (it.port in 1..65535) it.url to it.port else null)
+                        it.external -> CloudTile(it.label, sub.icon, it.url, showLight = false, ping = null)
+                        else -> CloudTile(it.label, sub.icon, "https://${it.url}", showLight = true,
+                            ping = if (it.port in 1..65535) it.url to it.port else null)
+                    }
                 })
             }
         }

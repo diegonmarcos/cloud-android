@@ -140,6 +140,10 @@ object Sections {
     data class CloudContainer(
         val name: String, val label: String, val url: String,
         val port: Int, val external: Boolean,
+        /** Optional explicit open-URL (e.g. a VM dashboard http://wg_ip:7680).
+         *  When set, tap opens this verbatim while the status light still pings
+         *  [url]:[port]. Empty → tap opens https://[url] (or [url] if external). */
+        val link: String,
     )
     /** One external provider console in the Cloud dashboard Providers group. */
     data class DashProvider(val label: String, val url: String)
@@ -1165,7 +1169,8 @@ object Sections {
                                 val c = ca.optJSONObject(k) ?: continue
                                 val nm = c.optString("name"); if (nm.isBlank()) continue
                                 cs += CloudContainer(nm, c.optString("label", nm), c.optString("url"),
-                                    c.optInt("port", -1), c.optBoolean("external", false))
+                                    c.optInt("port", -1), c.optBoolean("external", false),
+                                    c.optString("link", ""))
                             }
                         }
                         subs += CloudSub(s.optString("label"), s.optString("icon"), cs)

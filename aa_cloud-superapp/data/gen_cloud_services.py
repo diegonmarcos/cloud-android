@@ -117,7 +117,7 @@ IC = {"Security": "ic_lock", "Network": "ic_wg", "Observability": "ic_p_logs",
       "Media": "ic_suite", "Finance": "ic_p_c3_stack", "AI & Agents": "ic_ai_sparkle",
       "Vault": "ic_lock", "News": "ic_p_logs", "Web": "ic_world", "Storage": "ic_database",
       "DBs": "ic_database", "APIs": "ic_code", "MCPs": "ic_p_c3_workflows", "VMs": "ic_p_c3_vms",
-      "Runners": "ic_p_sol_tools"}
+      "Runners": "ic_p_sol_tools", "Pilots": "ic_p_c3_workflows"}
 
 # ── canonical partition: every container exactly once across Infra + User ──
 INFRA = [
@@ -152,15 +152,34 @@ DB_ALL = [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]
 # ── VMs: wg-mesh nodes (data/mesh.json) + the two personal devices. Pinged
 #    on wg_ip:22 (SSH) over WireGuard; relabel the `laptop` node Surface Pro.
 MESH = json.load(open(os.path.join(HERE, "mesh.json")))
-def vm(name, ip, label=None):
-    return {"name": name, "label": label or name, "url": ip, "port": 22}
+# Every cloud VM runs the vm-pilot, which serves an HTML dashboard on :7680
+# (busybox httpd → /opt/pilot/html). dashboard=True → tap opens that dashboard
+# and the status light pings :7680; else a plain wg_ip:22 (SSH) reachability tile.
+DASH_PORT = 7680
+def vm(name, ip, label=None, dashboard=False):
+    e = {"name": name, "label": label or name, "url": ip}
+    if dashboard:
+        e["port"] = DASH_PORT
+        e["link"] = f"http://{ip}:{DASH_PORT}"
+    else:
+        e["port"] = 22
+    return e
 NODE_IP = {n.get("name"): n.get("wg_ip") for n in (MESH.get("nodes") or [])}
+# Cloud VMs (run vm-pilot) = mesh nodes with role hub/spoke; clients are devices.
+PILOT_NODES = [n for n in (MESH.get("nodes") or [])
+               if n.get("name") and n.get("wg_ip") and n.get("role") in ("hub", "spoke")]
 VMS = []
 for n in (MESH.get("nodes") or []):
-    nm, ip = n.get("name"), n.get("wg_ip")
+    nm, ip, role = n.get("name"), n.get("wg_ip"), n.get("role")
     if nm and ip:
-        VMS.append(vm(nm, ip, "Surface Pro" if nm == "laptop" else nm))
+        VMS.append(vm(nm, ip, "Surface Pro" if nm == "laptop" else nm,
+                      dashboard=(role in ("hub", "spoke"))))
 VMS.append(vm("galaxy-s21", "10.0.0.9", "Galaxy S21"))
+
+# The 5 vm-pilots (one per cloud VM) → each opens its :7680 dashboard.
+PILOTS = [vm(f"pilot-{n['name']}", n["wg_ip"], f"Pilot · {n['name']}", dashboard=True)
+          for n in PILOT_NODES]
+INFRA.append(("Pilots", PILOTS))   # 5 vm-pilots under Infra Apps
 
 # CI build runners: ARM = cloud-builder-x on oci-apps (ping its wg_ip:22),
 # x86 = GitHub-hosted GHA runners (external link to the workflow runs).
