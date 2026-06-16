@@ -838,7 +838,8 @@ class AggregatorStackFragment : Fragment(),
                 if (sub.containers.isEmpty()) continue
                 body.addView(subHeader(ctx, sub.label))
                 addCloudGrid(ctx, body, cols, executor, sub.containers.map {
-                    CloudTile(it.label, sub.icon, "https://${it.url}", showLight = true,
+                    if (it.external) CloudTile(it.label, sub.icon, it.url, showLight = false, ping = null)
+                    else CloudTile(it.label, sub.icon, "https://${it.url}", showLight = true,
                         ping = if (it.port in 1..65535) it.url to it.port else null)
                 })
             }

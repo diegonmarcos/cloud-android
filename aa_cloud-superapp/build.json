@@ -1076,7 +1076,7 @@
           {
             "kind": "cloud_dashboard",
             "title": "Others",
-            "groups": ["providers", "mcpapi"]
+            "groups": ["providers", "dbs", "mcpapi"]
           }
         ]
       },

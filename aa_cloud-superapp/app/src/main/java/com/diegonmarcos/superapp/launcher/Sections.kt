@@ -134,7 +134,13 @@ object Sections {
         val subgroups: List<CloudSub>, val providers: List<DashProvider>,
     )
     data class CloudSub(val label: String, val icon: String, val containers: List<CloudContainer>)
-    data class CloudContainer(val name: String, val label: String, val url: String, val port: Int)
+    /** A dashboard entry. When [external] the url is a full link opened
+     *  directly with no status light (S3 / Google Workspace / consoles);
+     *  otherwise url is a {name}.app host pinged on [port] + opened as https. */
+    data class CloudContainer(
+        val name: String, val label: String, val url: String,
+        val port: Int, val external: Boolean,
+    )
     /** One external provider console in the Cloud dashboard Providers group. */
     data class DashProvider(val label: String, val url: String)
 
@@ -1158,7 +1164,8 @@ object Sections {
                             for (k in 0 until ca.length()) {
                                 val c = ca.optJSONObject(k) ?: continue
                                 val nm = c.optString("name"); if (nm.isBlank()) continue
-                                cs += CloudContainer(nm, c.optString("label", nm), c.optString("url"), c.optInt("port", -1))
+                                cs += CloudContainer(nm, c.optString("label", nm), c.optString("url"),
+                                    c.optInt("port", -1), c.optBoolean("external", false))
                             }
                         }
                         subs += CloudSub(s.optString("label"), s.optString("icon"), cs)

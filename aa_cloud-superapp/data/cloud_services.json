@@ -1,5 +1,5 @@
 {
-  "_doc": "Curated Cloud container inventory (Labs/Admin dashboard). Hand-authored grouping validated vs cloud/a_solutions; lgtm+windmill removed, gcloud/cloudflare are providers not containers. Each subgroup has an icon; each container {name,label,url={name}.app,port?}. renderCloudDashboard draws an icon grid (UI_TILE_COLUMNS/line) with a status light UNDER each icon (TCP ping url:port over WG) and opens https://url in the in-app browser on tap.",
+  "_doc": "Curated Cloud inventory, 3-card Labs/Admin dashboard. RULE: Infra+User hold EVERY container exactly once (no dupes; DB containers under Infra/Databases, MCP/API containers under Infra/APIs & MCPs, storage backends under User/Storage). Others = free cross-cut lists (Providers · DBs · MCP & API) that re-reference Infra/User entries. dns+port from cloud/a_solutions build.json (+ services_private for DB containers). external:true entries (Oracle S3, Google Workspace) open their URL directly with no status light.",
   "groups": [
     {
       "id": "infra",
@@ -12,19 +12,19 @@
             {
               "name": "authelia",
               "label": "Authelia",
-              "url": "authelia-redis.app",
-              "port": 6380
+              "url": "authelia.app",
+              "port": 9091
             },
             {
               "name": "caddy",
               "label": "Caddy",
-              "url": "caddy.app",
-              "port": 443
+              "url": "caddy.app"
             },
             {
               "name": "caddy-l4-public",
               "label": "Caddy L4 Public",
-              "url": "caddy-l4-public.app"
+              "url": "caddy-l4-public.app",
+              "port": 443
             },
             {
               "name": "introspect-proxy",
@@ -36,22 +36,30 @@
         },
         {
           "label": "Network",
-          "icon": "ic_world",
+          "icon": "ic_wg",
           "containers": [
             {
               "name": "wireguard-mesh",
               "label": "Wireguard Mesh",
-              "url": "wireguard-mesh.app"
+              "url": "wireguard-mesh.app",
+              "port": 8080
             },
             {
               "name": "wireguard-mesh-ws-tunnel",
               "label": "Wireguard Mesh Ws Tunnel",
-              "url": "wireguard-mesh-ws-tunnel.app"
+              "url": "wireguard-mesh-ws-tunnel.app",
+              "port": 8080
             },
             {
               "name": "wireguard-public",
               "label": "Wireguard Public",
               "url": "wireguard-public.app"
+            },
+            {
+              "name": "hickory-dns",
+              "label": "Hickory Dns",
+              "url": "hickory-dns.app",
+              "port": 53
             }
           ]
         },
@@ -62,19 +70,19 @@
             {
               "name": "matomo",
               "label": "Matomo",
-              "url": "matomo.app",
-              "port": 8084
+              "url": "matomo.app"
             },
             {
               "name": "umami",
               "label": "Umami",
-              "url": "umami-db.app",
-              "port": 5442
+              "url": "umami.app",
+              "port": 3006
             },
             {
               "name": "openobserve",
               "label": "Openobserve",
-              "url": "openobserve.app"
+              "url": "openobserve.app",
+              "port": 5080
             },
             {
               "name": "dagu",
@@ -113,6 +121,77 @@
           ]
         },
         {
+          "label": "Databases",
+          "icon": "ic_database",
+          "containers": [
+            {
+              "name": "redis",
+              "label": "Redis",
+              "url": "redis.app",
+              "port": 6379
+            },
+            {
+              "name": "authelia-redis",
+              "label": "Authelia Redis",
+              "url": "authelia-redis.app",
+              "port": 6380
+            },
+            {
+              "name": "umami-db",
+              "label": "Umami Db",
+              "url": "umami-db.app",
+              "port": 5442
+            },
+            {
+              "name": "etherpad_postgres",
+              "label": "Etherpad Postgres",
+              "url": "etherpad-db.app",
+              "port": 5436
+            },
+            {
+              "name": "hedgedoc_postgres",
+              "label": "Hedgedoc Postgres",
+              "url": "hedgedoc-db.app",
+              "port": 5439
+            },
+            {
+              "name": "mattermost-postgres",
+              "label": "Mattermost Postgres",
+              "url": "mattermost-postgres.app",
+              "port": 5435
+            },
+            {
+              "name": "photoprism_mariadb",
+              "label": "Photoprism Mariadb",
+              "url": "photoprism_mariadb.app"
+            },
+            {
+              "name": "crawlee_db",
+              "label": "Crawlee Db",
+              "url": "crawlee-db.app",
+              "port": 5433
+            },
+            {
+              "name": "crawlee_redis",
+              "label": "Crawlee Redis",
+              "url": "crawlee-redis.app",
+              "port": 6381
+            },
+            {
+              "name": "crawlee_minio",
+              "label": "Crawlee Minio",
+              "url": "crawlee-minio.app",
+              "port": 9000
+            },
+            {
+              "name": "postlite",
+              "label": "Postlite",
+              "url": "postlite.app",
+              "port": 8890
+            }
+          ]
+        },
+        {
           "label": "Data",
           "icon": "ic_database",
           "containers": [
@@ -121,28 +200,6 @@
               "label": "Gitea",
               "url": "gitea.app",
               "port": 3002
-            },
-            {
-              "name": "redis",
-              "label": "Redis",
-              "url": "redis.app",
-              "port": 6379
-            },
-            {
-              "name": "postlite",
-              "label": "Postlite",
-              "url": "postlite.app"
-            },
-            {
-              "name": "kg-graph",
-              "label": "Kg Graph",
-              "url": "kg-graph.app",
-              "port": 8001
-            },
-            {
-              "name": "db-agent",
-              "label": "Db Agent",
-              "url": "db-agent.app"
             },
             {
               "name": "backup-borg",
@@ -164,14 +221,100 @@
           ]
         },
         {
-          "label": "Cloud Infra",
-          "icon": "ic_world",
+          "label": "APIs & MCPs",
+          "icon": "ic_code",
           "containers": [
             {
-              "name": "hickory-dns",
-              "label": "Hickory Dns",
-              "url": "hickory-dns.app",
-              "port": 53
+              "name": "c3-analytics-api",
+              "label": "C3 Analytics Api",
+              "url": "c3-analytics-api.app",
+              "port": 8085
+            },
+            {
+              "name": "c3-infra-api",
+              "label": "C3 Infra Api",
+              "url": "c3-infra-api.app",
+              "port": 8081
+            },
+            {
+              "name": "c3-public-api",
+              "label": "C3 Public Api",
+              "url": "c3-public-api.app",
+              "port": 8087
+            },
+            {
+              "name": "c3-services-api",
+              "label": "C3 Services Api",
+              "url": "c3-services-api.app",
+              "port": 8082
+            },
+            {
+              "name": "c3-infra-mcp",
+              "label": "C3 Infra Mcp",
+              "url": "c3-infra-mcp.app",
+              "port": 3100
+            },
+            {
+              "name": "c3-infra-mcp-api",
+              "label": "C3 Infra Mcp Api",
+              "url": "c3-infra-mcp-api.app"
+            },
+            {
+              "name": "c3-services-mcp",
+              "label": "C3 Services Mcp",
+              "url": "c3-services-mcp.app",
+              "port": 3101
+            },
+            {
+              "name": "c3-services-mcp-api",
+              "label": "C3 Services Mcp Api",
+              "url": "c3-services-mcp-api.app"
+            },
+            {
+              "name": "c3-specs-docs-mcp",
+              "label": "C3 Specs Docs Mcp",
+              "url": "c3-specs-docs-mcp.app"
+            },
+            {
+              "name": "cloud-cgc-mcp",
+              "label": "Cloud Cgc Mcp",
+              "url": "cloud-cgc-mcp.app",
+              "port": 3105
+            },
+            {
+              "name": "c3-diego-personal-data-mcp",
+              "label": "C3 Diego Personal Data Mcp",
+              "url": "c3-diego-personal-data-mcp.app"
+            },
+            {
+              "name": "google-personal-mcp",
+              "label": "Google Personal Mcp",
+              "url": "g-personal-mcp.app",
+              "port": 3106
+            },
+            {
+              "name": "google-workspace-mcp",
+              "label": "Google Workspace Mcp",
+              "url": "g-workspace-mcp.app",
+              "port": 3104
+            },
+            {
+              "name": "mail-mcp",
+              "label": "Mail Mcp",
+              "url": "mail-mcp.app",
+              "port": 3103
+            },
+            {
+              "name": "mattermost-mcp",
+              "label": "Mattermost Mcp",
+              "url": "mattermost-mcp.app",
+              "port": 3102
+            },
+            {
+              "name": "http-to-smtp-proxy-api",
+              "label": "Http To Smtp Proxy Api",
+              "url": "http-to-smtp-proxy-api.app",
+              "port": 8090
             }
           ]
         },
@@ -199,38 +342,43 @@
             {
               "name": "chat-mattermost",
               "label": "Chat Mattermost",
-              "url": "chat-mattermost.app"
+              "url": "mattermost.app",
+              "port": 8065
             },
             {
               "name": "matrix-continuwuity",
               "label": "Matrix Continuwuity",
-              "url": "matrix-continuwuity.app"
+              "url": "matrix-continuwuity.app",
+              "port": 8008
             },
             {
               "name": "matrix-element",
               "label": "Matrix Element",
-              "url": "matrix-element.app"
+              "url": "matrix-element.app",
+              "port": 8083
             },
             {
               "name": "matrix-mautrix-whatsapp",
               "label": "Matrix Mautrix Whatsapp",
-              "url": "matrix-mautrix-whatsapp.app"
+              "url": "matrix-mautrix-whatsapp.app",
+              "port": 29318
             },
             {
               "name": "maddy",
               "label": "Maddy",
-              "url": "maddy.app"
+              "url": "maddy.app",
+              "port": 993
             },
             {
               "name": "stalwart",
               "label": "Stalwart",
-              "url": "stalwart.app",
-              "port": 2443
+              "url": "stalwart.app"
             },
             {
               "name": "cypht",
               "label": "Cypht",
-              "url": "cypht.app"
+              "url": "cypht.app",
+              "port": 8889
             },
             {
               "name": "snappymail",
@@ -257,14 +405,14 @@
             {
               "name": "etherpad",
               "label": "Etherpad",
-              "url": "etherpad-db.app",
-              "port": 5436
+              "url": "etherpad.app",
+              "port": 3012
             },
             {
               "name": "hedgedoc",
               "label": "Hedgedoc",
-              "url": "hedgedoc-db.app",
-              "port": 5439
+              "url": "hedgedoc.app",
+              "port": 3018
             },
             {
               "name": "grist",
@@ -275,12 +423,14 @@
             {
               "name": "calendar-radicale",
               "label": "Calendar Radicale",
-              "url": "calendar-radicale.app"
+              "url": "calendar.app",
+              "port": 5232
             },
             {
               "name": "contacts-radicale",
               "label": "Contacts Radicale",
-              "url": "contacts-radicale.app"
+              "url": "contacts.app",
+              "port": 5233
             },
             {
               "name": "revealmd",
@@ -303,7 +453,8 @@
             {
               "name": "paca",
               "label": "Paca",
-              "url": "paca.app"
+              "url": "paca.app",
+              "port": 8095
             }
           ]
         },
@@ -326,8 +477,14 @@
             {
               "name": "crawlee-cloud",
               "label": "Crawlee Cloud",
-              "url": "crawlee-dashboard.app",
-              "port": 3001
+              "url": "crawlee.app",
+              "port": 3000
+            },
+            {
+              "name": "fin-api",
+              "label": "Fin Api",
+              "url": "fin-api.app",
+              "port": 8340
             }
           ]
         },
@@ -369,6 +526,17 @@
               "label": "Rig Agentic Sonn 14Bq8",
               "url": "rig-agentic-sonn-14bq8.app",
               "port": 8091
+            },
+            {
+              "name": "db-agent",
+              "label": "Db Agent",
+              "url": "db-agent.app"
+            },
+            {
+              "name": "kg-graph",
+              "label": "Kg Graph",
+              "url": "kg-graph.app",
+              "port": 8001
             }
           ]
         },
@@ -406,6 +574,24 @@
               "url": "front-end.app"
             }
           ]
+        },
+        {
+          "label": "Storage",
+          "icon": "ic_database",
+          "containers": [
+            {
+              "name": "Oracle S3",
+              "label": "Oracle S3",
+              "url": "https://cloud.oracle.com",
+              "external": true
+            },
+            {
+              "name": "Google Workspace",
+              "label": "Google Workspace",
+              "url": "https://workspace.google.com",
+              "external": true
+            }
+          ]
         }
       ]
     },
@@ -441,6 +627,89 @@
       ]
     },
     {
+      "id": "dbs",
+      "label": "DBs (storage)",
+      "subgroups": [
+        {
+          "label": "DBs",
+          "icon": "ic_database",
+          "containers": [
+            {
+              "name": "redis",
+              "label": "Redis",
+              "url": "redis.app",
+              "port": 6379
+            },
+            {
+              "name": "authelia-redis",
+              "label": "Authelia Redis",
+              "url": "authelia-redis.app",
+              "port": 6380
+            },
+            {
+              "name": "umami-db",
+              "label": "Umami Db",
+              "url": "umami-db.app",
+              "port": 5442
+            },
+            {
+              "name": "etherpad_postgres",
+              "label": "Etherpad Postgres",
+              "url": "etherpad-db.app",
+              "port": 5436
+            },
+            {
+              "name": "hedgedoc_postgres",
+              "label": "Hedgedoc Postgres",
+              "url": "hedgedoc-db.app",
+              "port": 5439
+            },
+            {
+              "name": "mattermost-postgres",
+              "label": "Mattermost Postgres",
+              "url": "mattermost-postgres.app",
+              "port": 5435
+            },
+            {
+              "name": "photoprism_mariadb",
+              "label": "Photoprism Mariadb",
+              "url": "photoprism_mariadb.app"
+            },
+            {
+              "name": "crawlee_db",
+              "label": "Crawlee Db",
+              "url": "crawlee-db.app",
+              "port": 5433
+            },
+            {
+              "name": "crawlee_redis",
+              "label": "Crawlee Redis",
+              "url": "crawlee-redis.app",
+              "port": 6381
+            },
+            {
+              "name": "crawlee_minio",
+              "label": "Crawlee Minio",
+              "url": "crawlee-minio.app",
+              "port": 9000
+            },
+            {
+              "name": "postlite",
+              "label": "Postlite",
+              "url": "postlite.app",
+              "port": 8890
+            },
+            {
+              "name": "Oracle S3 (backups)",
+              "label": "Oracle S3 (backups)",
+              "url": "https://cloud.oracle.com",
+              "external": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "mcpapi",
       "label": "MCP & API",
       "subgroups": [
@@ -451,7 +720,8 @@
             {
               "name": "c3-analytics-api",
               "label": "C3 Analytics Api",
-              "url": "c3-analytics-api.app"
+              "url": "c3-analytics-api.app",
+              "port": 8085
             },
             {
               "name": "c3-infra-api",
@@ -462,7 +732,8 @@
             {
               "name": "c3-public-api",
               "label": "C3 Public Api",
-              "url": "c3-public-api.app"
+              "url": "c3-public-api.app",
+              "port": 8087
             },
             {
               "name": "c3-services-api",
@@ -473,12 +744,14 @@
             {
               "name": "fin-api",
               "label": "Fin Api",
-              "url": "fin-api.app"
+              "url": "fin-api.app",
+              "port": 8340
             },
             {
               "name": "http-to-smtp-proxy-api",
               "label": "Http To Smtp Proxy Api",
-              "url": "http-to-smtp-proxy-api.app"
+              "url": "http-to-smtp-proxy-api.app",
+              "port": 8090
             }
           ]
         },
@@ -527,7 +800,8 @@
             {
               "name": "google-personal-mcp",
               "label": "Google Personal Mcp",
-              "url": "google-personal-mcp.app"
+              "url": "g-personal-mcp.app",
+              "port": 3106
             },
             {
               "name": "google-workspace-mcp",
