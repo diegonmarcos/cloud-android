@@ -125,22 +125,15 @@
           "icon": "ic_database",
           "containers": [
             {
-              "name": "redis",
-              "label": "Redis",
-              "url": "redis.app",
-              "port": 6379
+              "name": "mattermost-postgres",
+              "label": "Mattermost Postgres",
+              "url": "mattermost-postgres.app",
+              "port": 5435
             },
             {
-              "name": "authelia-redis",
-              "label": "Authelia Redis",
-              "url": "authelia-redis.app",
-              "port": 6380
-            },
-            {
-              "name": "umami-db",
-              "label": "Umami Db",
-              "url": "umami-db.app",
-              "port": 5442
+              "name": "cypht-postgres",
+              "label": "Cypht Postgres",
+              "url": "cypht-postgres.app"
             },
             {
               "name": "etherpad_postgres",
@@ -155,10 +148,16 @@
               "port": 5439
             },
             {
-              "name": "mattermost-postgres",
-              "label": "Mattermost Postgres",
-              "url": "mattermost-postgres.app",
-              "port": 5435
+              "name": "paca-valkey",
+              "label": "Paca Valkey",
+              "url": "paca-valkey.app",
+              "port": 6379
+            },
+            {
+              "name": "paca-postgres",
+              "label": "Paca Postgres",
+              "url": "paca-postgres.app",
+              "port": 5432
             },
             {
               "name": "photoprism_mariadb",
@@ -182,6 +181,24 @@
               "label": "Crawlee Minio",
               "url": "crawlee-minio.app",
               "port": 9000
+            },
+            {
+              "name": "authelia-redis",
+              "label": "Authelia Redis",
+              "url": "authelia-redis.app",
+              "port": 6380
+            },
+            {
+              "name": "umami-db",
+              "label": "Umami Db",
+              "url": "umami-db.app",
+              "port": 5442
+            },
+            {
+              "name": "redis",
+              "label": "Redis",
+              "url": "redis.app",
+              "port": 6379
             },
             {
               "name": "postlite",
@@ -598,6 +615,56 @@
     {
       "id": "providers",
       "label": "Providers (VPS)",
+      "subgroups": [
+        {
+          "label": "VMs",
+          "icon": "ic_p_c3_vms",
+          "containers": [
+            {
+              "name": "gcp-proxy",
+              "label": "gcp-proxy",
+              "url": "10.0.0.1",
+              "port": 22
+            },
+            {
+              "name": "oci-mail",
+              "label": "oci-mail",
+              "url": "10.0.0.3",
+              "port": 22
+            },
+            {
+              "name": "oci-analytics",
+              "label": "oci-analytics",
+              "url": "10.0.0.4",
+              "port": 22
+            },
+            {
+              "name": "oci-apps",
+              "label": "oci-apps",
+              "url": "10.0.0.6",
+              "port": 22
+            },
+            {
+              "name": "gcp-t4",
+              "label": "gcp-t4",
+              "url": "10.0.0.8",
+              "port": 22
+            },
+            {
+              "name": "laptop",
+              "label": "Surface Pro",
+              "url": "10.0.0.5",
+              "port": 22
+            },
+            {
+              "name": "galaxy-s21",
+              "label": "Galaxy S21",
+              "url": "10.0.0.9",
+              "port": 22
+            }
+          ]
+        }
+      ],
       "icon": "ic_world",
       "providers": [
         {
@@ -635,22 +702,15 @@
           "icon": "ic_database",
           "containers": [
             {
-              "name": "redis",
-              "label": "Redis",
-              "url": "redis.app",
-              "port": 6379
+              "name": "mattermost-postgres",
+              "label": "Mattermost Postgres",
+              "url": "mattermost-postgres.app",
+              "port": 5435
             },
             {
-              "name": "authelia-redis",
-              "label": "Authelia Redis",
-              "url": "authelia-redis.app",
-              "port": 6380
-            },
-            {
-              "name": "umami-db",
-              "label": "Umami Db",
-              "url": "umami-db.app",
-              "port": 5442
+              "name": "cypht-postgres",
+              "label": "Cypht Postgres",
+              "url": "cypht-postgres.app"
             },
             {
               "name": "etherpad_postgres",
@@ -665,10 +725,16 @@
               "port": 5439
             },
             {
-              "name": "mattermost-postgres",
-              "label": "Mattermost Postgres",
-              "url": "mattermost-postgres.app",
-              "port": 5435
+              "name": "paca-valkey",
+              "label": "Paca Valkey",
+              "url": "paca-valkey.app",
+              "port": 6379
+            },
+            {
+              "name": "paca-postgres",
+              "label": "Paca Postgres",
+              "url": "paca-postgres.app",
+              "port": 5432
             },
             {
               "name": "photoprism_mariadb",
@@ -692,6 +758,24 @@
               "label": "Crawlee Minio",
               "url": "crawlee-minio.app",
               "port": 9000
+            },
+            {
+              "name": "authelia-redis",
+              "label": "Authelia Redis",
+              "url": "authelia-redis.app",
+              "port": 6380
+            },
+            {
+              "name": "umami-db",
+              "label": "Umami Db",
+              "url": "umami-db.app",
+              "port": 5442
+            },
+            {
+              "name": "redis",
+              "label": "Redis",
+              "url": "redis.app",
+              "port": 6379
             },
             {
               "name": "postlite",

@@ -44,12 +44,35 @@ for d in sorted(glob.glob(f"{AROOT}/*/")):
         canon = b.get("name") or suffix
         API.setdefault(canon, api.get("display_name") or canon)
 
-# ── DB containers (real .app:port) from the private-services snapshot ──────
-DBS = {}
-for e in json.load(open(os.path.join(HERE, "services_private.json"))):
-    if e.get("db_engine"):
-        h, _, p = (e.get("private_dns") or "").partition(":")
-        DBS[e["name"]] = (h, int(p) if p.isdigit() else None)
+# ── real DB / storage containers, straight from a_solutions build.json's
+#    `containers` map (every non-app container whose key or image is a DB) ──
+import re
+_DBIMG = re.compile(r"(postgres|redis|mariadb|mysql|minio|mongo|surreal|valkey|memcached|clickhouse|qdrant|chroma)", re.I)
+_DBKEY = re.compile(r"(db|redis|minio|postgres|maria|mysql|mongo|surreal|cache|valkey|qdrant|vector)", re.I)
+DBS = {}        # container_name -> (dns, port)
+DB_ORDER = []   # preserve discovery order
+for d in sorted(glob.glob(f"{AROOT}/*/")):
+    fld = d.rstrip("/").split("/")[-1]
+    if fld.startswith(("z_archive", "_shared")):
+        continue
+    bj = os.path.join(d, "build.json")
+    if not os.path.exists(bj):
+        continue
+    try:
+        b = json.load(open(bj))
+    except Exception:
+        continue
+    conts = b.get("containers")
+    if not isinstance(conts, dict):
+        continue
+    for key, c in conts.items():
+        if key == "app" or not isinstance(c, dict):
+            continue
+        if _DBIMG.search(c.get("image", "") or "") or _DBKEY.search(key):
+            cn = c.get("container_name", key)
+            if cn not in DBS:
+                DBS[cn] = (c.get("dns", "") or "", c.get("port"))
+                DB_ORDER.append(cn)
 
 
 def _title(n):
@@ -90,14 +113,14 @@ IC = {"Security": "ic_lock", "Network": "ic_wg", "Observability": "ic_p_logs",
       "APIs & MCPs": "ic_code", "Communications": "ic_chat", "Productivity": "ic_mode_apps",
       "Media": "ic_suite", "Finance": "ic_p_c3_stack", "AI & Agents": "ic_ai_sparkle",
       "Vault": "ic_lock", "News": "ic_p_logs", "Web": "ic_world", "Storage": "ic_database",
-      "DBs": "ic_database", "APIs": "ic_code", "MCPs": "ic_p_c3_workflows"}
+      "DBs": "ic_database", "APIs": "ic_code", "MCPs": "ic_p_c3_workflows", "VMs": "ic_p_c3_vms"}
 
 # ── canonical partition: every container exactly once across Infra + User ──
 INFRA = [
     ("Security", [app(n) for n in ["authelia", "caddy", "caddy-l4-public", "introspect-proxy"]]),
     ("Network", [app(n) for n in ["wireguard-mesh", "wireguard-mesh-ws-tunnel", "wireguard-public", "hickory-dns"]]),
     ("Observability", [app(n) for n in ["matomo", "umami", "openobserve", "dagu", "nocodb", "dbgate", "ntfy", "sauron-forwarder", "cloud-spec"]]),
-    ("Databases", [db(n) for n in ["redis", "authelia-redis", "umami-db", "etherpad_postgres", "hedgedoc_postgres", "mattermost-postgres", "photoprism_mariadb", "crawlee_db", "crawlee_redis", "crawlee_minio"]] + [app("postlite")]),
+    ("Databases", [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]),
     ("Data", [app(n) for n in ["gitea", "backup-borg", "backup-bup", "backup-gitea"]]),
     ("APIs & MCPs", [app(n) for n in ["c3-analytics-api", "c3-infra-api", "c3-public-api", "c3-services-api", "c3-infra-mcp", "c3-infra-mcp-api", "c3-services-mcp", "c3-services-mcp-api", "c3-specs-docs-mcp", "cloud-cgc-mcp", "c3-diego-personal-data-mcp", "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp", "http-to-smtp-proxy-api"]]),
     ("Build", [app("cloud-builder-x")]),
@@ -120,25 +143,38 @@ API_SVCS = sorted(API.keys())
 MCP_SVCS = ["c3-infra-mcp", "c3-infra-mcp-api", "c3-services-mcp", "c3-services-mcp-api",
             "c3-specs-docs-mcp", "cloud-cgc-mcp", "c3-diego-personal-data-mcp",
             "google-personal-mcp", "google-workspace-mcp", "mail-mcp", "mattermost-mcp"]
-DB_LIST = ["redis", "authelia-redis", "umami-db", "etherpad_postgres", "hedgedoc_postgres",
-           "mattermost-postgres", "photoprism_mariadb", "crawlee_db", "crawlee_redis", "crawlee_minio"]
+# Full DB list = the real sidecar DB containers (discovery order) + the
+# standalone DB services (redis / postlite are their service's `app`).
+DB_ALL = [db(n) for n in DB_ORDER] + [app("redis"), app("postlite")]
+
+# ── VMs: wg-mesh nodes (data/mesh.json) + the two personal devices. Pinged
+#    on wg_ip:22 (SSH) over WireGuard; relabel the `laptop` node Surface Pro.
+MESH = json.load(open(os.path.join(HERE, "mesh.json")))
+def vm(name, ip, label=None):
+    return {"name": name, "label": label or name, "url": ip, "port": 22}
+VMS = []
+for n in (MESH.get("nodes") or []):
+    nm, ip = n.get("name"), n.get("wg_ip")
+    if nm and ip:
+        VMS.append(vm(nm, ip, "Surface Pro" if nm == "laptop" else nm))
+VMS.append(vm("galaxy-s21", "10.0.0.9", "Galaxy S21"))
 
 
-def grp(gid, gl, subs):
+def grp(gid, gl, subs, **extra):
     return {"id": gid, "label": gl,
             "subgroups": [{"label": sl, "icon": IC.get(sl, "ic_settings"), "containers": cs}
-                          for sl, cs in subs]}
+                          for sl, cs in subs], **extra}
 
 
 groups = [grp("infra", "Infra Apps", INFRA), grp("user", "User Apps", USER),
-          {"id": "providers", "label": "Providers (VPS)", "icon": "ic_world", "providers": [
+          grp("providers", "Providers (VPS)", [("VMs", VMS)], icon="ic_world", providers=[
               {"label": "Oracle", "url": "https://cloud.oracle.com"},
               {"label": "GCloud", "url": "https://console.cloud.google.com"},
               {"label": "Cloudflare", "url": "https://dash.cloudflare.com"},
               {"label": "GitHub", "url": "https://github.com/diegonmarcos"},
               {"label": "Hetzner", "url": "https://console.hetzner.cloud"},
-              {"label": "Nvidia", "url": "https://build.nvidia.com"}]},
-          grp("dbs", "DBs (storage)", [("DBs", [db(n) for n in DB_LIST] + [app("postlite"), ext("Oracle S3 (backups)", "https://cloud.oracle.com")])]),
+              {"label": "Nvidia", "url": "https://build.nvidia.com"}]),
+          grp("dbs", "DBs (storage)", [("DBs", DB_ALL + [ext("Oracle S3 (backups)", "https://cloud.oracle.com")])]),
           grp("mcpapi", "MCP & API", [("APIs", [api(n) for n in API_SVCS]),
                                        ("MCPs", [app(n) for n in MCP_SVCS])])]
 

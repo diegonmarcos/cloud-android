@@ -106,7 +106,10 @@ class AggregatorStackFragment : Fragment(),
         }
         panelRefs.clear()
         nextEmbedIdx = 0
-        for (panel in panels) column.addView(buildPanel(ctx, inflater, panel))
+        for (panel in panels) column.addView(
+            if (panel.kind == "section_title") sectionTitleView(ctx, panel.title)
+            else buildPanel(ctx, inflater, panel)
+        )
         return scroll
     }
 
@@ -123,6 +126,18 @@ class AggregatorStackFragment : Fragment(),
         }
         return true
     }
+
+    /** kind=section_title — a plain heading between cards (NOT a card),
+     *  used to separate the "Containers" cards from the "Stack" list card. */
+    private fun sectionTitleView(ctx: android.content.Context, text: String): View =
+        TextView(ctx).apply {
+            this.text = text
+            setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+            setTextColor(0xFFE9D8FD.toInt())
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 20f
+            setPadding(dp(4), dp(12), dp(4), dp(6))
+        }
 
     // ── Panel card (header + collapsable body) ─────────────────────────
 
