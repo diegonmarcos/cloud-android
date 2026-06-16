@@ -1462,13 +1462,22 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Gradle config phase", "%d ms".format(BuildConfig.STACK_GRADLE_CONFIG_MS))
             row(ctx, it, "Build SHA",      BuildConfig.GIT_SHORT_SHA)
 
-            // Collapsible trees — each behind a toggle button + a horizontal
-            // monospace scroller so the wide maps don't bloat the page:
-            //   • Folders Tree — ea_* sibling filesystem (UI_STACK_FOLDER_TREE_B64)
-            //   • Sitemap      — app page/nav map (data/asm-tree.txt)
-            //   • AST          — Kotlin code structure (module→package→file→type)
+            // Three trees SIDE-BY-SIDE — Sitemap | Folders | AST. Each is a
+            // weighted button that toggles its monospace scroller below the
+            // row; LONG-PRESS a button copies that tree's full text to the
+            // clipboard. (Folders also goes into the page-copy buffer.)
             val box = it
-            val addTree = { label: String, b64: String, intoBuf: Boolean ->
+            val btnRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, dp(10), 0, dp(4))
+            }
+            val scrollers = mutableListOf<View>()
+            val trees = listOf(
+                Triple("Sitemap", BuildConfig.UI_ASM_TREE_B64, false),
+                Triple("Folders", BuildConfig.UI_STACK_FOLDER_TREE_B64, true),
+                Triple("AST", BuildConfig.UI_AST_TREE_B64, false),
+            )
+            for ((label, b64, intoBuf) in trees) {
                 val str = runCatching {
                     String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
                 }.getOrDefault("—")
@@ -1485,23 +1494,34 @@ class DevControlFragment : Fragment() {
                         setTextIsSelectable(true)
                     })
                 }
-                box.addView(TextView(ctx).apply {
+                scrollers += scroll
+                btnRow.addView(TextView(ctx).apply {
                     text = "▸ $label"
+                    gravity = android.view.Gravity.CENTER
                     setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
                     typeface = Typeface.DEFAULT_BOLD
-                    setPadding(dp(8), dp(12), dp(8), dp(10))
+                    setPadding(dp(6), dp(8), dp(6), dp(8))
+                    setBackgroundColor(0x22FFFFFF)
                     isClickable = true; isFocusable = true
+                    layoutParams = LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                    ).apply { rightMargin = dp(4) }
                     setOnClickListener {
                         val show = scroll.visibility != android.view.View.VISIBLE
                         scroll.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
                         text = if (show) "▾ $label" else "▸ $label"
                     }
+                    setOnLongClickListener {
+                        (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as? android.content.ClipboardManager)
+                            ?.setPrimaryClip(android.content.ClipData.newPlainText(label, str))
+                        android.widget.Toast.makeText(ctx, "$label copied", android.widget.Toast.LENGTH_SHORT).show()
+                        true
+                    }
                 })
-                box.addView(scroll)
             }
-            addTree("Folders Tree", BuildConfig.UI_STACK_FOLDER_TREE_B64, true)
-            addTree("Sitemap", BuildConfig.UI_ASM_TREE_B64, false)
-            addTree("AST", BuildConfig.UI_AST_TREE_B64, false)
+            box.addView(btnRow)
+            scrollers.forEach { box.addView(it) }
         }
 
         section(ctx, column, "Locale & time") {

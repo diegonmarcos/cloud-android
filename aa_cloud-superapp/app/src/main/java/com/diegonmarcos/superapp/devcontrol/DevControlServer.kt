@@ -177,6 +177,7 @@ object DevControlServer {
                 "diagnostics/logcat" -> { reply(writer, "200 OK", readLogcat(query["n"]?.toIntOrNull() ?: 300)); return }
                 "diagnostics/trace"  -> { reply(writer, "200 OK", readTraceTail(ctx, query["n"]?.toIntOrNull() ?: 300)); return }
                 "diagnostics/crashes" -> { reply(writer, "200 OK", readCrashes(ctx)); return }
+                "system/about" -> { reply(writer, "200 OK", aboutJson(), "application/json"); return }
             }
 
             if (!authed) { reply(writer, "401 Unauthorized", "unauthorized\n"); return }
@@ -267,6 +268,7 @@ object DevControlServer {
         return when (stripped) {
             "ping"     -> "system/ping"
             "info"     -> "system/info"
+            "about"    -> "system/about"
             "logcat"   -> "diagnostics/logcat"
             "trace"    -> "diagnostics/trace"
             "crashes"  -> "diagnostics/crashes"
@@ -286,6 +288,7 @@ object DevControlServer {
             Spec("docs",                "GET",  false, "This endpoint — JSON catalog of every route, method, and auth requirement", ""),
             Spec("system/ping",         "GET",  false, "Health probe — returns 'pong'", ""),
             Spec("system/info",         "GET",  false, "App build info: version, vc, sha, port", ""),
+            Spec("system/about",        "GET",  false, "Full About-page data as JSON: app build, device, stack (languages/frameworks/build times), and the folder/sitemap/AST trees", ""),
             Spec("system/update",       "POST", true,  "Trigger an in-app update check (libs:updater)", ""),
             Spec("system/restart",      "POST", true,  "Restart the SuperApp process", ""),
             Spec("diagnostics/logcat",  "GET",  false, "Recent logcat lines, threadtime format", "n=lines (default 300)"),
@@ -703,6 +706,45 @@ object DevControlServer {
             val v = URLDecoder.decode(it.substring(eq + 1), "UTF-8")
             k to v
         }.toMap()
+    }
+
+    /** Full About-page data as JSON — app build, device, stack
+     *  (languages/frameworks/build times) and the folder/sitemap/AST trees.
+     *  Served by GET /api/system/about (auth-free, same nature as
+     *  system/info). All sourced from BuildConfig + Build → no UI needed,
+     *  reproducible per build. */
+    private fun aboutJson(): String {
+        fun dec(s: String) = runCatching {
+            String(android.util.Base64.decode(s, android.util.Base64.DEFAULT))
+        }.getOrDefault("")
+        val langs = dec(BuildConfig.UI_STACK_LANGUAGES_JSON_B64).ifBlank { "{}" }
+        val fws   = dec(BuildConfig.UI_STACK_FRAMEWORKS_JSON_B64).ifBlank { "[]" }
+        return buildString {
+            append("{")
+            append(""""app":{""")
+            append(""""applicationId":"${jsonEscape(BuildConfig.APPLICATION_ID)}",""")
+            append(""""versionName":"${jsonEscape(BuildConfig.VERSION_NAME)}",""")
+            append(""""versionCode":${BuildConfig.VERSION_CODE},""")
+            append(""""gitSha":"${jsonEscape(BuildConfig.GIT_SHORT_SHA)}",""")
+            append(""""buildTimestamp":"${jsonEscape(BuildConfig.BUILD_TIMESTAMP)}",""")
+            append(""""buildType":"${jsonEscape(BuildConfig.BUILD_TYPE)}"},""")
+            append(""""device":{""")
+            append(""""manufacturer":"${jsonEscape(android.os.Build.MANUFACTURER)}",""")
+            append(""""model":"${jsonEscape(android.os.Build.MODEL)}",""")
+            append(""""android":"${jsonEscape(android.os.Build.VERSION.RELEASE)}",""")
+            append(""""sdk":${android.os.Build.VERSION.SDK_INT}},""")
+            append(""""stack":{""")
+            append(""""languages":$langs,""")
+            append(""""frameworks":$fws,""")
+            append(""""buildAvgSecs":${BuildConfig.STACK_BUILD_AVG_SECS},""")
+            append(""""buildLastSecs":${BuildConfig.STACK_BUILD_LAST_SECS},""")
+            append(""""gradleConfigMs":${BuildConfig.STACK_GRADLE_CONFIG_MS}},""")
+            append(""""trees":{""")
+            append(""""folders":"${jsonEscape(dec(BuildConfig.UI_STACK_FOLDER_TREE_B64))}",""")
+            append(""""sitemap":"${jsonEscape(dec(BuildConfig.UI_ASM_TREE_B64))}",""")
+            append(""""ast":"${jsonEscape(dec(BuildConfig.UI_AST_TREE_B64))}"}""")
+            append("}")
+        }
     }
 
     private fun jsonEscape(s: String): String =
