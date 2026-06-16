@@ -118,26 +118,23 @@ object Sections {
          *  dashboard surface: mock numbers declared in build.json today,
          *  swapped for a live fetch once the card's module is plumbed. */
         val rows: List<StatRow> = emptyList(),
-        /** Used by kind=cloud_dashboard — the 3 top groups (Infra Apps /
-         *  User Apps / Providers) that bucket every container by category. */
-        val dashGroups: List<DashGroup> = emptyList(),
-        /** Used by kind=cloud_dashboard — category id → sub-column title. */
-        val categoryLabels: Map<String, String> = emptyMap(),
+        /** Used by kind=cloud_dashboard — which cloud_services.json group(s)
+         *  THIS card renders (one card per group → `group`; the Others card
+         *  → `groups: [providers, mcpapi]`). */
+        val dashGroupIds: List<String> = emptyList(),
     )
 
     /** One label/value line in a kind=stats dashboard card. */
     data class StatRow(val label: String, val value: String)
 
-    /** One top group of the Cloud dashboard. Either lists the service
-     *  [categories] it owns (containers grouped under it) OR a fixed set of
-     *  external [providers] (the VPS group). */
-    data class DashGroup(
-        val id: String,
-        val label: String,
-        val categories: List<String> = emptyList(),
-        val providers: List<DashProvider> = emptyList(),
+    // ── Cloud dashboard model (data/cloud_services.json) ─────────────────
+    data class CloudDash(val groups: List<CloudGroup>)
+    data class CloudGroup(
+        val id: String, val label: String, val icon: String,
+        val subgroups: List<CloudSub>, val providers: List<DashProvider>,
     )
-
+    data class CloudSub(val label: String, val icon: String, val containers: List<CloudContainer>)
+    data class CloudContainer(val name: String, val label: String, val url: String, val port: Int)
     /** One external provider console in the Cloud dashboard Providers group. */
     data class DashProvider(val label: String, val url: String)
 
@@ -503,30 +500,12 @@ object Sections {
                             if (lbl.isNotBlank()) rowsList += StatRow(lbl, v)
                         }
                     }
-                    // Optional groups + category_labels for kind=cloud_dashboard.
-                    val groupsJson = p.optJSONArray("groups")
-                    val dashGroups = mutableListOf<DashGroup>()
-                    if (groupsJson != null) {
-                        for (k in 0 until groupsJson.length()) {
-                            val g = groupsJson.optJSONObject(k) ?: continue
-                            val cats = mutableListOf<String>()
-                            g.optJSONArray("categories")?.let { ca ->
-                                for (m in 0 until ca.length()) ca.optString(m).takeIf { it.isNotBlank() }?.let(cats::add)
-                            }
-                            val provs = mutableListOf<DashProvider>()
-                            g.optJSONArray("providers")?.let { pa ->
-                                for (m in 0 until pa.length()) {
-                                    val pr = pa.optJSONObject(m) ?: continue
-                                    val l = pr.optString("label"); val u = pr.optString("url")
-                                    if (l.isNotBlank()) provs += DashProvider(l, u)
-                                }
-                            }
-                            dashGroups += DashGroup(g.optString("id"), g.optString("label"), cats, provs)
-                        }
-                    }
-                    val catLabels = mutableMapOf<String, String>()
-                    p.optJSONObject("category_labels")?.let { cl ->
-                        for (key in cl.keys()) catLabels[key] = cl.optString(key)
+                    // kind=cloud_dashboard — which cloud_services.json group(s)
+                    // this card renders: `group` (string) or `groups` (array).
+                    val dashGroupIds = mutableListOf<String>()
+                    p.optString("group", "").takeIf { it.isNotBlank() }?.let(dashGroupIds::add)
+                    p.optJSONArray("groups")?.let { ga ->
+                        for (m in 0 until ga.length()) ga.optString(m).takeIf { it.isNotBlank() }?.let(dashGroupIds::add)
                     }
                     out.add(StackPanel(
                         kind            = p.optString("kind", "placeholder"),
@@ -542,8 +521,7 @@ object Sections {
                         iconName        = p.optString("icon", ""),
                         repos           = reposList,
                         rows            = rowsList,
-                        dashGroups      = dashGroups,
-                        categoryLabels  = catLabels,
+                        dashGroupIds    = dashGroupIds,
                     ))
                 }
                 return out
@@ -1155,6 +1133,48 @@ object Sections {
     fun linktreeSlide(id: String): LinktreeSlide? {
         loadLinktree()
         return cachedLinktree?.get(id)
+    }
+
+    // ── Cloud dashboard inventory (data/cloud_services.json) ─────────────
+    private var cachedCloudDash: CloudDash? = null
+    /** Decode the curated container inventory baked into
+     *  BuildConfig.CLOUD_SERVICES_B64. Cached after first parse. */
+    fun cloudServices(): CloudDash {
+        cachedCloudDash?.let { return it }
+        val raw = runCatching {
+            String(Base64.decode(BuildConfig.CLOUD_SERVICES_B64, Base64.DEFAULT))
+        }.getOrDefault("{}")
+        val o = runCatching { org.json.JSONObject(raw) }.getOrDefault(org.json.JSONObject())
+        val groups = mutableListOf<CloudGroup>()
+        o.optJSONArray("groups")?.let { ga ->
+            for (i in 0 until ga.length()) {
+                val g = ga.optJSONObject(i) ?: continue
+                val subs = mutableListOf<CloudSub>()
+                g.optJSONArray("subgroups")?.let { sa ->
+                    for (j in 0 until sa.length()) {
+                        val s = sa.optJSONObject(j) ?: continue
+                        val cs = mutableListOf<CloudContainer>()
+                        s.optJSONArray("containers")?.let { ca ->
+                            for (k in 0 until ca.length()) {
+                                val c = ca.optJSONObject(k) ?: continue
+                                val nm = c.optString("name"); if (nm.isBlank()) continue
+                                cs += CloudContainer(nm, c.optString("label", nm), c.optString("url"), c.optInt("port", -1))
+                            }
+                        }
+                        subs += CloudSub(s.optString("label"), s.optString("icon"), cs)
+                    }
+                }
+                val provs = mutableListOf<DashProvider>()
+                g.optJSONArray("providers")?.let { pa ->
+                    for (j in 0 until pa.length()) {
+                        val pr = pa.optJSONObject(j) ?: continue
+                        val l = pr.optString("label"); if (l.isNotBlank()) provs += DashProvider(l, pr.optString("url"))
+                    }
+                }
+                groups += CloudGroup(g.optString("id"), g.optString("label"), g.optString("icon"), subs, provs)
+            }
+        }
+        return CloudDash(groups).also { cachedCloudDash = it }
     }
 
     private fun loadLinktree() {

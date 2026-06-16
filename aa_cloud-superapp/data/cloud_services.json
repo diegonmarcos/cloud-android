@@ -1,0 +1,555 @@
+{
+  "_doc": "Curated Cloud container inventory (Labs/Admin dashboard). Hand-authored grouping validated vs cloud/a_solutions; lgtm+windmill removed, gcloud/cloudflare are providers not containers. Each subgroup has an icon; each container {name,label,url={name}.app,port?}. renderCloudDashboard draws an icon grid (UI_TILE_COLUMNS/line) with a status light UNDER each icon (TCP ping url:port over WG) and opens https://url in the in-app browser on tap.",
+  "groups": [
+    {
+      "id": "infra",
+      "label": "Infra Apps",
+      "subgroups": [
+        {
+          "label": "Security",
+          "icon": "ic_lock",
+          "containers": [
+            {
+              "name": "authelia",
+              "label": "Authelia",
+              "url": "authelia-redis.app",
+              "port": 6380
+            },
+            {
+              "name": "caddy",
+              "label": "Caddy",
+              "url": "caddy.app",
+              "port": 443
+            },
+            {
+              "name": "caddy-l4-public",
+              "label": "Caddy L4 Public",
+              "url": "caddy-l4-public.app"
+            },
+            {
+              "name": "introspect-proxy",
+              "label": "Introspect Proxy",
+              "url": "introspect-proxy.app",
+              "port": 4182
+            }
+          ]
+        },
+        {
+          "label": "Network",
+          "icon": "ic_world",
+          "containers": [
+            {
+              "name": "wireguard-mesh",
+              "label": "Wireguard Mesh",
+              "url": "wireguard-mesh.app"
+            },
+            {
+              "name": "wireguard-mesh-ws-tunnel",
+              "label": "Wireguard Mesh Ws Tunnel",
+              "url": "wireguard-mesh-ws-tunnel.app"
+            },
+            {
+              "name": "wireguard-public",
+              "label": "Wireguard Public",
+              "url": "wireguard-public.app"
+            }
+          ]
+        },
+        {
+          "label": "Observability",
+          "icon": "ic_p_logs",
+          "containers": [
+            {
+              "name": "matomo",
+              "label": "Matomo",
+              "url": "matomo.app",
+              "port": 8084
+            },
+            {
+              "name": "umami",
+              "label": "Umami",
+              "url": "umami-db.app",
+              "port": 5442
+            },
+            {
+              "name": "openobserve",
+              "label": "Openobserve",
+              "url": "openobserve.app"
+            },
+            {
+              "name": "dagu",
+              "label": "Dagu",
+              "url": "dagu.app",
+              "port": 8070
+            },
+            {
+              "name": "nocodb",
+              "label": "Nocodb",
+              "url": "nocodb.app"
+            },
+            {
+              "name": "dbgate",
+              "label": "Dbgate",
+              "url": "dbgate.app",
+              "port": 8086
+            },
+            {
+              "name": "ntfy",
+              "label": "Ntfy",
+              "url": "ntfy.app",
+              "port": 8090
+            },
+            {
+              "name": "sauron-forwarder",
+              "label": "Sauron Forwarder",
+              "url": "sauron-forwarder.app"
+            },
+            {
+              "name": "cloud-spec",
+              "label": "Cloud Spec",
+              "url": "c3-spec.app",
+              "port": 3080
+            }
+          ]
+        },
+        {
+          "label": "Data",
+          "icon": "ic_database",
+          "containers": [
+            {
+              "name": "gitea",
+              "label": "Gitea",
+              "url": "gitea.app",
+              "port": 3002
+            },
+            {
+              "name": "redis",
+              "label": "Redis",
+              "url": "redis.app",
+              "port": 6379
+            },
+            {
+              "name": "postlite",
+              "label": "Postlite",
+              "url": "postlite.app"
+            },
+            {
+              "name": "kg-graph",
+              "label": "Kg Graph",
+              "url": "kg-graph.app",
+              "port": 8001
+            },
+            {
+              "name": "db-agent",
+              "label": "Db Agent",
+              "url": "db-agent.app"
+            },
+            {
+              "name": "backup-borg",
+              "label": "Backup Borg",
+              "url": "backup-borg.app",
+              "port": 2224
+            },
+            {
+              "name": "backup-bup",
+              "label": "Backup Bup",
+              "url": "backup-bup.app",
+              "port": 2223
+            },
+            {
+              "name": "backup-gitea",
+              "label": "Backup Gitea",
+              "url": "backup-gitea.app"
+            }
+          ]
+        },
+        {
+          "label": "Cloud Infra",
+          "icon": "ic_world",
+          "containers": [
+            {
+              "name": "hickory-dns",
+              "label": "Hickory Dns",
+              "url": "hickory-dns.app",
+              "port": 53
+            }
+          ]
+        },
+        {
+          "label": "Build",
+          "icon": "ic_p_sol_tools",
+          "containers": [
+            {
+              "name": "cloud-builder-x",
+              "label": "Cloud Builder X",
+              "url": "cloud-builder-x.app"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user",
+      "label": "User Apps",
+      "subgroups": [
+        {
+          "label": "Communications",
+          "icon": "ic_chat",
+          "containers": [
+            {
+              "name": "chat-mattermost",
+              "label": "Chat Mattermost",
+              "url": "chat-mattermost.app"
+            },
+            {
+              "name": "matrix-continuwuity",
+              "label": "Matrix Continuwuity",
+              "url": "matrix-continuwuity.app"
+            },
+            {
+              "name": "matrix-element",
+              "label": "Matrix Element",
+              "url": "matrix-element.app"
+            },
+            {
+              "name": "matrix-mautrix-whatsapp",
+              "label": "Matrix Mautrix Whatsapp",
+              "url": "matrix-mautrix-whatsapp.app"
+            },
+            {
+              "name": "maddy",
+              "label": "Maddy",
+              "url": "maddy.app"
+            },
+            {
+              "name": "stalwart",
+              "label": "Stalwart",
+              "url": "stalwart.app",
+              "port": 2443
+            },
+            {
+              "name": "cypht",
+              "label": "Cypht",
+              "url": "cypht.app"
+            },
+            {
+              "name": "snappymail",
+              "label": "Snappymail",
+              "url": "snappymail.app",
+              "port": 8888
+            },
+            {
+              "name": "mail-puller",
+              "label": "Mail Puller",
+              "url": "mail-puller.app"
+            },
+            {
+              "name": "tools-smtp-proxy",
+              "label": "Tools Smtp Proxy",
+              "url": "tools-smtp-proxy.app"
+            }
+          ]
+        },
+        {
+          "label": "Productivity",
+          "icon": "ic_mode_apps",
+          "containers": [
+            {
+              "name": "etherpad",
+              "label": "Etherpad",
+              "url": "etherpad-db.app",
+              "port": 5436
+            },
+            {
+              "name": "hedgedoc",
+              "label": "Hedgedoc",
+              "url": "hedgedoc-db.app",
+              "port": 5439
+            },
+            {
+              "name": "grist",
+              "label": "Grist",
+              "url": "grist.app",
+              "port": 3011
+            },
+            {
+              "name": "calendar-radicale",
+              "label": "Calendar Radicale",
+              "url": "calendar-radicale.app"
+            },
+            {
+              "name": "contacts-radicale",
+              "label": "Contacts Radicale",
+              "url": "contacts-radicale.app"
+            },
+            {
+              "name": "revealmd",
+              "label": "Revealmd",
+              "url": "revealmd.app",
+              "port": 3014
+            },
+            {
+              "name": "code-server",
+              "label": "Code Server",
+              "url": "code-server.app",
+              "port": 8443
+            },
+            {
+              "name": "filebrowser",
+              "label": "Filebrowser",
+              "url": "filebrowser.app",
+              "port": 3015
+            },
+            {
+              "name": "paca",
+              "label": "Paca",
+              "url": "paca.app"
+            }
+          ]
+        },
+        {
+          "label": "Media",
+          "icon": "ic_suite",
+          "containers": [
+            {
+              "name": "photoprism",
+              "label": "Photoprism",
+              "url": "photoprism.app",
+              "port": 3013
+            }
+          ]
+        },
+        {
+          "label": "Finance",
+          "icon": "ic_p_c3_stack",
+          "containers": [
+            {
+              "name": "crawlee-cloud",
+              "label": "Crawlee Cloud",
+              "url": "crawlee-dashboard.app",
+              "port": 3001
+            }
+          ]
+        },
+        {
+          "label": "AI & Agents",
+          "icon": "ic_ai_sparkle",
+          "containers": [
+            {
+              "name": "ollama",
+              "label": "Ollama",
+              "url": "ollama.app",
+              "port": 11434
+            },
+            {
+              "name": "ollama-arm",
+              "label": "Ollama Arm",
+              "url": "ollama-arm.app",
+              "port": 11434
+            },
+            {
+              "name": "ollama-hai",
+              "label": "Ollama Hai",
+              "url": "ollama-hai.app",
+              "port": 11435
+            },
+            {
+              "name": "rig-agentic",
+              "label": "Rig Agentic",
+              "url": "rig-agentic.app"
+            },
+            {
+              "name": "rig-agentic-hai-1.5bq4",
+              "label": "Rig Agentic Hai 1.5Bq4",
+              "url": "rig-agentic-hai-1.5bq4.app",
+              "port": 8091
+            },
+            {
+              "name": "rig-agentic-sonn-14bq8",
+              "label": "Rig Agentic Sonn 14Bq8",
+              "url": "rig-agentic-sonn-14bq8.app",
+              "port": 8091
+            }
+          ]
+        },
+        {
+          "label": "Vault",
+          "icon": "ic_lock",
+          "containers": [
+            {
+              "name": "vaultwarden",
+              "label": "Vaultwarden",
+              "url": "vaultwarden.app",
+              "port": 8880
+            }
+          ]
+        },
+        {
+          "label": "News",
+          "icon": "ic_p_logs",
+          "containers": [
+            {
+              "name": "news-gdelt",
+              "label": "News Gdelt",
+              "url": "news-gdelt.app",
+              "port": 3019
+            }
+          ]
+        },
+        {
+          "label": "Web",
+          "icon": "ic_world",
+          "containers": [
+            {
+              "name": "front-end",
+              "label": "Front End",
+              "url": "front-end.app"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "providers",
+      "label": "Providers (VPS)",
+      "icon": "ic_world",
+      "providers": [
+        {
+          "label": "Oracle",
+          "url": "https://cloud.oracle.com"
+        },
+        {
+          "label": "GCloud",
+          "url": "https://console.cloud.google.com"
+        },
+        {
+          "label": "Cloudflare",
+          "url": "https://dash.cloudflare.com"
+        },
+        {
+          "label": "GitHub",
+          "url": "https://github.com/diegonmarcos"
+        },
+        {
+          "label": "Hetzner",
+          "url": "https://console.hetzner.cloud"
+        },
+        {
+          "label": "Nvidia",
+          "url": "https://build.nvidia.com"
+        }
+      ]
+    },
+    {
+      "id": "mcpapi",
+      "label": "MCP & API",
+      "subgroups": [
+        {
+          "label": "APIs",
+          "icon": "ic_code",
+          "containers": [
+            {
+              "name": "c3-analytics-api",
+              "label": "C3 Analytics Api",
+              "url": "c3-analytics-api.app"
+            },
+            {
+              "name": "c3-infra-api",
+              "label": "C3 Infra Api",
+              "url": "c3-infra-api.app",
+              "port": 8081
+            },
+            {
+              "name": "c3-public-api",
+              "label": "C3 Public Api",
+              "url": "c3-public-api.app"
+            },
+            {
+              "name": "c3-services-api",
+              "label": "C3 Services Api",
+              "url": "c3-services-api.app",
+              "port": 8082
+            },
+            {
+              "name": "fin-api",
+              "label": "Fin Api",
+              "url": "fin-api.app"
+            },
+            {
+              "name": "http-to-smtp-proxy-api",
+              "label": "Http To Smtp Proxy Api",
+              "url": "http-to-smtp-proxy-api.app"
+            }
+          ]
+        },
+        {
+          "label": "MCPs",
+          "icon": "ic_p_c3_workflows",
+          "containers": [
+            {
+              "name": "c3-infra-mcp",
+              "label": "C3 Infra Mcp",
+              "url": "c3-infra-mcp.app",
+              "port": 3100
+            },
+            {
+              "name": "c3-infra-mcp-api",
+              "label": "C3 Infra Mcp Api",
+              "url": "c3-infra-mcp-api.app"
+            },
+            {
+              "name": "c3-services-mcp",
+              "label": "C3 Services Mcp",
+              "url": "c3-services-mcp.app",
+              "port": 3101
+            },
+            {
+              "name": "c3-services-mcp-api",
+              "label": "C3 Services Mcp Api",
+              "url": "c3-services-mcp-api.app"
+            },
+            {
+              "name": "c3-specs-docs-mcp",
+              "label": "C3 Specs Docs Mcp",
+              "url": "c3-specs-docs-mcp.app"
+            },
+            {
+              "name": "cloud-cgc-mcp",
+              "label": "Cloud Cgc Mcp",
+              "url": "cloud-cgc-mcp.app",
+              "port": 3105
+            },
+            {
+              "name": "c3-diego-personal-data-mcp",
+              "label": "C3 Diego Personal Data Mcp",
+              "url": "c3-diego-personal-data-mcp.app"
+            },
+            {
+              "name": "google-personal-mcp",
+              "label": "Google Personal Mcp",
+              "url": "google-personal-mcp.app"
+            },
+            {
+              "name": "google-workspace-mcp",
+              "label": "Google Workspace Mcp",
+              "url": "g-workspace-mcp.app",
+              "port": 3104
+            },
+            {
+              "name": "mail-mcp",
+              "label": "Mail Mcp",
+              "url": "mail-mcp.app",
+              "port": 3103
+            },
+            {
+              "name": "mattermost-mcp",
+              "label": "Mattermost Mcp",
+              "url": "mattermost-mcp.app",
+              "port": 3102
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

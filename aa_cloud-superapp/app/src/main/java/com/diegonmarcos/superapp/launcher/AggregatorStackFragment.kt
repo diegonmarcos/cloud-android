@@ -818,57 +818,116 @@ class AggregatorStackFragment : Fragment(),
     private fun renderCloudDashboard(
         ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
     ) {
-        data class Svc(val name: String, val category: String, val host: String, val port: Int)
-        fun decode(b64: String): org.json.JSONArray = try {
-            org.json.JSONArray(String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)))
-        } catch (_: Throwable) { org.json.JSONArray() }
-        val svcs = mutableListOf<Svc>()
-        for (b64 in listOf(
-            com.diegonmarcos.superapp.BuildConfig.SERVICES_PRIVATE_B64,
-            com.diegonmarcos.superapp.BuildConfig.SERVICES_PUBLIC_B64)) {
-            val arr = decode(b64)
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val name = o.optString("name"); if (name.isBlank()) continue
-                val cat = o.optString("category", "?")
-                val pdns = o.optString("private_dns", "")
-                val host: String; val port: Int
-                if (pdns.contains(".app")) {
-                    val hp = pdns.split(":"); host = hp[0]
-                    port = hp.getOrNull(1)?.toIntOrNull() ?: o.optInt("port", -1)
-                } else {
-                    host = name.lowercase().replace('_', '-') + ".app"
-                    port = o.optInt("port", -1)
-                }
-                svcs += Svc(name, cat, host, port)
-            }
-        }
-
+        val dash = Sections.cloudServices()
+        val cols = com.diegonmarcos.superapp.BuildConfig.UI_TILE_COLUMNS.coerceAtLeast(1)
         val executor = java.util.concurrent.Executors.newFixedThreadPool(8)
-        for (group in panel.dashGroups) {
-            body.addView(groupHeader(ctx, group.label))
+        val wanted = panel.dashGroupIds.ifEmpty { dash.groups.map { it.id } }
+        val groups = dash.groups.filter { it.id in wanted }
+        // Only label the group inside the card when one card shows >1 group
+        // (the Others card = Providers + MCP & API). Single-group cards rely
+        // on the card title.
+        val showGroupHeader = groups.size > 1
+        for (group in groups) {
+            if (showGroupHeader) body.addView(groupHeader(ctx, group.label))
             if (group.providers.isNotEmpty()) {
-                for (pv in group.providers) body.addView(dashRow(ctx, pv.label, executor, null) { openUrlOrTarget(pv.url) })
-                continue
+                addCloudGrid(ctx, body, cols, executor, group.providers.map {
+                    CloudTile(it.label, group.icon, it.url, showLight = false, ping = null)
+                })
             }
-            val inGroup = svcs.filter { it.category in group.categories }
-            val seenLabels = linkedSetOf<String>()
-            for (catId in group.categories) {
-                val lbl = panel.categoryLabels[catId] ?: catId
-                if (lbl in seenLabels) continue
-                seenLabels += lbl
-                val members = inGroup
-                    .filter { (panel.categoryLabels[it.category] ?: it.category) == lbl }
-                    .sortedBy { it.name }
-                if (members.isEmpty()) continue
-                body.addView(subHeader(ctx, lbl))
-                for (s in members) {
-                    val ping = if (s.port in 1..65535) s.host to s.port else null
-                    body.addView(dashRow(ctx, s.name, executor, ping) { openUrlOrTarget("https://${s.host}") })
-                }
+            for (sub in group.subgroups) {
+                if (sub.containers.isEmpty()) continue
+                body.addView(subHeader(ctx, sub.label))
+                addCloudGrid(ctx, body, cols, executor, sub.containers.map {
+                    CloudTile(it.label, sub.icon, "https://${it.url}", showLight = true,
+                        ping = if (it.port in 1..65535) it.url to it.port else null)
+                })
             }
         }
         executor.shutdown()
+    }
+
+    private data class CloudTile(
+        val label: String, val icon: String, val openUrl: String,
+        val showLight: Boolean, val ping: Pair<String, Int>?,
+    )
+
+    /** Wrap-flowing `cols`-column grid of cloud tiles (same grid as the
+     *  link icon grid: each row a horizontal LinearLayout, padding cells
+     *  fill the last row). */
+    private fun addCloudGrid(
+        ctx: android.content.Context, body: LinearLayout, cols: Int,
+        executor: java.util.concurrent.ExecutorService, tiles: List<CloudTile>,
+    ) {
+        var i = 0
+        while (i < tiles.size) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
+            for (c in 0 until cols) {
+                if (i < tiles.size) row.addView(cloudTile(ctx, tiles[i++], executor))
+                else                row.addView(spacerTile(ctx))
+            }
+            body.addView(row)
+        }
+    }
+
+    /** Icon + STATUS LIGHT (under the icon) + label tile. weight=1 → 1/Nth
+     *  row width. Tap opens the in-app browser; the light TCP-pings the
+     *  container's {name}.app (green up / red down / grey checking). */
+    private fun cloudTile(
+        ctx: android.content.Context, t: CloudTile,
+        executor: java.util.concurrent.ExecutorService,
+    ): View {
+        val cell = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            val padH = dp(4); val padV = dp(8); setPadding(padH, padV, padH, padV)
+            isClickable = true; isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { openUrlOrTarget(t.openUrl) }
+        }
+        cell.addView(ImageView(ctx).apply {
+            val resId = Sections.iconResFor(ctx, t.icon)
+            if (resId != 0) setImageResource(resId)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
+            val sz = dp(28)
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+        })
+        if (t.showLight) {
+            val dot = View(ctx).apply {
+                val sz = dp(8)
+                layoutParams = LinearLayout.LayoutParams(sz, sz).apply { topMargin = dp(3) }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(0x66FFFFFF)
+                }
+            }
+            cell.addView(dot)
+            t.ping?.let { (host, port) ->
+                runCatching {
+                    executor.execute {
+                        val up = try {
+                            java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 1200); true }
+                        } catch (_: Throwable) { false }
+                        dot.post {
+                            (dot.background as? android.graphics.drawable.GradientDrawable)
+                                ?.setColor(if (up) 0xFF34C759.toInt() else 0xFFFF3B30.toInt())
+                        }
+                    }
+                }
+            }
+        }
+        cell.addView(TextView(ctx).apply {
+            text = t.label
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            gravity = android.view.Gravity.CENTER
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(3), 0, 0)
+        })
+        return cell
     }
 
     private fun groupHeader(ctx: android.content.Context, text: String): TextView =
@@ -888,63 +947,6 @@ class AggregatorStackFragment : Fragment(),
             textSize = 12f
             setPadding(dp(4), dp(8), 0, dp(2))
         }
-
-    /** A container/provider row: monogram + name + (optional) status dot. When
-     *  [ping] is set, a background TCP connect flips the dot green (open) / red
-     *  (unreachable); grey while checking. Tap runs [onClick]. */
-    private fun dashRow(
-        ctx: android.content.Context, label: String,
-        executor: java.util.concurrent.ExecutorService,
-        ping: Pair<String, Int>?, onClick: () -> Unit,
-    ): View {
-        val row = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            val p = dp(5); setPadding(dp(6), p, dp(6), p)
-            isClickable = true
-            setOnClickListener { onClick() }
-        }
-        row.addView(TextView(ctx).apply {
-            text = label.take(1).uppercase()
-            setTextColor(0xFFFFFFFF.toInt()); textSize = 11f; typeface = Typeface.DEFAULT_BOLD
-            gravity = android.view.Gravity.CENTER
-            val sz = dp(22)
-            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { rightMargin = dp(10) }
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0x33FFFFFF)
-            }
-        })
-        row.addView(TextView(ctx).apply {
-            text = label
-            setTextColor(0xFFFFFFFF.toInt()); textSize = 13f
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        if (ping != null) {
-            val dot = View(ctx).apply {
-                val sz = dp(9)
-                layoutParams = LinearLayout.LayoutParams(sz, sz)
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.OVAL
-                    setColor(0x66FFFFFF)
-                }
-            }
-            row.addView(dot)
-            val (host, port) = ping
-            runCatching {
-                executor.execute {
-                    val up = try {
-                        java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 1200); true }
-                    } catch (_: Throwable) { false }
-                    dot.post {
-                        (dot.background as? android.graphics.drawable.GradientDrawable)
-                            ?.setColor(if (up) 0xFF34C759.toInt() else 0xFFFF3B30.toInt())
-                    }
-                }
-            }
-        }
-        return row
-    }
 
     // ── Row builders ───────────────────────────────────────────────────
 
