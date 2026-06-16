@@ -1063,10 +1063,44 @@
         ],
         "stack_admin": [
           {
-            "kind": "linktree_slide",
+            "_doc": "Live Cloud dashboard — DATA-DRIVEN from data/services_{private,public}.json (BuildConfig.SERVICES_*_B64, 84 containers). renderCloudDashboard groups every container by `category` into the 3 top groups below, draws a status dot per container (TCP-ping of its {name}.app private address — green up / red down / grey checking; meaningful only over the WireGuard tunnel), and on tap opens https://{name}.app in the in-app browser. category_labels names the per-category sub-columns; a category maps to whichever group lists it. providers[] are external consoles (no .app, no ping). Add a container to the JSON → it appears here automatically.",
+            "kind": "cloud_dashboard",
             "title": "Cloud Backend",
-            "slide_id": "cloud",
-            "flatten_columns": true
+            "category_labels": {
+              "sec": "Security",
+              "cloud": "Cloud Infra",
+              "tools": "Observability",
+              "obs": "Observability",
+              "data": "Data & Storage",
+              "mic": "Microservices",
+              "app": "Apps",
+              "agi": "AI & Agents",
+              "fin": "Finance & Scraping"
+            },
+            "groups": [
+              {
+                "id": "infra",
+                "label": "Infra Apps",
+                "categories": ["sec", "cloud", "tools", "obs", "data", "mic"]
+              },
+              {
+                "id": "user",
+                "label": "User Apps",
+                "categories": ["app", "agi", "fin"]
+              },
+              {
+                "id": "providers",
+                "label": "Providers (VPS)",
+                "providers": [
+                  { "label": "Oracle",     "url": "https://cloud.oracle.com" },
+                  { "label": "GCloud",     "url": "https://console.cloud.google.com" },
+                  { "label": "Cloudflare", "url": "https://dash.cloudflare.com" },
+                  { "label": "GitHub",     "url": "https://github.com/diegonmarcos" },
+                  { "label": "Hetzner",    "url": "https://console.hetzner.cloud" },
+                  { "label": "Nvidia LLM", "url": "https://build.nvidia.com" }
+                ]
+              }
+            ]
           }
         ]
       },

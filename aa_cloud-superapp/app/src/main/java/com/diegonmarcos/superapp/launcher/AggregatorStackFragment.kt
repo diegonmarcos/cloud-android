@@ -225,6 +225,7 @@ class AggregatorStackFragment : Fragment(),
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
         "stats"              -> renderStats(ctx, body, panel)
+        "cloud_dashboard"    -> renderCloudDashboard(ctx, body, panel)
         else                 -> renderPlaceholder(ctx, body, panel)
     }
 
@@ -806,6 +807,143 @@ class AggregatorStackFragment : Fragment(),
             body.addView(row)
         }
         body.addView(caption(ctx, "Mock data — live fetch pending"))
+    }
+
+    /** kind=cloud_dashboard — live container map. Decodes the baked service
+     *  inventory (data/services_{private,public}.json → BuildConfig.SERVICES_*_B64),
+     *  buckets every container by category into the card's [dashGroups], draws a
+     *  TCP-ping status dot per container ({name}.app — green up / red down / grey
+     *  checking, meaningful only over WireGuard) and opens that .app in the in-app
+     *  browser on tap. Provider groups render external consoles (no ping). */
+    private fun renderCloudDashboard(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ) {
+        data class Svc(val name: String, val category: String, val host: String, val port: Int)
+        fun decode(b64: String): org.json.JSONArray = try {
+            org.json.JSONArray(String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)))
+        } catch (_: Throwable) { org.json.JSONArray() }
+        val svcs = mutableListOf<Svc>()
+        for (b64 in listOf(
+            com.diegonmarcos.superapp.BuildConfig.SERVICES_PRIVATE_B64,
+            com.diegonmarcos.superapp.BuildConfig.SERVICES_PUBLIC_B64)) {
+            val arr = decode(b64)
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val name = o.optString("name"); if (name.isBlank()) continue
+                val cat = o.optString("category", "?")
+                val pdns = o.optString("private_dns", "")
+                val host: String; val port: Int
+                if (pdns.contains(".app")) {
+                    val hp = pdns.split(":"); host = hp[0]
+                    port = hp.getOrNull(1)?.toIntOrNull() ?: o.optInt("port", -1)
+                } else {
+                    host = name.lowercase().replace('_', '-') + ".app"
+                    port = o.optInt("port", -1)
+                }
+                svcs += Svc(name, cat, host, port)
+            }
+        }
+
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(8)
+        for (group in panel.dashGroups) {
+            body.addView(groupHeader(ctx, group.label))
+            if (group.providers.isNotEmpty()) {
+                for (pv in group.providers) body.addView(dashRow(ctx, pv.label, executor, null) { openUrlOrTarget(pv.url) })
+                continue
+            }
+            val inGroup = svcs.filter { it.category in group.categories }
+            val seenLabels = linkedSetOf<String>()
+            for (catId in group.categories) {
+                val lbl = panel.categoryLabels[catId] ?: catId
+                if (lbl in seenLabels) continue
+                seenLabels += lbl
+                val members = inGroup
+                    .filter { (panel.categoryLabels[it.category] ?: it.category) == lbl }
+                    .sortedBy { it.name }
+                if (members.isEmpty()) continue
+                body.addView(subHeader(ctx, lbl))
+                for (s in members) {
+                    val ping = if (s.port in 1..65535) s.host to s.port else null
+                    body.addView(dashRow(ctx, s.name, executor, ping) { openUrlOrTarget("https://${s.host}") })
+                }
+            }
+        }
+        executor.shutdown()
+    }
+
+    private fun groupHeader(ctx: android.content.Context, text: String): TextView =
+        TextView(ctx).apply {
+            this.text = text
+            setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 16f
+            setPadding(0, dp(14), 0, dp(4))
+        }
+
+    private fun subHeader(ctx: android.content.Context, text: String): TextView =
+        TextView(ctx).apply {
+            this.text = text
+            setTextColor(0xCCFFFFFF.toInt())
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 12f
+            setPadding(dp(4), dp(8), 0, dp(2))
+        }
+
+    /** A container/provider row: monogram + name + (optional) status dot. When
+     *  [ping] is set, a background TCP connect flips the dot green (open) / red
+     *  (unreachable); grey while checking. Tap runs [onClick]. */
+    private fun dashRow(
+        ctx: android.content.Context, label: String,
+        executor: java.util.concurrent.ExecutorService,
+        ping: Pair<String, Int>?, onClick: () -> Unit,
+    ): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            val p = dp(5); setPadding(dp(6), p, dp(6), p)
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
+        row.addView(TextView(ctx).apply {
+            text = label.take(1).uppercase()
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 11f; typeface = Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            val sz = dp(22)
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { rightMargin = dp(10) }
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(0x33FFFFFF)
+            }
+        })
+        row.addView(TextView(ctx).apply {
+            text = label
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        if (ping != null) {
+            val dot = View(ctx).apply {
+                val sz = dp(9)
+                layoutParams = LinearLayout.LayoutParams(sz, sz)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(0x66FFFFFF)
+                }
+            }
+            row.addView(dot)
+            val (host, port) = ping
+            runCatching {
+                executor.execute {
+                    val up = try {
+                        java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 1200); true }
+                    } catch (_: Throwable) { false }
+                    dot.post {
+                        (dot.background as? android.graphics.drawable.GradientDrawable)
+                            ?.setColor(if (up) 0xFF34C759.toInt() else 0xFFFF3B30.toInt())
+                    }
+                }
+            }
+        }
+        return row
     }
 
     // ── Row builders ───────────────────────────────────────────────────

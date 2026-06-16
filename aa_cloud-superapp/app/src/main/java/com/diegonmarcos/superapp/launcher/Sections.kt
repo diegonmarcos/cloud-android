@@ -118,10 +118,28 @@ object Sections {
          *  dashboard surface: mock numbers declared in build.json today,
          *  swapped for a live fetch once the card's module is plumbed. */
         val rows: List<StatRow> = emptyList(),
+        /** Used by kind=cloud_dashboard — the 3 top groups (Infra Apps /
+         *  User Apps / Providers) that bucket every container by category. */
+        val dashGroups: List<DashGroup> = emptyList(),
+        /** Used by kind=cloud_dashboard — category id → sub-column title. */
+        val categoryLabels: Map<String, String> = emptyMap(),
     )
 
     /** One label/value line in a kind=stats dashboard card. */
     data class StatRow(val label: String, val value: String)
+
+    /** One top group of the Cloud dashboard. Either lists the service
+     *  [categories] it owns (containers grouped under it) OR a fixed set of
+     *  external [providers] (the VPS group). */
+    data class DashGroup(
+        val id: String,
+        val label: String,
+        val categories: List<String> = emptyList(),
+        val providers: List<DashProvider> = emptyList(),
+    )
+
+    /** One external provider console in the Cloud dashboard Providers group. */
+    data class DashProvider(val label: String, val url: String)
 
     /** One row in a kind=repos / gha_runs panel. `label` is the short
      *  display name; `owner`/`repo` build the API URL. */
@@ -485,6 +503,31 @@ object Sections {
                             if (lbl.isNotBlank()) rowsList += StatRow(lbl, v)
                         }
                     }
+                    // Optional groups + category_labels for kind=cloud_dashboard.
+                    val groupsJson = p.optJSONArray("groups")
+                    val dashGroups = mutableListOf<DashGroup>()
+                    if (groupsJson != null) {
+                        for (k in 0 until groupsJson.length()) {
+                            val g = groupsJson.optJSONObject(k) ?: continue
+                            val cats = mutableListOf<String>()
+                            g.optJSONArray("categories")?.let { ca ->
+                                for (m in 0 until ca.length()) ca.optString(m).takeIf { it.isNotBlank() }?.let(cats::add)
+                            }
+                            val provs = mutableListOf<DashProvider>()
+                            g.optJSONArray("providers")?.let { pa ->
+                                for (m in 0 until pa.length()) {
+                                    val pr = pa.optJSONObject(m) ?: continue
+                                    val l = pr.optString("label"); val u = pr.optString("url")
+                                    if (l.isNotBlank()) provs += DashProvider(l, u)
+                                }
+                            }
+                            dashGroups += DashGroup(g.optString("id"), g.optString("label"), cats, provs)
+                        }
+                    }
+                    val catLabels = mutableMapOf<String, String>()
+                    p.optJSONObject("category_labels")?.let { cl ->
+                        for (key in cl.keys()) catLabels[key] = cl.optString(key)
+                    }
                     out.add(StackPanel(
                         kind            = p.optString("kind", "placeholder"),
                         title           = p.optString("title", ""),
@@ -499,6 +542,8 @@ object Sections {
                         iconName        = p.optString("icon", ""),
                         repos           = reposList,
                         rows            = rowsList,
+                        dashGroups      = dashGroups,
+                        categoryLabels  = catLabels,
                     ))
                 }
                 return out
