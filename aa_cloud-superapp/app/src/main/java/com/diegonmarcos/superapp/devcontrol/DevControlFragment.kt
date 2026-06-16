@@ -1462,54 +1462,46 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Gradle config phase", "%d ms".format(BuildConfig.STACK_GRADLE_CONFIG_MS))
             row(ctx, it, "Build SHA",      BuildConfig.GIT_SHORT_SHA)
 
-            // Folder tree — 2 levels under ~/git/unix/, showing every
-            // ea_* sibling clone and its immediate sub-dirs.
-            it.addView(small(ctx, "Folder tree (depth 3, ea_* siblings only):"))
-            val treeB64 = BuildConfig.UI_STACK_FOLDER_TREE_B64
-            val treeStr = runCatching { String(android.util.Base64.decode(treeB64, android.util.Base64.DEFAULT)) }
-                .getOrDefault("—")
-            infoBuf.append("\n```\n").append(treeStr).append("\n```\n")
-            it.addView(TextView(ctx).apply {
-                text = treeStr
-                setTextColor(0xFFE9D8FD.toInt())
-                typeface = Typeface.MONOSPACE
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setPadding(dp(8), dp(8), dp(8), dp(8))
-                setBackgroundColor(0x33000000)
-                setTextIsSelectable(true)
-            })
-
-            // ASM Tree Pages — full app navigation sitemap (data/asm-tree.txt,
-            // BuildConfig.UI_ASM_TREE_B64). Behind a toggle button + a
-            // horizontal scroller so the wide ASCII map doesn't bloat the page.
-            val asmStr = runCatching {
-                String(android.util.Base64.decode(BuildConfig.UI_ASM_TREE_B64, android.util.Base64.DEFAULT))
-            }.getOrDefault("—")
-            val asmScroll = android.widget.HorizontalScrollView(ctx).apply {
-                visibility = android.view.View.GONE
-                addView(TextView(ctx).apply {
-                    text = asmStr
-                    setTextColor(0xFFE9D8FD.toInt())
-                    typeface = Typeface.MONOSPACE
-                    textSize = 9f
-                    setPadding(dp(8), dp(8), dp(8), dp(8))
-                    setBackgroundColor(0x33000000)
-                    setTextIsSelectable(true)
-                })
-            }
-            it.addView(TextView(ctx).apply {
-                text = "▸ ASM Tree Pages"
-                setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
-                typeface = Typeface.DEFAULT_BOLD
-                setPadding(dp(8), dp(12), dp(8), dp(10))
-                isClickable = true; isFocusable = true
-                setOnClickListener {
-                    val show = asmScroll.visibility != android.view.View.VISIBLE
-                    asmScroll.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
-                    text = if (show) "▾ ASM Tree Pages" else "▸ ASM Tree Pages"
+            // Collapsible trees — each behind a toggle button + a horizontal
+            // monospace scroller so the wide maps don't bloat the page:
+            //   • Folders Tree — ea_* sibling filesystem (UI_STACK_FOLDER_TREE_B64)
+            //   • Sitemap      — app page/nav map (data/asm-tree.txt)
+            //   • AST          — Kotlin code structure (module→package→file→type)
+            val box = it
+            val addTree = { label: String, b64: String, intoBuf: Boolean ->
+                val str = runCatching {
+                    String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+                }.getOrDefault("—")
+                if (intoBuf) infoBuf.append("\n```\n").append(str).append("\n```\n")
+                val scroll = android.widget.HorizontalScrollView(ctx).apply {
+                    visibility = android.view.View.GONE
+                    addView(TextView(ctx).apply {
+                        text = str
+                        setTextColor(0xFFE9D8FD.toInt())
+                        typeface = Typeface.MONOSPACE
+                        textSize = 9f
+                        setPadding(dp(8), dp(8), dp(8), dp(8))
+                        setBackgroundColor(0x33000000)
+                        setTextIsSelectable(true)
+                    })
                 }
-            })
-            it.addView(asmScroll)
+                box.addView(TextView(ctx).apply {
+                    text = "▸ $label"
+                    setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
+                    typeface = Typeface.DEFAULT_BOLD
+                    setPadding(dp(8), dp(12), dp(8), dp(10))
+                    isClickable = true; isFocusable = true
+                    setOnClickListener {
+                        val show = scroll.visibility != android.view.View.VISIBLE
+                        scroll.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+                        text = if (show) "▾ $label" else "▸ $label"
+                    }
+                })
+                box.addView(scroll)
+            }
+            addTree("Folders Tree", BuildConfig.UI_STACK_FOLDER_TREE_B64, true)
+            addTree("Sitemap", BuildConfig.UI_ASM_TREE_B64, false)
+            addTree("AST", BuildConfig.UI_AST_TREE_B64, false)
         }
 
         section(ctx, column, "Locale & time") {

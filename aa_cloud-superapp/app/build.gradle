@@ -338,6 +338,43 @@ def stackTreeB64 = stackTreeText.bytes.encodeBase64().toString()
 def asmTreeFile = new File(rootDir, "data/asm-tree.txt")
 def asmTreeB64  = (asmTreeFile.exists() ? asmTreeFile.text : "—").bytes.encodeBase64().toString()
 
+// ── AST tree (app code structure) — generated from the Kotlin source ──
+// Scans app/ + every libs/* module and groups top-level TYPE declarations
+// by package → file, so the "AST" button in Configs/About#Stack shows the
+// real code map (module → package → file → class/object/interface).
+def astTreeText = { ->
+    def declRe = ~/(?m)^[a-z ]*\b(data class|sealed class|enum class|annotation class|class|object|interface)\s+([A-Za-z0-9_]+)/
+    def pkgRe  = ~/(?m)^\s*package\s+([\w.]+)/
+    def roots = []
+    def appSrc = new File(rootDir, "app/src/main/java"); if (appSrc.exists()) roots << [m: "app", d: appSrc]
+    (new File(repoRoot, "libs").listFiles() ?: []).findAll { it.directory }.sort { it.name }.each {
+        def s = new File(it, "src/main/java"); if (s.exists()) roots << [m: "libs:${it.name}".toString(), d: s]
+    }
+    def sb = new StringBuilder()
+    roots.each { root ->
+        def byPkg = new TreeMap()
+        root.d.eachFileRecurse { f ->
+            if (!f.isFile() || !f.name.endsWith(".kt")) return
+            def txt = ""; try { txt = f.text } catch (Throwable t) { return }
+            def pm = pkgRe.matcher(txt); def pkg = pm.find() ? pm.group(1) : "(default)"
+            def decls = []
+            declRe.matcher(txt).each { mm -> decls << "${mm[1]} ${mm[2]}".toString() }
+            if (!decls.isEmpty()) byPkg.computeIfAbsent(pkg, { [] }) << [file: f.name, decls: decls]
+        }
+        if (byPkg.isEmpty()) return
+        sb.append(root.m).append("\n")
+        byPkg.each { pkg, files ->
+            sb.append("  ").append(pkg).append("\n")
+            files.sort { it.file }.each { fi ->
+                sb.append("    ").append(fi.file).append("\n")
+                fi.decls.each { d -> sb.append("      ").append(d).append("\n") }
+            }
+        }
+    }
+    sb.length() == 0 ? "—" : sb.toString()
+}()
+def astTreeB64 = astTreeText.bytes.encodeBase64().toString()
+
 // ── Build duration history (from gh CLI) ──────────────────────────────
 // Run `gh run list` to pull the wall-clock duration of the last N
 // successful GHA runs of this app's ship workflow. Used by the Stack
@@ -463,6 +500,7 @@ android {
         buildConfigField "String", "UI_STACK_FRAMEWORKS_JSON_B64",   "\"${stackFrameworksB64}\""
         buildConfigField "String", "UI_STACK_FOLDER_TREE_B64",       "\"${stackTreeB64}\""
         buildConfigField "String", "UI_ASM_TREE_B64",                "\"${asmTreeB64}\""
+        buildConfigField "String", "UI_AST_TREE_B64",                "\"${astTreeB64}\""
         // Wall-clock elapsed for app/build.gradle's config phase. Only a
         // partial picture (assemble runs after this gets baked), but a
         // reasonable proxy for "is the build getting slower over time".
