@@ -14,7 +14,7 @@ import rikka.shizuku.Shizuku
  *
  * A normal app uid can't read [android.os.BatteryStatsManager], can't
  * `dumpsys usb`, and (on One UI 7+ / Pixel A15+) can't read
- * `/sys/class/power_supply/*` because SELinux denies it. Shizuku hands
+ * `/sys/class/power_supply/` nodes because SELinux denies it. Shizuku hands
  * us a process running as the SHELL uid (2000) via a bound
  * [ShellUserService]; from there [exec] runs any command with the same
  * power `adb shell` has.

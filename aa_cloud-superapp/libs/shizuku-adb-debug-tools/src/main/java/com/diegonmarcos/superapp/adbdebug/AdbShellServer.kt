@@ -21,7 +21,7 @@ import java.util.Base64
  * Because adb gives the launching process the SHELL uid (2000) and the
  * `shell` SELinux domain, this server — and every command it runs —
  * inherits that domain. THAT is what lets it `dumpsys battery/usb` and
- * read `/sys/class/power_supply/*`, which the app's own `untrusted_app`
+ * read `/sys/class/power_supply/` nodes, which the app's own `untrusted_app`
  * domain is denied no matter what permission it holds.
  *
  * It runs no Android framework that needs a Context/Looper — only raw

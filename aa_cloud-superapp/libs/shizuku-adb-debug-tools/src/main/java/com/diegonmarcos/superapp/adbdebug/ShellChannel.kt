@@ -5,7 +5,7 @@ import android.content.Context
 /**
  * A way to run a shell command in the SHELL SELinux domain (uid 2000) —
  * the only domain that can `dumpsys battery/usb` and read
- * `/sys/class/power_supply/*` on a stock, non-rooted device
+ * `/sys/class/power_supply/` nodes on a stock, non-rooted device
  * (untrusted_app is denied regardless of the DUMP permission).
  *
  * Two implementations form a ladder (first ready wins):
