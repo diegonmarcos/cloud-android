@@ -1,6 +1,8 @@
 package com.diegonmarcos.superapp.adbdebug
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 
 /**
  * PRIMARY, fully self-contained channel — the embedded ADB client.
@@ -38,7 +40,7 @@ object EmbeddedAdbChannel : ShellChannel {
      * wg0 route. [port] is the PAIRING port (from the pairing-code dialog).
      */
     fun pair(ctx: Context, host: String, port: Int, code: String): Pair<Boolean, String> = runCatching {
-        val ok = AdbManager.getInstance(ctx).pair(host, port, code)
+        val ok = onWifi(ctx) { AdbManager.getInstance(ctx).pair(host, port, code) }
         ok to (if (ok) "paired" else "pair returned false")
     }.getOrElse { false to "pair failed: ${it.message}" }
 
@@ -48,7 +50,38 @@ object EmbeddedAdbChannel : ShellChannel {
      * pairing port).
      */
     fun connect(ctx: Context, host: String, port: Int): Pair<Boolean, String> = runCatching {
-        val ok = AdbManager.getInstance(ctx).connect(host, port)
+        val ok = onWifi(ctx) { AdbManager.getInstance(ctx).connect(host, port) }
         ok to (if (ok) "connected" else "connect returned false")
     }.getOrElse { false to "connect failed: ${it.message}" }
+
+    /**
+     * Run [block] with the process temporarily pinned to the Wi-Fi
+     * (non-VPN) network, so the socket libadb opens bypasses the WireGuard
+     * tunnel. This is what makes pairing work with WG ON: the device's
+     * own Wireless-Debugging IP (e.g. 10.0.0.9) collides with the WG mesh
+     * subnet (10.0.0.0/24), so by default the app's connect to it is
+     * captured by wg0's allowedIPs and RSTs. Binding to the Wi-Fi Network
+     * routes it straight to the local adbd instead. The persistent
+     * AdbConnection socket is created inside this window, so it stays
+     * pinned to Wi-Fi; subsequent exec() streams multiplex over it.
+     * Restores the previous binding in finally so the rest of the app
+     * keeps its normal (WG-routed) networking.
+     */
+    private fun <T> onWifi(ctx: Context, block: () -> T): T {
+        val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return block()
+        val wifi = cm.allNetworks.firstOrNull { n ->
+            val c = cm.getNetworkCapabilities(n)
+            c != null &&
+                c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                !c.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        } ?: return block()
+        val prev = cm.boundNetworkForProcess
+        return try {
+            cm.bindProcessToNetwork(wifi)
+            block()
+        } finally {
+            cm.bindProcessToNetwork(prev)
+        }
+    }
 }
