@@ -51,8 +51,13 @@ dependencies {
     // Pinned to 1.81 to match libs:shizuku-adb-debug-tools (libadb-android
     // pulls bcprov 1.81, and Gradle bumps the shared bcprov app-wide to the
     // highest version — bcpkix MUST match or its clinit NoClassDefFounds).
+    // bcutil holds org.bouncycastle.asn1.* (incl. edec.EdECObjectIdentifiers)
+    // that bcpkix's DefaultSignatureNameFinder.<clinit> references; declare it
+    // here too so this module is self-contained instead of relying on the
+    // shizuku module's bcutil leaking into the merged classpath.
     implementation 'org.bouncycastle:bcpkix-jdk15to18:1.81'
     implementation 'org.bouncycastle:bcprov-jdk15to18:1.81'
+    implementation 'org.bouncycastle:bcutil-jdk15to18:1.81'
 
     androidTestImplementation 'androidx.test:runner:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
