@@ -251,6 +251,7 @@ object DevControlServer {
                 }
                 // ── libs:shizuku-adb-debug-tools — self-contained adb shell ──
                 "adb/status" -> { reply(writer, "200 OK", adbStatusJson(ctx), "application/json") }
+                "adb/netinfo" -> { reply(writer, "200 OK", adbNetInfoJson(ctx), "application/json") }
                 "adb/pair" -> {
                     // Embedded adb client pairs with the local Wireless-Debugging
                     // adbd. host = the IP shown in the pairing dialog (Android binds
@@ -754,6 +755,58 @@ object DevControlServer {
         sb.append(""""ok":""").append(ok).append(',')
         sb.append(""""blocked":""").append(total - ok).append('}')
         sb.append('}')
+        return sb.toString()
+    }
+
+    /** Device network layout — every NIC + its IPs, plus each
+     *  ConnectivityManager Network with transports + link addresses +
+     *  routes. Answers "which interface owns 10.0.0.9 and what's the real
+     *  Wi-Fi IP" so the embedded-adb pairing targets the right address. */
+    private fun adbNetInfoJson(ctx: Context): String {
+        val sb = StringBuilder("{")
+        // ── java.net interfaces ──
+        sb.append(""""interfaces":[""")
+        runCatching {
+            val ifaces = java.net.NetworkInterface.getNetworkInterfaces()
+            var first = true
+            for (nif in java.util.Collections.list(ifaces)) {
+                val addrs = nif.inetAddresses
+                val list = java.util.Collections.list(addrs)
+                if (!first) sb.append(','); first = false
+                sb.append('{')
+                sb.append(""""name":"""").append(jsonEscape(nif.name)).append('"').append(',')
+                sb.append(""""up":""").append(runCatching { nif.isUp }.getOrDefault(false)).append(',')
+                sb.append(""""addrs":[""")
+                list.forEachIndexed { i, a ->
+                    if (i > 0) sb.append(',')
+                    sb.append('"').append(jsonEscape(a.hostAddress ?: "")).append('"')
+                }
+                sb.append("]}")
+            }
+        }
+        sb.append("],")
+        // ── ConnectivityManager networks ──
+        sb.append(""""networks":[""")
+        runCatching {
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            cm.allNetworks.forEachIndexed { i, n ->
+                if (i > 0) sb.append(',')
+                val caps = cm.getNetworkCapabilities(n)
+                val lp = cm.getLinkProperties(n)
+                sb.append('{')
+                sb.append(""""wifi":""").append(caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ?: false).append(',')
+                sb.append(""""cell":""").append(caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ?: false).append(',')
+                sb.append(""""vpn":""").append(caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) ?: false).append(',')
+                sb.append(""""iface":"""").append(jsonEscape(lp?.interfaceName ?: "")).append('"').append(',')
+                sb.append(""""addrs":[""")
+                lp?.linkAddresses?.forEachIndexed { j, la ->
+                    if (j > 0) sb.append(',')
+                    sb.append('"').append(jsonEscape(la.address.hostAddress ?: "")).append('"')
+                }
+                sb.append("]}")
+            }
+        }
+        sb.append("]}")
         return sb.toString()
     }
 
