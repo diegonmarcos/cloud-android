@@ -835,7 +835,7 @@ class DevControlFragment : Fragment() {
             // attribution, per-foreground-app draw, and our own subsystem
             // ledger (what INSIDE the app costs). Backed by the
             // EnergyWatchdog Tier-1 sampler + EnergyLedger.
-            it.addView(actionButton(ctx, "⚡ Open Energy Usage (AccuBattery-style)") {
+            it.addView(actionButton(ctx, "Battery Usage Details", GRAY) {
                 runCatching {
                     com.diegonmarcos.superapp.battery.EnergyUsageDialog()
                         .show(parentFragmentManager, com.diegonmarcos.superapp.battery.EnergyUsageDialog.TAG)

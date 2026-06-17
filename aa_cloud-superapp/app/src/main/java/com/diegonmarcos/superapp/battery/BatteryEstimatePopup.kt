@@ -57,24 +57,21 @@ object BatteryEstimatePopup {
         // Honest rename: this is the BATTERY storage rate (V × I going
         // INTO the cell), not the charger input. Android doesn't expose
         // the latter via public API — see fmtChargerSpec below.
-        container.addView(label(ctx, if (s.isCharging) "Battery storage (live)" else "Battery drain (live)"))
-        container.addView(valueSmall(ctx, BatterySessionStats.fmtPowerRow(s)))
-        if (s.isCharging) {
-            container.addView(spacer(ctx, (6 * d).toInt()))
-            // Charger input — sysfs reads /sys/class/power_supply/usb/*
-            // (no perm) for the LIVE value; dumpsys fallback for the
-            // negotiated MAX when DUMP is granted; "—" otherwise. The
-            // formatter picks the most informative one available.
-            container.addView(label(ctx, "Charger input"))
-            container.addView(valueSmall(ctx, BatterySessionStats.fmtChargerSpec(s)))
-            // Phone consumption — derivable only when sysfs live input
-            // AND battery storage are both present. Hidden otherwise.
-            val phone = BatterySessionStats.fmtPhoneConsumption(s)
-            if (phone.isNotEmpty()) {
-                container.addView(spacer(ctx, (4 * d).toInt()))
-                container.addView(label(ctx, "Phone consumption"))
-                container.addView(valueSmall(ctx, "$phone  (charger − battery)"))
-            }
+        // Power IN / OUT breakdown (shared PowerFlow):
+        //   NET (battery)  +  CONSUMPTION (phone)  =  ACTUAL IN (wall, est)
+        // NET is measured (battery V×I); CONSUMPTION measured on battery /
+        // modeled while charging; wall IN derived (est) since it isn't
+        // readable on this device. Same model as Battery Usage Details.
+        val pf = runCatching { PowerFlow.read(ctx) }.getOrNull()
+        container.addView(label(ctx, "Net (battery)"))
+        container.addView(valueSmall(ctx, if (pf != null) PowerFlow.fmtNet(pf) else BatterySessionStats.fmtPowerRow(s)))
+        if (pf != null) {
+            container.addView(spacer(ctx, (4 * d).toInt()))
+            container.addView(label(ctx, "Phone consumption"))
+            container.addView(valueSmall(ctx, PowerFlow.fmtConsumption(pf)))
+            container.addView(spacer(ctx, (4 * d).toInt()))
+            container.addView(label(ctx, "Actual in (est wall)"))
+            container.addView(valueSmall(ctx, PowerFlow.fmtEstIn(pf)))
         }
         container.addView(spacer(ctx, (6 * d).toInt()))
         container.addView(label(ctx, if (s.isCharging) "% battery / h gained" else "% battery / h consumed"))

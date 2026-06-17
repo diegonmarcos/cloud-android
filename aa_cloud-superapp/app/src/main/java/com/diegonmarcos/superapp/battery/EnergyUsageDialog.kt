@@ -34,6 +34,11 @@ import androidx.fragment.app.DialogFragment
  */
 class EnergyUsageDialog : DialogFragment() {
 
+    // Toggle for the derived "Actual in (est wall)" row in the Power in/out
+    // card (the user opted for "both modes, toggle"). NET + CONSUMPTION are
+    // always shown; the est. wall-in line is shown/hidden by this.
+    private var showEstIn = true
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState)
         dialog.window?.setBackgroundDrawable(
@@ -71,7 +76,7 @@ class EnergyUsageDialog : DialogFragment() {
             gravity = Gravity.CENTER_VERTICAL
         }
         header.addView(TextView(ctx).apply {
-            text = "Battery Usage"
+            text = "Battery Usage Details"
             setTextColor(Color.WHITE); textSize = 22f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -95,6 +100,43 @@ class EnergyUsageDialog : DialogFragment() {
             box.addView(line(ctx, "Battery temp", BatterySessionStats.fmtBatteryTemp(bs)))
             box.addView(line(ctx, bs.let { if (it.isCharging) "Time to full" else "Est. battery last" },
                 BatterySessionStats.fmtEtaDuration(bs)))
+        }
+
+        // 1b) Power IN / OUT — ACTUAL IN = NET + CONSUMPTION. NET is measured
+        //     (battery V×I); CONSUMPTION measured on battery / modeled while
+        //     charging; wall IN derived (est) since it's unreadable here.
+        val pf = runCatching { PowerFlow.read(ctx) }.getOrNull()
+        card(ctx, root, "Power in / out") { box ->
+            if (pf == null) { box.addView(line(ctx, "—", "no data")); return@card }
+            big(ctx, box,
+                PowerFlow.fmtNet(pf),
+                if (pf.charging) "charging — power into the battery" else "on battery — power out of the cell")
+            box.addView(line(ctx, "Net (battery)", PowerFlow.fmtNet(pf)))
+            box.addView(line(ctx, "Phone consumption", PowerFlow.fmtConsumption(pf)))
+            if (showEstIn) box.addView(line(ctx, "Actual in (est wall)", PowerFlow.fmtEstIn(pf)))
+            box.addView(small(ctx, "IN = NET + CONSUMPTION. True wall watts aren't exposed on this device, so 'Actual in' is derived (est). NET is measured exactly."))
+            box.addView(pill(ctx, if (showEstIn) "Hide est. wall IN" else "Show est. wall IN") {
+                showEstIn = !showEstIn
+                (view as? ScrollView)?.let { sv ->
+                    val rc = sv.getChildAt(0) as LinearLayout; rc.removeAllViews(); build(ctx, rc)
+                }
+            })
+        }
+
+        // 1c) Battery health (AccuBattery-grade) — capacity/health surface
+        //     from measured charge-counter + cycle data.
+        card(ctx, root, "Battery health") { box ->
+            if (bs == null) { box.addView(line(ctx, "—", "no data")); return@card }
+            box.addView(line(ctx, "Voltage", if (bs.voltageMv > 0) "${bs.voltageMv} mV" else "—"))
+            box.addView(line(ctx, "Temperature", BatterySessionStats.fmtBatteryTemp(bs)))
+            box.addView(line(ctx, "Charge counter (now)",
+                if (bs.chargeCounterUah > 0) "%.0f mAh".format(bs.chargeCounterUah / 1000.0) else "—"))
+            box.addView(line(ctx, "Est. full capacity",
+                if (bs.peakChargeCounterUah > 0) "%.0f mAh".format(bs.peakChargeCounterUah / 1000.0) else "calibrating"))
+            box.addView(line(ctx, "Total charged (install)",
+                if (bs.cumulativeChargedUah > 0) "%.1f Ah".format(bs.cumulativeChargedUah / 1_000_000.0) else "—"))
+            box.addView(line(ctx, "Cycle count", BatterySessionStats.fmtCycleCount(bs)))
+            box.addView(small(ctx, "Health = est. full ÷ design capacity. Design isn't exposed by Android; Samsung ASOC (true wear %) is available via the Shizuku/ADB dumpsys path (Dev Control → /api/adb)."))
         }
 
         val attr = runCatching { EnergyWatchdog.attribution(ctx) }.getOrDefault(emptyMap())
