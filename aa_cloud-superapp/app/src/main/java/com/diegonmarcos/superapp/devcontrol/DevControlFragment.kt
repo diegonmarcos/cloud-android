@@ -1145,6 +1145,23 @@ class DevControlFragment : Fragment() {
             // deep-link. Lives here next to the HTTP API it feeds.
             it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
             it.addView(actionButton(ctx, "Open Wireless Debugging", GRAY) { openWirelessDebuggingSettings() })
+
+            // ── Self-contained ADB how-to (embedded adb client, no Shizuku
+            //    app, no PC; works with WireGuard ON). Long-press any row to
+            //    copy. Documented here next to the button that enables it.
+            val adbPort = DevControlPrefs(requireContext()).port
+            val adbTok  = prefs.token
+            it.addView(small(ctx, "Self-contained ADB (embedded libadb — no Shizuku app, no PC, works with WireGuard ON). Steps:"))
+            it.addView(small(ctx, "1) Tap 'Open Wireless Debugging' → turn it ON. 2) 'Pair device with pairing code' → note the 6-digit code + that dialog's port (=pairport). 3) Main screen → the IP:port there is the connectport."))
+            it.addView(small(ctx, "⚠ HOST GOTCHA: use your Wi-Fi LAN IP (e.g. 192.168.x.x), NOT the 10.x the dialog shows — that 10.x is the WireGuard tun0 and gets ECONNREFUSED. Find the real wlan0 IP with /api/adb/netinfo."))
+            row(ctx, it, "0 NetInfo",  "curl -H 'Authorization: Bearer $adbTok' http://127.0.0.1:$adbPort/api/adb/netinfo   # find wlan0 IPv4")
+            row(ctx, it, "1 Pair",     "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/pair?host=<wlan-ip>&port=<pairport>&code=<6digits>'")
+            row(ctx, it, "2 Connect",  "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/connect?host=<wlan-ip>&port=<connectport>'")
+            row(ctx, it, "3 Status",   "curl -H 'Authorization: Bearer $adbTok' http://127.0.0.1:$adbPort/api/adb/status   # embedded-adb ready=true")
+            row(ctx, it, "4 Charger",  "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/diagnostics?bundle=charger'")
+            row(ctx, it, "Bundles",    "charger | battery | usb | thermal | pd   (build.json::shizuku_diagnostics)")
+            row(ctx, it, "Exec",       "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/exec?cmd=dumpsys%20battery'")
+            it.addView(small(ctx, "Pairing/connect bind the socket to the Wi-Fi Network so it bypasses wg0. Pairing is once per boot (Android law; only root removes it). Pair port lives only while the pairing dialog is open — keep it open until step 1 returns ok."))
         }
 
         section(ctx, column, "Curl shortcuts") {
