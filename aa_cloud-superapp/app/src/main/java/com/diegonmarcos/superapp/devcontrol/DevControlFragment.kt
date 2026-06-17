@@ -697,15 +697,6 @@ class DevControlFragment : Fragment() {
                 permButton(ctx, "Set Samsung Never-Sleep", null) { openSamsungNeverSleepingSettings() },
                 permButton(ctx, "Set App Settings", null) { openAppSettings() },
             ))
-            // ── Self-contained ADB (libs:shizuku-adb-debug-tools) — jump to
-            //    Developer options to flip Wireless Debugging ON, then read the
-            //    pairing/connect ports for /api/adb/pair + /api/adb/connect.
-            //    The OS toggle can't be flipped by an app (no API), so this is
-            //    a deep-link, not a one-tap grant.
-            it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
-            it.addView(permButtonRow(ctx,
-                permButton(ctx, "Open Wireless Debugging", null) { openWirelessDebuggingSettings() },
-            ))
             // ── Default Phone / Spam filter — single-holder roles whose holder
             //    is the Cloud-Comms phone fork (see Special-access rows above).
             //    The launcher can't grant another app a role, so jump to the
@@ -1132,7 +1123,7 @@ class DevControlFragment : Fragment() {
             // Regenerate the bearer token. Rotates the cached value AND
             // restarts the server so the new token is bound to the
             // accept loop instead of the stale one captured at start().
-            it.addView(actionButton(ctx, "Regenerate API token") {
+            it.addView(actionButton(ctx, "Regenerate API token", GRAY) {
                 val fresh = prefs.resetToken()
                 // Bounce the server so the in-memory token (captured at
                 // start) is replaced by the fresh value.
@@ -1147,6 +1138,13 @@ class DevControlFragment : Fragment() {
                 parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
                 parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
             })
+            // Self-contained ADB (libs:shizuku-adb-debug-tools): jump to
+            // Developer options to flip Wireless Debugging ON, then read the
+            // pairing/connect ports for /api/adb/pair + /api/adb/connect. The
+            // OS toggle can't be flipped by an app (no API) — this is a
+            // deep-link. Lives here next to the HTTP API it feeds.
+            it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
+            it.addView(actionButton(ctx, "Open Wireless Debugging", GRAY) { openWirelessDebuggingSettings() })
         }
 
         section(ctx, column, "Curl shortcuts") {
@@ -2383,5 +2381,8 @@ class DevControlFragment : Fragment() {
          *  "action needed" violet (0xFF7C3AED) so light stays reserved for
          *  rows that still need a user action. */
         private val DARK_VIOLET = 0xFF4C1D95.toInt()
+        // Neutral gray for the Dev-Control HTTP section's utility buttons
+        // (Regenerate token, Open Wireless Debugging) — not pending grants.
+        private val GRAY = 0xFF4B5563.toInt()
     }
 }
