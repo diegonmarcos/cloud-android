@@ -252,26 +252,30 @@ object DevControlServer {
                 // ── libs:shizuku-adb-debug-tools — self-contained adb shell ──
                 "adb/status" -> { reply(writer, "200 OK", adbStatusJson(ctx), "application/json") }
                 "adb/pair" -> {
-                    // Embedded adb client pairs with localhost Wireless-Debugging
-                    // adbd. port = the PAIRING port (pairing-code dialog), code =
-                    // the 6-digit code. The "we ARE Shizuku" bootstrap.
+                    // Embedded adb client pairs with the local Wireless-Debugging
+                    // adbd. host = the IP shown in the pairing dialog (Android binds
+                    // the daemon to the Wi-Fi iface, not loopback — pass that IP,
+                    // e.g. 10.0.0.9; the device delivers it locally). port = the
+                    // PAIRING port, code = the 6-digit code.
+                    val host = query["host"] ?: "127.0.0.1"
                     val port = query["port"]?.toIntOrNull()
                     val code = query["code"]
                     if (port == null || code.isNullOrBlank()) {
-                        reply(writer, "400 Bad Request", "need port=<pairPort>&code=<6digits>\n")
+                        reply(writer, "400 Bad Request", "need host=<ip>&port=<pairPort>&code=<6digits>\n")
                     } else {
-                        val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.pair(ctx, port, code)
+                        val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.pair(ctx, host, port, code)
                         reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
                     }
                 }
                 "adb/connect" -> {
-                    // port = the CONNECT port (main Wireless-debugging screen,
-                    // distinct from the pairing port). Run after a successful pair.
+                    // host = IP from the main Wireless-debugging screen, port = the
+                    // CONNECT port (distinct from the pairing port). After a pair.
+                    val host = query["host"] ?: "127.0.0.1"
                     val port = query["port"]?.toIntOrNull()
                     if (port == null) {
-                        reply(writer, "400 Bad Request", "need port=<connectPort>\n")
+                        reply(writer, "400 Bad Request", "need host=<ip>&port=<connectPort>\n")
                     } else {
-                        val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.connect(ctx, port)
+                        val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.connect(ctx, host, port)
                         reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
                     }
                 }
@@ -372,8 +376,8 @@ object DevControlServer {
             Spec("energy/reset",        "GET",  true,  "Clear the intra-app ledger + the watchdog sample store to start a fresh measurement window.", ""),
             Spec("energy/shizuku",      "GET",  true,  "EXACT per-app mAh via Shizuku (Tier 2) — runs `dumpsys batterystats --charged` in shell context (uid 2000) through the bound ShizukuUserService and parses the per-uid 'Estimated power use (mAh)' section. Returns available/granted/status + the per-app list, or apps=null while binding / when Shizuku isn't running. Ground truth the Tier-1 correlation calibrates against.", ""),
             Spec("adb/status",          "GET",  true,  "libs:shizuku-adb-debug-tools shell-channel ladder: per-channel ready/status for 'embedded-adb' (PRIMARY — our on-device adb client paired to localhost Wireless Debugging, the self-contained 'we ARE Shizuku' path), 'local-server' (our app_process server), and 'shizuku' (fallback); which is active, whether DUMP is held, and the data-driven bundle ids.", ""),
-            Spec("adb/pair",            "GET",  true,  "Embedded adb client: pair with the phone's OWN Wireless-Debugging adbd on 127.0.0.1. port=the PAIRING port (from the pairing-code dialog), code=the 6-digit code. Self-contained bootstrap — no Shizuku app, no PC. Then call /api/adb/connect.", "port=<pairPort>&code=<6digits>"),
-            Spec("adb/connect",         "GET",  true,  "Embedded adb client: connect to localhost adbd after pairing. port=the CONNECT port (main Wireless-debugging screen, distinct from the pairing port). On success the 'embedded-adb' channel goes ready and diagnostics run with zero third-party deps.", "port=<connectPort>"),
+            Spec("adb/pair",            "GET",  true,  "Embedded adb client: pair with the phone's OWN Wireless-Debugging adbd. host=the IP shown in the pairing dialog (Android binds the daemon to the Wi-Fi iface, not loopback — pass that IP e.g. 10.0.0.9; default 127.0.0.1). port=the PAIRING port, code=the 6-digit code. Self-contained bootstrap — no Shizuku app, no PC. Then call /api/adb/connect.", "host=<ip>&port=<pairPort>&code=<6digits>"),
+            Spec("adb/connect",         "GET",  true,  "Embedded adb client: connect to the local adbd after pairing. host=IP from the main Wireless-debugging screen (default 127.0.0.1), port=the CONNECT port (distinct from the pairing port). On success the 'embedded-adb' channel goes ready and diagnostics run with zero third-party deps.", "host=<ip>&port=<connectPort>"),
             Spec("adb/server-command",  "GET",  true,  "Returns the exact one-liner to run ONCE per boot (via adb / Wireless Debugging) to start OUR self-contained shell-domain app_process server (AdbShellServer). This is the only privilege bootstrap; after it the app needs no third-party Shizuku app. {command,port,note}.", ""),
             Spec("adb/diagnostics",     "GET",  true,  "Run a DATA-DRIVEN diagnostic bundle (build.json::shizuku_diagnostics.bundles[]) through the shell-channel ladder (local-server first, Shizuku fallback) and return {bundle,label,channel,ok,results:[{id,cmd,out}]}. Bundles: charger (dumpsys battery+usb, power_supply nodes, typec, charge props), battery, usb, thermal, pd. THE endpoint that surfaces the USB-PD/PPS negotiation behind 'why is the charger at 3W not 35W' when SELinux blocks /sys/class/power_supply/*.", "bundle=charger|battery|usb|thermal|pd (default charger)"),
             Spec("adb/exec",            "GET",  true,  "Generic 'adb shell' passthrough — runs `sh -c <cmd>` in shell context (uid 2000) through the active channel and returns raw stdout. Full adb-equivalent power; token-gated + loopback-only. Use for one-off commands not covered by a bundle.", "cmd=<shell command>"),

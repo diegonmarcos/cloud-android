@@ -31,19 +31,24 @@ object EmbeddedAdbChannel : ShellChannel {
 
     /**
      * Pair with the local adbd using the 6-digit Wireless-Debugging code.
-     * [port] is the PAIRING port (the one shown in the pairing-code dialog).
+     * [host] is the IP shown in the pairing dialog. Android binds the
+     * pairing daemon to the Wi-Fi interface, NOT loopback — so 127.0.0.1
+     * gets ECONNREFUSED; pass the device's own shown IP (e.g. 10.0.0.9),
+     * which the kernel `local` route table delivers locally ahead of any
+     * wg0 route. [port] is the PAIRING port (from the pairing-code dialog).
      */
-    fun pair(ctx: Context, port: Int, code: String): Pair<Boolean, String> = runCatching {
-        val ok = AdbManager.getInstance(ctx).pair("127.0.0.1", port, code)
+    fun pair(ctx: Context, host: String, port: Int, code: String): Pair<Boolean, String> = runCatching {
+        val ok = AdbManager.getInstance(ctx).pair(host, port, code)
         ok to (if (ok) "paired" else "pair returned false")
     }.getOrElse { false to "pair failed: ${it.message}" }
 
     /**
-     * Connect to the local adbd. [port] is the CONNECT port (shown on the
-     * main Wireless-debugging screen, distinct from the pairing port).
+     * Connect to the local adbd. [host] is the IP from the main Wireless-
+     * debugging screen; [port] is the CONNECT port (distinct from the
+     * pairing port).
      */
-    fun connect(ctx: Context, port: Int): Pair<Boolean, String> = runCatching {
-        val ok = AdbManager.getInstance(ctx).connect("127.0.0.1", port)
+    fun connect(ctx: Context, host: String, port: Int): Pair<Boolean, String> = runCatching {
+        val ok = AdbManager.getInstance(ctx).connect(host, port)
         ok to (if (ok) "connected" else "connect returned false")
     }.getOrElse { false to "connect failed: ${it.message}" }
 }
