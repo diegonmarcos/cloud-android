@@ -8,9 +8,9 @@ import android.net.NetworkCapabilities
  * PRIMARY, fully self-contained channel — the embedded ADB client.
  *
  * Pairs with the phone's own Wireless-Debugging adbd on 127.0.0.1 ([pair])
- * then connects ([connect]); thereafter [exec] opens a `shell:` stream as
- * uid 2000, so dumpsys/usb/sysfs all work — no third-party Shizuku app,
- * no PC. This is the "we ARE Shizuku" channel.
+ * then connects ([connect]); thereafter [exec] runs commands via the
+ * `exec:` service as uid 2000, so dumpsys/usb/sysfs all work — no
+ * third-party Shizuku app, no PC. This is the "we ARE Shizuku" channel.
  *
  * Non-rooted reality: Wireless Debugging + the pairing code are entered
  * once per boot (Shizuku and LADB require the same). Only root removes it.
@@ -22,10 +22,34 @@ object EmbeddedAdbChannel : ShellChannel {
     override fun isReady(ctx: Context): Boolean =
         runCatching { AdbManager.getInstance(ctx).isConnected }.getOrDefault(false)
 
+    /**
+     * Run a command and capture its stdout. Uses the `exec:` service, NOT
+     * `shell:`: `shell:` opens an interactive PTY session that never EOFs,
+     * so a plain readText() blocks forever; `exec:` runs the command, pipes
+     * raw stdout, and closes the stream when it exits — exactly what we want
+     * for one-shot capture. A bounded reader thread guarantees the caller
+     * (the synchronous DevControlServer handler) can never hang even if a
+     * command misbehaves.
+     */
     override fun exec(ctx: Context, command: String): String? = runCatching {
-        val stream = AdbManager.getInstance(ctx).openStream("shell:$command")
-        stream.openInputStream().bufferedReader().use { it.readText() }
+        val stream = AdbManager.getInstance(ctx).openStream("exec:$command")
+        var out = ""
+        val reader = Thread {
+            out = runCatching {
+                stream.openInputStream().bufferedReader().use { it.readText() }
+            }.getOrDefault("")
+        }
+        reader.start()
+        reader.join(EXEC_TIMEOUT_MS)
+        if (reader.isAlive) {
+            runCatching { stream.close() }
+            reader.interrupt()
+            return@runCatching "ERR: exec timed out after ${EXEC_TIMEOUT_MS}ms (stream did not close)"
+        }
+        out
     }.getOrNull()
+
+    private const val EXEC_TIMEOUT_MS = 15_000L
 
     override fun status(ctx: Context): String =
         if (isReady(ctx)) "Connected — embedded adb to 127.0.0.1 (shell uid 2000)"
