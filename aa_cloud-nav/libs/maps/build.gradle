@@ -37,6 +37,7 @@ def mapsStopsDwellMin   = (mapsTracking.stops_dwell_min      as Number)?.intValu
 def mapsVersionName     = (buildJson.android.version_name ?: '0.0.0').toString()
 def mapStylesB64        = groovy.json.JsonOutput.toJson(buildJson.ui.map_styles ?: [:]).bytes.encodeBase64().toString()
 def demoStopsB64        = groovy.json.JsonOutput.toJson(buildJson.ui.demo_stops ?: [:]).bytes.encodeBase64().toString()
+def searchCacheTtlDays  = ((buildJson.ui.search_cache?.ttl_days) as Number)?.intValue() ?: 30
 
 android {
     namespace 'com.diegonmarcos.cloudnav.maps'
@@ -62,6 +63,7 @@ android {
         buildConfigField "String", "VERSION_NAME",                 "\"${mapsVersionName}\""
         buildConfigField "String", "UI_MAP_STYLES_B64",            "\"${mapStylesB64}\""
         buildConfigField "String", "UI_DEMO_STOPS_B64",            "\"${demoStopsB64}\""
+        buildConfigField "int",    "UI_SEARCH_CACHE_TTL_DAYS",     "${searchCacheTtlDays}"
     }
     buildFeatures {
         buildConfig = true

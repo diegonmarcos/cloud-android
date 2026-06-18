@@ -229,6 +229,10 @@
       "poi": "overpass_public",
       "search": "nominatim_public"
     },
+    "_doc_search_cache": "On-device cache for forward-search + POI lookups (NOT reverse-geocode, which never expires). New bars/shops appear slowly and the public Nominatim/Overpass endpoints are fair-use, so results for the same query/area are reused for ttl_days. Stored in the maps.db places_cache table keyed fwd:/poi:. Consumed by MapsProviderClient (baked UI_SEARCH_CACHE_TTL_DAYS).",
+    "search_cache": {
+      "ttl_days": 30
+    },
     "maps_tracking": {
       "interval_moving_ms": 30000,
       "interval_stopped_ms": 300000,

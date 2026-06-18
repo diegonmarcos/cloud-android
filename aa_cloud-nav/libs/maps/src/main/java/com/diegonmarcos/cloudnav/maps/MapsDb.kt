@@ -272,6 +272,27 @@ class MapsDb private constructor(ctx: Context) :
         db.insertWithOnConflict("places_cache", null, cv, SQLiteDatabase.CONFLICT_REPLACE)
     }
 
+    /** Generic TTL cache (same places_cache table, namespaced keys e.g.
+     *  `fwd:`/`poi:`). Returns the stored json only if younger than
+     *  [maxAgeMs]; null on miss OR when the entry has expired. Used by
+     *  [MapsProviderClient] to cache forward-search + POI lookups so the
+     *  same query/area isn't re-fetched for ~a month. */
+    fun cacheGet(key: String, maxAgeMs: Long): String? {
+        val db = readableDatabase
+        db.rawQuery(
+            "SELECT json, updated_at FROM places_cache WHERE latlon_key = ?;",
+            arrayOf(key),
+        ).use { c ->
+            if (!c.moveToFirst()) return null
+            val updatedAt = c.getLong(1)
+            if (System.currentTimeMillis() - updatedAt > maxAgeMs) return null
+            return c.getString(0)
+        }
+    }
+
+    /** Write/replace a generic cache entry, stamping updated_at = now. */
+    fun cachePut(key: String, json: String) = cacheReverse(key, json)
+
     /** Wipe every table — backs Configs → Maps → Reset / Clear data. */
     fun clearAll() {
         val db = writableDatabase

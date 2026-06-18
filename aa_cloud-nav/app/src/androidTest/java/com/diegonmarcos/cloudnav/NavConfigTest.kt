@@ -3,6 +3,7 @@ package com.diegonmarcos.cloudnav
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.diegonmarcos.cloudnav.maps.MapStyles
 import com.diegonmarcos.cloudnav.maps.MapsDemo
+import com.diegonmarcos.cloudnav.maps.MapsProviderClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,6 +47,18 @@ class NavConfigTest {
         assertEquals(listOf("light", "dark", "satellite"), MapStyles.order)
         assertEquals("dark", MapStyles.next("light"))
         assertEquals("light", MapStyles.next("satellite"))  // wraps
+    }
+
+    @Test fun search_cache_is_configured() {
+        // Data-driven TTL = 30 days (build.json::ui.search_cache.ttl_days).
+        assertEquals(30, com.diegonmarcos.cloudnav.maps.BuildConfig.UI_SEARCH_CACHE_TTL_DAYS)
+        // Keys normalise (trim + lowercase) so "Bars" and " bars " share a cache entry.
+        assertEquals(
+            MapsProviderClient.cacheKeyForward("Bars", 0.0, 0.0),
+            MapsProviderClient.cacheKeyForward("  bars ", 0.0, 0.0),
+        )
+        assertTrue(MapsProviderClient.cacheKeyForward("bar", 1.0, 2.0).startsWith("fwd:bar@"))
+        assertTrue(MapsProviderClient.cacheKeyPoi("amenity=bar", -22.97, -43.18, -22.96, -43.17).startsWith("poi:amenity=bar@"))
     }
 
     @Test fun islands_and_categories_decode() {

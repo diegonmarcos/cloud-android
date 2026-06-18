@@ -66,6 +66,11 @@ object MapsProviderClient {
         limit: Int = 25,
     ): List<SearchHit> {
         if (query.isBlank()) return emptyList()
+        // Cache hit? (≤ TTL old) — skip the network entirely.
+        val db = MapsDb.get(ctx)
+        val cacheKey = cacheKeyForward(query, focusLat, focusLon)
+        db.cacheGet(cacheKey, cacheTtlMs())?.let { return hitsFromJson(it).take(limit) }
+
         val prefs = MapsProviderPrefs(ctx)
         val keys = MapsApiKeyPrefs(ctx)
         val all = MapsProviders.loadFromBuildConfig()
@@ -78,7 +83,9 @@ object MapsProviderClient {
             .replace("{lon}", focusLon.toString())
             .replace("{key}", keys.get(active.id))
         val body = fetch(url) ?: return emptyList()
-        return parseSearch(active.id, body).take(limit)
+        val hits = parseSearch(active.id, body)
+        if (hits.isNotEmpty()) db.cachePut(cacheKey, hitsToJson(hits))  // don't cache empties/failures.
+        return hits.take(limit)
     }
 
     /**
@@ -97,6 +104,10 @@ object MapsProviderClient {
         limit: Int = 80,
     ): List<SearchHit> {
         if (tagQuery.isBlank()) return emptyList()
+        val db = MapsDb.get(ctx)
+        val cacheKey = cacheKeyPoi(tagQuery, south, west, north, east)
+        db.cacheGet(cacheKey, cacheTtlMs())?.let { return hitsFromJson(it).take(limit) }
+
         val prefs = MapsProviderPrefs(ctx)
         val all = MapsProviders.loadFromBuildConfig()
         val active = all.firstOrNull { it.id == prefs.activePoi && it.endpoint.isNotEmpty() }
@@ -116,7 +127,9 @@ object MapsProviderClient {
             out center $limit;
         """.trimIndent()
         val body = postForm(active.endpoint, "data=" + URLEncoder.encode(ql, "UTF-8")) ?: return emptyList()
-        return parseOverpass(body).take(limit)
+        val hits = parseOverpass(body)
+        if (hits.isNotEmpty()) db.cachePut(cacheKey, hitsToJson(hits))
+        return hits.take(limit)
     }
 
     /** Single-shot GET. Returns the response body as a String, or null
@@ -236,6 +249,55 @@ object MapsProviderClient {
         val lon: Double,
         val type: String?,
     )
+
+    // ── search cache (forward + POI) ─────────────────────────────────
+    // TTL is data-driven (build.json::ui.search_cache.ttl_days). New venues
+    // appear slowly, so reusing a query/area for ~a month spares the fair-use
+    // Nominatim/Overpass endpoints and makes repeat searches instant.
+    private fun cacheTtlMs(): Long = BuildConfig.UI_SEARCH_CACHE_TTL_DAYS.toLong() * 86_400_000L
+
+    /** Forward-search key — query (normalised) + focus rounded to ~11 km so
+     *  nearby searches share an entry. */
+    fun cacheKeyForward(query: String, focusLat: Double, focusLon: Double): String =
+        "fwd:" + query.trim().lowercase() + "@" + round(focusLat, 10) + "," + round(focusLon, 10)
+
+    /** POI key — tag + viewport rounded to ~1.1 km so re-searching the same
+     *  view hits the cache. */
+    fun cacheKeyPoi(tag: String, s: Double, w: Double, n: Double, e: Double): String =
+        "poi:" + tag.trim().lowercase() + "@" +
+            round(s, 100) + "," + round(w, 100) + "," + round(n, 100) + "," + round(e, 100)
+
+    /** Round to 1/[factor] precision, locale-independent (Double.toString uses '.'). */
+    private fun round(v: Double, factor: Int): String = (Math.round(v * factor) / factor.toDouble()).toString()
+
+    private fun hitsToJson(hits: List<SearchHit>): String {
+        val arr = JSONArray()
+        hits.forEach {
+            arr.put(
+                JSONObject()
+                    .put("t", it.title)
+                    .put("s", it.subtitle)
+                    .put("la", it.lat)
+                    .put("lo", it.lon)
+                    .put("ty", it.type)
+            )
+        }
+        return arr.toString()
+    }
+
+    private fun hitsFromJson(json: String): List<SearchHit> = runCatching {
+        val arr = JSONArray(json)
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            SearchHit(
+                title = o.optString("t"),
+                subtitle = o.optStringOrNull("s"),
+                lat = o.optDouble("la"),
+                lon = o.optDouble("lo"),
+                type = o.optStringOrNull("ty"),
+            )
+        }
+    }.getOrDefault(emptyList())
 
     /** Provider-specific response parsing. Each provider returns its
      *  own JSON shape — add a `when` branch when wiring a new one. */
