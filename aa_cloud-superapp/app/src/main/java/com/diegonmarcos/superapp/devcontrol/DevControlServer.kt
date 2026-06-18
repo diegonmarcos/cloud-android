@@ -69,6 +69,13 @@ object DevControlServer {
             isDaemon = true
             start()
         }
+        // Best-effort: auto-reconnect the embedded adb channel via mDNS on
+        // app start, so a paired device with Wireless Debugging ON comes back
+        // online after every update/relaunch with NO manual connect port.
+        // Silent no-op if not paired / WD off. Off the main + server threads.
+        Thread {
+            runCatching { com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.autoConnect(app) }
+        }.apply { isDaemon = true; name = "adb-autoconnect"; start() }
     }
 
     fun stop() {
@@ -268,6 +275,12 @@ object DevControlServer {
                         reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
                     }
                 }
+                "adb/autoconnect" -> {
+                    // mDNS auto-discovery of the local adbd connect service —
+                    // no manual connect port. Needs paired + Wireless Debugging ON.
+                    val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.autoConnect(ctx)
+                    reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
+                }
                 "adb/connect" -> {
                     // host = IP from the main Wireless-debugging screen, port = the
                     // CONNECT port (distinct from the pairing port). After a pair.
@@ -379,6 +392,7 @@ object DevControlServer {
             Spec("adb/status",          "GET",  true,  "libs:shizuku-adb-debug-tools shell-channel ladder: per-channel ready/status for 'embedded-adb' (PRIMARY — our on-device adb client paired to localhost Wireless Debugging, the self-contained 'we ARE Shizuku' path), 'local-server' (our app_process server), and 'shizuku' (fallback); which is active, whether DUMP is held, and the data-driven bundle ids.", ""),
             Spec("adb/pair",            "GET",  true,  "Embedded adb client: pair with the phone's OWN Wireless-Debugging adbd. host=the IP shown in the pairing dialog (Android binds the daemon to the Wi-Fi iface, not loopback — pass that IP e.g. 10.0.0.9; default 127.0.0.1). port=the PAIRING port, code=the 6-digit code. Self-contained bootstrap — no Shizuku app, no PC. Then call /api/adb/connect.", "host=<ip>&port=<pairPort>&code=<6digits>"),
             Spec("adb/connect",         "GET",  true,  "Embedded adb client: connect to the local adbd after pairing. host=IP from the main Wireless-debugging screen (default 127.0.0.1), port=the CONNECT port (distinct from the pairing port). On success the 'embedded-adb' channel goes ready and diagnostics run with zero third-party deps.", "host=<ip>&port=<connectPort>"),
+            Spec("adb/autoconnect",     "GET",  true,  "Embedded adb client: auto-discover the local adbd via mDNS (_adb-tls-connect._tcp, advertised by Wireless Debugging) and connect — NO manual port. Needs the device already paired + Wireless Debugging ON. Also runs automatically on app start, so reconnect-after-update is hands-free.", ""),
             Spec("adb/server-command",  "GET",  true,  "Returns the exact one-liner to run ONCE per boot (via adb / Wireless Debugging) to start OUR self-contained shell-domain app_process server (AdbShellServer). This is the only privilege bootstrap; after it the app needs no third-party Shizuku app. {command,port,note}.", ""),
             Spec("adb/diagnostics",     "GET",  true,  "Run a DATA-DRIVEN diagnostic bundle (build.json::shizuku_diagnostics.bundles[]) through the shell-channel ladder (local-server first, Shizuku fallback) and return {bundle,label,channel,ok,results:[{id,cmd,out}]}. Bundles: charger (dumpsys battery+usb, power_supply nodes, typec, charge props), battery, usb, thermal, pd. THE endpoint that surfaces the USB-PD/PPS negotiation behind 'why is the charger at 3W not 35W' when SELinux blocks /sys/class/power_supply/*.", "bundle=charger|battery|usb|thermal|pd (default charger)"),
             Spec("adb/exec",            "GET",  true,  "Generic 'adb shell' passthrough — runs `sh -c <cmd>` in shell context (uid 2000) through the active channel and returns raw stdout. Full adb-equivalent power; token-gated + loopback-only. Use for one-off commands not covered by a bundle.", "cmd=<shell command>"),

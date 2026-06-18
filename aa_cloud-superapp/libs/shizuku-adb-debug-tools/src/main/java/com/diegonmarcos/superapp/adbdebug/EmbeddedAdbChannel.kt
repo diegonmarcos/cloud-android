@@ -92,6 +92,20 @@ object EmbeddedAdbChannel : ShellChannel {
     }.getOrElse { false to "connect failed: ${it.message}" }
 
     /**
+     * Auto-discover the local adbd via mDNS (`_adb-tls-connect._tcp`, which
+     * Wireless Debugging advertises) and connect — NO manual connect port.
+     * libadb's autoConnect runs the discovery + connect; we Wi-Fi-bind it so
+     * the mDNS query + socket go over wlan0, not the WG tunnel. Requires the
+     * device already paired (cert trusted) + Wireless Debugging ON. This is
+     * what makes reconnect-after-update one-tap (or automatic on app start).
+     */
+    fun autoConnect(ctx: Context): Pair<Boolean, String> = runCatching {
+        if (isReady(ctx)) return@runCatching true to "already connected"
+        val ok = onWifi(ctx) { AdbManager.getInstance(ctx).autoConnect(ctx, 10_000) }
+        ok to (if (ok) "auto-connected via mDNS" else "no _adb-tls-connect service found — Wireless Debugging ON + paired?")
+    }.getOrElse { false to "autoconnect failed: ${it.message}" }
+
+    /**
      * Run [block] with the process temporarily pinned to the Wi-Fi
      * (non-VPN) network, so the socket libadb opens bypasses the WireGuard
      * tunnel. This is what makes pairing work with WG ON: the device's
