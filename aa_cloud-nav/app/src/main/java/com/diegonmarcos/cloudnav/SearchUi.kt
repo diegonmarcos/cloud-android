@@ -7,7 +7,9 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import com.diegonmarcos.cloudnav.maps.MapsProviderClient
 import com.google.android.material.card.MaterialCardView
 
 /**
@@ -71,6 +73,30 @@ object SearchUi {
 
     /** The EditText inside a [searchCard]. */
     fun field(card: MaterialCardView): EditText = card.tag as EditText
+
+    /**
+     * Offer the top forward-search candidates and let the user pick the right
+     * one (instead of auto-taking the first hit). Shows up to
+     * [maps.BuildConfig.UI_SEARCH_CHOICES] results; if only one, picks it
+     * directly. Caller handles the empty case before calling.
+     */
+    fun chooseResult(
+        ctx: Context,
+        hits: List<MapsProviderClient.SearchHit>,
+        onPick: (MapsProviderClient.SearchHit) -> Unit,
+    ) {
+        if (hits.isEmpty()) return
+        val n = com.diegonmarcos.cloudnav.maps.BuildConfig.UI_SEARCH_CHOICES.coerceAtLeast(1)
+        val top = hits.take(n)
+        if (top.size == 1) { onPick(top[0]); return }
+        val labels = top.map { h ->
+            if (h.subtitle.isNullOrBlank()) h.title else "${h.title}\n${h.subtitle}"
+        }.toTypedArray()
+        AlertDialog.Builder(ctx)
+            .setTitle("Choose a result")
+            .setItems(labels) { _, which -> onPick(top[which]) }
+            .show()
+    }
 
     fun dp(ctx: Context, v: Float): Float = v * ctx.resources.displayMetrics.density
 

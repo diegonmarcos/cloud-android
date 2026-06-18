@@ -38,6 +38,12 @@ def mapsVersionName     = (buildJson.android.version_name ?: '0.0.0').toString()
 def mapStylesB64        = groovy.json.JsonOutput.toJson(buildJson.ui.map_styles ?: [:]).bytes.encodeBase64().toString()
 def demoStopsB64        = groovy.json.JsonOutput.toJson(buildJson.ui.demo_stops ?: [:]).bytes.encodeBase64().toString()
 def searchCacheTtlDays  = ((buildJson.ui.search_cache?.ttl_days) as Number)?.intValue() ?: 30
+def searchChoices       = (buildJson.ui.search_choices ?: 3) as int
+def travelModesB64      = groovy.json.JsonOutput.toJson(buildJson.ui.travel_modes ?: []).bytes.encodeBase64().toString()
+def defaultTravelMode   = (buildJson.ui.default_travel_mode ?: 'car').toString()
+def routingProviders    = buildJson.ui.routing?.providers ?: []
+def routingActive       = (buildJson.ui.routing?.active ?: 'valhalla_public').toString()
+def routingEndpoint     = (routingProviders.find { it.id == routingActive }?.endpoint) ?: 'https://valhalla1.openstreetmap.de/route'
 
 android {
     namespace 'com.diegonmarcos.cloudnav.maps'
@@ -64,6 +70,10 @@ android {
         buildConfigField "String", "UI_MAP_STYLES_B64",            "\"${mapStylesB64}\""
         buildConfigField "String", "UI_DEMO_STOPS_B64",            "\"${demoStopsB64}\""
         buildConfigField "int",    "UI_SEARCH_CACHE_TTL_DAYS",     "${searchCacheTtlDays}"
+        buildConfigField "int",    "UI_SEARCH_CHOICES",            "${searchChoices}"
+        buildConfigField "String", "UI_TRAVEL_MODES_B64",          "\"${travelModesB64}\""
+        buildConfigField "String", "UI_DEFAULT_TRAVEL_MODE",       "\"${defaultTravelMode}\""
+        buildConfigField "String", "UI_ROUTING_ENDPOINT",          "\"${routingEndpoint}\""
     }
     buildFeatures {
         buildConfig = true

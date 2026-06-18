@@ -155,17 +155,18 @@ class NavigationFragment : Fragment() {
                 focusLon = center?.second ?: 0.0,
             )
             ui {
-                val hit = hits.firstOrNull()
-                if (hit == null) {
+                if (hits.isEmpty()) {
                     Toast.makeText(ctx, "No match for \"$query\"", Toast.LENGTH_SHORT).show()
                     return@ui
                 }
-                destLat = hit.lat; destLon = hit.lon; destLabel = hit.title
-                SearchUi.field(destCard).setText(hit.title)
-                maneuverText.text = "Head to $destLabel"
-                maneuverSub.text = "Driving · follow the route"
-                mapFragment.setPins(listOf(MapsMapFragment.Pin(hit.lat, hit.lon, MapsMapFragment.COLOR_RESULT)))
-                mapFragment.recenterOnUser()   // snap to the 3D follow view.
+                SearchUi.chooseResult(ctx, hits) { hit ->
+                    destLat = hit.lat; destLon = hit.lon; destLabel = hit.title
+                    SearchUi.field(destCard).setText(hit.title)
+                    maneuverText.text = "Head to $destLabel"
+                    maneuverSub.text = "Driving · follow the route"
+                    mapFragment.setPins(listOf(MapsMapFragment.Pin(hit.lat, hit.lon, MapsMapFragment.COLOR_RESULT)))
+                    mapFragment.recenterOnUser()   // snap to the 3D follow view.
+                }
             }
         }.start()
     }

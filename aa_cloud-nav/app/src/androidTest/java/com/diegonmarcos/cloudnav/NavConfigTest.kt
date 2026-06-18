@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.diegonmarcos.cloudnav.maps.MapStyles
 import com.diegonmarcos.cloudnav.maps.MapsDemo
 import com.diegonmarcos.cloudnav.maps.MapsProviderClient
+import com.diegonmarcos.cloudnav.maps.MapsRouting
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -59,6 +60,28 @@ class NavConfigTest {
         )
         assertTrue(MapsProviderClient.cacheKeyForward("bar", 1.0, 2.0).startsWith("fwd:bar@"))
         assertTrue(MapsProviderClient.cacheKeyPoi("amenity=bar", -22.97, -43.18, -22.96, -43.17).startsWith("poi:amenity=bar@"))
+    }
+
+    @Test fun travel_modes_decode() {
+        val modes = MapsRouting.modes()
+        assertTrue("at least 6 travel modes", modes.size >= 6)
+        assertTrue(modes.map { it.id }.containsAll(
+            listOf("car", "walking", "bus", "boat", "flying", "swimming")))
+        assertEquals("car", MapsRouting.defaultModeId())
+        // geodesic modes carry a positive avg speed; valhalla modes a costing.
+        modes.forEach {
+            if (it.engine == "geodesic") assertTrue(it.avgSpeedKmh > 0)
+            else assertTrue(it.costing.isNotBlank())
+        }
+    }
+
+    @Test fun polyline6_decodes() {
+        // "?" encodes a zero delta, so "??" = one (0,0) point, "????" = two.
+        val one = MapsRouting.decodePolyline6("??")
+        assertEquals(1, one.size)
+        assertEquals(0.0, one[0][0], 1e-9)
+        assertEquals(0.0, one[0][1], 1e-9)
+        assertEquals(2, MapsRouting.decodePolyline6("????").size)
     }
 
     @Test fun islands_and_categories_decode() {

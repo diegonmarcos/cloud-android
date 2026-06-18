@@ -233,6 +233,31 @@
     "search_cache": {
       "ttl_days": 30
     },
+    "_doc_search_choices": "How many forward-search candidates the search bar offers the user to pick from (Routes/Navigation show a chooser instead of auto-picking the first hit).",
+    "search_choices": 3,
+    "_doc_routing": "Route geometry + per-mode distance/time. valhalla_public = FOSSGIS Valhalla (free, no key, fair-use) — real road routes for car/walk/bike/bus. boat/flight/swim have no router → great-circle estimate. Consumed by MapsRouting (baked UI_ROUTING_ENDPOINT).",
+    "routing": {
+      "active": "valhalla_public",
+      "providers": [
+        {
+          "id": "valhalla_public",
+          "label": "Valhalla (FOSSGIS)",
+          "host": "free-noauth",
+          "endpoint": "https://valhalla1.openstreetmap.de/route"
+        }
+      ]
+    },
+    "_doc_travel_modes": "Route mode switcher (Routes tab) + the all-modes stats panel. engine=valhalla → real route via `costing`; engine=geodesic → straight-line distance ÷ avg_speed_kmh estimate. estimated=true flags approximations (bus = road approximation, not transit timetables). default_travel_mode = the one selected on open.",
+    "default_travel_mode": "car",
+    "travel_modes": [
+      { "id": "car",       "label": "Car",    "emoji": "🚗", "engine": "valhalla", "costing": "auto",       "estimated": false },
+      { "id": "walking",   "label": "Walk",   "emoji": "🚶", "engine": "valhalla", "costing": "pedestrian", "estimated": false },
+      { "id": "bike",      "label": "Bike",   "emoji": "🚲", "engine": "valhalla", "costing": "bicycle",    "estimated": false },
+      { "id": "bus",       "label": "Bus",    "emoji": "🚌", "engine": "valhalla", "costing": "bus",        "estimated": true  },
+      { "id": "boat",      "label": "Boat",   "emoji": "⛵", "engine": "geodesic", "avg_speed_kmh": 40,     "estimated": true  },
+      { "id": "flying",    "label": "Flight", "emoji": "✈️", "engine": "geodesic", "avg_speed_kmh": 800,    "estimated": true  },
+      { "id": "swimming",  "label": "Swim",   "emoji": "🏊", "engine": "geodesic", "avg_speed_kmh": 4,      "estimated": true  }
+    ],
     "maps_tracking": {
       "interval_moving_ms": 30000,
       "interval_stopped_ms": 300000,

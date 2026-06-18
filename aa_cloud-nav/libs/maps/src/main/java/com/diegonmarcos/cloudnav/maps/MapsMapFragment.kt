@@ -29,6 +29,8 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 
@@ -62,6 +64,7 @@ class MapsMapFragment : Fragment() {
 
     private var pins: List<Pin> = emptyList()
     private var me: LatLng? = null
+    private var routeGeometry: List<DoubleArray> = emptyList()  // [lat,lon] points
     private lateinit var styleKey: String
 
     private val nav3d: Boolean get() = arguments?.getBoolean(ARG_NAV3D, false) ?: false
@@ -133,6 +136,13 @@ class MapsMapFragment : Fragment() {
     fun centerTarget(): Pair<Double, Double>? =
         map?.cameraPosition?.target?.let { it.latitude to it.longitude }
 
+    /** Last my-location fix, or null. The Routes "Your location" origin. */
+    fun myLatLon(): Pair<Double, Double>? = me?.let { it.latitude to it.longitude }
+
+    /** Draw a route line through [geometry] ([lat,lon] points). Empty clears. */
+    fun setRoute(geometry: List<DoubleArray>) { routeGeometry = geometry; pushRoute() }
+    fun clearRoute() = setRoute(emptyList())
+
     fun visibleBounds(): DoubleArray? {
         val b = map?.projection?.visibleRegion?.latLngBounds ?: return null
         return doubleArrayOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast)
@@ -174,6 +184,16 @@ class MapsMapFragment : Fragment() {
         val m = map ?: return
         styleReady = false
         m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(MapStyles.get(key)))) { style ->
+            // Route line FIRST so pins/me render on top of it.
+            style.addSource(GeoJsonSource(SRC_ROUTE, routeFeatureCollection()))
+            style.addLayer(
+                LineLayer(LYR_ROUTE, SRC_ROUTE).withProperties(
+                    PropertyFactory.lineColor(COLOR_ROUTE),
+                    PropertyFactory.lineWidth(5f),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                )
+            )
             style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
             style.addLayer(
                 CircleLayer(LYR_PINS, SRC_PINS).withProperties(
@@ -194,6 +214,7 @@ class MapsMapFragment : Fragment() {
             )
             styleReady = true
             pushMe()
+            pushRoute()
             if (firstLoad) onMapReady?.invoke(m)
         }
     }
@@ -238,6 +259,19 @@ class MapsMapFragment : Fragment() {
         map?.style?.getSourceAs<GeoJsonSource>(SRC_ME)?.setGeoJson(featureCollection(list))
     }
 
+    private fun pushRoute() {
+        if (!styleReady) return
+        map?.style?.getSourceAs<GeoJsonSource>(SRC_ROUTE)?.setGeoJson(routeFeatureCollection())
+    }
+
+    /** A FeatureCollection holding one LineString (coords are [lon,lat]). */
+    private fun routeFeatureCollection(): String {
+        if (routeGeometry.size < 2) return """{"type":"FeatureCollection","features":[]}"""
+        val coords = routeGeometry.joinToString(",") { "[${it[1]},${it[0]}]" }
+        return """{"type":"FeatureCollection","features":[""" +
+            """{"type":"Feature","properties":{},"geometry":{"type":"LineString","coordinates":[$coords]}}]}"""
+    }
+
     private fun featureCollection(items: List<Pin>): String {
         val feats = items.joinToString(",") { p ->
             """{"type":"Feature","properties":{"color":"${p.color}"},""" +
@@ -275,10 +309,13 @@ class MapsMapFragment : Fragment() {
         const val COLOR_DAY    = "#0B8043"
         const val COLOR_ME     = "#1A73E8"
 
-        private const val SRC_PINS = "pins-src"
-        private const val LYR_PINS = "pins-layer"
-        private const val SRC_ME   = "me-src"
-        private const val LYR_ME   = "me-layer"
+        private const val SRC_PINS  = "pins-src"
+        private const val LYR_PINS  = "pins-layer"
+        private const val SRC_ME    = "me-src"
+        private const val LYR_ME    = "me-layer"
+        private const val SRC_ROUTE = "route-src"
+        private const val LYR_ROUTE = "route-layer"
+        private const val COLOR_ROUTE = "#1A73E8"
 
         private const val NAV_TILT = 55.0
         private const val NAV_ZOOM = 18.0
