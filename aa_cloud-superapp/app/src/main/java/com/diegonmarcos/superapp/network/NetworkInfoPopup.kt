@@ -98,7 +98,12 @@ object NetworkInfoPopup {
         for (row in readBluetooth(ctx)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
-        // ── 5. Network (DNS + private IPs)
+        // ── 5. USB (cable / data-transfer)
+        container.addView(label(ctx, "USB"))
+        for (row in readUsb(ctx)) container.addView(valueSmall(ctx, row))
+        container.addView(spacer(ctx, (6 * d).toInt()))
+
+        // ── 6. Network (DNS + private IPs)
         container.addView(label(ctx, "Network"))
         for (row in readNetwork(ctx)) container.addView(valueSmall(ctx, row))
 
@@ -288,6 +293,38 @@ object NetworkInfoPopup {
         } else {
             for (name in connected) rows += "  • $name"
         }
+        return rows
+    }
+
+    // ─────────────────────────── USB ───────────────────────────
+
+    /** USB cable + data-transfer state from the ACTION_USB_STATE sticky
+     *  broadcast (registerReceiver(null, …) returns the current intent).
+     *  Distinguishes charge-only from a data mode (MTP/PTP/RNDIS/NCM/MIDI/
+     *  mass-storage/accessory) and OTG host. No permission needed. */
+    private fun readUsb(ctx: Context): List<String> {
+        val rows = mutableListOf<String>()
+        val intent = runCatching {
+            ctx.applicationContext.registerReceiver(
+                null, android.content.IntentFilter("android.hardware.usb.action.USB_STATE"))
+        }.getOrNull()
+        if (intent == null) { rows += "—"; return rows }
+        val connected  = intent.getBooleanExtra("connected", false)
+        val configured = intent.getBooleanExtra("configured", false)
+        val host       = intent.getBooleanExtra("host_connected", false)
+        if (!connected && !host) { rows += "Disconnected (no cable / charge-only AC)"; return rows }
+        val fns = listOf(
+            "mtp" to "MTP (file transfer)", "ptp" to "PTP (photo)",
+            "rndis" to "RNDIS (tether)", "ncm" to "NCM (tether)", "midi" to "MIDI",
+            "mass_storage" to "Mass storage", "accessory" to "Accessory", "audio_source" to "Audio source",
+        ).filter { intent.getBooleanExtra(it.first, false) }.map { it.second }
+        when {
+            host -> rows += "OTG host connected"
+            fns.isNotEmpty() -> rows += "Connected · DATA transfer"
+            connected -> rows += "Connected · charge-only (no data)"
+        }
+        if (fns.isNotEmpty()) rows += "Mode: " + fns.joinToString(", ")
+        rows += "Configured: ${if (configured) "yes" else "no"}"
         return rows
     }
 
