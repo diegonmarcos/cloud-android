@@ -258,6 +258,14 @@ step_oras_push() {
   artifact_dir="$(dirname "$artifact")"
   artifact_name="$(basename "$artifact")"
 
+  # Code-identity stamp on the manifest: the short git sha (matches the app's
+  # BuildConfig.GIT_SHORT_SHA). The in-app updater compares this to its own sha
+  # and SKIPS the download when they match — so a non-reproducible rebuild of
+  # identical code never prompts a spurious update.
+  local rev
+  rev="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)}"
+  rev="${rev:0:8}"
+
   local tags
   tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
   local suffix; suffix="$(_variant_tag_suffix)"
@@ -266,9 +274,10 @@ step_oras_push() {
     local tag ref
     tag="$(_resolve_template "$tmpl")${suffix}"
     ref="$registry/$namespace/$image:$tag"
-    log "oras push $ref ← $artifact_name"
+    log "oras push $ref ← $artifact_name (rev $rev)"
     ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
-        --artifact-type "$media_type" )
+        --artifact-type "$media_type" \
+        --annotation "org.opencontainers.image.revision=$rev" )
   done <<< "$tags"
 }
 

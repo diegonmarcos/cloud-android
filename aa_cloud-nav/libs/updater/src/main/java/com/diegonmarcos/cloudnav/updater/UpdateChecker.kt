@@ -29,6 +29,15 @@ internal class UpdateChecker(private val context: Context) {
             // ABI-aware: x86_64 (Waydroid/emulator) pulls `latest-x86_64`,
             // arm64 phones pull `latest`. See AbiUpdateTag.
             val layer = client.manifest(AbiUpdateTag.current(), token)
+            // Code-identity short-circuit: if the remote was built from the SAME
+            // git commit as this install, it's the same code even if the APK
+            // bytes differ (non-reproducible debug build) → no update. Avoids
+            // spurious prompts when CI rebuilds identical code.
+            if (layer.revision != null && layer.revision == BuildConfig.GIT_SHORT_SHA) {
+                Log.i(tag, "remote revision ${layer.revision} == installed — up to date")
+                UpdateProgress.reset()
+                return null
+            }
             val currentDigest = "sha256:" + currentInstalledApkSha256()
             if (currentDigest == layer.digest) {
                 Log.i(tag, "current matches remote: $currentDigest")

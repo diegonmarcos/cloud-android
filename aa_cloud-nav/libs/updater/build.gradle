@@ -18,6 +18,14 @@ plugins {
 def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def ghcr = buildJson.release.ghcr
 def au   = buildJson.release.auto_update
+// Short git sha = code-identity stamp. Matches the manifest revision annotation
+// set by build.sh oras-push, so UpdateChecker can skip an identical-code rebuild.
+def shortSha = (System.getenv('GITHUB_SHA')
+                ?: providers.exec {
+                       commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
+                       ignoreExitValue = true
+                   }.standardOutput.asText.get().trim())
+                .take(8)
 // ABI→update-tag map for the ABI-aware updater. Flattened from
 // release.variants[]: each variant's supported_abis all point at its
 // update_tag. Format: "abi=tag;abi=tag;…".
@@ -44,6 +52,7 @@ android {
         buildConfigField "boolean", "AU_REQUIRE_UNMETERED",        "${au.require_unmetered_network}"
         buildConfigField "boolean", "AU_REQUIRE_CHARGING",         "${au.require_charging}"
         buildConfigField "String",  "AU_INSTALL_MODE",             "\"${au.install_mode}\""
+        buildConfigField "String",  "GIT_SHORT_SHA",               "\"${shortSha}\""
     }
 
     buildFeatures { buildConfig = true }

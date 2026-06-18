@@ -294,6 +294,12 @@ step_oras_push() {
   artifact_dir="$(dirname "$artifact")"
   artifact_name="$(basename "$artifact")"
 
+  # Code-identity stamp (short git sha; matches BuildConfig.GIT_SHORT_SHA) so the
+  # in-app updater skips an identical-code rebuild instead of prompting.
+  local rev
+  rev="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)}"
+  rev="${rev:0:8}"
+
   # Iterate templated tags from build.json (data-driven, NO hardcoded list).
   local tags
   tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
@@ -305,9 +311,10 @@ step_oras_push() {
     # on :latest-x86_64 / :sha-<sha>-x86_64 / :v<ver>-x86_64.
     tag="$(_resolve_template "$tmpl")${suffix}"
     ref="$registry/$namespace/$image:$tag"
-    log "oras push $ref ← $artifact_name"
+    log "oras push $ref ← $artifact_name (rev $rev)"
     ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
-        --artifact-type "$media_type" )
+        --artifact-type "$media_type" \
+        --annotation "org.opencontainers.image.revision=$rev" )
   done <<< "$tags"
 }
 

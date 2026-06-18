@@ -37,9 +37,11 @@ internal class GhcrClient(
         }
     }
 
-    data class ManifestLayer(val digest: String, val size: Long, val title: String)
+    data class ManifestLayer(val digest: String, val size: Long, val title: String, val revision: String?)
 
-    /** Returns the first layer (the APK blob — there's only one per artifact). */
+    /** Returns the first layer (the APK blob — there's only one per artifact)
+     *  plus the manifest-level `org.opencontainers.image.revision` (short git
+     *  sha) stamped at oras-push, used for code-identity update checks. */
     fun manifest(tag: String, token: String): ManifestLayer {
         val url = URL("https://$registry/v2/$repo/manifests/$tag")
         val headers = mapOf(
@@ -48,14 +50,19 @@ internal class GhcrClient(
         )
         return openGet(url, headers).use { stream ->
             val body = stream.bufferedReader().readText()
-            val layer = JSONObject(body).getJSONArray("layers").getJSONObject(0)
+            val root = JSONObject(body)
+            val layer = root.getJSONArray("layers").getJSONObject(0)
             val title = layer.optJSONObject("annotations")
                 ?.optString("org.opencontainers.image.title")
                 ?.takeIf { it.isNotEmpty() } ?: "$image.apk"
+            val revision = root.optJSONObject("annotations")
+                ?.optString("org.opencontainers.image.revision")
+                ?.takeIf { it.isNotEmpty() }
             ManifestLayer(
                 digest = layer.getString("digest"),
                 size = layer.getLong("size"),
                 title = title,
+                revision = revision,
             )
         }
     }
