@@ -33,23 +33,36 @@ object EmbeddedAdbChannel : ShellChannel {
      */
     override fun exec(ctx: Context, command: String): String? = runCatching {
         val stream = AdbManager.getInstance(ctx).openStream("exec:$command")
-        var out = ""
+        // Read INCREMENTALLY into a buffer on a worker thread so that, on
+        // timeout (or a stream that never EOFs), we return whatever ARRIVED
+        // instead of discarding it. Large dumps (full getprop / settings
+        // list / dumpsys batterystats) stream in chunks; the old readText()
+        // returned "" if the whole thing didn't finish inside the window.
+        val acc = java.io.ByteArrayOutputStream()
         val reader = Thread {
-            out = runCatching {
-                stream.openInputStream().bufferedReader().use { it.readText() }
-            }.getOrDefault("")
+            runCatching {
+                val input = stream.openInputStream()
+                val buf = ByteArray(32 * 1024)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    synchronized(acc) { acc.write(buf, 0, n) }
+                }
+            }
         }
         reader.start()
         reader.join(EXEC_TIMEOUT_MS)
-        if (reader.isAlive) {
-            runCatching { stream.close() }
+        val timedOut = reader.isAlive
+        if (timedOut) {
+            runCatching { stream.close() } // unblock the read → thread exits
             reader.interrupt()
-            return@runCatching "ERR: exec timed out after ${EXEC_TIMEOUT_MS}ms (stream did not close)"
+            reader.join(500)
         }
-        out
+        val text = synchronized(acc) { acc.toString("UTF-8") }
+        if (timedOut) "$text\n[…truncated at ${EXEC_TIMEOUT_MS}ms — ${text.length} bytes]" else text
     }.getOrNull()
 
-    private const val EXEC_TIMEOUT_MS = 15_000L
+    private const val EXEC_TIMEOUT_MS = 25_000L
 
     override fun status(ctx: Context): String =
         if (isReady(ctx)) "Connected — embedded adb to 127.0.0.1 (shell uid 2000)"
