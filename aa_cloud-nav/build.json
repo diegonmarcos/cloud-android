@@ -199,6 +199,31 @@
         "query": "tourism=hotel"
       }
     ],
+    "_doc_map_styles": "Raster basemaps. `order` = the cycle the in-map Map-switcher FAB (under locate-me) steps through. light = OSM standard; dark = CARTO Dark Matter (also Navigation's night view); satellite = Esri World Imagery. background paints behind a tile gap. Consumed by MapsMapFragment (baked UI_MAP_STYLES_B64) — no hardcoded tile URLs in Kotlin.",
+    "map_styles": {
+      "order": [ "light", "dark", "satellite" ],
+      "light": {
+        "label": "Standard",
+        "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap contributors",
+        "background": "#e8eef4",
+        "maxzoom": 19
+      },
+      "dark": {
+        "label": "Dark",
+        "tiles": "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap, © CARTO",
+        "background": "#0a0e14",
+        "maxzoom": 20
+      },
+      "satellite": {
+        "label": "Satellite",
+        "tiles": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© Esri, Maxar, Earthstar Geographics",
+        "background": "#0a0e14",
+        "maxzoom": 19
+      }
+    },
     "maps_active": {
       "reverse": "nominatim_public",
       "poi": "overpass_public",
@@ -210,6 +235,18 @@
       "moving_threshold_mps": 2,
       "stops_radius_m": 100,
       "stops_dwell_min": 2
+    },
+    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — a full day on 1987-07-18 in Rio de Janeiro so Timeline/Daily/Stops/day-map all populate without a live tracker. day_epoch_ms = 1987-07-18 00:00 UTC; each stop's start_min/end_min = minutes from that midnight. Inserted by MapsDemo.seed() (idempotent). Longest dwell (Home) is what Daily surfaces.",
+    "demo_stops": {
+      "day_epoch_ms": 553564800000,
+      "stops": [
+        { "start_min": 0,    "end_min": 510,  "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",                "neighborhood": "Copacabana",        "city": "Rio de Janeiro", "country": "Brazil" },
+        { "start_min": 540,  "end_min": 600,  "lat": -22.9050, "lon": -43.1791, "place": "Confeitaria Colombo",             "neighborhood": "Centro",            "city": "Rio de Janeiro", "country": "Brazil" },
+        { "start_min": 660,  "end_min": 780,  "lat": -22.9869, "lon": -43.2045, "place": "Ipanema Beach",                   "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
+        { "start_min": 810,  "end_min": 870,  "lat": -22.9838, "lon": -43.2057, "place": "Garota de Ipanema",              "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
+        { "start_min": 960,  "end_min": 1050, "lat": -22.9519, "lon": -43.2105, "place": "Cristo Redentor",                "neighborhood": "Alto da Boa Vista", "city": "Rio de Janeiro", "country": "Brazil" },
+        { "start_min": 1260, "end_min": 1410, "lat": -22.9099, "lon": -43.1786, "place": "Rio Scenarium",                  "neighborhood": "Lapa",              "city": "Rio de Janeiro", "country": "Brazil" }
+      ]
     },
     "maps_providers": [
       {

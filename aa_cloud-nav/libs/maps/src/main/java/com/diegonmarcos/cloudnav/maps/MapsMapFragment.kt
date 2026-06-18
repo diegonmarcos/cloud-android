@@ -10,7 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.TextView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -33,23 +33,18 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 
 /**
- * Shared interactive MapLibre map — the single map widget embedded by the
- * Routes / Navigation / Places tabs and the day-detail view. Light raster
- * basemap (OSM). Provides a small public API so the host fragment can drop
- * pins, recenter on the user, and (for Navigation) tilt into a 3D driving
- * view.
+ * Shared interactive MapLibre map — embedded by Routes / Navigation / Places
+ * and the day-detail view. Data-driven raster basemaps ([MapStyles]); a
+ * Map-switcher FAB (under the locate-me FAB) cycles Standard → Dark →
+ * Satellite at runtime.
  *
- *   • [onMapReady]      callback fired once the GL style is loaded.
- *   • [setPins]/[clearPins]  drop / clear coloured POI dots.
- *   • [recenterOnUser]  one-shot fused-location fix → animate camera + blue
- *                       "you are here" dot. Requests FINE location if needed.
- *   • [recenter]/[fitTo]  camera helpers.
- *   • ARG_NAV3D         start tilted (Navigation's 3D racing-car view).
- *   • ARG_FAB           show the bottom-right my-location FAB (default true).
- *
- * Pins are rendered as a single GeoJSON source + CircleLayer with a
- * per-feature `color` property (guaranteed-present core API — no glyphs /
- * marker bitmaps / extra plugin dependency).
+ *   • [onMapReady]      fired once the GL style is loaded.
+ *   • [setPins]/[clearPins]  coloured POI dots.
+ *   • [recenterOnUser]  one-shot fused-location fix → camera + blue dot.
+ *   • [recenter]/[fitTo]/[centerTarget]/[visibleBounds]  camera helpers.
+ *   • ARG_NAV3D  start tilted (Navigation's 3D view).
+ *   • ARG_STYLE  initial style key (defaults dark for nav3d, else light).
+ *   • ARG_FAB    show the locate-me + switcher FABs (default true).
  */
 class MapsMapFragment : Fragment() {
 
@@ -58,8 +53,7 @@ class MapsMapFragment : Fragment() {
 
     var onMapReady: ((MapLibreMap) -> Unit)? = null
 
-    /** Fired on every successful my-location fix (FAB / [recenterOnUser]).
-     *  Navigation uses it to drive the speed HUD. */
+    /** Fired on every successful my-location fix. Navigation drives its HUD. */
     var onUserLocation: ((Location) -> Unit)? = null
 
     private var mapView: MapView? = null
@@ -68,6 +62,7 @@ class MapsMapFragment : Fragment() {
 
     private var pins: List<Pin> = emptyList()
     private var me: LatLng? = null
+    private lateinit var styleKey: String
 
     private val nav3d: Boolean get() = arguments?.getBoolean(ARG_NAV3D, false) ?: false
     private val showFab: Boolean get() = arguments?.getBoolean(ARG_FAB, true) ?: true
@@ -82,9 +77,9 @@ class MapsMapFragment : Fragment() {
         val ctx = inflater.context
         MapLibre.getInstance(ctx)   // idempotent one-shot init.
 
-        val root = FrameLayout(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-        }
+        styleKey = arguments?.getString(ARG_STYLE) ?: if (nav3d) "dark" else "light"
+
+        val root = FrameLayout(ctx).apply { layoutParams = ViewGroup.LayoutParams(MATCH, MATCH) }
 
         val prefs = MapsTrackerPrefs(ctx)
         val initialLat = if (prefs.hasLastFix()) prefs.lastFixLat else 20.0
@@ -102,46 +97,31 @@ class MapsMapFragment : Fragment() {
                 .zoom(initialZoom)
                 .tilt(if (nav3d) NAV_TILT else 0.0)
                 .build()
-            m.setStyle(Style.Builder().fromJson(LIGHT_RASTER_STYLE)) { style ->
-                style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
-                style.addLayer(
-                    CircleLayer(LYR_PINS, SRC_PINS).withProperties(
-                        PropertyFactory.circleColor(Expression.get("color")),
-                        PropertyFactory.circleRadius(7f),
-                        PropertyFactory.circleStrokeColor("#FFFFFF"),
-                        PropertyFactory.circleStrokeWidth(2f),
-                    )
-                )
-                style.addSource(GeoJsonSource(SRC_ME, featureCollection(emptyList())))
-                style.addLayer(
-                    CircleLayer(LYR_ME, SRC_ME).withProperties(
-                        PropertyFactory.circleColor(COLOR_ME),
-                        PropertyFactory.circleRadius(8f),
-                        PropertyFactory.circleStrokeColor("#FFFFFF"),
-                        PropertyFactory.circleStrokeWidth(3f),
-                    )
-                )
-                styleReady = true
-                pushPins()
-                pushMe()
-                onMapReady?.invoke(m)
-            }
+            applyStyle(styleKey, firstLoad = true)
         }
         root.addView(mv)
 
         if (showFab) {
-            val fab = FloatingActionButton(ctx).apply {
+            // Map-style switcher (small, on top).
+            val switchFab = FloatingActionButton(ctx).apply {
+                setImageResource(R.drawable.ic_map_layers)
+                contentDescription = "Switch map style"
+                size = FloatingActionButton.SIZE_MINI
+                layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(140)) }
+                setOnClickListener { cycleStyle() }
+            }
+            // Locate-me (below the switcher).
+            val locFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_my_location)
                 contentDescription = "Find my location"
                 size = FloatingActionButton.SIZE_NORMAL
                 layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
-                    .apply {
-                        val m = dp(16)
-                        setMargins(m, m, m, m + dp(72))   // clear the routing/place panels.
-                    }
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(72)) }
                 setOnClickListener { recenterOnUser() }
             }
-            root.addView(fab)
+            root.addView(locFab)
+            root.addView(switchFab)
         }
         return root
     }
@@ -150,14 +130,9 @@ class MapsMapFragment : Fragment() {
     fun setPins(newPins: List<Pin>) { pins = newPins; pushPins() }
     fun clearPins() = setPins(emptyList())
 
-    /** Current camera centre as (lat, lon), or null if the map isn't ready.
-     *  Exposed MapLibre-free so app-module callers can bias a search toward
-     *  the viewport without depending on the MapLibre SDK. */
     fun centerTarget(): Pair<Double, Double>? =
         map?.cameraPosition?.target?.let { it.latitude to it.longitude }
 
-    /** Current viewport as [south, west, north, east], or null if not ready.
-     *  Used by Places to scope an Overpass POI lookup to what's on screen. */
     fun visibleBounds(): DoubleArray? {
         val b = map?.projection?.visibleRegion?.latLngBounds ?: return null
         return doubleArrayOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast)
@@ -166,16 +141,12 @@ class MapsMapFragment : Fragment() {
     fun recenter(lat: Double, lon: Double, zoom: Double = 15.0) {
         map?.animateCamera(
             CameraUpdateFactory.newCameraPosition(
-                CameraPosition.Builder()
-                    .target(LatLng(lat, lon))
-                    .zoom(zoom)
-                    .tilt(if (nav3d) NAV_TILT else 0.0)
-                    .build()
+                CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom)
+                    .tilt(if (nav3d) NAV_TILT else 0.0).build()
             )
         )
     }
 
-    /** Frame the camera around all [pts] (+ the user dot if present). */
     fun fitTo(pts: List<Pin>) {
         val all = (pts.map { LatLng(it.lat, it.lon) } + listOfNotNull(me))
         if (all.isEmpty()) return
@@ -184,13 +155,47 @@ class MapsMapFragment : Fragment() {
         map?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(64)))
     }
 
-    /** One-shot fused-location fix → blue dot + camera. Asks for FINE
-     *  permission first if it isn't granted yet. */
     fun recenterOnUser() {
         val ctx = context ?: return
         val granted = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) fetchAndCenter() else locPermLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
+    // ── style switching ──────────────────────────────────────────────
+    private fun cycleStyle() {
+        styleKey = MapStyles.next(styleKey)
+        applyStyle(styleKey, firstLoad = false)
+        toast("Map: ${MapStyles.get(styleKey).label}")
+    }
+
+    /** (Re)load the raster style + re-add our overlay sources/layers. */
+    private fun applyStyle(key: String, firstLoad: Boolean) {
+        val m = map ?: return
+        styleReady = false
+        m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(MapStyles.get(key)))) { style ->
+            style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
+            style.addLayer(
+                CircleLayer(LYR_PINS, SRC_PINS).withProperties(
+                    PropertyFactory.circleColor(Expression.get("color")),
+                    PropertyFactory.circleRadius(7f),
+                    PropertyFactory.circleStrokeColor("#FFFFFF"),
+                    PropertyFactory.circleStrokeWidth(2f),
+                )
+            )
+            style.addSource(GeoJsonSource(SRC_ME, featureCollection(emptyList())))
+            style.addLayer(
+                CircleLayer(LYR_ME, SRC_ME).withProperties(
+                    PropertyFactory.circleColor(COLOR_ME),
+                    PropertyFactory.circleRadius(8f),
+                    PropertyFactory.circleStrokeColor("#FFFFFF"),
+                    PropertyFactory.circleStrokeWidth(3f),
+                )
+            )
+            styleReady = true
+            pushMe()
+            if (firstLoad) onMapReady?.invoke(m)
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -241,13 +246,9 @@ class MapsMapFragment : Fragment() {
         return """{"type":"FeatureCollection","features":[$feats]}"""
     }
 
-    private fun toast(msg: String) {
-        context?.let { Toast.makeText(it, msg, Toast.LENGTH_SHORT).show() }
-    }
-
+    private fun toast(msg: String) { context?.let { Toast.makeText(it, msg, Toast.LENGTH_SHORT).show() } }
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    // ── MapView lifecycle (MapLibre isn't a LifecycleObserver) ────────
     override fun onStart()   { super.onStart();   mapView?.onStart() }
     override fun onResume()  { super.onResume();  mapView?.onResume() }
     override fun onPause()   { mapView?.onPause();  super.onPause() }
@@ -267,11 +268,12 @@ class MapsMapFragment : Fragment() {
 
         const val ARG_NAV3D = "nav3d"
         const val ARG_FAB   = "fab"
+        const val ARG_STYLE = "style"
 
-        const val COLOR_RESULT = "#D93025"   // red — search results
-        const val COLOR_PLACE  = "#1A73E8"   // blue — POI categories
-        const val COLOR_DAY    = "#0B8043"   // green — timeline day stops
-        const val COLOR_ME     = "#1A73E8"   // blue — you-are-here dot
+        const val COLOR_RESULT = "#D93025"
+        const val COLOR_PLACE  = "#1A73E8"
+        const val COLOR_DAY    = "#0B8043"
+        const val COLOR_ME     = "#1A73E8"
 
         private const val SRC_PINS = "pins-src"
         private const val LYR_PINS = "pins-layer"
@@ -281,34 +283,13 @@ class MapsMapFragment : Fragment() {
         private const val NAV_TILT = 55.0
         private const val NAV_ZOOM = 18.0
 
-        // Light OSM raster basemap — inline so there's no dependency on a
-        // remote style.json (only the tile server). Light grey background
-        // so a tile gap reads as "land", not the old dark void.
-        private val LIGHT_RASTER_STYLE = """
-            {
-              "version": 8,
-              "name": "Cloud Nav · OSM raster (light)",
-              "sources": {
-                "osm": {
-                  "type": "raster",
-                  "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                  "tileSize": 256,
-                  "attribution": "© OpenStreetMap contributors",
-                  "maxzoom": 19
+        fun newInstance(nav3d: Boolean = false, fab: Boolean = true, style: String? = null) =
+            MapsMapFragment().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_NAV3D, nav3d)
+                    putBoolean(ARG_FAB, fab)
+                    if (style != null) putString(ARG_STYLE, style)
                 }
-              },
-              "layers": [
-                { "id": "background", "type": "background", "paint": { "background-color": "#e8eef4" } },
-                { "id": "osm",        "type": "raster",     "source": "osm" }
-              ]
             }
-        """
-
-        fun newInstance(nav3d: Boolean = false, fab: Boolean = true) = MapsMapFragment().apply {
-            arguments = Bundle().apply {
-                putBoolean(ARG_NAV3D, nav3d)
-                putBoolean(ARG_FAB, fab)
-            }
-        }
     }
 }

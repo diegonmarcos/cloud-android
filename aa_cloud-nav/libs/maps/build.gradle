@@ -35,6 +35,8 @@ def mapsMovingMps       = (mapsTracking.moving_threshold_mps as Number)?.doubleV
 def mapsStopsRadiusM    = (mapsTracking.stops_radius_m       as Number)?.intValue() ?: 50
 def mapsStopsDwellMin   = (mapsTracking.stops_dwell_min      as Number)?.intValue() ?: 5
 def mapsVersionName     = (buildJson.android.version_name ?: '0.0.0').toString()
+def mapStylesB64        = groovy.json.JsonOutput.toJson(buildJson.ui.map_styles ?: [:]).bytes.encodeBase64().toString()
+def demoStopsB64        = groovy.json.JsonOutput.toJson(buildJson.ui.demo_stops ?: [:]).bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.cloudnav.maps'
@@ -58,6 +60,8 @@ android {
         buildConfigField "int",    "UI_MAPS_STOPS_RADIUS_M",       "${mapsStopsRadiusM}"
         buildConfigField "int",    "UI_MAPS_STOPS_DWELL_MIN",      "${mapsStopsDwellMin}"
         buildConfigField "String", "VERSION_NAME",                 "\"${mapsVersionName}\""
+        buildConfigField "String", "UI_MAP_STYLES_B64",            "\"${mapStylesB64}\""
+        buildConfigField "String", "UI_DEMO_STOPS_B64",            "\"${demoStopsB64}\""
     }
     buildFeatures {
         buildConfig = true

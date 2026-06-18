@@ -1,6 +1,8 @@
 package com.diegonmarcos.cloudnav
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.diegonmarcos.cloudnav.maps.MapStyles
+import com.diegonmarcos.cloudnav.maps.MapsDemo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,6 +27,25 @@ class NavConfigTest {
 
     @Test fun default_tab_is_routes() {
         assertEquals("routes", NavConfig.defaultTab)
+    }
+
+    @Test fun demo_data_is_one_day_1987_07_18() {
+        assertEquals(553564800000L, MapsDemo.dayEpochMs)
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        assertEquals("1987-07-18", fmt.format(java.util.Date(MapsDemo.dayEpochMs)))
+        val stops = MapsDemo.stops()
+        assertTrue("demo day should have several stops", stops.size >= 5)
+        stops.forEach {
+            assertTrue(it.startMin in 0..1440 && it.endMin in it.startMin..1440)
+            assertTrue(it.place.isNotBlank() && it.city.isNotBlank())
+        }
+    }
+
+    @Test fun map_switcher_cycle_decodes() {
+        assertEquals(listOf("light", "dark", "satellite"), MapStyles.order)
+        assertEquals("dark", MapStyles.next("light"))
+        assertEquals("light", MapStyles.next("satellite"))  // wraps
     }
 
     @Test fun islands_and_categories_decode() {

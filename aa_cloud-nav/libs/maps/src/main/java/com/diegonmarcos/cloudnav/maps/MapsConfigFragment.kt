@@ -1,6 +1,9 @@
 package com.diegonmarcos.cloudnav.maps
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
@@ -12,6 +15,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 
 /**
@@ -39,7 +44,31 @@ class MapsConfigFragment : Fragment() {
     private var trackerStopBtn:    android.widget.Button? = null
     private var trackerResetBtn:   android.widget.Button? = null
     private var trackerResetArmed = false
-    private val TRACKER_PERM_REQUEST_CODE = 9991
+
+    /** Runtime-permission flow for Start. After the system dialog, if perms
+     *  are STILL missing (permanently denied, or background-location which the
+     *  dialog can't grant), fall back to opening app-details settings so the
+     *  user can grant them — Start never silently no-ops. */
+    private val trackerPermLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            val ctx = context ?: return@registerForActivityResult
+            if (MapsPermissions.missing(ctx).isEmpty()) {
+                LocationTrackerService.startTracking(ctx)
+            } else {
+                Toast.makeText(ctx, "Grant Location (all the time) + Notifications to start tracking", Toast.LENGTH_LONG).show()
+                openAppSettings(ctx)
+            }
+            refreshTrackerSection()
+        }
+
+    private fun openAppSettings(ctx: android.content.Context) {
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -149,7 +178,9 @@ class MapsConfigFragment : Fragment() {
                 MapsHaptics.tap(it)
                 val missing = MapsPermissions.missing(ctx)
                 if (missing.isNotEmpty()) {
-                    MapsPermissions.request(requireActivity(), missing, TRACKER_PERM_REQUEST_CODE)
+                    // Auto-open the permission grant (system dialog); the launcher
+                    // callback falls back to app settings if anything's left.
+                    trackerPermLauncher.launch(missing.toTypedArray())
                 } else {
                     LocationTrackerService.startTracking(ctx)
                     refreshTrackerSection()
@@ -190,6 +221,24 @@ class MapsConfigFragment : Fragment() {
             }
         }
         root.addView(trackerResetBtn)
+
+        // Tester seed — a full demo day (1987-07-18, Rio) so Timeline/Daily/
+        // Stops/day-map render without a live tracker. Idempotent.
+        root.addView(spacer(ctx, dp(ctx, 12)))
+        root.addView(caption(ctx, "No tracker history yet? Load a demo day (1987-07-18) to explore the Timeline, Daily, Stops and day-map views."))
+        root.addView(android.widget.Button(ctx).apply {
+            text = "Load demo data (1987-07-18)"
+            setOnClickListener {
+                MapsHaptics.tap(it)
+                val n = MapsDemo.seed(ctx)
+                Toast.makeText(
+                    ctx,
+                    if (n > 0) "Loaded $n demo stops — open Timeline" else "Demo day already loaded",
+                    Toast.LENGTH_LONG,
+                ).show()
+                refreshTrackerSection()
+            }
+        })
 
         refreshTrackerSection()
     }

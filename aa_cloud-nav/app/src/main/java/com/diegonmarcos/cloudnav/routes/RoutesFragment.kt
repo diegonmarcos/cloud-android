@@ -14,6 +14,7 @@ import com.diegonmarcos.cloudnav.SearchUi
 import com.diegonmarcos.cloudnav.maps.MapsMapFragment
 import com.diegonmarcos.cloudnav.maps.MapsProviderClient
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 /**
  * Routes tab — multi-stop routing. A live map (shared [MapsMapFragment])
@@ -61,10 +62,22 @@ class RoutesFragment : Fragment() {
             setTextColor(0xFF1A1C1A.toInt())
         })
 
-        searchCard = SearchUi.searchCard(ctx, "Add a destination — place, address, city…") { q ->
+        // Search pill + a (+) button to add the typed place as another stop.
+        val searchRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        searchCard = SearchUi.searchCard(ctx, "Add a stop — place, address, city…") { q ->
             addDestination(q)
         }
-        panel.addView(searchCard, LinearLayout.LayoutParams(MATCH, WRAP).apply {
+        searchRow.addView(searchCard, LinearLayout.LayoutParams(0, WRAP, 1f))
+        searchRow.addView(FloatingActionButton(ctx).apply {
+            setImageResource(android.R.drawable.ic_input_add)
+            contentDescription = "Add stop"
+            size = FloatingActionButton.SIZE_MINI
+            setOnClickListener { addDestination(SearchUi.field(searchCard).text.toString()) }
+        }, LinearLayout.LayoutParams(WRAP, WRAP).apply { marginStart = dp(6f).toInt() })
+        panel.addView(searchRow, LinearLayout.LayoutParams(MATCH, WRAP).apply {
             topMargin = dp(6f).toInt()
         })
 
