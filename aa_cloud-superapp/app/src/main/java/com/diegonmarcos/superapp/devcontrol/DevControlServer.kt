@@ -247,6 +247,18 @@ object DevControlServer {
                 }
                 "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
                 "battery/properties" -> { reply(writer, "200 OK", batteryPropertiesJson(ctx), "application/json") }
+                "battery/snapshot" -> {
+                    // Capture + persist a charge/PD snapshot (native + dumpsys
+                    // via adb if connected). Best run at <30%, cool, plugged.
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.battery.ChargeSnapshot.capture(ctx).toString(),
+                        "application/json")
+                }
+                "battery/snapshots" -> {
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.battery.ChargeSnapshot.recent(ctx).toString(),
+                        "application/json")
+                }
                 "energy/self" -> { reply(writer, "200 OK", energySelfJson(), "application/json") }
                 "energy/attribution" -> { reply(writer, "200 OK", energyAttributionJson(ctx), "application/json") }
                 "energy/samples" -> { reply(writer, "200 OK", energySamplesJson(ctx), "application/json") }
@@ -384,6 +396,8 @@ object DevControlServer {
             Spec("battery/reset_anchor","GET",  true,  "DELETE the persisted session anchor (both unplug/plug). Next read mints a fresh first_read_fallback; the next real plug/unplug cycle overwrites with an authoritative receiver-event anchor. Equivalent to a fresh install for the battery-session machinery.", ""),
             Spec("sysfs/diagnostic",    "GET",  true,  "Per-path readability check for every kernel sysfs/proc file the app touches. Returns ✓ OK + preview when readable, ✗ does-not-exist / not-readable / read-failed otherwise. THIS is the answer to 'why isn't sysfs working even though no perm is needed' — hardened Androids block specific power_supply nodes via SELinux.", ""),
             Spec("battery/properties",  "GET",  true,  "Full dump of every BatteryManager.BATTERY_PROPERTY_* getter + every sticky ACTION_BATTERY_CHANGED extra. This is the path AccuBattery and similar gauges use when sysfs is hardened (Samsung One UI 7+, Pixel A15+) — system-service surface that bypasses the SELinux block. Use it to identify which fields ARE exposed on the current device so we can wire them into BatterySessionStats.", ""),
+            Spec("battery/snapshot",    "GET",  true,  "Capture + persist ONE charging snapshot: native fields (level/current/voltage/temp/power) + (if embedded-adb is connected) dumpsys battery truth — Max charging current/voltage, Charging state, IC-auth, and the raw last ACTION_BATTERY_CHANGED line (charge_type/charger_type/hvc/mcc/mcv). Run at <30% cool while charging to capture whether fast-charge (mcv→9000) engages. Also available as a button in Battery Usage Details.", ""),
+            Spec("battery/snapshots",   "GET",  true,  "Newest-first history of stored charging snapshots (capped 50) from battery/snapshot — compare across SOC levels to see exactly when/if fast-charge negotiates.", ""),
             Spec("energy/self",         "GET",  true,  "Intra-app energy ledger — which subsystem INSIDE Cloud SuperApp spent the most CPU-ms / wakeups / bytes since the window start (ui.galaxy, music.session, bg.battery_worker, bg.energy_sampler, …). Answers 'what in our own app drains battery'.", ""),
             Spec("energy/attribution",  "GET",  true,  "Device-level Tier-1 watchdog attribution over stored samples: idle baseline mA, marginal mA per state (screen-on / audio / weak-cellular / high-cpu / bright-screen), per-foreground-app avg draw + energy proxy, and our own self cpu/net cost over the window.", ""),
             Spec("energy/samples",      "GET",  true,  "Raw recent energy-watchdog samples (last 200): per-sample whole-device draw_ma + state vector (screen, brightness, foreground pkg, cpu load, signal, wifi, audio).", ""),

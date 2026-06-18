@@ -139,6 +139,35 @@ class EnergyUsageDialog : DialogFragment() {
             box.addView(small(ctx, "Health = est. full ÷ design capacity. Design isn't exposed by Android; Samsung ASOC (true wear %) is available via the Shizuku/ADB dumpsys path (Dev Control → /api/adb)."))
         }
 
+        // 1d) Charging snapshots — capture the charge/PD fields on demand
+        //     (best at <30%, cool, plugged) so the decisive fast-charge
+        //     evidence is logged the instant it happens. The dumpsys read
+        //     runs via the embedded-adb channel off the main thread.
+        card(ctx, root, "Charging snapshots") { box ->
+            val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            fun render() {
+                list.removeAllViews()
+                val snaps = ChargeSnapshot.recent(ctx)
+                if (snaps.length() == 0) {
+                    list.addView(small(ctx, "No snapshots yet — tap Capture (ideally at <30% while charging).")); return
+                }
+                for (i in 0 until minOf(snaps.length(), 12)) {
+                    val o = snaps.getJSONObject(i)
+                    list.addView(line(ctx, fmtAgo(o.optLong("ts", 0L)), ChargeSnapshot.fmtLine(o)))
+                }
+            }
+            box.addView(pill(ctx, "Capture snapshot now") {
+                val busy = small(ctx, "Capturing (dumpsys via adb)…"); box.addView(busy)
+                Thread {
+                    runCatching { ChargeSnapshot.capture(ctx) }
+                    box.post { box.removeView(busy); render() }
+                }.start()
+            })
+            box.addView(small(ctx, "Drain to <30%, keep cool, plug the Anker, then Capture. mcv→9000 (PD tag) = fast-charge engaged; 5V/normal = not."))
+            box.addView(list)
+            render()
+        }
+
         val attr = runCatching { EnergyWatchdog.attribution(ctx) }.getOrDefault(emptyMap())
         val sampleCount = (attr["samples"] as? Int) ?: 0
 
