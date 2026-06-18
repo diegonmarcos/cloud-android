@@ -5,6 +5,8 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import kotlin.math.cos
+import kotlin.math.max
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -64,11 +66,13 @@ object MapsProviderClient {
         focusLat: Double = 0.0,
         focusLon: Double = 0.0,
         limit: Int = 25,
+        radiusKm: Double = 0.0,
     ): List<SearchHit> {
         if (query.isBlank()) return emptyList()
-        // Cache hit? (≤ TTL old) — skip the network entirely.
+        // Cache hit? (≤ TTL old) — skip the network entirely. Scope (radius)
+        // is part of the key so city/country/world cache separately.
         val db = MapsDb.get(ctx)
-        val cacheKey = cacheKeyForward(query, focusLat, focusLon)
+        val cacheKey = cacheKeyForward(query, focusLat, focusLon, radiusKm)
         db.cacheGet(cacheKey, cacheTtlMs())?.let { return hitsFromJson(it).take(limit) }
 
         val prefs = MapsProviderPrefs(ctx)
@@ -77,11 +81,20 @@ object MapsProviderClient {
         val active = all.firstOrNull { it.id == prefs.activeSearch && it.searchEndpoint.isNotEmpty() }
             ?: all.firstOrNull { it.kinds.contains("search") && it.searchEndpoint.isNotEmpty() }
             ?: return emptyList()
-        val url = active.searchEndpoint
+        var url = active.searchEndpoint
             .replace("{q}", URLEncoder.encode(query, "UTF-8"))
             .replace("{lat}", focusLat.toString())
             .replace("{lon}", focusLon.toString())
             .replace("{key}", keys.get(active.id))
+        // Radius scope (City/Country) → bound the search to a box around the
+        // user. Nominatim-family supports viewbox+bounded; Photon only biases.
+        if (radiusKm > 0 && (focusLat != 0.0 || focusLon != 0.0) && isNominatimFamily(active.id)) {
+            val latDeg = radiusKm / 111.0
+            val lonDeg = radiusKm / (111.0 * max(0.1, cos(Math.toRadians(focusLat))))
+            val west = focusLon - lonDeg; val east = focusLon + lonDeg
+            val north = focusLat + latDeg; val south = focusLat - latDeg
+            url += "&viewbox=$west,$north,$east,$south&bounded=1"
+        }
         val body = fetch(url) ?: return emptyList()
         val hits = parseSearch(active.id, body)
         if (hits.isNotEmpty()) db.cachePut(cacheKey, hitsToJson(hits))  // don't cache empties/failures.
@@ -256,10 +269,13 @@ object MapsProviderClient {
     // Nominatim/Overpass endpoints and makes repeat searches instant.
     private fun cacheTtlMs(): Long = BuildConfig.UI_SEARCH_CACHE_TTL_DAYS.toLong() * 86_400_000L
 
-    /** Forward-search key — query (normalised) + focus rounded to ~11 km so
-     *  nearby searches share an entry. */
-    fun cacheKeyForward(query: String, focusLat: Double, focusLon: Double): String =
-        "fwd:" + query.trim().lowercase() + "@" + round(focusLat, 10) + "," + round(focusLon, 10)
+    /** Forward-search key — query (normalised) + focus rounded to ~11 km +
+     *  radius scope so city/country/world cache separately. */
+    fun cacheKeyForward(query: String, focusLat: Double, focusLon: Double, radiusKm: Double = 0.0): String =
+        "fwd:" + query.trim().lowercase() + "@" + round(focusLat, 10) + "," + round(focusLon, 10) +
+            "|r" + radiusKm.toInt()
+
+    private fun isNominatimFamily(id: String): Boolean = id.startsWith("nominatim") || id == "locationiq"
 
     /** POI key — tag + viewport rounded to ~1.1 km so re-searching the same
      *  view hits the cache. */

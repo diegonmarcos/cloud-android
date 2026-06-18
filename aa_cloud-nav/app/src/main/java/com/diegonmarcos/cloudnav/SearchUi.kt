@@ -93,8 +93,9 @@ object SearchUi {
             if (h.subtitle.isNullOrBlank()) h.title else "${h.title}\n${h.subtitle}"
         }.toTypedArray()
         AlertDialog.Builder(ctx)
-            .setTitle("Choose a result")
+            .setTitle("Pick the right place")
             .setItems(labels) { _, which -> onPick(top[which]) }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 

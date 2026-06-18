@@ -13,7 +13,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.cloudnav.Icons
 import com.diegonmarcos.cloudnav.NavConfig
 import com.diegonmarcos.cloudnav.PlaceCategory
 import com.diegonmarcos.cloudnav.SearchUi
@@ -34,10 +33,11 @@ import com.google.android.material.chip.ChipGroup
  */
 class PlacesFragment : Fragment() {
 
-    private val mapFragment = MapsMapFragment.newInstance(fab = true)
+    private val mapFragment = MapsMapFragment.newInstance(fab = true, style = "satellite")
     private lateinit var sheetBehavior: BottomSheetBehavior<View>
     private lateinit var sheetTitle: TextView
     private lateinit var resultsContainer: LinearLayout
+    private var activeRadiusKm: Double = 0.0   // search scope: City/Country/World
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?,
@@ -52,12 +52,33 @@ class PlacesFragment : Fragment() {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }
 
-        // Top overlay: simple search + category islands.
+        // Top overlay: simple search + radius-scope islands + category islands.
         val top = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        top.addView(
-            SearchUi.searchCard(ctx, "Search places, addresses, cities…") { q -> search(q) },
-            LinearLayout.LayoutParams(MATCH, WRAP),
-        )
+        val searchCard = SearchUi.searchCard(ctx, "Search places, addresses, cities…") { q -> search(q) }
+        top.addView(searchCard, LinearLayout.LayoutParams(MATCH, WRAP))
+
+        // Radius scope (City / Country / World) — shown when the search bar is
+        // focused; default = build.json default_search_scope (City).
+        val scopes = NavConfig.searchScopes
+        activeRadiusKm = scopes.firstOrNull { it.id == NavConfig.defaultScope }?.radiusKm ?: 0.0
+        val scopeChips = ChipGroup(ctx).apply { isSingleLine = true; isSingleSelection = true; chipSpacingHorizontal = dp(6); setPadding(dp(4), 0, dp(4), 0) }
+        scopes.forEach { sc ->
+            scopeChips.addView(Chip(ctx).apply {
+                id = View.generateViewId()
+                text = if (sc.emoji.isBlank()) sc.label else "${sc.emoji} ${sc.label}"
+                isCheckable = true
+                isChecked = sc.id == NavConfig.defaultScope
+                setOnClickListener { activeRadiusKm = sc.radiusKm }
+            })
+        }
+        val scopeScroll = HorizontalScrollView(ctx).apply {
+            isHorizontalScrollBarEnabled = false; addView(scopeChips); visibility = View.GONE
+        }
+        top.addView(scopeScroll, LinearLayout.LayoutParams(MATCH, WRAP))
+        SearchUi.field(searchCard).setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) scopeScroll.visibility = View.VISIBLE
+        }
+
         val islands = ChipGroup(ctx).apply {
             isSingleLine = true
             chipSpacingHorizontal = dp(6)
@@ -65,9 +86,8 @@ class PlacesFragment : Fragment() {
         }
         NavConfig.placeCategories.forEach { cat ->
             islands.addView(Chip(ctx).apply {
-                text = cat.label
+                text = if (cat.emoji.isBlank()) cat.label else "${cat.emoji} ${cat.label}"
                 isClickable = true; isCheckable = false
-                setChipIconResource(Icons.place(ctx, cat.icon))
                 setOnClickListener { searchCategory(cat) }
             })
         }
@@ -120,16 +140,19 @@ class PlacesFragment : Fragment() {
         return sheet
     }
 
-    /** Free-text universal search → red pins + results list. */
+    /** Free-text universal search → red pins + results list. Bounded by the
+     *  active radius scope (City/Country/World) around the user (or map). */
     private fun search(query: String) {
         if (query.isBlank()) return
         val ctx = context ?: return
-        val center = mapFragment.centerTarget()
+        val focus = mapFragment.myLatLon() ?: mapFragment.centerTarget()
+        val radius = activeRadiusKm
         Thread {
             val hits = MapsProviderClient.forwardSearch(
                 ctx, query,
-                focusLat = center?.first ?: 0.0,
-                focusLon = center?.second ?: 0.0,
+                focusLat = focus?.first ?: 0.0,
+                focusLon = focus?.second ?: 0.0,
+                radiusKm = radius,
             )
             ui {
                 if (hits.isEmpty()) { Toast.makeText(ctx, "No match for \"$query\"", Toast.LENGTH_SHORT).show(); return@ui }

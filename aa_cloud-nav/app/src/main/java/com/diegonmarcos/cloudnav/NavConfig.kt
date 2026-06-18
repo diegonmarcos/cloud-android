@@ -11,7 +11,8 @@ import org.json.JSONObject
  */
 data class NavTab(val id: String, val label: String, val icon: String)
 data class SearchIsland(val id: String, val label: String, val icon: String, val action: String)
-data class PlaceCategory(val id: String, val label: String, val icon: String, val query: String)
+data class PlaceCategory(val id: String, val label: String, val icon: String, val query: String, val emoji: String)
+data class SearchScope(val id: String, val label: String, val emoji: String, val radiusKm: Double)
 
 object NavConfig {
 
@@ -44,9 +45,21 @@ object NavConfig {
             PlaceCategory(
                 o.getString("id"), o.getString("label"),
                 o.optString("icon", "place"), o.optString("query", ""),
+                o.optString("emoji", ""),
             )
         }
     }
+
+    val searchScopes: List<SearchScope> by lazy {
+        val arr = JSONArray(decode(BuildConfig.UI_SEARCH_SCOPES_B64))
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            SearchScope(o.getString("id"), o.optString("label", o.getString("id")),
+                o.optString("emoji", ""), o.optDouble("radius_km", 0.0))
+        }
+    }
+
+    val defaultScope: String get() = BuildConfig.UI_DEFAULT_SEARCH_SCOPE.ifBlank { "city" }
 
     val defaultTab: String get() = BuildConfig.UI_DEFAULT_TAB.ifBlank { tabs.firstOrNull()?.id ?: "routes" }
 }

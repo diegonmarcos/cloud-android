@@ -84,6 +84,18 @@ class NavConfigTest {
         assertEquals(2, MapsRouting.decodePolyline6("????").size)
     }
 
+    @Test fun search_scopes_decode_default_city() {
+        val s = NavConfig.searchScopes
+        assertEquals(listOf("city", "country", "world"), s.map { it.id })
+        assertEquals("city", NavConfig.defaultScope)
+        assertTrue("city scope is bounded", s.first { it.id == "city" }.radiusKm > 0)
+        assertEquals(0.0, s.first { it.id == "world" }.radiusKm, 1e-9)  // world = unbounded
+    }
+
+    @Test fun place_categories_have_emoji() {
+        assertTrue(NavConfig.placeCategories.all { it.emoji.isNotBlank() })
+    }
+
     @Test fun islands_and_categories_decode() {
         assertTrue("search islands should decode", NavConfig.islands.isNotEmpty())
         assertTrue("place categories should decode", NavConfig.placeCategories.size >= 10)

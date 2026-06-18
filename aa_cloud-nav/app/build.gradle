@@ -30,6 +30,8 @@ def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toStr
 def uiNavTabsB64        = b64(buildJson.ui.nav_tabs ?: [])
 def uiSearchIslandsB64  = b64(buildJson.ui.search_islands ?: [])
 def uiPlacesCatsB64     = b64(buildJson.ui.places_categories ?: [])
+def uiSearchScopesB64   = b64(buildJson.ui.search_scopes ?: [])
+def defaultSearchScope  = (buildJson.ui.default_search_scope ?: 'city').toString()
 def defaultTab          = (buildJson.ui.default_tab ?: 'routes').toString()
 
 // ── About page config (data-driven) ─────────────────────────────────
@@ -162,6 +164,8 @@ android {
         buildConfigField "String", "UI_NAV_TABS_B64",       "\"${uiNavTabsB64}\""
         buildConfigField "String", "UI_SEARCH_ISLANDS_B64",  "\"${uiSearchIslandsB64}\""
         buildConfigField "String", "UI_PLACES_CATEGORIES_B64","\"${uiPlacesCatsB64}\""
+        buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""
+        buildConfigField "String", "UI_DEFAULT_SEARCH_SCOPE", "\"${defaultSearchScope}\""
         buildConfigField "String", "UI_DEFAULT_TAB",         "\"${defaultTab}\""
         // About page config
         buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""

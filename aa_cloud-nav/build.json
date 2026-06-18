@@ -124,80 +124,20 @@
         "action": "share:location"
       }
     ],
-    "_doc_places_categories": "Place categories for the Places tab. query is the Overpass/POI tag filter used when the POI provider is wired; icon maps to R.drawable.ic_place_<icon>.",
+    "_doc_places_categories": "Place categories for the Places tab islands. query is the Overpass POI tag filter; emoji is the chip glyph (Google-Maps-style, data-driven — no per-category drawables).",
     "places_categories": [
-      {
-        "id": "bars",
-        "label": "Bars",
-        "icon": "bar",
-        "query": "amenity=bar"
-      },
-      {
-        "id": "nightlife",
-        "label": "Nightlife",
-        "icon": "nightlife",
-        "query": "amenity=nightclub"
-      },
-      {
-        "id": "restaurants",
-        "label": "Restaurants",
-        "icon": "restaurant",
-        "query": "amenity=restaurant"
-      },
-      {
-        "id": "cafes",
-        "label": "Cafés",
-        "icon": "cafe",
-        "query": "amenity=cafe"
-      },
-      {
-        "id": "supermarkets",
-        "label": "Supermarkets",
-        "icon": "supermarket",
-        "query": "shop=supermarket"
-      },
-      {
-        "id": "beaches",
-        "label": "Beaches",
-        "icon": "beach",
-        "query": "natural=beach"
-      },
-      {
-        "id": "nature",
-        "label": "Natural Wonders",
-        "icon": "nature",
-        "query": "leisure=park"
-      },
-      {
-        "id": "gyms",
-        "label": "Gyms",
-        "icon": "gym",
-        "query": "leisure=fitness_centre"
-      },
-      {
-        "id": "atms",
-        "label": "ATMs",
-        "icon": "atm",
-        "query": "amenity=atm"
-      },
-      {
-        "id": "fuel",
-        "label": "Fuel",
-        "icon": "fuel",
-        "query": "amenity=fuel"
-      },
-      {
-        "id": "pharmacies",
-        "label": "Pharmacies",
-        "icon": "pharmacy",
-        "query": "amenity=pharmacy"
-      },
-      {
-        "id": "hotels",
-        "label": "Hotels",
-        "icon": "hotel",
-        "query": "tourism=hotel"
-      }
+      { "id": "bars",         "label": "Bars",            "emoji": "🍺", "icon": "bar",         "query": "amenity=bar" },
+      { "id": "nightlife",    "label": "Nightlife",       "emoji": "🍸", "icon": "nightlife",   "query": "amenity=nightclub" },
+      { "id": "restaurants",  "label": "Restaurants",     "emoji": "🍽️", "icon": "restaurant",  "query": "amenity=restaurant" },
+      { "id": "cafes",        "label": "Cafés",           "emoji": "☕", "icon": "cafe",        "query": "amenity=cafe" },
+      { "id": "supermarkets", "label": "Supermarkets",    "emoji": "🛒", "icon": "supermarket", "query": "shop=supermarket" },
+      { "id": "beaches",      "label": "Beaches",         "emoji": "🏖️", "icon": "beach",       "query": "natural=beach" },
+      { "id": "nature",       "label": "Natural Wonders", "emoji": "🏞️", "icon": "nature",      "query": "leisure=park" },
+      { "id": "gyms",         "label": "Gyms",            "emoji": "🏋️", "icon": "gym",         "query": "leisure=fitness_centre" },
+      { "id": "atms",         "label": "ATMs",            "emoji": "🏧", "icon": "atm",         "query": "amenity=atm" },
+      { "id": "fuel",         "label": "Fuel",            "emoji": "⛽", "icon": "fuel",        "query": "amenity=fuel" },
+      { "id": "pharmacies",   "label": "Pharmacies",      "emoji": "💊", "icon": "pharmacy",    "query": "amenity=pharmacy" },
+      { "id": "hotels",       "label": "Hotels",          "emoji": "🏨", "icon": "hotel",       "query": "tourism=hotel" }
     ],
     "_doc_map_styles": "Raster basemaps. `order` = the cycle the in-map Map-switcher FAB (under locate-me) steps through. light = OSM standard; dark = CARTO Dark Matter (also Navigation's night view); satellite = Esri World Imagery. background paints behind a tile gap. Consumed by MapsMapFragment (baked UI_MAP_STYLES_B64) — no hardcoded tile URLs in Kotlin.",
     "map_styles": {
@@ -235,6 +175,13 @@
     },
     "_doc_search_choices": "How many forward-search candidates the search bar offers the user to pick from (Routes/Navigation show a chooser instead of auto-picking the first hit).",
     "search_choices": 3,
+    "_doc_search_scopes": "Radius-scope islands shown when the Places search bar is focused. radius_km bounds the forward search around the user (0 = worldwide). default_search_scope = the one pre-selected.",
+    "default_search_scope": "city",
+    "search_scopes": [
+      { "id": "city",    "label": "City",    "emoji": "🏙️", "radius_km": 30 },
+      { "id": "country", "label": "Country", "emoji": "🗺️", "radius_km": 700 },
+      { "id": "world",   "label": "World",   "emoji": "🌍", "radius_km": 0 }
+    ],
     "_doc_routing": "Route geometry + per-mode distance/time. valhalla_public = FOSSGIS Valhalla (free, no key, fair-use) — real road routes for car/walk/bike/bus. boat/flight/swim have no router → great-circle estimate. Consumed by MapsRouting (baked UI_ROUTING_ENDPOINT).",
     "routing": {
       "active": "valhalla_public",
