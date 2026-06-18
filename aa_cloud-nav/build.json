@@ -195,12 +195,12 @@
       ]
     },
     "_doc_travel_modes": "Route mode switcher (Routes tab) + the all-modes stats panel. engine=valhalla → real route via `costing`; engine=geodesic → straight-line distance ÷ avg_speed_kmh estimate. estimated=true flags approximations (bus = road approximation, not transit timetables). default_travel_mode = the one selected on open.",
-    "default_travel_mode": "car",
+    "default_travel_mode": "walking",
     "travel_modes": [
-      { "id": "car",       "label": "Car",    "emoji": "🚗", "engine": "valhalla", "costing": "auto",       "estimated": false },
       { "id": "walking",   "label": "Walk",   "emoji": "🚶", "engine": "valhalla", "costing": "pedestrian", "estimated": false },
       { "id": "bike",      "label": "Bike",   "emoji": "🚲", "engine": "valhalla", "costing": "bicycle",    "estimated": false },
       { "id": "bus",       "label": "Bus",    "emoji": "🚌", "engine": "valhalla", "costing": "bus",        "estimated": true  },
+      { "id": "car",       "label": "Car",    "emoji": "🚗", "engine": "valhalla", "costing": "auto",       "estimated": false },
       { "id": "boat",      "label": "Boat",   "emoji": "⛵", "engine": "geodesic", "avg_speed_kmh": 40,     "estimated": true  },
       { "id": "flying",    "label": "Flight", "emoji": "✈️", "engine": "geodesic", "avg_speed_kmh": 800,    "estimated": true  },
       { "id": "swimming",  "label": "Swim",   "emoji": "🏊", "engine": "geodesic", "avg_speed_kmh": 4,      "estimated": true  }

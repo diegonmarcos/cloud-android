@@ -69,6 +69,8 @@ class MapsMapFragment : Fragment() {
 
     private val nav3d: Boolean get() = arguments?.getBoolean(ARG_NAV3D, false) ?: false
     private val showFab: Boolean get() = arguments?.getBoolean(ARG_FAB, true) ?: true
+    private val autoLocate: Boolean get() = arguments?.getBoolean(ARG_AUTOLOCATE, false) ?: false
+    private var autoLocateDone = false
 
     private val locPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -215,7 +217,12 @@ class MapsMapFragment : Fragment() {
             styleReady = true
             pushMe()
             pushRoute()
-            if (firstLoad) onMapReady?.invoke(m)
+            if (firstLoad) {
+                onMapReady?.invoke(m)
+                // Auto-locate once on open (Routes) → drops the my-location dot
+                // and fires onUserLocation so the route can auto-render.
+                if (autoLocate && !autoLocateDone) { autoLocateDone = true; recenterOnUser() }
+            }
         }
     }
 
@@ -303,6 +310,7 @@ class MapsMapFragment : Fragment() {
         const val ARG_NAV3D = "nav3d"
         const val ARG_FAB   = "fab"
         const val ARG_STYLE = "style"
+        const val ARG_AUTOLOCATE = "autolocate"
 
         const val COLOR_RESULT = "#D93025"
         const val COLOR_PLACE  = "#1A73E8"
@@ -320,11 +328,12 @@ class MapsMapFragment : Fragment() {
         private const val NAV_TILT = 55.0
         private const val NAV_ZOOM = 18.0
 
-        fun newInstance(nav3d: Boolean = false, fab: Boolean = true, style: String? = null) =
+        fun newInstance(nav3d: Boolean = false, fab: Boolean = true, style: String? = null, autoLocate: Boolean = false) =
             MapsMapFragment().apply {
                 arguments = Bundle().apply {
                     putBoolean(ARG_NAV3D, nav3d)
                     putBoolean(ARG_FAB, fab)
+                    putBoolean(ARG_AUTOLOCATE, autoLocate)
                     if (style != null) putString(ARG_STYLE, style)
                 }
             }

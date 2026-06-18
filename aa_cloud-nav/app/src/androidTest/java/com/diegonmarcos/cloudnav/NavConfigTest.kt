@@ -67,7 +67,8 @@ class NavConfigTest {
         assertTrue("at least 6 travel modes", modes.size >= 6)
         assertTrue(modes.map { it.id }.containsAll(
             listOf("car", "walking", "bus", "boat", "flying", "swimming")))
-        assertEquals("car", MapsRouting.defaultModeId())
+        assertEquals("walking", modes.first().id)            // Walk is first
+        assertEquals("walking", MapsRouting.defaultModeId())  // and the default
         // geodesic modes carry a positive avg speed; valhalla modes a costing.
         modes.forEach {
             if (it.engine == "geodesic") assertTrue(it.avgSpeedKmh > 0)

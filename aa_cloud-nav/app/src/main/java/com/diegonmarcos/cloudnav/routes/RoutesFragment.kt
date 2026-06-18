@@ -40,7 +40,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
  */
 class RoutesFragment : Fragment() {
 
-    private val mapFragment = MapsMapFragment.newInstance(fab = true)
+    private val mapFragment = MapsMapFragment.newInstance(fab = true, autoLocate = true)
 
     private data class Stop(var label: String, var latLon: Pair<Double, Double>?)
     private val stops = mutableListOf(Stop("Your location", null))
