@@ -17,18 +17,19 @@
           };
         };
 
-        # ── Pin SDK/build-tools/NDK in one place. Mirrored in
-        #    build.json::toolchain. NDK is required because libs:maps pulls
-        #    MapLibre Native (.so payload); no in-tree CMake build, but the
-        #    NDK + cmake stay available for consistency with the SuperApp shell.
+        # ── Pin SDK/build-tools in one place. Mirrored in
+        #    build.json::toolchain. NO NDK / cmake: Cloud Nav has ZERO in-tree
+        #    native build — libs:maps pulls MapLibre Native + play-services as
+        #    AARs that already ship their prebuilt .so, and `ndk { abiFilters }`
+        #    only selects which of those .so to pack (it never invokes the NDK).
+        #    Dropping the ~3 GB NDK derivation keeps the devShell lean and the
+        #    build reproducible on a near-full nix store.
         baseAndroidArgs = {
           toolsVersion        = "26.1.1";
           platformToolsVersion = "35.0.2";
           buildToolsVersions  = [ "35.0.0" "34.0.0" ];
           platformVersions    = [ "35" "34" "26" ];
-          includeNDK          = true;
-          ndkVersions         = [ "26.1.10909125" ];
-          cmakeVersions       = [ "3.22.1" ];
+          includeNDK          = false;
         };
 
         # Lean BUILD SDK — NO emulator, NO system images.

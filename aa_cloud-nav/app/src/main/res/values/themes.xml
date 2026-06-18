@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.CloudNav" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Forced LIGHT (not DayNight) — Cloud Nav is light-mode only so the
+         map (light OSM raster) and the chrome (bars / nav / timeline) never
+         disagree, regardless of the system dark-mode setting. -->
+    <style name="Theme.CloudNav" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/nav_primary</item>
         <item name="colorOnPrimary">@color/nav_on_primary</item>
         <item name="colorPrimaryContainer">@color/nav_primary_container</item>

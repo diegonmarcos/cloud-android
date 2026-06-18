@@ -8,93 +8,126 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.cloudnav.NavShellChild
-import com.diegonmarcos.cloudnav.SearchIsland
+import com.diegonmarcos.cloudnav.SearchUi
 import com.diegonmarcos.cloudnav.maps.MapsMapFragment
+import com.diegonmarcos.cloudnav.maps.MapsProviderClient
 import com.google.android.material.card.MaterialCardView
 
 /**
- * Routes tab — live MapLibre map (from libs:maps) with a multi-stop routing
- * panel overlaid at the bottom. The shell search bar feeds destination
- * queries here; "Your location" is the implicit start point.
+ * Routes tab — multi-stop routing. A live map (shared [MapsMapFragment])
+ * with a routing card on top. The start point defaults to "Your location";
+ * each destination you search is geocoded (universal forward search) and
+ * added to the ordered stop list + pinned on the map. "Add stop" lets you
+ * chain several places into one route.
  *
- * Routing engine wiring (OSRM/Valhalla over the active POI provider) is the
- * next phase — the panel + stop list are the functional scaffold for it.
+ * The drawn route polyline (OSRM/Valhalla over the active provider) is the
+ * next phase — this wires real geocoding + ordered multi-stop pins, the
+ * functional scaffold for it.
  */
-class RoutesFragment : Fragment(), NavShellChild {
+class RoutesFragment : Fragment() {
 
-    private val stops = mutableListOf("Your location")
+    private val mapFragment = MapsMapFragment.newInstance(fab = true)
+
+    private data class Stop(val label: String, val pin: MapsMapFragment.Pin?)
+    private val stops = mutableListOf(Stop("Your location", null))
+
     private lateinit var stopList: LinearLayout
+    private lateinit var searchCard: MaterialCardView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?,
     ): View {
-        val root = FrameLayout(requireContext())
+        val ctx = requireContext()
+        val root = FrameLayout(ctx)
 
-        // Live map background.
-        val mapHost = FrameLayout(requireContext()).apply { id = View.generateViewId() }
+        val mapHost = FrameLayout(ctx).apply { id = View.generateViewId() }
         root.addView(mapHost, FrameLayout.LayoutParams(MATCH, MATCH))
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
-            childFragmentManager.beginTransaction()
-                .replace(mapHost.id, MapsMapFragment())
-                .commit()
+            childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }
 
-        // Multi-stop routing panel.
-        val card = MaterialCardView(requireContext()).apply {
-            radius = dp(16f)
-            cardElevation = dp(6f)
-            useCompatPadding = true
+        val card = MaterialCardView(ctx).apply {
+            radius = dp(16f); cardElevation = dp(6f); useCompatPadding = true
         }
-        val panel = LinearLayout(requireContext()).apply {
+        val panel = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16f).toInt(), dp(14f).toInt(), dp(16f).toInt(), dp(14f).toInt())
+            setPadding(dp(14f).toInt(), dp(12f).toInt(), dp(14f).toInt(), dp(12f).toInt())
         }
-        panel.addView(TextView(requireContext()).apply {
+        panel.addView(TextView(ctx).apply {
             text = "Route"
             textSize = 16f
+            setTextColor(0xFF1A1C1A.toInt())
         })
-        stopList = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }
+
+        searchCard = SearchUi.searchCard(ctx, "Add a destination — place, address, city…") { q ->
+            addDestination(q)
+        }
+        panel.addView(searchCard, LinearLayout.LayoutParams(MATCH, WRAP).apply {
+            topMargin = dp(6f).toInt()
+        })
+
+        stopList = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         panel.addView(stopList)
-        panel.addView(TextView(requireContext()).apply {
-            text = "+ Add stop  (search above to set a destination)"
-            textSize = 13f
-            setPadding(0, dp(8f).toInt(), 0, 0)
-            setOnClickListener { addStop("New destination") }
-        })
+
         card.addView(panel)
         root.addView(card, FrameLayout.LayoutParams(MATCH, WRAP).apply {
-            gravity = Gravity.BOTTOM
-            setMargins(dp(12f).toInt(), 0, dp(12f).toInt(), dp(12f).toInt())
+            gravity = Gravity.TOP
+            setMargins(dp(8f).toInt(), dp(8f).toInt(), dp(8f).toInt(), 0)
         })
 
         renderStops()
         return root
     }
 
-    override fun onSearchSubmit(query: String) {
-        if (query.isNotBlank()) addStop(query)
-    }
-
-    override fun onIslandTap(island: SearchIsland) {
-        addStop(island.label)
-    }
-
-    private fun addStop(label: String) {
-        stops.add(label)
-        if (::stopList.isInitialized) renderStops()
+    private fun addDestination(query: String) {
+        if (query.isBlank()) return
+        val ctx = context ?: return
+        val center = mapFragment.centerTarget()
+        Thread {
+            val hits = MapsProviderClient.forwardSearch(
+                ctx, query,
+                focusLat = center?.first ?: 0.0,
+                focusLon = center?.second ?: 0.0,
+            )
+            ui {
+                val hit = hits.firstOrNull()
+                if (hit == null) {
+                    Toast.makeText(ctx, "No match for \"$query\"", Toast.LENGTH_SHORT).show()
+                    return@ui
+                }
+                stops.add(Stop(hit.title, MapsMapFragment.Pin(hit.lat, hit.lon, MapsMapFragment.COLOR_RESULT)))
+                SearchUi.field(searchCard).text?.clear()
+                renderStops()
+                val pins = stops.mapNotNull { it.pin }
+                mapFragment.setPins(pins)
+                if (pins.isNotEmpty()) mapFragment.fitTo(pins)
+            }
+        }.start()
     }
 
     private fun renderStops() {
         stopList.removeAllViews()
         stops.forEachIndexed { i, s ->
             stopList.addView(TextView(requireContext()).apply {
-                text = "${i + 1}.  $s"
+                text = "${i + 1}.  ${s.label}"
                 textSize = 14f
+                setTextColor(if (s.pin == null) 0xFF0B8043.toInt() else 0xFF1A1C1A.toInt())
                 setPadding(0, dp(4f).toInt(), 0, dp(4f).toInt())
             })
         }
+        stopList.addView(TextView(requireContext()).apply {
+            text = "Search above to add another stop"
+            textSize = 12f
+            setTextColor(0xFF5C5F5C.toInt())
+            setPadding(0, dp(6f).toInt(), 0, 0)
+        })
+    }
+
+    private fun ui(block: () -> Unit) {
+        if (!isAdded) return
+        requireActivity().runOnUiThread { if (isAdded) block() }
     }
 
     private fun dp(v: Float): Float = v * resources.displayMetrics.density

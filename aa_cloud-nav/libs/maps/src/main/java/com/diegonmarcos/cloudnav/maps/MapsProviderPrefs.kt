@@ -19,19 +19,26 @@ class MapsProviderPrefs(ctx: Context) {
         get() = sp.getString(KEY_POI, BuildConfig.UI_MAPS_ACTIVE_POI) ?: BuildConfig.UI_MAPS_ACTIVE_POI
         set(value) { sp.edit().putString(KEY_POI, value).apply() }
 
+    var activeSearch: String
+        get() = sp.getString(KEY_SEARCH, BuildConfig.UI_MAPS_ACTIVE_SEARCH) ?: BuildConfig.UI_MAPS_ACTIVE_SEARCH
+        set(value) { sp.edit().putString(KEY_SEARCH, value).apply() }
+
     fun activeFor(kind: String): String = when (kind) {
         "reverse" -> activeReverse
         "poi"     -> activePoi
+        "search"  -> activeSearch
         else      -> ""
     }
 
     fun setActiveFor(kind: String, id: String) { when (kind) {
         "reverse" -> activeReverse = id
         "poi"     -> activePoi = id
+        "search"  -> activeSearch = id
     } }
 
     companion object {
         private const val KEY_REVERSE = "active_reverse"
         private const val KEY_POI     = "active_poi"
+        private const val KEY_SEARCH  = "active_search"
     }
 }

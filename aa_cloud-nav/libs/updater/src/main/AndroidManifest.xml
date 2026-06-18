@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  libs:updater — declares the permissions + receiver the GHCR self-updater
+  needs. Manifest-merger folds these into the final app manifest at assembly
+  time, so app/AndroidManifest.xml stays free of updater-specific entries.
+  -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Install our own new APK via PackageInstaller (user prompt). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Notification for download/install outcome. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <!-- PackageInstaller status callback target. -->
+        <receiver
+            android:name=".PackageInstallerReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

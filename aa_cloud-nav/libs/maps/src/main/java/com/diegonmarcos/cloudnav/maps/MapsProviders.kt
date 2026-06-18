@@ -32,6 +32,10 @@ object MapsProviders {
         val freeTier: String,
         val requiresApiKey: Boolean,
         val endpoint: String,
+        /** Forward-geocode (text → coordinates) URL template. Distinct
+         *  from [endpoint] (reverse/poi). Placeholders `{q}`/`{lat}`/
+         *  `{lon}`/`{key}`. Empty for providers that don't do search. */
+        val searchEndpoint: String,
     )
 
     /** Decode the base64 JSON blob baked at gradle-time into a typed
@@ -53,6 +57,7 @@ object MapsProviders {
                 freeTier       = o.optString("free_tier", ""),
                 requiresApiKey = o.optBoolean("requires_api_key", false),
                 endpoint       = o.optString("endpoint", ""),
+                searchEndpoint = o.optString("search_endpoint", ""),
             )
         }
     }.getOrDefault(emptyList())

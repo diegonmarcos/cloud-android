@@ -14,19 +14,23 @@ import java.util.Locale
 
 /**
  * Maps → Stops page. Flat reverse-chronological list of every Stop in
- * the local DB — no day grouping (that's the Timeline page). Each row
- * shows full timestamp + lat/lon (debug-grade detail) + the resolved
+ * the local DB — no day grouping (that's the Timeline/Daily page). Each
+ * row shows full timestamp + lat/lon (debug-grade detail) + the resolved
  * address line.
  *
- * Practical use case: scrub the raw Stop log when timeline grouping
- * loses signal — e.g. a hotel in a foreign country where the
- * neighborhood string is the only useful disambiguator.
+ * Light theme: dark text on a light surface. `setTextColor` is applied
+ * AFTER `setTextAppearance` so the appearance's own (theme-derived) colour
+ * can't override ours — that ordering bug was why the old white text was
+ * invisible on the light background.
  */
 class MapsStopsFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        val scroll = ScrollView(ctx).apply { isFillViewport = true }
+        val scroll = ScrollView(ctx).apply {
+            isFillViewport = true
+            setBackgroundColor(COL_SURFACE)
+        }
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val p = dp(ctx, 16); setPadding(p, p, p, p)
@@ -39,26 +43,26 @@ class MapsStopsFragment : Fragment() {
 
         root.addView(TextView(ctx).apply {
             text = "Stops (${stops.size})"
-            setTextColor(0xFFFFFFFFL.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+            setTextColor(COL_PRIMARY)
             setPadding(0, 0, 0, dp(ctx, 12))
         })
 
         if (stops.isEmpty()) {
             root.addView(TextView(ctx).apply {
                 text = "No Stops collected yet."
-                setTextColor(0xAAFFFFFFL.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+                setTextColor(COL_SECONDARY)
             })
             return scroll
         }
 
         val tsFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-        for (s in stops) {
+        for (stop in stops) {
             val tile = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 val pad = dp(ctx, 10); setPadding(pad, pad, pad, pad)
-                setBackgroundColor(0x18FFFFFFL.toInt())
+                setBackgroundColor(COL_TILE)
                 val m = dp(ctx, 4)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -66,21 +70,20 @@ class MapsStopsFragment : Fragment() {
                 ).apply { setMargins(0, m, 0, m) }
             }
             tile.addView(TextView(ctx).apply {
-                text = tsFmt.format(Date(s.startedAt))
-                setTextColor(0xFFE9D8FD.toInt())
+                text = tsFmt.format(Date(stop.startedAt))
                 setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+                setTextColor(COL_ACCENT)
             })
             tile.addView(TextView(ctx).apply {
-                text = "%.5f, %.5f".format(s.lat, s.lon)
-                setTextColor(0x88FFFFFFL.toInt())
+                text = "%.5f, %.5f".format(stop.lat, stop.lon)
                 setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setTextColor(COL_SECONDARY)
                 typeface = android.graphics.Typeface.MONOSPACE
             })
-            val resolved = s.placeName ?: "Resolving…"
             tile.addView(TextView(ctx).apply {
-                text = resolved
-                setTextColor(0xFFFFFFFFL.toInt())
+                text = stop.placeName ?: "Resolving…"
                 setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+                setTextColor(COL_PRIMARY)
                 maxLines = 3
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, dp(ctx, 4), 0, 0)
@@ -92,5 +95,14 @@ class MapsStopsFragment : Fragment() {
 
     private fun dp(ctx: android.content.Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
-    companion object { fun newInstance() = MapsStopsFragment() }
+    companion object {
+        // Light-mode palette (shared with MapsDailyFragment).
+        const val COL_SURFACE   = 0xFFFFFFFF.toInt()
+        const val COL_TILE      = 0x0F000000           // ~6% black — subtle card
+        const val COL_PRIMARY   = 0xFF1A1C1A.toInt()   // near-black body
+        const val COL_SECONDARY = 0xFF5C5F5C.toInt()   // grey caption
+        const val COL_ACCENT    = 0xFF0B8043.toInt()   // maps-green subhead
+
+        fun newInstance() = MapsStopsFragment()
+    }
 }

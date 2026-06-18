@@ -16,30 +16,22 @@ import java.util.Locale
 
 /**
  * "Daily" tab — one row per calendar day showing the user's primary
- * place that day. Heuristic: for each day, pick the Stop with the
- * LONGEST dwell that day. That's almost always either:
- *   • the sleep location (longest dwell of the night spans across
- *     midnight + into the morning), OR
- *   • the day-time anchor (home / hotel / office) if the user is
- *     stationary.
+ * place that day (the LONGEST-dwell Stop overlapping that day). Tapping a
+ * day opens a full-screen map ([MapsDayMapFragment]) with every place
+ * visited that day pinned.
  *
- * Originally tried "stop ACTIVE at 03:00 local" — too strict: nothing
- * populated until the user accumulated an overnight Stop. Longest-
- * dwell is more forgiving while still surfacing the most meaningful
- * single place per day.
- *
- * Dwell math: `endedAt ?: now` since live LocationTrackerService
- * doesn't yet patch ended_at when the user leaves the radius. The
- * still-active stop is treated as running through "now".
- *
- * 5-year window. Reverse-chronological (newest day first), matching
- * the Stops tab's order.
+ * Light theme: dark text on a light surface (palette shared with
+ * [MapsStopsFragment]); `setTextColor` applied AFTER `setTextAppearance`
+ * so the appearance can't override the colour.
  */
 class MapsDailyFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        val scroll = ScrollView(ctx).apply { isFillViewport = true }
+        val scroll = ScrollView(ctx).apply {
+            isFillViewport = true
+            setBackgroundColor(MapsStopsFragment.COL_SURFACE)
+        }
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val p = dp(ctx, 16); setPadding(p, p, p, p)
@@ -54,8 +46,8 @@ class MapsDailyFragment : Fragment() {
         if (daily.isEmpty()) {
             root.addView(TextView(ctx).apply {
                 text = "No daily locations yet. Daily picks the LONGEST-dwell Stop per day — needs at least one Stop in the DB. Start the tracker on the Configs page, dwell ≥ 5 min in one spot, and refresh."
-                setTextColor(0xAAFFFFFFL.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+                setTextColor(MapsStopsFragment.COL_SECONDARY)
             })
             return scroll
         }
@@ -64,53 +56,58 @@ class MapsDailyFragment : Fragment() {
         for (entry in daily) {
             val tile = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
-                val pad = dp(ctx, 10); setPadding(pad, pad, pad, pad)
-                setBackgroundColor(0x18FFFFFFL.toInt())
+                val pad = dp(ctx, 12); setPadding(pad, pad, pad, pad)
+                setBackgroundColor(MapsStopsFragment.COL_TILE)
+                isClickable = true
                 val m = dp(ctx, 4)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply { setMargins(0, m, 0, m) }
+                setOnClickListener { openDayMap(entry.dayMs) }
             }
             tile.addView(TextView(ctx).apply {
                 text = dayFmt.format(Date(entry.dayMs))
-                setTextColor(0xFFE9D8FD.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+                setTextColor(MapsStopsFragment.COL_ACCENT)
             })
             tile.addView(TextView(ctx).apply {
                 text = entry.placeName ?: "Resolving…"
-                setTextColor(0xFFFFFFFFL.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+                setTextColor(MapsStopsFragment.COL_PRIMARY)
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, dp(ctx, 4), 0, 0)
             })
             val parts = listOfNotNull(entry.neighborhood, entry.city, entry.country)
-            if (parts.isNotEmpty()) {
-                tile.addView(TextView(ctx).apply {
-                    text = parts.joinToString("  ·  ")
-                    setTextColor(0xAAFFFFFFL.toInt())
-                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                    setPadding(0, dp(ctx, 2), 0, 0)
-                })
-            }
+            tile.addView(TextView(ctx).apply {
+                text = if (parts.isNotEmpty()) parts.joinToString("  ·  ") + "    ·  tap to map ▸"
+                       else "tap to map ▸"
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setTextColor(MapsStopsFragment.COL_SECONDARY)
+                setPadding(0, dp(ctx, 2), 0, 0)
+            })
             root.addView(tile)
         }
         return scroll
     }
 
-    /** For each calendar day touched by any Stop in [stops], pick the
-     *  Stop with the LONGEST overlap into that day. Returns reverse-
-     *  chronological.
-     *
-     *  Algorithm: walk every Stop, then for each calendar day it
-     *  overlaps, accumulate the (stop, overlapMs) pair. Per-day winner
-     *  = stop with the largest overlapMs. */
+    /** Open the full-screen day map overlaid on the activity content. Uses
+     *  android.R.id.content so it works from this nested (childFragmentManager)
+     *  fragment without knowing the app module's container id. */
+    private fun openDayMap(dayMs: Long) {
+        requireActivity().supportFragmentManager.beginTransaction()
+            .add(android.R.id.content, MapsDayMapFragment.newInstance(dayMs), "day-map")
+            .addToBackStack("day-map")
+            .commit()
+    }
+
+    /** For each calendar day touched by any Stop, pick the Stop with the
+     *  LONGEST overlap into that day. Reverse-chronological. */
     private fun computeDailyLocations(stops: List<MapsDb.RichStop>): List<DailyEntry> {
         if (stops.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
         val dayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        // perDay: dayKey -> (anchorMs, winningStop, winningOverlapMs)
         data class Best(val anchorMs: Long, val stop: MapsDb.RichStop, val overlapMs: Long)
         val perDay = mutableMapOf<String, Best>()
         val cal = Calendar.getInstance()
@@ -118,7 +115,6 @@ class MapsDailyFragment : Fragment() {
             val s = stop.startedAt
             val e = stop.endedAt ?: now
             if (e <= s) continue
-            // Walk every calendar day this stop overlaps.
             cal.timeInMillis = s
             cal.set(Calendar.HOUR_OF_DAY, 0)
             cal.set(Calendar.MINUTE, 0)

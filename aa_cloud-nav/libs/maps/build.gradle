@@ -27,6 +27,7 @@ def mapsProvidersB64  = mapsProvidersJson.bytes.encodeBase64().toString()
 def mapsActive        = buildJson.ui.maps_active   ?: [:]
 def mapsActiveReverse = (mapsActive.reverse ?: 'nominatim_public').toString()
 def mapsActivePoi     = (mapsActive.poi     ?: 'overpass_public').toString()
+def mapsActiveSearch  = (mapsActive.search  ?: 'nominatim_public').toString()
 def mapsTracking      = buildJson.ui.maps_tracking ?: [:]
 def mapsIntervalMoving  = (mapsTracking.interval_moving_ms   as Number)?.intValue() ?: 30000
 def mapsIntervalStopped = (mapsTracking.interval_stopped_ms  as Number)?.intValue() ?: 300000
@@ -50,6 +51,7 @@ android {
         buildConfigField "String", "UI_MAPS_PROVIDERS_B64",        "\"${mapsProvidersB64}\""
         buildConfigField "String", "UI_MAPS_ACTIVE_REVERSE",       "\"${mapsActiveReverse}\""
         buildConfigField "String", "UI_MAPS_ACTIVE_POI",           "\"${mapsActivePoi}\""
+        buildConfigField "String", "UI_MAPS_ACTIVE_SEARCH",        "\"${mapsActiveSearch}\""
         buildConfigField "int",    "UI_MAPS_INTERVAL_MOVING_MS",   "${mapsIntervalMoving}"
         buildConfigField "int",    "UI_MAPS_INTERVAL_STOPPED_MS",  "${mapsIntervalStopped}"
         buildConfigField "double", "UI_MAPS_MOVING_THRESHOLD_MPS", "${mapsMovingMps}"

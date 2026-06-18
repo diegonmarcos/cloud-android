@@ -47,13 +47,17 @@
       "type": "application",
       "depends_on": [
         "libs:core",
-        "libs:maps"
+        "libs:maps",
+        "libs:updater"
       ]
     },
     "libs:core": {
       "type": "library"
     },
     "libs:maps": {
+      "type": "library"
+    },
+    "libs:updater": {
       "type": "library"
     }
   },
@@ -71,14 +75,14 @@
         "icon": "navigation"
       },
       {
-        "id": "timeline",
-        "label": "Timeline",
-        "icon": "timeline"
-      },
-      {
         "id": "places",
         "label": "Places",
         "icon": "places"
+      },
+      {
+        "id": "timeline",
+        "label": "Timeline",
+        "icon": "timeline"
       },
       {
         "id": "configs",
@@ -197,7 +201,8 @@
     ],
     "maps_active": {
       "reverse": "nominatim_public",
-      "poi": "overpass_public"
+      "poi": "overpass_public",
+      "search": "nominatim_public"
     },
     "maps_tracking": {
       "interval_moving_ms": 30000,
@@ -211,34 +216,40 @@
         "id": "nominatim_public",
         "label": "Nominatim (osm.org)",
         "kind": [
-          "reverse"
+          "reverse",
+          "search"
         ],
         "host": "free-noauth",
         "free_tier": "fair use",
         "requires_api_key": false,
-        "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+        "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1",
+        "search_endpoint": "https://nominatim.openstreetmap.org/search?q={q}&format=json&addressdetails=1&limit=25"
       },
       {
         "id": "photon_public",
         "label": "Photon (komoot.io)",
         "kind": [
-          "reverse"
+          "reverse",
+          "search"
         ],
         "host": "free-noauth",
         "free_tier": "fair use",
         "requires_api_key": false,
-        "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}"
+        "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}",
+        "search_endpoint": "https://photon.komoot.io/api/?q={q}&lat={lat}&lon={lon}&limit=25"
       },
       {
         "id": "locationiq",
         "label": "LocationIQ",
         "kind": [
-          "reverse"
+          "reverse",
+          "search"
         ],
         "host": "free-account",
         "free_tier": "5k req/day",
         "requires_api_key": true,
-        "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json"
+        "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json",
+        "search_endpoint": "https://us1.locationiq.com/v1/search?key={key}&q={q}&format=json&addressdetails=1&limit=25"
       },
       {
         "id": "geoapify",
@@ -266,23 +277,27 @@
         "id": "nominatim_self",
         "label": "Nominatim (self)",
         "kind": [
-          "reverse"
+          "reverse",
+          "search"
         ],
         "host": "self",
         "free_tier": "unlimited (self)",
         "requires_api_key": false,
-        "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+        "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1",
+        "search_endpoint": "https://geo.diegonmarcos.com/nominatim/search?q={q}&format=json&addressdetails=1&limit=25"
       },
       {
         "id": "photon_self",
         "label": "Photon (self)",
         "kind": [
-          "reverse"
+          "reverse",
+          "search"
         ],
         "host": "self",
         "free_tier": "unlimited (self)",
         "requires_api_key": false,
-        "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}"
+        "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}",
+        "search_endpoint": "https://geo.diegonmarcos.com/photon/api/?q={q}&lat={lat}&lon={lon}&limit=25"
       },
       {
         "id": "overpass_public",
@@ -437,7 +452,7 @@
     }
   },
   "release": {
-    "_doc": "Data-driven publish targets. build.sh oras-push + gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-nav.yml) invokes those engine commands. No libs:updater in Cloud Nav, so no auto_update/update_tag fields.",
+    "_doc": "Data-driven publish targets. build.sh oras-push + gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-nav.yml) invokes those engine commands. release.auto_update + variants[].update_tag feed libs:updater (the in-app self-updater on Configs → Update).",
     "artifact": {
       "debug": "Cloud-Nav.apk",
       "release": "Cloud-Nav-release.apk"
@@ -449,20 +464,39 @@
         "abis": [
           "arm64-v8a"
         ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "artifact_debug": "Cloud-Nav.apk",
         "gh_asset": "Cloud-Nav.apk",
-        "ghcr_tag_suffix": ""
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
       },
       {
         "id": "x86_64",
         "abis": [
           "x86_64"
         ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
         "artifact_debug": "Cloud-Nav-x86_64.apk",
         "gh_asset": "Cloud-Nav-x86_64.apk",
-        "ghcr_tag_suffix": "-x86_64"
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
       }
     ],
+    "auto_update": {
+      "_doc": "In-app updater config — read at gradle eval time into libs:updater BuildConfig, used at runtime by the Update tab in Configs. Same registry/namespace/image as release.ghcr. ABI-aware: arm64 pulls 'latest', x86_64 pulls 'latest-x86_64' (release.variants[].update_tag).",
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "install_mode": "prompt"
+    },
     "ghcr": {
       "_doc": "ORAS push as an OCI artifact (APK blob, not a container). one :latest + per-sha + per-version tags; per-variant suffix -x86_64 for the x86 artifact.",
       "enabled": true,

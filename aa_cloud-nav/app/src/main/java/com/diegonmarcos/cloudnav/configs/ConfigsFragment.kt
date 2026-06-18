@@ -7,23 +7,22 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.cloudnav.NavShellChild
 import com.diegonmarcos.cloudnav.maps.MapsConfigFragment
 import com.google.android.material.tabs.TabLayout
 
 /**
- * Configs tab. Two sub-pages via a TabLayout:
- *   • Tracker — the maps GPS tracker controls + providers + calibration
- *               ([MapsConfigFragment], lifted from libs:maps).
- *   • About   — the extensive, full-of-data device/app/permissions/battery/
- *               memory/network page ([DevControlFragment], ported from
- *               Cloud SuperApp's DevControl).
+ * Configs tab. Four sub-pages via a TabLayout:
+ *   • Tracker — GPS tracker controls + calibration + export
+ *               ([MapsConfigFragment] section=tracker).
+ *   • APIs    — Search / Reverse-geocoder / POI provider pickers + API keys
+ *               ([MapsConfigFragment] section=apis).
+ *   • Update  — the in-app GHCR self-updater ([UpdateConfigFragment]).
+ *   • About   — the extensive device/app/permissions/battery/memory/network
+ *               page ([DevControlFragment], ported from Cloud SuperApp).
  *
- * Hides the shell search bar (settings page, not a search surface).
+ * A settings page, not a search surface — no search bar.
  */
-class ConfigsFragment : Fragment(), NavShellChild {
-
-    override fun wantsSearchBar(): Boolean = false
+class ConfigsFragment : Fragment() {
 
     private lateinit var container: FrameLayout
 
@@ -32,8 +31,10 @@ class ConfigsFragment : Fragment(), NavShellChild {
     ): View {
         val col = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }
         val tabs = TabLayout(requireContext()).apply {
-            tabMode = TabLayout.MODE_FIXED
+            tabMode = TabLayout.MODE_SCROLLABLE
             addTab(newTab().setText("Tracker"))
+            addTab(newTab().setText("APIs"))
+            addTab(newTab().setText("Update"))
             addTab(newTab().setText("About"))
         }
         this.container = FrameLayout(requireContext()).apply { id = View.generateViewId() }
@@ -50,7 +51,12 @@ class ConfigsFragment : Fragment(), NavShellChild {
     }
 
     private fun show(position: Int) {
-        val frag: Fragment = if (position == 0) MapsConfigFragment() else DevControlFragment()
+        val frag: Fragment = when (position) {
+            0 -> MapsConfigFragment.newInstance(MapsConfigFragment.SECTION_TRACKER)
+            1 -> MapsConfigFragment.newInstance(MapsConfigFragment.SECTION_APIS)
+            2 -> UpdateConfigFragment()
+            else -> DevControlFragment()
+        }
         childFragmentManager.beginTransaction()
             .replace(container.id, frag)
             .commit()

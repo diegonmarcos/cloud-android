@@ -18,7 +18,7 @@ class NavConfigTest {
 
     @Test fun tabs_match_buildjson_order() {
         assertEquals(
-            listOf("routes", "navigation", "timeline", "places", "configs"),
+            listOf("routes", "navigation", "places", "timeline", "configs"),
             NavConfig.tabs.map { it.id },
         )
     }
