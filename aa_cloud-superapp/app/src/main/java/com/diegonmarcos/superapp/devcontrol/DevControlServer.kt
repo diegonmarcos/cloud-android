@@ -341,6 +341,16 @@ object DevControlServer {
                     val body = """{"channel":"${jsonEscape(ch?.name() ?: "none")}","ran":${out != null},"held":$held,"output":"${jsonEscape(out ?: "no shell channel ready")}"}"""
                     reply(writer, "200 OK", body, "application/json")
                 }
+                "adb/sfc" -> {
+                    // Samsung Super Fast Charging verdict — runs the data-driven
+                    // `samsung-sfc` bundle through the shell ladder and parses
+                    // dumpsys battery into {tier, verdict, reasons[]}. No drained
+                    // battery needed: surfaces device watt-ceiling + SFC toggle +
+                    // peak-current-ever so "why isn't 100W fast" is answered now.
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.adbdebug.SfcVerdict.run(ctx),
+                        "application/json")
+                }
                 else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
             }
         }
@@ -411,6 +421,7 @@ object DevControlServer {
             Spec("adb/diagnostics",     "GET",  true,  "Run a DATA-DRIVEN diagnostic bundle (build.json::shizuku_diagnostics.bundles[]) through the shell-channel ladder (local-server first, Shizuku fallback) and return {bundle,label,channel,ok,results:[{id,cmd,out}]}. Bundles: charger (dumpsys battery+usb, power_supply nodes, typec, charge props), battery, usb, thermal, pd. THE endpoint that surfaces the USB-PD/PPS negotiation behind 'why is the charger at 3W not 35W' when SELinux blocks /sys/class/power_supply/*.", "bundle=charger|battery|usb|thermal|pd (default charger)"),
             Spec("adb/exec",            "GET",  true,  "Generic 'adb shell' passthrough — runs `sh -c <cmd>` in shell context (uid 2000) through the active channel and returns raw stdout. Full adb-equivalent power; token-gated + loopback-only. Use for one-off commands not covered by a bundle.", "cmd=<shell command>"),
             Spec("adb/grant-dump",      "GET",  true,  "Self-grant android.permission.DUMP via `pm grant` through the active shell channel, so dumpsys also works IN-PROCESS. DUMP is signature|privileged|DEVELOPMENT, so pm grant from the shell domain is allowed. Returns {channel,ran,held,output}.", ""),
+            Spec("adb/sfc",             "GET",  true,  "Samsung Super Fast Charging verdict — runs the data-driven `samsung-sfc` bundle (getprop model + dumpsys battery) through the shell-channel ladder and parses it into {tier,verdict,reasons[],device_max_watts,high_voltage_engaged,saved_max_current_ma,cable_suspect,sfc_setting_on}. Tiers: FAST_HV (negotiated) / SLOW_5V (charger-PPS or thermal suspect) / FULL_OR_TAPERING (full → healthy, not denied) / NOT_CHARGING. Answers 'why isn't my 100W cable fast-charging' WITHOUT a drained battery: surfaces the device watt-ceiling, whether the SFC toggle is on, and the peak current ever recorded. Parser is pure + JVM-tested against protocol fixtures (libs:shizuku-adb-debug-tools/SfcVerdict).", ""),
         )
         val sb = StringBuilder()
         sb.append("""{"port":""").append(port).append(',')

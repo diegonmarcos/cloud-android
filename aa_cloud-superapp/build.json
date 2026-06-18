@@ -288,8 +288,39 @@
           { "id": "typec_full", "cmd": "for d in /sys/class/typec/*; do echo \"== $d ==\"; grep -sr . \"$d\" 2>/dev/null | sed 's#/sys/class/typec/##'; done" },
           { "id": "tcpm_log", "cmd": "dmesg 2>/dev/null | grep -iE 'tcpm|pd_|pdo|usbpd|typec' | tail -60" }
         ]
+      },
+      {
+        "id": "samsung-sfc",
+        "label": "Samsung Super Fast Charging verdict",
+        "commands": [
+          { "id": "model", "cmd": "getprop ro.product.model" },
+          { "id": "dumpsys_battery", "cmd": "dumpsys battery" }
+        ]
       }
-    ]
+    ],
+    "samsung_sfc": {
+      "_doc": "Data-driven inputs for the SfcVerdict parser (libs:shizuku-adb-debug-tools/SfcVerdict.kt), baked into BuildConfig.SFC_CONFIG_B64 by this module's build.gradle. The parser is PURE / JVM-testable and reads NO hardcoded device data — the model->max-watts ceiling map lives here so a new Galaxy model is a one-line JSON edit, never a Kotlin change. `device_caps` is keyed by model-number PREFIX (parser matches the longest startsWith of `ro.product.model`); value = the device's MAXIMUM wired watts (a higher-rated cable/charger cannot exceed it). `high_voltage_mv_threshold` = the dumpsys mcv / Max-charging-voltage (mV) at/above which a high-voltage fast-charge contract is considered engaged (9V = 9000). `full_level_pct` = SOC at/above which fast charge tapers, so a 'not negotiating' verdict is expected, not a fault.",
+      "high_voltage_mv_threshold": 9000,
+      "full_level_pct": 95,
+      "default_max_watts": null,
+      "device_caps": {
+        "SM-G991": 25,
+        "SM-G996": 25,
+        "SM-G998": 25,
+        "SM-S901": 25,
+        "SM-S906": 45,
+        "SM-S908": 45,
+        "SM-S911": 25,
+        "SM-S916": 45,
+        "SM-S918": 45,
+        "SM-S921": 25,
+        "SM-S926": 45,
+        "SM-S928": 45,
+        "SM-N980": 25,
+        "SM-N985": 25,
+        "SM-N986": 25
+      }
+    }
   },
   "ui": {
     "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
