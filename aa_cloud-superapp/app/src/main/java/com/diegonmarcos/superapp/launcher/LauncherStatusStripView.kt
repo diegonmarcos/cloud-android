@@ -72,6 +72,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val wifiView: TextView
     private val wgView: TextView
     private val btView: TextView
+    private val usbView: TextView
     private val dateTimeView: TextView
     private val ramView: TextView
     private val storageView: TextView
@@ -81,6 +82,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private var hasCellular = false
     private var hasVpn = false
     private var hasBluetooth = false
+    private var hasUsbData = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val metricsTicker = object : Runnable {
@@ -127,12 +129,16 @@ class LauncherStatusStripView @JvmOverloads constructor(
         wifiView     = makeIconLabel("WiFi")
         wgView       = makeIconLabel("WG")
         btView       = makeIconLabel("BT")
+        // USB data indicator — lit only when a cable is connected in a
+        // DATA-transfer mode (MTP/PTP/RNDIS/NCM/MIDI or OTG host), dim on
+        // charge-only or unplugged. Tracks ACTION_USB_STATE.
+        usbView      = makeIconLabel("USB")
         // Any of the left-cluster icons → NetworkInfoPopup (shared
         // popup per cluster, per Diego's "yes click any, they are a
         // cluster" answer). Reusing the same anchor (the tapped icon)
         // keeps the bubble close to where the user tapped.
         val openNetworkPopup = OnClickListener { v -> NetworkInfoPopup.show(context, v) }
-        for (v in listOf(signal5gView, wifiView, wgView, btView)) {
+        for (v in listOf(signal5gView, wifiView, wgView, btView, usbView)) {
             v.isClickable = true
             v.setOnClickListener(openNetworkPopup)
         }
@@ -140,6 +146,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         leftCluster.addView(wifiView)
         leftCluster.addView(wgView)
         leftCluster.addView(btView)
+        leftCluster.addView(usbView)
         innerRow.addView(leftCluster)
 
         // ── CENTER: date + time, true screen-centre ────────────────
@@ -241,6 +248,9 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { refreshBattery(i) }
     }
+    private val usbReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) { refreshUsb(i) }
+    }
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
             post { refreshNetworkFromConnectivity() }
@@ -270,6 +280,15 @@ class LauncherStatusStripView @JvmOverloads constructor(
             if (battery != null) refreshBattery(battery)
         }
         runCatching {
+            // ACTION_USB_STATE is a sticky broadcast — registering returns
+            // the current USB state intent, so the icon is correct on attach.
+            val usb = context.registerReceiver(
+                usbReceiver,
+                IntentFilter("android.hardware.usb.action.USB_STATE"),
+            )
+            if (usb != null) refreshUsb(usb)
+        }
+        runCatching {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             cm?.registerNetworkCallback(
                 NetworkRequest.Builder().build(),
@@ -286,6 +305,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         runCatching { context.unregisterReceiver(timeReceiver) }
         runCatching { context.unregisterReceiver(batteryReceiver) }
+        runCatching { context.unregisterReceiver(usbReceiver) }
         runCatching {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             cm?.unregisterNetworkCallback(networkCallback)
@@ -305,6 +325,23 @@ class LauncherStatusStripView @JvmOverloads constructor(
             status == BatteryManager.BATTERY_STATUS_FULL
         val pct = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
         batteryView.setBattery(pct, charging)
+    }
+
+    /** USB cable DATA-transfer state from ACTION_USB_STATE. "Data" = cable
+     *  connected AND a data function active (MTP/PTP/RNDIS/NCM/MIDI), or
+     *  we're the OTG host — i.e. NOT charge-only (charge-only = connected
+     *  with no data function → stays dim). Keys are the stable AOSP
+     *  ACTION_USB_STATE extras. */
+    private fun refreshUsb(intent: Intent) {
+        val connected = intent.getBooleanExtra("connected", false)
+        val host      = intent.getBooleanExtra("host_connected", false)
+        val dataFn = intent.getBooleanExtra("mtp", false) ||
+            intent.getBooleanExtra("ptp", false) ||
+            intent.getBooleanExtra("rndis", false) ||
+            intent.getBooleanExtra("ncm", false) ||
+            intent.getBooleanExtra("midi", false)
+        hasUsbData = host || (connected && dataFn)
+        applyIconTints()
     }
 
     /** Walk all known networks via ConnectivityManager and decide
@@ -346,6 +383,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         wifiView    .setTextColor(if (hasWifi)      on else off)
         wgView      .setTextColor(if (hasVpn)       on else off)
         btView      .setTextColor(if (hasBluetooth) on else off)
+        usbView     .setTextColor(if (hasUsbData)   on else off)
     }
 
     /** Read RAM + /data storage utilisation and update the right
