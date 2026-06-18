@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp.kdeconnect
 
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -11,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -42,6 +44,12 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     private val DOT_LINK = 0xFF42A5F5.toInt()      // blue  — connected, not paired
     private val DOT_OK   = 0xFF4CAF50.toInt()      // green — connected & paired
     private val DOT_ERR  = 0xFFE53935.toInt()      // red   — error
+
+    /** SAF picker for "Send file" → KDE share payload upload. Registered at
+     *  field init (before the fragment is STARTED) per the ActivityResult API. */
+    private val pickFile = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { onFilePicked(it) }
+    }
 
     private fun dotColor(dot: View, color: Int) {
         (dot.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
@@ -615,6 +623,17 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
         }
     }
 
+    /** A file was picked → stream it to the connected desktop via the KDE
+     *  share payload channel (SharePlugin opens the TLS payload server). */
+    private fun onFilePicked(uri: Uri) {
+        val id = KdeConnectManager.connectedIds().firstOrNull()
+        if (id == null) { toastUnit("Connect & pair a desktop first"); return }
+        val link = KdeConnectManager.link(id)
+        if (link == null) { toastUnit("No live link"); return }
+        if (SharePlugin.sendFile(requireContext(), link, uri)) toastUnit("Sending file…")
+        else toastUnit("Couldn't start file send")
+    }
+
     /** Send a sender packet to a live link (reconnecting if needed). */
     private fun toTarget(packet: NetworkPacket?) {
         if (packet == null) return toastUnit("No desktop state yet — try again")
@@ -691,8 +710,8 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     private fun buildActionsCard(ctx: android.content.Context): View {
         val col = card(ctx, "Actions", "Single-tap requests to the connected desktop.")
         col.addView(btnRow(ctx,
-            "🔔 Ring" to { toTarget(FindMyPhonePlugin.ring()) },
-            "📁 Files" to { toTarget(SftpPlugin.request()) },
+            "🔔 Ring desktop" to { toTarget(FindMyPhonePlugin.ring()) },
+            "📁 Send file" to { pickFile.launch("*/*") },
         ))
         col.addView(btnRow(ctx,
             "🖥 Monitor" to { toTarget(VirtualMonitorPlugin.request()) },

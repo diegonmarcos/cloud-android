@@ -17,18 +17,32 @@ class NetworkPacket private constructor(
     val type: String,
     val body: JSONObject,
     val id: Long,
+    /** KDE payload transfer: total bytes streamed on a side channel (0 = none). */
+    val payloadSize: Long = 0L,
+    /** {"port": <int>} the payload is served on; null when no payload. */
+    val payloadTransferInfo: JSONObject? = null,
 ) {
     fun getString(key: String, def: String = ""): String = body.optString(key, def)
     fun getBoolean(key: String, def: Boolean = false): Boolean = body.optBoolean(key, def)
     fun getInt(key: String, def: Int = 0): Int = body.optInt(key, def)
+    fun getLong(key: String, def: Long = 0L): Long = body.optLong(key, def)
     fun has(key: String): Boolean = body.has(key)
 
-    /** Serialize to the wire form INCLUDING the trailing newline. */
+    /** Port the payload is served on, or null when there's no payload. */
+    fun payloadPort(): Int? = payloadTransferInfo?.optInt("port")?.takeIf { it > 0 }
+
+    /** Serialize to the wire form INCLUDING the trailing newline. Emits the
+     *  top-level payloadSize + payloadTransferInfo siblings (KDE format) only
+     *  when this packet carries a payload. */
     fun serialize(): String =
         JSONObject().apply {
             put("id", id)
             put("type", type)
             put("body", body)
+            if (payloadSize > 0L && payloadTransferInfo != null) {
+                put("payloadSize", payloadSize)
+                put("payloadTransferInfo", payloadTransferInfo)
+            }
         }.toString() + "\n"
 
     companion object {
@@ -54,6 +68,15 @@ class NetworkPacket private constructor(
         fun of(type: String, build: JSONObject.() -> Unit = {}): NetworkPacket =
             NetworkPacket(type, JSONObject().apply(build), System.currentTimeMillis())
 
+        /** Build a packet that carries a payload (KDE file transfer): the
+         *  sender serves [payloadSize] bytes on [port] (TLS); the receiver
+         *  connects to the other end's address on that port to pull them. */
+        fun withPayload(type: String, payloadSize: Long, port: Int, build: JSONObject.() -> Unit = {}): NetworkPacket =
+            NetworkPacket(
+                type, JSONObject().apply(build), System.currentTimeMillis(),
+                payloadSize, JSONObject().put("port", port),
+            )
+
         /** Parse one wire line. Returns null on malformed input rather than
          *  throwing — a bad line must never kill the read loop. */
         fun parse(line: String): NetworkPacket? = runCatching {
@@ -62,6 +85,8 @@ class NetworkPacket private constructor(
                 type = o.getString("type"),
                 body = o.optJSONObject("body") ?: JSONObject(),
                 id   = o.optLong("id", System.currentTimeMillis()),
+                payloadSize = o.optLong("payloadSize", 0L),
+                payloadTransferInfo = o.optJSONObject("payloadTransferInfo"),
             )
         }.getOrNull()
     }

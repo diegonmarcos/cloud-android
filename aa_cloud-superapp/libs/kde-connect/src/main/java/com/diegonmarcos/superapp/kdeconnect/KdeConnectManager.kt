@@ -71,6 +71,9 @@ object KdeConnectManager : KdeLink.Listener {
     fun pairedDeviceIds(): Set<String> = trust.pairedDeviceIds()
     fun isConnected(deviceId: String): Boolean = links[deviceId]?.isOpen == true
     fun ownDeviceId(): String = KdeIdentity.deviceId(app)
+    /** The live link for [deviceId], or null — used by SharePlugin to reach
+     *  the peer address + cert for the file-transfer payload side-channel. */
+    fun link(deviceId: String): KdeLink? = links[deviceId]
 
     /** Dial [host]:[port] over wg0 and bring up the link. Returns the peer
      *  deviceId (its cert CN). Blocking I/O — runs off the main thread. */

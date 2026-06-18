@@ -42,6 +42,10 @@ class KdeLink(
         Thread(it, "kde-link-write-$peerDeviceId").apply { isDaemon = true }
     }
 
+    /** The peer's remote IP on this TLS socket — the address a payload
+     *  side-channel connects back to for incoming file transfers. */
+    val peerAddress: java.net.InetAddress? get() = runCatching { socket.inetAddress }.getOrNull()
+
     fun start() {
         reader = Thread({ readLoop() }, "kde-link-$peerDeviceId").apply { isDaemon = true; start() }
     }
