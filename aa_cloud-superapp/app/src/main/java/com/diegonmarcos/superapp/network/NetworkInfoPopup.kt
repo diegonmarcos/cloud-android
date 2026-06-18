@@ -298,35 +298,69 @@ object NetworkInfoPopup {
 
     // ─────────────────────────── USB ───────────────────────────
 
-    /** USB cable + data-transfer state from the ACTION_USB_STATE sticky
-     *  broadcast (registerReceiver(null, …) returns the current intent).
-     *  Distinguishes charge-only from a data mode (MTP/PTP/RNDIS/NCM/MIDI/
-     *  mass-storage/accessory) and OTG host. No permission needed. */
+    /** Persistent USB section: combines the USB data session (ACTION_USB_STATE)
+     *  with the charge state (ACTION_BATTERY_CHANGED EXTRA_PLUGGED) so it's
+     *  always informative — Data transfer vs Charge-only vs OTG host vs
+     *  Disconnected — plus the active mode and (for tethering) the live USB
+     *  network interface. Battery WATTAGE is intentionally left to the battery
+     *  popup. No permission needed (both are sticky broadcasts). */
     private fun readUsb(ctx: Context): List<String> {
         val rows = mutableListOf<String>()
-        val intent = runCatching {
-            ctx.applicationContext.registerReceiver(
-                null, android.content.IntentFilter("android.hardware.usb.action.USB_STATE"))
+        val app = ctx.applicationContext
+        val usb = runCatching {
+            app.registerReceiver(null, android.content.IntentFilter("android.hardware.usb.action.USB_STATE"))
         }.getOrNull()
-        if (intent == null) { rows += "—"; return rows }
-        val connected  = intent.getBooleanExtra("connected", false)
-        val configured = intent.getBooleanExtra("configured", false)
-        val host       = intent.getBooleanExtra("host_connected", false)
-        if (!connected && !host) { rows += "Disconnected (no cable / charge-only AC)"; return rows }
+        val batt = runCatching {
+            app.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        }.getOrNull()
+
+        val connected  = usb?.getBooleanExtra("connected", false) ?: false
+        val configured = usb?.getBooleanExtra("configured", false) ?: false
+        val host       = usb?.getBooleanExtra("host_connected", false) ?: false
+        val plugged    = batt?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        val plugLabel  = when (plugged) {
+            android.os.BatteryManager.BATTERY_PLUGGED_AC -> "AC"
+            android.os.BatteryManager.BATTERY_PLUGGED_USB -> "USB"
+            android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless"
+            else -> null
+        }
         val fns = listOf(
             "mtp" to "MTP (file transfer)", "ptp" to "PTP (photo)",
             "rndis" to "RNDIS (tether)", "ncm" to "NCM (tether)", "midi" to "MIDI",
             "mass_storage" to "Mass storage", "accessory" to "Accessory", "audio_source" to "Audio source",
-        ).filter { intent.getBooleanExtra(it.first, false) }.map { it.second }
-        when {
-            host -> rows += "OTG host connected"
-            fns.isNotEmpty() -> rows += "Connected · DATA transfer"
-            connected -> rows += "Connected · charge-only (no data)"
+        ).filter { usb?.getBooleanExtra(it.first, false) == true }.map { it.second }
+
+        // Status line — the headline the user scans.
+        rows += when {
+            host -> "OTG host connected"
+            connected && fns.isNotEmpty() -> "● Data transfer"
+            connected -> "● Connected (charge-only, no data)"
+            plugLabel == "Wireless" -> "Wireless charging (no cable)"
+            plugLabel != null -> "● Charging (charge-only)"
+            else -> "○ Disconnected"
         }
-        if (fns.isNotEmpty()) rows += "Mode: " + fns.joinToString(", ")
-        rows += "Configured: ${if (configured) "yes" else "no"}"
+        if (plugLabel != null) rows += "Power: $plugLabel"
+        if (fns.isNotEmpty()) {
+            rows += "Mode: " + fns.joinToString(", ")
+            rows += "Configured: ${if (configured) "yes" else "no"}"
+            // Data stats — for tether modes the kernel exposes a usb/rndis/ncm
+            // NIC; surface its IP (per-iface byte counters are SELinux-blocked
+            // on hardened Samsung, same wall the Mesh section hits).
+            for (s in usbNetStats()) rows += s
+        }
         return rows
     }
+
+    /** Live USB-tether interface(s) named rndis / usb / ncm + their IPv4. */
+    private fun usbNetStats(): List<String> = runCatching {
+        NetworkInterface.getNetworkInterfaces().asSequence()
+            .filter { it.isUp && (it.name.startsWith("rndis") || it.name.startsWith("usb") || it.name.startsWith("ncm")) }
+            .map { nif ->
+                val ip = nif.inetAddresses.asSequence()
+                    .firstOrNull { !it.isLoopbackAddress && it.hostAddress?.contains(':') != true }?.hostAddress
+                if (ip != null) "Tether ${nif.name}: $ip" else "Tether ${nif.name}: up"
+            }.toList()
+    }.getOrDefault(emptyList())
 
     // ─────────────────────────── Network (DNS + IPs) ───────────────────────────
 
