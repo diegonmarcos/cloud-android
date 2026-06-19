@@ -232,7 +232,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         }
         ramView     = makeIconLabel("R 0%")
         storageView = makeIconLabel("S 0%")
-        cpuView     = makeIconLabel("C 0%")
+        cpuView     = makeIconLabel("C 0s")
         // RAM + Storage + CPU → shared SystemInfoPopup (per Diego's cluster
         // rule). Same anchor (tapped icon) as battery / network popups.
         // CPU = 1-min /proc/loadavg normalised by core count (the popup
@@ -548,15 +548,17 @@ class LauncherStatusStripView @JvmOverloads constructor(
             toolCfg["storage"]?.let { updatePet("storage", bucketLevel(pct, it.buckets)) }
         }
         runCatching {
-            // CPU load — 1-minute /proc/loadavg, normalised by core count so
-            // it reads as a 0-100%(+) utilisation figure parallel to R%/S%.
-            // first token of loadavg is the 1m average; >100% = oversubscribed.
-            val load1 = java.io.File("/proc/loadavg").readText().trim()
-                .substringBefore(' ').toDouble()
-            val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-            val pct = (load1 / cores * 100).toInt().coerceAtLeast(0)
-            cpuView.text = "C$pct%"
-            toolCfg["cpu"]?.let { updatePet("cpu", bucketLevel(pct, it.buckets)) }
+            // CPU load — the raw 1-minute /proc/loadavg figure, SAME source +
+            // value the SystemInfoPopup shows (SysfsProc.cpuLoad().loadAvg1m).
+            // Suffixed "s" per Diego's spec; NOT a core-normalised percentage
+            // (that rounded to 0 on an idle phone — the bug being fixed).
+            com.diegonmarcos.superapp.battery.SysfsProc.cpuLoad()?.let { c ->
+                cpuView.text = "C%.2fs".format(c.loadAvg1m)
+                // pet bucket still wants an int "level"; reuse the normalised
+                // load% (0-100+) purely for that, independent of the label.
+                val lvlPct = (c.loadAvg1m / c.cores.coerceAtLeast(1) * 100).toInt().coerceAtLeast(0)
+                toolCfg["cpu"]?.let { updatePet("cpu", bucketLevel(lvlPct, it.buckets)) }
+            }
         }
     }
 }
