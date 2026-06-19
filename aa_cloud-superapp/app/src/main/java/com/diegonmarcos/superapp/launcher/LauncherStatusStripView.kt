@@ -78,6 +78,11 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val storageView: TextView
     private val batteryView: BatteryIconView
 
+    // Line 0 — black branding band ("Cloud" left, "SuperApp" right) that
+    // OWNS the camera/status-bar zone. Height set by MainActivity to the
+    // top system inset via [setLine0Height]; the info row below is Line 1.
+    private val line0Band: FrameLayout
+
     private var hasWifi = false
     private var hasCellular = false
     private var hasVpn = false
@@ -110,9 +115,14 @@ class LauncherStatusStripView @JvmOverloads constructor(
         // centre. FrameLayout positions each child independently via
         // layout_gravity, so LEFT anchors start, RIGHT anchors end, and
         // the centre child stays glued to screen midpoint.
+        // Line 1 — the system-info row. WRAP_CONTENT (was 0+weight) so the
+        // VERTICAL strip now stacks Line 0 (fixed) + Line 1 (content) + the
+        // hairline instead of one weighted row filling a fixed barH. A small
+        // vertical pad gives the icons breathing room.
+        val vpad = (3 * resources.displayMetrics.density).toInt()
         val innerRow = FrameLayout(context).apply {
-            setPadding(hpad, 0, hpad, 0)
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
+            setPadding(hpad, vpad, hpad, vpad)
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         }
 
         // ── LEFT cluster: 5G · WiFi · WG (anchored to START) ────────
@@ -207,6 +217,44 @@ class LauncherStatusStripView @JvmOverloads constructor(
         rightCluster.addView(batteryView)
         innerRow.addView(rightCluster)
 
+        // ── Line 0: black branding band — OWNS the camera/status-bar zone ──
+        // Opaque black (vs the transparent galaxy of Line 1 below) so it
+        // claims the cutout row. "Cloud" anchored START, "SuperApp" anchored
+        // END, both white + vertically centred → they flank the centre camera
+        // punch-hole. Height is driven by MainActivity (= top system inset).
+        line0Band = FrameLayout(context).apply {
+            setBackgroundColor(0xFF000000.toInt())
+            setPadding(hpad, 0, hpad, 0)
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        }
+        val brandLeft = TextView(context).apply {
+            text = "Cloud"
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 13f
+            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+            maxLines = 1
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.START or Gravity.CENTER_VERTICAL,
+            )
+        }
+        val brandRight = TextView(context).apply {
+            text = "SuperApp"
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 13f
+            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+            maxLines = 1
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.END or Gravity.CENTER_VERTICAL,
+            )
+        }
+        line0Band.addView(brandLeft)
+        line0Band.addView(brandRight)
+        addView(line0Band)
+
         addView(innerRow)
 
         // ── Bottom hairline ───────────────────────────────────────
@@ -220,6 +268,16 @@ class LauncherStatusStripView @JvmOverloads constructor(
                 maxOf(1, (resources.displayMetrics.density * 0.75f).toInt()),
             )
         })
+    }
+
+    /** Size Line 0 (the black branding band) to [px] — the top system
+     *  inset (camera/status-bar zone). Called by MainActivity.applyLauncherChrome
+     *  alongside the strip sizing so Line 0 covers exactly the cutout row and
+     *  Line 1 (the info row) + hairline stack beneath it. */
+    fun setLine0Height(px: Int) {
+        val lp = line0Band.layoutParams
+        lp.height = px
+        line0Band.layoutParams = lp
     }
 
     /** Shared small monospace label used by left + right cluster

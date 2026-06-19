@@ -645,20 +645,32 @@ class MainActivity : AppCompatActivity(),
                     val lp = it.layoutParams as? android.view.ViewGroup.MarginLayoutParams
                     if (lp != null) {
                         lp.topMargin = 0
-                        lp.height = barH
+                        // WRAP_CONTENT (was fixed barH): the strip now stacks
+                        // Line 0 (black band sized to barH) + Line 1 (info row)
+                        // + hairline, so its height is the sum, not one barH.
+                        lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
                         it.layoutParams = lp
                     }
+                    // Line 0 owns exactly the camera/status-bar inset row.
+                    (it as? com.diegonmarcos.superapp.launcher.LauncherStatusStripView)
+                        ?.setLine0Height(barH)
                     // Drop the legacy py=3dp padding the view set in init
                     // so the text isn't squeezed against the bottom edge.
                     it.setPadding(it.paddingLeft, 0, it.paddingRight, 0)
                     it.visibility = View.VISIBLE
                 }
-                // Push the toolbar island BELOW the strip with a 6dp
-                // breathing gap. Without this the island's vertical
-                // span overlaps the strip and the strip's bottom
-                // hairline visually touches the dynamic-island pill.
+                // Push the toolbar island BELOW the (now two-line) strip with a
+                // 6dp gap. The strip is WRAP_CONTENT, so its final height isn't
+                // known until layout: seed with barH (Line 0) for the first
+                // pass, then correct to the real measured height post-layout.
                 val barH = if (topSystemInset > 0) topSystemInset else statusBarHeightPx()
                 setToolbarIslandTopMargin(toolbarIsland, barH + dp(6))
+                strip?.let { s ->
+                    s.post {
+                        val h = s.height
+                        if (h > 0) setToolbarIslandTopMargin(toolbarIsland, h + dp(6))
+                    }
+                }
                 toolbarIsland?.visibility = View.VISIBLE
                 bottomNavIsland?.visibility = View.VISIBLE
             }
