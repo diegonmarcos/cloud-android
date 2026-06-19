@@ -16,7 +16,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 /**
- * App Tabs — 2-column GRID of the last [AppTabPrefs.CAP] entries the
+ * App Tabs — 2-column GRID of the last [AppTabPrefs.cap] entries the
  * user has opened. Mirrors libs:browser's GRID mode but renders
  * SuperApp sections / pages / external apps instead of URL tabs.
  *
@@ -76,7 +76,7 @@ class AppTabsFragment : Fragment() {
         val entries = prefs.all()
         if (entries.isEmpty()) {
             column.addView(TextView(ctx).apply {
-                text = "No recent entries yet. Open a SuperApp section, a page, or an external app from the Phone tab — the last ${AppTabPrefs.CAP} land here."
+                text = "No recent entries yet. Open a SuperApp section, a page, or an external app from the Phone tab — the last ${AppTabPrefs.cap} land here."
                 setTextColor(0xCCFFFFFF.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Body1)
                 alpha = 0.7f

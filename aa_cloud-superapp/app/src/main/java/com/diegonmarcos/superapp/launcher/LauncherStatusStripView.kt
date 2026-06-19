@@ -79,6 +79,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val dateTimeView: TextView
     private val ramView: TextView
     private val storageView: TextView
+    private val cpuView: TextView
     private val batteryView: BatteryIconView
 
     // Line 0 — one animated pet per Line-1 tool (vendored zoomies sprites).
@@ -231,10 +232,13 @@ class LauncherStatusStripView @JvmOverloads constructor(
         }
         ramView     = makeIconLabel("R 0%")
         storageView = makeIconLabel("S 0%")
-        // RAM + Storage → shared SystemInfoPopup (per Diego's cluster
+        cpuView     = makeIconLabel("C 0%")
+        // RAM + Storage + CPU → shared SystemInfoPopup (per Diego's cluster
         // rule). Same anchor (tapped icon) as battery / network popups.
+        // CPU = 1-min /proc/loadavg normalised by core count (the popup
+        // already breaks out the 1m·5m·15m windows).
         val openSystemPopup = OnClickListener { v -> SystemInfoPopup.show(context, v) }
-        for (v in listOf(ramView, storageView)) {
+        for (v in listOf(ramView, storageView, cpuView)) {
             v.isClickable = true
             v.setOnClickListener(openSystemPopup)
         }
@@ -252,6 +256,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         }
         rightCluster.addView(makeToolColumn("ram", ramView))
         rightCluster.addView(makeToolColumn("storage", storageView))
+        rightCluster.addView(makeToolColumn("cpu", cpuView))
         rightCluster.addView(makeToolColumn("battery", batteryView))
         innerRow.addView(rightCluster)
 
@@ -541,6 +546,17 @@ class LauncherStatusStripView @JvmOverloads constructor(
             val pct = ((1.0 - avail.toDouble() / total.toDouble()) * 100).toInt()
             storageView.text = "S$pct%"
             toolCfg["storage"]?.let { updatePet("storage", bucketLevel(pct, it.buckets)) }
+        }
+        runCatching {
+            // CPU load — 1-minute /proc/loadavg, normalised by core count so
+            // it reads as a 0-100%(+) utilisation figure parallel to R%/S%.
+            // first token of loadavg is the 1m average; >100% = oversubscribed.
+            val load1 = java.io.File("/proc/loadavg").readText().trim()
+                .substringBefore(' ').toDouble()
+            val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+            val pct = (load1 / cores * 100).toInt().coerceAtLeast(0)
+            cpuView.text = "C$pct%"
+            toolCfg["cpu"]?.let { updatePet("cpu", bucketLevel(pct, it.buckets)) }
         }
     }
 }
