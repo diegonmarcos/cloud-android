@@ -30,6 +30,13 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+// HeliBoard is an APPLICATION upstream, so its code reads BuildConfig.{VERSION_CODE,
+// VERSION_NAME,APPLICATION_ID} — fields AGP only auto-generates for application
+// modules, NOT libraries (DEBUG + BUILD_TYPE are auto for both). As a library we
+// inject them below from build.json (the SuperApp's single source of truth, same
+// pattern as libs:health), so the keyboard's About/upgrade/gesture code resolves.
+def kbBuildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+
 android {
     namespace 'helium314.keyboard.latin'
     compileSdk 36
@@ -37,12 +44,18 @@ android {
 
     defaultConfig {
         minSdk 26
+        buildConfigField "int",    "VERSION_CODE",   "${kbBuildJson.android.version_code}"
+        buildConfigField "String", "VERSION_NAME",   "\"${kbBuildJson.android.version_name}\""
+        buildConfigField "String", "APPLICATION_ID", "\"${kbBuildJson.android.application_id}\""
     }
 
     buildFeatures {
         compose = true
-        // HeliBoard reads generated BuildConfig fields (e.g. flavor/version).
+        // HeliBoard reads generated BuildConfig fields (version/applicationId).
         buildConfig = true
+        // ClipboardHistoryManager binds res/layout/clipboard_suggestion.xml via
+        // generated helium314.keyboard.latin.databinding.ClipboardSuggestionBinding.
+        viewBinding = true
     }
 
     externalNativeBuild {
