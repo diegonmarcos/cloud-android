@@ -330,6 +330,22 @@
       }
     }
   },
+  "status_pets": {
+    "_doc": "Status-bar Line 0 animated pets (vendored from github.com/KartikLabhshetwar/zoomies, sprites CC BY-ND 4.0 — used UNMODIFIED + credited). Each Line-1 tool gets a FIXED animal above it; the tool's strength maps to a gait level 0..3 = idle/walk/walk_fast/run (the animal stays, the gait speeds up). Fully data-driven: sync-zoomies vendors exactly the animal/variant GIFs referenced here; app/build.gradle bakes this block to BuildConfig.STATUS_PETS_B64; LauncherStatusStripView renders + drives it.",
+    "enabled": true,
+    "px": 22,
+    "gaits": ["idle", "walk", "walk_fast", "run"],
+    "tools": {
+      "cellular": { "animal": "fox",     "variant": "red",      "type": "bool",    "on_level": 3 },
+      "wifi":     { "animal": "dog",     "variant": "brown",    "type": "bool",    "on_level": 3 },
+      "vpn":      { "animal": "horse",   "variant": "black",    "type": "bool",    "on_level": 3 },
+      "bluetooth":{ "animal": "panda",   "variant": "black",    "type": "bool",    "on_level": 3 },
+      "usb":      { "animal": "rat",     "variant": "gray",     "type": "bool",    "on_level": 3 },
+      "ram":      { "animal": "deno",    "variant": "green",    "type": "percent", "buckets": [25, 50, 75] },
+      "storage":  { "animal": "vampire", "variant": "countess", "type": "percent", "buckets": [25, 50, 75] },
+      "battery":  { "animal": "dog",     "variant": "white",    "type": "percent", "buckets": [25, 50, 75] }
+    }
+  },
   "ui": {
     "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
     "permissions": {

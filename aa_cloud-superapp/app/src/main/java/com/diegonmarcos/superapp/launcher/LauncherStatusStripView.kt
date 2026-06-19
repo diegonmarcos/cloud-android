@@ -1,4 +1,5 @@
 package com.diegonmarcos.superapp.launcher
+import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.ui.SystemInfoPopup
@@ -29,6 +30,8 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.util.Base64
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,10 +81,20 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val storageView: TextView
     private val batteryView: BatteryIconView
 
-    // Line 0 — black branding band ("Cloud" left, "SuperApp" right) that
-    // OWNS the camera/status-bar zone. Height set by MainActivity to the
-    // top system inset via [setLine0Height]; the info row below is Line 1.
-    private val line0Band: FrameLayout
+    // Line 0 — one animated pet per Line-1 tool (vendored zoomies sprites).
+    // Data-driven from BuildConfig.STATUS_PETS_B64 (build.json::status_pets):
+    // each tool gets a FIXED animal; its strength maps to a gait level
+    // (idle/walk/walk_fast/run). The pet sits in a vertical [pet, icon]
+    // column so it's always directly above its icon.
+    private data class ToolPet(
+        val animal: String, val variant: String,
+        val type: String, val onLevel: Int, val buckets: List<Int>,
+    )
+    private var petsEnabled = false
+    private var petPx = 0
+    private var gaits: List<String> = listOf("idle", "walk", "walk_fast", "run")
+    private val toolCfg = HashMap<String, ToolPet>()
+    private val petViews = HashMap<String, PetStrengthView>()
 
     private var hasWifi = false
     private var hasCellular = false
@@ -104,6 +117,8 @@ class LauncherStatusStripView @JvmOverloads constructor(
         // strip so the camera-cutout area + the strip read as ONE
         // continuous galaxy band.
         setBackgroundColor(0x00000000)
+
+        parsePetsConfig()
 
         val hpad = (10 * resources.displayMetrics.density).toInt()
         // FrameLayout (NOT horizontal LinearLayout) — lets the date/time
@@ -152,11 +167,14 @@ class LauncherStatusStripView @JvmOverloads constructor(
             v.isClickable = true
             v.setOnClickListener(openNetworkPopup)
         }
-        leftCluster.addView(signal5gView)
-        leftCluster.addView(wifiView)
-        leftCluster.addView(wgView)
-        leftCluster.addView(btView)
-        leftCluster.addView(usbView)
+        // Each tool becomes a vertical [pet, icon] column → Line 0 pet sits
+        // directly above its Line 1 icon. makeToolColumn falls back to the
+        // bare icon when pets are disabled or unconfigured for that tool.
+        leftCluster.addView(makeToolColumn("cellular", signal5gView))
+        leftCluster.addView(makeToolColumn("wifi", wifiView))
+        leftCluster.addView(makeToolColumn("vpn", wgView))
+        leftCluster.addView(makeToolColumn("bluetooth", btView))
+        leftCluster.addView(makeToolColumn("usb", usbView))
         innerRow.addView(leftCluster)
 
         // ── CENTER: date + time, true screen-centre ────────────────
@@ -179,7 +197,27 @@ class LauncherStatusStripView @JvmOverloads constructor(
             isClickable = true
             setOnClickListener { CalendarAgendaPopup.show(context, this) }
         }
-        innerRow.addView(dateTimeView)
+        // Center column: date/time on Line 1. A spacer reserves the Line 0
+        // (pet) height so the clock stays aligned with the icon row instead
+        // of floating in the vertical middle of the taller two-line strip.
+        // No pet over the centre — that's the camera punch-hole.
+        val centerCol = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER,
+            )
+        }
+        if (petsEnabled) centerCol.addView(View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(1, petPx)
+        })
+        dateTimeView.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
+        centerCol.addView(dateTimeView)
+        innerRow.addView(centerCol)
 
         // ── RIGHT cluster: RAM% · Storage% · Battery (anchored END) ─
         val rightCluster = LinearLayout(context).apply {
@@ -212,49 +250,13 @@ class LauncherStatusStripView @JvmOverloads constructor(
             isClickable = true
             setOnClickListener { BatteryEstimatePopup.show(context, this) }
         }
-        rightCluster.addView(ramView)
-        rightCluster.addView(storageView)
-        rightCluster.addView(batteryView)
+        rightCluster.addView(makeToolColumn("ram", ramView))
+        rightCluster.addView(makeToolColumn("storage", storageView))
+        rightCluster.addView(makeToolColumn("battery", batteryView))
         innerRow.addView(rightCluster)
 
-        // ── Line 0: black branding band — OWNS the camera/status-bar zone ──
-        // Opaque black (vs the transparent galaxy of Line 1 below) so it
-        // claims the cutout row. "Cloud" anchored START, "SuperApp" anchored
-        // END, both white + vertically centred → they flank the centre camera
-        // punch-hole. Height is driven by MainActivity (= top system inset).
-        line0Band = FrameLayout(context).apply {
-            setBackgroundColor(0xFF000000.toInt())
-            setPadding(hpad, 0, hpad, 0)
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        }
-        val brandLeft = TextView(context).apply {
-            text = "Cloud"
-            setTextColor(0xFFFFFFFF.toInt())
-            textSize = 13f
-            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-            maxLines = 1
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.START or Gravity.CENTER_VERTICAL,
-            )
-        }
-        val brandRight = TextView(context).apply {
-            text = "SuperApp"
-            setTextColor(0xFFFFFFFF.toInt())
-            textSize = 13f
-            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-            maxLines = 1
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.END or Gravity.CENTER_VERTICAL,
-            )
-        }
-        line0Band.addView(brandLeft)
-        line0Band.addView(brandRight)
-        addView(line0Band)
-
+        // innerRow IS the two lines now: each tool's column stacks its pet
+        // (Line 0) over its icon (Line 1). No separate band.
         addView(innerRow)
 
         // ── Bottom hairline ───────────────────────────────────────
@@ -270,14 +272,64 @@ class LauncherStatusStripView @JvmOverloads constructor(
         })
     }
 
-    /** Size Line 0 (the black branding band) to [px] — the top system
-     *  inset (camera/status-bar zone). Called by MainActivity.applyLauncherChrome
-     *  alongside the strip sizing so Line 0 covers exactly the cutout row and
-     *  Line 1 (the info row) + hairline stack beneath it. */
-    fun setLine0Height(px: Int) {
-        val lp = line0Band.layoutParams
-        lp.height = px
-        line0Band.layoutParams = lp
+    /** Decode BuildConfig.STATUS_PETS_B64 (build.json::status_pets) → per-tool
+     *  animal config. Empty/disabled-safe: leaves petsEnabled=false so the
+     *  strip renders as the plain icon row. */
+    private fun parsePetsConfig() {
+        runCatching {
+            val b64 = BuildConfig.STATUS_PETS_B64
+            if (b64.isBlank()) return
+            val o = JSONObject(String(Base64.decode(b64, Base64.DEFAULT)))
+            petsEnabled = o.optBoolean("enabled", false)
+            petPx = (o.optInt("px", 20) * resources.displayMetrics.density).toInt()
+            o.optJSONArray("gaits")?.let { g -> gaits = (0 until g.length()).map { g.getString(it) } }
+            val tools = o.optJSONObject("tools") ?: return
+            for (k in tools.keys()) {
+                val t = tools.getJSONObject(k)
+                val buckets = t.optJSONArray("buckets")
+                    ?.let { b -> (0 until b.length()).map { b.getInt(it) } } ?: emptyList()
+                toolCfg[k] = ToolPet(
+                    t.optString("animal"), t.optString("variant"),
+                    t.optString("type", "bool"), t.optInt("on_level", gaits.lastIndex), buckets,
+                )
+            }
+        }
+    }
+
+    /** Wrap a tool's [iconView] in a vertical [pet, icon] column so its pet
+     *  sits on Line 0 directly above the icon on Line 1. Returns the bare
+     *  iconView unchanged when pets are off / unconfigured for this tool. */
+    private fun makeToolColumn(toolId: String, iconView: View): View {
+        val cfg = toolCfg[toolId]
+        if (!petsEnabled || cfg == null) return iconView
+        val pet = PetStrengthView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(petPx, petPx)
+            setAnimal(cfg.animal, cfg.variant)
+            setGait(gaits.firstOrNull() ?: "idle")
+        }
+        petViews[toolId] = pet
+        return LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            addView(pet)
+            addView(iconView)
+        }
+    }
+
+    private fun gaitForLevel(level: Int): String =
+        gaits.getOrElse(level.coerceIn(0, gaits.lastIndex)) { gaits.last() }
+
+    /** percent → level by counting how many ascending [buckets] it clears. */
+    private fun bucketLevel(pct: Int, buckets: List<Int>): Int =
+        buckets.count { pct >= it }
+
+    private fun updatePet(toolId: String, level: Int) {
+        petViews[toolId]?.setGait(gaitForLevel(level))
+    }
+
+    private fun updateBoolPet(toolId: String, on: Boolean) {
+        val cfg = toolCfg[toolId] ?: return
+        updatePet(toolId, if (on) cfg.onLevel else 0)
     }
 
     /** Shared small monospace label used by left + right cluster
@@ -383,6 +435,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
             status == BatteryManager.BATTERY_STATUS_FULL
         val pct = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
         batteryView.setBattery(pct, charging)
+        if (pct >= 0) toolCfg["battery"]?.let { updatePet("battery", bucketLevel(pct, it.buckets)) }
     }
 
     /** USB cable DATA-transfer state from ACTION_USB_STATE. "Data" = cable
@@ -442,6 +495,12 @@ class LauncherStatusStripView @JvmOverloads constructor(
         wgView      .setTextColor(if (hasVpn)       on else off)
         btView      .setTextColor(if (hasBluetooth) on else off)
         usbView     .setTextColor(if (hasUsbData)   on else off)
+        // Pets: on → run (energetic), off → idle. on_level is data-driven.
+        updateBoolPet("cellular", hasCellular)
+        updateBoolPet("wifi", hasWifi)
+        updateBoolPet("vpn", hasVpn)
+        updateBoolPet("bluetooth", hasBluetooth)
+        updateBoolPet("usb", hasUsbData)
     }
 
     /** Read RAM + /data storage utilisation and update the right
@@ -455,6 +514,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
                 it.getMemoryInfo(info)
                 val pct = ((1.0 - info.availMem.toDouble() / info.totalMem.toDouble()) * 100).toInt()
                 ramView.text = "R$pct%"
+                toolCfg["ram"]?.let { updatePet("ram", bucketLevel(pct, it.buckets)) }
             }
         }
         runCatching {
@@ -464,6 +524,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
             val avail = stat.availableBlocksLong * stat.blockSizeLong
             val pct = ((1.0 - avail.toDouble() / total.toDouble()) * 100).toInt()
             storageView.text = "S$pct%"
+            toolCfg["storage"]?.let { updatePet("storage", bucketLevel(pct, it.buckets)) }
         }
     }
 }

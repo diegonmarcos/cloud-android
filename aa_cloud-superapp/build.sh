@@ -597,6 +597,45 @@ step_sync_heliboard() {
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/"
 }
 
+# Vendor the status-bar Line 0 animated pets from KartikLabhshetwar/zoomies
+# (sprites CC BY-ND 4.0 — used UNMODIFIED + credited). DATA-DRIVEN: reads which
+# animal/variant each tool uses from build.json::status_pets.tools and copies
+# exactly those 4-gait GIFs into app/src/main/assets/zoomies/. Adding/retuning
+# a pet = edit build.json + re-run this; no hardcoded animal list in the engine.
+# Upstream clone lives at ${UNIX_REPO:-$HOME/git/unix}/ea_zoomies-pets/
+# (gitignored sibling, ea_*-* convention).
+step_sync_zoomies() {
+  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_zoomies-pets/Sources/Zoomies/Pets"
+  local dst="$SCRIPT_DIR/app/src/main/assets/zoomies"
+  local bj="$SCRIPT_DIR/build.json"
+  [ -d "$upstream" ] || { errlog "sync-zoomies: upstream not found: $upstream (clone https://github.com/KartikLabhshetwar/zoomies to ${UNIX_REPO:-$HOME/git/unix}/ea_zoomies-pets, or set UNIX_REPO=)"; exit 1; }
+  command -v jq >/dev/null 2>&1 || { errlog "sync-zoomies: jq required"; exit 1; }
+
+  rm -rf "$dst"; mkdir -p "$dst"
+  local gaits; gaits=$(jq -r '.status_pets.gaits[]' "$bj")
+  local n=0 miss=0
+  # Unique animal/variant pairs referenced by the data — copy only those.
+  while IFS=' ' read -r animal variant; do
+    [ -n "$animal" ] || continue
+    mkdir -p "$dst/$animal"
+    for g in $gaits; do
+      local src="$upstream/$animal/${variant}_${g}.gif"
+      if [ -f "$src" ]; then
+        cp -f "$src" "$dst/$animal/${variant}_${g}.gif"; n=$((n+1))
+      else
+        errlog "sync-zoomies: missing gait GIF $animal/${variant}_${g}.gif"; miss=$((miss+1))
+      fi
+    done
+  done < <(jq -r '.status_pets.tools | to_entries[] | "\(.value.animal) \(.value.variant)"' "$bj" | sort -u)
+
+  # Attribution — CC BY-ND requires credit. Ship the upstream CREDITS verbatim.
+  [ -f "$upstream/CREDITS.txt" ] && cp -f "$upstream/CREDITS.txt" "$dst/CREDITS.txt"
+
+  log "sync-zoomies: $n GIF(s) → app/src/main/assets/zoomies/ ($miss missing)"
+  log "  review with: git -C $SCRIPT_DIR status -s -- app/src/main/assets/zoomies/"
+  [ "$miss" -eq 0 ] || { errlog "sync-zoomies: $miss referenced GIF(s) missing — fix build.json::status_pets or the clone"; exit 1; }
+}
+
 case "$CMD" in
   build)      step_build ;;
   release)    step_release ;;
@@ -616,6 +655,7 @@ case "$CMD" in
   sync-qrcodes) step_sync_qrcodes ;;
   sync-net)     step_sync_net ;;
   sync-heliboard) step_sync_heliboard ;;
+  sync-zoomies) step_sync_zoomies ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;

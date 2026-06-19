@@ -665,9 +665,6 @@ class MainActivity : AppCompatActivity(),
                         lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
                         it.layoutParams = lp
                     }
-                    // Line 0 owns exactly the camera/status-bar inset row.
-                    (it as? com.diegonmarcos.superapp.launcher.LauncherStatusStripView)
-                        ?.setLine0Height(barH)
                     // Drop the legacy py=3dp padding the view set in init
                     // so the text isn't squeezed against the bottom edge.
                     it.setPadding(it.paddingLeft, 0, it.paddingRight, 0)
