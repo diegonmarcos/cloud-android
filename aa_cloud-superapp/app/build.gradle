@@ -1,6 +1,9 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    // Kotlin 2.0+ Compose compiler plugin (replaces composeOptions.
+    // kotlinCompilerExtensionVersion). Version pinned in root build.gradle.
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 // Capture wall-clock start so we can emit gradle's config-phase
@@ -419,7 +422,7 @@ def buildSampleSize = buildHistorySecs.size()
 
 android {
     namespace 'com.diegonmarcos.superapp'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.diegonmarcos.superapp'
@@ -534,11 +537,6 @@ android {
         // recomposition (animation-heavy, dynamic theming).
         compose = true
     }
-    composeOptions {
-        // Pinned to Kotlin 1.9.24 → Compose Compiler 1.5.14 per
-        // https://developer.android.com/jetpack/androidx/releases/compose-kotlin
-        kotlinCompilerExtensionVersion = '1.5.14'
-    }
 
     // Stable signing — required for the in-app updater to install update APKs.
     // The SHARED Cloud-constellation key (release.jks + sops passwords) lives in
@@ -600,6 +598,11 @@ dependencies {
     implementation project(':libs:cal')
     implementation project(':libs:feed')
     implementation project(':libs:net')
+    // libs:keyboard — self-contained keyboard provider (HeliBoard, vendored).
+    // Pulls the LatinIME InputMethodService into the APK via manifest merge;
+    // app/ calls no keyboard code. Reconciliation tools: overlays live in
+    // this module's AndroidManifest.xml. See libs/keyboard/README.md.
+    implementation project(':libs:keyboard')
     implementation project(':libs:ops')
     implementation project(':libs:vault')
     implementation project(':libs:chat')
@@ -662,7 +665,7 @@ dependencies {
     // BOM pin keeps every Compose module on a compatible release; only
     // the artifacts we actually need are pulled in to keep the APK
     // delta minimal.
-    implementation platform('androidx.compose:compose-bom:2024.05.00')
+    implementation platform('androidx.compose:compose-bom:2025.11.01')
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.material3:material3'

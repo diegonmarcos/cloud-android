@@ -19,7 +19,7 @@ def kdeMeshB64  = kdeMeshJson.bytes.encodeBase64().toString()
 
 android {
     namespace 'com.diegonmarcos.superapp.kdeconnect'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         minSdk 26
         buildConfigField "String", "KDE_CONNECT_B64", "\"${kdeB64}\""

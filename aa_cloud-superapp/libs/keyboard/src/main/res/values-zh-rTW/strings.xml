@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2008 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+--><resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
+    <string name="use_contacts_dict">"查詢聯絡人姓名"</string>
+    <string name="vibrate_on_keypress">"按鍵時震動"</string>
+    <string name="sound_on_keypress">"按鍵聲音"</string>
+    <string name="popup_on_keypress">"按鍵時顯示大型字體"</string>
+    <string name="settings_screen_preferences">"偏好設定"</string>
+    <string name="settings_screen_gesture">"手勢輸入"</string>
+    <string name="settings_screen_correction">"文字修正"</string>
+    <string name="settings_screen_advanced">"進階"</string>
+    <string name="settings_screen_theme">"主題"</string>
+    <string name="enable_split_keyboard">"啟用分離式鍵盤"</string>
+    <string name="language_switch_key_switch_input_method">"切換到其他輸入法"</string>
+    <string name="show_language_switch_key">"語言切換鍵"</string>
+    <string name="abbreviation_unit_milliseconds">"%s 毫秒"</string>
+    <string name="settings_system_default">"系統預設"</string>
+    <string name="use_contacts_dict_summary">"根據「聯絡人」名稱提供建議與修正"</string>
+    <string name="use_personalized_dicts">"個人化建議"</string>
+    <string name="use_double_space_period">"輕觸兩下空格鍵即插入句號"</string>
+    <string name="use_double_space_period_summary">"輕觸兩下空格鍵可插入句號另加一個空格"</string>
+    <string name="auto_cap">"自動大寫"</string>
+    <string name="auto_cap_summary">"句首字詞大寫"</string>
+    <string name="edit_personal_dictionary">"個人字典"</string>
+    <string name="main_dictionary">"主要字典"</string>
+    <string name="prefs_show_suggestions">"顯示修正建議"</string>
+    <string name="prefs_show_suggestions_summary">"輸入時顯示建議字詞"</string>
+    <string name="prefs_block_potentially_offensive_title">"封鎖令人反感的字詞"</string>
+    <string name="prefs_block_potentially_offensive_summary">"不建議可能令人反感的字詞"</string>
+    <string name="autocorrect">"自動修正"</string>
+    <string name="auto_correction_summary">"按空白鍵或標點符號時，自動修正前面的錯字"</string>
+    <string name="auto_correction_threshold_mode_off">"關閉"</string>
+    <string name="auto_correction_threshold_mode_modest">"更正範圍小"</string>
+    <string name="auto_correction_threshold_mode_aggressive">"大幅更正"</string>
+    <string name="auto_correction_threshold_mode_very_aggressive">"極大幅度更正"</string>
+    <string name="bigram_prediction">"建議下一個字詞"</string>
+    <string name="bigram_prediction_summary">"根據前一個字詞提供建議"</string>
+    <string name="gesture_input">"啟用滑行輸入"</string>
+    <string name="gesture_input_summary">"以滑動方式寫出字詞中字母來輸入字詞"</string>
+    <string name="gesture_preview_trail">"顯示手勢軌跡"</string>
+    <string name="gesture_floating_preview_text">"動態浮動預覽"</string>
+    <string name="gesture_space_aware">"詞組手勢"</string>
+    <string name="gesture_space_aware_summary">"手勢輸入時，滑過空格鍵即可輸入空格"</string>
+    <string name="subtype_en_GB">"英文 (英國)"</string>
+    <string name="subtype_en_US">"英文 (美國)"</string>
+    <string name="subtype_es_US">"西班牙文 (美國)"</string>
+    <string name="subtype_hi_Latn">"印度英文"</string>
+    <string name="subtype_sr_Latn">"塞爾維亞文 (拉丁文)"</string>
+    <string name="subtype_generic_traditional">"%s (傳統)"</string>
+    <string name="subtype_generic_compact">"%s (精簡)"</string>
+    <string name="subtype_no_language">"無語言"</string>
+    <string name="subtype_emoji">"表情符號"</string>
+    <string name="add">"新增"</string>
+    <string name="remove">"移除"</string>
+    <string name="save">"儲存"</string>
+    <string name="subtype_locale">"語言"</string>
+    <string name="keyboard_layout_set">"配置"</string>
+    <string name="prefs_keypress_vibration_duration_settings">"按鍵震動持續時間"</string>
+    <string name="prefs_keypress_sound_volume_settings">"按鍵音量"</string>
+    <string name="prefs_key_longpress_timeout_settings">"按鍵長按延遲"</string>
+    <string name="prefs_enable_emoji_alt_physical_key">"透過實體鍵盤啟用表情符號"</string>
+    <string name="prefs_enable_emoji_alt_physical_key_summary">"按下實體 Alt 鍵即顯示表情符號面板"</string>
+    <string name="button_default">"預設"</string>
+    <string name="setup_welcome_title">"歡迎使用 %s"</string>
+    <string name="setup_welcome_additional_description">"含滑行輸入功能"</string>
+    <string name="setup_start_action">"開始設定"</string>
+    <string name="setup_steps_title">"正在設定「%s」"</string>
+    <string name="setup_step1_title">"啟用「%s」"</string>
+    <string name="setup_step1_instruction">"請在 [語言與輸入設定] 中勾選 [%s]，授權該應用程式在你的裝置上執行。"</string>
+    <string name="setup_step1_action">"在設定中啟用"</string>
+    <string name="setup_step2_title">"切換至「%s」"</string>
+    <string name="setup_step2_instruction">"接著，請選取「%s」做為目前使用的文字輸入法。"</string>
+    <string name="setup_step2_action">"切換輸入法"</string>
+    <string name="setup_step3_title">"恭喜，你已完成設定！"</string>
+    <string name="setup_step3_instruction">現在您可以在所有您喜歡的應用程式中使用 %s 輸入。</string>
+    <string name="setup_finish_action">"完成"</string>
+    <string name="show_setup_wizard_icon">"顯示應用程式圖示"</string>
+    <string name="show_setup_wizard_icon_summary">"在啟動器中顯示應用程式圖示"</string>
+    <string name="dictionary_category_title">"外掛字典"</string>
+    <string name="dictionary_available">"可用的字典"</string>
+    <string name="settings">"設定"</string>
+    <string name="delete">"刪除"</string>
+    <string name="version_text">"版本 %1$s"</string>
+    <string name="user_dict_settings_add_shortcut_option_name">"快速鍵："</string>
+    <string name="user_dict_settings_add_locale_option_name">"語言："</string>
+    <string name="user_dict_settings_add_word_hint">"輸入字詞"</string>
+    <string name="user_dict_settings_add_shortcut_hint">"可選用的快速鍵"</string>
+    <string name="user_dict_settings_edit_dialog_title">"編輯字詞"</string>
+    <string name="user_dict_settings_all_languages">"所有語言"</string>
+    <string name="user_dict_settings_more_languages">"更多語言…"</string>
+    <string name="select_input_method">"選擇輸入法"</string>
+    <string name="undo">"復原"</string>
+    <string name="redo">"重做"</string>
+    <string name="use_personalized_dicts_summary">"根據你的通訊記錄和以往輸入的資料改善建議項目"</string>
+    <string name="label_go_key">"執行"</string>
+    <string name="label_next_key">"繼續"</string>
+    <string name="label_previous_key">"返回"</string>
+    <string name="label_done_key">"完成"</string>
+    <string name="label_send_key">"傳送"</string>
+    <string name="label_search_key">"搜尋"</string>
+    <string name="label_pause_key">"暫停"</string>
+    <string name="label_wait_key">"等待"</string>
+    <string name="theme_style">樣式</string>
+    <string name="dictionary_settings_category">字典</string>
+    <string name="theme_name_violette" tools:keep="@string/theme_name_violette">紫羅蘭</string>
+    <string name="settings_screen_appearance">外觀</string>
+    <string name="ime_settings">HeliBoard 設定</string>
+    <string name="settings_category_suggestions">建議</string>
+    <string name="settings_category_experimental">實驗功能</string>
+    <string name="settings_category_miscellaneous">雜項</string>
+    <string name="button_restore">還原</string>
+    <string name="layout_symbols" tools:keep="@string/layout_symbols">符號</string>
+    <string name="layout_numpad" tools:keep="@string/layout_numpad">數字鍵盤</string>
+    <string name="load">載入</string>
+    <string name="button_backup">備份</string>
+    <string name="popup_keys_layout" tools:keep="@string/popup_keys_layout">版面</string>
+    <string name="popup_keys_symbols" tools:keep="@string/popup_keys_symbols">符號</string>
+    <string name="label_shift_key" tools:keep="@string/label_shift_key">Shift</string>
+    <string name="settings_category_input">輸入</string>
+    <string name="settings_category_correction">更正</string>
+    <string name="up" tools:keep="@string/up">上</string>
+    <string name="emoji" tools:keep="@string/emoji">表情符號</string>
+    <string name="theme_colors">顏色</string>
+    <string name="layout_phone" tools:keep="@string/layout_phone">電話</string>
+    <string name="action_none">無</string>
+    <string name="layout_number" tools:keep="@string/layout_number">數字</string>
+    <string name="day_or_night_day">日</string>
+    <string name="day_or_night_night">夜</string>
+    <string name="version">版本</string>
+    <string name="theme_name_light" tools:keep="@string/theme_name_light">淺色</string>
+    <string name="theme_name_dark" tools:keep="@string/theme_name_dark">深色</string>
+    <string name="theme_name_darker" tools:keep="@string/theme_name_darker">更深色</string>
+    <string name="theme_name_chocolate" tools:keep="@string/theme_name_chocolate">巧克力色</string>
+    <string name="theme_name_forest" tools:keep="@string/theme_name_forest">森林</string>
+    <string name="theme_name_ocean" tools:keep="@string/theme_name_ocean">海洋</string>
+    <string name="theme_name_pink" tools:keep="@string/theme_name_pink">粉紅色</string>
+    <string name="theme_name_user" tools:keep="@string/theme_name_user">使用者定義</string>
+    <string name="theme_name_brown" tools:keep="@string/theme_name_brown">棕色</string>
+    <string name="theme_name_cloudy" tools:keep="@string/theme_name_cloudy">多雲</string>
+    <string name="theme_name_black" tools:keep="@string/theme_name_black">黑色</string>
+    <string name="dialog_close">關閉</string>
+    <string name="style_name_Rounded" tools:keep="@string/style_name_Rounded">圓角</string>
+    <string name="theme_name_indigo" tools:keep="@string/theme_name_indigo">靛藍色</string>
+    <string name="label_enter_key" tools:keep="@string/label_enter_key">Enter</string>
+    <string name="label_tab_key" tools:keep="@string/label_tab_key">Tab</string>
+    <string name="theme_name_sand" tools:keep="@string/theme_name_sand">沙</string>
+    <string name="left" tools:keep="@string/left">左</string>
+    <string name="right" tools:keep="@string/right">右</string>
+    <string name="down" tools:keep="@string/down">下</string>
+    <string name="clipboard" tools:keep="@string/clipboard">剪貼簿</string>
+    <string name="user_dict_settings_add_weight_value">權重：</string>
+    <string name="dictionary_link_text">此處</string>
+    <string name="settings_screen_about">關於</string>
+    <string name="settings_screen_toolbar">工具列</string>
+    <string name="label_delete_key" tools:keep="@string/label_delete_key">Delete</string>
+</resources>

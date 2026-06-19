@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2013 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+-->
+
+<helium314.keyboard.keyboard.emoji.EmojiPalettesView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:orientation="vertical"
+    android:visibility="gone"
+    android:background="@android:color/transparent"
+    style="?attr/emojiPalettesViewStyle"
+>
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/emoji_pager"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <helium314.keyboard.keyboard.emoji.EmojiCategoryPageIndicatorView
+        android:id="@+id/emoji_category_page_id_view"
+        android:layout_width="match_parent"
+        android:layout_height="2dip" />
+    <helium314.keyboard.keyboard.MainKeyboardView
+        android:id="@+id/bottom_row_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</helium314.keyboard.keyboard.emoji.EmojiPalettesView>

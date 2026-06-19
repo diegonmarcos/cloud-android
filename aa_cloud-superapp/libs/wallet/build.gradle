@@ -1,11 +1,15 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
+    // Kotlin 2.0+ Compose compiler is a standalone plugin (replaces the old
+    // composeOptions.kotlinCompilerExtensionVersion). Version pinned in root
+    // build.gradle to the Kotlin version (2.3.20).
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 android {
     namespace 'com.diegonmarcos.superapp.wallet'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'
@@ -16,12 +20,6 @@ android {
         // Compose for any future in-app Compose, but the wallet's UI
         // surface is fully self-contained here.
         compose = true
-    }
-    composeOptions {
-        // Pinned to Kotlin 1.9.24 → Compose Compiler 1.5.14, same as
-        // app/build.gradle so both modules agree on the bytecode
-        // contract.
-        kotlinCompilerExtensionVersion = '1.5.14'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -42,7 +40,7 @@ dependencies {
 
     // Compose — BOM-pinned to keep every artifact on a compatible
     // release.
-    implementation platform('androidx.compose:compose-bom:2024.05.00')
+    implementation platform('androidx.compose:compose-bom:2025.11.01')
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.material3:material3'

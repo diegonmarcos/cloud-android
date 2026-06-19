@@ -20,7 +20,7 @@ def auTagMap = (buildJson.release.variants ?: []).collectMany { v ->
 
 android {
     namespace 'com.diegonmarcos.superapp.updater'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdk 26

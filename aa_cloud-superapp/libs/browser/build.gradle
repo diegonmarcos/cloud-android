@@ -22,7 +22,7 @@ plugins {
 
 android {
     namespace 'com.diegonmarcos.superapp.browser'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'

@@ -24,6 +24,7 @@
 # ║   gh-release  attach APK to GitHub Release (release.gh_release)   ║
 # ║   sync-qrcodes  pull qrcodes.json from front/linktree → assets/    ║
 # ║   sync-net      cherry-pick wireguard-android tunnel/ → libs/net/  ║
+# ║   sync-heliboard cherry-pick HeliBoard app/src/main → libs/keyboard/║
 # ║                                                                  ║
 # ║ NEVER bypass this script for build operations.                    ║
 # ╚══════════════════════════════════════════════════════════════════╝
@@ -547,6 +548,48 @@ step_sync_net() {
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/net/"
 }
 
+# Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
+# GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
+# self-contained keyboard provider. Upstream clone lives at
+# ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-heliboard/ (gitignored sibling,
+# ea_*-* workspace-clone convention).
+#
+# Copies app/src/main VERBATIM (java/kotlin + res + assets + jni + the
+# AndroidManifest.xml). The manifest is taken as-is — it is rich (own App
+# class, LatinIME IME service, spellchecker service, content providers with
+# @string authorities, boot receivers, <queries>) and changes between
+# releases, so vendoring it verbatim keeps libs:keyboard a zero-drift mirror
+# of upstream. All Cloud-SuperApp-specific reconciliation lives in the APP
+# manifest (app/src/main/AndroidManifest.xml) as explicit `tools:` overlays:
+#   • tools:replace="android:name" on <application> — the SuperApp's own App
+#     class wins the merge over helium314.keyboard.latin.App.
+#   • tools:node="remove" on the LAUNCHER intent-filter of HeliBoard's
+#     SettingsActivity + the MAIN filter of SpellCheckerSettingsActivity — so
+#     the keyboard adds NO second launcher icon (the SuperApp is the launcher).
+# The glide blob libjni_latinimegoogle.so is NEVER bundled (keeps the APK
+# FOSS); HeliBoard's built-in "Load gesture typing library" setting fetches it
+# in-app on first run.
+#
+# Idempotent — rsync --delete. Fresh upstream pull -> one
+# `./build.sh sync-heliboard` -> clear `git diff` for review.
+step_sync_heliboard() {
+  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-heliboard/app/src/main"
+  local dst="$SCRIPT_DIR/libs/keyboard"
+  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-heliboard, or set UNIX_REPO=)"; exit 1; }
+  command -v rsync >/dev/null 2>&1 || { errlog "sync-heliboard: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
+
+  mkdir -p "$dst/src/main"
+
+  # Whole app/src/main, manifest included — verbatim upstream mirror.
+  rsync -a --delete "$upstream/" "$dst/src/main/"
+
+  log "sync-heliboard: libs/keyboard populated from $(realpath --relative-to="$SCRIPT_DIR" "$upstream" 2>/dev/null || echo "$upstream")"
+  log "  sources : $(find "$dst/src/main" \( -name '*.java' -o -name '*.kt' \) 2>/dev/null | wc -l) file(s)"
+  log "  jni     : $(find "$dst/src/main/jni" -type f 2>/dev/null | wc -l) file(s)"
+  log "  manifest: VERBATIM upstream (reconciled by app/ tools: overlays — see libs/keyboard/README.md)"
+  log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/"
+}
+
 case "$CMD" in
   build)      step_build ;;
   release)    step_release ;;
@@ -565,6 +608,7 @@ case "$CMD" in
   gh-release)   step_gh_release ;;
   sync-qrcodes) step_sync_qrcodes ;;
   sync-net)     step_sync_net ;;
+  sync-heliboard) step_sync_heliboard ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;

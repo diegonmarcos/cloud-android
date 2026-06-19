@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: GPL-3.0-only
+//
+// libs:keyboard — the Cloud-SuperApp's self-contained keyboard provider,
+// vendored from HeliBoard (github.com/Helium314/HeliBoard) by
+// `./build.sh sync-heliboard`. The whole src/main tree (java/kotlin + res +
+// assets + jni + AndroidManifest) is a VERBATIM upstream mirror; this
+// build.gradle is the ONLY hand-owned file in the module (same pattern as
+// libs:net's slim CMakeLists), kept across resyncs.
+//
+// We own this file so it must track HeliBoard's app/build.gradle.kts deps +
+// toolchain whenever sync-heliboard pulls a newer upstream. Current pin
+// mirrors HeliBoard main (see build.json::toolchain).
+//
+// Native: ndk-build of src/main/jni/Android.mk -> libjni_latinime.so. Glide
+// typing needs Google's proprietary libjni_latinimegoogle.so, which is NEVER
+// bundled (keeps the APK FOSS) — HeliBoard's in-app "Load gesture typing
+// library" setting fetches it at runtime into app data.
+//
+// namespace MUST be helium314.keyboard.latin: the vendored manifest declares
+// the IME service relatively (android:name="LatinIME"), which resolves against
+// the namespace -> helium314.keyboard.latin.LatinIME (the real class path).
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    // HeliBoard uses kotlinx.serialization (@Serializable settings models).
+    id 'org.jetbrains.kotlin.plugin.serialization'
+    // Kotlin 2.0+ Compose compiler plugin — HeliBoard's settings UI is Compose
+    // (material3 + navigation-compose). Version pinned in root build.gradle.
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+android {
+    namespace 'helium314.keyboard.latin'
+    compileSdk 36
+    ndkVersion '28.0.13004108'
+
+    defaultConfig {
+        minSdk 26
+    }
+
+    buildFeatures {
+        compose = true
+        // HeliBoard reads generated BuildConfig fields (e.g. flavor/version).
+        buildConfig = true
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            // HeliBoard's AOSP-derived native decoder. Produces
+            // libjni_latinime.so for the configured ABI.
+            path 'src/main/jni/Android.mk'
+        }
+    }
+
+    defaultConfig {
+        ndk {
+            // Match the rest of the app — arm64-v8a only (see app/build.gradle
+            // abi_filters; the SuperApp ships a single-ABI phone build).
+            abiFilters 'arm64-v8a'
+        }
+    }
+
+    compileOptions {
+        // HeliBoard requires core-library desugaring (java.time / java.nio
+        // APIs below minSdk). Dep below.
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    lint {
+        // Vendored upstream — do not fail the SuperApp build on HeliBoard's
+        // own lint debt.
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    // ── Mirror of HeliBoard main app/build.gradle.kts dependencies. ──────
+    // Keep in sync with upstream on every `build.sh sync-heliboard` bump.
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    // androidx
+    implementation 'androidx.core:core-ktx:1.17.0'
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'androidx.autofill:autofill:1.3.0'
+    implementation 'androidx.viewpager2:viewpager2:1.1.0'
+
+    // kotlin
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0'
+
+    // compose (BOM-pinned, same release the rest of the app uses)
+    implementation platform('androidx.compose:compose-bom:2025.11.01')
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    implementation 'androidx.navigation:navigation-compose:2.9.8'
+    implementation 'sh.calvin.reorderable:reorderable:3.1.0'
+    // JitPack — settings.gradle already declares the jitpack repo.
+    implementation 'com.github.skydoves:colorpicker-compose:1.1.3'
+}

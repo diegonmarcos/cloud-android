@@ -25,7 +25,7 @@ def adbServerNice = adbServer.nice_name ?: 'superapp-adb'
 
 android {
     namespace 'com.diegonmarcos.superapp.adbdebug'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'

@@ -16,7 +16,7 @@ def daguServer = daguPage?.dagu_default_server ?: ''
 
 android {
     namespace 'com.diegonmarcos.superapp.ops'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdk 26

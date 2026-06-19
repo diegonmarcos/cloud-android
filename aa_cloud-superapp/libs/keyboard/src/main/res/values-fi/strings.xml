@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2008 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+--><resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
+    <string name="use_contacts_dict">"Nimien tarkistus"</string>
+    <string name="vibrate_on_keypress">"Käytä värinää näppäimiä painettaessa"</string>
+    <string name="sound_on_keypress">"Toista ääni näppäimiä painettaessa"</string>
+    <string name="popup_on_keypress">"Ponnahdusikkuna painalluksella"</string>
+    <string name="settings_screen_preferences">"Asetukset"</string>
+    <string name="settings_screen_gesture">"Piirtokirjoitus"</string>
+    <string name="settings_screen_correction">"Tekstin korjaus"</string>
+    <string name="settings_screen_advanced">"Lisäasetukset"</string>
+    <string name="settings_screen_theme">"Teema"</string>
+    <string name="enable_split_keyboard">"Ota jaettu näppäimistö käyttöön"</string>
+    <string name="language_switch_key_switch_input_method">"Käytä toista syöttötapaa"</string>
+    <string name="show_language_switch_key">"Kielenvaihtonäppäin"</string>
+    <string name="abbreviation_unit_milliseconds">"%s ms"</string>
+    <string name="settings_system_default">"Järjestelmän oletusarvo"</string>
+    <string name="use_contacts_dict_summary">Käytä yhteystietojen nimiä ehdotuksissa ja korjauksissa</string>
+    <string name="use_personalized_dicts">"Personoidut ehdotukset"</string>
+    <string name="use_double_space_period">"Kaksoisvälilyönti = piste"</string>
+    <string name="use_double_space_period_summary">Välilyöntinäppäimen kaksoisnapautus lisää pisteen, jota seuraa välilyönti</string>
+    <string name="auto_cap">"Automaattiset isot kirjaimet"</string>
+    <string name="auto_cap_summary">Kirjoita jokaisen lauseen ensimmäinen sana isolla</string>
+    <string name="edit_personal_dictionary">"Oma sanakirja"</string>
+    <string name="main_dictionary">"Pääsanakirja"</string>
+    <string name="prefs_show_suggestions">"Näytä korjausehdotukset"</string>
+    <string name="prefs_show_suggestions_summary">Näytä ehdotetut sanat kirjoittaessasi</string>
+    <string name="prefs_block_potentially_offensive_title">"Estä loukkaavat sanat"</string>
+    <string name="prefs_block_potentially_offensive_summary">Älä ehdota mahdollisesti loukkaavia sanoja</string>
+    <string name="autocorrect">"Autom. korjaus"</string>
+    <string name="auto_correction_summary">"Välilyönti ja -merkit korjaavat väärinkirjoitetut sanat"</string>
+    <string name="auto_correction_threshold_mode_off">"Ei käytössä"</string>
+    <string name="auto_correction_threshold_mode_modest">"Osittainen"</string>
+    <string name="auto_correction_threshold_mode_aggressive">"Aggressiivinen"</string>
+    <string name="auto_correction_threshold_mode_very_aggressive">"Hyvin aggressiivinen"</string>
+    <string name="bigram_prediction">"Seuraavan sanan ehdotukset"</string>
+    <string name="bigram_prediction_summary">"Käytä edellistä sanaa ehdotuksien perusteena"</string>
+    <string name="gesture_input">"Ota piirtokirjoitus käyttöön"</string>
+    <string name="gesture_input_summary">Syötä sana liu\'uttamalla kirjainten läpi</string>
+    <string name="gesture_preview_trail">"Näytä eleen jälki"</string>
+    <string name="gesture_floating_preview_text">"Dynaaminen kelluva esikatselu"</string>
+    <string name="gesture_space_aware">"Ilmausele"</string>
+    <string name="gesture_space_aware_summary">"Lisää välilyöntejä eleiden aikana liukumalla välilyöntinäppäimelle"</string>
+    <string name="subtype_en_GB">"englanti (Iso-Britannia)"</string>
+    <string name="subtype_en_US">"englanti (Yhdysvallat)"</string>
+    <string name="subtype_es_US">"espanja (Yhdysvallat)"</string>
+    <string name="subtype_hi_Latn">"Hindienglanti"</string>
+    <string name="subtype_sr_Latn">"serbialainen (latinal.)"</string>
+    <string name="subtype_generic_traditional">"%s (perinteinen)"</string>
+    <string name="subtype_generic_compact">"%s (tiivis)"</string>
+    <string name="subtype_no_language">"Ei kieltä"</string>
+    <string name="subtype_emoji">"Emoji"</string>
+    <string name="add">"Lisää"</string>
+    <string name="remove">"Poista"</string>
+    <string name="save">"Tallenna"</string>
+    <string name="subtype_locale">"Kieli"</string>
+    <string name="keyboard_layout_set">"Asettelu"</string>
+    <string name="prefs_keypress_vibration_duration_settings">"Painalluksen värinän kesto"</string>
+    <string name="prefs_keypress_sound_volume_settings">"Näppäinpainalluksen äänenvoimakkuus"</string>
+    <string name="prefs_key_longpress_timeout_settings">"Pitkän painalluksen viive"</string>
+    <string name="prefs_enable_emoji_alt_physical_key">"Hymiö fyysisellä näppäimistöllä"</string>
+    <string name="prefs_enable_emoji_alt_physical_key_summary">Fyysinen Alt-näppäin näyttää emoji-paletin</string>
+    <string name="button_default">"Oletusarvot"</string>
+    <string name="setup_welcome_title">"Tervetuloa käyttämään sovellusta %s"</string>
+    <string name="setup_welcome_additional_description">"ja piirtokirjoitus"</string>
+    <string name="setup_start_action">"Aloita"</string>
+    <string name="setup_steps_title">"Sovelluksen %s asetukset"</string>
+    <string name="setup_step1_title">"Ota %s käyttöön"</string>
+    <string name="setup_step1_instruction">Valitse%s Kielet ja syöttötapa ‑asetuksissa. Se antaa sovellukselle luvan toimia laitteellasi.\"</string>
+    <string name="setup_step1_action">"Ota käyttöön asetuksissa"</string>
+    <string name="setup_step2_title">"Siirry sovellukseen %s"</string>
+    <string name="setup_step2_instruction">Valitse%s käytössä olevaksi tekstinsyöttötavaksi.\"</string>
+    <string name="setup_step2_action">"Vaihda syöttötapaa"</string>
+    <string name="setup_step3_title">"Onneksi olkoon, valmista tuli!"</string>
+    <string name="setup_step3_instruction">Nyt voit kirjoittaa kaikki suosikkisovelluksesi %s.</string>
+    <string name="setup_finish_action">"Valmis"</string>
+    <string name="show_setup_wizard_icon">"Näytä sovelluskuvake"</string>
+    <string name="show_setup_wizard_icon_summary">Näytä sovelluskuvake käynnistysohjelmassa</string>
+    <string name="dictionary_category_title">"Sanakirjalisäosat"</string>
+    <string name="dictionary_available">"Sanakirja saatavilla"</string>
+    <string name="settings">"Asetukset"</string>
+    <string name="delete">"Poista"</string>
+    <string name="version_text">"Versio %1$s"</string>
+    <string name="user_dict_settings_add_shortcut_option_name">"Pikanäppäin:"</string>
+    <string name="user_dict_settings_add_locale_option_name">"Kieli:"</string>
+    <string name="user_dict_settings_add_word_hint">"Kirjoita sana"</string>
+    <string name="user_dict_settings_add_shortcut_hint">"Valinnainen pikanäppäin"</string>
+    <string name="user_dict_settings_edit_dialog_title">"Muokkaa sanaa"</string>
+    <string name="user_dict_settings_all_languages">"Kaikille kielille"</string>
+    <string name="user_dict_settings_more_languages">"Lisää kieliä…"</string>
+    <string name="select_input_method">"Valitse syöttötapa"</string>
+    <string name="settings_screen_appearance">Ulkoasu</string>
+    <string name="undo">"Kumoa"</string>
+    <string name="redo">"Toista"</string>
+    <string name="use_personalized_dicts_summary">"Ehdotusten parannus viestinnän ja kirjoitettujen tietojen avulla"</string>
+    <string name="label_go_key">"Siir."</string>
+    <string name="label_next_key">"Seur."</string>
+    <string name="label_previous_key">"Edel."</string>
+    <string name="label_done_key">"Valm."</string>
+    <string name="label_send_key">"Läh."</string>
+    <string name="label_search_key">"Haku"</string>
+    <string name="label_pause_key">"Tauko"</string>
+    <string name="label_wait_key">"Odota"</string>
+    <string name="layout_number_row" tools:keep="@string/layout_number_row">Numerorivi</string>
+    <string name="add_new_dictionary_title">Lisää sanakirja tiedostosta</string>
+    <string name="theme_name_dark" tools:keep="@string/theme_name_dark">Tumma</string>
+    <string name="theme_colors">Värit</string>
+    <string name="restore_error">Virhe varmuuskopiota palauttaessa: %s</string>
+    <string name="load_gesture_library_button_load">Lataa kirjasto</string>
+    <string name="load_gesture_library_button_delete">Poista kirjasto</string>
+    <string name="button_restore">Palauta</string>
+    <string name="language_and_layouts_title">Kielet ja asettelut</string>
+    <string name="incognito">Pakota yksityinen tila</string>
+    <string name="number_row">Numerorivi</string>
+    <string name="number_row_summary">Näytä numerorivi aina</string>
+    <string name="one_handed" tools:keep="@string/one_handed">Yksikätinen tila</string>
+    <string name="close_history" tools:keep="@string/close_history">Tyhjennä leikepöydän historia</string>
+    <string name="prefs_long_press_keyboard_to_change_lang">Vaihda syötemenetelmää välilyönnillä</string>
+    <string name="button_load_custom">Lataa tiedosto</string>
+    <string name="file_read_error">Tiedostoa ei voi lukea</string>
+    <string name="layout_phone" tools:keep="@string/layout_phone">Puhelin</string>
+    <string name="no_dictionary_dont_show_again_button">Älä näytä uudelleen</string>
+    <string name="add_dictionary">Valitse lisättävä sanakirja. Sanakirjoja .dict-muodossa voi ladata %s.</string>
+    <string name="select_color_key_background">Näppäimen tausta</string>
+    <string name="style_name_Rounded" tools:keep="@string/style_name_Rounded">Pyöristetty</string>
+    <string name="clipboard_history_retention_time">Historian säilytysaika</string>
+    <string name="url_detection_title">URL-osoitteen havaitseminen</string>
+    <string name="internal_dictionary_summary">Sisäinen pääsanakirja</string>
+    <string name="auto_show_toolbar">Näytä työkalupalkki automaattisesti</string>
+    <string name="customize_currencies">Mukauta valuuttoja</string>
+    <string name="dictionary_settings_category">Sanakirjat</string>
+    <string name="button_select_language">Valitse kieli</string>
+    <string name="key_borders">Näppäinreunat</string>
+    <string name="day_night_mode">Automaattinen päivä-/yötila</string>
+    <string name="language_switch_key_behavior">Kielen vaihtonäppäimen toiminta</string>
+    <string name="abbreviation_unit_minutes">%s min</string>
+    <string name="add_to_personal_dictionary">Lisää sanat henkilökohtaiseen sanakirjaan</string>
+    <string name="prefs_always_show_suggestions">Näytä ehdotukset aina</string>
+    <string name="more_autocorrect">Enemmän autom. korjausta</string>
+    <string name="popup_keys_number" tools:keep="@string/popup_keys_number">Numerorivi</string>
+    <string name="day_or_night_day">Päivä</string>
+    <string name="settings_category_input">Syöte</string>
+    <string name="settings_category_clipboard_history">Leikepöydän historia</string>
+    <string name="settings_category_correction">Korjaukset</string>
+    <string name="settings_category_suggestions">Ehdotukset</string>
+    <string name="settings_category_experimental">Kokeellinen</string>
+    <string name="settings_category_miscellaneous">Sekalaiset</string>
+    <string name="settings_category_additional_keys">Lisänäppäimet</string>
+    <string name="language_switch_key_switch_both">Vaihda molemmat</string>
+    <string name="show_emoji_key">Emoji-näppäin</string>
+    <string name="enable_clipboard_history">Ota leikepöydän historia käyttöön</string>
+    <string name="backup_restore_title">Varmuuskopioi ja palauta</string>
+    <string name="backup_restore_message">Tallenna tai lataa tiedosto. Varoitus: palauttaminen ylikirjoittaa olemassa olevan datan</string>
+    <string name="license">Avoimen lähdekoodin lisenssi</string>
+    <string name="prefs_keyboard_height_scale">Näppäimistön korkeusskaalaus</string>
+    <string name="prefs_narrow_key_gaps">Kapeat näppäinvälit</string>
+    <string name="layout_clip_bottom_row" tools:keep="@string/layout_clip_bottom_row">Leikepöydän alarivi</string>
+    <string name="user_dict_add_word_button">Lisää sana</string>
+    <string name="theme_name_light" tools:keep="@string/theme_name_light">Vaalea</string>
+    <string name="auto_show_toolbar_summary">Näytä työkalupalkki jos syöte aloitetaan tai tekstiä valitaan</string>
+    <string name="space_swipe_toggle_numpad_entry">Numeronäppäimistö päällä/pois</string>
+    <string name="android_spell_checker_settings">HeliBoard-oikoluvun asetukset</string>
+    <string name="settings_screen_about">Tietoja</string>
+    <string name="about_github_link">Näytä GitHubissa</string>
+    <string name="version">Versio</string>
+    <string name="dialog_close">Sulje</string>
+    <string name="delete_layout">Poistetaanko mukautettu asettelu %s?</string>
+    <string name="copy_to_clipboard">Kopioi leikepöydälle</string>
+    <string name="load">Lataa</string>
+    <string name="button_title_add_custom_layout">Lisää mukautettu asettelu</string>
+    <string name="button_save_file">Tallenna tiedostoon</string>
+    <string name="layout_error">Asetteluvirhe: %s</string>
+    <string name="layout_number" tools:keep="@string/layout_number">Numerot</string>
+    <string name="main_colors">Näytä vain päävärit</string>
+    <string name="theme_name_darker" tools:keep="@string/theme_name_darker">Tummempi</string>
+    <string name="theme_name_cloudy" tools:keep="@string/theme_name_cloudy">Pilvinen</string>
+    <string name="theme_colors_night">Värit (yö)</string>
+    <string name="day_night_mode_summary">Ulkoasu seuraa järjestelmän asetuksia</string>
+    <string name="select_color_background">Näppäimistön tausta</string>
+    <string name="emoji" tools:keep="@string/emoji">Emoji</string>
+    <string name="clipboard_toolbar_keys">Valitse leikepöydän työkalupalkin näppäimet</string>
+    <string name="setup_step3_action">Muokkaa näppäimistöä</string>
+    <string name="text_tap_languages">Napauta kieltä avataksesi sen asetukset</string>
+    <string name="save_log">Tallenna loki</string>
+    <string name="gnu_gpl">GNU General Public License v3.0</string>
+    <string name="select_color_gesture">Elesyöte</string>
+    <string name="suggest_clipboard_content">Ehdota leikepöydän sisältöä</string>
+    <string name="suggest_clipboard_content_summary">Näytä äskettäin kopioitua leikepöydän sisältöä ehdotuksena</string>
+    <string name="backup_error">Varmuuskopioinnin virhe: %s</string>
+    <string name="button_backup">Varmuuskopioi</string>
+    <string name="secondary_locale">Kirjoitus useilla kielillä</string>
+    <string name="load_gesture_library">Lataa elekirjoittamisen kirjasto</string>
+    <string name="load_gesture_library_summary">Tarjoa natiivi kirjasto ottaaksesi elekirjoittamisen käyttöön</string>
+    <string name="popup_keys_layout" tools:keep="@string/popup_keys_layout">Asettelu</string>
+    <string name="popup_keys_symbols" tools:keep="@string/popup_keys_symbols">Symbolit</string>
+    <string name="dictionary_load_error">Virhe ladatessa sanakirjatiedostoa</string>
+    <string name="clipboard" tools:keep="@string/clipboard">Leikepöytä</string>
+    <string name="voice" tools:keep="@string/voice">Äänisyöte</string>
+    <string name="select_word" tools:keep="@string/select_word">Valitse sana</string>
+    <string name="clear_clipboard" tools:keep="@string/clear_clipboard">Tyhjennä leikepöytä</string>
+    <string name="day_or_night_night">Yö</string>
+    <string name="replace_dictionary">Korvaa sanakirja</string>
+    <string name="theme_style">Tyyli</string>
+    <string name="available_dictionary_experimental">%s (kokeellinen)</string>
+    <string name="dictionary_file_error">Virhe: valittu tiedosto ei ole kelvollinen sanakirjatiedosto</string>
+    <string name="dictionary_link_text">tästä</string>
+    <string name="theme_name_blue_gray" tools:keep="@string/theme_name_blue_gray">Siniharmaa</string>
+    <string name="theme_name_black" tools:keep="@string/theme_name_black">Musta</string>
+    <string name="theme_name_chocolate" tools:keep="@string/theme_name_chocolate">Suklaa</string>
+    <string name="theme_name_forest" tools:keep="@string/theme_name_forest">Metsä</string>
+    <string name="theme_name_ocean" tools:keep="@string/theme_name_ocean">Meri</string>
+    <string name="all_colors">Näytä kaikki värit</string>
+    <string name="select_color_accent">Korostus</string>
+    <string name="more_colors">Näytä enemmän värejä</string>
+    <string name="customize_background_image">Aseta taustakuva</string>
+    <string name="label_toolbar_key" tools:keep="@string/label_toolbar_key">Näytä/piilota työkalupalkki</string>
+    <string name="auto_hide_toolbar">Piilota työkalupalkki automaattisesti</string>
+    <string name="auto_hide_toolbar_summary">Piilota työkalupalkki kun ehdotukset tulevat saataville</string>
+    <string name="toast_msg_clipboard_copy">Sisältö kopioitu</string>
+    <string name="label_stop_onehanded_mode_key" tools:keep="@string/label_stop_onehanded_mode_key">Poistu yksikätisestä tilasta</string>
+    <string name="label_resize_onehanded_key" tools:keep="@string/label_resize_onehanded_key">Muuta yksikätisen tilan kokoa</string>
+    <string name="label_switch_onehanded_key" tools:keep="@string/label_switch_onehanded_key">Vaihda yksikätisen tilan reunaa</string>
+    <string name="label_shortcut_key_disabled" tools:keep="@string/label_shortcut_key_disabled">Äänisyöte poistettu käytöstä</string>
+    <string name="customize_icons">Mukauta kuvakkeita</string>
+    <string name="theme_name_pink" tools:keep="@string/theme_name_pink">Pinkki</string>
+    <string name="theme_name_sand" tools:keep="@string/theme_name_sand">Hiekka</string>
+    <string name="theme_name_violette" tools:keep="@string/theme_name_violette">Violetti</string>
+    <string name="theme_name_user" tools:keep="@string/theme_name_user">Käyttäjän määrittämä</string>
+    <string name="auto_user_color">Valitse väri automaattisesti</string>
+    <string name="icon_style">Kuvaketyyli</string>
+    <string name="select_color_spacebar_background">Välilyönnin tausta</string>
+    <string name="hidden_features_summary">Näytä mahdollisesti huomaamatta jäävät ominaisuudet</string>
+    <string name="settings_screen_toolbar">Työkalupalkki</string>
+    <string name="spell_checker_service_name">HeliBoard-oikoluku</string>
+    <string name="hidden_features_title">Kuvaus piilotetuista ominaisuuksista</string>
+    <string name="toolbar_keys">Valitse työkalupalkin näppäimet</string>
+    <string name="ime_settings">HeliBoard-asetukset</string>
+    <string name="theme_name_dynamic" tools:keep="@string/theme_name_dynamic">Dynaamiset värit</string>
+    <string name="settings_no_limit">Ei rajoitusta</string>
+    <string name="pinned_toolbar_keys">Valitse kiinnitetyt työkalupalkin näppäimet</string>
+    <string name="theme_name_brown" tools:keep="@string/theme_name_brown">Ruskea</string>
+    <string name="switch_language">Vaihda kieltä</string>
+    <string name="prefs_force_incognito_mode_summary">Poista käytöstä sanojen oppiminen</string>
+    <string name="right" tools:keep="@string/right">Oikea</string>
+    <string name="up" tools:keep="@string/up">Ylös</string>
+    <string name="down" tools:keep="@string/down">Alas</string>
+    <string name="page_end" tools:keep="@string/page_end">Sivun loppu</string>
+    <string name="word_right" tools:keep="@string/word_right">Sana oikea</string>
+    <string name="word_left" tools:keep="@string/word_left">Sana vasen</string>
+    <string name="page_up" tools:keep="@string/page_up">Sivu ylös</string>
+    <string name="page_down" tools:keep="@string/page_down">Sivu alas</string>
+    <string name="add_to_personal_dictionary_summary">Käytä laitteen henkilökohtaista sanakirjaa opittujen sanojen tallentamiseen</string>
+    <string name="more_autocorrect_summary">Korjaa automaattisesti, vaikka syöttökenttä ei sitä nimenomaisesti pyytäisi</string>
+    <string name="show_popup_keys_normal">Näytä näppäimistökielillä määritellyt muunnelmat</string>
+    <string name="center_suggestion_text_to_enter">Käytä aina keskimmäistä ehdotusta</string>
+    <string name="autospace_after_punctuation_summary">Lisää automaattisesti välilyönti välimerkkien jälkeen, kun kirjoitat uutta sanaa</string>
+    <string name="show_popup_keys_title">Näytä lisää diakriittisiä kirjaimia ponnahdusikkunassa</string>
+    <string name="url_detection_summary">Yritä havaita URL-osoitteet ja vastaavat yhdeksi sanaksi</string>
+    <string name="hint_source">Valitse vihjeiden lähde</string>
+    <string name="full_right" tools:keep="@string/full_right">Täysi oikea</string>
+    <string name="full_left" tools:keep="@string/full_left">Täysi vasen</string>
+    <string name="left" tools:keep="@string/left">Vasen</string>
+    <string name="center_suggestion_text_to_enter_summary">Välilyöntiä tai välimerkkiä painettaessa syötetään keskimmäinen ehdotus</string>
+    <string name="gesture_fast_typing_cooldown_instant">Aloita aina välittömästi</string>
+    <string name="gesture_floating_preview_dynamic_summary">Siirrä esikatselua eleen aikana</string>
+    <string name="auto_correction_confidence">Automaattisen korjauksen luottamus</string>
+    <string name="show_hints_summary">Näytä pitkän painalluksen vinkit</string>
+    <string name="delete_swipe_summary">Pyyhkäise poistonäppäimestä valitaksesi ja poistaaksesi suurempia tekstiosia kerralla</string>
+    <string name="show_popup_keys_more">Lisää yleiset muunnelmat</string>
+    <string name="popup_keys_language_priority" tools:keep="@string/popup_keys_language_priority">Kieli (ensisijaisuus)</string>
+    <string name="prefs_always_show_suggestions_summary">Ohita muiden sovellusten pyyntö poistaa ehdotukset käytöstä (saattaa aiheuttaa ongelmia)</string>
+    <string name="page_start" tools:keep="@string/page_start">Sivun alku</string>
+    <string name="vibrate_in_dnd_mode">Värinä Älä häiritse -tilassa</string>
+    <string name="disable_personalized_dicts_message">Varoitus: Tämän asetuksen poistaminen käytöstä poistaa opitut tiedot</string>
+    <string name="gesture_floating_preview_static">Kelluva esikatselu</string>
+    <string name="gesture_floating_preview_static_summary">Katso ehdotettu sana elehtimisen aikana</string>
+    <string name="show_popup_hints">Näytä toiminnalliset vihjeet</string>
+    <string name="auto_correct_shortcuts_summary">Kun käytössä, pikanäppäimet voidaan laajentaa autocorrectilla</string>
+    <string name="gesture_trail_fadeout_duration">Elepolun elinkaari</string>
+    <string name="enable_clipboard_history_summary">Jos se ei ole käytössä, leikepöydän näppäin liittää leikepöydän sisällön, jos sellaista on</string>
+    <string name="load_gesture_library_message">Tarvitset kirjaston kohteelle \'%s\'. Yhteensopimattomat kirjastot voivat kaatua piirtokirjoitusta käytettäessä.\n\nVaroitus: ulkoisen koodin lataaminen voi olla turvallisuusriski. Käytä kirjastoa vain sellaisesta lähteestä, johon luotat.</string>
+    <string name="autospace_after_punctuation">Automaattinen välilyönti välimerkkien jälkeen</string>
+    <string name="show_popup_keys_all">Lisää kaikki saatavilla olevat muunnelmat</string>
+    <string name="delete_swipe">Poista pyyhkäisy</string>
+    <string name="checksum_mismatch_message">Tuntematon kirjastotiedosto. Oletko varma, että sait sen luotettavasta lähteestä ja se on \'%s\':lle?</string>
+    <string name="show_popup_keys_main">Lisää hyvin yleiset muunnelmat (oletus)</string>
+    <string name="remove_redundant_popups">Poista ylimääräiset ponnahdusikkunat</string>
+    <string name="number_row_hints">Näytä vihjeet numerorivillä</string>
+    <string name="suggest_emojis">Ehdota emojeja</string>
+    <string name="suggest_emojis_summary">Käytä emojisanastoa normaaleissa ehdotuksissa</string>
+    <string name="backup_restored">Varmuuskopio palautettu</string>
+    <string name="save_subtype_per_app">Muista kieli sovelluskohtaisesti</string>
+    <string name="toolbar_mode_suggestion_strip" tools:keep="@string/toolbar_mode_suggestion_strip">Vain ehdotukset</string>
+    <string name="toolbar_mode_hidden" tools:keep="@string/toolbar_mode_hidden">Piilotettu</string>
+    <string name="toolbar_hiding_global">Piilota myös leikepöytä- ja emojipalkit</string>
+    <string name="prefs_font_scale">Näppäimistön fontin skaalaus</string>
+    <string name="prefs_emoji_font_scale">Emojinäkymän fontin skaalaus</string>
+    <string name="prefs_emoji_skin_tone_neutral">Neutraali</string>
+    <string name="prefs_emoji_skin_tone">Emojien oletusarvoinen ihonsävy</string>
+    <string name="custom_font">Aseta mukautettu fontti tiedostosta</string>
+    <string name="custom_emoji_font">Aseta mukautettu emojifontti tiedostosta</string>
+    <string name="subtype_mns">Mansi</string>
+    <string name="subtype_xdq">Kaitag</string>
+    <string name="subtype_dag">Dagbani</string>
+    <string name="subtype_st">Eteläsotho</string>
+    <string name="subtype_dru">Dargi (urakhi)</string>
+    <string name="subtype_mhr">Niittymari (itäinen)</string>
+    <string name="subtype_with_layout_generic">%1$s (%2$s)</string>
+    <string name="subtype_generic_extended">%s (laajennettu)</string>
+    <string name="layout_in_use">Varoitus: asettelu on parhaillaan käytössä</string>
+    <string name="settings_screen_secondary_layouts">Toissijaiset asettelut</string>
+    <string name="layout_functional_keys" tools:keep="@string/layout_functional_keys">Funktionäppäimet</string>
+    <string name="layout_functional_keys_tablet" tools:keep="@string/layout_functional_keys_tablet">Funktionäppäimet (suuri näyttö)</string>
+    <string name="layout_functional_keys_symbols" tools:keep="@string/layout_functional_keys_symbols">Funktionäppäimet (symbolit)</string>
+    <string name="layout_functional_keys_symbols_shifted" tools:keep="@string/layout_functional_keys_symbols_shifted">Funktionäppäimet (lisää symboleja)</string>
+    <string name="layout_symbols" tools:keep="@string/layout_symbols">Symbolit</string>
+    <string name="layout_symbols_shifted" tools:keep="@string/layout_symbols_shifted">Lisää symboleja</string>
+    <string name="layout_phone_symbols" tools:keep="@string/layout_phone_symbols">Puhelinsymbolit</string>
+    <string name="layout_numpad" tools:keep="@string/layout_numpad">Numeronäppäimistö</string>
+    <string name="layout_numpad_landscape" tools:keep="@string/layout_numpad_landscape">Numeronäppäimistö (vaakataso)</string>
+    <string name="layout_number_row_basic" tools:keep="@string/layout_number_row_basic">Numerorivi (perus)</string>
+    <string name="customize_background_image_landscape">Aseta taustakuva (vaakataso)</string>
+    <string name="remove_dictionary_message">Haluatko varmasti poistaa käyttäjän lisäämän sanaston \"%s\"?</string>
+    <string name="select_color_spacebar_text">Välilyönnin teksti</string>
+    <string name="about_wiki_link">Siirry wikiin</string>
+    <string name="about_wiki_link_description">Kuka tahansa GitHub-käyttäjä voi parantaa wikiä!</string>
+    <string name="space_swipe_hide_keyboard_entry">Piilota näppäimistö</string>
+    <string name="delete_confirmation">Haluatko varmasti poistaa %s?</string>
+    <string name="name_invalid">Virheellinen nimi</string>
+    <string name="landscape">Vaakataso</string>
+</resources>

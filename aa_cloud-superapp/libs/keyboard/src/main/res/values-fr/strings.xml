@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2008 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+--><resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
+    <string name="use_contacts_dict">"Rechercher les noms de contacts"</string>
+    <string name="vibrate_on_keypress">"Vibrer à chaque touche"</string>
+    <string name="sound_on_keypress">"Émettre un son à chaque touche"</string>
+    <string name="popup_on_keypress">"Agrandir les caractères"</string>
+    <string name="settings_screen_preferences">"Préférences"</string>
+    <string name="settings_screen_gesture">"Saisie gestuelle"</string>
+    <string name="settings_screen_correction">"Correction du texte"</string>
+    <string name="settings_screen_advanced">"Paramètres avancés"</string>
+    <string name="settings_screen_theme">"Thème"</string>
+    <string name="enable_split_keyboard">Activer le clavier en deux parties</string>
+    <string name="split_spacer_scale">Distance de la séparation du clavier</string>
+    <string name="language_switch_key_switch_input_method">"Autres modes de saisie"</string>
+    <string name="switch_language">Changer de langue</string>
+    <string name="language_switch_key_switch_both">Changer les deux</string>
+    <string name="show_language_switch_key">"Touche de sélection de langue"</string>
+    <string name="abbreviation_unit_milliseconds">"%s ms"</string>
+    <string name="settings_system_default">"Paramètres par défaut"</string>
+    <string name="use_contacts_dict_summary">Utilise les noms de contacts pour les suggestions et les corrections</string>
+    <string name="use_personalized_dicts">"Suggestions personnalisées"</string>
+    <string name="disable_personalized_dicts_message">Attention : la désactivation de ce paramètre effacera les données apprises.</string>
+    <string name="add_to_personal_dictionary">Ajouter les mots au dictionnaire personnel</string>
+    <string name="add_to_personal_dictionary_summary">Enregistre les mots appris dans le dictionnaire personnel de l\'appareil</string>
+    <string name="use_double_space_period">"Point et espace"</string>
+    <string name="use_double_space_period_summary">"Appuyez deux fois sur la barre d\'espace pour insérer un point et un espace"</string>
+    <string name="auto_cap">"Majuscules automatique"</string>
+    <string name="auto_cap_summary">"Majuscule au premier mot de chaque phrase"</string>
+    <string name="edit_personal_dictionary">"Dictionnaire personnel"</string>
+    <string name="main_dictionary">"Dictionnaire principal"</string>
+    <string name="prefs_show_suggestions">"Suggestions de correction"</string>
+    <string name="prefs_show_suggestions_summary">"Affiche les mots suggérés lors de la saisie"</string>
+    <string name="prefs_always_show_suggestions">Toujours afficher les suggestions</string>
+    <string name="prefs_always_show_suggestions_summary">Ignore les requêtes des autres applications qui désactivent les suggestions (peut entraîner des problèmes)</string>
+    <string name="prefs_block_potentially_offensive_title">"Blocage des termes choquants"</string>
+    <string name="prefs_block_potentially_offensive_summary">"Ne suggère pas de mots potentiellement offensants"</string>
+    <string name="autocorrect">"Correction automatique"</string>
+    <string name="auto_correction_summary">"Corrige automatiquement l\'orthographe lors d'un appui sur la barre d\'espace ou un signe de ponctuation"</string>
+    <string name="more_autocorrect">Correction automatique avancée</string>
+    <string name="more_autocorrect_summary">La correction automatique fonctionne même si le champ de saisie ne le demande pas explicitement</string>
+    <string name="auto_correction_threshold_mode_off">"Désactiver"</string>
+    <string name="auto_correction_threshold_mode_modest">"Simple"</string>
+    <string name="auto_correction_threshold_mode_aggressive">"Forcée"</string>
+    <string name="auto_correction_threshold_mode_very_aggressive">"Très proactive"</string>
+    <string name="bigram_prediction">"Suggestions pour le mot suivant"</string>
+    <string name="bigram_prediction_summary">"Utilise le mot précédent pour les suggestions"</string>
+    <string name="gesture_input">"Activer la saisie gestuelle"</string>
+    <string name="gesture_input_summary">"Saisit un mot en faisant glisser le doigt sur les lettres"</string>
+    <string name="gesture_preview_trail">"Afficher le tracé du geste"</string>
+    <string name="gesture_floating_preview_text">"Aperçu flottant dynamique"</string>
+    <string name="gesture_space_aware">"Geste multiterme"</string>
+    <string name="gesture_space_aware_summary">"Saisir des espaces lors des gestes en glissant vers la barre d\'espace"</string>
+    <string name="subtype_en_GB">"Anglais (Royaume-Uni)"</string>
+    <string name="subtype_en_US">"Anglais (États-Unis)"</string>
+    <string name="subtype_es_US">"Espagnol (États-Unis)"</string>
+    <string name="subtype_hi_Latn">"Hindi/Anglais"</string>
+    <string name="subtype_sr_Latn">"Serbe (latin)"</string>
+    <string name="subtype_generic_traditional">%s (Traditionnel)</string>
+    <string name="subtype_generic_compact">%s (Compact)</string>
+    <string name="subtype_no_language">"Aucune langue"</string>
+    <string name="subtype_emoji">Émoji</string>
+    <string name="add">"Ajouter"</string>
+    <string name="remove">"Supprimer"</string>
+    <string name="save">"Enregistrer"</string>
+    <string name="subtype_locale">"Langue"</string>
+    <string name="keyboard_layout_set">"Disposition"</string>
+    <string name="button_title_add_custom_layout">Ajouter une disposition personnalisée</string>
+    <string name="message_add_custom_layout">Sélectionner un fichier dans un format compatible. Des informations sur les formats sont disponibles %s.</string>
+    <string name="button_load_custom">Charger fichier</string>
+    <string name="delete_layout">Souhaitez-vous réellement supprimer la disposition personnalisée %s ?</string>
+    <string name="layout_error">Erreur de disposition : %s</string>
+    <string name="edit_layout">Appuyez pour modifier la disposition d\'origine</string>
+    <string name="layout_symbols_shifted">Plus de symboles</string>
+    <string name="customize_background_image">Définir une image d\'arrière-plan</string>
+    <string name="day_or_night_image">Définir l\'image pour le mode jour ou nuit ?</string>
+    <string name="day_or_night_day">Jour</string>
+    <string name="day_or_night_night">Nuit</string>
+    <string name="prefs_keypress_vibration_duration_settings">"Durée de vibration des touches"</string>
+    <string name="prefs_keypress_sound_volume_settings">"Volume du son des touches"</string>
+    <string name="prefs_key_longpress_timeout_settings">"Délai d\'un appui long sur les touches"</string>
+    <string name="prefs_enable_emoji_alt_physical_key">Émojis pour clavier physique</string>
+    <string name="prefs_enable_emoji_alt_physical_key_summary">"La touche Alt physique permet d\'afficher la palette d\'emoji"</string>
+    <string name="button_default">"Par défaut"</string>
+    <string name="setup_welcome_title">Bienvenue sur %s</string>
+    <string name="setup_welcome_additional_description">"avec la saisie gestuelle"</string>
+    <string name="setup_start_action">"Commencer"</string>
+    <string name="setup_steps_title">Configurer %s</string>
+    <string name="setup_step1_title">Activer %s</string>
+    <string name="setup_step1_instruction">Veuillez vérifier que %s est activé dans vos paramètres de langue et de saisie. Cela autorisera son fonctionnement sur votre appareil.</string>
+    <string name="setup_step1_action">"Activer le clavier dans les paramètres"</string>
+    <string name="setup_step2_title">Basculer vers %s</string>
+    <string name="setup_step2_instruction">Sélectionnez ensuite « %s » comme méthode de saisie active.</string>
+    <string name="setup_step2_action">"Changer de mode de saisie"</string>
+    <string name="setup_step3_title">Félicitations, l\'opération est terminée !</string>
+    <string name="setup_step3_instruction">Avec %s, vous pouvez saisir du texte dans toutes vos applications préférées.</string>
+    <string name="setup_step3_action">Configurer le clavier</string>
+    <string name="setup_finish_action">Terminé</string>
+    <string name="show_setup_wizard_icon">"Afficher l\'icône de l\'application"</string>
+    <string name="show_setup_wizard_icon_summary">"Affiche l\'icône de l\'application dans le lanceur"</string>
+    <string name="dictionary_category_title">"Dictionnaires complémentaires"</string>
+    <string name="dictionary_settings_category">Dictionnaires</string>
+    <string name="internal_dictionary_summary">Dictionnaire intégré</string>
+    <string name="add_new_dictionary_title">"Ajouter dictionnaire"</string>
+    <string name="button_select_language">"Sélectionner la langue"</string>
+    <string name="replace_dictionary_message">"Remplacer le dictionnaire utilisateur \"%1$s\"?\n
+Dictionnaire actuel:
+%2$s\n
+Nouveau dictionnaire:
+%3$s"</string>
+    <string name="replace_dictionary">"Remplacer dictionnaire"</string>
+    <string name="remove_dictionary_message">Supprimer le dictionnaire utilisateur \"%s\" ?</string>
+    <string name="no_dictionary_message">"Sans dictionnaire, vous n\'obtiendrez que des suggestions pour le texte que vous avez déjà saisi.&lt;br&gt;&lt;br&gt;
+        Vous pouvez télécharger les dictionnaires %1$s, ou vérifier si un dictionnaire pour \"%2$s\" peut être téléchargé directement %3$s."</string>
+    <string name="no_dictionary_dont_show_again_button">"Ne plus afficher"</string>
+    <string name="add_dictionary">"Selectionnez un dictionnaire à ajouter. Les dictionnaires au format .dict peuvent être téléchargés %s."</string>
+    <string name="dictionary_link_text">"ici"</string>
+    <string name="dictionary_file_error">Erreur : Le fichier sélectionné n\'est pas un fichier dictionnaire valide</string>
+    <string name="dictionary_file_wrong_script">Erreur : script non compatible avec ce clavier</string>
+    <string name="dictionary_load_error">"Erreur de chargement du fichier dictionnaire"</string>
+    <string name="dictionary_available">Dictionnaires disponibles</string>
+    <string name="delete">"Supprimer"</string>
+    <string name="version_text">Version %s</string>
+    <string name="user_dict_settings_add_shortcut_option_name">"Raccourci :"</string>
+    <string name="user_dict_settings_add_weight_value">Poids :</string>
+    <string name="user_dict_settings_add_locale_option_name">"Langue :"</string>
+    <string name="user_dict_settings_add_word_hint">"Saisissez un mot"</string>
+    <string name="user_dict_settings_add_shortcut_hint">"Raccourci facultatif"</string>
+    <string name="user_dict_settings_edit_dialog_title">"Modifier le mot"</string>
+    <string name="user_dict_settings_all_languages">"Pour toutes les langues"</string>
+    <string name="user_dict_settings_more_languages">"Plus de langues…"</string>
+    <string name="user_dict_word_already_present">Ce mot est déjà présent dans le dictionnaire utilisateur %s. Veuillez en saisir un autre.</string>
+    <string name="user_dict_add_word_button">Ajouter un mot</string>
+    <string name="spell_checker_service_name">Correcteur orthographique HeliBoard</string>
+    <string name="android_spell_checker_settings">Paramètres du correcteur orthographique HeliBoard</string>
+    <string name="number_row">Ligne de chiffres</string>
+    <string name="delete_swipe">Balayage sur la touche Effacer</string>
+    <string name="delete_swipe_summary">Glissez sur la touche de suppression pour supprimer des parties de texte en une seule fois</string>
+    <string name="backup_restore_title">Sauvegarde et restauration</string>
+    <string name="backup_restore_message">Sauvegarde ou chargement à partir d\'un fichier. Attention : la restauration écrasera les données existantes.</string>
+    <string name="backup_error">Erreur lors de la sauvegarde : %s</string>
+    <string name="restore_error">Erreur lors de la restauration de la sauvegarde : %s</string>
+    <string name="button_backup">Sauvegarder</string>
+    <string name="button_restore">Restaurer</string>
+    <string name="secondary_locale">Saisie multilingue</string>
+    <string name="load_gesture_library">Charger la bibliothèque de saisie gestuelle</string>
+    <string name="load_gesture_library_summary">Fournir une bibliothèque native pour activer la saisie gestuelle</string>
+    <string name="load_gesture_library_message">Vous aurez besoin de la bibliothèque \'%s\'. Les bibliothèques incompatibles peuvent crasher lors de l\'utilisation de la saisie gestuelle. \n\nAttention : le chargement de fichier externe peut constituer un risque pour la sécurité. N\'utilisez qu\'une bibliothèque provenant d\'une source en laquelle vous avez confiance.</string>
+    <string name="checksum_mismatch_message">Fichier de bibliothèque inconnu. Êtes-vous sûr qu\'il provient d\'une source fiable et que c\'est pour \'%s\' ?</string>
+    <string name="load_gesture_library_button_load">Charger bibliothèque</string>
+    <string name="load_gesture_library_button_delete">Supprimer bibliothèque</string>
+    <string name="ime_settings">Paramètres d\'HeliBoard</string>
+    <string name="settings_category_input">Saisie</string>
+    <string name="settings_category_correction">Corrections</string>
+    <string name="settings_category_suggestions">Suggestions</string>
+    <string name="settings_category_experimental">Expérimental</string>
+    <string name="settings_category_miscellaneous">Divers</string>
+    <string name="prefs_force_incognito_mode_summary">Désactive l\'apprentissage de nouveaux mots</string>
+    <string name="language_and_layouts_title">Langues &amp; Dispositions</string>
+    <string name="more_keys_strip_description">Touches supplémentaires</string>
+    <string name="number_row_summary">Toujours afficher la ligne de chiffres</string>
+    <string name="localized_number_row">Ligne de chiffres en language local</string>
+    <string name="localized_number_row_summary">Privilégie les chiffres en language local à la place des chiffres latins</string>
+    <string name="prefs_long_press_keyboard_to_change_lang">Changer le mode de saisie avec la barre d\'espace</string>
+    <string name="prefs_long_press_keyboard_to_change_lang_summary">Un appui long sur la barre d\'espace fera apparaître le menu de sélection des claviers</string>
+    <string name="show_hints">Afficher les indices de touches</string>
+    <string name="show_hints_summary">Affiche les caractères alternatifs lors d\'un appui long</string>
+    <string name="hint_source">Sélectionner la source des indices</string>
+    <string name="popup_order">Sélectionner l\'ordre des touches pop-up</string>
+    <string name="popup_keys_number">Nombre</string>
+    <string name="popup_keys_language_priority">Langue (prioritaire)</string>
+    <string name="popup_keys_layout">Disposition</string>
+    <string name="popup_keys_symbols">Symboles</string>
+    <string name="toolbar_keys">Sélectionner les touches de la barre d\'outils</string>
+    <string name="clipboard">Presse-papier</string>
+    <string name="clear_clipboard">Effacer presse-papier</string>
+    <string name="voice">Entrée vocale</string>
+    <string name="settings">Paramètres</string>
+    <string name="select_word">Sélectionner mot</string>
+    <string name="one_handed">Mode une main</string>
+    <string name="full_left">Début de ligne</string>
+    <string name="full_right">Fin de ligne</string>
+    <string name="left">Gauche</string>
+    <string name="right">Droite</string>
+    <string name="up">Haut</string>
+    <string name="down">Bas</string>
+    <string name="undo">Annuler</string>
+    <string name="redo">Restaurer</string>
+    <string name="show_popup_hints">Afficher les indices sur les touches fonctionnelles</string>
+    <string name="show_popup_hints_summary">Affiche un signe ( <b>…</b> ) sur les touches où un appui long déclenche une fonctionnalité supplémentaire</string>
+    <string name="prefs_keyboard_height_scale">Échelle de hauteur du clavier</string>
+    <string name="prefs_bottom_padding_scale">Échelle d\'espacement en bas du clavier</string>
+    <string name="day_night_mode_summary">L\'apparence suivra les paramètres système</string>
+    <string name="theme_navbar">Colorer la barre de navigation</string>
+    <string name="theme_name_light">Clair</string>
+    <string name="theme_name_holo_white">Holo Blanc</string>
+    <string name="theme_name_dark">Sombre</string>
+    <string name="theme_name_darker">Noir</string>
+    <string name="theme_name_black">Amoled</string>
+    <string name="theme_name_dynamic">Couleurs dynamiques</string>
+    <string name="theme_name_blue_gray">Bleu Gris</string>
+    <string name="theme_name_brown">Marron</string>
+    <string name="theme_name_chocolate">Chocolat</string>
+    <string name="theme_name_cloudy">Nuageux</string>
+    <string name="theme_name_forest">Forêt</string>
+    <string name="theme_name_indigo">Indigo</string>
+    <string name="theme_name_ocean">Océan</string>
+    <string name="theme_name_pink">Rose</string>
+    <string name="theme_name_sand">Sable</string>
+    <string name="theme_name_violette">Violette</string>
+    <string name="theme_name_user">Personnalisé</string>
+    <string name="auto_user_color">Choix automatique de la couleur</string>
+    <string name="main_colors">Afficher les couleurs principales</string>
+    <string name="all_colors">Afficher toutes les couleurs</string>
+    <string name="select_color_background">Arrière-plan du clavier</string>
+    <string name="select_color_key">Texte des touches</string>
+    <string name="select_color_key_hint">Indice des touches</string>
+    <string name="select_color_suggestion">Texte de la bande de suggestion</string>
+    <string name="select_color_key_background">Arrière-plan des touches</string>
+    <string name="select_color_functional_key_background">Arrière-plan des touches fonctionnelles</string>
+    <string name="select_color_spacebar_background">Arrière-plan de la barre d\'espace</string>
+    <string name="select_color_spacebar_text">Texte de la barre d\'espace</string>
+    <string name="select_color_accent">Couleur d\'accentuation</string>
+    <string name="select_color_gesture">Saisie gestuelle</string>
+    <string name="settings_screen_about">À propos</string>
+    <string name="about_github_link">Lien vers GitHub</string>
+    <string name="save_log">Sauvegarder le journal</string>
+    <string name="license">Licence Open-source</string>
+    <string name="incognito">Forcer le mode incognito</string>
+    <string name="theme_style">Style</string>
+    <string name="style_name_Rounded">Arrondi</string>
+    <string name="theme_colors">Couleurs</string>
+    <string name="theme_colors_night">Couleurs (mode nuit)</string>
+    <string name="key_borders">Bordures des touches</string>
+    <string name="day_night_mode">Mode jour/nuit automatique</string>
+    <string name="prefs_narrow_key_gaps">Réduire l\'espace entre les touches</string>
+    <string name="show_emoji_key">Touche d\'accès aux émojis</string>
+    <string name="settings_category_additional_keys">Touches supplémentaires</string>
+    <string name="settings_category_clipboard_history">Historique du presse-papier</string>
+    <string name="settings_no_limit">Sans limite</string>
+    <string name="clipboard_history_retention_time">Temps de rétention de l\'historique</string>
+    <string name="enable_clipboard_history_summary">Si désactivé, l\'appui sur la touche presse-papier collera l’éventuel contenu du presse-papier</string>
+    <string name="enable_clipboard_history">Activer l\'historique</string>
+    <string name="abbreviation_unit_minutes">%s min.</string>
+    <string name="subtype_akkhor_bn_BD">%s (Akkhor)</string>
+    <string name="autospace_after_punctuation">Espace automatique après la ponctuation</string>
+    <string name="autospace_after_punctuation_summary">Insertion automatique d\'un espace après la ponctuation lors de la saisie d\'un nouveau mot</string>
+    <string name="show_popup_keys_title">Afficher plus de signes diacritiques dans les pop-ups</string>
+    <string name="show_popup_keys_normal">Afficher les variantes définies dans les langues du clavier</string>
+    <string name="show_popup_keys_more">Ajouter des variantes générales</string>
+    <string name="show_popup_keys_all">Ajouter toutes les variantes disponibles</string>
+    <string name="url_detection_title">Détection d\'URL</string>
+    <string name="url_detection_summary">Essaye de détecter les URL et autres éléments similaires comme un seul mot</string>
+    <string name="auto_correction_confidence">Confiance dans la correction automatique</string>
+    <string name="select_input_method">"Sélectionnez le mode de saisie"</string>
+    <string name="settings_screen_appearance">"Apparence"</string>
+    <string name="dialog_close">Fermer</string>
+    <string name="text_tap_languages">Appuyez sur la langue pour ouvrir les paramètres</string>
+    <string name="hidden_features_title">Description des fonctionnalités cachées</string>
+    <string name="hidden_features_summary">Montre les caractéristiques qui peuvent passer inaperçues</string>
+    <string name="hidden_features_text">stockage protégé de l\'appareil</string>
+    <string name="hidden_features_message">► Un appui long sur les touches de la barre d\'outils permet d\'obtenir des fonctionnalités supplémentaires : &lt;br&gt; \n\t• presse-papier &amp;#65515; coller &lt;br&gt; \n\t• déplacer vers la gauche/droite &amp;#65515; mot de gauche/droite &lt;br&gt; \n\t• déplacer vers le haut/bas &amp;#65515; page précédente/suivante &lt;br&gt; \n\t• mot de gauche/droite &amp;#65515; début/fin de ligne &lt;br&gt; \n\t• page précédente/suivante &amp;#65515; début/fin de page &lt;br&gt; \n\t• copier &amp;#65515; couper &lt;br&gt; \n\t• sélectionner mot &amp;#8596; tout sélectionner &lt;br&gt; \n\t• annuler &amp;#8596; restaurer &lt;br&gt; &lt;br&gt; \n► Un appui long sur les touches de la barre d\'outils permet de les épingler à la bande de suggestions. &lt;br&gt; &lt;br&gt; \n► Appuyez longuement sur la virgule pour accéder à l\'affichage du presse-papiers, des émojis, au mode à une main, aux paramètres ou au changement de langue : &lt;br&gt; \n\t• L\'affichage des émojis et le changement de langue disparaîtront si les touches correspondantes sont affichées ; &lt;br&gt; \n\t• Pour certaines dispositions, ce n\'est pas sur la touche virgule mais sur la touche à la même position (par exemple, c\'est \'q\' pour la disposition Dvorak &lt;br&gt; &lt;br&gt; \n► Lorsque le mode incognito est activé, aucun mot n\'est appris et aucun émojis n\'est ajouté à la catégorie récent. &lt;br&gt; &lt;br&gt; \n► Appuyez sur l\'icône incognito pour ouvrir la barre d\'outils. &lt;br&gt; &lt;br&gt; \n► Saisie par glissement des touches : passez de la touche majuscule à une autre touche pour taper un seul caractère en majuscule : &lt;br&gt; \n\t• Fonctionne également avec la touche \'?123\' qui permet de taper un seul symbole à partir du clavier des symboles, ainsi que pour les touches associées &lt;br&gt; &lt;br&gt; \n► Maintenez la touche majuscule ou symbole enfoncée, appuyez sur une ou plusieurs touches, puis relâchez la touche majuscule ou symbole pour revenir au clavier précédent. &lt;br&gt; &lt;br&gt; \n► Un appui long sur une suggestion dans la bande de suggestions permet d\'afficher d\'autres suggestions et un bouton de suppression qui permet de supprimer cette suggestion. &lt;br&gt; &lt;br&gt; \n► Balayez vers le haut à partir d\'une suggestion pour ouvrir d\'autres suggestions, puis relâchez la pression sur la suggestion pour la sélectionner. &lt;br&gt; &lt;br&gt; \n► Appuyez longuement sur une entrée dans l\'historique du presse-papiers pour l\'épingler (elle reste dans le presse-papiers jusqu\'à ce que vous la désépingliez). &lt;br&gt; &lt;br&gt; \n► Glissez vers la gauche dans l\'affichage du presse-papiers pour supprimer une entrée (sauf lorsqu\'elle est épinglée). &lt;br&gt; &lt;br&gt; \n► Sélectionnez un texte et appuyez sur la touche majuscule pour passer des majuscules aux minuscules. &lt;br&gt; &lt;br&gt; \n► Vous pouvez ajouter des dictionnaires en les ouvrant dans un explorateur de fichiers : &lt;br&gt; \n\t• Ne fonctionne qu\'avec &lt;i&gt;content-uris&lt;/i&gt; et non avec &lt;i&gt;file-uris&lt;/i&gt;, ce qui signifie que cela peut ne pas fonctionner avec certains explorateurs de fichiers. &lt;br&gt; &lt;br&gt; \n► Pour les utilisateurs effectuant des sauvegardes manuelles avec un accès root : &lt;br&gt; \n\t• À partir d\'Android 7, le fichier de préférences partagées ne se trouve pas dans l\'emplacement par défaut car l\'application utilise le %s. Cela est nécessaire pour que les paramètres puissent être lus avant que l\'appareil ne soit déverrouillé, par exemple au démarrage ; &lt;br&gt; \n\t• Le fichier se trouve dans &lt;i&gt;/data/user_de/0/package_id/shared_prefs/&lt;/i&gt; mais cela peut dépendre de l\'appareil et de la version d\'Android. &lt;br&gt; &lt;br&gt; \n&lt;i&gt;&lt;b&gt;Mode debug / APK de debogage&lt;/b&gt;&lt;/i&gt; &lt;br&gt; &lt;br&gt; \n► Un appui-long sur une suggestion montre la source du dictionnaire. &lt;br&gt; &lt;br&gt; \n► Lorsque vous utilisez l\'APK de débogage, vous trouverez les paramètres de débogage dans les préférences avancées, bien qu\'ils ne soient pas très utiles, sauf pour transférer les dictionnaires dans le journal de débogage. &lt;br&gt; \n\t• Pour un APK en version release, vous devez taper plusieurs fois sur la version dans &lt;i&gt;À propos&lt;/i&gt;, puis vous trouverez les paramètres de débogage dans les &lt;i&gt;Paramètres avancés&lt;/i&gt;. &lt;br&gt; \n\t• Lorsque l\'option &lt;i&gt;Show suggestion infos&lt;/i&gt; est activée, les suggestions sont accompagnées de petits chiffres indiquant un score interne et le dictionnaire source. &lt;br&gt; &lt;br&gt; \n► Lorsque l\'application se bloque, un message vous demande où vous souhaitez enregistrer les journaux d\'incidents lorsque vous ouvrez les paramètres. &lt;br&gt; &lt;br&gt; \n► Lors de la saisie multilingue, la barre d\'espace affiche une valeur de fiabilité utilisée pour déterminer la langue en cours d\'utilisation. &lt;br&gt; &lt;br&gt; \n► Les suggestions seront accompagnées de petits chiffres indiquant un score interne et la source du dictionnaire (peut être désactivé).</string>
+    <string name="use_personalized_dicts_summary">"Améliore les suggestions en fonction des messages et des données saisies"</string>
+    <string name="label_go_key">"Accès"</string>
+    <string name="label_next_key">"Suiv."</string>
+    <string name="label_previous_key">"Préc."</string>
+    <string name="label_done_key">Effectué</string>
+    <string name="label_send_key">"Envoyer"</string>
+    <string name="label_search_key">Rechercher</string>
+    <string name="label_pause_key">"Pause"</string>
+    <string name="label_wait_key">"Attente"</string>
+    <string name="available_dictionary_experimental">%s (expérimental)</string>
+    <string name="version">Version</string>
+    <string name="file_read_error">Impossible de lire le fichier</string>
+    <string name="subtype_generic_sebeolsik_390">%s (Sebeolsik 390)</string>
+    <string name="subtype_generic_sebeolsik_final">%s (Sebeolsik Final)</string>
+    <string name="var_toolbar_direction">Sens variable de la barre d\'outils</string>
+    <string name="prefs_long_press_symbol_for_numpad">Appui long sur la touche des symboles pour afficher le pavé numérique</string>
+    <string name="layout_phone" tools:keep="@string/layout_phone">Pavé téléphonique</string>
+    <string name="space_swipe_move_cursor_entry">Déplacer le curseur</string>
+    <string name="subtype_xdq">Kaitag</string>
+    <string name="action_none">Aucun</string>
+    <string name="show_horizontal_space_swipe">Balayage horizontal de la barre d\'espace</string>
+    <string name="layout_numpad_landscape" tools:keep="@string/layout_numpad_landscape">Pavé numérique (paysage)</string>
+    <string name="layout_symbols_arabic" tools:keep="@string/layout_symbols_arabic">Symboles (Arabe)</string>
+    <string name="layout_phone_symbols" tools:keep="@string/layout_phone_symbols">Symboles du pavé téléphonique</string>
+    <string name="layout_number" tools:keep="@string/layout_number">Chiffres</string>
+    <string name="layout_numpad" tools:keep="@string/layout_numpad">Pavé numérique</string>
+    <string name="gnu_gpl">Licence publique générale GNU v3.0</string>
+    <string name="show_vertical_space_swipe">Balayage vertical de la barre espace</string>
+    <string name="var_toolbar_direction_summary">Inverser le sens de la barre d\'outils lorsqu\'un clavier droite-gauche est sélectionné</string>
+    <string name="layout_symbols" tools:keep="@string/layout_symbols">Symboles</string>
+    <string name="subtype_generic_student">%s (Étudiant)</string>
+    <string name="subtype_probhat_bn_BD">%s (Probhat)</string>
+    <string name="center_suggestion_text_to_enter">Toujours utiliser la suggestion du milieu</string>
+    <string name="center_suggestion_text_to_enter_summary">En appuyant sur espace ou sur un signe de ponctuation, la suggestion du milieu sera saisie</string>
+    <string name="close_history" tools:keep="@string/close_history">Fermer le presse-papiers</string>
+    <string name="clipboard_toolbar_keys">Sélectionner les touches de la barre d\'outils du presse-papiers</string>
+    <string name="subtype_generic_extended">%s (Étendu)</string>
+    <string name="subtype_mns">Mansi</string>
+    <string name="more_colors">Afficher plus de couleurs</string>
+    <string name="all_colors_warning">Ce paramètre expose toutes les couleurs utilisées en interne. La liste des couleurs peut être modifiée à tout moment. La couleur par défaut est issue des couleurs normales et les noms ne seront pas traduits.</string>
+    <string name="layout_functional_keys" tools:keep="@string/layout_functional_keys">Touches fonctionnelles</string>
+    <string name="layout_functional_keys_symbols_shifted" tools:keep="@string/layout_functional_keys_symbols_shifted">Touches fonctionnelles (Plus de symboles)</string>
+    <string name="layout_functional_keys_symbols" tools:keep="@string/layout_functional_keys_symbols">Touches fonctionnelles (Symboles)</string>
+    <string name="quick_pin_toolbar_keys">Épingler les touches de la barre d\'outils lors d\'un appui-long</string>
+    <string name="settings_screen_toolbar">Barre d\'outils</string>
+    <string name="pinned_toolbar_keys">Sélectionner les touches épinglées de la barre d\'outils</string>
+    <string name="quick_pin_toolbar_keys_summary">Cela désactivera les autres actions lors d\'un appui-long sur les touches de la barre d\'outils qui ne sont pas épinglées</string>
+    <string name="toast_msg_clipboard_copy">Contenu copié</string>
+    <string name="auto_hide_toolbar">Masquer automatiquement la barre d\'outils</string>
+    <string name="auto_hide_toolbar_summary">La barre d\'outils est masquée lorsque les suggestions sont disponibles</string>
+    <string name="auto_show_toolbar_summary">La barre d\'outils s\'affiche si la saisie débute ou si le texte est sélectionné</string>
+    <string name="auto_show_toolbar">Afficher automatiquement la barre d\'outils</string>
+    <string name="language_switch_key_behavior">Comportement de la touche de changement de langue</string>
+    <string name="emoji" tools:keep="@string/emoji">Emoji</string>
+    <string name="gesture_fast_typing_cooldown">Temps de réponse de la saisie rapide</string>
+    <string name="gesture_fast_typing_cooldown_instant">Commencer toujours instantanément</string>
+    <string name="customize_currencies">Personnaliser les devises</string>
+    <string name="customize_currencies_detail">Définir le symbole principal et jusqu\'à 6 symboles secondaires, séparés par un espace</string>
+    <string name="load">Charger</string>
+    <string name="button_save_file">Sauvegarder dans un fichier</string>
+    <string name="copy_to_clipboard">Copier dans le presse-papiers</string>
+    <string name="page_start" tools:keep="@string/page_start">Début de page</string>
+    <string name="page_end" tools:keep="@string/page_end">Fin de page</string>
+    <string name="word_left" tools:keep="@string/word_left">Mot de gauche</string>
+    <string name="suggest_clipboard_content">Suggérer le contenu du presse-papiers</string>
+    <string name="suggest_clipboard_content_summary">Affiche le contenu du presse-papiers récemment copié sous forme de suggestion</string>
+    <string name="word_right" tools:keep="@string/word_right">Mot de droite</string>
+    <string name="page_up" tools:keep="@string/page_up">Haut de page</string>
+    <string name="page_down" tools:keep="@string/page_down">Bas de page</string>
+    <string name="space_swipe_toggle_numpad_entry">Basculer vers le pavé numérique</string>
+    <string name="switch_keyboard_after">Passer au clavier principal après avoir…</string>
+    <string name="after_clip">Sélectionné une entrée dans l\'historique du presse-papiers</string>
+    <string name="after_symbol_and_space">Appuyé sur Entrée ou sur la barre d\'espace après la sélection d\'un symbole dans la vue des symboles</string>
+    <string name="after_emoji">Sélectionné un émoji dans la vue des émojis</string>
+    <string name="show_popup_keys_main">Ajouter les variantes les plus courantes (par défaut)</string>
+    <string name="remove_redundant_popups_summary">Supprimer les touches pop-up déjà présentes dans la disposition de base</string>
+    <string name="remove_redundant_popups">Supprimer les pop-ups redondants</string>
+    <string name="gesture_floating_preview_static_summary">Voir le mot proposé lors d\'un geste</string>
+    <string name="gesture_floating_preview_dynamic_summary">Déplacer l\'aperçu pendant un geste</string>
+    <string name="gesture_floating_preview_static">Aperçu flottant</string>
+    <string name="gesture_trail_fadeout_duration">Durée du tracé du geste</string>
+    <string name="icon_style">Style de l\'icône</string>
+    <string name="layout_number_row" tools:keep="@string/layout_number_row">Rangée de chiffres</string>
+    <string name="prefs_space_bar_text">Texte personnalisé sur la barre d\'espace</string>
+    <string name="layout_clip_bottom_row" tools:keep="@string/layout_clip_bottom_row">Rangée inférieure du presse-papier</string>
+    <string name="layout_emoji_bottom_row" tools:keep="@string/layout_emoji_bottom_row">Rangée inférieure des émojis</string>
+    <string name="label_tab_key" tools:keep="@string/label_tab_key">Tabulation</string>
+    <string name="label_delete_key" tools:keep="@string/label_delete_key">Supprimer</string>
+    <string name="label_shift_key" tools:keep="@string/label_shift_key">Majuscule</string>
+    <string name="label_shift_key_shifted" tools:keep="@string/label_shift_key_shifted">Majuscule (activée)</string>
+    <string name="label_shift_key_locked" tools:keep="@string/label_shift_key_locked">Majuscule (verrouillée)</string>
+    <string name="label_stop_onehanded_mode_key" tools:keep="@string/label_stop_onehanded_mode_key">Fin du mode à une main</string>
+    <string name="label_resize_onehanded_key" tools:keep="@string/label_resize_onehanded_key">Redimensionner le mode à une main</string>
+    <string name="label_switch_onehanded_key" tools:keep="@string/label_switch_onehanded_key">Changement du côté du mode à une main</string>
+    <string name="label_shortcut_key_disabled" tools:keep="@string/label_shortcut_key_disabled">Entrée vocale désactivée</string>
+    <string name="label_toolbar_key" tools:keep="@string/label_toolbar_key">Afficher / masquer la barre d\'outils</string>
+    <string name="label_zwj_key" tools:keep="@string/label_zwj_key">Zero-width joiner</string>
+    <string name="label_zwnj_key" tools:keep="@string/label_zwnj_key">Zero-width non-joiner</string>
+    <string name="customize_toolbar_key_codes">Personnaliser les codes des touches de la barre d\'outils</string>
+    <string name="key_code">Code de la touche</string>
+    <string name="long_press_code">Code de l\'appui-long</string>
+    <string name="label_enter_key" tools:keep="@string/label_enter_key">Entrée</string>
+    <string name="label_space_key_for_number_layout" tools:keep="@string/label_space_key_for_number_layout">Espace (disposition des chiffres)</string>
+    <string name="customize_icons">Personnaliser les icônes</string>
+    <string name="customize_icons_reset_message">Voulez-vous vraiment réinitialiser toutes les icônes personnalisées ?</string>
+    <string name="label_bin" tools:keep="@string/label_bin">Corbeille</string>
+    <string name="vibrate_in_dnd_mode">Vibrer en mode Ne pas déranger</string>
+    <string name="subtype_generic_phonetic">%s (Phonétique)</string>
+    <string name="prefs_key_emoji_max_sdk">Remplacer la version des émojis</string>
+    <string name="subtype_dru">Dargwa (Urakhi)</string>
+    <string name="auto_correct_shortcuts">Correction automatique des raccourcis</string>
+    <string name="auto_correct_shortcuts_summary">Lorsque les raccourcis sont activés, ils peuvent être étendus par correction automatique</string>
+    <string name="custom_font">Définir une police personnalisée à partir d\'un fichier</string>
+    <string name="summary_customize_background_image_landscape">Si non défini, l\'image portrait sera utilisée</string>
+    <string name="customize_background_image_landscape">Définir l\'image d\'arrière-plan (paysage)</string>
+    <string name="customize_toolbar_key_code_reset_message">Effacer tous les codes clés personnalisés ?</string>
+    <string name="prefs_font_scale">Échelle de police du clavier</string>
+    <string name="prefs_emoji_font_scale">Échelle de police de la vue Emoji</string>
+    <string name="prefs_side_padding_scale">Espacement latéral</string>
+    <string name="number_row_hints">Afficher les symboles sur la rangée numérique</string>
+    <string name="prefs_language_swipe_distance">Distance de balayage pour changer de langue</string>
+    <string name="split" tools:keep="@string/split">Clavier divisé</string>
+    <string name="delete_confirmation">Voulez-vous vraiment supprimer %s ?</string>
+    <string name="name_invalid">Nom invalide</string>
+    <string name="custom_subtype">Sous-type personnalisé</string>
+    <string name="subtype_baishakhi_bn_IN">%s (Baishakhi)</string>
+    <string name="settings_screen_secondary_layouts">Dispositions secondaires</string>
+    <string name="layout_functional_keys_tablet" tools:keep="@string/layout_functional_keys_tablet">Touches fonctionnelles (grand écran)</string>
+    <string name="locales_with_dict">Langues avec dictionnaires</string>
+    <string name="layout_in_use">Avertissement : cette mise en page est actuellement utilisée</string>
+    <string name="get_colors_message">Vous pouvez trouver et partager des couleurs dans le %s.</string>
+    <string name="get_layouts_message">Vous pouvez trouver et partager des dispositions dans le %s.</string>
+    <string name="discussion_section_link">Section de discussion</string>
+    <string name="show_tld_popup_keys">Afficher les suggestions de domaines (TLD)</string>
+    <string name="show_tld_popup_keys_summary">Remplacer les suggestions de la touche point par des extensions de domaine (TLD) lors de la saisie d’URL ou d’adresses e-mail</string>
+    <string name="after_numpad_and_space">Appuyé sur Entrée ou sur la barre d\'espace après d\'autres touches du pavé numérique</string>
+    <string name="prefs_always_show_suggestions_except_web_text_summary">Les champs d\'édition Web (principalement présents dans les navigateurs) sont une cause très courante de problèmes avec le paramètre « Toujours afficher les suggestions »</string>
+    <string name="layout_number_row_basic" tools:keep="@string/layout_number_row_basic">Rangée numérique (standard)</string>
+    <string name="prefs_always_show_suggestions_except_web_text">Ne pas forcer l\'affichage des suggestions pour les champs de saisie web</string>
+    <string name="settings_category_space">Espace</string>
+    <string name="autospace_before_gesture_typing">Espace automatique avant de saisir un mot par geste</string>
+    <string name="autospace_after_gesture_typing">Espace automatique après la saisie gestuelle d\'un mot</string>
+    <string name="shift_removes_autospace_summary">Shift supprime l\'espace automatique en attente</string>
+    <string name="autospace_after_suggestion">Espace automatique après avoir sélectionné une suggestion</string>
+    <string name="backspace_reverts_autocorrect">La touche Retour arrière annule la correction automatique</string>
+    <string name="shift_removes_autospace">Pas d\'espace automatique lors de l\'appui sur Maj</string>
+    <string name="timestamp_format_title">Format de la clé d\'horodatage</string>
+    <string name="subtype_dag">Dagbani</string>
+    <string name="subtype_st">Sesotho</string>
+    <string name="prefs_emoji_key_fit">Ajuster la taille des touches emoji à la taille de la police</string>
+    <string name="backup_restored">Sauvegarde restaurée</string>
+    <string name="use_apps_dict">Rechercher les noms des applications</string>
+    <string name="use_apps_dict_summary">Utiliser les noms des applications installées pour les suggestions et les corrections</string>
+    <string name="prefs_emoji_skin_tone_neutral">Neutre</string>
+    <string name="prefs_emoji_skin_tone">Teint de peau par défaut des emojis</string>
+    <string name="subtype_with_layout_generic">%1$s (%2$s)</string>
+    <string name="toolbar_mode">Mode de la barre d\'outils</string>
+    <string name="toolbar_mode_toolbar_keys">Touches de la barre d\'outils uniquement</string>
+    <string name="toolbar_mode_suggestion_strip">Suggestions uniquement</string>
+    <string name="toolbar_mode_hidden">Masquée</string>
+    <string name="toolbar_hiding_global">Masquer également le presse-papiers et les barres d\'outils émoji</string>
+    <string name="toolbar_mode_expandable">Touches de la barre d\'outil et suggestions</string>
+    <string name="landscape">Paysage</string>
+    <string name="popup_order_and_hint_source">Ordre des touches popup et source des symboles</string>
+    <string name="show_emoji_descriptions">Afficher la description de l\'emoji en appuyant longuement</string>
+    <string name="suggest_emojis_summary">Utiliser le dictionnaire d\'emojis dans les suggestions normales</string>
+    <string name="suggest_emojis">Suggérer des émojis</string>
+    <string name="space_swipe_hide_keyboard_entry">Masquer le clavier</string>
+    <string name="suggest_punctuation">Suggestions de ponctuation</string>
+    <string name="suggest_punctuation_summary">Afficher la ponctuation lorsqu\'aucune autre suggestion n\'est disponible</string>
+    <string name="about_wiki_link_description">Le Wiki peut être amélioré par n\'importe quel utilisateur de GitHub !</string>
+    <string name="about_wiki_link">Accéder au Wiki</string>
+    <string name="save_subtype_per_app">Mémoriser la langue par application</string>
+    <string name="subtype_khipro_bn">%s (Khipro)</string>
+    <string name="clipboard_history_pinned_first">Afficher les éléments épinglés en haut</string>
+    <string name="inline_emoji_search">Recherche d\'émojis intégrée</string>
+    <string name="inline_emoji_search_summary">Proposer uniquement des émojis lorsqu\'un mot est précédé de deux points</string>
+    <string name="emoji_dictionary_required">Un dictionnaire d\'émojis est nécessaire pour que cette fonctionnalité soit opérationnelle. Les dictionnaires au format .dict peuvent être téléchargés ici : %s.</string>
+    <string name="subtype_mhr">Mari (Eastern)</string>
+    <string name="layout_emoji_bottom_row_with_action" tools:keep="@string/layout_emoji_bottom_row_with_action">Rangée inférieure (emoji) avec touche d\'action</string>
+    <string name="layout_clip_bottom_row_with_action" tools:keep="@string/layout_clip_bottom_row_with_action">Rangée inférieure du presse-papiers avec touche d\'action</string>
+    <string name="number_row_in_symbols">Afficher la ligne numérique en mode symboles</string>
+    <string name="custom_emoji_font">Définir une police d\'emoji personnalisée à partir d\'un fichier</string>
+    <string name="layout_functional_keys_khipro" tools:keep="@string/layout_functional_keys">Touches fonctionnelles (Khipro)</string>
+    <string name="emoji_search_title">Rechercher des emojis</string>
+    <string name="search_field_placeholder">Rechercher</string>
+    <string name="gesture_data_screen">Collecte de données gestuelles</string>
+    <string name="gesture_data_description">&lt;b&gt;Bienvenue sur l\'écran de collecte de données gestuelles !&lt;/b&gt;&lt;br/&gt;&lt;br/&gt; Ceci fait partie d\'un &lt;a href=https://nlnet.nl/project/GestureTyping&gt;projet financé par NLnet&lt;/a&gt; visant à créer une bibliothèque de saisie gestuelle entièrement open source capable de remplacer la bibliothèque propriétaire de Google.&lt;br/&gt; Le résultat sera une alternative simple aux claviers AOSP, mais également compatible avec d\'autres claviers, comme FlorisBoard.&lt;br/&gt;&lt;br/&gt; Pour le développement de la bibliothèque, il est extrêmement utile de disposer de données gestuelles détaillées dans différentes langues et provenant de différents utilisateurs.&lt;br/&gt; En collectant et en soumettant des données de saisie gestuelle, vous contribuez à un ensemble de données ouvert qui sera utilisé pour le développement de la bibliothèque. Cet ensemble de données sera publié sous licence CC BY-SA 4.0 après la fin de la phase de collecte, le %s. Une fois vos données collectées, vous pouvez les soumettre à l\'aide de l\'icône de partage en bas de cet écran.</string>
+    <string name="gesture_data_info">Qu\'est-ce que c\'est ?</string>
+    <string name="gesture_data_description_modes">La façon \"sûre\" de contribuer est le mode &lt;i&gt;collecte active&lt;/i&gt;, où on vous montre un mot spécifique et vous le saisissez en utilisant la saisie gestuelle.&lt;br&gt; Vous pouvez également utiliser le mode &lt;i&gt;collecte en arrière-plan&lt;/i&gt;, où vous pouvez fournir des échantillons de votre saisie gestuelle normale à partir d\'autres applications. En raison de la sensibilité de cette approche, celle-ci est facultative, configurable et comporte un écran de revue pour les données que vous êtes sur le point de soumettre.</string>
+    <string name="gesture_data_description_privacy">Confidentialité\n\nLes données que vous soumettez comprennent le mot cible, la disposition et les dimensions du clavier, le geste (heure et coordonnées), les suggestions de la bibliothèque actuelle, le hachage des dictionnaires utilisés, la version de l\'application, le mode de collecte des données, si la bibliothèque de saisie gestuelle est la bibliothèque Google par défaut, et un identifiant associé à chaque geste.\nLes données soumises seront téléchargées puis supprimées dès que possible de la boîte mail ProtonMail où elles sont stockées. Une fois la phase de collecte des données gestuelles terminée, l\'ensemble des données accumulées de tous les utilisateurs sera publié sous licence Creative Commons BY-SA 4.0.\n\nAfin de protéger votre vie privée, vous ne serez pas mentionné·e explicitement comme auteur·rice. Votre nom apparaîtra comme « Contributeur·rice au projet de données gestuelles HeliBoard ». Il ne devrait pas être possible de relier les données que vous générez sur cet écran à votre identité. Cependant, il pourrait être possible de déterminer quels gestes ont été effectués par une même personne, par exemple à partir d\'une disposition de clavier personnalisée, des dimensions du clavier, de la langue ou d\'un style de gestes particulier.</string>
+    <string name="gesture_data_privacy">Confidentialité</string>
+    <string name="gesture_data_get_data">Partager le fichier de données de geste</string>
+    <string name="gesture_data_delete_data">Effacer les données gestuelles</string>
+    <string name="gesture_data_send_mail">Envoyer les données par courriel</string>
+    <string name="gesture_data_copy_mail">Copier l\'adresse e-mail</string>
+    <string name="gesture_data_mail_use">Veuillez noter que cette adresse électronique est destinée à l\'envoi de données ; vous risquez de ne pas recevoir de réponses rapides ou régulières.</string>
+    <string name="gesture_data_please_type">Veuillez saisir le geste :</string>
+    <string name="gesture_data_next_save">J\'ai reçu %s. Cliquez si vous êtes sûr d\'avoir fait le geste correctement</string>
+    <string name="gesture_data_next">Passer ce mot</string>
+    <string name="gesture_data_active_count">%1$s mots dans cette session, %2$s mots au total (%3$s déjà soumis ou supprimés)</string>
+    <string name="gesture_data_review_screen_title">Examiner et partager les données gestuelles</string>
+    <string name="gesture_data_words_selected">%s mots</string>
+    <string name="gesture_data_date_range">Période couverte</string>
+    <string name="gesture_data_much_data">Vous avez de nombreuses données non soumises. Veuillez les soumettre puis supprimer les anciennes données.</string>
+    <string name="gesture_data_how_to_use">Comment utiliser</string>
+    <string name="gesture_data_active_description">Appuyez sur &lt;i&gt;Lancer la collecte active&lt;/i&gt;, changez éventuellement de dictionnaire, et commencez à saisir par geste le mot affiché.&lt;br/&gt; Si votre geste correspond au mot, les données sont enregistrées et le mot suivant est affiché. Sinon, vous pouvez réessayer, ignorer le mot ou confirmer que vous avez correctement effectué le geste.&lt;br/&gt; Vous ne pouvez utiliser que les dictionnaires intégrés à l\'application ou disponibles dans le &lt;a href=%s&gt;répertoire des dictionnaires&lt;/a&gt;, aucun autre mot ne sera utilisé.</string>
+    <string name="gesture_data_active_start">Commencer la collecte active</string>
+    <string name="gesture_data_active_stop">Arrêter la collecte active</string>
+    <string name="gesture_data_ends_at">La phase de collecte des données gestuelles se terminera le %s. Veuillez soumettre vos données avant cette date.</string>
+    <string name="gesture_data_ended">La phase de collecte des données gestuelles s\'est terminée à %s. Vous pouvez partager vos données existantes, mais vous ne pouvez pas en ajouter de nouvelles.</string>
+    <string name="gesture_data_share_all">Partager %s mots</string>
+    <string name="gesture_data_share_new">Partager les %s mots non soumis précédemment</string>
+    <string name="gesture_data_delete_dialog">Vous disposez de données pour %1$s nouveaux mots et %2$s mots déjà partagés.</string>
+    <string name="gesture_data_delete_dialog_all">Supprimer %s mots</string>
+    <string name="gesture_data_delete_dialog_confirm">Êtes-vous sûr(e) ? Cette action supprimera %s mots. Assurez-vous que votre date partagée a été soumise !</string>
+    <string name="gesture_data_delete_dialog_submitted">Supprimer les %s mots soumis</string>
+    <string name="gesture_data_many_not_shared_words">Vous avez plus de %s mots à soumettre</string>
+    <string name="gesture_data_email_body">IMPORTANT :\n\nSalut !\nPour rappel, ces données seront partagées publiquement sous licence CC BY-SA 4.0 et vous ne serez pas mentionné(e) comme auteur(e) afin de protéger votre vie privée.\n\nMerci de nous avoir permis d’accéder à vos données. Nous en ferons bon usage !\n\nVeuillez noter que modifier le texte de cet avis n’aura aucune incidence sur l’utilisation de vos données. Il ne s’agit pas d’un contrat à modifier, mais simplement d’un rappel.\nSi vous souhaitez nous envoyer un message avec vos données, veuillez l’écrire ci-dessous.\n--------------------------------------------</string>
+    <string name="gesture_data_promotion_message">Salut !\nPuisque vous avez installé la bibliothèque de saisie gestuelle, le projet d\'HeliBoard visant à créer une bibliothèque de saisie gestuelle entièrement ouverte pourrait vous intéresser. Vous pouvez y contribuer en fournissant des données gestuelles. Pour plus d\'informations, consultez la page de collecte de données gestuelles.</string>
+    <string name="gesture_data_reminder_message">Salut !\nVous avez déjà utilisé la collecte de données gestuelles, mais vous n\'avez pas contribué depuis un certain temps. Souhaitez-vous participer à nouveau ?</string>
+    <string name="ask_later">Demandez-moi plus tard</string>
+    <string name="gesture_data_take_me_there">Y aller</string>
+    <string name="timestamp_description">Vous pouvez ajouter la clé d\'horodatage à l\'aide d\'une disposition personnalisée avec la clé « timestamp » ou le code de clé -10043</string>
+    <string name="prefs_bottom_row_scale">Échelle de la rangée du bas</string>
+    <string name="toolbar_swipe_down_to_hide">Masquer le clavier par balayage</string>
+    <string name="toolbar_swipe_down_to_hide_summary">Balayez la barre d\'outils vers le bas pour fermer le clavier</string>
+    <string name="gesture_data_please_switch_keyboard">Veuillez passer à %s</string>
+    <string name="gesture_data_share_limit">Pour éviter de dépasser les limites de taille, seuls les %s premiers mots seront exportés</string>
+    <string name="gesture_data_links">Information sur la collecte active :</string>
+    <string name="folded">Plié</string>
+    <string name="custom_punctuation_suggestions">Définir les suggestions de ponctuation</string>
+    <string name="space_swipe_touchpad_mode_entry">Mode pavé tactile</string>
+    <string name="touchpad_sensitivity">Sensibilité du pavé tactile</string>
+    <string name="touchpad_edge_scroll">Défilement sur le bord du pavé tactile</string>
+    <string name="touchpad_edge_scroll_description">Défilement automatique lors du glissement vers le bord du clavier</string>
+    <string name="spell_check_suggestions">Afficher les suggestions du correcteur orthographique</string>
+    <string name="spell_check_suggestions_summary">Afficher des suggestions lors de la sélection d\'un mot souligné en rouge. Nécessite de définir l\'application comme correcteur orthographique par défaut.</string>
+    <string name="prefs_key_gap_scale">Échelle de l\'espace entre les touches</string>
+    <string name="toolbar_only_with_hw_keyboard">Afficher la barre d\'outils uniquement avec un clavier physique</string>
+    <string name="toolbar_only_with_hw_keyboard_summary">Vous devez encore activer l\'affichage du clavier virtuel dans les paramètres système</string>
+    <string name="floating" tools:keep="@string/floating">Clavier flottant</string>
+    <string name="clipboard_history_files">Ajouter les images et d\'autres fichiers à l\'historique du presse-papiers</string>
+    <string name="clipboard_history_max_file_size">Limite de taille du presse-papiers</string>
+    <string name="item_description">Description : %s</string>
+    <string name="item_type">Type : %s</string>
+    <string name="abbreviation_unit_mb">%s Mo</string>
+    <string name="subtype_generic_4row">%s (4 lignes)</string>
+    <string name="gesture_data_share_duplicate">Vous pouvez partager à nouveau les données déjà soumises si vous n\'êtes pas certain qu\'elles ont été reçues correctement. Nous détectons et supprimons les doublons lors du traitement des données.</string>
+    <string name="gesture_data_active">Collecte active</string>
+    <string name="background_gesture_data_links">Informations sur la collecte en arrière-plan :</string>
+    <string name="gesture_data_background_gathering_switch">Utiliser la collecte de données en arrière-plan</string>
+    <string name="gesture_data_background_gathering_allowed_apps">Applications autorisées : %s</string>
+    <string name="gesture_data_background_gathering_manual_save">Rejetter par défaut</string>
+    <string name="gesture_data_background_gathering_manual_save_summary">Les données sont sauvegardées manuellement via la touche de la barre d\'outils</string>
+    <string name="gesture_data_background_gathering_info">Plus d\'informations</string>
+    <string name="gesture_data_background_gathering_info_message">L\'activation de la collecte de données en arrière-plan permet à Heliboard d\'enregistrer les gestes que vous saisissez dans d\'autres applications. Cela est très utile pour le projet de saisie gestuelle, car cela peut produire une quantité considérable de données, bien qu\'à une qualité inférieure à celle de la collecte active. La collecte de données en arrière-plan n\'est pas un remplacement pour les données collectées activement, elle est destinée à être un complément, car la qualité des données est plus importante que la quantité.\n\n La collecte en arrière-plan présente un potentiel élevé de collecte de données que vous pourriez considérer trop privées pour les partager, même lorsqu\'elles sont publiées de manière anonyme. Pour cette raison, nous voulons clarifier quand les données gestuelle sont collectées et comment vous pouvez l\'influencer.\n\n Vous pouvez trouver une vidéo expliquant davantage la collecte de données en arrière-plan dans la section des liens en bas à droite de cet écran.</string>
+    <string name="gesture_data_background_gathering_indicator">Indicateur de collecte de données</string>
+    <string name="gesture_data_background_gathering_indicator_message">À tout moment lorsque des données gestuelle peuvent être enregistrées, vous verrez une icône d\'indicateur en bas à gauche du clavier. Lorsque le cercle est rempli, au moins un geste a été collecté et attend d\'être enregistré. Les données sont enregistrées soit en utilisant la touche de la barre d\'outils (voir &lt;i&gt;%1$s&lt;/i&gt;) ou automatiquement (lorsque &lt;i&gt;%2$s&lt;/i&gt; est désactivé). L\'enregistrement automatique se produit généralement lorsque vous passez à un autre champ de texte ou fermez le clavier, mais peut également se produire si le champ de texte change pour une autre raison. Lorsque les données sont enregistrées, l\'indicateur deviendra vert pendant un court moment.</string>
+    <string name="gesture_data_background_gathering_control">Comment contrôler ce qui est enregistré</string>
+    <string name="gesture_data_background_gathering_control_message">Indépendamment des paramètres, la collecte de données en arrière-plan est désactivée lorsque vous utilisez le mode incognito. Elle est également désactivée pour les champs de saisie marqués comme sensibles (mots de passe, adresse e-mail, ou chaque fois que le champ de saisie demande au clavier de ne pas apprendre les mots). Seuls les mots qui se trouvent dans un dictionnaire principal (intégré ou provenant du &lt;a href=%5$s&gt;répertoire de dictionnaires&lt;/a&gt;) seront collectés. &lt;br&gt;&lt;br&gt; En utilisant &lt;i&gt;%1$s&lt;/i&gt;, vous pouvez sélectionner quelles applications vous souhaitez autoriser à collecter des données en arrière-plan. Le paramètre par défaut désactive chaque application, avec une autorisation par application. Vous pouvez choisir d\'activer toutes les applications, et de refuser par application. Cela est plus pratique, mais permettra automatiquement la collecte de données à partir de nouvelles applications installées. Cela pourrait entraîner une collecte de données que inattendue. &lt;br&gt;&lt;br&gt; Avec &lt;i&gt;%2$s&lt;/i&gt;, vous pouvez exclure des mots sensibles spécifiques. Lorsque vous effectuez le geste pour un mot exclu, l\'icône indicateur affichera toujours l\'icône remplie (\"données en attente d\'être enregistrées\"), mais les données seront supprimées alors qu\'elles auraient normalement été enregistrées. Les mots bloqués qui ont déjà été enregistrés avant que le mot ne soit bloqué seront supprimés lors de l\'exportation des données.&lt;br&gt; Notez que la collecte en arrière-plan ne collectera que les mots qui sont déjà dans un dictionnaire principal, donc les seuls mots que vous devrez probablement bloquer sont des mots courants qui pourraient être utilisés pour vous identifier personnellement, tels que : votre nom, rue, ville, territoire, etc. &lt;br&gt;&lt;br&gt; Lorsque &lt;i&gt;%3$s&lt;/i&gt; est activé, les données ne sont enregistrées que si vous choisissez de le faire manuellement à l\'aide de la touche de la barre d\'outils &lt;i&gt;%4$s&lt;/i&gt; (voir ci-dessous). Si les données ne sont pas enregistrées, les données en attente seront supprimées lorsque vous changerez de champ de saisie ou fermerez le clavier.&lt;br&gt; Les exclusions d\'applications et de mots s\'appliquent toujours dans ce mode. La touche &lt;i&gt;%4$s&lt;/i&gt; de la barre d\'outils permet de contrôler la collecte de données. Son effet dépend de l\'état actuel : si la collecte en arrière-plan est désactivée, elle sera activée. Un appui long désactivera la collecte pendant cinq minutes. Vous pouvez réactiver la collecte de données en arrière-plan plus tôt en appuyant simplement sur la touche. Lorsque &lt;i&gt;%3$s&lt;/i&gt; est activé, les données en attente seront enregistrées. Sinon, elles seront ignorées.&lt;br&gt;</string>
+    <string name="gesture_data_background_gathering_review_message">En utilisant l\'écran &lt;i&gt;%1$s&lt;/i&gt;, vous pouvez vérifier et filtrer les données collectées, supprimer des données que vous considérez trop sensibles et partager des données. Les boutons de suppression et de partage fonctionneront sur les données filtrées, ou sur la sélection si vous utilisez un appui long pour sélectionner des mots. (Notez que l\'icône de partage \"normal\" en dehors de l\'écran &lt;i&gt;%1$s&lt;/i&gt; ne partagera que les données provenant de la collecte active.)&lt;br&gt; L\'ordre des données partagées est aléatoire, de sorte que rien de plus que les mots individuels ne peut être déduit.&lt;br&gt; Si vous souhaitez afficher les données complètes stockées pour un geste, vous pouvez les partager dans un fichier, puis charger le fichier dans &lt;a href=%2$s&gt;Swipe-O-Scope&lt;/a&gt;.</string>
+    <string name="gesture_data_background_apps_button">Gérer les applications autorisées</string>
+    <string name="gesture_data_background_apps">Sélectionnez les applications à inclure dans la collecte de données en arrière-plan</string>
+    <string name="gesture_data_background_apps_include_default">Inclure les applications par défaut</string>
+    <string name="gesture_data_background_excluded_words_button">Gérer les mots exclus</string>
+    <string name="gesture_data_background_dictionary">Dictionnaire : %s</string>
+    <string name="gesture_data_background_position">Position : %s</string>
+    <string name="gesture_data_background_exclude_words">Exclure le mot de la collecte d\'arrière-plan</string>
+    <string name="gesture_data_long_press_select_hint">Appuyez longuement pour sélectionner</string>
+    <string name="background_gathering" tools:keep="@string/background_gathering">Collecte de données de fond</string>
+    <string name="gesture_data_show_active">Afficher les données collectées activement</string>
+    <string name="gesture_data_show_background">Afficher les données d\'arrière-plan</string>
+    <string name="gesture_data_include_shared">Inclure les données déjà soumises</string>
+    <string name="gesture_data_shared">Soumis</string>
+    <string name="gesture_data_saving">Enregistrement… %s%%</string>
+    <string name="gesture_data_first_enable_dialog">Bienvenue dans la collecte de données en arrière-plan !&lt;br&gt; Souhaitez-vous ajouter la touche &lt;i&gt;%1$s&lt;/i&gt; à la barre d\'outils ? Vous pouvez l\'utiliser pour contrôler la collecte de données. Pour en savoir plus, utilisez le bouton &lt;i&gt;%2$s&lt;/i&gt;. &lt;br&gt;&lt;br&gt; Par défaut, la collecte en arrière-plan est désactivée pour toutes les applications. Vous pouvez modifier cela %3$s.</string>
+    <string name="gesture_data_add_key">Ajouter la touche de la barre d\'outils</string>
+    <string name="gesture_data_no_known_dict">La collecte de données en arrière-plan ne récupère que les mots provenant de dictionnaires intégrés ou disponibles dans le &lt;a href=%s&gt;référentiel de dictionnaires&lt;/a&gt;. Actuellement, vous n\'avez aucun dictionnaire de ce type activé.</string>
+    <string name="gesture_data_swipe_o_scope">Outil pour visualiser les données gestuelles : &lt;a href=%s&gt;Swipe-O-Scope&lt;/a&gt;</string>
+</resources>
