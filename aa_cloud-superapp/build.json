@@ -346,6 +346,14 @@
       "battery":  { "animal": "dog",     "variant": "white",    "type": "percent", "buckets": [25, 50, 75] }
     }
   },
+  "keyboard_dicts": {
+    "_doc": "Bundled keyboard dictionaries → libs/keyboard/src/main/assets/dicts/ (HeliBoard's DictionaryInfoUtils.ASSETS_DICTIONARY_FOLDER). HeliBoard's verbatim mirror already ships main_<locale>.dict for these locales (word suggestions); sync-keyboard-dicts ADDS the matching emoji_<locale>.dict (emoji search) from codeberg.org/Helium314/aosp-dictionaries (GPL-3.0) so each supported language has FULL features. Additive copy (no --delete) so it composes with the HeliBoard mirror; run AFTER sync-heliboard (which rsync --delete's the mirror and would drop these). Locales/types data-driven — add a locale or a type (with its repo dir) = one entry. NOTE: `locales` = which dicts are BUNDLED (broad, for any language the user adds); `default_languages` = which keyboard subtypes are ENABLED on first run (App.initVendoredKeyboard via SubtypeSettings.addEnabledSubtype) — distinct lists.",
+    "default_languages": ["en", "de", "es", "pt-BR"],
+    "locales": ["bg", "bn", "de", "el", "en", "es", "fr", "hu", "it", "nl", "pl", "pt", "ro", "ru", "sv", "tr"],
+    "types": [
+      { "type": "emoji", "dir": "emoji_cldr_signal_dictionaries" }
+    ]
+  },
   "ui": {
     "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
     "permissions": {

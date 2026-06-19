@@ -12,6 +12,7 @@ import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.devcontrol.DevControlServer
 import com.diegonmarcos.superapp.notificationcenter.KdeStatusService
 import com.google.android.material.color.DynamicColors
+import helium314.keyboard.latin.utils.prefs as heliboardPrefs
 
 /**
  * Application entry point — runs BEFORE any Activity. Wires:
@@ -80,6 +81,33 @@ class App : Application() {
         runCatching { helium314.keyboard.latin.utils.SubtypeSettings.init(this) }
         runCatching { helium314.keyboard.latin.RichInputMethodManager.init(this) }
         runCatching { helium314.keyboard.latin.settings.Defaults.initDynamicDefaults(this) }
+        runCatching { enableDefaultKeyboardLanguages() }
+    }
+
+    /** First-run only: enable the keyboard subtypes listed in
+     *  build.json::keyboard_dicts.default_languages (baked CSV) — English,
+     *  German, Spanish, Portuguese-BR. HeliBoard otherwise enables only the
+     *  system locale. Skipped once the user has any enabled subtype, so we
+     *  never clobber their later choices. Tries the exact BCP-47 tag, then
+     *  falls back to the language only. */
+    private fun enableDefaultKeyboardLanguages() {
+        val prefs = heliboardPrefs()
+        val key = helium314.keyboard.latin.settings.Settings.PREF_ENABLED_SUBTYPES
+        if (!prefs.getString(key, "").isNullOrEmpty()) return  // user already chose
+        val langs = BuildConfig.KEYBOARD_DEFAULT_LANGS
+            .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        for (tag in langs) {
+            val locale = java.util.Locale.forLanguageTag(tag)
+            val subtypes = helium314.keyboard.latin.utils.SubtypeSettings
+                .getResourceSubtypesForLocale(locale)
+                .ifEmpty {
+                    helium314.keyboard.latin.utils.SubtypeSettings
+                        .getResourceSubtypesForLocale(java.util.Locale.forLanguageTag(locale.language))
+                }
+            subtypes.firstOrNull()?.let {
+                helium314.keyboard.latin.utils.SubtypeSettings.addEnabledSubtype(prefs, it)
+            }
+        }
     }
 
     /** Updater producer for NotificationStore. Compares the current

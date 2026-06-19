@@ -636,6 +636,41 @@ step_sync_zoomies() {
   [ "$miss" -eq 0 ] || { errlog "sync-zoomies: $miss referenced GIF(s) missing — fix build.json::status_pets or the clone"; exit 1; }
 }
 
+# Vendor keyboard dictionaries into libs/keyboard/src/main/assets/dicts/ (HeliBoard's
+# bundled-dictionary folder). HeliBoard's mirror already ships main_<locale>.dict
+# (word suggestions); this ADDS emoji_<locale>.dict (emoji search) — and any other
+# data-driven type — so each language has full features. DATA-DRIVEN from
+# build.json::keyboard_dicts (locales[] × types[].{type,dir}). ADDITIVE (no --delete):
+# composes with the HeliBoard mirror, so run AFTER sync-heliboard (which rsync
+# --delete's the mirror and would otherwise drop these). Upstream clone:
+# ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
+step_sync_keyboard_dicts() {
+  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts"
+  local dst="$SCRIPT_DIR/libs/keyboard/src/main/assets/dicts"
+  local bj="$SCRIPT_DIR/build.json"
+  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts, or set UNIX_REPO=)"; exit 1; }
+  command -v jq >/dev/null 2>&1 || { errlog "sync-keyboard-dicts: jq required"; exit 1; }
+
+  mkdir -p "$dst"
+  local locales; locales=$(jq -r '.keyboard_dicts.locales[]' "$bj")
+  local n=0 miss=0
+  while IFS=' ' read -r type dir; do
+    [ -n "$type" ] || continue
+    for l in $locales; do
+      local src="$upstream/$dir/${type}_${l}.dict"
+      if [ -f "$src" ]; then
+        cp -f "$src" "$dst/${type}_${l}.dict"; n=$((n+1))
+      else
+        errlog "sync-keyboard-dicts: missing ${type}_${l}.dict in $dir"; miss=$((miss+1))
+      fi
+    done
+  done < <(jq -r '.keyboard_dicts.types[] | "\(.type) \(.dir)"' "$bj")
+
+  log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/.../assets/dicts/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
+  log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/src/main/assets/dicts/"
+  [ "$miss" -eq 0 ] || { errlog "sync-keyboard-dicts: $miss dict(s) missing — fix build.json::keyboard_dicts or update the clone"; exit 1; }
+}
+
 case "$CMD" in
   build)      step_build ;;
   release)    step_release ;;
@@ -656,6 +691,7 @@ case "$CMD" in
   sync-net)     step_sync_net ;;
   sync-heliboard) step_sync_heliboard ;;
   sync-zoomies) step_sync_zoomies ;;
+  sync-keyboard-dicts) step_sync_keyboard_dicts ;;
   help|*)
     sed -n '2,/^set -euo/p' "$0" | sed 's/^# *//; /^set/d; /^$/d'
     ;;

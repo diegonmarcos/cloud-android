@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Cloud SuperApp</string>
+    <!-- Override libs:keyboard (HeliBoard) IME label. App res wins the merge over
+         the vendored donottranslate.xml value, so this renames the keyboard in
+         Settings → Languages → Keyboards without editing the verbatim mirror. -->
+    <string name="english_ime_name" translatable="false">Cloud Keyboard (HeliBoard)</string>
     <string name="welcome">Cloud SuperApp shell is live.</string>
     <string name="welcome_template">Cloud SuperApp — %1$s\nversionCode %2$d</string>
     <string name="check_updates">Check for updates</string>

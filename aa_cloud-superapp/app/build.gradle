@@ -70,6 +70,9 @@ def uiGroupsB64      = uiGroupsJson.bytes.encodeBase64().toString()
 // to pick each tool's animal + map its strength to a gait. Empty-safe.
 def statusPetsJson   = groovy.json.JsonOutput.toJson(buildJson.status_pets ?: [:])
 def statusPetsB64    = statusPetsJson.bytes.encodeBase64().toString()
+// Keyboard subtypes enabled on first run (App.initVendoredKeyboard). CSV of
+// BCP-47 language tags from build.json::keyboard_dicts.default_languages.
+def keyboardDefaultLangs = (buildJson.keyboard_dicts?.default_languages ?: []).join(',')
 // Launcher themes — Configs → Launcher picker reads this list to
 // render the chooser. Single source of truth lives in
 // build.json::ui.launcher_themes; add a theme there, picker updates.
@@ -469,6 +472,7 @@ android {
         buildConfigField "String", "UI_PAGE_SAMPLES_B64",   "\"${uiSamplesB64}\""
         buildConfigField "String", "UI_HOME_GROUPS_B64",    "\"${uiGroupsB64}\""
         buildConfigField "String", "STATUS_PETS_B64",        "\"${statusPetsB64}\""
+        buildConfigField "String", "KEYBOARD_DEFAULT_LANGS", "\"${keyboardDefaultLangs}\""
         buildConfigField "String", "UI_LAUNCHER_THEMES_B64", "\"${uiLauncherThemesB64}\""
         buildConfigField "String", "UI_LAUNCHER_PROFILES_B64", "\"${uiLauncherProfilesB64}\""
         buildConfigField "String", "UI_SCREENSAVERS_B64",      "\"${uiScreensaversB64}\""
