@@ -1,0 +1,111 @@
+diff --git a/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/KeyboardIconsSet.kt b/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/KeyboardIconsSet.kt
+index fdc6510a..08fa1c35 100644
+--- a/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/KeyboardIconsSet.kt
++++ b/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/KeyboardIconsSet.kt
+@@ -156,6 +156,7 @@ class KeyboardIconsSet private constructor() {
+                     ToolbarKey.PAGE_END -> R.drawable.ic_page_end
+                     ToolbarKey.SPLIT -> R.drawable.ic_ime_switcher
+                     ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_settings_gesture
++                    ToolbarKey.TRANSLATE -> R.drawable.ic_toolbar_translate // SuperApp addition (patch 0001)
+                 })
+             }
+         } }
+@@ -219,6 +220,7 @@ class KeyboardIconsSet private constructor() {
+                     ToolbarKey.PAGE_END -> R.drawable.ic_page_end
+                     ToolbarKey.SPLIT -> R.drawable.ic_ime_switcher
+                     ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_settings_gesture
++                    ToolbarKey.TRANSLATE -> R.drawable.ic_toolbar_translate // SuperApp addition (patch 0001)
+                 })
+             }
+         } }
+@@ -282,6 +284,7 @@ class KeyboardIconsSet private constructor() {
+                     ToolbarKey.PAGE_END -> R.drawable.ic_page_end_rounded
+                     ToolbarKey.SPLIT -> R.drawable.ic_ime_switcher
+                     ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_settings_gesture
++                    ToolbarKey.TRANSLATE -> R.drawable.ic_toolbar_translate // SuperApp addition (patch 0001)
+                 })
+             }
+         } }
+diff --git a/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt b/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt
+index 11ded67f..5b083754 100644
+--- a/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt
++++ b/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt
+@@ -98,6 +98,7 @@ object KeyCode {
+     const val URI_COMPONENT_TLD =           -255
+ 
+     const val SETTINGS =                    -301
++    const val TRANSLATE =                   -302 // SuperApp addition (patch 0001) — on-device translate toolbar key
+ 
+     const val CURRENCY_SLOT_1 =             -801
+     const val CURRENCY_SLOT_2 =             -802
+diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
+index bf36c20f..bc3d9859 100644
+--- a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
++++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
+@@ -742,6 +742,16 @@ public final class InputLogic {
+                     sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
+                 }
+                 break;
++            case KeyCode.TRANSLATE: {
++                // SuperApp addition (patch 0001): on-device translate of the
++                // selection (or whole field) INTO the active subtype's language.
++                final java.util.Locale tLoc =
++                        helium314.keyboard.latin.RichInputMethodManager.getInstance().getCurrentSubtypeLocale();
++                final String tTag = (tLoc != null && !tLoc.getLanguage().isEmpty()) ? tLoc.getLanguage() : "en";
++                com.diegonmarcos.superapp.translate.Translator.translate(
++                        mLatinIME, mLatinIME.getCurrentInputConnection(), tTag);
++                break;
++            }
+             case KeyCode.CLIPBOARD_PASTE:
+                 sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
+                 break;
+diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt b/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
+index c49189c2..fe825dd6 100644
+--- a/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
++++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
+@@ -90,6 +90,7 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
+     SPLIT -> KeyCode.SPLIT_LAYOUT
+     FLOATING -> KeyCode.TOGGLE_FLOATING_WINDOW
+     BACKGROUND_GATHERING -> KeyCode.BACKGROUND_GATHERING
++    TRANSLATE -> KeyCode.TRANSLATE // SuperApp addition (patch 0001)
+ }
+ 
+ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
+@@ -116,7 +117,8 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
+ enum class ToolbarKey {
+     VOICE, CLIPBOARD, NUMPAD, UNDO, REDO, SETTINGS, SELECT_ALL, SELECT_WORD, COPY, CUT, PASTE, ONE_HANDED, FLOATING, SPLIT,
+     INCOGNITO, AUTOCORRECT, CLEAR_CLIPBOARD, CLOSE_HISTORY, EMOJI, LEFT, RIGHT, UP, DOWN, WORD_LEFT, WORD_RIGHT,
+-    PAGE_UP, PAGE_DOWN, FULL_LEFT, FULL_RIGHT, PAGE_START, PAGE_END, BACKGROUND_GATHERING
++    PAGE_UP, PAGE_DOWN, FULL_LEFT, FULL_RIGHT, PAGE_START, PAGE_END, BACKGROUND_GATHERING,
++    TRANSLATE // SuperApp addition (patch 0001) — on-device ML Kit translate to active subtype language
+ }
+ 
+ enum class ToolbarMode {
+@@ -126,7 +128,7 @@ enum class ToolbarMode {
+ val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java)) { it.toString().lowercase(Locale.US) }
+ 
+ val defaultToolbarPref by lazy {
+-    val default = listOf(SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
++    val default = listOf(SETTINGS, VOICE, CLIPBOARD, TRANSLATE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
+     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
+             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
+diff --git a/libs/keyboard/src/main/res/drawable/ic_toolbar_translate.xml b/libs/keyboard/src/main/res/drawable/ic_toolbar_translate.xml
+new file mode 100644
+index 00000000..294aa92b
+--- /dev/null
++++ b/libs/keyboard/src/main/res/drawable/ic_toolbar_translate.xml
+@@ -0,0 +1,13 @@
++<!--
++    Material "translate" icon (G-translate). SuperApp addition (patch 0001)
++    for the TRANSLATE toolbar key. Apache-2.0 (Android Material icon set).
++    Runtime-tinted by KeyboardIconsSet like the other toolbar glyphs.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:height="24dp"
++    android:width="24dp"
++    android:viewportHeight="24"
++    android:viewportWidth="24" >
++    <path android:fillColor="#FFF"
++        android:pathData="M12.87,15.07l-2.54,-2.51 0.03,-0.03c1.74,-1.94 2.98,-4.17 3.71,-6.53L17,6L17,4h-7L10,2L8,2v2L1,4v1.99h11.17C11.5,7.92 10.44,9.75 9,11.35 8.07,10.32 7.3,9.19 6.69,8h-2c0.73,1.63 1.73,3.17 2.98,4.56l-5.09,5.02L4,19l5,-5 3.11,3.11 0.76,-2.04zM18.5,10h-2L12,22h2l1.12,-3h4.75L21,22h2l-4.5,-12zM15.88,17l1.62,-4.33L19.12,17h-3.24z"/>
++</vector>

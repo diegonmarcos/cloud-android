@@ -742,6 +742,16 @@ public final class InputLogic {
                     sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                 }
                 break;
+            case KeyCode.TRANSLATE: {
+                // SuperApp addition (patch 0001): on-device translate of the
+                // selection (or whole field) INTO the active subtype's language.
+                final java.util.Locale tLoc =
+                        helium314.keyboard.latin.RichInputMethodManager.getInstance().getCurrentSubtypeLocale();
+                final String tTag = (tLoc != null && !tLoc.getLanguage().isEmpty()) ? tLoc.getLanguage() : "en";
+                com.diegonmarcos.superapp.translate.Translator.translate(
+                        mLatinIME, mLatinIME.getCurrentInputConnection(), tTag);
+                break;
+            }
             case KeyCode.CLIPBOARD_PASTE:
                 sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                 break;

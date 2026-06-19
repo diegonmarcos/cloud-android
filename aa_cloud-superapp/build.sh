@@ -590,6 +590,25 @@ step_sync_heliboard() {
   # Whole app/src/main, manifest included — verbatim upstream mirror.
   rsync -a --delete "$upstream/" "$dst/src/main/"
 
+  # Re-apply SuperApp patches (the rsync --delete above clobbers any local
+  # edit to the mirror). These inject SuperApp-only features the verbatim
+  # mirror can't carry — e.g. patches/0001-translate-toolbar.patch wires the
+  # TRANSLATE toolbar key into the keyboard (calls libs:translate ML Kit).
+  # Patch paths are relative to this service dir, so apply via git -C SCRIPT_DIR.
+  if [ -d "$dst/patches" ]; then
+    local p applied=0
+    for p in "$dst"/patches/*.patch; do
+      [ -f "$p" ] || continue
+      if git -C "$SCRIPT_DIR" apply --3way "$p" 2>/dev/null \
+         || patch -p1 -d "$SCRIPT_DIR" <"$p" >/dev/null 2>&1; then
+        applied=$((applied+1))
+      else
+        errlog "sync-heliboard: FAILED to apply $(basename "$p") — upstream drift; reconcile by hand"; exit 1
+      fi
+    done
+    log "sync-heliboard: re-applied $applied SuperApp patch(es) after mirror"
+  fi
+
   log "sync-heliboard: libs/keyboard populated from $(realpath --relative-to="$SCRIPT_DIR" "$upstream" 2>/dev/null || echo "$upstream")"
   log "  sources : $(find "$dst/src/main" \( -name '*.java' -o -name '*.kt' \) 2>/dev/null | wc -l) file(s)"
   log "  jni     : $(find "$dst/src/main/jni" -type f 2>/dev/null | wc -l) file(s)"

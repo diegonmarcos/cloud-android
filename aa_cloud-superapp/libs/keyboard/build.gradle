@@ -92,6 +92,11 @@ android {
 }
 
 dependencies {
+    // SuperApp addition (NOT upstream): on-device translator behind the
+    // TRANSLATE toolbar key. Injected by patches/0001-translate-toolbar.patch;
+    // the KeyCode.TRANSLATE handler in InputLogic calls into this module.
+    implementation project(':libs:translate')
+
     // ── Mirror of HeliBoard main app/build.gradle.kts dependencies. ──────
     // Keep in sync with upstream on every `build.sh sync-heliboard` bump.
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
