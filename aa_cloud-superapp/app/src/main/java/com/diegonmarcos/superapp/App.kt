@@ -58,7 +58,28 @@ class App : Application() {
         // at ≤15 min granularity even when PowerStateReceiver is
         // suppressed by Samsung Sleeping Apps.
         runCatching { BatterySessionWorker.schedule(this) }
+        // HeliBoard (libs:keyboard) is vendored WITHOUT its own Application —
+        // our .App wins the manifest merge (tools:replace android:name), so the
+        // keyboard's app-level init never ran. That left Settings /
+        // SubtypeSettings.prefs null → Configs→Keyboard (SettingsActivity) AND
+        // LatinIME crashed with "parameter prefs is null". Replicate HeliBoard
+        // App.onCreate's synchronous init here so both work.
+        runCatching { initVendoredKeyboard() }
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
+    }
+
+    /** Mirrors helium314.keyboard.latin.App.onCreate's synchronous init (the
+     *  vendored HeliBoard App class is never instantiated, since our manifest
+     *  android:name wins). These are the initializers Settings / SubtypeSettings
+     *  / LatinIME read at runtime. Each wrapped so one failure can't abort
+     *  SuperApp startup. Keep in sync with libs/keyboard App.kt on resyncs. */
+    private fun initVendoredKeyboard() {
+        runCatching { helium314.keyboard.latin.define.DebugFlags.init(this) }
+        runCatching { helium314.keyboard.latin.utils.FoldableUtils.init(this) }
+        runCatching { helium314.keyboard.latin.settings.Settings.init(this) }
+        runCatching { helium314.keyboard.latin.utils.SubtypeSettings.init(this) }
+        runCatching { helium314.keyboard.latin.RichInputMethodManager.init(this) }
+        runCatching { helium314.keyboard.latin.settings.Defaults.initDynamicDefaults(this) }
     }
 
     /** Updater producer for NotificationStore. Compares the current
