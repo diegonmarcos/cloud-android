@@ -77,6 +77,11 @@ def uiLauncherThemesJson = groovy.json.JsonOutput.toJson(buildJson.ui.launcher_t
 def uiLauncherThemesB64  = uiLauncherThemesJson.bytes.encodeBase64().toString()
 def uiLauncherProfilesJson = groovy.json.JsonOutput.toJson(buildJson.ui.launcher_profiles ?: [])
 def uiLauncherProfilesB64  = uiLauncherProfilesJson.bytes.encodeBase64().toString()
+// Configs → Launcher → Screensaver picker + Others toggles/sliders.
+def uiScreensaversJson   = groovy.json.JsonOutput.toJson(buildJson.ui.screensavers ?: [])
+def uiScreensaversB64    = uiScreensaversJson.bytes.encodeBase64().toString()
+def uiLauncherSettingsJson = groovy.json.JsonOutput.toJson(buildJson.ui.launcher_settings ?: [:])
+def uiLauncherSettingsB64  = uiLauncherSettingsJson.bytes.encodeBase64().toString()
 // Home Apps tabs (Cloud | Phone). Single source of truth =
 // build.json::ui.home_apps_tabs.
 def uiHomeAppsTabsJson = groovy.json.JsonOutput.toJson(buildJson.ui.home_apps_tabs ?: [])
@@ -466,6 +471,8 @@ android {
         buildConfigField "String", "STATUS_PETS_B64",        "\"${statusPetsB64}\""
         buildConfigField "String", "UI_LAUNCHER_THEMES_B64", "\"${uiLauncherThemesB64}\""
         buildConfigField "String", "UI_LAUNCHER_PROFILES_B64", "\"${uiLauncherProfilesB64}\""
+        buildConfigField "String", "UI_SCREENSAVERS_B64",      "\"${uiScreensaversB64}\""
+        buildConfigField "String", "UI_LAUNCHER_SETTINGS_B64", "\"${uiLauncherSettingsB64}\""
         buildConfigField "String", "UI_HOME_APPS_TABS_B64",   "\"${uiHomeAppsTabsB64}\""
         buildConfigField "String", "UI_SWIPE_WALK_B64",       "\"${uiSwipeWalkB64}\""
         buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""

@@ -79,10 +79,19 @@ class ScreensaverService : Service() {
 
     private fun showOverlay() {
         if (overlay != null) return
+        // Configs → Launcher → Screensaver picker. 'neon_lights' swaps the
+        // black backdrop for an animated neon synthwave grid + neon-glow clock;
+        // anything else = the classic black clock.
+        val neon = runCatching {
+            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this).screensaver == "neon_lights"
+        }.getOrDefault(false)
         val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(if (neon) 0xFF0A0014.toInt() else Color.BLACK)
             isClickable = true; isFocusable = true   // swallow taps to the app underneath
         }
+        // Neon scene sits behind everything (added first).
+        if (neon) root.addView(NeonBackdropView(this), FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         // Time + date, near the top.
         root.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -118,8 +127,51 @@ class ScreensaverService : Service() {
                 .apply { bottomMargin = dp(96) } // clear the system nav bar
         })
 
+        if (neon) clock?.apply {
+            setTextColor(0xFFEAFCFF.toInt())
+            setShadowLayer(28f, 0f, 0f, 0xFF18E0FF.toInt())
+        }
+
         runCatching { wm.addView(root, overlayParams()) }
         overlay = root
+    }
+
+    /** Animated neon "synthwave" grid — a scrolling horizontal floor below a
+     *  horizon plus converging verticals, cyan + magenta with a glow. Software
+     *  layer so the shadow-layer glow renders. Stops itself on detach. */
+    private inner class NeonBackdropView(ctx: Context) : View(ctx) {
+        private var t = 0f
+        private val floor = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE; strokeWidth = 3f
+            color = 0xFF18E0FF.toInt(); setShadowLayer(10f, 0f, 0f, 0xFF18E0FF.toInt())
+        }
+        private val rays = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE; strokeWidth = 3f
+            color = 0xFFFF2EC4.toInt(); setShadowLayer(10f, 0f, 0f, 0xFFFF2EC4.toInt())
+        }
+        private val anim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 4200; repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener { t = it.animatedValue as Float; invalidate() }
+        }
+        init { setLayerType(LAYER_TYPE_SOFTWARE, null) }
+        override fun onAttachedToWindow() { super.onAttachedToWindow(); anim.start() }
+        override fun onDetachedFromWindow() { anim.cancel(); super.onDetachedFromWindow() }
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            val w = width.toFloat(); val h = height.toFloat(); val horizon = h * 0.58f
+            val rows = 16
+            for (i in 0 until rows) {
+                val p = ((i + t) % rows) / rows            // 0..1, scrolling toward viewer
+                val y = horizon + (h - horizon) * (p * p)  // perspective: bunch at horizon
+                canvas.drawLine(0f, y, w, y, floor)
+            }
+            val cols = 12
+            for (i in 0..cols) {
+                val x0 = w * i / cols
+                val xv = w / 2f + (x0 - w / 2f) * 0.12f    // converge toward centre at horizon
+                canvas.drawLine(x0, h, xv, horizon, rays)
+            }
+        }
     }
 
     private fun overlayParams(): WindowManager.LayoutParams {

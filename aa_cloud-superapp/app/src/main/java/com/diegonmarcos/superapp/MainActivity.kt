@@ -787,7 +787,49 @@ class MainActivity : AppCompatActivity(),
      *  so a Minimalist Black ↔ Cloud swap takes effect immediately. */
     fun notifyLauncherThemeChanged() {
         applyLauncherChrome()
+        applyLauncherSettings()
         if (currentSection == "home") goHome()
+    }
+
+    private var eyeOverlay: View? = null
+
+    /** Configs → Launcher → Others — applies the device-level settings that
+     *  aren't per-view-toggled: the eye-protection amber scrim (a non-touchable
+     *  overlay tinted by the strength slider) and device-wide system brightness
+     *  (only when WRITE_SETTINGS is granted; the slider routes the user to the
+     *  grant screen otherwise). Toggle-style settings (pets/cube/stars/haptics)
+     *  are read by their own subsystems on (re)render. */
+    private fun applyLauncherSettings() {
+        val prefs = com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this)
+        runCatching {
+            if (prefs.toggle("eye_protection")) {
+                val v = eyeOverlay ?: View(this).also { ov ->
+                    ov.isClickable = false; ov.isFocusable = false
+                    ov.elevation = dp(120).toFloat()
+                    addContentView(ov, android.widget.FrameLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+                    eyeOverlay = ov
+                }
+                // intensity (0..~120) is the amber alpha out of 255 → a subtle
+                // warm wash, never opaque. Amber ≈ #FF9600.
+                v.setBackgroundColor(android.graphics.Color.argb(
+                    prefs.eyeIntensity.coerceIn(0, 160), 255, 150, 0))
+                v.visibility = View.VISIBLE
+            } else {
+                eyeOverlay?.visibility = View.GONE
+            }
+        }
+        runCatching {
+            val b = prefs.brightness
+            if (b >= 0 && android.provider.Settings.System.canWrite(this)) {
+                android.provider.Settings.System.putInt(contentResolver,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+                android.provider.Settings.System.putInt(contentResolver,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, b.coerceIn(0, 255))
+            }
+        }
     }
 
     /** System status bar pixel height. Reads the platform's
@@ -1582,6 +1624,8 @@ class MainActivity : AppCompatActivity(),
 
     override fun onResume() {
         super.onResume()
+        // Configs → Launcher → Others: eye-protection scrim + system brightness.
+        applyLauncherSettings()
         // Floating Top Nav Bar — start the overlay service iff enabled in
         // build.json AND the user granted "display over other apps". The
         // service self-hides while we're foreground and surfaces the bubble

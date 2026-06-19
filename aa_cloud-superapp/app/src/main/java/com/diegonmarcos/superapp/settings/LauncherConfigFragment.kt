@@ -6,6 +6,7 @@ import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Base64
@@ -15,7 +16,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
 
@@ -114,6 +117,46 @@ class LauncherConfigFragment : Fragment() {
             root.addView(spacer(ctx, dp(ctx, 8)))
         }
 
+        // ── Screensaver section ────────────────────────────────────
+        val settingsPrefs = LauncherSettingsPrefs(ctx)
+        root.addView(spacer(ctx, dp(ctx, 24)))
+        root.addView(sectionHeader(ctx, "Screensaver",
+            "Which screensaver the floating-nav ‘Screensaver’ action shows."))
+        val currentSaver = settingsPrefs.screensaver
+        for (saver in LauncherSettingsPrefs.Config.screensavers) {
+            root.addView(genericTile(ctx, saver.label, saver.subtitle, saver.id == currentSaver) {
+                settingsPrefs.screensaver = saver.id
+                parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
+            })
+            root.addView(spacer(ctx, dp(ctx, 8)))
+        }
+
+        // ── Others section ─────────────────────────────────────────
+        root.addView(spacer(ctx, dp(ctx, 24)))
+        root.addView(sectionHeader(ctx, "Others",
+            "Animations, haptics, brightness and eye protection."))
+        for (t in LauncherSettingsPrefs.Config.toggles) {
+            root.addView(toggleRow(ctx, t.label, t.subtitle, settingsPrefs.toggle(t.id)) { on ->
+                settingsPrefs.setToggle(t.id, on)
+                // Re-apply launcher chrome so stars/cube/pets/eye pick up the change.
+                (activity as? MainActivity)?.notifyLauncherThemeChanged()
+            })
+            root.addView(spacer(ctx, dp(ctx, 8)))
+        }
+        // Screen brightness (device-wide → needs WRITE_SETTINGS)
+        val b = LauncherSettingsPrefs.Config.brightness
+        root.addView(sliderRow(ctx, b.label, b.subtitle, b.min, b.max,
+            settingsPrefs.brightness.let { if (it < b.min) b.min else it }) { v ->
+            settingsPrefs.brightness = v
+            applySystemBrightness(ctx, v)
+        })
+        // Eye-protection strength
+        val e = LauncherSettingsPrefs.Config.eyeIntensity
+        root.addView(sliderRow(ctx, e.label, e.subtitle, e.min, e.max, settingsPrefs.eyeIntensity) { v ->
+            settingsPrefs.eyeIntensity = v
+            (activity as? MainActivity)?.notifyLauncherThemeChanged()
+        })
+
         // "Set as default launcher" CTA
         root.addView(spacer(ctx, dp(ctx, 16)))
         root.addView(TextView(ctx).apply {
@@ -185,6 +228,108 @@ class LauncherConfigFragment : Fragment() {
 
     private fun spacer(ctx: android.content.Context, h: Int): View = View(ctx).apply {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h)
+    }
+
+    /** Section title + caption block — matches the hand-rolled headers above. */
+    private fun sectionHeader(ctx: android.content.Context, title: String, subtitle: String): View =
+        LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(TextView(ctx).apply {
+                text = title
+                setTextColor(0xFFFFFFFF.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Headline)
+                setPadding(0, 0, 0, dp(ctx, 8))
+            })
+            addView(TextView(ctx).apply {
+                text = subtitle
+                setTextColor(0xAAFFFFFFL.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+                setPadding(0, 0, 0, dp(ctx, 16))
+            })
+        }
+
+    /** A label/subtitle + right-aligned switch row, persisted on toggle. */
+    private fun toggleRow(
+        ctx: android.content.Context,
+        label: String, subtitle: String, checked: Boolean,
+        onChange: (Boolean) -> Unit,
+    ): View = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        val pad = dp(ctx, 14); setPadding(pad, pad, pad, pad)
+        setBackgroundColor(0x22FFFFFFL.toInt())
+        addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(TextView(ctx).apply {
+                text = label
+                setTextColor(0xFFFFFFFFL.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+            })
+            if (subtitle.isNotBlank()) addView(TextView(ctx).apply {
+                text = subtitle
+                setTextColor(0xAAFFFFFFL.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            })
+        })
+        addView(SwitchCompat(ctx).apply {
+            isChecked = checked
+            setOnCheckedChangeListener { v, isOn -> Haptics.tap(v); onChange(isOn) }
+        })
+    }
+
+    /** A label + SeekBar row. [value] pre-positions the thumb; onChange fires
+     *  on release so we don't spam writes while dragging. */
+    private fun sliderRow(
+        ctx: android.content.Context,
+        label: String, subtitle: String, min: Int, max: Int, value: Int,
+        onChange: (Int) -> Unit,
+    ): View = LinearLayout(ctx).apply {
+        orientation = LinearLayout.VERTICAL
+        val pad = dp(ctx, 14); setPadding(pad, pad, pad, pad)
+        setBackgroundColor(0x22FFFFFFL.toInt())
+        addView(TextView(ctx).apply {
+            text = label
+            setTextColor(0xFFFFFFFFL.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+        })
+        if (subtitle.isNotBlank()) addView(TextView(ctx).apply {
+            text = subtitle
+            setTextColor(0xAAFFFFFFL.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, 0, 0, dp(ctx, 4))
+        })
+        addView(SeekBar(ctx).apply {
+            this.min = min
+            this.max = max
+            progress = value.coerceIn(min, max)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {}
+                override fun onStartTrackingTouch(sb: SeekBar) {}
+                override fun onStopTrackingTouch(sb: SeekBar) { onChange(sb.progress) }
+            })
+        })
+    }
+
+    /** Device-wide brightness via Settings.System (manual mode). Needs the
+     *  WRITE_SETTINGS special-access grant — if absent, route the user to the
+     *  grant screen and apply on their next adjustment. value<min = untouched. */
+    private fun applySystemBrightness(ctx: android.content.Context, value: Int) {
+        if (value < 0) return
+        if (!Settings.System.canWrite(ctx)) {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                    Uri.parse("package:" + ctx.packageName)))
+            }
+            return
+        }
+        runCatching {
+            Settings.System.putInt(ctx.contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS_MODE,
+                Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+            Settings.System.putInt(ctx.contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS, value.coerceIn(0, 255))
+        }
     }
 
     private fun dp(ctx: android.content.Context, v: Int): Int =

@@ -31,6 +31,14 @@
          declares the app is allowed to change the interruption filter. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- WRITE_SETTINGS — Configs → Launcher → Others → Screen brightness sets
+         device-wide Settings.System.SCREEN_BRIGHTNESS. signature|appop perm:
+         declaring it lists the app in Settings → Special access → Modify system
+         settings; the slider routes the user there via ACTION_MANAGE_WRITE_SETTINGS
+         when not yet granted. tools:ignore suppresses the protected-perm lint
+         (same pattern as DUMP / PACKAGE_USAGE_STATS). -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.CAMERA" />

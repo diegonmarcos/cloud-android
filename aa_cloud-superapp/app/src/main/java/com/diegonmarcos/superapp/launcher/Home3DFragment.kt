@@ -111,6 +111,13 @@ class RotatingCubeView @JvmOverloads constructor(
     private val periodXMs = 23_500.0
     private val animStartMs = SystemClock.elapsedRealtime()
 
+    // Configs → Launcher → Others → "Cube animation". Off → freeze the cube
+    // (stop self-invalidating). Read once; the fragment recreates this view
+    // when the toggle flips via chrome re-render.
+    private val cubeAnimate: Boolean = runCatching {
+        com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("cube_anim")
+    }.getOrDefault(true)
+
     private val vertices = arrayOf(
         floatArrayOf(-1f, -1f, -1f),
         floatArrayOf( 1f, -1f, -1f),
@@ -174,7 +181,8 @@ class RotatingCubeView @JvmOverloads constructor(
         for (i in 0..7) canvas.drawCircle(px[i], py[i], 4f, accent)
         // Schedule the next frame — VSYNC-aligned by the platform. When
         // the view detaches the framework drops these invalidations, so
-        // there's no leak risk.
-        postInvalidateOnAnimation()
+        // there's no leak risk. Skipped when "Cube animation" is off →
+        // the cube draws once at its start angle and stops.
+        if (cubeAnimate) postInvalidateOnAnimation()
     }
 }

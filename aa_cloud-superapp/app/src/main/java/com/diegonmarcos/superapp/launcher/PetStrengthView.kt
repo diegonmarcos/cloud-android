@@ -30,6 +30,11 @@ class PetStrengthView @JvmOverloads constructor(
     private var variant: String = ""
     private var gait: String = ""
 
+    /** When false (Configs → Launcher → Others → "Animal animations" off), the
+     *  GIF is shown as a static first frame instead of playing. */
+    var animate: Boolean = true
+        set(v) { if (v != field) { field = v; if (gait.isNotEmpty()) load() } }
+
     /** Fix the animal + colour variant for this tool. Reloads if a gait is set. */
     fun setAnimal(animal: String, variant: String) {
         if (animal == this.animal && variant == this.variant) return
@@ -55,7 +60,7 @@ class PetStrengthView @JvmOverloads constructor(
                 setImageDrawable(drawable)
                 (drawable as? AnimatedImageDrawable)?.apply {
                     repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
-                    start()
+                    if (animate) start() else stop()
                 }
             } else {
                 // API 26-27: no AnimatedImageDrawable — first frame, static.

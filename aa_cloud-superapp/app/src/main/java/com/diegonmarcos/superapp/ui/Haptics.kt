@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.ui
 import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.settings.LauncherSettingsPrefs
 
 import android.content.Context
 import android.os.Build
@@ -26,12 +27,19 @@ import android.view.View
  */
 object Haptics {
 
+    /** Global on/off from Configs → Launcher → Others → "Vibration on tap".
+     *  Defaults ON. Read per-call (SharedPreferences is in-memory after first
+     *  load, so the cost on every tap is negligible). */
+    private fun enabled(ctx: Context): Boolean =
+        runCatching { LauncherSettingsPrefs(ctx).toggle("haptics") }.getOrDefault(true)
+
     /** OEM haptic prefs are often turned OFF by default — performHapticFeedback
      *  silently no-ops then. We force-fire through the direct Vibrator API
      *  using composition primitives where available, falling back to short
      *  one-shot effects. View-level callbacks are kept only for haptic-feedback
      *  metadata (a11y); the actual buzz is direct. */
     fun gestureStart(view: View) {
+        if (!enabled(view.context)) return
         runCatching {
             view.isHapticFeedbackEnabled = true
             view.performHapticFeedback(
@@ -45,6 +53,7 @@ object Haptics {
     }
 
     fun gestureEnd(view: View) {
+        if (!enabled(view.context)) return
         runCatching {
             view.isHapticFeedbackEnabled = true
             view.performHapticFeedback(
@@ -59,6 +68,7 @@ object Haptics {
 
     /** Subtle in-transit tick. */
     fun segmentTick(view: View) {
+        if (!enabled(view.context)) return
         fire(view.context, intensity = 0.3f, durationMs = 15)
     }
 
@@ -66,6 +76,7 @@ object Haptics {
      *  gestures where firing the whole gesture-pattern would be too
      *  heavy and stack up under rapid input. */
     fun tap(view: View) {
+        if (!enabled(view.context)) return
         runCatching {
             view.isHapticFeedbackEnabled = true
             view.performHapticFeedback(

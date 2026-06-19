@@ -304,6 +304,11 @@ class LauncherStatusStripView @JvmOverloads constructor(
         if (!petsEnabled || cfg == null) return iconView
         val pet = PetStrengthView(context).apply {
             layoutParams = LinearLayout.LayoutParams(petPx, petPx)
+            // Configs → Launcher → Others → "Animal animations" gate. Read once
+            // (the strip re-inits when the toggle flips via chrome re-render).
+            animate = runCatching {
+                com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("pets_anim")
+            }.getOrDefault(true)
             setAnimal(cfg.animal, cfg.variant)
             setGait(gaits.firstOrNull() ?: "idle")
         }
