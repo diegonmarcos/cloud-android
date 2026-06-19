@@ -5,6 +5,11 @@
          the vendored donottranslate.xml value, so this renames the keyboard in
          Settings → Languages → Keyboards without editing the verbatim mirror. -->
     <string name="english_ime_name" translatable="false">Cloud Keyboard (HeliBoard)</string>
+    <!-- Label for the SuperApp TRANSLATE toolbar key (patch 0001). HeliBoard's
+         getStringResourceOrName looks up the lowercased ToolbarKey name against
+         the runtime (app) package, so this app-side string labels + describes the
+         key in the toolbar customizer without touching the verbatim mirror. -->
+    <string name="translate">Translate</string>
     <string name="welcome">Cloud SuperApp shell is live.</string>
     <string name="welcome_template">Cloud SuperApp — %1$s\nversionCode %2$d</string>
     <string name="check_updates">Check for updates</string>

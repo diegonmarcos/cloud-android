@@ -609,11 +609,53 @@ step_sync_heliboard() {
     log "sync-heliboard: re-applied $applied SuperApp patch(es) after mirror"
   fi
 
+  # Rebrand the curated user-facing display strings (HeliBoard → Cloud Keyboard
+  # (HeliBoard)). The rsync mirror above ships upstream's labels verbatim, so
+  # this re-runs every sync. Narrow + idempotent — see step_brand_rename.
+  step_brand_rename
+
   log "sync-heliboard: libs/keyboard populated from $(realpath --relative-to="$SCRIPT_DIR" "$upstream" 2>/dev/null || echo "$upstream")"
   log "  sources : $(find "$dst/src/main" \( -name '*.java' -o -name '*.kt' \) 2>/dev/null | wc -l) file(s)"
   log "  jni     : $(find "$dst/src/main/jni" -type f 2>/dev/null | wc -l) file(s)"
   log "  manifest: VERBATIM upstream (reconciled by app/ tools: overlays — see libs/keyboard/README.md)"
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/"
+}
+
+# Rebrand the vendored keyboard's USER-FACING display strings only:
+# build.json::keyboard_brand_rename.token -> .replacement, inside ONLY the
+# curated .string_keys, across every libs/keyboard values*/strings.xml.
+# DATA-DRIVEN (no hardcoded key list), awk-based (FIRE rule: never sed),
+# idempotent (skips lines already carrying the replacement). Deliberately
+# NARROW — never touches package ids (helium314.*) or upstream attribution/
+# license/URL text. Invoked at the end of sync-heliboard; also standalone.
+step_brand_rename() {
+  local bj="$SCRIPT_DIR/build.json"
+  local resdir="$SCRIPT_DIR/libs/keyboard/src/main/res"
+  command -v jq >/dev/null 2>&1 || { errlog "brand-rename: jq required"; exit 1; }
+  [ -d "$resdir" ] || { errlog "brand-rename: $resdir missing — run sync-heliboard first"; exit 1; }
+
+  local token rep
+  token=$(jq -r '.keyboard_brand_rename.token' "$bj")
+  rep=$(jq -r '.keyboard_brand_rename.replacement' "$bj")
+  [ -n "$token" ] && [ "$token" != "null" ] || { errlog "brand-rename: no token in build.json"; exit 1; }
+
+  local changed=0 f key
+  while IFS= read -r f; do
+    while IFS= read -r key; do
+      [ -n "$key" ] || continue
+      awk -v key="$key" -v tok="$token" -v rep="$rep" '
+        index($0, "name=\"" key "\"") > 0 && index($0, rep) == 0 && index($0, tok) > 0 {
+          line=$0; out="";
+          while ((p=index(line,tok))>0) { out=out substr(line,1,p-1) rep; line=substr(line,p+length(tok)) }
+          print out line; next
+        }
+        { print }
+      ' "$f" > "$f.brand.tmp" && mv "$f.brand.tmp" "$f"
+    done < <(jq -r '.keyboard_brand_rename.string_keys[]' "$bj")
+    grep -q "$rep" "$f" 2>/dev/null && changed=$((changed+1))
+  done < <(find "$resdir" -path '*/values*/strings.xml' 2>/dev/null)
+
+  log "brand-rename: '$token' → '$rep' applied to curated keys across $changed strings.xml file(s)"
 }
 
 # Vendor the status-bar Line 0 animated pets from KartikLabhshetwar/zoomies
@@ -709,6 +751,7 @@ case "$CMD" in
   sync-qrcodes) step_sync_qrcodes ;;
   sync-net)     step_sync_net ;;
   sync-heliboard) step_sync_heliboard ;;
+  brand-rename) step_brand_rename ;;
   sync-zoomies) step_sync_zoomies ;;
   sync-keyboard-dicts) step_sync_keyboard_dicts ;;
   help|*)

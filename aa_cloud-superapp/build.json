@@ -362,6 +362,12 @@
       { "type": "emoji", "dir": "emoji_cldr_signal_dictionaries" }
     ]
   },
+  "keyboard_brand_rename": {
+    "_doc": "Brand-rebrand the vendored keyboard's USER-FACING display strings only. step_brand_rename (run at the end of sync-heliboard, also callable standalone) rewrites the `token` -> `replacement` inside ONLY the curated `string_keys` across every libs/keyboard values*/strings.xml, using awk + an idempotency guard (skips lines already carrying the replacement). Deliberately NARROW: it never touches package identifiers (helium314.keyboard.* — the manifest resolves the IME service by that namespace), nor upstream attribution/credit/license/URL text (legally the upstream's credit). english_ime_name is handled separately as an app/ resource override. Add a brand label = one entry in string_keys.",
+    "token": "HeliBoard",
+    "replacement": "Cloud Keyboard (HeliBoard)",
+    "string_keys": ["spell_checker_service_name", "ime_settings", "android_spell_checker_settings"]
+  },
   "ui": {
     "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
     "permissions": {

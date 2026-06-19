@@ -95,10 +95,10 @@
     <string name="enable_clipboard_history">فعال‌سازی تاریخچه کلیپ‌بورد</string>
     <string name="select_input_method">"انتخاب روش ورودی"</string>
     <string name="settings_category_clipboard_history">تاریخچه کلیپ‌بورد</string>
-    <string name="spell_checker_service_name">غلط‌گیر املایی HeliBoard</string>
-    <string name="android_spell_checker_settings">تنظیمات غلط‌گیر املایی HeliBoard</string>
+    <string name="spell_checker_service_name">غلط‌گیر املایی Cloud Keyboard (HeliBoard)</string>
+    <string name="android_spell_checker_settings">تنظیمات غلط‌گیر املایی Cloud Keyboard (HeliBoard)</string>
     <string name="show_emoji_key">کلید ایموجی</string>
-    <string name="ime_settings">تنظیمات HeliBoard</string>
+    <string name="ime_settings">تنظیمات Cloud Keyboard (HeliBoard)</string>
     <string name="settings_category_additional_keys">کلیدهای بیشتر</string>
     <string name="settings_category_experimental">آزمایشی</string>
     <string name="settings_category_miscellaneous">متفرقه</string>
