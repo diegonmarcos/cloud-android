@@ -10,7 +10,7 @@ import org.json.JSONObject
  *
  * The decisive negotiation evidence on a stock (non-rooted) Samsung lives in
  * `dumpsys battery` — the only charge surface readable from shell uid once
- * One UI hardens `/sys/class/power_supply/*` (the tcpm/PD kernel log is
+ * One UI hardens `/sys/class/power_supply/`* (the tcpm/PD kernel log is
  * `dmesg_restrict`-blocked and `dumpsys usb` is stripped). This reads the two
  * data-driven `samsung-sfc` bundle commands (model + dumpsys battery) and
  * turns them into a one-line verdict so you don't eyeball raw dumps.
