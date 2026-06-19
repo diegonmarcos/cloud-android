@@ -10,8 +10,12 @@ captures/
 .cxx/
 
 # ── Nix ───────────────────────────────────────────────────────
-result
-result-*
+# Anchored to the project root: the Nix build symlink is ./result here.
+# Unanchored `result` also matched nested vendored source dirs named
+# `result` (e.g. libs/keyboard HeliBoard jni .../suggest/core/result/),
+# silently dropping their .cpp from commits → ndk-build "No rule to make".
+/result
+/result-*
 
 # ── Secrets (signing keystore + sops) ────────────────────────
 src/secrets.yaml.dec

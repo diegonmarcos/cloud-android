@@ -37,9 +37,11 @@
   "toolchain": {
     "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
     "_doc_sdk_bump": "compile_sdk bumped 34→35 to satisfy androidx.health.connect:connect-client:1.1.0-alpha10's AAR metadata constraint (it requires consumers to compile against Android 35+ for the new HC permission definitions wired to API 35 constants). AGP 8.5.2 maxes at compileSdk 34, so AGP bumped 8.5.2→8.7.3 (first stable AGP supporting compileSdk 35). Gradle 8.7→8.10.2 follows AGP 8.7's Gradle 8.9+ requirement. target_sdk stays at 34 — opting into Android 15 runtime behaviour is a separate concern from compiling against its APIs.",
-    "agp": "8.7.3",
-    "gradle": "8.10.2",
-    "kotlin": "1.9.24",
+    "_doc_heliboard_bump": "compile_sdk bumped 35→36 + the whole toolchain re-pinned to vendor HeliBoard main as libs:keyboard (self-contained keyboard provider). HeliBoard main pins AGP 8.13.2 / Kotlin 2.3.20 / Gradle 8.14 / compileSdk 36 (Android 16) / NDK 28.0.13004108, and uses the standalone Kotlin 2.0 Compose-compiler plugin (org.jetbrains.kotlin.plugin.compose) — so app + libs:wallet dropped composeOptions.kotlinCompilerExtensionVersion in favour of that plugin. nixpkgs channel bumped 24.11→25.05 because 24.11's androidenv/kotlin/gradle predate API 36 / Kotlin 2.3 / Gradle 8.14. target_sdk unchanged. See libs/keyboard/README.md.",
+    "agp": "8.13.2",
+    "gradle": "8.14",
+    "kotlin": "2.3.20",
+    "compile_sdk": 36,
     "jdk": "17"
   },
   "upstreams": {
@@ -122,7 +124,8 @@
         "libs:browser",
         "libs:apptabs",
         "libs:kde-connect",
-        "libs:shizuku-adb-debug-tools"
+        "libs:shizuku-adb-debug-tools",
+        "libs:keyboard"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -165,6 +168,11 @@
         "libs:core"
       ],
       "comment": "WireGuard tunnel control. Upstream: github.com/WireGuard/wireguard-android (Apache-2.0)."
+    },
+    "libs:keyboard": {
+      "type": "library",
+      "depends_on": [],
+      "comment": "Self-contained keyboard — the LatinIME InputMethodService (keyboard provider) vendored from HeliBoard. Standalone (no libs:core dep). Upstream: github.com/Helium314/HeliBoard (GPL-3.0; whole APK is already GPL-3.0). Tracking clone lives at ../ea_keyboard-heliboard/ (gitignored sibling, ea_*-* convention); `build.sh sync-heliboard` mirrors app/src/main VERBATIM (java/kotlin + res + assets + jni + AndroidManifest) into libs/keyboard/ — zero drift. SuperApp-specific reconciliation lives in app/src/main/AndroidManifest.xml as tools: overlays (tools:replace android:name so SuperApp's App wins; tools:node=remove on HeliBoard's SettingsActivity LAUNCHER + SpellCheckerSettingsActivity MAIN filters → no second launcher icon). NDK module: ndk-build src/main/jni/Android.mk -> libjni_latinime.so (arm64-v8a, NDK 28). Compose/Kotlin-2.0 settings UI (material3 + navigation-compose). Swipe/glide needs Google's proprietary libjni_latinimegoogle.so, NOT bundled (keeps the APK FOSS): HeliBoard's built-in 'Load gesture typing library' setting is the in-app loader the user uses to fetch it on first run. Namespace helium314.keyboard.latin (matches upstream so the manifest's relative service name 'LatinIME' resolves; own R class, no collision with com.diegonmarcos.superapp). See libs/keyboard/README.md."
     },
     "libs:ops": {
       "type": "library",
@@ -2023,6 +2031,13 @@
             "label": "Import",
             "icon": "ic_p_import",
             "action": "action:import_configs"
+          },
+          {
+            "_doc": "Keyboard — opens the vendored HeliBoard (libs:keyboard) SettingsActivity, the self-contained keyboard's own config surface (layouts, themes, swipe/glide 'Load gesture typing library' loader, dictionaries). Launched by explicit component via MainActivity.dispatchHomeAction('keyboard_settings') so app/ keeps no compile-time symbol dep on the keyboard module. Placed after Import, before About per UI spec.",
+            "id": "keyboard",
+            "label": "Keyboard",
+            "icon": "ic_keyboard",
+            "action": "action:keyboard_settings"
           },
           {
             "id": "update",

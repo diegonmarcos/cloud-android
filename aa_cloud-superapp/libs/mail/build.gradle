@@ -14,7 +14,7 @@ def jmapDefault = mailSection?.jmap_default_server ?: ''
 
 android {
     namespace 'com.diegonmarcos.superapp.mail'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'

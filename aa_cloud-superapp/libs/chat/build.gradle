@@ -15,7 +15,7 @@ def mmServer = mmPage?.mattermost_default_server ?: ''
 
 android {
     namespace 'com.diegonmarcos.superapp.chat'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdk 26

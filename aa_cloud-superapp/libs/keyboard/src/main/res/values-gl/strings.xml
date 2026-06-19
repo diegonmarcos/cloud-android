@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2008 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+--><resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
+    <string name="use_contacts_dict">"Verificar nomes de contactos"</string>
+    <string name="vibrate_on_keypress">"Vibrar ao premer as teclas"</string>
+    <string name="sound_on_keypress">"Son ao premer as teclas"</string>
+    <string name="popup_on_keypress">Emerxentes ao premer as teclas</string>
+    <string name="settings_screen_preferences">"Preferencias"</string>
+    <string name="settings_screen_gesture">"Escritura por xestos"</string>
+    <string name="settings_screen_correction">Ortografía</string>
+    <string name="settings_screen_advanced">"Configuración avanzada"</string>
+    <string name="settings_screen_theme">"Tema"</string>
+    <string name="enable_split_keyboard">"Activar teclado dividido"</string>
+    <string name="language_switch_key_switch_input_method">"Outros métodos de entrada"</string>
+    <string name="show_language_switch_key">"Tecla de cambio de idioma"</string>
+    <string name="abbreviation_unit_milliseconds">"%s ms"</string>
+    <string name="settings_system_default">"Predeterminado do sistema"</string>
+    <string name="use_contacts_dict_summary">"Utiliza nomes de contactos para as suxestións e correccións"</string>
+    <string name="use_personalized_dicts">"Suxestións personalizadas"</string>
+    <string name="use_double_space_period">"Dobre espazo insire punto"</string>
+    <string name="use_double_space_period_summary">"Ao tocar dúas veces a barra de espazo insire un punto e un espazo"</string>
+    <string name="auto_cap">"Maiúsculas automáticas"</string>
+    <string name="auto_cap_summary">"Pon en maiúscula a primeira palabra de cada frase"</string>
+    <string name="edit_personal_dictionary">"Dicionario persoal"</string>
+    <string name="main_dictionary">"Dicionario principal"</string>
+    <string name="prefs_show_suggestions">"Mostrar suxestións de corrección"</string>
+    <string name="prefs_show_suggestions_summary">"Mostra palabras suxeridas mentres escribes"</string>
+    <string name="prefs_block_potentially_offensive_title">"Bloquear palabras ofensivas"</string>
+    <string name="prefs_block_potentially_offensive_summary">"Evita suxerir palabras potencialmente ofensivas"</string>
+    <string name="autocorrect">"Autocorrección"</string>
+    <string name="auto_correction_summary">"Premer a barra espazo e teclas de puntuación para corrixir erros"</string>
+    <string name="auto_correction_threshold_mode_off">"Desactivada"</string>
+    <string name="auto_correction_threshold_mode_modest">"Modesta"</string>
+    <string name="auto_correction_threshold_mode_aggressive">"Agresiva"</string>
+    <string name="auto_correction_threshold_mode_very_aggressive">"Moi agresiva"</string>
+    <string name="bigram_prediction">"Suxerir palabra seguinte"</string>
+    <string name="bigram_prediction_summary">"Utiliza a palabra anterior para facer suxestións"</string>
+    <string name="gesture_input">"Activar escritura por xestos"</string>
+    <string name="gesture_input_summary">"Pasa o dedo entre as letras para introducir unha palabra"</string>
+    <string name="gesture_preview_trail">"Mostrar percorrido dos xestos"</string>
+    <string name="gesture_floating_preview_text">"Vista previa flotante dinámica"</string>
+    <string name="gesture_space_aware">"Xesto de frase"</string>
+    <string name="gesture_space_aware_summary">"Para introducir espazos nos xestos, pasa o dedo cara a tecla de espazo"</string>
+    <string name="subtype_en_GB">"Inglés (Reino Unido)"</string>
+    <string name="subtype_en_US">"Inglés (EUA)"</string>
+    <string name="subtype_es_US">"Español (EUA)"</string>
+    <string name="subtype_hi_Latn">"Hinglish"</string>
+    <string name="subtype_sr_Latn">"Serbio (alfabeto latino)"</string>
+    <string name="subtype_generic_traditional">"%s (tradicional)"</string>
+    <string name="subtype_generic_compact">"%s (compacto)"</string>
+    <string name="subtype_no_language">"Ningún idioma"</string>
+    <string name="subtype_emoji">"Emoji"</string>
+    <string name="add">"Engadir"</string>
+    <string name="remove">"Eliminar"</string>
+    <string name="save">"Gardar"</string>
+    <string name="subtype_locale">"Idioma"</string>
+    <string name="keyboard_layout_set">"Deseño"</string>
+    <string name="prefs_keypress_vibration_duration_settings">"Duración vibración ao premer teclas"</string>
+    <string name="prefs_keypress_sound_volume_settings">"Volume do son ao premer teclas"</string>
+    <string name="prefs_key_longpress_timeout_settings">"Retardo de pulsación prolongada"</string>
+    <string name="prefs_enable_emoji_alt_physical_key">"Emojis para o teclado físico"</string>
+    <string name="prefs_enable_emoji_alt_physical_key_summary">"A tecla Alt física mostra a paleta de emoji"</string>
+    <string name="button_default">"Predeterminado"</string>
+    <string name="setup_welcome_title">Ben vida a %s</string>
+    <string name="setup_welcome_additional_description">"con escritura por xestos"</string>
+    <string name="setup_start_action">"Comezar"</string>
+    <string name="setup_steps_title">"Configurando %s"</string>
+    <string name="setup_step1_title">"Activar %s"</string>
+    <string name="setup_step1_instruction">Comproba a aplicación%s\" na configuración Idioma e introdución de texto para que se poida executar no teu dispositivo.\"</string>
+    <string name="setup_step1_action">"Activar en Configuración"</string>
+    <string name="setup_step2_title">"Cambiar a %s"</string>
+    <string name="setup_step2_instruction">"A continuación, selecciona \"%s\" como o método de introdución de texto activo."</string>
+    <string name="setup_step2_action">"Cambiar métodos de entrada"</string>
+    <string name="setup_step3_title">"Parabéns, está todo listo!"</string>
+    <string name="setup_step3_instruction">"Agora podes escribir en todas as túas aplicacións favoritas con %s."</string>
+    <string name="setup_finish_action">"Finalizado"</string>
+    <string name="show_setup_wizard_icon">"Mostrar icona da aplicación"</string>
+    <string name="show_setup_wizard_icon_summary">"Mostra a icona da aplicación no Launcher"</string>
+    <string name="dictionary_category_title">"Dicionarios complementarios"</string>
+    <string name="dictionary_available">"Dicionario dispoñible"</string>
+    <string name="settings">"Configuración"</string>
+    <string name="delete">"Eliminar"</string>
+    <string name="version_text">"Versión %1$s"</string>
+    <string name="user_dict_settings_add_shortcut_option_name">"Atallo:"</string>
+    <string name="user_dict_settings_add_locale_option_name">"Idioma:"</string>
+    <string name="user_dict_settings_add_word_hint">"Escribe unha palabra"</string>
+    <string name="user_dict_settings_add_shortcut_hint">"Atallo opcional"</string>
+    <string name="user_dict_settings_edit_dialog_title">"Editar palabra"</string>
+    <string name="user_dict_settings_all_languages">"Para todos os idiomas"</string>
+    <string name="user_dict_settings_more_languages">"Máis idiomas…"</string>
+    <string name="select_input_method">"Escoller método de introdución de texto"</string>
+    <string name="undo">"Desfacer"</string>
+    <string name="redo">"Refacer"</string>
+    <string name="use_personalized_dicts_summary">"Aprende das comunicacións e dos datos para mellorar as suxestións"</string>
+    <string name="label_go_key">"Ir"</string>
+    <string name="label_next_key">"Seg."</string>
+    <string name="label_previous_key">"Ant"</string>
+    <string name="label_done_key">"Feito"</string>
+    <string name="label_send_key">"Enviar"</string>
+    <string name="label_search_key">"Buscar"</string>
+    <string name="label_pause_key">"Pausa"</string>
+    <string name="label_wait_key">"Espera"</string>
+    <string name="abbreviation_unit_minutes">%s min</string>
+    <string name="subtype_akkhor_bn_BD">%s (Akkhor)</string>
+    <string name="subtype_generic_sebeolsik_390">%s (Sebeolsik 390)</string>
+    <string name="available_dictionary_experimental">%s (experimental)</string>
+    <string name="user_dict_settings_add_weight_value">Tamaño:</string>
+    <string name="user_dict_add_word_button">Engadir unha palabra</string>
+    <string name="theme_style">Estilo</string>
+    <string name="style_name_Rounded" tools:keep="@string/style_name_Rounded">Redondeado</string>
+    <string name="theme_colors">Cores</string>
+    <string name="theme_colors_night">Cores (noite)</string>
+    <string name="key_borders">Bordo da tecla</string>
+    <string name="day_night_mode">Modo Auto para día/noite</string>
+    <string name="day_night_mode_summary">A aparencia seguirá os axustes do sistema</string>
+    <string name="theme_navbar">Cor da barra de navegación</string>
+    <string name="theme_name_light" tools:keep="@string/theme_name_light">Claro</string>
+    <string name="theme_name_holo_white" tools:keep="@string/theme_name_holo_white">Branco Holo</string>
+    <string name="theme_name_dark" tools:keep="@string/theme_name_dark">Escuro</string>
+    <string name="theme_name_darker" tools:keep="@string/theme_name_darker">Máis escuro</string>
+    <string name="theme_name_dynamic" tools:keep="@string/theme_name_dynamic">Cores dinámicas</string>
+    <string name="theme_name_blue_gray" tools:keep="@string/theme_name_blue_gray">Gris azulado</string>
+    <string name="theme_name_brown" tools:keep="@string/theme_name_brown">Marrón</string>
+    <string name="theme_name_chocolate" tools:keep="@string/theme_name_chocolate">Chocolate</string>
+    <string name="theme_name_cloudy" tools:keep="@string/theme_name_cloudy">Nubrado</string>
+    <string name="theme_name_pink" tools:keep="@string/theme_name_pink">Rosa</string>
+    <string name="theme_name_sand" tools:keep="@string/theme_name_sand">Area</string>
+    <string name="theme_name_violette" tools:keep="@string/theme_name_violette">Violeta</string>
+    <string name="theme_name_user" tools:keep="@string/theme_name_user">Persoal</string>
+    <string name="auto_user_color">Elixir cor automáticamente</string>
+    <string name="main_colors">Mostrar só cores principais</string>
+    <string name="all_colors">Mostrar todas as cores</string>
+    <string name="select_color_background">Fodo do teclado</string>
+    <string name="select_color_key">Texto da tecla</string>
+    <string name="select_color_key_hint">Suxestión da tecla</string>
+    <string name="select_color_suggestion">Texto da suxestión</string>
+    <string name="select_color_key_background">Fondo da tecla</string>
+    <string name="select_color_spacebar_background">Fondo da barra de espazo</string>
+    <string name="select_color_spacebar_text">Texto da barra de espazo</string>
+    <string name="select_color_accent">Destacado</string>
+    <string name="select_color_gesture">Entrada do xesto</string>
+    <string name="settings_screen_about">Acerca de</string>
+    <string name="version">Versión</string>
+    <string name="about_github_link">Ver en GitHub</string>
+    <string name="save_log">Gardar rexistro</string>
+    <string name="license">Licenza Código-Aberto</string>
+    <string name="gnu_gpl">Licenza GNU General Public v3.0</string>
+    <string name="text_tap_languages">Toca no idioma para abrir os axustes</string>
+    <string name="settings_screen_appearance">Aparencia</string>
+    <string name="hidden_features_title">Descrición de ferramentas ocultas</string>
+    <string name="hidden_features_text">almacenaxe protexida do dispositivo</string>
+    <string name="settings_category_input">Entrada</string>
+    <string name="settings_category_additional_keys">Teclas adicionais</string>
+    <string name="settings_category_clipboard_history">Historial do portapapeis</string>
+    <string name="settings_category_correction">Correccións</string>
+    <string name="settings_category_suggestions">Suxestións</string>
+    <string name="settings_category_experimental">Experimental</string>
+    <string name="settings_category_miscellaneous">Varios</string>
+    <string name="split_spacer_scale">Distancia de separación</string>
+    <string name="switch_language">Cambiar de idioma</string>
+    <string name="language_switch_key_switch_both">Cambiar os dous</string>
+    <string name="show_emoji_key">Tecla Emoji</string>
+    <string name="settings_no_limit">Sen límite</string>
+    <string name="disable_personalized_dicts_message">Aviso: ao desactivar este axuste vas eliminar os datos aprendidos</string>
+    <string name="add_to_personal_dictionary">Engadir palabras ao dicionario persoal</string>
+    <string name="add_to_personal_dictionary_summary">Usar un dicionario persoal no dispositivo para gardar palabras aprendidas</string>
+    <string name="prefs_always_show_suggestions">Mostrar sempre suxestións</string>
+    <string name="prefs_always_show_suggestions_summary">Ignorar as solicitudes de outras apps para desactivar as suxestións (pode dar problemas)</string>
+    <string name="more_autocorrect">Auto-corrección estendida</string>
+    <string name="more_autocorrect_summary">Auto-correxir incluso se non fose solicitado explícitamente polo campo de entrada</string>
+    <string name="auto_correction_confidence">Confianza na auto-corrección</string>
+    <string name="enable_clipboard_history">Activar historial do portapapeis</string>
+    <string name="enable_clipboard_history_summary">Se o desactivas, a tecla de portapapeis pegará o contido que exista no portapapeis</string>
+    <string name="clipboard_history_retention_time">Período de retención do historial</string>
+    <string name="delete_swipe">Borrar ao desprazar</string>
+    <string name="delete_swipe_summary">Fai un xesto de desprazamento desde a tecla eliminar e elimina anacos grandes de texto dunha pasada</string>
+    <string name="backup_restore_title">Copia de apoio e restablecer</string>
+    <string name="backup_restore_message">Garda ou restablecer desde un ficheiro. Aviso: o restablecemento sobrescribe os datos</string>
+    <string name="backup_error">Fallo na copia: %s</string>
+    <string name="restore_error">Erro ao restablecer: %s</string>
+    <string name="button_backup">Copia de apoio</string>
+    <string name="button_restore">Restablecer</string>
+    <string name="secondary_locale">Escritura varios idiomas</string>
+    <string name="load_gesture_library">Cargar biblioteca de xestos ao escribir</string>
+    <string name="load_gesture_library_summary">Proporcionar unha biblioteca nativa para activar escritura por xestos</string>
+    <string name="checksum_mismatch_message">Ficheiro de biblioteca descoñecido. Tes a certeza de que procede dunha fonte de confianza e é valida para \'%s\'?</string>
+    <string name="load_gesture_library_button_load">Cargar biblioteca</string>
+    <string name="load_gesture_library_button_delete">Eliminar biblioteca</string>
+    <string name="autospace_after_punctuation">Espazo após puntuación</string>
+    <string name="autospace_after_punctuation_summary">Engadir un espazo automáticamente despois de escribir un signo de puntuación</string>
+    <string name="show_popup_keys_title">Mostrar máis letras co signos diacríticos nas emerxentes</string>
+    <string name="show_popup_keys_normal">Mostrar variantes definidas nos idiomas do teclado</string>
+    <string name="show_popup_keys_more">Engadir variantes comúns</string>
+    <string name="show_popup_keys_all">Engadir todas as variables dispoñibles</string>
+    <string name="url_detection_title">Detección de URL</string>
+    <string name="incognito">Forzar modo incógnito</string>
+    <string name="prefs_force_incognito_mode_summary">Desactiva a aprendizaxe de novas palabras</string>
+    <string name="more_keys_strip_description">Máis teclas</string>
+    <string name="language_and_layouts_title">Idiomas e Disposicións</string>
+    <string name="number_row">Número de fila</string>
+    <string name="number_row_summary">Mostrar sempre o número de fila</string>
+    <string name="localized_number_row">Traducir número de fila</string>
+    <string name="show_hints">Mostrar suxestións de teclas</string>
+    <string name="show_hints_summary">Mostrar suxestións ao manter presa</string>
+    <string name="hint_source">Escoller fonte da suxestión</string>
+    <string name="popup_order">Elixe a orde das teclas na emerxente</string>
+    <string name="popup_keys_number" tools:keep="@string/popup_keys_number">Fila de números</string>
+    <string name="popup_keys_language_priority" tools:keep="@string/popup_keys_language_priority">Idioma (prioridade)</string>
+    <string name="popup_keys_layout" tools:keep="@string/popup_keys_layout">Disposición</string>
+    <string name="popup_keys_symbols" tools:keep="@string/popup_keys_symbols">Símbolos</string>
+    <string name="toolbar_keys">Elixe teclas barra ferramentas</string>
+    <string name="clipboard" tools:keep="@string/clipboard">Portapapeis</string>
+    <string name="clear_clipboard" tools:keep="@string/clear_clipboard">Limpar portapapeis</string>
+    <string name="voice" tools:keep="@string/voice">Escribir por voz</string>
+    <string name="select_word" tools:keep="@string/select_word">Seleccionar palabra</string>
+    <string name="one_handed" tools:keep="@string/one_handed">Modo dunha sóa man</string>
+    <string name="full_left" tools:keep="@string/full_left">Só esquerda</string>
+    <string name="full_right" tools:keep="@string/full_right">Só dereita</string>
+    <string name="left" tools:keep="@string/left">Esquerda</string>
+    <string name="right" tools:keep="@string/right">Dereita</string>
+    <string name="up" tools:keep="@string/up">Arriba</string>
+    <string name="down" tools:keep="@string/down">Abaixo</string>
+    <string name="show_popup_hints">Mostrar suxestión de funcións</string>
+    <string name="show_popup_hints_summary">Mostra suxestión a manter presa unha tecla que teña funcións adicionais</string>
+    <string name="prefs_long_press_keyboard_to_change_lang">Cambiar o método de escritura coa tecla espazo</string>
+    <string name="prefs_long_press_keyboard_to_change_lang_summary">Manter presa a tecla espazo para abrir o menú de selección de método de entrada</string>
+    <string name="prefs_narrow_key_gaps">Espazo reducido entre teclas</string>
+    <string name="prefs_keyboard_height_scale">Escala de altura do teclado</string>
+    <string name="prefs_bottom_padding_scale">Escala do espazo inferior do teclado</string>
+    <string name="subtype_generic_sebeolsik_final">%s (Sebeolsik Final)</string>
+    <string name="button_title_add_custom_layout">Engadir disposición persoal</string>
+    <string name="message_add_custom_layout">Elixe un ficheiro cun formato compatible. Tes información sobre os formatos en %s.</string>
+    <string name="button_load_custom">Cargar ficheiro</string>
+    <string name="file_read_error">Non se puido ler o ficheiro</string>
+    <string name="delete_layout">Queres eliminar a disposición persoal %s?</string>
+    <string name="layout_error">Erro na disposición: %s</string>
+    <string name="edit_layout">Toca para editar a disposición</string>
+    <string name="layout_symbols_shifted">Máis símbolos</string>
+    <string name="customize_background_image">Establece imaxe de fondo</string>
+    <string name="day_or_night_image">Establecer para o modo diurno ou nocturno?</string>
+    <string name="day_or_night_day">Día</string>
+    <string name="day_or_night_night">Noite</string>
+    <string name="setup_step3_action">Configurar o teclado</string>
+    <string name="dictionary_settings_category">Dicionarios</string>
+    <string name="internal_dictionary_summary">Dicionario interno principal</string>
+    <string name="add_new_dictionary_title">Engadir dicionario desde ficheiro</string>
+    <string name="button_select_language">Elixir idioma</string>
+    <string name="replace_dictionary">Substituír dicionario</string>
+    <string name="remove_dictionary_message">Tes certeza de querer substituír o dicionario engadido \"%s\"?</string>
+    <string name="no_dictionary_dont_show_again_button">Non volver mostrar</string>
+    <string name="add_dictionary">Elixe o dicionario a engadir. Os dicionarios en formato .dict están dispoñibles en %s.</string>
+    <string name="dictionary_file_error">Erro: o ficheiro seleccionado non é un dicionario válido</string>
+    <string name="dictionary_file_wrong_script">Erro: o script non é compatible con este teclado</string>
+    <string name="dictionary_load_error">Erro ao cargar o ficheiro do dicionario</string>
+    <string name="user_dict_word_already_present">Esta palabra xa está presente no dicionario %s da usuaria. Por favor escribe outra.</string>
+    <string name="theme_name_black" tools:keep="@string/theme_name_black">Negro</string>
+    <string name="theme_name_indigo" tools:keep="@string/theme_name_indigo">Índigo</string>
+    <string name="theme_name_ocean" tools:keep="@string/theme_name_ocean">Océano</string>
+    <string name="ime_settings">Axustes de HeliBoard</string>
+    <string name="localized_number_row_summary">Preferir números traducidos sobre os latinos</string>
+    <string name="replace_dictionary_message">Tes certeza de querer substituír o dicionario engadido \"%1$s\"?
+\n
+\nDicionario actual:
+\n%2$s
+\n
+\nNovo dicionario:
+\n%3$s</string>
+    <string name="dictionary_link_text">aquí</string>
+    <string name="select_color_functional_key_background">Fondo da tecla función</string>
+    <string name="spell_checker_service_name">Revisor de Ortografía</string>
+    <string name="android_spell_checker_settings">Axustes do revisor de Ortografía de HeliBoard</string>
+    <string name="load_gesture_library_message">Vas precisar a biblioteca para \'%s\': As bibliotecas incompatibles podería estragar a app ao escribir.
+\n
+\nAviso: a carga de código externo é un risco de seguridade. Usa só bibliotecas de fontes de confianza.</string>
+    <string name="url_detection_summary">Intentar detectar URLs e equivalentes como unha soa palabra</string>
+    <string name="theme_name_forest" tools:keep="@string/theme_name_forest">Bosque</string>
+    <string name="no_dictionary_message">"Sen un dicionario, só terás suxestións procedentes de texto que escribises con anterioridade.&lt;br&gt;
+\n        Podes descargar dicionarios %1$s, ou comprobar se podes decargar directamente %3$s un dicionario para \"%2$s\"."</string>
+    <string name="dialog_close">Pechar</string>
+    <string name="hidden_features_summary">Mostar características que igual non coñeces</string>
+    <string name="layout_symbols" tools:keep="@string/layout_symbols">Símbolos</string>
+    <string name="layout_symbols_arabic" tools:keep="@string/layout_symbols_arabic">Símbolos (Arábigo)</string>
+    <string name="layout_phone" tools:keep="@string/layout_phone">Teléfono</string>
+    <string name="layout_phone_symbols" tools:keep="@string/layout_phone_symbols">Símbolos do teléfono</string>
+    <string name="layout_number" tools:keep="@string/layout_number">Números</string>
+    <string name="layout_numpad" tools:keep="@string/layout_numpad">Teclado numérico</string>
+    <string name="layout_numpad_landscape" tools:keep="@string/layout_numpad_landscape">Teclado Num (paisaxe)</string>
+    <string name="hidden_features_message">► Coa pulsación longa na tecla do Portapapeis (opcional nas barra coas suxestións) pegas o contido do portapapeis. &lt;br&gt;&lt;br&gt; ► Coa pulsación longa nunha tecla la barra de suxestións fíxala na barra. &lt;br&gt; &lt;br&gt; ► Coa pulsación longa na telca da vírgula accedes a Vista do Portapapeis, Vista de Emojis, Modo dunha soa man, Axustes ou Cambiar de Idioma: &lt;br&gt; • A Vista de Emoji e Cambio de Idioma aparecerán se tes a tecla correspondente activada; &lt;br&gt; \t • Nalgunhas disposicións non é a tecla da Vírgula, se non a tecla que está na mesma posición (ex. é \'q\' no teclado Dvorak). &lt;br&gt; &lt;br&gt; ► Co modo Incógnito activado, non aprenderá palabras, e tampouco se engaden emojis aos recentes. &lt;br&gt; &lt;br&gt; ► Preme na icona Incógnito para acceder ás ferramentas. &lt;br&gt; &lt;br&gt; ► Escribir con tecla esvaradía: Despraza desde a tecla Shift hacia outra letra para escribir unha sóa maiúscula: &lt;br&gt; \t• Isto tamén funciona para a tecla \'?123\" para escribir un só símbolo dos do teclado de símbolos, e as teclas relacionadas. &lt;br&gt; &lt;br&gt; ► Coa pulsación longa nunha suxestión da barra de suxestións aparecen máis suxestións, e tamén un botón para eliminar esa suxestión. &lt;br&gt; &lt;br&gt; ► Desprázate hacia arriba para ter máis suxestións, e solta onde estea suxestión que queres. &lt;br&gt; &lt;br&gt; ► Fixa unha entrada do historial do portapapeis coa pulsación longa sobre ela (mantela no portapapeis ata que a liberes). &lt;br&gt; &lt;br&gt; ► Podes engadir dicionarios abríndoos nun explorador de ficheiros: &lt;br&gt; \t• Isto só funciona con &lt;i&gt;content-uris&lt;/i&gt; e non con &lt;i&gt;file-uris&lt;/i&gt;, polo que podería non funcionar nalgúns exploradores de ficheiros. &lt;br&gt; &lt;br&gt; &lt;i&gt;Modo depuración / APK debug&lt;/i&gt; &lt;br&gt; &lt;br&gt; \t • Pulsación longa sobre unha suxestión para mostrar o dicionario de orixe.&lt;br&gt; &lt;br&gt; \t • No modo depuración APK, podes atopar os Axustes de Depuración dentro de Preferencias Avanzadas, aínda que a utilidade é limitada excepto para meter os dicionarios no ficheiro de depuración.&lt;br&gt; &lt;br&gt; \t • Se fallase a aplicación, pediráseche se queres ver os ficheiros de depuración ao abrir os Axustes. &lt;br&gt; &lt;br&gt; \t• Ao usar a escritura multi-idioma, a barra espazadora mostrará un valor de confianza usado para determinar o idioma que estás a usar. &lt;br&gt; &lt;br&gt; \t• As suxestións terán un número pequeniño enriba mostrando unha puntuación interna e o dicionario de orixe (pode desactivarse).&lt;br&gt; &lt;br&gt; ► Para as usuarias que fan copias de apoio con acceso root: Desde Android 7, o ficheiro de preferencias compartidas non está na localización por defecto, xa que a app usa %s. &lt;br&gt; isto é preciso para que os axustes se poidan ler antes de que o dispositivo se desbloquee, por exemplo no inicio (boot). &lt;br&gt; O ficheiro está en /data/user_de/0/package_id/shared_prefs/, aínda que podería depender da versión do dispositivo Android.</string>
+    <string name="subtype_xdq">Kaitag</string>
+    <string name="show_vertical_space_swipe">Xesto de desprazamento vertical na barra</string>
+    <string name="show_horizontal_space_swipe">Xesto de desprazamento horizontal na barra</string>
+    <string name="action_none">Ningún</string>
+    <string name="space_swipe_move_cursor_entry">Mover cursor</string>
+    <string name="var_toolbar_direction">Dirección variable barra ferramentas</string>
+    <string name="var_toolbar_direction_summary">Dirección inversa cando está seleccionado o tipo de teclado de dereita a esquerda</string>
+    <string name="subtype_probhat_bn_BD">%s (Probhat)</string>
+    <string name="subtype_generic_student">%s (Estudante)</string>
+    <string name="prefs_long_press_symbol_for_numpad">Tecla con pulsación longa para teclado numérico</string>
+    <string name="center_suggestion_text_to_enter">Usar sempre a suxestión do medio</string>
+    <string name="center_suggestion_text_to_enter_summary">Ao premer no espazo ou puntuación, escríbese a suxestión do medio</string>
+    <string name="clipboard_toolbar_keys">Escoller teclas da barra de ferramentas do portapapeis</string>
+    <string name="close_history" tools:keep="@string/close_history">Pechar historial do portapapeis</string>
+    <string name="subtype_generic_extended">%s (Extendido)</string>
+    <string name="subtype_mns">Mansi</string>
+    <string name="more_colors">Mostrar máis cores</string>
+    <string name="all_colors_warning">Este axuste expón todas as cores que se usan internamente. A lista de cores pode cambiar en calquera momento. O valor por defecto deriva das cores normais, e os nomes non estarán traduciddos.</string>
+    <string name="layout_functional_keys" tools:keep="@string/layout_functional_keys">Teclas función</string>
+    <string name="layout_functional_keys_symbols_shifted" tools:keep="@string/layout_functional_keys_symbols_shifted">Teclas función (Máis símbolos)</string>
+    <string name="layout_functional_keys_symbols" tools:keep="@string/layout_functional_keys_symbols">Teclas función (Símbolos)</string>
+    <string name="quick_pin_toolbar_keys">Fixa unha tecla na barra mantendo premida</string>
+    <string name="pinned_toolbar_keys">Escolle as teclas da barra fixada</string>
+    <string name="quick_pin_toolbar_keys_summary">Esto desactivará outras accións de pulsación longa para teclas da barra que non están fixadas</string>
+    <string name="settings_screen_toolbar">Barra de ferramentas</string>
+    <string name="toast_msg_clipboard_copy">Copiouse o contido</string>
+    <string name="auto_show_toolbar">Mostrar ferramentas automáticamente</string>
+    <string name="auto_show_toolbar_summary">Mostra a barra de ferramentas ao comezar a escribir ou seleccionar texto</string>
+    <string name="auto_hide_toolbar">Agochar ferramentas</string>
+    <string name="auto_hide_toolbar_summary">Agocha a barra de ferramentas ao estar dispoñibles as suxestións</string>
+    <string name="language_switch_key_behavior">Comportamento da tecla de cambio de idioma</string>
+    <string name="emoji" tools:keep="@string/emoji">Emoji</string>
+    <string name="gesture_fast_typing_cooldown">Escribir con repouso</string>
+    <string name="gesture_fast_typing_cooldown_instant">Comezar sempre ao momento</string>
+    <string name="customize_currencies">Personalizar divisas</string>
+    <string name="customize_currencies_detail">Escolle o símbolo da divisa principal e 6 máis, separados por espazos</string>
+    <string name="button_save_file">Gardar nun ficheiro</string>
+    <string name="copy_to_clipboard">Copiar ao Portapapeis</string>
+    <string name="load">Cargar</string>
+    <string name="page_start" tools:keep="@string/page_start">Inicio da páxina</string>
+    <string name="page_end" tools:keep="@string/page_end">Final da páxina</string>
+    <string name="word_left" tools:keep="@string/word_left">Esquerda da palabra</string>
+    <string name="word_right" tools:keep="@string/word_right">Dereita da palabra</string>
+    <string name="page_up" tools:keep="@string/page_up">Páxina superior</string>
+    <string name="page_down" tools:keep="@string/page_down">Páxina inferior</string>
+    <string name="suggest_clipboard_content">Suxerir contido do portapapeis</string>
+    <string name="suggest_clipboard_content_summary">Mostra como suxestión ocontido copiado recentemente ao portapapeis</string>
+    <string name="switch_keyboard_after">Cambiar ao teclado principal após…</string>
+    <string name="space_swipe_toggle_numpad_entry">Ver teclado numérico</string>
+    <string name="show_popup_keys_main">Engadir variantes moi comúns (por defecto)</string>
+    <string name="remove_redundant_popups">Retirar emerxentes redundantes</string>
+    <string name="remove_redundant_popups_summary">Retira as letras emerxentes que xa están presentes na disposición base</string>
+    <string name="after_symbol_and_space">Premer no enter o espazo despois doutras teclas na vista de símbolos</string>
+    <string name="after_emoji">Seleccionar emoji na vista de emojis</string>
+    <string name="after_clip">Seleccionar entrada no historial do portapapeis</string>
+    <string name="gesture_floating_preview_static_summary">Ver a palabra suxerida ao facer o xesto</string>
+    <string name="gesture_floating_preview_dynamic_summary">Mover a vista previa durante o xesto</string>
+    <string name="gesture_trail_fadeout_duration">Duración do xesto</string>
+    <string name="gesture_floating_preview_static">Vista previa aboiando</string>
+    <string name="layout_number_row" tools:keep="@string/layout_number_row">Número de fila</string>
+    <string name="icon_style">Estilo da icona</string>
+    <string name="prefs_space_bar_text">Texto persoal na barra de espazo</string>
+    <string name="layout_emoji_bottom_row" tools:keep="@string/layout_emoji_bottom_row">Liña inferior de emoji</string>
+    <string name="layout_clip_bottom_row" tools:keep="@string/layout_clip_bottom_row">Liña inferior de portapapeis</string>
+    <string name="label_tab_key" tools:keep="@string/label_tab_key">Tab</string>
+    <string name="label_delete_key" tools:keep="@string/label_delete_key">Eliminar</string>
+    <string name="label_enter_key" tools:keep="@string/label_enter_key">Enter</string>
+    <string name="label_shift_key" tools:keep="@string/label_shift_key">Maiús</string>
+    <string name="label_shift_key_shifted" tools:keep="@string/label_shift_key_shifted">Maisculas (activado)</string>
+    <string name="label_shift_key_locked" tools:keep="@string/label_shift_key_locked">Bloqueo de maiús</string>
+    <string name="label_space_key_for_number_layout" tools:keep="@string/label_space_key_for_number_layout">Espazo (disposición de núm)</string>
+    <string name="label_stop_onehanded_mode_key" tools:keep="@string/label_stop_onehanded_mode_key">Saír do modo unha-man</string>
+    <string name="label_resize_onehanded_key" tools:keep="@string/label_resize_onehanded_key">Axustar tamaño modo unha-man</string>
+    <string name="label_switch_onehanded_key" tools:keep="@string/label_switch_onehanded_key">Cambiar de lado o modo unha-man</string>
+    <string name="label_shortcut_key_disabled" tools:keep="@string/label_shortcut_key_disabled">Desactivada a entrada por voz</string>
+    <string name="label_toolbar_key" tools:keep="@string/label_toolbar_key">Mostrar / Ocultar barra ferramentas</string>
+    <string name="label_zwj_key" tools:keep="@string/label_zwj_key">Unión ancho cero</string>
+    <string name="customize_toolbar_key_codes">Personalizar códigos de tecla da barra de ferramentas</string>
+    <string name="key_code">Código da tecla</string>
+    <string name="long_press_code">Código pulsación longa</string>
+    <string name="customize_icons">Personalizar iconas</string>
+    <string name="label_bin" tools:keep="@string/label_bin">Papeleira</string>
+    <string name="customize_icons_reset_message">Restablecer todas as iconas personalizadas?</string>
+    <string name="vibrate_in_dnd_mode">Vibrar no modo non molestar</string>
+    <string name="subtype_generic_phonetic">%s (Fonético)</string>
+    <string name="prefs_key_emoji_max_sdk">Sobrescribir versión Emoji</string>
+    <string name="subtype_dru">Dargwa (Urakhi)</string>
+    <string name="auto_correct_shortcuts">Atallos para autocorrector</string>
+    <string name="auto_correct_shortcuts_summary">Ao activar os atallos poderían despregarse polo autocorrector</string>
+    <string name="custom_font">Establecer tipo de letra persoal desde ficheiro</string>
+    <string name="customize_background_image_landscape">Establecer imaxe de fondo (paisaxe)</string>
+    <string name="summary_customize_background_image_landscape">Se non se establece usarase a imaxe como retrato</string>
+    <string name="split" tools:keep="@string/split">Telcado separado</string>
+    <string name="prefs_font_scale">Escala do tamaño da letra</string>
+    <string name="prefs_emoji_font_scale">Escala da visualización de emoji</string>
+    <string name="prefs_side_padding_scale">Escala da marxe lateral</string>
+    <string name="number_row_hints">Mostrar suxestións na fila de números</string>
+    <string name="layout_in_use">Aviso: xa se está usando a disposición</string>
+    <string name="get_colors_message">Podes atopar e compartir cores na %s.</string>
+    <string name="settings_screen_secondary_layouts">Disposicións secundarias</string>
+    <string name="layout_functional_keys_tablet" tools:keep="@string/layout_functional_keys_tablet">Teclas con funcións (pantalla grande)</string>
+    <string name="locales_with_dict">Idiomas con dicionarios</string>
+    <string name="discussion_section_link">zona de conversa</string>
+    <string name="get_layouts_message">Podes atopar e compartir disposicións na %s.</string>
+    <string name="subtype_baishakhi_bn_IN">%s (Baishakhi)</string>
+    <string name="custom_subtype">Subtipo personalizado</string>
+    <string name="prefs_always_show_suggestions_except_web_text">Non mostrar sempre suxestións para os campos texto nas webs</string>
+    <string name="prefs_always_show_suggestions_except_web_text_summary">Os campos de texto nas webs (principalmente no navegador) son causa frecuente de problemas coas suxestións automáticas</string>
+    <string name="layout_number_row_basic" tools:keep="@string/layout_number_row_basic">Fila de números (básica)</string>
+    <string name="show_tld_popup_keys_summary">Substitúe na emerxente da tecla do punto con dominios de alto nivel ao escribir URL e enderezos de correo</string>
+    <string name="show_tld_popup_keys">Mostrar teclas emerxentes TLD</string>
+    <string name="after_numpad_and_space">Ao premer enter ou espazo após escribir no teclado numérico</string>
+    <string name="label_zwnj_key" tools:keep="@string/label_zwnj_key">caracter separador ancho cero</string>
+    <string name="delete_confirmation">Eliminar %s?</string>
+    <string name="customize_toolbar_key_code_reset_message">Tes certeza de querer limpar todos os códigos personalizados?</string>
+    <string name="name_invalid">Nome non válido</string>
+    <string name="prefs_language_swipe_distance">Distancia de desprazamento cambio de idioma</string>
+    <string name="settings_category_space">Espazo</string>
+    <string name="autospace_after_gesture_typing">Espazo automatico despois do xesto escribindo palabra</string>
+    <string name="shift_removes_autospace">Non autoespazo ao premer maiúscula</string>
+    <string name="shift_removes_autospace_summary">Maiúscula quita o espazo automatico pendente</string>
+    <string name="timestamp_format_title">Formato para a tecla de marca temporal</string>
+    <string name="autospace_after_suggestion">Espazo automatico despois de elexir suxestión</string>
+    <string name="autospace_before_gesture_typing">Espazo automatico antes do xesto escribindo palabra</string>
+    <string name="subtype_dag">Dagbani</string>
+    <string name="subtype_st">Sesotho</string>
+    <string name="prefs_emoji_key_fit">Escalar tamaño da tecla emoji ao tamaño da letra</string>
+    <string name="backspace_reverts_autocorrect">Retroceso reverte a autocorrección</string>
+    <string name="popup_order_and_hint_source">Orde das teclas emerxentes e orixe das suxestións</string>
+    <string name="subtype_with_layout_generic">%1$s (%2$s)</string>
+    <string name="landscape">Paisaxe</string>
+    <string name="backup_restored">Restableceuse a copia</string>
+    <string name="use_apps_dict">Buscar nomes de apps</string>
+    <string name="use_apps_dict_summary">Usar nomes das apps instaladas para suxestións e correccións</string>
+    <string name="toolbar_mode">Modo da barra de ferramentas</string>
+    <string name="toolbar_mode_expandable">Teclas da barra de ferramentas e suxestións</string>
+    <string name="toolbar_mode_toolbar_keys">Só teclas da barra de ferramentas</string>
+    <string name="toolbar_mode_suggestion_strip">Só suxestións</string>
+    <string name="toolbar_mode_hidden">Oculta</string>
+    <string name="prefs_emoji_skin_tone">Tono de pel por defecto para emojis</string>
+    <string name="prefs_emoji_skin_tone_neutral">Neutro</string>
+    <string name="show_emoji_descriptions">Mostrar descrición do emoji con pulsación longa</string>
+    <string name="toolbar_hiding_global">Ocultar tamén as barras de ferramentas de emoji e portapapeis</string>
+    <string name="suggest_emojis">Suxerir emojis</string>
+    <string name="suggest_emojis_summary">Usar dicionario de emoji nas suxestións normais</string>
+    <string name="suggest_punctuation">Suxestións de puntuación</string>
+    <string name="suggest_punctuation_summary">Mostra a puntuación cando non hai outras suxestións dispoñibles</string>
+    <string name="about_wiki_link">Ir á Wiki</string>
+    <string name="about_wiki_link_description">Calquera usuaria de GitHub pode colaborar coa Wiki!</string>
+    <string name="space_swipe_hide_keyboard_entry">Ocultar teclado</string>
+    <string name="clipboard_history_pinned_first">Mostrar arriba os elementos fixados</string>
+    <string name="inline_emoji_search">Busca de emojis ao escribir</string>
+    <string name="inline_emoji_search_summary">Só suxerir emojis cando a palabra comece por dous puntos</string>
+    <string name="emoji_dictionary_required">Requírese un dicionario de emojis para que esta ferramenta funcione. Podes descargar dicionarios en formato .dict desde %s.</string>
+    <string name="save_subtype_per_app">Lembrar idioma por aplicación</string>
+    <string name="subtype_mhr">Mari (Eastern)</string>
+    <string name="subtype_khipro_bn">%s (Khipro)</string>
+    <string name="number_row_in_symbols">Mostrar fila de número na vista de símbolos</string>
+    <string name="custom_emoji_font">Escoller emojis persoais desde ficheiro</string>
+    <string name="layout_emoji_bottom_row_with_action" tools:keep="@string/layout_emoji_bottom_row_with_action">Fila inferior de emojis coa tecla de acción</string>
+    <string name="layout_clip_bottom_row_with_action" tools:keep="@string/layout_clip_bottom_row_with_action">Fila inferior do portapapeis coa tecla de acción</string>
+    <string name="timestamp_description">Podes engadir a telca de marca de tempo usando unha disposición persoal coa tecla \'marca de tempo\', ou código de tecla -10043</string>
+    <string name="prefs_bottom_row_scale">Escala da fila inferior</string>
+    <string name="layout_functional_keys_khipro" tools:keep="@string/layout_functional_keys">Teclas de función (Khipro)</string>
+    <string name="emoji_search_title">Buscar emoji</string>
+    <string name="search_field_placeholder">Buscar</string>
+    <string name="ask_later">Preguntar máis tarde</string>
+    <string name="gesture_data_screen">Obtendo datos dos xestos</string>
+    <string name="gesture_data_description">Esta é a pantalla de obtención dos datos para os xestos de escritura!&lt;br/&gt;&lt;br/&gt; É parte dun &lt;a href=https://nlnet.nl/project/GestureTyping&gt;proxecto financiado por NLnet&lt;/a&gt; que intenta producir unha biblioteca de escritura por xestos totalmente de código aberto e capaz de substituír a biblioteca de código oculto de Google.&lt;b/&gt; O resultado proxectado pretende ser unha substitución simple para teclados baseados en AOSP, pero tamén utilizable por outros teclados, ex. FloriBoard.&lt;br/&gt;&lt;br/&gt; Para desenvolver a biblioteca, é tremendamente útil ter datos de xestos en diferentes idiomas e diferentes persoas usuarias.&lt;br/&gt; Ao obter e enviar datos de xestos ao escribir contribúes ao conxunto de datos aberto que se usarán para o desenvolvemento. O conxunto de datos vaise publicar con licenza CC BY-SA 4.0 cando finalice a etapa de obtención de datos en %s. Unha vez recollidos os datos, podes envialos usando a icona compartir ao pé desta pantalla.</string>
+    <string name="gesture_data_info">Que é isto?</string>
+    <string name="gesture_data_description_modes">Actualmente só hai un modo de obtención activo, onde se mostra unha palabra concreta e escribes esta palabra usando a escritura con xestos.\nMáis tarde engadiremos o modo de obtención pasiva, onde podes engadir mostras desde a túa escritura corrente con cestos en outras apps. Debido a sensibilidade desta opción, terás que activar o acceso, será configurable e terá unha pantalla de revisión dos datos que vas a enviar.</string>
+    <string name="gesture_data_description_privacy">Privacidade\n\nOs datos enviados consisten nunha palabra clave, disposición do teclado e tamaño, xesto (marca temporal e coordenadas), suxestións da biblioteca actual, suma de comprobación do dicionario usado, versión da app, mode obtención dos datos, se o xesto está na biblioteca predeterminada de Google, así como un ID para cada xesto.\nOs datos enviados vanse descargar e eliminar dunha caixa de correo de ProtonMail onde se almacenan para facilitarnos o traballo. Após rematar a fase de obtención de datos, os datos acumulados durante todo o proceso van ser publicados baixo a licenza Creative Commons BY-SA 4.0.\n\nComo parte do intento de protexer a túa privacidade non se publicará explícitamente a túa autoría. O crédito outorgado vai ser \"Colaboradoras do Proxecto Heliboard de Datos de Xestos\". Non será posible ligar os datos que creaches nesta pantalla coa túa identidade. Emporiso, podería ser posible determinar que xestos foron creados pola mesma persoa. Isto pódese facer por exemplo tendo en conta se é un teclado cunha disposición de teclas persoal, tamaño do teclado, idioma ou estilo propio de xestos.</string>
+    <string name="gesture_data_privacy">Privacidade</string>
+    <string name="gesture_data_get_data">Compartir ficheiro de datos cos xestos</string>
+    <string name="gesture_data_delete_data">Limpar datos dos xestos</string>
+    <string name="gesture_data_send_mail">Enviar datos por correo</string>
+    <string name="gesture_data_copy_mail">Copiar enderezo de correo</string>
+    <string name="gesture_data_mail_use">Ten en conta que o enderezo de correo serve para o envío dos datos, pode que non teñas unha resposta pronta ou consistente.</string>
+    <string name="gesture_data_please_type">Por favor escribe cun xesto:</string>
+    <string name="gesture_data_next_save">Obtivemos %s. Preme se cres que o fixeches correctamente</string>
+    <string name="gesture_data_next">Omitir palabra</string>
+    <string name="gesture_data_active_count">%1$s palabras nesta sesión, %2$s palabras en total (%3$s xa enviadas ou eliminadas)</string>
+    <string name="gesture_data_review_screen_title">Revisar e compartir os datos dos xestos</string>
+    <string name="gesture_data_words_selected">%s palabras</string>
+    <string name="gesture_data_date_range">Rango de datas</string>
+    <string name="gesture_data_much_data">Tes moitos datos sen enviar. Por favor envíaos e despois elimina os datos antigos.</string>
+    <string name="gesture_data_how_to_use">Como se utiliza</string>
+    <string name="gesture_data_active_description">Toca en «Comezar a obtención activa», optativamente podes cambiar o dicionario, e comezar a escribir a palabra suxerida.&lt;br/&gt; Se o xesto concorda coa palabra, gárdanse os datos e móstrase a seguinte palabra. Se non, podes volver a intentalo ou omitir a palabra, ou confirmar que o xesto é correcto.&lt;br/&gt; Só podes usar dicionarios que están incluídos na app ou dispoñibles no &lt;a href=%s&gt;repositorio de dicionarios&lt;/a&gt;, non se poden usar outras palabras.</string>
+    <string name="gesture_data_active_start">Comezar a obtención activa</string>
+    <string name="gesture_data_active_stop">Deter a obtención activa</string>
+    <string name="gesture_data_ends_at">A fase de obtención de datos remata o %s. Por favor envía os teus datos antes desta data.</string>
+    <string name="gesture_data_ended">A fase de obtención de datos rematou o %s. Podes compartir os teus datos existentes, pero non engadir ningún novo.</string>
+    <string name="gesture_data_share_all">Comparte as %s palabras</string>
+    <string name="gesture_data_share_new">Comparte as %s palabras que aínda non enviaches</string>
+    <string name="gesture_data_delete_dialog">Tes datos de %1$s palabras novas e %2$s xa compartidas.</string>
+    <string name="gesture_data_delete_dialog_all">Eliminar todas as %s palabras</string>
+    <string name="gesture_data_delete_dialog_confirm">Tes certeza? Isto vai eliminar %s palabras. Comproba que enviaches os datos!</string>
+    <string name="gesture_data_delete_dialog_submitted">Eliminar %s palabras enviadas</string>
+    <string name="gesture_data_many_not_shared_words">Tes máis de %s palabras agardando a ser enviadas</string>
+    <string name="gesture_data_email_body">IMPORTANTE:\n\nOla!\nLembra que estes datos vanse publicar baixo licenza CC BY-SA 4.0, e por privacidade non mostraremos a túa autoría.\n\nGrazas por compartir con nós a propiedade dos teus datos. Faremos bo uso deles!\n\nTen en conta que cambiar a redacción deste aviso non cambia o que imos facer cos teus datos. Isto non é un contrato que se modifique, é só un recordatorio amigable!\nSe queres enviarnos unha mensaxe xunto cos teus datos, escribe aquí abaixo unhas liñas.\n-------------------------------------------------</string>
+    <string name="gesture_data_promotion_message">Ola!\nComo instalaches a biblioteca de escritura con xestos, pode que che interese colaborar co proxecto de HeliBoard para crear unha biblioteca de código aberto para escritura con xestos. Podes colaborar enviando datos de escritura. Para máis información visita a pantalla de obtención de datos de xestos.</string>
+    <string name="gesture_data_reminder_message">Ola!\nCon anterioridade usaches a obtención de datos de xestos, pero non engadiches ningún dato desde hai tempo. Queres volver a colaborar?</string>
+    <string name="gesture_data_take_me_there">Imos aló</string>
+    <string name="gesture_data_links">Información sobre a obtención de datos de xestos en:</string>
+    <string name="toolbar_swipe_down_to_hide">Ocultar teclado cun desprazamento</string>
+    <string name="toolbar_swipe_down_to_hide_summary">Despraza cara abaixo na barra de ferramentas para fechar o teclado</string>
+    <string name="custom_punctuation_suggestions">Establecer suxestións para a puntuación</string>
+    <string name="space_swipe_touchpad_mode_entry">Modo área táctil</string>
+    <string name="touchpad_sensitivity">Sensibilidade da área táctil</string>
+    <string name="folded">Pregado</string>
+    <string name="gesture_data_please_switch_keyboard">Por favor cambia a %s</string>
+    <string name="gesture_data_share_limit">Para evitar exceder o tamaño máximo, só se van exportar as primeiras %s palabras</string>
+    <string name="floating" tools:keep="@string/floating">Teclado flotante</string>
+    <string name="prefs_key_gap_scale">Escala do espazo entre teclas</string>
+    <string name="touchpad_edge_scroll">Desprazamento no bordo da zona táctil</string>
+    <string name="touchpad_edge_scroll_description">Desprazar o contido cando se pasa o dedo polo bordo do teclado</string>
+    <string name="toolbar_only_with_hw_keyboard">Mostrar a barra de ferramentas só con teclado físico</string>
+    <string name="toolbar_only_with_hw_keyboard_summary">Aínda así deberás activar mostrar o teclado virtual nos axustes do sistema</string>
+    <string name="spell_check_suggestions">Mostrar suxestións de ortografía</string>
+    <string name="spell_check_suggestions_summary">Mostrar suxestións o seleccionar unha palabra subliñada en vermello. Require establecer a app como revisora de ortografía predeterminada.</string>
+</resources>

@@ -31,7 +31,7 @@ def sfcCfgB64 = groovy.json.JsonOutput.toJson(sfcCfg).bytes.encodeBase64().toStr
 
 android {
     namespace 'com.diegonmarcos.superapp.adbdebug'
-    compileSdk 35
+    compileSdk 36
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'

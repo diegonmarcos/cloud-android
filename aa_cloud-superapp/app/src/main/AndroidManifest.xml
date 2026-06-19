@@ -108,7 +108,22 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.Superapp"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:defaultToDeviceProtectedStorage="false"
+        android:directBootAware="false"
+        tools:replace="android:name,android:label,android:icon,android:roundIcon,android:allowBackup,android:defaultToDeviceProtectedStorage,android:directBootAware">
+        <!-- libs:keyboard (vendored HeliBoard) ships its own <application> with
+             conflicting attributes; the SuperApp is the host, so its values win
+             via tools:replace:
+               • name/label/icon/roundIcon/allowBackup — SuperApp branding +
+                 backup policy (HeliBoard sets allowBackup=true; we keep false).
+                 If the keyboard misbehaves, HeliBoard's App.onCreate init must
+                 be ported into .App (see libs/keyboard/README.md "App-class init").
+               • defaultToDeviceProtectedStorage / directBootAware — HeliBoard
+                 sets these true for direct-boot typing. Adopting them app-wide
+                 would move the SuperApp's default storage to device-protected
+                 and BREAK EncryptedSharedPreferences (credential-keystore). We
+                 force false; the keyboard still works post-unlock. -->
         <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
         <receiver
             android:name=".notificationcenter.KdeQuickActionReceiver"
@@ -160,6 +175,31 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity>
+
+        <!-- ════════════ libs:keyboard (HeliBoard) manifest reconciliation ════════════
+             The vendored HeliBoard manifest (libs/keyboard/src/main/AndroidManifest.xml,
+             a verbatim upstream mirror) makes its SettingsActivity the LAUNCHER entry
+             and SpellCheckerSettingsActivity a MAIN entry. The SuperApp is the launcher,
+             so we strip those intent-filters at merge time via tools:node="remove".
+             The activities themselves remain (reachable from the system IME settings
+             "gear" and the SuperApp's keyboard entry point) — only their launcher hooks
+             are removed, so the keyboard adds NO second/third launcher icon.
+             See libs/keyboard/README.md. -->
+        <activity
+            android:name="helium314.keyboard.settings.SettingsActivity"
+            tools:node="merge">
+            <intent-filter tools:node="remove">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="helium314.keyboard.latin.spellcheck.SpellCheckerSettingsActivity"
+            tools:node="merge">
+            <intent-filter tools:node="remove">
+                <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
 

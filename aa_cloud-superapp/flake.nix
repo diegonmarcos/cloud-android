@@ -2,7 +2,10 @@
   description = "Diego Superapp — Nix devShell wrapping the Android Gradle build (gradle + AGP + Android SDK + JDK 17). All toolchain pinned; same input → same APK.";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    # Bumped 24.11 -> 25.05: HeliBoard main (libs:keyboard) needs the
+    # Android 16 (API 36) / Kotlin 2.3 / Gradle 8.14 toolchain, none of which
+    # exist in 24.11's androidenv/kotlin/gradle. This re-pins the WHOLE devShell.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -26,18 +29,19 @@
         baseAndroidArgs = {
           toolsVersion        = "26.1.1";
           platformToolsVersion = "35.0.2";
-          # build-tools 35.0.0 required by compileSdk 35 (driven by
-          # androidx.health.connect:connect-client:1.1.0-alpha10 — see
-          # build.json::toolchain._doc_sdk_bump). 34.0.0 kept for
-          # transitional / NDK builds that still pin to it.
-          buildToolsVersions  = [ "35.0.0" "34.0.0" ];
-          platformVersions    = [ "35" "34" "26" ];
-          # libs:net (cherry-picked wireguard-android tunnel/) builds
-          # libwg-go.so via CMake → an NDK toolchain Make wrapper around
-          # wireguard-go. ndkVersion in libs/net/build.gradle pins the
-          # exact NDK release; this list keeps it available in the SDK.
+          # build-tools 36.0.0 required by compileSdk 36 (Android 16, driven by
+          # libs:keyboard = HeliBoard main — see build.json::toolchain). 35.0.0
+          # kept for the rest of the modules + transitional / NDK builds.
+          buildToolsVersions  = [ "36.0.0" "35.0.0" "34.0.0" ];
+          platformVersions    = [ "36" "35" "34" "26" ];
+          # Two NDKs, pinned per module:
+          #   • 26.1.10909125 — libs:net (wireguard-android tunnel/ → libwg-go.so
+          #     via CMake). Kept on 26.1 to avoid re-validating wireguard-go.
+          #   • 28.0.13004108 — libs:keyboard (HeliBoard ndk-build of
+          #     libjni_latinime.so). ndkVersion in each module's build.gradle
+          #     selects which; this list keeps both available in the SDK.
           includeNDK          = true;
-          ndkVersions         = [ "26.1.10909125" ];
+          ndkVersions         = [ "28.0.13004108" "26.1.10909125" ];
           cmakeVersions       = [ "3.22.1" ];
         };
 
@@ -79,7 +83,7 @@
           ANDROID_HOME = "${androidSdk}/libexec/android-sdk";
           ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
           JAVA_HOME = "${pkgs.jdk17}/lib/openjdk";
-          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/35.0.0/aapt2";
+          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/36.0.0/aapt2";
 
           shellHook = ''
             echo "Diego Superapp devShell"
