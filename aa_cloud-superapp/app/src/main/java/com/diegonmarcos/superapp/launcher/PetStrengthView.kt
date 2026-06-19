@@ -30,17 +30,22 @@ class PetStrengthView @JvmOverloads constructor(
     private var variant: String = ""
     private var gait: String = ""
 
-    /** When false (Configs → Launcher → Others → "Animal animations" off), the
-     *  GIF is shown as a static first frame instead of playing. */
+    /** Configs → Launcher → Others → "Animal animations". OFF = don't render
+     *  the pet at all (view GONE); ON = render + animate. */
     var animate: Boolean = true
-        set(v) { if (v != field) { field = v; if (gait.isNotEmpty()) load() } }
+        set(v) {
+            if (v == field) return
+            field = v
+            if (v) { visibility = VISIBLE; if (gait.isNotEmpty()) load() }
+            else   { visibility = GONE; setImageDrawable(null) }
+        }
 
     /** Fix the animal + colour variant for this tool. Reloads if a gait is set. */
     fun setAnimal(animal: String, variant: String) {
         if (animal == this.animal && variant == this.variant) return
         this.animal = animal
         this.variant = variant
-        if (gait.isNotEmpty()) load()
+        if (animate && gait.isNotEmpty()) load()
     }
 
     /** Set the gait (idle/walk/walk_fast/run) from the tool's current strength.
@@ -48,10 +53,11 @@ class PetStrengthView @JvmOverloads constructor(
     fun setGait(gait: String) {
         if (gait == this.gait) return
         this.gait = gait
-        if (animal.isNotEmpty()) load()
+        if (animate && animal.isNotEmpty()) load()
     }
 
     private fun load() {
+        if (!animate) return
         val path = "zoomies/$animal/${variant}_$gait.gif"
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -60,7 +66,7 @@ class PetStrengthView @JvmOverloads constructor(
                 setImageDrawable(drawable)
                 (drawable as? AnimatedImageDrawable)?.apply {
                     repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
-                    if (animate) start() else stop()
+                    start()
                 }
             } else {
                 // API 26-27: no AnimatedImageDrawable — first frame, static.

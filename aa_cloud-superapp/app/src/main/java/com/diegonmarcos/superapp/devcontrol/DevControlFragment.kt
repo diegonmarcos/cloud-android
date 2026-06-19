@@ -565,6 +565,7 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Notif. listener",    specialAccessNotifListener(ctxAny()))
             row(ctx, it, "Manage all files",   specialAccessManageStorage())
             row(ctx, it, "Display over apps",  specialAccessOverlay(ctxAny()))
+            row(ctx, it, "Modify system settings", specialAccessWriteSettings(ctxAny()))
             row(ctx, it, "Dumpsys (DUMP)",     specialAccessDump(ctxAny()))
             // Helper — when DUMP isn't granted, paint a tap-to-copy adb
             // command (it's a signature|privileged perm, can't be granted
@@ -717,6 +718,7 @@ class DevControlFragment : Fragment() {
             styleNavToggle(navToggle, com.diegonmarcos.superapp.floatingnav.FloatingNavService.isRunning)
             it.addView(permButtonRow(ctx,
                 permButton(ctx, "Set Display-over-apps", android.provider.Settings.canDrawOverlays(ctxAny())) { openOverlaySettings() },
+                permButton(ctx, "Set Modify-system-settings", android.provider.Settings.System.canWrite(ctxAny())) { openWriteSettings() },
                 navToggle,
             ))
             // ── Copy the full status block (matches what's rendered above).
@@ -2130,6 +2132,7 @@ class DevControlFragment : Fragment() {
         appendLine("Notif. listener: ${specialAccessNotifListener(ctx)}")
         appendLine("Manage all files: ${specialAccessManageStorage()}")
         appendLine("Display over apps: ${specialAccessOverlay(ctx)}")
+        appendLine("Modify system settings: ${specialAccessWriteSettings(ctx)}")
         appendLine("Dumpsys (DUMP): ${specialAccessDump(ctx)}")
         appendLine("Lock-screen accessibility: ${ScreenLocker.statusStringAccessibility(ctx)}")
         appendLine("Device admin (lock): ${ScreenLocker.statusString(ctx)}")
@@ -2277,6 +2280,23 @@ class DevControlFragment : Fragment() {
     private fun specialAccessOverlay(ctx: Context): String = try {
         if (android.provider.Settings.canDrawOverlays(ctx)) "✓ Allowed" else "◯ Not allowed"
     } catch (_: Throwable) { "—" }
+
+    /** WRITE_SETTINGS (Modify system settings) — needed for Configs → Launcher →
+     *  Others → Screen brightness (device-wide Settings.System.SCREEN_BRIGHTNESS). */
+    private fun specialAccessWriteSettings(ctx: Context): String = try {
+        if (android.provider.Settings.System.canWrite(ctx)) "✓ Allowed" else "◯ Not allowed"
+    } catch (_: Throwable) { "—" }
+
+    /** Open Settings → Special access → Modify system settings → this app. */
+    private fun openWriteSettings() {
+        runCatching {
+            startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                android.net.Uri.parse("package:" + ctxAny().packageName)))
+        }.onFailure {
+            runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)) }
+        }
+    }
 
     private fun specialAccessUsageStats(ctx: Context): String = try {
         val aom = ctx.getSystemService(android.app.AppOpsManager::class.java)

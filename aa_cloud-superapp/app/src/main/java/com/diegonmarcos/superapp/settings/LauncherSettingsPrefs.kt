@@ -37,6 +37,11 @@ class LauncherSettingsPrefs(context: Context) {
         get() = sp.getInt("eye_intensity", Config.eyeIntensity.default)
         set(v) { sp.edit().putInt("eye_intensity", v).apply() }
 
+    /** Idle seconds before the screensaver auto-starts (0 = never). */
+    var screensaverTimeout: Int
+        get() = sp.getInt("screensaver_timeout", Config.screensaverTimeout.default)
+        set(v) { sp.edit().putInt("screensaver_timeout", v).apply() }
+
     // ── Data-driven metadata (for the picker UI + defaults) ──────────────
     data class Item(val id: String, val label: String, val subtitle: String, val default: Boolean)
     data class Slider(val label: String, val subtitle: String, val min: Int, val max: Int, val default: Int)
@@ -76,5 +81,6 @@ class LauncherSettingsPrefs(context: Context) {
         }
         val brightness: Slider by lazy { slider("brightness", -1) }
         val eyeIntensity: Slider by lazy { slider("eye_intensity", 35) }
+        val screensaverTimeout: Slider by lazy { slider("screensaver_timeout", 10) }
     }
 }

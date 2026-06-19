@@ -791,34 +791,20 @@ class MainActivity : AppCompatActivity(),
         if (currentSection == "home") goHome()
     }
 
-    private var eyeOverlay: View? = null
-
-    /** Configs → Launcher → Others — applies the device-level settings that
-     *  aren't per-view-toggled: the eye-protection amber scrim (a non-touchable
-     *  overlay tinted by the strength slider) and device-wide system brightness
-     *  (only when WRITE_SETTINGS is granted; the slider routes the user to the
-     *  grant screen otherwise). Toggle-style settings (pets/cube/stars/haptics)
-     *  are read by their own subsystems on (re)render. */
+    /** Configs → Launcher → Others — re-applies settings whose views live in the
+     *  activity shell (not recreated on a chrome re-render), so toggling them
+     *  takes effect LIVE: stars (galaxy backdrop) + animal pets, plus device-wide
+     *  system brightness. Eye protection is the ANDROID SYSTEM night-light (opened
+     *  from the picker), not a custom overlay. Cube/haptics re-read themselves. */
     private fun applyLauncherSettings() {
         val prefs = com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this)
         runCatching {
-            if (prefs.toggle("eye_protection")) {
-                val v = eyeOverlay ?: View(this).also { ov ->
-                    ov.isClickable = false; ov.isFocusable = false
-                    ov.elevation = dp(120).toFloat()
-                    addContentView(ov, android.widget.FrameLayout.LayoutParams(
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT))
-                    eyeOverlay = ov
-                }
-                // intensity (0..~120) is the amber alpha out of 255 → a subtle
-                // warm wash, never opaque. Amber ≈ #FF9600.
-                v.setBackgroundColor(android.graphics.Color.argb(
-                    prefs.eyeIntensity.coerceIn(0, 160), 255, 150, 0))
-                v.visibility = View.VISIBLE
-            } else {
-                eyeOverlay?.visibility = View.GONE
-            }
+            (findViewById<View>(R.id.galaxy_backdrop)
+                as? com.diegonmarcos.superapp.ui.GalaxyBackdropView)?.applyStarsPref()
+        }
+        runCatching {
+            (findViewById<View>(R.id.launcher_status_strip)
+                as? LauncherStatusStripView)?.applyPetsPref()
         }
         runCatching {
             val b = prefs.brightness
@@ -1624,8 +1610,10 @@ class MainActivity : AppCompatActivity(),
 
     override fun onResume() {
         super.onResume()
-        // Configs → Launcher → Others: eye-protection scrim + system brightness.
+        // Configs → Launcher → Others: stars/pets live re-apply + system brightness.
         applyLauncherSettings()
+        // Arm the screensaver idle timer.
+        resetIdleTimer()
         // Floating Top Nav Bar — start the overlay service iff enabled in
         // build.json AND the user granted "display over other apps". The
         // service self-hides while we're foreground and surfaces the bubble
@@ -1658,7 +1646,35 @@ class MainActivity : AppCompatActivity(),
         if (::toolbarFx.isInitialized) toolbarFx.pause()
         musicIsland.pause()
         energySamplerHandler.removeCallbacks(energySamplerRunnable)
+        idleHandler.removeCallbacks(idleRunnable)
         super.onPause()
+    }
+
+    // ── Screensaver idle timer (Configs → Launcher → Screensaver) ────────
+    private val idleHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val idleRunnable = Runnable {
+        if (!com.diegonmarcos.superapp.floatingnav.ScreensaverService.isRunning) {
+            runCatching {
+                startService(android.content.Intent(this,
+                    com.diegonmarcos.superapp.floatingnav.ScreensaverService::class.java))
+            }
+        }
+    }
+
+    /** (Re)arm the screensaver idle timer from the data-driven timeout
+     *  (build.json::launcher_settings.screensaver_timeout, default 10s; 0 =
+     *  never). Called on resume + every user interaction. */
+    private fun resetIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable)
+        val secs = runCatching {
+            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this).screensaverTimeout
+        }.getOrDefault(0)
+        if (secs > 0) idleHandler.postDelayed(idleRunnable, secs * 1000L)
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        resetIdleTimer()
     }
 
     private fun handleUpdateState(state: com.diegonmarcos.superapp.updater.UpdateProgress.State) {

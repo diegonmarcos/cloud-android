@@ -80,14 +80,21 @@ class GalaxyBackdropView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        // Configs → Launcher → Others → "Stars animation". Off → pause the loop
-        // (stars stay drawn, just frozen) to save battery. Re-read on every
-        // attach so flipping the toggle takes effect on the next render.
+        applyStarsPref()
+    }
+
+    /** Configs → Launcher → Others → "Stars animation". Off → pause the loop
+     *  (stars stay drawn, just frozen) to save battery. Public so MainActivity
+     *  can re-apply LIVE when the toggle flips — this view lives in the activity
+     *  shell and isn't recreated on a chrome re-render, so onAttachedToWindow
+     *  alone wouldn't re-fire. */
+    fun applyStarsPref() {
         val on = runCatching {
             com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("stars_anim")
         }.getOrDefault(true)
         if (on) { if (anim.isPaused) anim.resume() else if (!anim.isStarted) anim.start() }
         else anim.pause()
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {

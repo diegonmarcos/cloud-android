@@ -79,7 +79,7 @@ class LauncherConfigFragment : Fragment() {
                 isSelected = profileRow.id == currentProfile.id,
             ) {
                 profilePrefs.profile = LauncherProfile.fromId(profileRow.id)
-                parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
+                rerender()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
         }
@@ -112,7 +112,7 @@ class LauncherConfigFragment : Fragment() {
             ) {
                 themePrefs.theme = LauncherTheme.fromId(themeRow.id)
                 (activity as? MainActivity)?.notifyLauncherThemeChanged()
-                parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
+                rerender()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
         }
@@ -121,15 +121,19 @@ class LauncherConfigFragment : Fragment() {
         val settingsPrefs = LauncherSettingsPrefs(ctx)
         root.addView(spacer(ctx, dp(ctx, 24)))
         root.addView(sectionHeader(ctx, "Screensaver",
-            "Which screensaver the floating-nav ‘Screensaver’ action shows."))
+            "Which screensaver the floating-nav ‘Screensaver’ action shows, and the idle auto-start timer."))
         val currentSaver = settingsPrefs.screensaver
         for (saver in LauncherSettingsPrefs.Config.screensavers) {
             root.addView(genericTile(ctx, saver.label, saver.subtitle, saver.id == currentSaver) {
                 settingsPrefs.screensaver = saver.id
-                parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
+                rerender()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
         }
+        // Idle auto-start timer (seconds; 0 = never).
+        val st = LauncherSettingsPrefs.Config.screensaverTimeout
+        root.addView(sliderRow(ctx, st.label, st.subtitle, st.min, st.max,
+            settingsPrefs.screensaverTimeout) { v -> settingsPrefs.screensaverTimeout = v })
 
         // ── Others section ─────────────────────────────────────────
         root.addView(spacer(ctx, dp(ctx, 24)))
@@ -138,7 +142,13 @@ class LauncherConfigFragment : Fragment() {
         for (t in LauncherSettingsPrefs.Config.toggles) {
             root.addView(toggleRow(ctx, t.label, t.subtitle, settingsPrefs.toggle(t.id)) { on ->
                 settingsPrefs.setToggle(t.id, on)
-                // Re-apply launcher chrome so stars/cube/pets/eye pick up the change.
+                // Eye protection = the ANDROID SYSTEM night-light (blue-light
+                // filter), NOT a custom overlay — open its settings to enable.
+                if (t.id == "eye_protection" && on) {
+                    runCatching { startActivity(Intent("android.settings.NIGHT_DISPLAY_SETTINGS")) }
+                        .onFailure { runCatching { startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS)) } }
+                }
+                // Re-apply launcher chrome so stars/cube/pets pick up the change.
                 (activity as? MainActivity)?.notifyLauncherThemeChanged()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
@@ -149,12 +159,6 @@ class LauncherConfigFragment : Fragment() {
             settingsPrefs.brightness.let { if (it < b.min) b.min else it }) { v ->
             settingsPrefs.brightness = v
             applySystemBrightness(ctx, v)
-        })
-        // Eye-protection strength
-        val e = LauncherSettingsPrefs.Config.eyeIntensity
-        root.addView(sliderRow(ctx, e.label, e.subtitle, e.min, e.max, settingsPrefs.eyeIntensity) { v ->
-            settingsPrefs.eyeIntensity = v
-            (activity as? MainActivity)?.notifyLauncherThemeChanged()
         })
 
         // "Set as default launcher" CTA
@@ -334,6 +338,18 @@ class LauncherConfigFragment : Fragment() {
 
     private fun dp(ctx: android.content.Context, v: Int): Int =
         (v * ctx.resources.displayMetrics.density).toInt()
+
+    /** Force the fragment to rebuild so picker selections refresh. detach+attach
+     *  in ONE transaction is collapsed to a no-op by the FragmentManager (the
+     *  net state is unchanged) — splitting into two commitNow() calls guarantees
+     *  onCreateView re-runs and the "● / ○" selection state updates. */
+    private fun rerender() {
+        runCatching {
+            val fm = parentFragmentManager
+            fm.beginTransaction().detach(this).commitNow()
+            fm.beginTransaction().attach(this).commitNow()
+        }
+    }
 
     /** True when the SuperApp's MainActivity is currently the resolved
      *  default Home Screen handler. The picker uses this to surface a

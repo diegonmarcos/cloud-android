@@ -337,6 +337,17 @@ class LauncherStatusStripView @JvmOverloads constructor(
         updatePet(toolId, if (on) cfg.onLevel else 0)
     }
 
+    /** Configs → Launcher → Others → "Animal animations". Re-read the pref and
+     *  freeze/resume every pet. Public so MainActivity can re-apply LIVE — the
+     *  strip lives in the activity shell and isn't recreated on a chrome
+     *  re-render, so the init-time read wouldn't pick up a toggle flip. */
+    fun applyPetsPref() {
+        val on = runCatching {
+            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("pets_anim")
+        }.getOrDefault(true)
+        petViews.values.forEach { it.animate = on }
+    }
+
     /** Shared small monospace label used by left + right cluster
      *  members. Color set per-state via [applyIconTints] /
      *  [refreshMetrics]. */
