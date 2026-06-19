@@ -109,12 +109,21 @@
         android:theme="@style/Theme.Superapp"
         android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false"
-        tools:replace="android:name">
-        <!-- tools:replace="android:name": libs:keyboard (vendored HeliBoard)
-             declares its own <application android:name="helium314.keyboard.latin.App">.
-             Manifest-merge would conflict; the SuperApp's own .App wins. If the
-             keyboard misbehaves at runtime, HeliBoard's App.onCreate init must be
-             ported into .App (see libs/keyboard/README.md — "App-class init"). -->
+        android:defaultToDeviceProtectedStorage="false"
+        android:directBootAware="false"
+        tools:replace="android:name,android:label,android:icon,android:roundIcon,android:allowBackup,android:defaultToDeviceProtectedStorage,android:directBootAware">
+        <!-- libs:keyboard (vendored HeliBoard) ships its own <application> with
+             conflicting attributes; the SuperApp is the host, so its values win
+             via tools:replace:
+               • name/label/icon/roundIcon/allowBackup — SuperApp branding +
+                 backup policy (HeliBoard sets allowBackup=true; we keep false).
+                 If the keyboard misbehaves, HeliBoard's App.onCreate init must
+                 be ported into .App (see libs/keyboard/README.md "App-class init").
+               • defaultToDeviceProtectedStorage / directBootAware — HeliBoard
+                 sets these true for direct-boot typing. Adopting them app-wide
+                 would move the SuperApp's default storage to device-protected
+                 and BREAK EncryptedSharedPreferences (credential-keystore). We
+                 force false; the keyboard still works post-unlock. -->
         <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
         <receiver
             android:name=".notificationcenter.KdeQuickActionReceiver"
