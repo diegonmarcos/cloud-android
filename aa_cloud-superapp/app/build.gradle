@@ -585,6 +585,9 @@ android {
     }
 
     compileOptions {
+        // libs:keyboard (HeliBoard) enables core-library desugaring; AGP
+        // requires every consumer of a desugared library to enable it too.
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -603,6 +606,10 @@ dependencies {
     // app/ calls no keyboard code. Reconciliation tools: overlays live in
     // this module's AndroidManifest.xml. See libs/keyboard/README.md.
     implementation project(':libs:keyboard')
+    // Required because libs:keyboard enables core-library desugaring — the
+    // consuming module must provide the desugared-stdlib runtime. Version
+    // matches libs/keyboard/build.gradle.
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation project(':libs:ops')
     implementation project(':libs:vault')
     implementation project(':libs:chat')
