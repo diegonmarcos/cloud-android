@@ -2291,6 +2291,8 @@
     "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed — does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
     "dynamic_island_action": "app:com.termux.nix",
     "_doc_home_apps_tabs": "Tabs at the top of the Home Apps swipe-up sheet (AppDrawerSheetFragment). Cloud = the existing HomeGroupedFragment (cloud-service tile grid derived from home_groups). Phone = PhoneAppsFragment (Android-launcher folder grid of installed apps grouped by phone_folders). Order = display order.",
+    "_doc_app_tabs": "App Tabs (libs:apptabs) — the last-N opened SuperApp entries (sections, pages incl. sub-pages, external apps) as an LRU grid. `cap` = how many to keep; MainActivity sets AppTabPrefs.cap from BuildConfig.UI_APP_TABS_CAP at startup.",
+    "app_tabs": { "cap": 10 },
     "home_apps_tabs": [
       {
         "id": "cloud",

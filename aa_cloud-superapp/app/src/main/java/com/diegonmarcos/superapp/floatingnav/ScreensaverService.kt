@@ -139,18 +139,25 @@ class ScreensaverService : Service() {
     /** Animated neon "synthwave" grid — a scrolling horizontal floor below a
      *  horizon plus converging verticals, cyan + magenta with a glow. Software
      *  layer so the shadow-layer glow renders. Stops itself on detach. */
+    /** Apple-retail "demo mode" vibe: a vibrant neon EDGE-LIGHTING border whose
+     *  colours sweep continuously around the screen perimeter, plus a soft inner
+     *  light that drifts. Software layer so the shadow-layer glow renders. */
     private inner class NeonBackdropView(ctx: Context) : View(ctx) {
         private var t = 0f
-        private val floor = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            style = android.graphics.Paint.Style.STROKE; strokeWidth = 3f
-            color = 0xFF18E0FF.toInt(); setShadowLayer(10f, 0f, 0f, 0xFF18E0FF.toInt())
+        // Neon palette cycled around the edge (cyan → violet → magenta → cyan).
+        private val palette = intArrayOf(
+            0xFF18E0FF.toInt(), 0xFF7C3AED.toInt(), 0xFFFF2EC4.toInt(),
+            0xFF18E0FF.toInt(), 0xFF3AD8FF.toInt(), 0xFF18E0FF.toInt())
+        private val border = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = dp(7).toFloat()
+            setShadowLayer(dp(18).toFloat(), 0f, 0f, 0xFF18E0FF.toInt())  // outer glow
         }
-        private val rays = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            style = android.graphics.Paint.Style.STROKE; strokeWidth = 3f
-            color = 0xFFFF2EC4.toInt(); setShadowLayer(10f, 0f, 0f, 0xFFFF2EC4.toInt())
-        }
+        private val inner = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        private val rect = android.graphics.RectF()
+        private val mtx = android.graphics.Matrix()
         private val anim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 4200; repeatCount = android.animation.ValueAnimator.INFINITE
+            duration = 7000; repeatCount = android.animation.ValueAnimator.INFINITE
             interpolator = android.view.animation.LinearInterpolator()
             addUpdateListener { t = it.animatedValue as Float; invalidate() }
         }
@@ -158,19 +165,23 @@ class ScreensaverService : Service() {
         override fun onAttachedToWindow() { super.onAttachedToWindow(); anim.start() }
         override fun onDetachedFromWindow() { anim.cancel(); super.onDetachedFromWindow() }
         override fun onDraw(canvas: android.graphics.Canvas) {
-            val w = width.toFloat(); val h = height.toFloat(); val horizon = h * 0.58f
-            val rows = 16
-            for (i in 0 until rows) {
-                val p = ((i + t) % rows) / rows            // 0..1, scrolling toward viewer
-                val y = horizon + (h - horizon) * (p * p)  // perspective: bunch at horizon
-                canvas.drawLine(0f, y, w, y, floor)
-            }
-            val cols = 12
-            for (i in 0..cols) {
-                val x0 = w * i / cols
-                val xv = w / 2f + (x0 - w / 2f) * 0.12f    // converge toward centre at horizon
-                canvas.drawLine(x0, h, xv, horizon, rays)
-            }
+            val w = width.toFloat(); val h = height.toFloat()
+            // ── inner drifting light (Lissajous) — soft radial glow ──────────
+            val cx = w / 2f + w * 0.22f * Math.sin(t * 2 * Math.PI).toFloat()
+            val cy = h / 2f + h * 0.16f * Math.cos(t * 2 * Math.PI * 0.73).toFloat()
+            inner.shader = android.graphics.RadialGradient(
+                cx, cy, w * 0.45f, 0x4418E0FF, 0x00000000,
+                android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawRect(0f, 0f, w, h, inner)
+            // ── edge lighting: rounded-rect border, colours sweeping around ──
+            val inset = dp(10).toFloat()
+            rect.set(inset, inset, w - inset, h - inset)
+            val sweep = android.graphics.SweepGradient(w / 2f, h / 2f, palette, null)
+            mtx.setRotate(t * 360f, w / 2f, h / 2f)
+            sweep.setLocalMatrix(mtx)
+            border.shader = sweep
+            val rad = dp(40).toFloat()
+            canvas.drawRoundRect(rect, rad, rad, border)
         }
     }
 

@@ -93,7 +93,7 @@ class AppTabPrefs(context: Context) {
             add(e)
             addAll(all().filter { it.key != key })
         }
-        save(updated.take(CAP))
+        save(updated.take(cap))
     }
 
     private fun save(entries: List<Entry>) {
@@ -153,6 +153,9 @@ class AppTabPrefs(context: Context) {
 
     companion object {
         private const val KEY = "entries"
-        const val CAP = 6
+        /** LRU window size. Data-driven default from build.json::ui.app_tabs.cap;
+         *  MainActivity sets it from BuildConfig at startup (this module has no
+         *  BuildConfig of its own). */
+        var cap = 10
     }
 }

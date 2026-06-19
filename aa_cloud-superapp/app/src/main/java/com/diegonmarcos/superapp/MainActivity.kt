@@ -207,6 +207,8 @@ class MainActivity : AppCompatActivity(),
             applyWindowBlurIfSupported()
 
             setContentView(R.layout.activity_main)
+            // App Tabs LRU window size — data-driven from build.json::ui.app_tabs.cap.
+            com.diegonmarcos.superapp.apptabs.AppTabPrefs.cap = BuildConfig.UI_APP_TABS_CAP
             modePrefs = ModePrefs(this)
             currentLabel = getString(R.string.section_home)
             siriusStar.setup(); siriusStar.update(currentSection)
@@ -1261,14 +1263,18 @@ class MainActivity : AppCompatActivity(),
                     return
                 }
                 val pid = parts[0]
-                val frag = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid }?.factory?.invoke()
-                    ?: return
+                val page = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid } ?: return
+                val frag = page.factory.invoke()
                 applyChrome(frag)
                 supportFragmentManager.beginTransaction()
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
                     .replace(R.id.fragment_container, frag)
                     .addToBackStack(null)
                     .commit()
+                // App Tabs: in-section sub-page navigations were never recorded
+                // (only nav-routed section + deep-link pages were), so pages
+                // inside Configs etc. never landed in the Tabs shelf. Record here.
+                runCatching { recordPage(currentSection, pid, page.label, "") }
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
             // extapp:<appId>/<forkKey> — open a companion app (Cloud-Comms),
