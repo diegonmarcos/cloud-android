@@ -139,6 +139,9 @@ public class LatinIME extends InputMethodService implements
     private View mInputView;
     private InsetsOutlineProvider mInsetsUpdater;
     private SuggestionStripView mSuggestionStripView;
+    // SuperApp addition (patch 0001): Gboard-style live translate bar, hosted at
+    // the top of the keyboard frame. Toggled by long-pressing the TRANSLATE key.
+    private com.diegonmarcos.superapp.translate.TranslateBarView mTranslateBar;
 
     private RichInputMethodManager mRichImm;
     final KeyboardSwitcher mKeyboardSwitcher;
@@ -772,6 +775,37 @@ public class LatinIME extends InputMethodService implements
         }
     }
 
+    /**
+     * SuperApp addition (patch 0001): toggle the live translate bar. Hosted as
+     * the first child of the keyboard frame (the vertical LinearLayout that owns
+     * strip_container), so it sits above the suggestion strip and pushes the
+     * keys down — Gboard-style. Field-observe model: it reads + live-translates
+     * the field on each onUpdateSelection while visible.
+     */
+    public void toggleTranslateBar() {
+        if (mInputView == null) return;
+        final View strip = mInputView.findViewById(R.id.strip_container);
+        if (strip == null || !(strip.getParent() instanceof android.widget.LinearLayout)) return;
+        final android.widget.LinearLayout frame = (android.widget.LinearLayout) strip.getParent();
+        if (mTranslateBar == null) {
+            mTranslateBar = new com.diegonmarcos.superapp.translate.TranslateBarView(this);
+            final java.util.Locale loc = mRichImm.getCurrentSubtypeLocale();
+            final String target = (loc != null && !loc.getLanguage().isEmpty()) ? loc.getLanguage() : "en";
+            mTranslateBar.bind(this::getCurrentInputConnection, target, this::hideTranslateBar);
+            frame.addView(mTranslateBar, 0);
+        }
+        if (mTranslateBar.getVisibility() == View.VISIBLE) {
+            hideTranslateBar();
+        } else {
+            mTranslateBar.setVisibility(View.VISIBLE);
+            mTranslateBar.refresh();
+        }
+    }
+
+    public void hideTranslateBar() {
+        if (mTranslateBar != null) mTranslateBar.setVisibility(View.GONE);
+    }
+
     @Override
     public void setCandidatesView(final View view) {
         // To ensure that CandidatesView will never be set.
@@ -795,6 +829,7 @@ public class LatinIME extends InputMethodService implements
         mStatsUtilsManager.onFinishInputView();
         mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
         BackgroundGatheringCache.saveOrClear(this);
+        hideTranslateBar(); // SuperApp addition (patch 0001)
     }
 
     @Override
@@ -1056,6 +1091,11 @@ public class LatinIME extends InputMethodService implements
                                   final int composingSpanStart, final int composingSpanEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
                 composingSpanStart, composingSpanEnd);
+        // SuperApp addition (patch 0001): keep the live translate bar in sync
+        // with the field as the user types / moves the cursor.
+        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
+            mTranslateBar.refresh();
+        }
         if (DebugFlags.DEBUG_ENABLED) {
             Log.i(TAG, "onUpdateSelection: oss=" + oldSelStart + ", ose=" + oldSelEnd
                     + ", nss=" + newSelStart + ", nse=" + newSelEnd

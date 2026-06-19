@@ -123,6 +123,34 @@ object Translator {
         ic.endBatchEdit()
     }
 
+    /**
+     * Non-committing translate for the live translate-bar: detect source,
+     * translate [text] → [targetLang], hand the result (or null on
+     * same-language / failure / blank) to [onResult] on the main thread.
+     * Does NOT touch any field.
+     */
+    @JvmStatic
+    fun liveTranslate(text: String, targetLang: String, onResult: (String?) -> Unit) {
+        val target = TranslateLanguage.fromLanguageTag(targetLang)
+        if (target == null) { onResult(null); return }
+        if (text.isBlank()) { onResult(""); return }
+        LanguageIdentification.getClient().identifyLanguage(text)
+            .addOnSuccessListener { detected ->
+                val source = if (detected == "und") null else TranslateLanguage.fromLanguageTag(detected)
+                if (source == null || source == target) { onResult(null); return@addOnSuccessListener }
+                val client = Translation.getClient(
+                    TranslatorOptions.Builder().setSourceLanguage(source).setTargetLanguage(target).build())
+                client.downloadModelIfNeeded(DownloadConditions.Builder().build())
+                    .addOnSuccessListener {
+                        client.translate(text)
+                            .addOnSuccessListener { onResult(it); client.close() }
+                            .addOnFailureListener { onResult(null); client.close() }
+                    }
+                    .addOnFailureListener { onResult(null); client.close() }
+            }
+            .addOnFailureListener { onResult(null) }
+    }
+
     private val main = Handler(Looper.getMainLooper())
     private fun toast(ctx: Context, msg: String) {
         main.post { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }

@@ -110,6 +110,7 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
     PAGE_UP -> KeyCode.MOVE_START_OF_PAGE
     PAGE_DOWN -> KeyCode.MOVE_END_OF_PAGE
     BACKGROUND_GATHERING -> KeyCode.BACKGROUND_GATHERING_TEMP_OFF
+    TRANSLATE -> KeyCode.TRANSLATE_BAR // SuperApp addition (patch 0001) — long-press opens the live translate bar
     else -> KeyCode.UNSPECIFIED
 }
 

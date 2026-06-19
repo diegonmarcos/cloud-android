@@ -752,6 +752,11 @@ public final class InputLogic {
                         mLatinIME, mLatinIME.getCurrentInputConnection(), tTag);
                 break;
             }
+            case KeyCode.TRANSLATE_BAR:
+                // SuperApp addition (patch 0001): long-press TRANSLATE → toggle
+                // the Gboard-style live translate bar above the keys.
+                mLatinIME.toggleTranslateBar();
+                break;
             case KeyCode.CLIPBOARD_PASTE:
                 sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                 break;

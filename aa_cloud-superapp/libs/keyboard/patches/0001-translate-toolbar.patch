@@ -27,22 +27,95 @@ index fdc6510a..08fa1c35 100644
              }
          } }
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt b/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt
-index 11ded67f..5b083754 100644
+index 11ded67f..b90edc96 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt
 +++ b/libs/keyboard/src/main/java/helium314/keyboard/keyboard/internal/keyboard_parser/floris/KeyCode.kt
-@@ -98,6 +98,7 @@ object KeyCode {
+@@ -98,6 +98,8 @@ object KeyCode {
      const val URI_COMPONENT_TLD =           -255
  
      const val SETTINGS =                    -301
 +    const val TRANSLATE =                   -302 // SuperApp addition (patch 0001) — on-device translate toolbar key
++    const val TRANSLATE_BAR =               -303 // SuperApp addition (patch 0001) — toggle the live translate bar (long-press)
  
      const val CURRENCY_SLOT_1 =             -801
      const val CURRENCY_SLOT_2 =             -802
+diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
+index 31bbb02a..edb00884 100644
+--- a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
++++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
+@@ -139,6 +139,9 @@ public class LatinIME extends InputMethodService implements
+     private View mInputView;
+     private InsetsOutlineProvider mInsetsUpdater;
+     private SuggestionStripView mSuggestionStripView;
++    // SuperApp addition (patch 0001): Gboard-style live translate bar, hosted at
++    // the top of the keyboard frame. Toggled by long-pressing the TRANSLATE key.
++    private com.diegonmarcos.superapp.translate.TranslateBarView mTranslateBar;
+ 
+     private RichInputMethodManager mRichImm;
+     final KeyboardSwitcher mKeyboardSwitcher;
+@@ -772,6 +775,37 @@ public class LatinIME extends InputMethodService implements
+         }
+     }
+ 
++    /**
++     * SuperApp addition (patch 0001): toggle the live translate bar. Hosted as
++     * the first child of the keyboard frame (the vertical LinearLayout that owns
++     * strip_container), so it sits above the suggestion strip and pushes the
++     * keys down — Gboard-style. Field-observe model: it reads + live-translates
++     * the field on each onUpdateSelection while visible.
++     */
++    public void toggleTranslateBar() {
++        if (mInputView == null) return;
++        final View strip = mInputView.findViewById(R.id.strip_container);
++        if (strip == null || !(strip.getParent() instanceof android.widget.LinearLayout)) return;
++        final android.widget.LinearLayout frame = (android.widget.LinearLayout) strip.getParent();
++        if (mTranslateBar == null) {
++            mTranslateBar = new com.diegonmarcos.superapp.translate.TranslateBarView(this);
++            final java.util.Locale loc = mRichImm.getCurrentSubtypeLocale();
++            final String target = (loc != null && !loc.getLanguage().isEmpty()) ? loc.getLanguage() : "en";
++            mTranslateBar.bind(this::getCurrentInputConnection, target, this::hideTranslateBar);
++            frame.addView(mTranslateBar, 0);
++        }
++        if (mTranslateBar.getVisibility() == View.VISIBLE) {
++            hideTranslateBar();
++        } else {
++            mTranslateBar.setVisibility(View.VISIBLE);
++            mTranslateBar.refresh();
++        }
++    }
++
++    public void hideTranslateBar() {
++        if (mTranslateBar != null) mTranslateBar.setVisibility(View.GONE);
++    }
++
+     @Override
+     public void setCandidatesView(final View view) {
+         // To ensure that CandidatesView will never be set.
+@@ -795,6 +829,7 @@ public class LatinIME extends InputMethodService implements
+         mStatsUtilsManager.onFinishInputView();
+         mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
+         BackgroundGatheringCache.saveOrClear(this);
++        hideTranslateBar(); // SuperApp addition (patch 0001)
+     }
+ 
+     @Override
+@@ -1056,6 +1091,11 @@ public class LatinIME extends InputMethodService implements
+                                   final int composingSpanStart, final int composingSpanEnd) {
+         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
+                 composingSpanStart, composingSpanEnd);
++        // SuperApp addition (patch 0001): keep the live translate bar in sync
++        // with the field as the user types / moves the cursor.
++        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
++            mTranslateBar.refresh();
++        }
+         if (DebugFlags.DEBUG_ENABLED) {
+             Log.i(TAG, "onUpdateSelection: oss=" + oldSelStart + ", ose=" + oldSelEnd
+                     + ", nss=" + newSelStart + ", nse=" + newSelEnd
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
-index bf36c20f..bc3d9859 100644
+index bf36c20f..6d73bf64 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
 +++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
-@@ -742,6 +742,16 @@ public final class InputLogic {
+@@ -742,6 +742,21 @@ public final class InputLogic {
                      sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                  }
                  break;
@@ -56,11 +129,16 @@ index bf36c20f..bc3d9859 100644
 +                        mLatinIME, mLatinIME.getCurrentInputConnection(), tTag);
 +                break;
 +            }
++            case KeyCode.TRANSLATE_BAR:
++                // SuperApp addition (patch 0001): long-press TRANSLATE → toggle
++                // the Gboard-style live translate bar above the keys.
++                mLatinIME.toggleTranslateBar();
++                break;
              case KeyCode.CLIPBOARD_PASTE:
                  sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                  break;
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt b/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
-index c49189c2..fe825dd6 100644
+index c49189c2..bfd13a23 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
 +++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
 @@ -90,6 +90,7 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
@@ -71,7 +149,15 @@ index c49189c2..fe825dd6 100644
  }
  
  fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
-@@ -116,7 +117,8 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
+@@ -109,6 +110,7 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
+     PAGE_UP -> KeyCode.MOVE_START_OF_PAGE
+     PAGE_DOWN -> KeyCode.MOVE_END_OF_PAGE
+     BACKGROUND_GATHERING -> KeyCode.BACKGROUND_GATHERING_TEMP_OFF
++    TRANSLATE -> KeyCode.TRANSLATE_BAR // SuperApp addition (patch 0001) — long-press opens the live translate bar
+     else -> KeyCode.UNSPECIFIED
+ }
+ 
+@@ -116,7 +118,8 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
  enum class ToolbarKey {
      VOICE, CLIPBOARD, NUMPAD, UNDO, REDO, SETTINGS, SELECT_ALL, SELECT_WORD, COPY, CUT, PASTE, ONE_HANDED, FLOATING, SPLIT,
      INCOGNITO, AUTOCORRECT, CLEAR_CLIPBOARD, CLOSE_HISTORY, EMOJI, LEFT, RIGHT, UP, DOWN, WORD_LEFT, WORD_RIGHT,
@@ -81,7 +167,7 @@ index c49189c2..fe825dd6 100644
  }
  
  enum class ToolbarMode {
-@@ -126,7 +128,7 @@ enum class ToolbarMode {
+@@ -126,7 +129,7 @@ enum class ToolbarMode {
  val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java)) { it.toString().lowercase(Locale.US) }
  
  val defaultToolbarPref by lazy {

@@ -99,6 +99,7 @@ object KeyCode {
 
     const val SETTINGS =                    -301
     const val TRANSLATE =                   -302 // SuperApp addition (patch 0001) — on-device translate toolbar key
+    const val TRANSLATE_BAR =               -303 // SuperApp addition (patch 0001) — toggle the live translate bar (long-press)
 
     const val CURRENCY_SLOT_1 =             -801
     const val CURRENCY_SLOT_2 =             -802
