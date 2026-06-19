@@ -190,6 +190,20 @@ class MainActivity : AppCompatActivity(),
                 window.isStatusBarContrastEnforced = false
                 window.isNavigationBarContrastEnforced = false
             }
+            // Draw INTO the display cutout (camera punch-hole) row so the
+            // launcher status strip's Line 0 OWNS the camera band — black bg
+            // with "Cloud"/"SuperApp" flanking the punch-hole — instead of
+            // being letterboxed BELOW it. SHORT_EDGES = top/bottom only
+            // (portrait), the standard mode for a top camera cutout. Set
+            // programmatically (not via theme) for the same reason as the
+            // colors above: Samsung One UI ignores the theme attribute.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode =
+                        android.view.WindowManager.LayoutParams
+                            .LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
             applyWindowBlurIfSupported()
 
             setContentView(R.layout.activity_main)
