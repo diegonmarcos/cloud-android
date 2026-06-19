@@ -25,7 +25,10 @@ class EnergyStore(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, DB, n
         val db = writableDatabase
         db.execSQL(
             "INSERT OR REPLACE INTO $T VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            arrayOf(
+            // Explicit <Any?>: the mixed-type vararg makes Kotlin 2.3 infer a
+            // reified intersection (Comparable<*> & Serializable) for arrayOf,
+            // now an error (was a warning under 1.9). execSQL wants Array<out Any?>.
+            arrayOf<Any?>(
                 s.ts, s.drawMa, s.powerW, s.battPct, s.battTempC,
                 if (s.charging) 1 else 0, if (s.screenOn) 1 else 0, s.brightness,
                 s.fgPkg, s.cpuLoadPct, s.mobileSignalDbm, s.wifiRssi,
