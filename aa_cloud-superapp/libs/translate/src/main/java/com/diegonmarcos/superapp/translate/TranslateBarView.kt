@@ -35,10 +35,14 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
     /** Supplies the current InputConnection (the IME's getCurrentInputConnection). */
     fun interface IcProvider { fun get(): InputConnection? }
 
-    // Curated selector languages (ML Kit supports these among ~50). "auto" is
-    // From-only. Diego's keyboards (en/de/es/pt) lead.
-    private val toLangs = listOf("en", "de", "es", "pt", "fr", "it", "nl", "ru", "ja", "zh")
-    private val fromLangs = listOf("auto") + toLangs
+    // Every language ML Kit can translate — DATA-DRIVEN from the SDK itself, no
+    // hardcoded list. "auto" (detect) is a From-only option. Sorted by display
+    // name for the picker.
+    private val toLangs: List<String> by lazy {
+        com.google.mlkit.nl.translate.TranslateLanguage.getAllLanguages()
+            .sortedBy { java.util.Locale(it).displayLanguage }
+    }
+    private val fromLangs: List<String> by lazy { listOf("auto") + toLangs }
 
     private var icp: IcProvider? = null
     private var onClose: Runnable? = null
@@ -63,8 +67,8 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
         val row = LinearLayout(context).apply {
             orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
-        fromChip = chip(fromTag.uppercase()) { cycleFrom() }
-        toChip = chip(toTag.uppercase()) { cycleTo() }
+        fromChip = chip(chipLabel(fromTag)) { showLangMenu(fromChip, true) }
+        toChip = chip(chipLabel(toTag)) { showLangMenu(toChip, false) }
         row.addView(fromChip)
         row.addView(TextView(context).apply {
             text = "  ⇄  "; setTextColor(0xFFB0B0B8.toInt()); textSize = 15f
@@ -93,7 +97,7 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
         icp = provider
         onClose = onCloseAction
         toTag = if (toLangs.contains(defaultTarget)) defaultTarget else "en"
-        toChip.text = toTag.uppercase()
+        toChip.text = chipLabel(toTag)
     }
 
     /** Called by LatinIME each time the bar is (re)shown — fresh session. */
@@ -151,20 +155,39 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
         }
     }
 
-    private fun cycleFrom() {
-        fromTag = fromLangs[(fromLangs.indexOf(fromTag) + 1) % fromLangs.size]
-        fromChip.text = fromTag.uppercase()
-        onChanged()
+    /** Chip caption: the code (or "auto") + a dropdown caret. */
+    private fun chipLabel(tag: String): String =
+        (if (tag == "auto") "auto" else tag).uppercase() + " ▾"
+
+    /** Tap a chip → scrollable language picker (all ML Kit langs). From includes
+     *  "auto". Anchored to the chip; selecting sets the language + re-translates. */
+    private fun showLangMenu(anchor: View, isFrom: Boolean) {
+        val codes = if (isFrom) fromLangs else toLangs
+        val labels = codes.map {
+            if (it == "auto") "Auto-detect"
+            else java.util.Locale(it).displayLanguage.let { n ->
+                if (n.equals(it, ignoreCase = true)) it.uppercase() else "$n  ($it)"
+            }
+        }
+        val lpw = android.widget.ListPopupWindow(context)
+        lpw.anchorView = anchor
+        lpw.isModal = true
+        lpw.width = dp(240)
+        lpw.height = dp(300)
+        lpw.setAdapter(android.widget.ArrayAdapter(context, android.R.layout.simple_list_item_1, labels))
+        lpw.setOnItemClickListener { _, _, pos, _ ->
+            val sel = codes[pos]
+            if (isFrom) { fromTag = sel; fromChip.text = chipLabel(sel) }
+            else { toTag = sel; toChip.text = chipLabel(sel) }
+            lpw.dismiss(); onChanged()
+        }
+        lpw.show()
     }
-    private fun cycleTo() {
-        toTag = toLangs[(toLangs.indexOf(toTag) + 1) % toLangs.size]
-        toChip.text = toTag.uppercase()
-        onChanged()
-    }
+
     private fun swap() {
         if (fromTag == "auto") return            // can't put auto on the target side
         val f = fromTag; fromTag = toTag; toTag = f
-        fromChip.text = fromTag.uppercase(); toChip.text = toTag.uppercase()
+        fromChip.text = chipLabel(fromTag); toChip.text = chipLabel(toTag)
         onChanged()
     }
 
