@@ -1243,6 +1243,15 @@ public class LatinIME extends InputMethodService implements
         if (Settings.getValues().mIsFloatingKeyboard)
             visibleTopY = getResources().getDisplayMetrics().heightPixels;
 
+        // SuperApp addition (patch 0001): the live translate bar sits above the
+        // suggestion strip as OPAQUE IME UI. Subtract its height HERE — before the
+        // touchable region is computed — so BOTH the touch region (taps on From/To
+        // land inside the IME, not dismissing it) AND the content inset (host app
+        // reflows UP, Gboard-style) cover the bar.
+        else if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
+            visibleTopY -= mTranslateBar.getHeight();
+        }
+
         if (hasSuggestionStripView()) {
             mSuggestionStripView.setMoreSuggestionsHeight(visibleTopY);
         }
@@ -1266,14 +1275,6 @@ public class LatinIME extends InputMethodService implements
 
         // Has to be subtracted after calculating touchableRegion
         visibleTopY -= getEmojiSearchActivityHeight();
-
-        // SuperApp addition (patch 0001): the live translate bar sits above the
-        // suggestion strip as OPAQUE IME UI. Include its height in the IME's
-        // reserved region so the host app reflows UP (Gboard-style) instead of
-        // the bar overlapping the app's content.
-        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
-            visibleTopY -= mTranslateBar.getHeight();
-        }
 
         outInsets.contentTopInsets = visibleTopY;
         outInsets.visibleTopInsets = visibleTopY;

@@ -40,7 +40,7 @@ index 11ded67f..b90edc96 100644
      const val CURRENCY_SLOT_1 =             -801
      const val CURRENCY_SLOT_2 =             -802
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
-index 31bbb02a..bb0cb3c0 100644
+index 31bbb02a..924813d2 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
 +++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
 @@ -139,6 +139,9 @@ public class LatinIME extends InputMethodService implements
@@ -105,22 +105,23 @@ index 31bbb02a..bb0cb3c0 100644
      }
  
      @Override
-@@ -1226,6 +1267,14 @@ public class LatinIME extends InputMethodService implements
-         // Has to be subtracted after calculating touchableRegion
-         visibleTopY -= getEmojiSearchActivityHeight();
+@@ -1202,6 +1243,15 @@ public class LatinIME extends InputMethodService implements
+         if (Settings.getValues().mIsFloatingKeyboard)
+             visibleTopY = getResources().getDisplayMetrics().heightPixels;
  
 +        // SuperApp addition (patch 0001): the live translate bar sits above the
-+        // suggestion strip as OPAQUE IME UI. Include its height in the IME's
-+        // reserved region so the host app reflows UP (Gboard-style) instead of
-+        // the bar overlapping the app's content.
-+        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
++        // suggestion strip as OPAQUE IME UI. Subtract its height HERE — before the
++        // touchable region is computed — so BOTH the touch region (taps on From/To
++        // land inside the IME, not dismissing it) AND the content inset (host app
++        // reflows UP, Gboard-style) cover the bar.
++        else if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
 +            visibleTopY -= mTranslateBar.getHeight();
 +        }
 +
-         outInsets.contentTopInsets = visibleTopY;
-         outInsets.visibleTopInsets = visibleTopY;
-         mInsetsUpdater.setInsets(outInsets);
-@@ -1410,6 +1459,15 @@ public class LatinIME extends InputMethodService implements
+         if (hasSuggestionStripView()) {
+             mSuggestionStripView.setMoreSuggestionsHeight(visibleTopY);
+         }
+@@ -1410,6 +1460,15 @@ public class LatinIME extends InputMethodService implements
      // This method is public for testability of LatinIME, but also in the future it should
      // completely replace #onCodeInput.
      public void onEvent(@NonNull final Event event) {
