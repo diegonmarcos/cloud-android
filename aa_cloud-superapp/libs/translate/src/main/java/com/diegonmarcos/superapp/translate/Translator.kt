@@ -151,6 +151,31 @@ object Translator {
             .addOnFailureListener { onResult(null) }
     }
 
+    /**
+     * Like [liveTranslate] but with an explicit source: when [fromTag] is null
+     * or "auto" it auto-detects (delegates to [liveTranslate]); otherwise it
+     * translates [fromTag]→[targetTag] directly, skipping detection. For the
+     * translate bar's From/To selectors.
+     */
+    @JvmStatic
+    fun liveTranslateFromTo(text: String, fromTag: String?, targetTag: String, onResult: (String?) -> Unit) {
+        if (fromTag == null || fromTag == "auto") { liveTranslate(text, targetTag, onResult); return }
+        val target = TranslateLanguage.fromLanguageTag(targetTag)
+        val source = TranslateLanguage.fromLanguageTag(fromTag)
+        if (target == null || source == null) { onResult(null); return }
+        if (text.isBlank()) { onResult(""); return }
+        if (source == target) { onResult(text); return }
+        val client = Translation.getClient(
+            TranslatorOptions.Builder().setSourceLanguage(source).setTargetLanguage(target).build())
+        client.downloadModelIfNeeded(DownloadConditions.Builder().build())
+            .addOnSuccessListener {
+                client.translate(text)
+                    .addOnSuccessListener { onResult(it); client.close() }
+                    .addOnFailureListener { onResult(null); client.close() }
+            }
+            .addOnFailureListener { onResult(null); client.close() }
+    }
+
     private val main = Handler(Looper.getMainLooper())
     private fun toast(ctx: Context, msg: String) {
         main.post { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }

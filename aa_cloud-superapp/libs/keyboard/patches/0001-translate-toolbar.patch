@@ -40,7 +40,7 @@ index 11ded67f..b90edc96 100644
      const val CURRENCY_SLOT_1 =             -801
      const val CURRENCY_SLOT_2 =             -802
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
-index 31bbb02a..4d3cabbb 100644
+index 31bbb02a..bb0cb3c0 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
 +++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
 @@ -139,6 +139,9 @@ public class LatinIME extends InputMethodService implements
@@ -53,7 +53,7 @@ index 31bbb02a..4d3cabbb 100644
  
      private RichInputMethodManager mRichImm;
      final KeyboardSwitcher mKeyboardSwitcher;
-@@ -772,6 +775,37 @@ public class LatinIME extends InputMethodService implements
+@@ -772,6 +775,43 @@ public class LatinIME extends InputMethodService implements
          }
      }
  
@@ -80,7 +80,7 @@ index 31bbb02a..4d3cabbb 100644
 +            hideTranslateBar();
 +        } else {
 +            mTranslateBar.setVisibility(View.VISIBLE);
-+            mTranslateBar.refresh();
++            mTranslateBar.onShown();
 +        }
 +    }
 +
@@ -88,10 +88,16 @@ index 31bbb02a..4d3cabbb 100644
 +        if (mTranslateBar != null) mTranslateBar.setVisibility(View.GONE);
 +    }
 +
++    /** SuperApp (patch 0001): true while the translate bar is shown — LatinIME
++     *  routes key presses into it instead of the app field. */
++    public boolean isTranslateBarActive() {
++        return mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE;
++    }
++
      @Override
      public void setCandidatesView(final View view) {
          // To ensure that CandidatesView will never be set.
-@@ -795,6 +829,7 @@ public class LatinIME extends InputMethodService implements
+@@ -795,6 +835,7 @@ public class LatinIME extends InputMethodService implements
          mStatsUtilsManager.onFinishInputView();
          mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
          BackgroundGatheringCache.saveOrClear(this);
@@ -99,19 +105,7 @@ index 31bbb02a..4d3cabbb 100644
      }
  
      @Override
-@@ -1056,6 +1091,11 @@ public class LatinIME extends InputMethodService implements
-                                   final int composingSpanStart, final int composingSpanEnd) {
-         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
-                 composingSpanStart, composingSpanEnd);
-+        // SuperApp addition (patch 0001): keep the live translate bar in sync
-+        // with the field as the user types / moves the cursor.
-+        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
-+            mTranslateBar.refresh();
-+        }
-         if (DebugFlags.DEBUG_ENABLED) {
-             Log.i(TAG, "onUpdateSelection: oss=" + oldSelStart + ", ose=" + oldSelEnd
-                     + ", nss=" + newSelStart + ", nse=" + newSelEnd
-@@ -1226,6 +1266,14 @@ public class LatinIME extends InputMethodService implements
+@@ -1226,6 +1267,14 @@ public class LatinIME extends InputMethodService implements
          // Has to be subtracted after calculating touchableRegion
          visibleTopY -= getEmojiSearchActivityHeight();
  
@@ -126,6 +120,22 @@ index 31bbb02a..4d3cabbb 100644
          outInsets.contentTopInsets = visibleTopY;
          outInsets.visibleTopInsets = visibleTopY;
          mInsetsUpdater.setInsets(outInsets);
+@@ -1410,6 +1459,15 @@ public class LatinIME extends InputMethodService implements
+     // This method is public for testability of LatinIME, but also in the future it should
+     // completely replace #onCodeInput.
+     public void onEvent(@NonNull final Event event) {
++        // SuperApp (patch 0001): in translate-bar mode, route printable keys +
++        // backspace into the bar's input buffer (the bar commits the TRANSLATION
++        // to the app field as output). Functional keys (toggle bar, settings,
++        // language switch…) fall through so the keyboard stays usable.
++        if (isTranslateBarActive()) {
++            if (KeyCode.DELETE == event.getKeyCode()) { mTranslateBar.backspace(); return; }
++            final int cp = event.getCodePoint();
++            if (cp > 0) { mTranslateBar.appendCodePoint(cp); return; }
++        }
+         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
+             mRichImm.switchToShortcutIme(this);
+         }
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
 index bf36c20f..10dff46d 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java

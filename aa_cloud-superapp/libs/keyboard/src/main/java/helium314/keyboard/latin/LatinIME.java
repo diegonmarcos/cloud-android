@@ -798,12 +798,18 @@ public class LatinIME extends InputMethodService implements
             hideTranslateBar();
         } else {
             mTranslateBar.setVisibility(View.VISIBLE);
-            mTranslateBar.refresh();
+            mTranslateBar.onShown();
         }
     }
 
     public void hideTranslateBar() {
         if (mTranslateBar != null) mTranslateBar.setVisibility(View.GONE);
+    }
+
+    /** SuperApp (patch 0001): true while the translate bar is shown — LatinIME
+     *  routes key presses into it instead of the app field. */
+    public boolean isTranslateBarActive() {
+        return mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE;
     }
 
     @Override
@@ -1091,11 +1097,6 @@ public class LatinIME extends InputMethodService implements
                                   final int composingSpanStart, final int composingSpanEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
                 composingSpanStart, composingSpanEnd);
-        // SuperApp addition (patch 0001): keep the live translate bar in sync
-        // with the field as the user types / moves the cursor.
-        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
-            mTranslateBar.refresh();
-        }
         if (DebugFlags.DEBUG_ENABLED) {
             Log.i(TAG, "onUpdateSelection: oss=" + oldSelStart + ", ose=" + oldSelEnd
                     + ", nss=" + newSelStart + ", nse=" + newSelEnd
@@ -1458,6 +1459,15 @@ public class LatinIME extends InputMethodService implements
     // This method is public for testability of LatinIME, but also in the future it should
     // completely replace #onCodeInput.
     public void onEvent(@NonNull final Event event) {
+        // SuperApp (patch 0001): in translate-bar mode, route printable keys +
+        // backspace into the bar's input buffer (the bar commits the TRANSLATION
+        // to the app field as output). Functional keys (toggle bar, settings,
+        // language switch…) fall through so the keyboard stays usable.
+        if (isTranslateBarActive()) {
+            if (KeyCode.DELETE == event.getKeyCode()) { mTranslateBar.backspace(); return; }
+            final int cp = event.getCodePoint();
+            if (cp > 0) { mTranslateBar.appendCodePoint(cp); return; }
+        }
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
             mRichImm.switchToShortcutIme(this);
         }
