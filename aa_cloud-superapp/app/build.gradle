@@ -204,8 +204,9 @@ def profileReposJson = groovy.json.JsonOutput.toJson(profileDefault.repos ?: [])
 def profileReposB64  = profileReposJson.bytes.encodeBase64().toString()
 def consolidatedCfg  = (profileDefault.consolidated_config ?: '').toString()
 // WireGuard defaults — first-run seed for WireGuardPrefs. User edits at
-// runtime via Configs → WireGuard. Private key + peer public/preshared
-// keys are NOT seeded — generated, imported, or pasted by the user.
+// runtime via Configs → WireGuard. The interface private key + peer preshared
+// keys are NOT seeded (the private key is the credential — Pillar 7); peer
+// PUBLIC keys ARE seeded (non-secret hub identities, already in the cloud repo).
 // Peers is an array baked as one base64 JSON blob (UI_WG_PEERS_JSON_B64)
 // — WireGuardPrefs parses it at first launch; user can Add/Remove peers
 // at runtime via the form.

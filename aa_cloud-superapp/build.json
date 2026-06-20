@@ -3685,20 +3685,30 @@
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
     },
-    "_doc_wireguard_default": "Seeds the Configs/WireGuard form on first run. The phone is a mesh spoke; defaults point at the gcp-proxy hub (mesh.json::nodes[0]). Peers is an array so the user can talk to multiple mesh nodes in parallel — first-run we seed only gcp-proxy; in-app the user can Add Peer / Remove Peer to grow or shrink the list. User-editable at runtime via WireGuardFragment (persisted in WireGuardPrefs SharedPreferences); these values are only the FIRST-RUN defaults. interface_private_key, peer.public_key, peer.preshared_key are NOT seeded — generate via the in-app Generate Keypair button, import via a .conf file, or paste manually.",
+    "_doc_wireguard_default": "Seeds the Configs/WireGuard form on first run. The phone is a single-tunnel mesh spoke (Android allows one active WG profile) carrying TWO peers / two meshes — gcp-proxy wg0 (10.0.0.0/24) and oci-analytics wg-public (10.1.0.0/24), mirrored from vault/.../wireguard/termux-public/config. The network-popup Mesh section probes each peer's hub (.1 of its allowed_ips) as a separate light. peer.public_key IS seeded — WireGuard PUBLIC keys are non-secret (the hubs' public identity, already in the public cloud repo). interface_private_key + peer.preshared_key are NOT seeded (the private key is the credential — Pillar 7): generate via the in-app Generate Keypair button, or import the merged .conf / paste manually. All values are FIRST-RUN defaults, user-editable at runtime via WireGuardFragment (Add/Remove Peer; persisted in WireGuardPrefs).",
     "wireguard_default": {
       "tunnel_name": "wg-mesh",
-      "interface_address": "10.0.0.10/32",
-      "interface_dns": "10.0.0.3",
+      "interface_address": "10.0.0.9/24, 10.1.0.9/24",
+      "interface_dns": "10.0.0.1, 1.1.1.1, 1.0.0.1",
       "interface_listen_port": "",
-      "interface_mtu": "1420",
+      "interface_mtu": "1280",
       "peers": [
         {
           "name": "gcp-proxy",
-          "public_key": "",
+          "mesh": "wg0",
+          "public_key": "vV/phXUwnCjxACQ5Df11Uw47BzJaK4r85jPYMu2HmDc=",
           "preshared_key": "",
           "endpoint": "35.226.147.64:51820",
           "allowed_ips": "10.0.0.0/24",
+          "persistent_keepalive": "25"
+        },
+        {
+          "name": "oci-analytics",
+          "mesh": "wg-public",
+          "public_key": "Bnyf83VpvGY4BjcjQEXgutNEzx9OXMltHIcKNh7cKkc=",
+          "preshared_key": "",
+          "endpoint": "129.151.228.66:51821",
+          "allowed_ips": "10.1.0.0/24",
           "persistent_keepalive": "25"
         }
       ]

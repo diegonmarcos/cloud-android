@@ -106,10 +106,23 @@ object NetworkInfoPopup {
         for (row in readWifi(ctx, sample, prev)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
-        // ── 3. Mesh (multi-tunnel) — the one radio the app can truly toggle.
-        container.addView(lightRow(ctx, "Mesh", meshUp(ctx)) {
-            dismiss(); toggleMesh(ctx)
-        })
+        // ── 3. Mesh — one probe light per configured peer. wg0 + wg-public
+        //      both ride the single Android tunnel; each peer is a distinct
+        //      mesh. A light is green when that peer has a FRESH WireGuard
+        //      handshake (the WG-native reachability signal). Tapping any light
+        //      toggles the shared tunnel.
+        container.addView(label(ctx, "Mesh"))
+        val meshPeers = runCatching { WgState.prefs(ctx).peers() }.getOrDefault(emptyList())
+            .filter { it.publicKey.isNotBlank() }
+        if (meshPeers.isEmpty()) {
+            container.addView(lightRow(ctx, "tunnel", meshUp(ctx)) { dismiss(); toggleMesh(ctx) })
+        } else {
+            for (p in meshPeers) {
+                container.addView(lightRow(ctx, p.name, peerHandshakeFresh(ctx, p.publicKey)) {
+                    dismiss(); toggleMesh(ctx)
+                })
+            }
+        }
         for (row in readMesh(ctx)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
@@ -205,6 +218,20 @@ object NetworkInfoPopup {
 
     private fun meshUp(ctx: Context): Boolean = runCatching {
         WgState.backend(ctx).getState(WgState.tunnel) == Tunnel.State.UP
+    }.getOrDefault(false)
+
+    /** A mesh peer is "up" when the tunnel is up AND that peer has a recent
+     *  WireGuard handshake (< ~3 min). Per-peer signal from GoBackend stats,
+     *  matched by the peer's public key. */
+    private fun peerHandshakeFresh(ctx: Context, publicKey: String): Boolean = runCatching {
+        val backend = WgState.backend(ctx)
+        if (backend.getState(WgState.tunnel) != Tunnel.State.UP) false
+        else {
+            val stats = backend.getStatistics(WgState.tunnel)
+            val ps = stats.peer(com.wireguard.crypto.Key.fromBase64(publicKey))
+            val hs = ps?.latestHandshakeEpochMillis() ?: 0L
+            hs > 0L && (System.currentTimeMillis() - hs) < 190_000L
+        }
     }.getOrDefault(false)
 
     /** The app owns the WG tunnel, so it can flip it directly. Bringing it UP
