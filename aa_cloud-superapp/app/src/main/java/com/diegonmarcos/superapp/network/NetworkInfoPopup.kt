@@ -8,6 +8,9 @@ import com.diegonmarcos.superapp.battery.BatteryEstimatePopup
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import android.widget.Toast
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
@@ -78,23 +81,42 @@ object NetworkInfoPopup {
         val prev = lastSample
         lastSample = sample
 
+        // Per-radio on/off state for the light indicators. Tapping a light
+        // toggles the WG mesh in-app (the app owns that tunnel); for Wi-Fi /
+        // cellular / Bluetooth the platform forbids a 3rd-party app flipping
+        // the radio, so the tap deep-links to the system toggle instead.
+        var popup: PopupWindow? = null
+        val dismiss = { popup?.dismiss() }
+
         // ── 1. Cellular
-        container.addView(label(ctx, "Cellular"))
+        container.addView(lightRow(ctx, "Cellular", hasTransport(ctx, NetworkCapabilities.TRANSPORT_CELLULAR)) {
+            dismiss(); openSettings(ctx,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Settings.Panel.ACTION_INTERNET_CONNECTIVITY
+                else Settings.ACTION_WIRELESS_SETTINGS)
+        })
         for (row in readCellular(ctx, sample, prev)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
         // ── 2. WiFi
-        container.addView(label(ctx, "WiFi"))
+        container.addView(lightRow(ctx, "WiFi", wifiEnabled(ctx)) {
+            dismiss(); openSettings(ctx,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Settings.Panel.ACTION_WIFI
+                else Settings.ACTION_WIFI_SETTINGS)
+        })
         for (row in readWifi(ctx, sample, prev)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
-        // ── 3. Mesh (multi-tunnel)
-        container.addView(label(ctx, "Mesh"))
+        // ── 3. Mesh (multi-tunnel) — the one radio the app can truly toggle.
+        container.addView(lightRow(ctx, "Mesh", meshUp(ctx)) {
+            dismiss(); toggleMesh(ctx)
+        })
         for (row in readMesh(ctx)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
         // ── 4. Bluetooth
-        container.addView(label(ctx, "Bluetooth"))
+        container.addView(lightRow(ctx, "Bluetooth", bluetoothEnabled(ctx)) {
+            dismiss(); openSettings(ctx, Settings.ACTION_BLUETOOTH_SETTINGS)
+        })
         for (row in readBluetooth(ctx)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
@@ -118,6 +140,7 @@ object NetworkInfoPopup {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             elevation = 8 * d
         }
+        popup = pw  // so a light-indicator tap can dismiss before deep-linking
         // Pin the BOX's LEFT EDGE to the screen's left edge,
         // matching Battery/SysInfo's right-edge alignment on the
         // other side. We stay on showAsDropDown (the same vertical
@@ -129,6 +152,81 @@ object NetworkInfoPopup {
         // icon was tapped.
         val anchorLoc = IntArray(2); anchor.getLocationOnScreen(anchorLoc)
         pw.showAsDropDown(anchor, -anchorLoc[0], (6 * d).toInt(), Gravity.START)
+    }
+
+    // ──────────────── Light indicators + radio toggles ────────────────
+
+    /** Section header with a trailing on/off light. The light's hit area is
+     *  tappable → [onTap]. Green = on, dim = off. */
+    private fun lightRow(ctx: Context, title: String, on: Boolean, onTap: () -> Unit): View {
+        val d = ctx.resources.displayMetrics.density
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        row.addView(label(ctx, title))
+        row.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f)) // spacer pushes the light right
+        val dot = View(ctx).apply {
+            val sz = (10 * d).toInt()
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(if (on) 0xFF35E07F.toInt() else 0x55FFFFFF)
+            }
+        }
+        val hit = LinearLayout(ctx).apply {
+            gravity = Gravity.CENTER
+            val p = (8 * d).toInt(); setPadding(p, p / 2, 0, p / 2)
+            isClickable = true
+            setOnClickListener { onTap() }
+            addView(dot)
+        }
+        row.addView(hit)
+        return row
+    }
+
+    private fun hasTransport(ctx: Context, t: Int): Boolean = runCatching {
+        val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.allNetworks.any { cm.getNetworkCapabilities(it)?.hasTransport(t) == true }
+    }.getOrDefault(false)
+
+    private fun wifiEnabled(ctx: Context): Boolean = runCatching {
+        (ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager)?.isWifiEnabled == true
+    }.getOrDefault(false)
+
+    private fun bluetoothEnabled(ctx: Context): Boolean = runCatching {
+        (ctx.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)
+            ?.adapter?.isEnabled == true
+    }.getOrDefault(false)
+
+    private fun meshUp(ctx: Context): Boolean = runCatching {
+        WgState.backend(ctx).getState(WgState.tunnel) == Tunnel.State.UP
+    }.getOrDefault(false)
+
+    /** The app owns the WG tunnel, so it can flip it directly. Bringing it UP
+     *  needs prior VPN consent (granted via the Mesh page on first connect);
+     *  if that's missing setState throws → we point the user there. */
+    private fun toggleMesh(ctx: Context) {
+        runCatching {
+            val b = WgState.backend(ctx)
+            if (b.getState(WgState.tunnel) == Tunnel.State.UP) {
+                WgState.requestTunnelDown(ctx)
+                Toast.makeText(ctx, "Mesh: disconnecting", Toast.LENGTH_SHORT).show()
+            } else {
+                b.setState(WgState.tunnel, Tunnel.State.UP, WgState.prefs(ctx).toWgConfig())
+                Toast.makeText(ctx, "Mesh: connecting", Toast.LENGTH_SHORT).show()
+            }
+        }.onFailure {
+            Toast.makeText(ctx, "Mesh: open the Mesh page to grant VPN access", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openSettings(ctx: Context, action: String) {
+        runCatching {
+            ctx.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure {
+            Toast.makeText(ctx, "No system screen for that toggle", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ─────────────────────────── Cellular ───────────────────────────
