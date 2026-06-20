@@ -76,6 +76,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val wgView: TextView
     private val btView: TextView
     private val usbView: TextView
+    private val kdeView: TextView
     private val dateTimeView: TextView
     private val ramView: TextView
     private val storageView: TextView
@@ -102,6 +103,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private var hasVpn = false
     private var hasBluetooth = false
     private var hasUsbData = false
+    private var hasKde = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val metricsTicker = object : Runnable {
@@ -159,12 +161,14 @@ class LauncherStatusStripView @JvmOverloads constructor(
         // DATA-transfer mode (MTP/PTP/RNDIS/NCM/MIDI or OTG host), dim on
         // charge-only or unplugged. Tracks ACTION_USB_STATE.
         usbView      = makeIconLabel("USB")
+        // KDE Connect — lit when ≥1 paired device is connected over the mesh.
+        kdeView      = makeIconLabel("KDE")
         // Any of the left-cluster icons → NetworkInfoPopup (shared
         // popup per cluster, per Diego's "yes click any, they are a
         // cluster" answer). Reusing the same anchor (the tapped icon)
         // keeps the bubble close to where the user tapped.
         val openNetworkPopup = OnClickListener { v -> NetworkInfoPopup.show(context, v) }
-        for (v in listOf(signal5gView, wifiView, wgView, btView, usbView)) {
+        for (v in listOf(signal5gView, wifiView, wgView, btView, usbView, kdeView)) {
             v.isClickable = true
             v.setOnClickListener(openNetworkPopup)
         }
@@ -176,6 +180,7 @@ class LauncherStatusStripView @JvmOverloads constructor(
         leftCluster.addView(makeToolColumn("vpn", wgView))
         leftCluster.addView(makeToolColumn("bluetooth", btView))
         leftCluster.addView(makeToolColumn("usb", usbView))
+        leftCluster.addView(makeToolColumn("kde", kdeView))
         innerRow.addView(leftCluster)
 
         // ── CENTER: date + time, true screen-centre ────────────────
@@ -516,12 +521,17 @@ class LauncherStatusStripView @JvmOverloads constructor(
         wgView      .setTextColor(if (hasVpn)       on else off)
         btView      .setTextColor(if (hasBluetooth) on else off)
         usbView     .setTextColor(if (hasUsbData)   on else off)
+        hasKde = runCatching {
+            com.diegonmarcos.superapp.kdeconnect.KdeConnectManager.connectedIds().isNotEmpty()
+        }.getOrDefault(false)
+        kdeView     .setTextColor(if (hasKde)       on else off)
         // Pets: on → run (energetic), off → idle. on_level is data-driven.
         updateBoolPet("cellular", hasCellular)
         updateBoolPet("wifi", hasWifi)
         updateBoolPet("vpn", hasVpn)
         updateBoolPet("bluetooth", hasBluetooth)
         updateBoolPet("usb", hasUsbData)
+        updateBoolPet("kde", hasKde)
     }
 
     /** Read RAM + /data storage utilisation and update the right
