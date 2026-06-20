@@ -108,9 +108,10 @@ object NetworkInfoPopup {
 
         // ── 3. Mesh — one probe light per configured peer. wg0 + wg-public
         //      both ride the single Android tunnel; each peer is a distinct
-        //      mesh. A light is green when that peer has a FRESH WireGuard
-        //      handshake (the WG-native reachability signal). Tapping any light
-        //      toggles the shared tunnel.
+        //      mesh. Each light PINGS that mesh's hub (the .1 of the peer's
+        //      allowed-IP range) — green if reachable; the WG handshake state is
+        //      the instant placeholder while the ping runs (amber). Tapping any
+        //      light toggles the shared tunnel.
         container.addView(label(ctx, "Mesh"))
         val meshPeers = runCatching { WgState.prefs(ctx).peers() }.getOrDefault(emptyList())
             .filter { it.publicKey.isNotBlank() }
@@ -118,7 +119,7 @@ object NetworkInfoPopup {
             container.addView(lightRow(ctx, "tunnel", meshUp(ctx)) { dismiss(); toggleMesh(ctx) })
         } else {
             for (p in meshPeers) {
-                container.addView(lightRow(ctx, p.name, peerHandshakeFresh(ctx, p.publicKey)) {
+                container.addView(meshProbeRow(ctx, p.name, hubIp(p.allowedIps), p.publicKey) {
                     dismiss(); toggleMesh(ctx)
                 })
             }
@@ -219,6 +220,50 @@ object NetworkInfoPopup {
     private fun meshUp(ctx: Context): Boolean = runCatching {
         WgState.backend(ctx).getState(WgState.tunnel) == Tunnel.State.UP
     }.getOrDefault(false)
+
+    /** Hub IP of a peer = the `.1` of its first allowed-IP subnet
+     *  ("10.1.0.0/24" → "10.1.0.1"). Null if unparseable. */
+    private fun hubIp(allowedIps: String): String? {
+        val ip = allowedIps.split(",").firstOrNull()?.trim()?.substringBefore('/') ?: return null
+        val o = ip.split('.')
+        return if (o.size == 4) "${o[0]}.${o[1]}.${o[2]}.1" else null
+    }
+
+    /** Mesh header row that PINGS [hubIp] in the background. Dot starts amber
+     *  (probing) / green if the peer already has a fresh handshake, then resolves
+     *  to green (reachable or fresh handshake) or dim (unreachable). Tap → [onTap]. */
+    private fun meshProbeRow(ctx: Context, name: String, hubIp: String?, publicKey: String, onTap: () -> Unit): View {
+        val d = ctx.resources.displayMetrics.density
+        val green = 0xFF35E07F.toInt(); val amber = 0xFFE0A235.toInt(); val dim = 0x55FFFFFF
+        val fresh = peerHandshakeFresh(ctx, publicKey)
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        row.addView(label(ctx, name))
+        val dotBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL; setColor(if (fresh) green else amber)
+        }
+        val dot = View(ctx).apply {
+            val sz = (10 * d).toInt(); layoutParams = LinearLayout.LayoutParams(sz, sz); background = dotBg
+        }
+        val hit = LinearLayout(ctx).apply {
+            gravity = Gravity.CENTER
+            val p = (5 * d).toInt(); setPadding((8 * d).toInt(), p, p, p)
+            isClickable = true; setOnClickListener { onTap() }
+            addView(dot)
+        }
+        row.addView(hit)
+        if (hubIp != null) {
+            Thread {
+                val ok = runCatching { java.net.InetAddress.getByName(hubIp).isReachable(1500) }.getOrDefault(false)
+                dot.post { dotBg.setColor(if (ok || fresh) green else dim) }
+            }.start()
+        } else if (!fresh) dotBg.setColor(dim)
+        return row
+    }
 
     /** A mesh peer is "up" when the tunnel is up AND that peer has a recent
      *  WireGuard handshake (< ~3 min). Per-peer signal from GoBackend stats,
