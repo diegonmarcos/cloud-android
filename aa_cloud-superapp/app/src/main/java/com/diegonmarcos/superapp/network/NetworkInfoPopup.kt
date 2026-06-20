@@ -109,24 +109,37 @@ object NetworkInfoPopup {
         for (row in readWifi(ctx, sample, prev)) container.addView(valueSmall(ctx, row))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
-        // ── 3. Mesh — one probe light per configured peer. wg0 + wg-public
-        //      both ride the single Android tunnel; each peer is a distinct
-        //      mesh. Each light PINGS that mesh's hub (the .1 of the peer's
-        //      allowed-IP range) — green if reachable; the WG handshake state is
-        //      the instant placeholder while the ping runs (amber). Tapping any
-        //      light toggles the shared tunnel.
-        container.addView(label(ctx, "Mesh"))
+        // ── 3. Mesh — header carries one status light PER mesh (wg0 + wg-public
+        //      ride the single Android tunnel). Each light pings that mesh's hub
+        //      (.1 of its allowed-IP range); tap toggles the shared tunnel. Below,
+        //      a labelled block per mesh: endpoint, last talk, key, IP range.
         val meshes = meshList(ctx)
+        container.addView(meshHeaderRow(ctx, meshes) { dismiss(); toggleMesh(ctx) })
         if (meshes.isEmpty()) {
-            container.addView(lightRow(ctx, "tunnel", meshUp(ctx)) { dismiss(); toggleMesh(ctx) })
+            for (row in readMesh(ctx)) container.addView(valueSmall(ctx, row))
         } else {
-            for ((name, allowed, pubkey) in meshes) {
-                container.addView(meshProbeRow(ctx, name, hubIp(allowed), pubkey) {
-                    dismiss(); toggleMesh(ctx)
-                })
+            val stats = runCatching {
+                val b = WgState.backend(ctx)
+                if (b.getState(WgState.tunnel) == Tunnel.State.UP) b.getStatistics(WgState.tunnel) else null
+            }.getOrNull()
+            for (m in meshes) {
+                container.addView(label(ctx, m.tag))
+                for (row in meshDetail(m, stats)) container.addView(valueSmall(ctx, row))
             }
         }
-        for (row in readMesh(ctx)) container.addView(valueSmall(ctx, row))
+        container.addView(spacer(ctx, (6 * d).toInt()))
+
+        // ── 3b. KDE Connect — status + connected device count; tap → KDE configs.
+        val kdeConn = runCatching {
+            com.diegonmarcos.superapp.kdeconnect.KdeConnectManager.connectedIds().size
+        }.getOrDefault(0)
+        val kdeTotal = runCatching {
+            com.diegonmarcos.superapp.kdeconnect.KdeConnectConfig.get().devices.size
+        }.getOrDefault(0)
+        container.addView(lightRow(ctx, "KDE Connect", kdeConn > 0) {
+            dismiss(); (ctx as? com.diegonmarcos.superapp.MainActivity)?.openSection("kde")
+        })
+        container.addView(valueSmall(ctx, "$kdeConn / $kdeTotal device(s) connected"))
         container.addView(spacer(ctx, (6 * d).toInt()))
 
         // ── 4. Bluetooth
@@ -231,40 +244,51 @@ object NetworkInfoPopup {
         return if (o.size == 4) "${o[0]}.${o[1]}.${o[2]}.1" else null
     }
 
-    /** Mesh header row that PINGS [hubIp] in the background. Dot starts amber
-     *  (probing) / green if the peer already has a fresh handshake, then resolves
-     *  to green (reachable or fresh handshake) or dim (unreachable). Tap → [onTap]. */
-    private fun meshProbeRow(ctx: Context, name: String, hubIp: String?, publicKey: String, onTap: () -> Unit): View {
+    /** A mesh = one WG peer. [tag] is the friendly id (wg0 / wg-public). */
+    private data class Mesh(
+        val tag: String, val name: String, val endpoint: String,
+        val allowedIps: String, val pubkey: String)
+
+    /** "Mesh" header carrying one ping dot PER mesh. Each dot starts amber
+     *  (probing) / green (fresh handshake), then resolves to green (hub reachable
+     *  OR fresh handshake) or dim. Whole row taps → [onTap] (toggle tunnel). */
+    private fun meshHeaderRow(ctx: Context, meshes: List<Mesh>, onTap: () -> Unit): View {
         val d = ctx.resources.displayMetrics.density
         val green = 0xFF35E07F.toInt(); val amber = 0xFFE0A235.toInt(); val dim = 0x55FFFFFF
-        val fresh = peerHandshakeFresh(ctx, publicKey)
         val row = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        }
-        row.addView(label(ctx, name))
-        val dotBg = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL; setColor(if (fresh) green else amber)
-        }
-        val dot = View(ctx).apply {
-            val sz = (10 * d).toInt(); layoutParams = LinearLayout.LayoutParams(sz, sz); background = dotBg
-        }
-        val hit = LinearLayout(ctx).apply {
-            gravity = Gravity.CENTER
-            val p = (5 * d).toInt(); setPadding((8 * d).toInt(), p, p, p)
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             isClickable = true; setOnClickListener { onTap() }
-            addView(dot)
         }
-        row.addView(hit)
-        if (hubIp != null) {
-            Thread {
-                val ok = pingHub(hubIp)
+        row.addView(label(ctx, "Mesh"))
+        for (m in meshes) {
+            val fresh = peerHandshakeFresh(ctx, m.pubkey)
+            val dotBg = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(if (fresh) green else amber) }
+            val sz = (10 * d).toInt()
+            val dot = View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginStart = (8 * d).toInt() }
+                background = dotBg
+            }
+            row.addView(dot)
+            val hub = hubIp(m.allowedIps)
+            if (hub != null) Thread {
+                val ok = pingHub(hub)
                 dot.post { dotBg.setColor(if (ok || fresh) green else dim) }
-            }.start()
-        } else if (!fresh) dotBg.setColor(dim)
+            }.start() else if (!fresh) dotBg.setColor(dim)
+        }
         return row
+    }
+
+    /** Per-mesh detail: endpoint, last talk (handshake age), traffic, key, range. */
+    private fun meshDetail(m: Mesh, stats: com.wireguard.android.backend.Statistics?): List<String> {
+        val rows = mutableListOf<String>()
+        if (m.endpoint.isNotBlank()) rows += "Endpoint: ${m.endpoint}"
+        val ps = runCatching { stats?.peer(com.wireguard.crypto.Key.fromBase64(m.pubkey)) }.getOrNull()
+        val hs = ps?.latestHandshakeEpochMillis() ?: 0L
+        rows += "Last Talk: " + if (hs > 0L) "${(System.currentTimeMillis() - hs) / 1000}s ago" else "—"
+        if (ps != null) rows += "Traffic: ↓ ${fmtBytes(ps.rxBytes())} · ↑ ${fmtBytes(ps.txBytes())}"
+        if (m.pubkey.isNotBlank())   rows += "Public Key: ${m.pubkey}"
+        if (m.allowedIps.isNotBlank()) rows += "IP Range: ${m.allowedIps}"
+        return rows
     }
 
     /** Reachability probe for a mesh hub. ICMP (isReachable) is often blocked
@@ -280,29 +304,42 @@ object NetworkInfoPopup {
         return runCatching { java.net.InetAddress.getByName(hubIp).isReachable(600) }.getOrDefault(false)
     }
 
-    /** The meshes to show as lights: the user's CONFIGURED peers (WireGuardPrefs)
-     *  unioned with the app's baked-default meshes (build.json), deduped by
-     *  subnet — so BOTH wg0 + wg-public always appear even before the user has
-     *  configured the second peer. Each entry = (name, allowedIps, publicKey). */
-    private fun meshList(ctx: Context): List<Triple<String, String, String>> {
-        val out = LinkedHashMap<String, Triple<String, String, String>>()
-        runCatching { WgState.prefs(ctx).peers() }.getOrDefault(emptyList()).forEach {
-            out[subnetKey(it.allowedIps)] = Triple(it.name, it.allowedIps, it.publicKey)
+    /** Meshes to display: configured peers (WireGuardPrefs) unioned with the
+     *  baked-default meshes (build.json), deduped by subnet — so wg0 + wg-public
+     *  always appear even before the second peer is configured. tag/endpoint fall
+     *  back to the baked entry when the saved peer lacks them. */
+    private fun meshList(ctx: Context): List<Mesh> {
+        val baked = parseBakedMeshes()
+        val tagBySubnet = baked.associate { subnetKey(it.allowedIps) to it.tag }
+        val out = LinkedHashMap<String, Mesh>()
+        runCatching { WgState.prefs(ctx).peers() }.getOrDefault(emptyList()).forEach { p ->
+            val k = subnetKey(p.allowedIps)
+            out[k] = Mesh(tagBySubnet[k] ?: deriveTag(p.allowedIps), p.name, p.endpoint, p.allowedIps, p.publicKey)
         }
-        parseBakedMeshes().forEach { (n, a, k) -> out.putIfAbsent(subnetKey(a), Triple(n, a, k)) }
+        baked.forEach { out.putIfAbsent(subnetKey(it.allowedIps), it) }
         return out.values.toList()
     }
 
     private fun subnetKey(allowedIps: String) = allowedIps.split(",").firstOrNull()?.trim().orEmpty()
+    private fun deriveTag(allowedIps: String): String {
+        val net = allowedIps.split(",").firstOrNull()?.trim()?.substringBefore('/').orEmpty()
+        return when {
+            net.startsWith("10.0.") -> "wg0"
+            net.startsWith("10.1.") -> "wg-public"
+            else -> "mesh"
+        }
+    }
 
-    /** The two canonical meshes baked from build.json::ui.wireguard_default.peers. */
-    private fun parseBakedMeshes(): List<Triple<String, String, String>> = runCatching {
+    /** The canonical meshes baked from build.json::ui.wireguard_default.peers. */
+    private fun parseBakedMeshes(): List<Mesh> = runCatching {
         val json = String(android.util.Base64.decode(
             com.diegonmarcos.superapp.BuildConfig.UI_WG_PEERS_JSON_B64, android.util.Base64.DEFAULT))
         val arr = org.json.JSONArray(json)
         (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
-            Triple(o.optString("name"), o.optString("allowed_ips"), o.optString("public_key"))
+            val allowed = o.optString("allowed_ips")
+            Mesh(o.optString("mesh").ifBlank { deriveTag(allowed) }, o.optString("name"),
+                o.optString("endpoint"), allowed, o.optString("public_key"))
         }
     }.getOrDefault(emptyList())
 
@@ -453,7 +490,7 @@ object NetworkInfoPopup {
             }
             if (meta.isNotEmpty()) rows += meta.joinToString(" · ")
             if (p.interfaceDns.isNotBlank()) rows += "DNS: ${p.interfaceDns}"
-            val pub = runCatching { p.interfacePublicKey }.getOrDefault("")
+            val pub = runCatching { p.derivedInterfacePublicKey() }.getOrDefault("")
             if (pub.isNotBlank()) rows += "Pubkey: ${pub.take(16)}…"
         }
         if (stats != null) rows += "Total: ↓ ${fmtBytes(stats.totalRx())} · ↑ ${fmtBytes(stats.totalTx())}"
@@ -655,19 +692,58 @@ object NetworkInfoPopup {
                 .forEach { rows += "Gateway: $it" }
         }
 
-        // ── every bound IP (v4 + v6), per interface ──────────────────────────
+        // ── every bound IP (v4 + v6), per interface, scope-tagged ────────────
         runCatching {
             NetworkInterface.getNetworkInterfaces().asSequence()
                 .filter { it.isUp && !it.isLoopback }
                 .forEach { nif ->
                     nif.inetAddresses.asSequence()
                         .filter { !it.isLoopbackAddress && !it.isLinkLocalAddress }
-                        .mapNotNull { it.hostAddress }
-                        .forEach { rows += "IP: ${nif.name} $it" }
+                        .forEach { a ->
+                            val scope = if (a.isSiteLocalAddress) "private" else "public"
+                            a.hostAddress?.let { rows += "IP: ${nif.name} $it ($scope)" }
+                        }
                 }
         }
+        // ── open ports (own-UID TCP sockets from /proc/net) ──────────────────
+        readPorts().forEach { rows += it }
         return rows
     }
+
+    /** Listening ports + established connections from /proc/net/tcp{,6}. Modern
+     *  Android only exposes our OWN-UID sockets here. There is no per-socket
+     *  "last activity" timestamp in /proc, so established connections (active
+     *  talks) are listed with their remote endpoint as the closest signal. */
+    private fun readPorts(): List<String> {
+        val listen = sortedSetOf<Int>()
+        val estab = mutableListOf<String>()
+        for (path in listOf("/proc/net/tcp", "/proc/net/tcp6")) {
+            runCatching {
+                java.io.File(path).readLines().drop(1).forEach { line ->
+                    val f = line.trim().split(Regex("\\s+"))
+                    if (f.size < 4) return@forEach
+                    val lport = f[1].substringAfter(':').toIntOrNull(16) ?: return@forEach
+                    when (f[3]) {
+                        "0A" -> listen += lport                                   // LISTEN
+                        "01" -> {                                                 // ESTABLISHED
+                            val rport = f[2].substringAfter(':').toIntOrNull(16)
+                            if (rport != null && rport != 0)
+                                estab += "$lport → ${hexToIp(f[2].substringBefore(':'))}:$rport"
+                        }
+                    }
+                }
+            }
+        }
+        val out = mutableListOf<String>()
+        if (listen.isNotEmpty()) out += "Listening: ${listen.joinToString(", ")}"
+        estab.distinct().take(12).forEach { out += "Conn: $it" }
+        return out
+    }
+
+    private fun hexToIp(a: String): String = runCatching {
+        if (a.length == 8) (3 downTo 0).joinToString(".") { a.substring(it * 2, it * 2 + 2).toInt(16).toString() }
+        else "[v6]"
+    }.getOrDefault("?")
 
     private fun fmtKbps(kbps: Int): String =
         if (kbps >= 1000) "%.1f Mbps".format(kbps / 1000.0) else "$kbps Kbps"

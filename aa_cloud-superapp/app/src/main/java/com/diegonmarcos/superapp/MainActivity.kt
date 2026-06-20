@@ -847,6 +847,10 @@ class MainActivity : AppCompatActivity(),
     private fun goSection(id: String, label: String, initialTab: String = "") =
         nav.goSection(id, label, initialTab)
 
+    /** Public entry so transient UI (e.g. the status-strip network popup's
+     *  KDE Connect row) can navigate to a section. */
+    fun openSection(id: String) = goSection(id, Sections.byId(id)?.label ?: id)
+
     override fun syncBottomNav(sectionId: String) {
         val navId = idForSectionId(sectionId) ?: return
         if (bottomNav.selectedItemId != navId) {
