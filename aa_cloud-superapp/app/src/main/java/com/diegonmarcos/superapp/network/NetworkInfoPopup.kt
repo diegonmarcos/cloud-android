@@ -69,6 +69,9 @@ object NetworkInfoPopup {
         val container = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad, pad, pad)
+            // At least half the screen wide so the (wider) mesh rows + data read
+            // comfortably; still WRAP_CONTENT beyond that.
+            minimumWidth = (ctx.resources.displayMetrics.widthPixels * 0.5f).toInt()
             background = GradientDrawable().apply {
                 cornerRadius = 12f * d
                 setColor(0xEE111111.toInt())
@@ -113,13 +116,12 @@ object NetworkInfoPopup {
         //      the instant placeholder while the ping runs (amber). Tapping any
         //      light toggles the shared tunnel.
         container.addView(label(ctx, "Mesh"))
-        val meshPeers = runCatching { WgState.prefs(ctx).peers() }.getOrDefault(emptyList())
-            .filter { it.publicKey.isNotBlank() }
-        if (meshPeers.isEmpty()) {
+        val meshes = meshList(ctx)
+        if (meshes.isEmpty()) {
             container.addView(lightRow(ctx, "tunnel", meshUp(ctx)) { dismiss(); toggleMesh(ctx) })
         } else {
-            for (p in meshPeers) {
-                container.addView(meshProbeRow(ctx, p.name, hubIp(p.allowedIps), p.publicKey) {
+            for ((name, allowed, pubkey) in meshes) {
+                container.addView(meshProbeRow(ctx, name, hubIp(allowed), pubkey) {
                     dismiss(); toggleMesh(ctx)
                 })
             }
@@ -258,12 +260,51 @@ object NetworkInfoPopup {
         row.addView(hit)
         if (hubIp != null) {
             Thread {
-                val ok = runCatching { java.net.InetAddress.getByName(hubIp).isReachable(1500) }.getOrDefault(false)
+                val ok = pingHub(hubIp)
                 dot.post { dotBg.setColor(if (ok || fresh) green else dim) }
             }.start()
         } else if (!fresh) dotBg.setColor(dim)
         return row
     }
+
+    /** Reachability probe for a mesh hub. ICMP (isReachable) is often blocked
+     *  over WG, so try a quick TCP connect to a few hub ports first (53 = the
+     *  mesh DNS hub, 443/80/22 = common services), then fall back to ICMP. */
+    private fun pingHub(hubIp: String): Boolean {
+        for (port in intArrayOf(53, 443, 80, 22)) {
+            val ok = runCatching {
+                java.net.Socket().use { it.connect(java.net.InetSocketAddress(hubIp, port), 600); true }
+            }.getOrDefault(false)
+            if (ok) return true
+        }
+        return runCatching { java.net.InetAddress.getByName(hubIp).isReachable(600) }.getOrDefault(false)
+    }
+
+    /** The meshes to show as lights: the user's CONFIGURED peers (WireGuardPrefs)
+     *  unioned with the app's baked-default meshes (build.json), deduped by
+     *  subnet — so BOTH wg0 + wg-public always appear even before the user has
+     *  configured the second peer. Each entry = (name, allowedIps, publicKey). */
+    private fun meshList(ctx: Context): List<Triple<String, String, String>> {
+        val out = LinkedHashMap<String, Triple<String, String, String>>()
+        runCatching { WgState.prefs(ctx).peers() }.getOrDefault(emptyList()).forEach {
+            out[subnetKey(it.allowedIps)] = Triple(it.name, it.allowedIps, it.publicKey)
+        }
+        parseBakedMeshes().forEach { (n, a, k) -> out.putIfAbsent(subnetKey(a), Triple(n, a, k)) }
+        return out.values.toList()
+    }
+
+    private fun subnetKey(allowedIps: String) = allowedIps.split(",").firstOrNull()?.trim().orEmpty()
+
+    /** The two canonical meshes baked from build.json::ui.wireguard_default.peers. */
+    private fun parseBakedMeshes(): List<Triple<String, String, String>> = runCatching {
+        val json = String(android.util.Base64.decode(
+            com.diegonmarcos.superapp.BuildConfig.UI_WG_PEERS_JSON_B64, android.util.Base64.DEFAULT))
+        val arr = org.json.JSONArray(json)
+        (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            Triple(o.optString("name"), o.optString("allowed_ips"), o.optString("public_key"))
+        }
+    }.getOrDefault(emptyList())
 
     /** A mesh peer is "up" when the tunnel is up AND that peer has a recent
      *  WireGuard handshake (< ~3 min). Per-peer signal from GoBackend stats,
