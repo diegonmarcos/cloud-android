@@ -56,9 +56,23 @@ class PetStrengthView @JvmOverloads constructor(
         if (animate && animal.isNotEmpty()) load()
     }
 
+    /** Resolve the gait GIF, falling back to an available gait when the exact
+     *  one isn't bundled (e.g. 3-gait animals like skeleton have no walk_fast).
+     *  Order: requested → idle → run → walk → walk_fast. */
+    private fun resolvePath(): String? {
+        val dir = "zoomies/$animal"
+        val avail = runCatching { context.assets.list(dir)?.toSet() }.getOrNull()
+            ?: return "$dir/${variant}_$gait.gif"
+        for (g in listOf(gait, "idle", "run", "walk", "walk_fast")) {
+            val f = "${variant}_$g.gif"
+            if (avail.contains(f)) return "$dir/$f"
+        }
+        return null
+    }
+
     private fun load() {
         if (!animate) return
-        val path = "zoomies/$animal/${variant}_$gait.gif"
+        val path = resolvePath() ?: run { setImageDrawable(null); return }
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 val src = ImageDecoder.createSource(context.assets, path)

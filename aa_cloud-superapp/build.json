@@ -348,7 +348,7 @@
       "vpn":      { "animal": "horse",   "variant": "black",    "type": "bool",    "on_level": 3 },
       "bluetooth":{ "animal": "panda",   "variant": "black",    "type": "bool",    "on_level": 3 },
       "usb":      { "animal": "rat",     "variant": "gray",     "type": "bool",    "on_level": 3 },
-      "kde":      { "animal": "dog",     "variant": "akita",    "type": "bool",    "on_level": 3 },
+      "kde":      { "animal": "skeleton", "variant": "blue",    "type": "bool",    "on_level": 3 },
       "ram":      { "animal": "deno",    "variant": "green",    "type": "percent", "buckets": [25, 50, 75] },
       "storage":  { "animal": "vampire", "variant": "countess", "type": "percent", "buckets": [25, 50, 75] },
       "battery":  { "animal": "dog",     "variant": "white",    "type": "percent", "buckets": [25, 50, 75] },

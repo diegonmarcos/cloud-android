@@ -679,14 +679,19 @@ step_sync_zoomies() {
   while IFS=' ' read -r animal variant; do
     [ -n "$animal" ] || continue
     mkdir -p "$dst/$animal"
+    local got=0
     for g in $gaits; do
       local src="$upstream/$animal/${variant}_${g}.gif"
       if [ -f "$src" ]; then
-        cp -f "$src" "$dst/$animal/${variant}_${g}.gif"; n=$((n+1))
+        cp -f "$src" "$dst/$animal/${variant}_${g}.gif"; n=$((n+1)); got=$((got+1))
       else
-        errlog "sync-zoomies: missing gait GIF $animal/${variant}_${g}.gif"; miss=$((miss+1))
+        # Not fatal — some animals ship fewer gaits (e.g. skeleton has no
+        # walk_fast). The renderer (PetStrengthView.resolvePath) falls back to
+        # an available gait, and bool pets only ever use idle/run.
+        log "sync-zoomies: note — no '${g}' gait for $animal/$variant (renderer falls back)"
       fi
     done
+    [ "$got" -gt 0 ] || { errlog "sync-zoomies: $animal/$variant has NO gait GIFs (unknown animal/variant)"; miss=$((miss+1)); }
   done < <(jq -r '.status_pets.tools | to_entries[] | "\(.value.animal) \(.value.variant)"' "$bj" | sort -u)
 
   # Attribution — CC BY-ND requires credit. Ship the upstream CREDITS verbatim.
@@ -694,7 +699,7 @@ step_sync_zoomies() {
 
   log "sync-zoomies: $n GIF(s) → app/src/main/assets/zoomies/ ($miss missing)"
   log "  review with: git -C $SCRIPT_DIR status -s -- app/src/main/assets/zoomies/"
-  [ "$miss" -eq 0 ] || { errlog "sync-zoomies: $miss referenced GIF(s) missing — fix build.json::status_pets or the clone"; exit 1; }
+  [ "$miss" -eq 0 ] || { errlog "sync-zoomies: $miss unknown animal/variant pair(s) — fix build.json::status_pets or the clone"; exit 1; }
 }
 
 # Vendor keyboard dictionaries into libs/keyboard/src/main/assets/dicts/ (HeliBoard's
