@@ -438,40 +438,57 @@ object NetworkInfoPopup {
      *  SELinux-blocked on hardened Samsung. */
     private fun readMesh(ctx: Context): List<String> {
         val rows = mutableListOf<String>()
-        val tunnels = runCatching {
-            NetworkInterface.getNetworkInterfaces().asSequence()
-                .filter { it.isUp && (it.name.startsWith("wg") || it.name.startsWith("tun") || it.name.startsWith("utun")) }
-                .toList()
-        }.getOrDefault(emptyList())
+        val prefs = runCatching { WgState.prefs(ctx) }.getOrNull()
+        val backend = runCatching { WgState.backend(ctx) }.getOrNull()
+        val up = runCatching { backend?.getState(WgState.tunnel) == Tunnel.State.UP }.getOrDefault(false)
+        val stats = if (up) runCatching { backend?.getStatistics(WgState.tunnel) }.getOrNull() else null
 
-        // SuperApp's tracked tunnel — try the GoBackend stats path
-        // for accurate RX/TX. Surfaced even when NetworkInterface
-        // doesn't list it (the TUN may be in a namespace we can't
-        // enumerate).
-        val appTunnelRow = runCatching {
-            val backend = WgState.backend(ctx)
-            val state = backend.getState(WgState.tunnel)
-            if (state == Tunnel.State.UP) {
-                val stats = runCatching { backend.getStatistics(WgState.tunnel) }.getOrNull()
-                val rx = stats?.totalRx() ?: 0L
-                val tx = stats?.totalTx() ?: 0L
-                "${WgState.tunnel.name}: UP · ↓ ${fmtBytes(rx)} · ↑ ${fmtBytes(tx)}  (app)"
-            } else null
-        }.getOrNull()
-        if (appTunnelRow != null) rows += appTunnelRow
+        // ── Interface ────────────────────────────────────────────────────────
+        rows += "Tunnel: ${prefs?.tunnelName ?: "wg-mesh"} · ${if (up) "UP" else "DOWN"}"
+        prefs?.let { p ->
+            if (p.interfaceAddress.isNotBlank()) rows += "Addr: ${p.interfaceAddress}"
+            val meta = buildList {
+                if (p.interfaceMtu.isNotBlank()) add("MTU ${p.interfaceMtu}")
+                if (p.interfaceListenPort.isNotBlank()) add("port ${p.interfaceListenPort}")
+            }
+            if (meta.isNotEmpty()) rows += meta.joinToString(" · ")
+            if (p.interfaceDns.isNotBlank()) rows += "DNS: ${p.interfaceDns}"
+            val pub = runCatching { p.interfacePublicKey }.getOrDefault("")
+            if (pub.isNotBlank()) rows += "Pubkey: ${pub.take(16)}…"
+        }
+        if (stats != null) rows += "Total: ↓ ${fmtBytes(stats.totalRx())} · ↑ ${fmtBytes(stats.totalTx())}"
 
-        for (nif in tunnels) {
-            // Skip if this interface IS the app tunnel we already
-            // surfaced — matched by name (best heuristic available).
-            if (appTunnelRow != null && nif.name == WgState.tunnel.name) continue
-            val ipv4 = runCatching {
-                nif.inetAddresses.asSequence().filter { !it.isLoopbackAddress && it.hostAddress?.contains(':') != true }
-                    .firstOrNull()?.hostAddress
+        // ── Per-peer (each peer = one mesh) ──────────────────────────────────
+        val peers = runCatching { prefs?.peers() }.getOrNull() ?: emptyList()
+        for (p in peers) {
+            rows += "▸ ${p.name}"
+            if (p.endpoint.isNotBlank())   rows += "   endpoint ${p.endpoint}"
+            if (p.allowedIps.isNotBlank())  rows += "   allowed ${p.allowedIps}"
+            if (p.persistentKeepalive.isNotBlank()) rows += "   keepalive ${p.persistentKeepalive}s"
+            if (p.publicKey.isNotBlank())   rows += "   key ${p.publicKey.take(16)}…"
+            val ps = runCatching {
+                stats?.peer(com.wireguard.crypto.Key.fromBase64(p.publicKey))
             }.getOrNull()
-            rows += if (ipv4 != null) "${nif.name}: UP · $ipv4  (system)" else "${nif.name}: UP  (system)"
+            if (ps != null) {
+                val hs = ps.latestHandshakeEpochMillis()
+                val ago = if (hs > 0L) "${(System.currentTimeMillis() - hs) / 1000}s ago" else "never"
+                rows += "   handshake $ago · ↓ ${fmtBytes(ps.rxBytes())} · ↑ ${fmtBytes(ps.txBytes())}"
+            } else if (up) rows += "   handshake — (no traffic yet)"
         }
 
-        if (rows.isEmpty()) rows += "No tunnels up"
+        // System WG/tun interfaces not tracked by our backend (e.g. the official
+        // WireGuard app's tunnel), with their bound IPs.
+        runCatching {
+            NetworkInterface.getNetworkInterfaces().asSequence()
+                .filter { it.isUp && (it.name.startsWith("wg") || it.name.startsWith("tun") || it.name.startsWith("utun")) }
+                .forEach { nif ->
+                    val addrs = nif.inetAddresses.asSequence().filter { !it.isLoopbackAddress }
+                        .mapNotNull { it.hostAddress }.joinToString(", ")
+                    rows += "iface ${nif.name}: ${if (addrs.isBlank()) "up" else addrs}"
+                }
+        }
+
+        if (rows.isEmpty()) rows += "No tunnel configured"
         return rows
     }
 
@@ -583,29 +600,77 @@ object NetworkInfoPopup {
         val rows = mutableListOf<String>()
         val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
         val active = cm?.activeNetwork
-        val caps = active?.let { cm?.getNetworkCapabilities(it) }
-        val transportSummary = if (caps != null) {
-            val parts = mutableListOf<String>()
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))     parts += "WiFi"
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) parts += "Cellular"
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))      parts += "VPN"
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) parts += "Ethernet"
-            if (parts.isEmpty()) "Offline" else parts.joinToString(" · ")
-        } else "Offline"
-        rows += "Active: $transportSummary"
-        // DNS servers — public API since API 23 via LinkProperties.dnsServers.
-        if (active != null && cm != null) {
-            val lp = runCatching { cm.getLinkProperties(active) }.getOrNull()
-            val dns = lp?.dnsServers?.mapNotNull { it.hostAddress } ?: emptyList()
-            if (dns.isEmpty()) rows += "DNS: —"
-            else dns.forEach { rows += "DNS: $it" }
+        val caps = active?.let { cm.getNetworkCapabilities(it) }
+        val lp = active?.let { runCatching { cm.getLinkProperties(it) }.getOrNull() }
+
+        // ── transports ───────────────────────────────────────────────────────
+        val transports = mutableListOf<String>()
+        caps?.let {
+            if (it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))     transports += "WiFi"
+            if (it.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) transports += "Cellular"
+            if (it.hasTransport(NetworkCapabilities.TRANSPORT_VPN))      transports += "VPN"
+            if (it.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) transports += "Ethernet"
         }
-        // Local IPv4 IPs, per interface.
-        val ips = readLocalIps()
-        if (ips.isEmpty()) rows += "IP: —"
-        else ips.forEach { rows += "IP: $it" }
+        rows += "Active: ${if (transports.isEmpty()) "Offline" else transports.joinToString(" · ")}"
+
+        // ── capability flags + bandwidth ─────────────────────────────────────
+        caps?.let { c ->
+            val flags = mutableListOf<String>()
+            if (c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))  flags += "internet"
+            if (c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) flags += "validated"
+            flags += if (c.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) "unmetered" else "metered"
+            if (c.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) flags += "captive-portal"
+            if (flags.isNotEmpty()) rows += "State: ${flags.joinToString(" · ")}"
+            if (c.linkDownstreamBandwidthKbps > 0 || c.linkUpstreamBandwidthKbps > 0)
+                rows += "Bandwidth: ↓ ${fmtKbps(c.linkDownstreamBandwidthKbps)} · ↑ ${fmtKbps(c.linkUpstreamBandwidthKbps)}"
+        }
+
+        // ── WiFi specifics (RSSI / link speed / frequency; SSID if permitted) ─
+        val ti = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) caps?.transportInfo else null
+        if (ti is android.net.wifi.WifiInfo) {
+            val ssid = ti.ssid?.trim('"')?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+            if (ssid != null) rows += "SSID: $ssid"
+            rows += "WiFi: ${ti.rssi} dBm · ${ti.linkSpeed} Mbps" +
+                (if (ti.frequency > 0) " · ${ti.frequency} MHz" else "")
+        }
+
+        // ── cellular type ────────────────────────────────────────────────────
+        if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true) {
+            val tm = ctx.applicationContext.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+            tm?.let {
+                @Suppress("DEPRECATION")
+                val t = runCatching { networkTypeLabel(it.networkType) }.getOrDefault("—")
+                rows += "Cell: ${it.networkOperatorName ?: "—"} · $t"
+            }
+        }
+
+        // ── link properties (iface / DNS / domains / proxy / gateway) ────────
+        lp?.let { l ->
+            l.interfaceName?.let { rows += "Iface: $it" }
+            l.dnsServers.mapNotNull { it.hostAddress }.forEach { rows += "DNS: $it" }
+            if (!l.domains.isNullOrBlank()) rows += "Domains: ${l.domains}"
+            runCatching { l.httpProxy?.let { rows += "Proxy: ${it.host}:${it.port}" } }
+            l.routes.filter { it.isDefaultRoute && it.gateway != null }
+                .mapNotNull { it.gateway?.hostAddress }.distinct()
+                .forEach { rows += "Gateway: $it" }
+        }
+
+        // ── every bound IP (v4 + v6), per interface ──────────────────────────
+        runCatching {
+            NetworkInterface.getNetworkInterfaces().asSequence()
+                .filter { it.isUp && !it.isLoopback }
+                .forEach { nif ->
+                    nif.inetAddresses.asSequence()
+                        .filter { !it.isLoopbackAddress && !it.isLinkLocalAddress }
+                        .mapNotNull { it.hostAddress }
+                        .forEach { rows += "IP: ${nif.name} $it" }
+                }
+        }
         return rows
     }
+
+    private fun fmtKbps(kbps: Int): String =
+        if (kbps >= 1000) "%.1f Mbps".format(kbps / 1000.0) else "$kbps Kbps"
 
     private fun readLocalIps(): List<String> = try {
         val out = mutableListOf<String>()
