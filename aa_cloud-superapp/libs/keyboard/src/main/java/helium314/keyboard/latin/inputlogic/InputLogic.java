@@ -742,9 +742,15 @@ public final class InputLogic {
                     sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                 }
                 break;
-            case KeyCode.TRANSLATE: {
-                // SuperApp addition (patch 0001): on-device translate of the
-                // selection (or whole field) INTO the active subtype's language.
+            case KeyCode.TRANSLATE:
+                // SuperApp addition (patch 0001): TAP → open the Gboard-style
+                // live translate bar above the keys (the main translate UI).
+                mLatinIME.toggleTranslateBar();
+                break;
+            case KeyCode.TRANSLATE_BAR: {
+                // SuperApp addition (patch 0001): LONG-PRESS → quick in-place
+                // translate of the selection (or whole field) into the active
+                // subtype's language, no bar.
                 final java.util.Locale tLoc =
                         helium314.keyboard.latin.RichInputMethodManager.getInstance().getCurrentSubtypeLocale();
                 final String tTag = (tLoc != null && !tLoc.getLanguage().isEmpty()) ? tLoc.getLanguage() : "en";
@@ -752,11 +758,6 @@ public final class InputLogic {
                         mLatinIME, mLatinIME.getCurrentInputConnection(), tTag);
                 break;
             }
-            case KeyCode.TRANSLATE_BAR:
-                // SuperApp addition (patch 0001): long-press TRANSLATE → toggle
-                // the Gboard-style live translate bar above the keys.
-                mLatinIME.toggleTranslateBar();
-                break;
             case KeyCode.CLIPBOARD_PASTE:
                 sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);
                 break;
