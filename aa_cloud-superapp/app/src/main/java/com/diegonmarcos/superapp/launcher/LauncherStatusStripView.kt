@@ -178,9 +178,9 @@ class LauncherStatusStripView @JvmOverloads constructor(
         leftCluster.addView(makeToolColumn("cellular", signal5gView))
         leftCluster.addView(makeToolColumn("wifi", wifiView))
         leftCluster.addView(makeToolColumn("vpn", wgView))
+        leftCluster.addView(makeToolColumn("kde", kdeView))   // mesh (WG) → KDE → BT
         leftCluster.addView(makeToolColumn("bluetooth", btView))
         leftCluster.addView(makeToolColumn("usb", usbView))
-        leftCluster.addView(makeToolColumn("kde", kdeView))
         innerRow.addView(leftCluster)
 
         // ── CENTER: date + time, true screen-centre ────────────────
