@@ -160,12 +160,15 @@ object NetworkInfoPopup {
      *  tappable → [onTap]. Green = on, dim = off. */
     private fun lightRow(ctx: Context, title: String, on: Boolean, onTap: () -> Unit): View {
         val d = ctx.resources.displayMetrics.density
+        // WRAP_CONTENT (no weight spacer) so the row sizes to title + light and
+        // never widens the popup — the light sits one space after the title.
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         }
         row.addView(label(ctx, title))
-        row.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f)) // spacer pushes the light right
         val dot = View(ctx).apply {
             val sz = (10 * d).toInt()
             layoutParams = LinearLayout.LayoutParams(sz, sz)
@@ -176,7 +179,8 @@ object NetworkInfoPopup {
         }
         val hit = LinearLayout(ctx).apply {
             gravity = Gravity.CENTER
-            val p = (8 * d).toInt(); setPadding(p, p / 2, 0, p / 2)
+            // left padding = the "one space" gap after the title; small touch pad.
+            val p = (5 * d).toInt(); setPadding((8 * d).toInt(), p, p, p)
             isClickable = true
             setOnClickListener { onTap() }
             addView(dot)
