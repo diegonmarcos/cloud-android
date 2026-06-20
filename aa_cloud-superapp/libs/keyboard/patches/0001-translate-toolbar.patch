@@ -40,7 +40,7 @@ index 11ded67f..b90edc96 100644
      const val CURRENCY_SLOT_1 =             -801
      const val CURRENCY_SLOT_2 =             -802
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
-index 31bbb02a..edb00884 100644
+index 31bbb02a..4d3cabbb 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
 +++ b/libs/keyboard/src/main/java/helium314/keyboard/latin/LatinIME.java
 @@ -139,6 +139,9 @@ public class LatinIME extends InputMethodService implements
@@ -111,6 +111,21 @@ index 31bbb02a..edb00884 100644
          if (DebugFlags.DEBUG_ENABLED) {
              Log.i(TAG, "onUpdateSelection: oss=" + oldSelStart + ", ose=" + oldSelEnd
                      + ", nss=" + newSelStart + ", nse=" + newSelEnd
+@@ -1226,6 +1266,14 @@ public class LatinIME extends InputMethodService implements
+         // Has to be subtracted after calculating touchableRegion
+         visibleTopY -= getEmojiSearchActivityHeight();
+ 
++        // SuperApp addition (patch 0001): the live translate bar sits above the
++        // suggestion strip as OPAQUE IME UI. Include its height in the IME's
++        // reserved region so the host app reflows UP (Gboard-style) instead of
++        // the bar overlapping the app's content.
++        if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
++            visibleTopY -= mTranslateBar.getHeight();
++        }
++
+         outInsets.contentTopInsets = visibleTopY;
+         outInsets.visibleTopInsets = visibleTopY;
+         mInsetsUpdater.setInsets(outInsets);
 diff --git a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java b/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
 index bf36c20f..10dff46d 100644
 --- a/libs/keyboard/src/main/java/helium314/keyboard/latin/inputlogic/InputLogic.java
