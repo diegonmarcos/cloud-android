@@ -82,6 +82,12 @@ class App : Application() {
         runCatching { helium314.keyboard.latin.RichInputMethodManager.init(this) }
         runCatching { helium314.keyboard.latin.settings.Defaults.initDynamicDefaults(this) }
         runCatching { enableDefaultKeyboardLanguages() }
+        // Migrate the saved toolbar-key prefs so SuperApp-added keys (TRANSLATE)
+        // appear in Settings → Toolbar's reorder/enable list for EXISTING installs.
+        // HeliBoard only runs this from its own App.onCreate, and only on DEBUG
+        // builds — but our `.App` wins the manifest merge so its onCreate never
+        // fires, and our APK is release. Idempotent: a no-op once TRANSLATE is in.
+        runCatching { helium314.keyboard.latin.utils.upgradeToolbarPrefs(heliboardPrefs()) }
     }
 
     /** First-run only: enable the keyboard subtypes listed in
