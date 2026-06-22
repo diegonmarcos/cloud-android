@@ -19,7 +19,10 @@ plugins {
 }
 
 // Data-driven model registry: single source of truth is build.json::voice.
-def buildJson = new JsonSlurper().parse(file('../build.json'))
+// libs/voice is two levels under the repo root (voice -> libs -> root), so the
+// root build.json is ../../ (app/build.gradle uses ../ only because app/ is one
+// level down).
+def buildJson = new JsonSlurper().parse(file('../../build.json'))
 def voiceModelsJson = JsonOutput.toJson(buildJson.voice.models)
 def voiceModelsB64 = voiceModelsJson.bytes.encodeBase64().toString()
 def voiceDefaultLang = buildJson.voice.default_language
