@@ -183,9 +183,8 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // don't reserve an empty row. When shown, keep both rows populated.
         toolbarRow.isVisible = toolbar.childCount > 0
         if (toolbar.childCount > 0) setToolbarVisibility(true)
-        // SuperApp: the toolbar is fixed (its own always-on row), so the
-        // expand/collapse arrow that used to hide it is pointless — hide it.
-        toolbarExpandKey.isVisible = false
+        // The expand/collapse arrow is hidden authoritatively in updateKeys()
+        // (it re-evaluates visibility, so hiding it here would not stick).
 
         updateKeys()
     }
@@ -525,25 +524,24 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     }
 
     fun updateVoiceKey() {
-        val show = Settings.getValues().mShowsVoiceInputKey
-        toolbar.findViewWithTag<View>(ToolbarKey.VOICE)?.isVisible = show
-        pinnedKeys.findViewWithTag<View>(ToolbarKey.VOICE)?.isVisible = show
+        // SuperApp: always show the VOICE toolbar key. Upstream hides it when no
+        // voice-input IME is installed (mShowsVoiceInputKey -> InputAttributes ->
+        // !isShortcutImeReady), which looked like a "missing icon". We keep the
+        // key visible; tapping launches the system voice input (a voice IME such
+        // as Sayboard/FUTO must be installed for it to actually transcribe).
+        toolbar.findViewWithTag<View>(ToolbarKey.VOICE)?.isVisible = true
+        pinnedKeys.findViewWithTag<View>(ToolbarKey.VOICE)?.isVisible = true
     }
 
     private fun updateKeys() {
         updateVoiceKey()
-        val settingsValues = Settings.getValues()
 
-        val toolbarIsExpandable = settingsValues.mToolbarMode == ToolbarMode.EXPANDABLE
-        if (settingsValues.mIncognitoModeEnabled) {
-            toolbarExpandKey.setImageDrawable(incognitoIcon)
-            toolbarExpandKey.isVisible = true
-        } else {
-            toolbarExpandKey.setImageDrawable(toolbarArrowIcon)
-            toolbarExpandKey.isVisible = toolbarIsExpandable
-        }
-
-        toolbarExpandKey.setOnClickListener(if (!toolbarIsExpandable) null else this)
+        // SuperApp two-row strip: the toolbar is fixed on its own always-on row,
+        // so the expand/collapse arrow is never shown (it has no function here).
+        // This is the authoritative spot — upstream re-showed the arrow here based
+        // on EXPANDABLE/incognito mode, which is why hiding it in init didn't stick.
+        toolbarExpandKey.isVisible = false
+        toolbarExpandKey.setOnClickListener(null)
         pinnedKeys.visibility = suggestionsStrip.visibility
         isExternalSuggestionVisible = false
     }
