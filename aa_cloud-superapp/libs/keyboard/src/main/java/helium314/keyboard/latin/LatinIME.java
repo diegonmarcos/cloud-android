@@ -1470,7 +1470,12 @@ public class LatinIME extends InputMethodService implements
             if (cp > 0) { mTranslateBar.appendCodePoint(cp); return; }
         }
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
-            mRichImm.switchToShortcutIme(this);
+            // SuperApp: use the bundled OFFLINE Vosk engine (libs:voice) instead of
+            // switching to a system voice IME — none is installed on de-googled
+            // devices, which is why this key did nothing. Toggle dictation in the
+            // active keyboard language. patches/0005-voice-input.patch.
+            com.diegonmarcos.superapp.voice.VoiceInput.toggle(
+                    this, mRichImm.getCurrentSubtypeLocale().toLanguageTag());
         }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event,

@@ -1,0 +1,54 @@
+// libs:voice — on-device OFFLINE voice-input engine (Vosk) for the vendored
+// keyboard's VOICE toolbar key. Self-contained, lives OUTSIDE libs/keyboard/
+// src/main so `build.sh sync-heliboard` (rsync --delete mirror of upstream
+// HeliBoard) never clobbers it — same isolation rationale as libs:translate.
+//
+// Vosk runs a small acoustic model fully on-device: after the per-language
+// model is fetched once (~40-50 MB), nothing leaves the device and NO Google /
+// system speech-recognition IME is required (that absence is why the VOICE key
+// did nothing on de-googled devices). The model registry is data-driven from
+// build.json::voice.models, baked into BuildConfig below. libs:keyboard depends
+// on this module; LatinIME's KeyCode.VOICE_INPUT handler calls VoiceInput.toggle.
+
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Data-driven model registry: single source of truth is build.json::voice.
+def buildJson = new JsonSlurper().parse(file('../build.json'))
+def voiceModelsJson = JsonOutput.toJson(buildJson.voice.models)
+def voiceModelsB64 = voiceModelsJson.bytes.encodeBase64().toString()
+def voiceDefaultLang = buildJson.voice.default_language
+
+android {
+    namespace 'com.diegonmarcos.superapp.voice'
+    compileSdk 36
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+        // Baked from build.json::voice — VoiceModelManager reads these at runtime.
+        buildConfigField "String", "VOICE_MODELS_B64", "\"${voiceModelsB64}\""
+        buildConfigField "String", "VOICE_DEFAULT_LANGUAGE", "\"${voiceDefaultLang}\""
+    }
+    buildFeatures {
+        buildConfig true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+
+    // Vosk offline speech recognition. The AAR bundles the native libvosk.so
+    // for arm64-v8a/armeabi-v7a/x86_64; JNA is its required native bridge.
+    implementation 'com.alphacephei:vosk-android:0.3.47'
+    implementation 'net.java.dev.jna:jna:5.13.0@aar'
+}
