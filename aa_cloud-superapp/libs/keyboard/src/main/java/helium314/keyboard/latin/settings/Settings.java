@@ -110,6 +110,9 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_FLOATING_POS_Y_PREFIX = "floating_pos_y";
     public static final String PREF_FONT_SCALE = "font_scale";
     public static final String PREF_EMOJI_FONT_SCALE = "emoji_font_scale";
+    // SuperApp: clipboard history card scale. <1 shrinks card text AND auto-adds
+    // grid columns so more clips fit per line; >1 enlarges text + fewer columns.
+    public static final String PREF_CLIPBOARD_FONT_SCALE = "clipboard_font_scale";
     public static final String PREF_EMOJI_KEY_FIT = "emoji_key_fit";
     public static final String PREF_EMOJI_SKIN_TONE = "emoji_skin_tone";
     public static final String PREF_SPACE_HORIZONTAL_SWIPE = "horizontal_space_swipe";

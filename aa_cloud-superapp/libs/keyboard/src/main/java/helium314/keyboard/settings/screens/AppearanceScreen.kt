@@ -90,6 +90,7 @@ fun AppearanceScreen(
         Settings.PREF_EMOJI_FONT_SCALE,
         if (prefs.getFloat(Settings.PREF_EMOJI_FONT_SCALE, Defaults.PREF_EMOJI_FONT_SCALE) != 1f)
             Settings.PREF_EMOJI_KEY_FIT else null,
+        Settings.PREF_CLIPBOARD_FONT_SCALE,
         if (prefs.getInt(Settings.PREF_EMOJI_MAX_SDK, 0) >= 24)
             Settings.PREF_EMOJI_SKIN_TONE else null,
     )
@@ -323,6 +324,18 @@ fun createAppearanceSettings(context: Context) = listOf(
     },
     Setting(context, Settings.PREF_EMOJI_KEY_FIT, R.string.prefs_emoji_key_fit) {
         SwitchPreference(it, Defaults.PREF_EMOJI_KEY_FIT) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }
+    },
+    // SuperApp: clipboard history card scale. Range 0.5..1.5 — below 1 shrinks the
+    // card text and auto-increases the grid column count (see ClipboardHistoryView)
+    // so more clips fit per line; above 1 enlarges text with fewer, bigger cards.
+    Setting(context, Settings.PREF_CLIPBOARD_FONT_SCALE, R.string.prefs_clipboard_font_scale) { setting ->
+        SliderPreference(
+            name = setting.title,
+            key = setting.key,
+            default = Defaults.PREF_CLIPBOARD_FONT_SCALE,
+            range = 0.5f..1.5f,
+            description = { "${(100 * it).toInt()}%" }
+        ) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }
     },
     Setting(context, Settings.PREF_EMOJI_SKIN_TONE, R.string.prefs_emoji_skin_tone) { setting ->
         val items = listOf(

@@ -8,6 +8,7 @@ import com.diegonmarcos.superapp.battery.BatterySessionStats
 
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.work.Configuration as WorkManagerConfiguration
 import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.devcontrol.DevControlServer
 import com.diegonmarcos.superapp.notificationcenter.KdeStatusService
@@ -26,7 +27,27 @@ import helium314.keyboard.latin.utils.prefs as heliboardPrefs
  *    `tooltip_frame_light` (white bg) when night mode is on. Same
  *    knob fixes the pill colour without us re-implementing it.
  */
-class App : Application() {
+class App : Application(), WorkManagerConfiguration.Provider {
+    /**
+     * On-demand WorkManager initialization. The vendored HeliBoard
+     * (libs:keyboard) merge drops androidx.startup's auto-init
+     * `WorkManagerInitializer`, so the default provider never initializes
+     * WorkManager — every `WorkManager.getInstance(...)` then throws
+     * "WorkManager is not initialized properly". That crashed the launcher at
+     * MainActivity → Updater.start, and silently broke
+     * BatterySessionWorker.schedule (swallowed by its runCatching).
+     *
+     * Implementing Configuration.Provider + removing the default initializer in
+     * the manifest is the canonical on-demand setup: the FIRST getInstance()
+     * call lazily initializes WorkManager with this config. Repairs both the
+     * updater and the battery worker, deterministically, regardless of the
+     * manifest-merge outcome.
+     */
+    override val workManagerConfiguration: WorkManagerConfiguration
+        get() = WorkManagerConfiguration.Builder()
+            .setMinimumLoggingLevel(android.util.Log.INFO)
+            .build()
+
     override fun onCreate() {
         // Force night mode BEFORE super so AppCompatDelegate picks it up
         // on the very first inflation.

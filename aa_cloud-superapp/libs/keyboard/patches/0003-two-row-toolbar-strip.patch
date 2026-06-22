@@ -1,0 +1,236 @@
+diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/suggestions/SuggestionStripView.kt b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/suggestions/SuggestionStripView.kt
+index 310b1e8b..d6afae94 100644
+--- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/suggestions/SuggestionStripView.kt
++++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/suggestions/SuggestionStripView.kt
+@@ -117,6 +117,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
+     // toolbar views, drawables and setup
+     private val toolbar: ViewGroup = findViewById(R.id.toolbar)
+     private val toolbarContainer: View = findViewById(R.id.toolbar_container)
++    private val toolbarRow: View = findViewById(R.id.toolbar_row) // SuperApp: dedicated toolbar row
+     private val pinnedKeys: ViewGroup = findViewById(R.id.pinned_keys)
+     private val suggestionsStrip: ViewGroup = findViewById(R.id.suggestions_strip)
+     private val toolbarExpandKey = findViewById<ImageButton>(R.id.suggestions_strip_toolbar_key)
+@@ -176,6 +177,13 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
+             }
+         }
+ 
++        // SuperApp two-row strip: the toolbar now occupies its own dedicated row
++        // (always visible alongside the suggestions row). Collapse that row only
++        // when there are no toolbar keys to show (e.g. ToolbarMode.HIDDEN) so we
++        // don't reserve an empty row. When shown, keep both rows populated.
++        toolbarRow.isVisible = toolbar.childCount > 0
++        if (toolbar.childCount > 0) setToolbarVisibility(true)
++
+         updateKeys()
+     }
+ 
+@@ -228,9 +236,16 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
+     }
+ 
+     fun setToolbarVisibility(toolbarVisible: Boolean) {
+-        pinnedKeys.isVisible = !toolbarVisible
+-        suggestionsStrip.isVisible = !toolbarVisible
+-        toolbarContainer.isVisible = toolbarVisible
++        // SuperApp two-row strip: the toolbar and the suggestions live on
++        // SEPARATE rows (suggestions_strip.xml), so they are BOTH shown at once
++        // instead of mutually toggling. The toolbar row stays visible regardless
++        // of the requested value (so auto-show / auto-hide-toolbar callers in
++        // LatinIME become no-ops for the toolbar), and the suggestions row is
++        // always visible too. The toolbar row itself is collapsed only when there
++        // are no toolbar keys (HIDDEN mode) — handled once in init via toolbarRow.
++        pinnedKeys.isVisible = true
++        suggestionsStrip.isVisible = true
++        toolbarContainer.isVisible = true
+ 
+         if (DEBUG_SUGGESTIONS) {
+             for (view in debugInfoViews) {
+@@ -238,7 +253,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
+             }
+         }
+ 
+-        toolbarExpandKey.scaleX = (if (toolbarVisible) -1f else 1f) * direction
++        toolbarExpandKey.scaleX = -1f * direction
+     }
+ 
+     fun setSuggestions(suggestions: SuggestedWords, isRtlLanguage: Boolean) {
+diff --git a/ea_cloud-superapp/libs/keyboard/src/main/res/layout/strip_container.xml b/ea_cloud-superapp/libs/keyboard/src/main/res/layout/strip_container.xml
+index 631e9406..f04e21e0 100644
+--- a/ea_cloud-superapp/libs/keyboard/src/main/res/layout/strip_container.xml
++++ b/ea_cloud-superapp/libs/keyboard/src/main/res/layout/strip_container.xml
+@@ -5,29 +5,38 @@
+     SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+ -->
+ 
++<!--
++    SuperApp two-row redesign: height is wrap_content so the container adopts the
++    height of whichever strip is currently VISIBLE (the others are set GONE by
++    KeyboardSwitcher, so they drop out of measurement). In typing mode the
++    SuggestionStripView is two rows tall (toolbar + suggestions); in emoji /
++    clipboard mode the single-row strips below keep the original
++    @dimen/config_suggestions_strip_height. This makes the keyboard grow by one
++    row only while typing, and keeps emoji/clipboard strips single-height.
++-->
+ <FrameLayout
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     android:layout_width="match_parent"
+-    android:layout_height="@dimen/config_suggestions_strip_height">
++    android:layout_height="wrap_content">
+     <!-- To ensure that key preview popup is correctly placed when the current system locale is
+          one of RTL locales, layoutDirection="ltr" is needed in the SDK version 17+. -->
+     <helium314.keyboard.latin.suggestions.SuggestionStripView
+         android:id="@+id/suggestion_strip_view"
+         android:layoutDirection="ltr"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
++        android:layout_height="wrap_content"
+         android:gravity="center_vertical"
+         style="?attr/suggestionStripViewStyle" />
+     <LinearLayout
+         android:id="@+id/emoji_tab_strip"
+         android:orientation="horizontal"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
++        android:layout_height="@dimen/config_suggestions_strip_height"
+         style="?attr/suggestionStripViewStyle" />
+     <HorizontalScrollView
+         android:id="@+id/clipboard_strip_scroll_view"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
++        android:layout_height="@dimen/config_suggestions_strip_height"
+         style="?attr/suggestionStripViewStyle"
+         android:scrollbarThumbHorizontal="@color/toolbar_scrollbar" >
+         <LinearLayout
+diff --git a/ea_cloud-superapp/libs/keyboard/src/main/res/layout/suggestions_strip.xml b/ea_cloud-superapp/libs/keyboard/src/main/res/layout/suggestions_strip.xml
+index ee2f85ec..cb01567e 100644
+--- a/ea_cloud-superapp/libs/keyboard/src/main/res/layout/suggestions_strip.xml
++++ b/ea_cloud-superapp/libs/keyboard/src/main/res/layout/suggestions_strip.xml
+@@ -5,63 +5,87 @@
+     SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+ -->
+ 
++<!--
++    SuperApp two-row redesign: the strip is split vertically into a dedicated
++    TOOLBAR row (top) and a TEXT-RECOMMENDATION / suggestions row (bottom),
++    instead of overlapping them in one row and toggling. Each row is
++    @dimen/config_suggestions_strip_height tall, so the wrapper is two rows high
++    (the strip_container is wrap_content and absorbs this). The translate bar
++    (libs:translate) still renders as its own row ABOVE this whole strip — see
++    LatinIME.toggleTranslateBar / patches/0001-translate-toolbar.patch.
++    All original view IDs are preserved so SuggestionStripView wiring is intact.
++-->
+ <merge
+     xmlns:android="http://schemas.android.com/apk/res/android">
+     <LinearLayout
+         android:animateLayoutChanges="true"
+         android:id="@+id/suggestions_strip_wrapper"
+-        android:orientation="horizontal"
++        android:orientation="vertical"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
++        android:layout_height="wrap_content"
+         android:hapticFeedbackEnabled="false"
+         android:soundEffectsEnabled="false">
+-        <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
+-             We just need to ignore the system's audio and haptic feedback settings. -->
+-        <ImageButton
+-            android:id="@+id/suggestions_strip_toolbar_key"
+-            android:layout_width="@dimen/config_suggestions_strip_edge_key_width"
+-            android:layout_height="@dimen/config_suggestions_strip_edge_key_width"
+-            android:layout_gravity="center_vertical"
+-            android:layout_weight="0"
+-            android:layout_marginStart="1dp"
+-            android:background="@drawable/toolbar_expand_key_background"
+-            style="?attr/suggestionWordStyle"
+-            android:contentDescription="@string/more_keys_strip_description" />
+-        <HorizontalScrollView
+-            android:id="@+id/toolbar_container"
++        <!-- Row 1: TOOLBAR (always visible, own row) -->
++        <LinearLayout
++            android:id="@+id/toolbar_row"
++            android:orientation="horizontal"
+             android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:scrollbarThumbHorizontal="@color/toolbar_scrollbar"
+-            android:visibility="gone">
++            android:layout_height="@dimen/config_suggestions_strip_height">
++            <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
++                 We just need to ignore the system's audio and haptic feedback settings. -->
++            <ImageButton
++                android:id="@+id/suggestions_strip_toolbar_key"
++                android:layout_width="@dimen/config_suggestions_strip_edge_key_width"
++                android:layout_height="@dimen/config_suggestions_strip_edge_key_width"
++                android:layout_gravity="center_vertical"
++                android:layout_weight="0"
++                android:layout_marginStart="1dp"
++                android:background="@drawable/toolbar_expand_key_background"
++                style="?attr/suggestionWordStyle"
++                android:contentDescription="@string/more_keys_strip_description" />
++            <HorizontalScrollView
++                android:id="@+id/toolbar_container"
++                android:layout_width="match_parent"
++                android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:scrollbarThumbHorizontal="@color/toolbar_scrollbar">
++                <LinearLayout
++                    android:id="@+id/toolbar"
++                    android:layout_width="wrap_content"
++                    android:layout_height="match_parent"
++                    android:orientation="horizontal"
++                    style="?attr/suggestionWordStyle">
++                </LinearLayout>
++            </HorizontalScrollView>
++        </LinearLayout>
++        <!-- Row 2: TEXT RECOMMENDATION (word suggestions + pinned keys) -->
++        <LinearLayout
++            android:id="@+id/suggestions_row"
++            android:orientation="horizontal"
++            android:layout_width="match_parent"
++            android:layout_height="@dimen/config_suggestions_strip_height">
++            <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
++                 We just need to ignore the system's audio and haptic feedback settings. -->
++            <!-- todo: sth is fishy with that maxwidth
++                   check what is going on in the layout helper? -->
+             <LinearLayout
+-                android:id="@+id/toolbar"
++                android:id="@+id/suggestions_strip"
++                android:orientation="horizontal"
++                android:maxWidth="100dp"
+                 android:layout_width="wrap_content"
+                 android:layout_height="match_parent"
++                android:layout_weight="1"
++                android:gravity="center_horizontal"
++                android:hapticFeedbackEnabled="false"
++                android:soundEffectsEnabled="false" />
++            <LinearLayout
++                android:id="@+id/pinned_keys"
+                 android:orientation="horizontal"
++                android:layout_width="wrap_content"
++                android:layout_height="match_parent"
++                android:minWidth="0dp"
+                 style="?attr/suggestionWordStyle">
+             </LinearLayout>
+-        </HorizontalScrollView>
+-        <!-- Provide audio and haptic feedback by ourselves based on the keyboard settings.
+-             We just need to ignore the system's audio and haptic feedback settings. -->
+-        <!-- todo: sth is fishy with that maxwidth
+-               check what is going on in the layout helper? -->
+-        <LinearLayout
+-            android:id="@+id/suggestions_strip"
+-            android:orientation="horizontal"
+-            android:maxWidth="100dp"
+-            android:layout_width="wrap_content"
+-            android:layout_height="match_parent"
+-            android:layout_weight="1"
+-            android:gravity="center_horizontal"
+-            android:hapticFeedbackEnabled="false"
+-            android:soundEffectsEnabled="false" />
+-        <LinearLayout
+-            android:id="@+id/pinned_keys"
+-            android:orientation="horizontal"
+-            android:layout_width="wrap_content"
+-            android:layout_height="match_parent"
+-            android:minWidth="0dp"
+-            style="?attr/suggestionWordStyle">
+         </LinearLayout>
+     </LinearLayout>
+ </merge>

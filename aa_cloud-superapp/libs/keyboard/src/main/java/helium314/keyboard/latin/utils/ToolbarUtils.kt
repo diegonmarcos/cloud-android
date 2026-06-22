@@ -135,8 +135,14 @@ val defaultToolbarPref by lazy {
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
 }
 
-val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {
-    it.name + Separators.KV + false
+// SuperApp default: pin TRANSLATE + CLIPBOARD so they are FIXED (always shown)
+// in the pinned toolbar area. Remaining keys stay unpinned (false), mirroring
+// the enabled-first ordering used by defaultToolbarPref.
+val defaultPinnedToolbarPref by lazy {
+    val pinned = listOf(CLIPBOARD, TRANSLATE)
+    val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
+    pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
+            others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
 }
 
 val defaultClipboardToolbarPref by lazy {

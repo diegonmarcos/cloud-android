@@ -117,6 +117,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     // toolbar views, drawables and setup
     private val toolbar: ViewGroup = findViewById(R.id.toolbar)
     private val toolbarContainer: View = findViewById(R.id.toolbar_container)
+    private val toolbarRow: View = findViewById(R.id.toolbar_row) // SuperApp: dedicated toolbar row
     private val pinnedKeys: ViewGroup = findViewById(R.id.pinned_keys)
     private val suggestionsStrip: ViewGroup = findViewById(R.id.suggestions_strip)
     private val toolbarExpandKey = findViewById<ImageButton>(R.id.suggestions_strip_toolbar_key)
@@ -176,6 +177,13 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             }
         }
 
+        // SuperApp two-row strip: the toolbar now occupies its own dedicated row
+        // (always visible alongside the suggestions row). Collapse that row only
+        // when there are no toolbar keys to show (e.g. ToolbarMode.HIDDEN) so we
+        // don't reserve an empty row. When shown, keep both rows populated.
+        toolbarRow.isVisible = toolbar.childCount > 0
+        if (toolbar.childCount > 0) setToolbarVisibility(true)
+
         updateKeys()
     }
 
@@ -228,9 +236,16 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     }
 
     fun setToolbarVisibility(toolbarVisible: Boolean) {
-        pinnedKeys.isVisible = !toolbarVisible
-        suggestionsStrip.isVisible = !toolbarVisible
-        toolbarContainer.isVisible = toolbarVisible
+        // SuperApp two-row strip: the toolbar and the suggestions live on
+        // SEPARATE rows (suggestions_strip.xml), so they are BOTH shown at once
+        // instead of mutually toggling. The toolbar row stays visible regardless
+        // of the requested value (so auto-show / auto-hide-toolbar callers in
+        // LatinIME become no-ops for the toolbar), and the suggestions row is
+        // always visible too. The toolbar row itself is collapsed only when there
+        // are no toolbar keys (HIDDEN mode) — handled once in init via toolbarRow.
+        pinnedKeys.isVisible = true
+        suggestionsStrip.isVisible = true
+        toolbarContainer.isVisible = true
 
         if (DEBUG_SUGGESTIONS) {
             for (view in debugInfoViews) {
@@ -238,7 +253,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
             }
         }
 
-        toolbarExpandKey.scaleX = (if (toolbarVisible) -1f else 1f) * direction
+        toolbarExpandKey.scaleX = -1f * direction
     }
 
     fun setSuggestions(suggestions: SuggestedWords, isRtlLanguage: Boolean) {

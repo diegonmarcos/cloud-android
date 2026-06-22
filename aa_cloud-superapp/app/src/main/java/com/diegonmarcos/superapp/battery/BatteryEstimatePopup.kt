@@ -87,6 +87,19 @@ object BatteryEstimatePopup {
         container.addView(spacer(ctx, (4 * d).toInt()))
         container.addView(label(ctx, "Cycle count (since install)"))
         container.addView(valueSmall(ctx, BatterySessionStats.fmtCycleCount(s)))
+        // Battery capacity — RATED (nameplate/design, via hidden
+        // PowerProfile reflection, AccuBattery's path) and CURRENT-FULL
+        // (worn, via the CHARGE_COUNTER peak BatterySessionStats already
+        // tracks). Wh derived at 3.85 V nominal. Multi-source fallback +
+        // "—" / "calibrating" live in BatteryCapacity so a blocked sysfs
+        // node never makes the rows vanish.
+        val cap = runCatching { BatteryCapacity.read(ctx, s.peakChargeCounterUah) }.getOrNull()
+        container.addView(spacer(ctx, (6 * d).toInt()))
+        container.addView(label(ctx, "Capacity (rated)"))
+        container.addView(valueSmall(ctx, if (cap != null) BatteryCapacity.fmtRated(cap) else "—"))
+        container.addView(spacer(ctx, (4 * d).toInt()))
+        container.addView(label(ctx, "Capacity (now)"))
+        container.addView(valueSmall(ctx, if (cap != null) BatteryCapacity.fmtFullNow(cap) else "—"))
 
         val pw = PopupWindow(
             container,

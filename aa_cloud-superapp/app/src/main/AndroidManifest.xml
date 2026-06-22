@@ -132,6 +132,22 @@
                  would move the SuperApp's default storage to device-protected
                  and BREAK EncryptedSharedPreferences (credential-keystore). We
                  force false; the keyboard still works post-unlock. -->
+        <!-- WorkManager on-demand initialization. The vendored HeliBoard merge
+             drops androidx.startup's auto-init, leaving WorkManager
+             uninitialized (every getInstance() throws). We complete the
+             official on-demand setup: remove the default WorkManagerInitializer
+             here and provide config via App : Configuration.Provider, so the
+             first getInstance() lazily initializes it. Keep both halves in sync. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                tools:node="remove" />
+        </provider>
+
         <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
         <receiver
             android:name=".notificationcenter.KdeQuickActionReceiver"

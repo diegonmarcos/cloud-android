@@ -96,7 +96,13 @@ class ClipboardHistoryView @JvmOverloads constructor(
         }
         placeholderView = findViewById(R.id.clipboard_empty_view)
         clipboardRecyclerView = findViewById<ClipboardHistoryRecyclerView>(R.id.clipboard_list).apply {
-            val colCount = resources.getInteger(R.integer.config_clipboard_keyboard_col_count)
+            // SuperApp: clipboard card scale. The orientation/size-qualified
+            // integer resource gives the base column count; the user's card-scale
+            // pref (<1 = smaller cards) auto-multiplies it so more clips fit per
+            // line (e.g. base 2 at scale 0.5 -> 4 columns). Min 1 column.
+            val baseColCount = resources.getInteger(R.integer.config_clipboard_keyboard_col_count)
+            val clipScale = Settings.getValues().mClipboardFontScale
+            val colCount = Math.round(baseColCount / clipScale).coerceAtLeast(1)
             layoutManager = StaggeredGridLayoutManager(colCount, StaggeredGridLayoutManager.VERTICAL)
             @Suppress("deprecation") // "no cache" should be fine according to warning in https://developer.android.com/reference/android/view/ViewGroup#setPersistentDrawingCache(int)
             persistentDrawingCache = PERSISTENT_NO_CACHE
@@ -118,7 +124,9 @@ class ClipboardHistoryView @JvmOverloads constructor(
             itemBackgroundId = keyBackgroundId
             itemTypeFace = params.mTypeface
             itemTextColor = params.mTextColor
-            itemTextSize = params.mLabelSize.toFloat()
+            // SuperApp: scale clipboard card text by the card-scale pref (paired
+            // with the auto column-count change above so both shrink together).
+            itemTextSize = params.mLabelSize.toFloat() * Settings.getValues().mClipboardFontScale
         }
     }
 

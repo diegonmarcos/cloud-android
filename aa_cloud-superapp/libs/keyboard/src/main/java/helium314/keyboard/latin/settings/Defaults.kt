@@ -93,8 +93,9 @@ object Defaults {
     val PREF_SIDE_PADDING_SCALE = Array(8) { 0f }
     @JvmField
     val PREF_KEY_GAP_SCALE = Array(4) { DEFAULT_SIZE_SCALE }
-    const val PREF_FONT_SCALE = DEFAULT_SIZE_SCALE
-    const val PREF_EMOJI_FONT_SCALE = DEFAULT_SIZE_SCALE
+    const val PREF_FONT_SCALE = 0.8f       // SuperApp default: keyboard letters at 80%
+    const val PREF_EMOJI_FONT_SCALE = 0.6f // SuperApp default: emoji view at 60%
+    const val PREF_CLIPBOARD_FONT_SCALE = DEFAULT_SIZE_SCALE
     const val PREF_EMOJI_KEY_FIT = true
     const val PREF_EMOJI_SKIN_TONE = ""
     @JvmField
@@ -132,7 +133,7 @@ object Defaults {
     @SuppressLint("RtlHardcoded")
     const val PREF_ONE_HANDED_GRAVITY = Gravity.LEFT
     const val PREF_ONE_HANDED_SCALE = 1f
-    const val PREF_SHOW_NUMBER_ROW = false
+    const val PREF_SHOW_NUMBER_ROW = true // SuperApp default: always show the number row
     const val PREF_SHOW_NUMBER_ROW_IN_SYMBOLS = true
     const val PREF_LOCALIZED_NUMBER_ROW = true
     const val PREF_SHOW_NUMBER_ROW_HINTS = false
@@ -148,7 +149,10 @@ object Defaults {
     const val PREF_TOUCHPAD_SENSITIVITY = 50
     const val PREF_TOUCHPAD_EDGE_SCROLL = true
     const val PREF_ENABLE_CLIPBOARD_HISTORY = true
-    const val PREF_CLIPBOARD_HISTORY_RETENTION_TIME = 10 // minutes
+    // SuperApp default: keep clipboard history forever. clearOldClips() treats
+    // any value > 120 as the "never expire" sentinel (no non-pinned purge), so
+    // copied clips survive across sessions instead of being wiped after 10 min.
+    const val PREF_CLIPBOARD_HISTORY_RETENTION_TIME = 121 // minutes (>120 = keep forever)
     const val PREF_CLIPBOARD_HISTORY_PINNED_FIRST = true
     const val PREF_CLIPBOARD_USE_FILES = true
     const val PREF_CLIPBOARD_FILES_SIZE_LIMIT = 20 // megabytes
