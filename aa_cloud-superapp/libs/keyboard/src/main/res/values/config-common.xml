@@ -68,7 +68,9 @@
     <dimen name="config_key_popup_hint_letter_padding">2dp</dimen>
 
     <!-- Common suggestion strip configuration. -->
-    <integer name="config_suggestions_count_in_strip">3</integer>
+    <!-- SuperApp: 5 strip slots (3 words + up to 2 reserved emoji slots — see
+         Suggest.reserveEmojiSlotsInStrip; keep STRIP_COUNT there in sync). -->
+    <integer name="config_suggestions_count_in_strip">5</integer>
     <fraction name="config_center_suggestion_percentile">36%</fraction>
     <integer name="config_delay_in_milliseconds_to_update_suggestions">100</integer>
 

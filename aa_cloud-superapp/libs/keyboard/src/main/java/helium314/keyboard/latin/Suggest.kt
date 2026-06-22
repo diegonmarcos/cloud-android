@@ -91,6 +91,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         val typedWordFirstOccurrenceWordInfo = suggestionsContainer.firstOrNull { it.mWord == capitalizedTypedWord }
         val firstOccurrenceOfTypedWordInSuggestions = SuggestedWordInfo.removeDupsAndTypedWord(capitalizedTypedWord, suggestionsContainer)
         makeFirstTwoSuggestionsNonEmoji(suggestionsContainer)
+        reserveEmojiSlotsInStrip(suggestionsContainer) // SuperApp: 3 words + up to 2 emoji slots
 
         val (allowsToBeAutoCorrected, hasAutoCorrection) = shouldBeAutoCorrected(
             trailingSingleQuotesCount,
@@ -297,6 +298,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         }
         SuggestedWordInfo.removeDupsAndTypedWord(null, suggestionsContainer)
         makeFirstTwoSuggestionsNonEmoji(suggestionsContainer)
+        reserveEmojiSlotsInStrip(suggestionsContainer) // SuperApp: 3 words + up to 2 emoji slots
         val pseudoTypedWord = suggestionsContainer.firstOrNull() // unchanged first suggestion, but considering adjusted order
         capitalizeAndAddTrailingSingleQuotes(suggestionsContainer, capsMode, 0, locale)
 
@@ -503,6 +505,37 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             WordComposer.CAPS_MODE_MANUAL_SHIFT_LOCKED -> word.uppercase(locale)
             WordComposer.CAPS_MODE_MANUAL_SHIFTED -> StringUtils.capitalizeFirstCodePoint(word, locale)
             else -> word
+        }
+
+        // SuperApp: the suggestion strip shows STRIP_COUNT items, of which up to
+        // RESERVED_EMOJI_SLOTS are reserved for emoji suggestions. Keep STRIP_COUNT
+        // in sync with res/values/config-common.xml::config_suggestions_count_in_strip.
+        private const val STRIP_COUNT = 5
+        private const val RESERVED_EMOJI_SLOTS = 2
+
+        /**
+         * SuperApp: reserve up to [RESERVED_EMOJI_SLOTS] of the visible strip slots
+         * for emoji suggestions. The first (STRIP_COUNT - RESERVED_EMOJI_SLOTS) slots
+         * stay words; the top up-to-2 emoji candidates are promoted into the trailing
+         * slots. If fewer emojis are available those slots fall back to words
+         * (reserve-when-available). No-op when there are no emoji candidates.
+         * Called right after makeFirstTwoSuggestionsNonEmoji so word-vs-emoji order
+         * is already settled. Uses identity matching since dups were removed upstream.
+         */
+        private fun reserveEmojiSlotsInStrip(words: MutableList<SuggestedWordInfo>) {
+            val wordSlots = STRIP_COUNT - RESERVED_EMOJI_SLOTS
+            if (words.size <= wordSlots) return
+            if (words.none { it.isEmoji }) return
+            val reservedEmojis = words.filter { it.isEmoji }.take(RESERVED_EMOJI_SLOTS)
+            val head = ArrayList<SuggestedWordInfo>(STRIP_COUNT)
+            words.filterNot { it.isEmoji }.take(wordSlots).forEach { head.add(it) }
+            head.addAll(reservedEmojis)
+            val placed = java.util.IdentityHashMap<SuggestedWordInfo, Boolean>()
+            head.forEach { placed[it] = true }
+            val tail = words.filter { placed[it] == null }
+            words.clear()
+            words.addAll(head)
+            words.addAll(tail)
         }
 
         private fun makeFirstTwoSuggestionsNonEmoji(words: MutableList<SuggestedWordInfo>) {
