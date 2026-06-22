@@ -1,166 +1,48 @@
-diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/keyboard/clipboard/ClipboardHistoryView.kt b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/keyboard/clipboard/ClipboardHistoryView.kt
-index 4c295678..87c2c395 100644
---- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/keyboard/clipboard/ClipboardHistoryView.kt
-+++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/keyboard/clipboard/ClipboardHistoryView.kt
-@@ -96,7 +96,13 @@ class ClipboardHistoryView @JvmOverloads constructor(
-         }
-         placeholderView = findViewById(R.id.clipboard_empty_view)
-         clipboardRecyclerView = findViewById<ClipboardHistoryRecyclerView>(R.id.clipboard_list).apply {
--            val colCount = resources.getInteger(R.integer.config_clipboard_keyboard_col_count)
-+            // SuperApp: clipboard card scale. The orientation/size-qualified
-+            // integer resource gives the base column count; the user's card-scale
-+            // pref (<1 = smaller cards) auto-multiplies it so more clips fit per
-+            // line (e.g. base 2 at scale 0.5 -> 4 columns). Min 1 column.
-+            val baseColCount = resources.getInteger(R.integer.config_clipboard_keyboard_col_count)
-+            val clipScale = Settings.getValues().mClipboardFontScale
-+            val colCount = Math.round(baseColCount / clipScale).coerceAtLeast(1)
-             layoutManager = StaggeredGridLayoutManager(colCount, StaggeredGridLayoutManager.VERTICAL)
-             @Suppress("deprecation") // "no cache" should be fine according to warning in https://developer.android.com/reference/android/view/ViewGroup#setPersistentDrawingCache(int)
-             persistentDrawingCache = PERSISTENT_NO_CACHE
-@@ -118,7 +124,9 @@ class ClipboardHistoryView @JvmOverloads constructor(
-             itemBackgroundId = keyBackgroundId
-             itemTypeFace = params.mTypeface
-             itemTextColor = params.mTextColor
--            itemTextSize = params.mLabelSize.toFloat()
-+            // SuperApp: scale clipboard card text by the card-scale pref (paired
-+            // with the auto column-count change above so both shrink together).
-+            itemTextSize = params.mLabelSize.toFloat() * Settings.getValues().mClipboardFontScale
-         }
-     }
- 
 diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Defaults.kt b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Defaults.kt
-index 38921124..04a40656 100644
+index 04a40656..8b167180 100644
 --- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Defaults.kt
 +++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Defaults.kt
-@@ -93,8 +93,9 @@ object Defaults {
-     val PREF_SIDE_PADDING_SCALE = Array(8) { 0f }
-     @JvmField
+@@ -95,7 +95,7 @@ object Defaults {
      val PREF_KEY_GAP_SCALE = Array(4) { DEFAULT_SIZE_SCALE }
--    const val PREF_FONT_SCALE = DEFAULT_SIZE_SCALE
--    const val PREF_EMOJI_FONT_SCALE = DEFAULT_SIZE_SCALE
-+    const val PREF_FONT_SCALE = 0.8f       // SuperApp default: keyboard letters at 80%
-+    const val PREF_EMOJI_FONT_SCALE = 0.6f // SuperApp default: emoji view at 60%
-+    const val PREF_CLIPBOARD_FONT_SCALE = DEFAULT_SIZE_SCALE
+     const val PREF_FONT_SCALE = 0.8f       // SuperApp default: keyboard letters at 80%
+     const val PREF_EMOJI_FONT_SCALE = 0.6f // SuperApp default: emoji view at 60%
+-    const val PREF_CLIPBOARD_FONT_SCALE = DEFAULT_SIZE_SCALE
++    const val PREF_CLIPBOARD_FONT_SCALE = 0.5f // SuperApp default: clipboard cards at 50% (more clips per line)
      const val PREF_EMOJI_KEY_FIT = true
      const val PREF_EMOJI_SKIN_TONE = ""
      @JvmField
-@@ -132,7 +133,7 @@ object Defaults {
-     @SuppressLint("RtlHardcoded")
-     const val PREF_ONE_HANDED_GRAVITY = Gravity.LEFT
-     const val PREF_ONE_HANDED_SCALE = 1f
--    const val PREF_SHOW_NUMBER_ROW = false
-+    const val PREF_SHOW_NUMBER_ROW = true // SuperApp default: always show the number row
-     const val PREF_SHOW_NUMBER_ROW_IN_SYMBOLS = true
-     const val PREF_LOCALIZED_NUMBER_ROW = true
-     const val PREF_SHOW_NUMBER_ROW_HINTS = false
-@@ -148,7 +149,10 @@ object Defaults {
-     const val PREF_TOUCHPAD_SENSITIVITY = 50
-     const val PREF_TOUCHPAD_EDGE_SCROLL = true
-     const val PREF_ENABLE_CLIPBOARD_HISTORY = true
--    const val PREF_CLIPBOARD_HISTORY_RETENTION_TIME = 10 // minutes
-+    // SuperApp default: keep clipboard history forever. clearOldClips() treats
-+    // any value > 120 as the "never expire" sentinel (no non-pinned purge), so
-+    // copied clips survive across sessions instead of being wiped after 10 min.
-+    const val PREF_CLIPBOARD_HISTORY_RETENTION_TIME = 121 // minutes (>120 = keep forever)
-     const val PREF_CLIPBOARD_HISTORY_PINNED_FIRST = true
-     const val PREF_CLIPBOARD_USE_FILES = true
-     const val PREF_CLIPBOARD_FILES_SIZE_LIMIT = 20 // megabytes
-diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Settings.java b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Settings.java
-index f7be689c..e730fd73 100644
---- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Settings.java
-+++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Settings.java
-@@ -110,6 +110,9 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
-     public static final String PREF_FLOATING_POS_Y_PREFIX = "floating_pos_y";
-     public static final String PREF_FONT_SCALE = "font_scale";
-     public static final String PREF_EMOJI_FONT_SCALE = "emoji_font_scale";
-+    // SuperApp: clipboard history card scale. <1 shrinks card text AND auto-adds
-+    // grid columns so more clips fit per line; >1 enlarges text + fewer columns.
-+    public static final String PREF_CLIPBOARD_FONT_SCALE = "clipboard_font_scale";
-     public static final String PREF_EMOJI_KEY_FIT = "emoji_key_fit";
-     public static final String PREF_EMOJI_SKIN_TONE = "emoji_skin_tone";
-     public static final String PREF_SPACE_HORIZONTAL_SWIPE = "horizontal_space_swipe";
-diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/SettingsValues.java b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/SettingsValues.java
-index 2b229a3d..e5f05b49 100644
---- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/SettingsValues.java
-+++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/settings/SettingsValues.java
-@@ -139,6 +139,7 @@ public class SettingsValues {
-     public final String mSpaceBarText;
-     public final float mFontSizeMultiplier;
-     public final float mFontSizeMultiplierEmoji;
-+    public final float mClipboardFontScale;
-     public final boolean mEmojiKeyFit;
-     public final PunctuationSuggestions mPunctuationSuggestions;
-     public final boolean mIsFloatingKeyboard;
-@@ -328,6 +329,7 @@ public class SettingsValues {
-         mSpaceBarText = prefs.getString(Settings.PREF_SPACE_BAR_TEXT, Defaults.PREF_SPACE_BAR_TEXT);
-         mFontSizeMultiplier = prefs.getFloat(Settings.PREF_FONT_SCALE, Defaults.PREF_FONT_SCALE);
-         mFontSizeMultiplierEmoji = prefs.getFloat(Settings.PREF_EMOJI_FONT_SCALE, Defaults.PREF_EMOJI_FONT_SCALE);
-+        mClipboardFontScale = prefs.getFloat(Settings.PREF_CLIPBOARD_FONT_SCALE, Defaults.PREF_CLIPBOARD_FONT_SCALE);
-         mEmojiKeyFit = prefs.getBoolean(Settings.PREF_EMOJI_KEY_FIT, Defaults.PREF_EMOJI_KEY_FIT);
-         mPunctuationSuggestions = Settings.readPunctuationSuggestions(context);
-     }
 diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
-index bfd13a23..7f295370 100644
+index 7f295370..8541d079 100644
 --- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
 +++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt
-@@ -135,8 +135,14 @@ val defaultToolbarPref by lazy {
+@@ -128,21 +128,21 @@ enum class ToolbarMode {
+ 
+ val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java)) { it.toString().lowercase(Locale.US) }
+ 
++// SuperApp default toolbar order (left -> right): Config, all-to-left (line
++// start), word-left, undo, clipboard, translate, number keyboard, voice input,
++// select all, redo, word-right, all-to-right (line end). FULL_LEFT/FULL_RIGHT
++// map to MOVE_START/END_OF_LINE; the rest stay enabled=false after these.
+ val defaultToolbarPref by lazy {
+-    val default = listOf(SETTINGS, VOICE, CLIPBOARD, TRANSLATE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
++    val default = listOf(SETTINGS, FULL_LEFT, WORD_LEFT, UNDO, CLIPBOARD, TRANSLATE, NUMPAD, VOICE, SELECT_ALL, REDO, WORD_RIGHT, FULL_RIGHT)
+     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
+     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
              others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
  }
  
--val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {
--    it.name + Separators.KV + false
-+// SuperApp default: pin TRANSLATE + CLIPBOARD so they are FIXED (always shown)
-+// in the pinned toolbar area. Remaining keys stay unpinned (false), mirroring
-+// the enabled-first ordering used by defaultToolbarPref.
-+val defaultPinnedToolbarPref by lazy {
-+    val pinned = listOf(CLIPBOARD, TRANSLATE)
-+    val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
-+    pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
-+            others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
+-// SuperApp default: pin TRANSLATE + CLIPBOARD so they are FIXED (always shown)
+-// in the pinned toolbar area. Remaining keys stay unpinned (false), mirroring
+-// the enabled-first ordering used by defaultToolbarPref.
+-val defaultPinnedToolbarPref by lazy {
+-    val pinned = listOf(CLIPBOARD, TRANSLATE)
+-    val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
+-    pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
+-            others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
++// SuperApp default: NOTHING pinned (fixed toolbar = none). The toolbar already
++// has its own always-visible row (two-row strip), so pinned keys are redundant.
++val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {
++    it.name + Separators.KV + false
  }
  
  val defaultClipboardToolbarPref by lazy {
-diff --git a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/settings/screens/AppearanceScreen.kt b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/settings/screens/AppearanceScreen.kt
-index 1151eb40..cd97d53c 100644
---- a/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/settings/screens/AppearanceScreen.kt
-+++ b/ea_cloud-superapp/libs/keyboard/src/main/java/helium314/keyboard/settings/screens/AppearanceScreen.kt
-@@ -90,6 +90,7 @@ fun AppearanceScreen(
-         Settings.PREF_EMOJI_FONT_SCALE,
-         if (prefs.getFloat(Settings.PREF_EMOJI_FONT_SCALE, Defaults.PREF_EMOJI_FONT_SCALE) != 1f)
-             Settings.PREF_EMOJI_KEY_FIT else null,
-+        Settings.PREF_CLIPBOARD_FONT_SCALE,
-         if (prefs.getInt(Settings.PREF_EMOJI_MAX_SDK, 0) >= 24)
-             Settings.PREF_EMOJI_SKIN_TONE else null,
-     )
-@@ -324,6 +325,18 @@ fun createAppearanceSettings(context: Context) = listOf(
-     Setting(context, Settings.PREF_EMOJI_KEY_FIT, R.string.prefs_emoji_key_fit) {
-         SwitchPreference(it, Defaults.PREF_EMOJI_KEY_FIT) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }
-     },
-+    // SuperApp: clipboard history card scale. Range 0.5..1.5 — below 1 shrinks the
-+    // card text and auto-increases the grid column count (see ClipboardHistoryView)
-+    // so more clips fit per line; above 1 enlarges text with fewer, bigger cards.
-+    Setting(context, Settings.PREF_CLIPBOARD_FONT_SCALE, R.string.prefs_clipboard_font_scale) { setting ->
-+        SliderPreference(
-+            name = setting.title,
-+            key = setting.key,
-+            default = Defaults.PREF_CLIPBOARD_FONT_SCALE,
-+            range = 0.5f..1.5f,
-+            description = { "${(100 * it).toInt()}%" }
-+        ) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }
-+    },
-     Setting(context, Settings.PREF_EMOJI_SKIN_TONE, R.string.prefs_emoji_skin_tone) { setting ->
-         val items = listOf(
-             stringResource(R.string.prefs_emoji_skin_tone_neutral) to "",
-diff --git a/ea_cloud-superapp/libs/keyboard/src/main/res/values/strings.xml b/ea_cloud-superapp/libs/keyboard/src/main/res/values/strings.xml
-index 5feeb06d..d2bcc739 100644
---- a/ea_cloud-superapp/libs/keyboard/src/main/res/values/strings.xml
-+++ b/ea_cloud-superapp/libs/keyboard/src/main/res/values/strings.xml
-@@ -407,6 +407,8 @@
-     <string name="prefs_font_scale">Keyboard font scale</string>
-     <!-- Title of the setting for adjusting font size in emoji view -->
-     <string name="prefs_emoji_font_scale">Emoji view font scale</string>
-+    <!-- Title of the setting for adjusting clipboard history card size: smaller shows more clips per line -->
-+    <string name="prefs_clipboard_font_scale">Clipboard card scale</string>
-     <!-- Title of the setting for adjusting emoji key size to fit emoji size in emoji view -->
-     <string name="prefs_emoji_key_fit">Scale emoji key size with font size</string>
-     <!-- Title of the setting for setting default emoji skin tone -->

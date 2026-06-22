@@ -95,7 +95,7 @@ object Defaults {
     val PREF_KEY_GAP_SCALE = Array(4) { DEFAULT_SIZE_SCALE }
     const val PREF_FONT_SCALE = 0.8f       // SuperApp default: keyboard letters at 80%
     const val PREF_EMOJI_FONT_SCALE = 0.6f // SuperApp default: emoji view at 60%
-    const val PREF_CLIPBOARD_FONT_SCALE = DEFAULT_SIZE_SCALE
+    const val PREF_CLIPBOARD_FONT_SCALE = 0.5f // SuperApp default: clipboard cards at 50% (more clips per line)
     const val PREF_EMOJI_KEY_FIT = true
     const val PREF_EMOJI_SKIN_TONE = ""
     @JvmField

@@ -128,21 +128,21 @@ enum class ToolbarMode {
 
 val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java)) { it.toString().lowercase(Locale.US) }
 
+// SuperApp default toolbar order (left -> right): Config, all-to-left (line
+// start), word-left, undo, clipboard, translate, number keyboard, voice input,
+// select all, redo, word-right, all-to-right (line end). FULL_LEFT/FULL_RIGHT
+// map to MOVE_START/END_OF_LINE; the rest stay enabled=false after these.
 val defaultToolbarPref by lazy {
-    val default = listOf(SETTINGS, VOICE, CLIPBOARD, TRANSLATE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    val default = listOf(SETTINGS, FULL_LEFT, WORD_LEFT, UNDO, CLIPBOARD, TRANSLATE, NUMPAD, VOICE, SELECT_ALL, REDO, WORD_RIGHT, FULL_RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
 }
 
-// SuperApp default: pin TRANSLATE + CLIPBOARD so they are FIXED (always shown)
-// in the pinned toolbar area. Remaining keys stay unpinned (false), mirroring
-// the enabled-first ordering used by defaultToolbarPref.
-val defaultPinnedToolbarPref by lazy {
-    val pinned = listOf(CLIPBOARD, TRANSLATE)
-    val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
-    pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
-            others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
+// SuperApp default: NOTHING pinned (fixed toolbar = none). The toolbar already
+// has its own always-visible row (two-row strip), so pinned keys are redundant.
+val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {
+    it.name + Separators.KV + false
 }
 
 val defaultClipboardToolbarPref by lazy {

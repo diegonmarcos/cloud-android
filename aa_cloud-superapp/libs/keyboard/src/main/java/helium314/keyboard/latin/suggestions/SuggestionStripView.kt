@@ -183,6 +183,9 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // don't reserve an empty row. When shown, keep both rows populated.
         toolbarRow.isVisible = toolbar.childCount > 0
         if (toolbar.childCount > 0) setToolbarVisibility(true)
+        // SuperApp: the toolbar is fixed (its own always-on row), so the
+        // expand/collapse arrow that used to hide it is pointless — hide it.
+        toolbarExpandKey.isVisible = false
 
         updateKeys()
     }
