@@ -52,9 +52,14 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
     private val hintView: TextView
     private val editor: EditText
 
-    private var icSupplier: () -> InputConnection? = { null }
+    /** SAM interface so LatinIME can pass `this::getCurrentInputConnection`
+     *  (a Java method reference). A Kotlin `() -> InputConnection?` would NOT
+     *  accept the Java method ref — same pattern as TranslateBarView.IcProvider. */
+    fun interface IcProvider { fun get(): InputConnection? }
+
+    private var icSupplier: IcProvider? = null
     private var langTag: String = "en-us"
-    private var onCloseRequest: () -> Unit = {}
+    private var onCloseRequest: Runnable? = null
     private var recognizer: VoiceRecognizer? = null
 
     private companion object {
@@ -111,13 +116,13 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
         actions.addView(pill("Copy", NEUTRAL, TEXT) { copy() }, pillLp())
         actions.addView(pill("Translate", NEUTRAL, TEXT) { translate() }, pillLp())
         actions.addView(pill("Insert", ACCENT, Color.WHITE) { insert() }, pillLp())
-        actions.addView(pill("✕", DANGER, TEXT) { onCloseRequest() }, pillLp(0.6f))
+        actions.addView(pill("✕", DANGER, TEXT) { onCloseRequest?.run() }, pillLp(0.6f))
         addView(actions, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
     }
 
     /** Wire the bar to the IME. [ic] supplies the live InputConnection, [langTag]
      *  is the active subtype tag, [onClose] hides the bar (→ onHidden stops mic). */
-    fun bind(ic: () -> InputConnection?, langTag: String, onClose: () -> Unit) {
+    fun bind(ic: IcProvider, langTag: String, onClose: Runnable) {
         this.icSupplier = ic
         this.langTag = langTag
         this.onCloseRequest = onClose
@@ -133,7 +138,7 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
             ctx.startActivity(
                 Intent(ctx, VoicePermissionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-            onCloseRequest() // close; user re-taps after granting
+            onCloseRequest?.run() // close; user re-taps after granting
             return
         }
         editor.setText("")
@@ -200,8 +205,8 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
 
     private fun insert() {
         val t = text()
-        if (t.isNotEmpty()) icSupplier()?.commitText("$t ", 1)
-        onCloseRequest()
+        if (t.isNotEmpty()) icSupplier?.get()?.commitText("$t ", 1)
+        onCloseRequest?.run()
     }
 
     private fun pill(label: String, bg: Int, fg: Int, onClick: () -> Unit) = Button(context).apply {
