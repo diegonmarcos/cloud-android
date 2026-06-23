@@ -89,6 +89,14 @@
       "primary_lang": "Kotlin",
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED. libs/kde-connect is an ORIGINAL implementation of the KDE Connect LAN protocol written by us (NetworkPacket framing, mutual-TLS handshake with a self-signed device cert, protocol-v8 encrypted identity re-exchange, cert-pinned pairing, plugin registry: ping/clipboard/findmyphone/notification). The KDE repo above is consulted ONLY for the documented interop FACTS (port 1716; the TCP-dialer is the TLS server; pairing = trust-the-cert) — those are functional protocol requirements, not copyrightable expression. NONE of KDE's GPL-2.0 source is copied/vendored, so the app keeps its own license. Connects over wg0 by explicit wg_ip (auto-discovery can't cross WireGuard). Next: a foreground service hosting an inbound TCP server (1716-1764) so peers can also initiate, plus battery/share/mpris plugins."
     },
+    "firewall": {
+      "tracker": "ea_net-rethinkdns",
+      "repo": "https://github.com/celzero/rethink-app.git",
+      "license": "Apache-2.0 (UPSTREAM REFERENCE ONLY — not vendored in v1)",
+      "feeds_into": "libs:firewall",
+      "primary_lang": "Kotlin",
+      "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) — zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
+    },
     "ops": {
       "tracker": null,
       "repo": null,
@@ -125,7 +133,8 @@
         "libs:apptabs",
         "libs:kde-connect",
         "libs:shizuku-adb-debug-tools",
-        "libs:keyboard"
+        "libs:keyboard",
+        "libs:firewall"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -258,6 +267,13 @@
         "libs:core"
       ],
       "comment": "Shizuku ADB debug tools — makes the SuperApp a SELF-CONTAINED 'adb shell' surface. A Shizuku UserService (IShellService.aidl + ShellUserService) runs in SHELL context (uid 2000) when Shizuku is running + granted, so it executes arbitrary `dumpsys` / `getprop` / `cat /sys/...` that the app's own uid + the SELinux-hardened proc/sys path can't reach (One UI 7+/Pixel A15+ block /sys/class/power_supply/*). ShizukuAdb is the binder facade (bindBlocking + exec + grantDump self-grant of android.permission.DUMP via `pm grant`). AdbDiagnostics runs DATA-DRIVEN command bundles declared in build.json::shizuku_diagnostics.bundles[] (charger/usb/battery/thermal/pd) and returns them as JSON. Exposed over the loopback DevControlServer at /api/adb/* (token-gated). This is the path that finally surfaces the USB-PD/PPS negotiation needed to debug 'why is the charger at 3W not 35W'."
+    },
+    "libs:firewall": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "No-root per-app outbound firewall (original, clean-room). Local VpnService drops blocked apps' packets while allowed apps bypass the tun. Surfaced in the About screen under Battery (info rows + gray 'Firewall Details' button → FirewallDialog). Complex tooling cherry-picked from the RethinkDNS reference clone (upstreams.firewall)."
     }
   },
   "shizuku_diagnostics": {

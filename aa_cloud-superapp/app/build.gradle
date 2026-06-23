@@ -644,6 +644,11 @@ dependencies {
     // it at /api/adb/*. Carries its own IShellService.aidl + UserService,
     // independent of app/'s energy-specific ShizukuEnergy.
     implementation project(':libs:shizuku-adb-debug-tools')
+    // libs:firewall — original no-root per-app outbound firewall (local
+    // VpnService). Surfaced in the About screen under Battery. Complex
+    // tooling is cherry-picked from the RethinkDNS reference upstream
+    // (build.json::upstreams.firewall). See libs/firewall/README.md.
+    implementation project(':libs:firewall')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

@@ -845,6 +845,28 @@ class DevControlFragment : Fragment() {
             })
         }
 
+        section(ctx, column, "Firewall") {
+            // No-root per-app outbound firewall (local VpnService, :libs:firewall).
+            // Info rows read WITHOUT any privileged permission via
+            // ConnectivityManager / Settings. The gray button opens the
+            // control screen (master toggle + per-app block list). Complex
+            // tooling (DNS filtering, WireGuard proxying) is cherry-picked
+            // from the vendored RethinkDNS reference (upstreams.firewall).
+            val fw = com.diegonmarcos.superapp.firewall.FirewallInfo.read(ctx)
+            row(ctx, it, "State", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtState(fw))
+            row(ctx, it, "Blocked apps", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtBlocked(fw))
+            row(ctx, it, "Active transport", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtTransport(fw))
+            row(ctx, it, "System VPN", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtVpn(fw))
+            row(ctx, it, "Private DNS", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtPrivateDns(fw))
+            it.addView(small(ctx, "Single VPN slot — the firewall and the WireGuard tunnel can't both run at once."))
+            it.addView(actionButton(ctx, "Firewall Details", GRAY) {
+                runCatching {
+                    com.diegonmarcos.superapp.firewall.FirewallDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.firewall.FirewallDialog.TAG)
+                }
+            })
+        }
+
         section(ctx, column, "Memory & CPU Usage") {
             // All metrics are process-attributable + readable WITHOUT any
             // privileged permission. JVM heap from Runtime; PSS from

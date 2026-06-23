@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// libs:firewall — minimal no-root per-app outbound firewall (ORIGINAL,
+// clean-room). A local android.net.VpnService captures traffic into a
+// tun; ALLOWED apps bypass the tunnel via addDisallowedApplication()
+// while BLOCKED apps fall into the tun and have their packets dropped
+// (no forwarding loop) — zero root, zero native code.
+//
+// The RethinkDNS repo (github.com/celzero/rethink-app, Apache-2.0,
+// Kotlin) is registered as the cherry-pick REFERENCE for future complex
+// tooling — DNS filtering, per-connection tracker, WireGuard proxying via
+// its Go firestack engine — see build.json::upstreams.firewall. NO
+// upstream source is vendored here, so the app keeps its own license.
+// Pull the reference clone with `./build.sh sync-firewall`.
+//
+// Pure Kotlin — no CMake/NDK. Hosts FirewallDialog (a DialogFragment)
+// surfaced in the About screen under Battery.
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.diegonmarcos.superapp.firewall'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation project(':libs:core')
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.annotation:annotation:1.8.2'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+}

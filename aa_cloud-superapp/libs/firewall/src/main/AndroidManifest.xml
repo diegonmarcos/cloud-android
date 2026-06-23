@@ -1,0 +1,31 @@
+<!--
+  ~ SPDX-License-Identifier: Apache-2.0
+  ~
+  ~ libs:firewall — no-root per-app outbound firewall (original, clean-room).
+  ~ Declares the local VpnService engine. The enable flow uses the system's
+  ~ own VPN consent dialog (VpnService.prepare), so no extra runtime
+  ~ permission is needed beyond the foreground-service declarations below.
+  ~ Manifest-merged into the app.
+  -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- A VPN qualifies for the systemExempted FGS type on Android 14+
+         (it is managed by the platform VpnManager), keeping the engine
+         alive while the user roams other apps. POST_NOTIFICATIONS for the
+         ongoing "Firewall active" notification on Android 13+. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <service
+            android:name="com.diegonmarcos.superapp.firewall.FirewallVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:foregroundServiceType="systemExempted"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

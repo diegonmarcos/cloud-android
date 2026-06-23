@@ -555,6 +555,28 @@ step_sync_net() {
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/net/"
 }
 
+# REFERENCE-ONLY sync for libs:firewall. Unlike sync-net, this does NOT
+# vendor or rsync any upstream code: v1's libs/firewall is original,
+# clean-room code. This just materialises (or updates) the RethinkDNS
+# reference clone next to the other ea_* upstream mirrors so you can
+# browse and hand-cherry-pick its DNS / firestack engine into
+# libs/firewall later. Registered in build.json::upstreams.firewall.
+step_sync_firewall() {
+  local ref="${UNIX_REPO:-$HOME/git/unix}/ea_net-rethinkdns"
+  local url="https://github.com/celzero/rethink-app.git"
+  command -v git >/dev/null 2>&1 || { errlog "sync-firewall: git is required"; exit 1; }
+  if [ -d "$ref/.git" ]; then
+    log "sync-firewall: updating RethinkDNS reference clone: $ref"
+    git -C "$ref" fetch --depth 1 origin && git -C "$ref" reset --hard origin/HEAD
+  else
+    log "sync-firewall: cloning RethinkDNS reference (Apache-2.0): $ref"
+    git clone --depth 1 "$url" "$ref"
+  fi
+  log "sync-firewall: REFERENCE ONLY — nothing vendored into libs/firewall (clean-room v1)."
+  log "  cherry-pick targets: DNS (DoH/DoT/DNSCrypt), per-connection tracker, firestack WG proxy."
+  log "  browse: $ref"
+}
+
 # Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
 # GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
 # self-contained keyboard provider. Upstream clone lives at
@@ -756,6 +778,7 @@ case "$CMD" in
   sync-qrcodes) step_sync_qrcodes ;;
   sync-net)     step_sync_net ;;
   sync-heliboard) step_sync_heliboard ;;
+  sync-firewall) step_sync_firewall ;;
   brand-rename) step_brand_rename ;;
   sync-zoomies) step_sync_zoomies ;;
   sync-keyboard-dicts) step_sync_keyboard_dicts ;;
