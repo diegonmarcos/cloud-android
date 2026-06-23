@@ -1474,8 +1474,8 @@ public class LatinIME extends InputMethodService implements
             // switching to a system voice IME — none is installed on de-googled
             // devices, which is why this key did nothing. Toggle dictation in the
             // active keyboard language. patches/0005-voice-input.patch.
-            com.diegonmarcos.superapp.voice.VoiceInput.toggle(
-                    this, mRichImm.getCurrentSubtypeLocale().toLanguageTag());
+            com.diegonmarcos.superapp.voice.VoiceInput.start(
+                    this, mInputView, mRichImm.getCurrentSubtypeLocale().toLanguageTag());
         }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event,
