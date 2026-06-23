@@ -142,6 +142,9 @@ public class LatinIME extends InputMethodService implements
     // SuperApp addition (patch 0001): Gboard-style live translate bar, hosted at
     // the top of the keyboard frame. Toggled by long-pressing the TRANSLATE key.
     private com.diegonmarcos.superapp.translate.TranslateBarView mTranslateBar;
+    // SuperApp addition (patch 0005): offline Vosk voice dictation bar, hosted at
+    // the top of the keyboard frame like the translate bar. Toggled by the mic key.
+    private com.diegonmarcos.superapp.voice.VoiceBarView mVoiceBar;
 
     private RichInputMethodManager mRichImm;
     final KeyboardSwitcher mKeyboardSwitcher;
@@ -812,6 +815,39 @@ public class LatinIME extends InputMethodService implements
         return mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE;
     }
 
+    /**
+     * SuperApp (patch 0005): toggle the offline voice dictation bar. Hosted as the
+     * first child of the keyboard frame (above strip_container), so it sits right
+     * above the keys and the keyboard stays usable below. Tap the mic key once to
+     * open, again to close — closing stops + releases the mic (onHidden).
+     */
+    public void toggleVoiceBar() {
+        if (mInputView == null) return;
+        final View strip = mInputView.findViewById(R.id.strip_container);
+        if (strip == null || !(strip.getParent() instanceof android.widget.LinearLayout)) return;
+        final android.widget.LinearLayout frame = (android.widget.LinearLayout) strip.getParent();
+        if (mVoiceBar == null) {
+            mVoiceBar = new com.diegonmarcos.superapp.voice.VoiceBarView(this);
+            final java.util.Locale loc = mRichImm.getCurrentSubtypeLocale();
+            final String tag = (loc != null) ? loc.toLanguageTag() : "en-us";
+            mVoiceBar.bind(this::getCurrentInputConnection, tag, this::hideVoiceBar);
+            frame.addView(mVoiceBar, 0);
+        }
+        if (mVoiceBar.getVisibility() == View.VISIBLE) {
+            hideVoiceBar();
+        } else {
+            mVoiceBar.setVisibility(View.VISIBLE);
+            mVoiceBar.onShown();
+        }
+    }
+
+    public void hideVoiceBar() {
+        if (mVoiceBar != null && mVoiceBar.getVisibility() == View.VISIBLE) {
+            mVoiceBar.setVisibility(View.GONE);
+            mVoiceBar.onHidden();
+        }
+    }
+
     @Override
     public void setCandidatesView(final View view) {
         // To ensure that CandidatesView will never be set.
@@ -836,6 +872,7 @@ public class LatinIME extends InputMethodService implements
         mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
         BackgroundGatheringCache.saveOrClear(this);
         hideTranslateBar(); // SuperApp addition (patch 0001)
+        hideVoiceBar(); // SuperApp (patch 0005) — stop + release mic when input ends
     }
 
     @Override
@@ -1251,6 +1288,10 @@ public class LatinIME extends InputMethodService implements
         else if (mTranslateBar != null && mTranslateBar.getVisibility() == View.VISIBLE) {
             visibleTopY -= mTranslateBar.getHeight();
         }
+        // SuperApp (patch 0005): the voice bar is opaque IME UI above the strip too.
+        else if (mVoiceBar != null && mVoiceBar.getVisibility() == View.VISIBLE) {
+            visibleTopY -= mVoiceBar.getHeight();
+        }
 
         if (hasSuggestionStripView()) {
             mSuggestionStripView.setMoreSuggestionsHeight(visibleTopY);
@@ -1470,12 +1511,11 @@ public class LatinIME extends InputMethodService implements
             if (cp > 0) { mTranslateBar.appendCodePoint(cp); return; }
         }
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
-            // SuperApp: use the bundled OFFLINE Vosk engine (libs:voice) instead of
-            // switching to a system voice IME — none is installed on de-googled
-            // devices, which is why this key did nothing. Toggle dictation in the
-            // active keyboard language. patches/0005-voice-input.patch.
-            com.diegonmarcos.superapp.voice.VoiceInput.start(
-                    this, mInputView, mRichImm.getCurrentSubtypeLocale().toLanguageTag());
+            // SuperApp (patch 0005): toggle the bundled OFFLINE Vosk dictation bar
+            // instead of switching to a system voice IME (absent on de-googled
+            // devices). Second tap closes it + releases the mic.
+            toggleVoiceBar();
+            return;
         }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event,
