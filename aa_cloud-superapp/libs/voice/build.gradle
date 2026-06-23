@@ -27,6 +27,7 @@ def voiceModelsJson = JsonOutput.toJson(buildJson.voice.models)
 def voiceModelsB64 = voiceModelsJson.bytes.encodeBase64().toString()
 def voiceDefaultLang = buildJson.voice.default_language
 def voiceTranslateTo = buildJson.voice.translate_to
+def voiceTranslateTargets = buildJson.voice.translate_targets.join(',')
 
 android {
     namespace 'com.diegonmarcos.superapp.voice'
@@ -38,6 +39,7 @@ android {
         buildConfigField "String", "VOICE_MODELS_B64", "\"${voiceModelsB64}\""
         buildConfigField "String", "VOICE_DEFAULT_LANGUAGE", "\"${voiceDefaultLang}\""
         buildConfigField "String", "VOICE_TRANSLATE_TO", "\"${voiceTranslateTo}\""
+        buildConfigField "String", "VOICE_TRANSLATE_TARGETS", "\"${voiceTranslateTargets}\""
     }
     buildFeatures {
         buildConfig true

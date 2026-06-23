@@ -9,7 +9,10 @@ import org.json.JSONObject
 import org.vosk.Model
 import org.vosk.Recognizer
 import kotlin.concurrent.thread
-import kotlin.math.sqrt
+import kotlin.math.abs
+import kotlin.math.max
+
+private const val POINTS = 96 // oscilloscope sample count per frame
 
 /**
  * Continuous offline recognizer. A single [AudioRecord] stream is fed manually
@@ -23,7 +26,7 @@ import kotlin.math.sqrt
  */
 class VoiceRecognizer(
     private val model: Model,
-    private val onAmplitude: (Float) -> Unit,
+    private val onWaveform: (FloatArray) -> Unit,
     private val onPartial: (String) -> Unit,
     private val onFinal: (String) -> Unit,
     private val onError: (String) -> Unit,
@@ -76,7 +79,10 @@ class VoiceRecognizer(
                 val n = try { r.read(buffer, 0, buffer.size) } catch (_: Exception) { break }
                 if (n <= 0) continue
                 val rg = recognizer ?: break
-                post { onAmplitude(rms(buffer, n)) }
+                // Compute on THIS thread (buffer is reused by the next read) and
+                // post the immutable result for the oscilloscope view.
+                val wf = waveform(buffer, n)
+                post { onWaveform(wf) }
                 if (rg.acceptWaveForm(buffer, n)) {
                     val text = JSONObject(rg.result).optString("text").trim()
                     if (text.isNotEmpty()) post { onFinal(text) }
@@ -110,18 +116,29 @@ class VoiceRecognizer(
         runCatching { rg.close() }
     }
 
-    /** RMS of a PCM16LE buffer, normalised 0..1. */
-    private fun rms(buf: ByteArray, len: Int): Float {
-        var sum = 0.0
-        var i = 0
-        val count = len / 2
-        if (count == 0) return 0f
-        while (i + 1 < len) {
-            val s = ((buf[i].toInt() and 0xff) or (buf[i + 1].toInt() shl 8)).toShort().toDouble()
-            sum += s * s
-            i += 2
+    /**
+     * Downsample a PCM16LE buffer to [POINTS] signed, normalised (-1..1) samples
+     * by taking the peak (most-extreme) sample in each slice — preserves the live
+     * wave shape for the oscilloscope display.
+     */
+    private fun waveform(buf: ByteArray, len: Int): FloatArray {
+        val total = len / 2
+        val out = FloatArray(POINTS)
+        if (total <= 0) return out
+        val step = max(1, total / POINTS)
+        for (p in 0 until POINTS) {
+            var peak = 0
+            val start = p * step
+            var j = 0
+            while (j < step && start + j < total) {
+                val idx = (start + j) * 2
+                val s = ((buf[idx].toInt() and 0xff) or (buf[idx + 1].toInt() shl 8)).toShort().toInt()
+                if (abs(s) > abs(peak)) peak = s
+                j++
+            }
+            out[p] = (peak / 32768f).coerceIn(-1f, 1f)
         }
-        return (sqrt(sum / count) / 32768.0).toFloat().coerceIn(0f, 1f)
+        return out
     }
 
     private fun post(block: () -> Unit) = main.post(block)

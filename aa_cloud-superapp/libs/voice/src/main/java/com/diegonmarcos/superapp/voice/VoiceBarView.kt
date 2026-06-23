@@ -11,7 +11,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.RectF
+import android.graphics.Path
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -30,9 +30,6 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.diegonmarcos.superapp.translate.Translator
 import org.vosk.Model
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.sin
 
 /**
  * Offline voice dictation bar, hosted INSIDE the keyboard frame (added as the
@@ -48,7 +45,7 @@ import kotlin.math.sin
 class VoiceBarView(context: Context) : LinearLayout(context) {
 
     private val main = Handler(Looper.getMainLooper())
-    private val wave = WaveBarView(context)
+    private val wave = WaveformView(context)
     private val hintView: TextView
     private val editor: EditText
 
@@ -61,6 +58,15 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
     private var langTag: String = "en-us"
     private var onCloseRequest: Runnable? = null
     private var recognizer: VoiceRecognizer? = null
+
+    // Data-driven translate targets (build.json::voice.translate_targets). The
+    // chip cycles through them; Translate uses the selected one. Lets you pick a
+    // target different from the dictated language (same-language = no-op).
+    private val targets: List<String> =
+        BuildConfig.VOICE_TRANSLATE_TARGETS.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            .ifEmpty { listOf("en") }
+    private var targetIndex = 0
+    private lateinit var targetChip: Button
 
     private companion object {
         const val ACCENT = 0xFF8A6CFF.toInt()
@@ -91,7 +97,9 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
             text = "Voice"; setTextColor(TEXT); setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             setTypeface(typeface, Typeface.BOLD)
         }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(12) })
-        header.addView(wave, LayoutParams(0, dp(32), 1f))
+        header.addView(wave, LayoutParams(0, dp(40), 1f))
+        targetChip = pill("🌐 ${targets[0]}", NEUTRAL, TEXT) { cycleTarget() }
+        header.addView(targetChip, LayoutParams(LayoutParams.WRAP_CONTENT, dp(36)).apply { leftMargin = dp(8) })
         addView(header, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         hintView = TextView(context).apply {
@@ -166,7 +174,7 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
             hintView.text = "Listening…"
             val rec = VoiceRecognizer(
                 model,
-                onAmplitude = { lvl -> wave.setLevel(lvl) },
+                onWaveform = { samples -> wave.setWaveform(samples) },
                 onPartial = { t -> hintView.text = if (t.isEmpty()) "Listening…" else "… $t" },
                 onFinal = { t -> hintView.text = "Listening…"; appendFinal(t) },
                 onError = { msg -> hintView.text = "Voice error: $msg" }
@@ -195,13 +203,29 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
     }
 
     private fun translate() {
-        val t = text(); if (t.isEmpty()) return
-        hintView.text = "Translating…"
-        Translator.liveTranslate(t, BuildConfig.VOICE_TRANSLATE_TO) { result ->
-            if (result != null) { editor.setText(result); editor.setSelection(editor.text.length); hintView.text = "Listening…" }
-            else hintView.text = "Translate failed"
+        val t = text(); if (t.isEmpty()) { toast("Nothing to translate"); return }
+        val target = targets[targetIndex]
+        hintView.text = "Translating → $target…"
+        Translator.liveTranslate(t, target) { result ->
+            when {
+                result == null -> {
+                    hintView.text = "Listening…"
+                    toast("No translation — text may already be '$target'. Tap 🌐 to pick another target.")
+                }
+                result.isBlank() -> hintView.text = "Listening…"
+                else -> { editor.setText(result); editor.setSelection(editor.text.length); hintView.text = "Listening…" }
+            }
         }
     }
+
+    private fun cycleTarget() {
+        targetIndex = (targetIndex + 1) % targets.size
+        targetChip.text = "🌐 ${targets[targetIndex]}"
+        toast("Translate to: ${targets[targetIndex]}")
+    }
+
+    private fun toast(msg: String) =
+        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
 
     private fun insert() {
         val t = text()
@@ -225,32 +249,63 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    private class WaveBarView(context: Context) : View(context) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val bars = 22
-        private var level = 0f
-        private var phase = 0f
-        private val rect = RectF()
+    /**
+     * Oscilloscope-style waveform: draws the actual captured audio wave as a
+     * smooth gradient line (with a soft glow + faint mirror) across the strip,
+     * scrolling/wiggling with the voice — a synthesizer/scope look, not bars.
+     */
+    private class WaveformView(context: Context) : View(context) {
+        private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = dp(2.2f)
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+        }
+        private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = dp(7f)
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; alpha = 60
+        }
+        private val mirror = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = dp(1.6f)
+            strokeCap = Paint.Cap.ROUND; alpha = 38
+        }
+        private val baseline = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x22FFFFFF; strokeWidth = dp(1f) }
+        private val path = Path()
+        private val mirrorPath = Path()
+        private var smooth = FloatArray(0)
+        private val gain = 2.8f
 
-        fun setLevel(l: Float) { level = max(level * 0.62f, l); phase += 0.4f; invalidate() }
+        fun setWaveform(s: FloatArray) {
+            if (smooth.size != s.size) smooth = FloatArray(s.size)
+            for (i in s.indices) smooth[i] = smooth[i] * 0.4f + s[i] * 0.6f // temporal smoothing
+            invalidate()
+        }
 
         override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
             super.onSizeChanged(w, h, ow, oh)
-            paint.shader = LinearGradient(0f, 0f, w.toFloat(), 0f,
-                0xFF6C4CFF.toInt(), 0xFFB66CFF.toInt(), Shader.TileMode.CLAMP)
+            val grad = LinearGradient(0f, 0f, w.toFloat(), 0f,
+                intArrayOf(0xFF5CC8FF.toInt(), 0xFF8A6CFF.toInt(), 0xFFB66CFF.toInt()),
+                null, Shader.TileMode.CLAMP)
+            line.shader = grad; glow.shader = grad; mirror.shader = grad
         }
 
         override fun onDraw(canvas: Canvas) {
-            val w = width.toFloat(); val h = height.toFloat()
-            val gap = dp(2.5f); val barW = (w - gap * (bars - 1)) / bars; val cy = h / 2f
-            for (i in 0 until bars) {
-                val env = 0.3f + 0.7f * abs(sin((phase + i * 0.5f).toDouble()).toFloat())
-                val bh = h * 0.14f + h * 0.82f * level * env
-                val x = i * (barW + gap)
-                rect.set(x, cy - bh / 2f, x + barW, cy + bh / 2f)
-                canvas.drawRoundRect(rect, barW / 2f, barW / 2f, paint)
+            val w = width.toFloat(); val h = height.toFloat(); val cy = h / 2f
+            canvas.drawLine(0f, cy, w, cy, baseline)
+            val n = smooth.size
+            if (n < 2) { canvas.drawLine(0f, cy, w, cy, line); return }
+            path.reset(); mirrorPath.reset()
+            val dx = w / (n - 1); val amp = h * 0.46f
+            for (i in 0 until n) {
+                val x = i * dx
+                val v = (smooth[i] * gain).coerceIn(-1f, 1f)
+                val y = cy - v * amp
+                if (i == 0) { path.moveTo(x, y); mirrorPath.moveTo(x, cy + v * amp) }
+                else { path.lineTo(x, y); mirrorPath.lineTo(x, cy + v * amp) }
             }
+            canvas.drawPath(mirrorPath, mirror)
+            canvas.drawPath(path, glow)
+            canvas.drawPath(path, line)
         }
+
         private fun dp(v: Float) = v * resources.displayMetrics.density
     }
 }
