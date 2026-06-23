@@ -87,14 +87,18 @@ object VoiceInput {
             )
             overlay = ov
 
-            // COMPACT: width spans the keyboard, height wraps the content (the bug
-            // before was height = anchor.height -> whole-keyboard box). Docked at
-            // the bottom over the keyboard. Focusable so the transcript is editable.
+            // COMPACT card, height wraps content; floated ABOVE the keyboard (see
+            // showAtLocation below) so the keyboard stays usable for editing.
             val width = if (anchor.width > 0) anchor.width else ViewGroup.LayoutParams.MATCH_PARENT
             val pw = PopupWindow(ov, width, ViewGroup.LayoutParams.WRAP_CONTENT, true /* focusable */)
             pw.isClippingEnabled = false
             popup = pw
-            pw.showAtLocation(anchor, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, 0, 0)
+            // Float the box JUST ABOVE the keyboard: offset up from the screen
+            // bottom by the keyboard (mInputView) height, so the keys stay fully
+            // visible + usable below for editing the transcript.
+            val keyboardHeight = if (anchor.height > 0) anchor.height
+                else (240 * service.resources.displayMetrics.density).toInt()
+            pw.showAtLocation(anchor, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, 0, keyboardHeight)
 
             val rec = VoiceRecognizer(
                 activeModel,
@@ -138,14 +142,21 @@ object VoiceInput {
         main.postDelayed({ service.currentInputConnection?.commitText("$text ", 1) }, 80)
     }
 
-    /** Stop listening and close the box. Idempotent. */
+    /**
+     * Stop listening, release the mic, and close the box. Idempotent.
+     * Resets `starting` too so the box can always be reopened — a stuck flag (or
+     * a leaked recorder) is what blocked reopening after the first close.
+     */
     @JvmStatic
     fun stop() {
+        starting = false
         val rec = recognizer; recognizer = null
         val pw = popup; popup = null
         overlay = null
         ime = null
         main.post { if (pw?.isShowing == true) runCatching { pw.dismiss() } }
+        // rec.stop() releases the mic directly (see VoiceRecognizer); off-main
+        // because it briefly joins the worker thread.
         if (rec != null) Thread { rec.stop() }.start()
     }
 

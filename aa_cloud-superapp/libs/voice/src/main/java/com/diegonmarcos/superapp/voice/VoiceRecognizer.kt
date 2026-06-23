@@ -13,10 +13,13 @@ import kotlin.math.sqrt
 
 /**
  * Continuous offline recognizer. A single [AudioRecord] stream is fed manually
- * into a Vosk [Recognizer] (acceptWaveForm), so from ONE mic capture we get both
- * the live mic amplitude (for the waveform visualiser) and the live partial /
- * final transcripts. Keeps running until [stop]. All callbacks are delivered on
- * the main thread.
+ * into a Vosk [Recognizer], so one mic capture yields both live amplitude (for
+ * the waveform) and live partial/final transcripts. Runs until [stop].
+ *
+ * [stop] releases the microphone IMMEDIATELY and DIRECTLY (not only via the
+ * worker's finally) so the OS mic indicator goes off the instant the box closes
+ * and the next session can re-acquire the mic. Idempotent + safe to call twice.
+ * All callbacks are delivered on the main thread.
  */
 class VoiceRecognizer(
     private val model: Model,
@@ -28,6 +31,8 @@ class VoiceRecognizer(
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var running = false
     private var worker: Thread? = null
+    @Volatile private var record: AudioRecord? = null
+    @Volatile private var recognizer: Recognizer? = null
 
     fun start() {
         if (running) return
@@ -35,10 +40,16 @@ class VoiceRecognizer(
         worker = thread(name = "vosk-rec", isDaemon = true) { loop() }
     }
 
+    /** Stop listening and release the mic NOW. Safe to call from any thread. */
     fun stop() {
         running = false
-        worker?.join(800)
+        // Release the recorder directly so the mic frees instantly even if the
+        // worker is blocked inside read(). The worker's next read() then fails
+        // and the loop exits.
+        releaseRecord()
+        worker?.let { if (it !== Thread.currentThread()) runCatching { it.join(500) } }
         worker = null
+        releaseRecognizer()
     }
 
     private fun loop() {
@@ -47,52 +58,67 @@ class VoiceRecognizer(
             sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
         val bufSize = if (minBuf > 0) minBuf * 2 else sampleRate
-        val recognizer = Recognizer(model, sampleRate.toFloat())
-        var record: AudioRecord? = null
         try {
-            record = AudioRecord(
+            recognizer = Recognizer(model, sampleRate.toFloat())
+            val rec = AudioRecord(
                 MediaRecorder.AudioSource.VOICE_RECOGNITION,
                 sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufSize
             )
-            if (record.state != AudioRecord.STATE_INITIALIZED) {
+            record = rec
+            if (rec.state != AudioRecord.STATE_INITIALIZED) {
                 post { onError("microphone unavailable") }
                 return
             }
             val buffer = ByteArray(bufSize)
-            record.startRecording()
+            rec.startRecording()
             while (running) {
-                val n = record.read(buffer, 0, buffer.size)
+                val r = record ?: break
+                val n = try { r.read(buffer, 0, buffer.size) } catch (_: Exception) { break }
                 if (n <= 0) continue
-                val level = rms(buffer, n)
-                post { onAmplitude(level) }
-                if (recognizer.acceptWaveForm(buffer, n)) {
-                    val text = JSONObject(recognizer.result).optString("text").trim()
+                val rg = recognizer ?: break
+                post { onAmplitude(rms(buffer, n)) }
+                if (rg.acceptWaveForm(buffer, n)) {
+                    val text = JSONObject(rg.result).optString("text").trim()
                     if (text.isNotEmpty()) post { onFinal(text) }
                 } else {
-                    val partial = JSONObject(recognizer.partialResult).optString("partial").trim()
+                    val partial = JSONObject(rg.partialResult).optString("partial").trim()
                     post { onPartial(partial) }
                 }
             }
-            val tail = JSONObject(recognizer.finalResult).optString("text").trim()
-            if (tail.isNotEmpty()) post { onFinal(tail) }
+            recognizer?.let {
+                val tail = JSONObject(it.finalResult).optString("text").trim()
+                if (tail.isNotEmpty()) post { onFinal(tail) }
+            }
         } catch (e: Exception) {
             post { onError(e.message ?: "recognition error") }
         } finally {
-            try { record?.stop() } catch (_: Exception) {}
-            record?.release()
-            recognizer.close()
+            releaseRecord()
+            releaseRecognizer()
         }
     }
 
-    /** Root-mean-square of a PCM16LE buffer, normalised to 0..1. */
+    private fun releaseRecord() {
+        val r = record ?: return
+        record = null
+        runCatching { if (r.recordingState == AudioRecord.RECORDSTATE_RECORDING) r.stop() }
+        runCatching { r.release() }
+    }
+
+    private fun releaseRecognizer() {
+        val rg = recognizer ?: return
+        recognizer = null
+        runCatching { rg.close() }
+    }
+
+    /** RMS of a PCM16LE buffer, normalised 0..1. */
     private fun rms(buf: ByteArray, len: Int): Float {
         var sum = 0.0
         var i = 0
         val count = len / 2
         if (count == 0) return 0f
         while (i + 1 < len) {
-            val s = (buf[i].toInt() and 0xff) or (buf[i + 1].toInt() shl 8)
-            sum += (s.toShort().toDouble() * s.toShort().toDouble())
+            val s = ((buf[i].toInt() and 0xff) or (buf[i + 1].toInt() shl 8)).toShort().toDouble()
+            sum += s * s
             i += 2
         }
         return (sqrt(sum / count) / 32768.0).toFloat().coerceIn(0f, 1f)
