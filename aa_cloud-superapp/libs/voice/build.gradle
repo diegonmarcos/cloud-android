@@ -26,6 +26,7 @@ def buildJson = new JsonSlurper().parse(file('../../build.json'))
 def voiceModelsJson = JsonOutput.toJson(buildJson.voice.models)
 def voiceModelsB64 = voiceModelsJson.bytes.encodeBase64().toString()
 def voiceDefaultLang = buildJson.voice.default_language
+def voiceTranslateTo = buildJson.voice.translate_to
 
 android {
     namespace 'com.diegonmarcos.superapp.voice'
@@ -36,6 +37,7 @@ android {
         // Baked from build.json::voice — VoiceModelManager reads these at runtime.
         buildConfigField "String", "VOICE_MODELS_B64", "\"${voiceModelsB64}\""
         buildConfigField "String", "VOICE_DEFAULT_LANGUAGE", "\"${voiceDefaultLang}\""
+        buildConfigField "String", "VOICE_TRANSLATE_TO", "\"${voiceTranslateTo}\""
     }
     buildFeatures {
         buildConfig true
@@ -49,6 +51,9 @@ android {
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
+
+    // Translate button in the dictation box reuses the on-device ML Kit engine.
+    implementation project(':libs:translate')
 
     // Vosk offline speech recognition. The AAR bundles the native libvosk.so
     // for arm64-v8a/armeabi-v7a/x86_64; JNA is its required native bridge.

@@ -1,6 +1,8 @@
 package com.diegonmarcos.superapp.voice
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,17 +15,17 @@ import android.view.ViewGroup
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import com.diegonmarcos.superapp.translate.Translator
 import org.vosk.Model
 
 /**
- * Offline voice input (Vosk) for the keyboard's VOICE toolbar key, with a
- * Gboard-style UI: tapping the mic opens a popup over the keyboard showing a
- * live waveform + a Cancel button, and keeps listening CONTINUOUSLY until Cancel
- * is pressed. Recognised text is written LIVE into the field — the in-progress
- * utterance shows as composing text, each finished utterance is committed.
- * Fully offline after the one-time per-language model download.
- *
- * Called from LatinIME's KeyCode.VOICE_INPUT handler (patches/0005-voice-input).
+ * Offline voice input (Vosk) with a COMPACT dictation box (not full-screen):
+ * tapping the mic opens a small panel over the keyboard with a live waveform and
+ * a live partial hint. Finalised (cleaned) speech accumulates in an editable
+ * transcript field across pauses and is KEPT there — nothing is written to the
+ * target field until you press Insert. Actions: Copy (to clipboard), Translate
+ * (on-device ML Kit), Insert (commit to the field), ✕ (close). Listens
+ * continuously until closed. Fully offline after the one-time model download.
  */
 object VoiceInput {
 
@@ -41,11 +43,7 @@ object VoiceInput {
     @JvmStatic
     val isActive: Boolean get() = popup != null
 
-    /**
-     * Open the listening popup and start dictation. [anchor] is the IME root view
-     * (mInputView) — used for the popup window token and to size it over the
-     * keyboard. [languageTag] is the active subtype's BCP-47 tag.
-     */
+    /** Open the dictation box and start listening. [anchor] is the IME root view. */
     @JvmStatic
     fun start(ime: InputMethodService, anchor: View?, languageTag: String?) {
         if (isActive || starting || anchor == null) return
@@ -75,43 +73,35 @@ object VoiceInput {
     private fun startSession(service: InputMethodService, anchor: View, dir: String) {
         try {
             if (loadedDir != dir || model == null) {
-                model?.close()
-                model = Model(dir)
-                loadedDir = dir
+                model?.close(); model = Model(dir); loadedDir = dir
             }
             val activeModel = model ?: return
             ime = service
 
-            val ov = VoiceOverlayView(service, onCancel = { stop() })
-            overlay = ov
-            val pw = PopupWindow(
-                ov,
-                if (anchor.width > 0) anchor.width else ViewGroup.LayoutParams.MATCH_PARENT,
-                if (anchor.height > 0) anchor.height else dpFallback(service)
+            val ov = VoiceOverlayView(
+                service,
+                onCopy = { copyToClipboard(service) },
+                onTranslate = { translateBox(service) },
+                onInsert = { insertIntoField() },
+                onClose = { stop() },
             )
+            overlay = ov
+
+            // COMPACT: width spans the keyboard, height wraps the content (the bug
+            // before was height = anchor.height -> whole-keyboard box). Docked at
+            // the bottom over the keyboard. Focusable so the transcript is editable.
+            val width = if (anchor.width > 0) anchor.width else ViewGroup.LayoutParams.MATCH_PARENT
+            val pw = PopupWindow(ov, width, ViewGroup.LayoutParams.WRAP_CONTENT, true /* focusable */)
             pw.isClippingEnabled = false
-            // Non-focusable so the IME keeps its InputConnection (text still goes to
-            // the field); touchable so the Cancel button works.
-            pw.isFocusable = false
-            pw.isTouchable = true
             popup = pw
             pw.showAtLocation(anchor, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, 0, 0)
 
             val rec = VoiceRecognizer(
                 activeModel,
                 onAmplitude = { lvl -> overlay?.setLevel(lvl) },
-                onPartial = { t ->
-                    overlay?.setPartial(t)
-                    if (t.isNotEmpty()) ime?.currentInputConnection?.setComposingText(t, 1)
-                },
-                onFinal = { t ->
-                    overlay?.setPartial("")
-                    ime?.currentInputConnection?.commitText("$t ", 1)
-                },
-                onError = { msg ->
-                    toast(service.applicationContext, "Voice error: $msg")
-                    stop()
-                }
+                onPartial = { t -> overlay?.setPartialHint(t) },          // live hint only
+                onFinal = { t -> overlay?.setPartialHint(""); overlay?.appendFinal(t) }, // cleaned -> kept in box
+                onError = { msg -> toast(service.applicationContext, "Voice error: $msg"); stop() }
             )
             recognizer = rec
             rec.start()
@@ -121,23 +111,43 @@ object VoiceInput {
         }
     }
 
-    /** Stop listening, finish any composing text, and close the popup. Idempotent. */
+    private fun copyToClipboard(ctx: Context) {
+        val text = overlay?.currentText().orEmpty()
+        if (text.isEmpty()) return
+        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("dictation", text))
+        toast(ctx, "Copied")
+    }
+
+    private fun translateBox(ctx: Context) {
+        val text = overlay?.currentText().orEmpty()
+        if (text.isEmpty()) return
+        Translator.liveTranslate(text, BuildConfig.VOICE_TRANSLATE_TO) { result ->
+            if (result != null) overlay?.replaceText(result)
+            else toast(ctx, "Translate failed")
+        }
+    }
+
+    /** Commit the box text to the target field, then close. */
+    private fun insertIntoField() {
+        val text = overlay?.currentText().orEmpty()
+        val service = ime
+        stop()
+        if (text.isEmpty() || service == null) return
+        // Re-fetch the connection after the focusable popup is gone.
+        main.postDelayed({ service.currentInputConnection?.commitText("$text ", 1) }, 80)
+    }
+
+    /** Stop listening and close the box. Idempotent. */
     @JvmStatic
     fun stop() {
         val rec = recognizer; recognizer = null
         val pw = popup; popup = null
-        val ov = overlay; overlay = null
-        val service = ime; ime = null
-        main.post {
-            service?.currentInputConnection?.finishComposingText()
-            if (pw?.isShowing == true) runCatching { pw.dismiss() }
-            ov?.let { /* detached with the popup */ }
-        }
-        // Releasing the recorder joins its thread briefly — keep it off the main thread.
+        overlay = null
+        ime = null
+        main.post { if (pw?.isShowing == true) runCatching { pw.dismiss() } }
         if (rec != null) Thread { rec.stop() }.start()
     }
-
-    private fun dpFallback(ctx: Context) = (240 * ctx.resources.displayMetrics.density).toInt()
 
     private fun toast(ctx: Context, msg: String) {
         main.post { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
