@@ -221,7 +221,7 @@ class EnergyUsageDialog : DialogFragment() {
                     // dumpsys batterystats can take seconds — run it OFF the
                     // main thread on tap, then post rows back. (Auto-running
                     // it on every page open would risk an ANR + is wasteful.)
-                    ShizukuEnergy.bind()
+                    ShizukuEnergy.bind(ctx)
                     val results = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
                     box.addView(pill(ctx, "Load per-app (dumpsys)") {
                         results.removeAllViews()

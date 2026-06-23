@@ -649,6 +649,9 @@ dependencies {
     // tooling is cherry-picked from the RethinkDNS reference upstream
     // (build.json::upstreams.firewall). See libs/firewall/README.md.
     implementation project(':libs:firewall')
+    // libs:battery — battery/energy engine + dialogs (extracted from app).
+    // Depends on libs:shizuku-adb-debug-tools (Tier-2 privileged read).
+    implementation project(':libs:battery')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

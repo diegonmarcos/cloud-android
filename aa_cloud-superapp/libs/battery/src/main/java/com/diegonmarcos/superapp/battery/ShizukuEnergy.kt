@@ -1,5 +1,4 @@
 package com.diegonmarcos.superapp.battery
-import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.IUserService
 import com.diegonmarcos.superapp.system.ShizukuUserService
 
@@ -32,9 +31,10 @@ object ShizukuEnergy {
     @Volatile private var service: IUserService? = null
     @Volatile private var binding = false
 
-    private val componentName: ComponentName
-        get() = ComponentName(
-            BuildConfig.APPLICATION_ID, ShizukuUserService::class.java.name)
+    // Host package == applicationId at runtime; read it from a Context so
+    // this lib needs no app BuildConfig.APPLICATION_ID.
+    private fun componentName(ctx: Context): ComponentName =
+        ComponentName(ctx.packageName, ShizukuUserService::class.java.name)
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -48,8 +48,8 @@ object ShizukuEnergy {
         }
     }
 
-    private val userServiceArgs: Shizuku.UserServiceArgs
-        get() = Shizuku.UserServiceArgs(componentName)
+    private fun userServiceArgs(ctx: Context): Shizuku.UserServiceArgs =
+        Shizuku.UserServiceArgs(componentName(ctx))
             .daemon(false)
             .processNameSuffix("energy")
             .debuggable(false)
@@ -77,16 +77,16 @@ object ShizukuEnergy {
 
     /** Bind the UserService (idempotent). No-op when unavailable or not
      *  granted. Async — [exact] returns null until the bind lands. */
-    fun bind() {
+    fun bind(ctx: Context) {
         if (service != null || binding) return
         if (!isAvailable() || !isGranted()) return
         binding = true
-        runCatching { Shizuku.bindUserService(userServiceArgs, connection) }
+        runCatching { Shizuku.bindUserService(userServiceArgs(ctx), connection) }
             .onFailure { binding = false }
     }
 
-    fun unbind() {
-        runCatching { Shizuku.unbindUserService(userServiceArgs, connection, true) }
+    fun unbind(ctx: Context) {
+        runCatching { Shizuku.unbindUserService(userServiceArgs(ctx), connection, true) }
         service = null
         binding = false
     }
@@ -100,7 +100,7 @@ object ShizukuEnergy {
      *  null when Shizuku is unavailable / not yet bound; empty list when
      *  the dump had no per-uid power section. Newest-since-charge view. */
     fun exact(ctx: Context): List<AppEnergy>? {
-        if (service == null) { bind(); return null }
+        if (service == null) { bind(ctx); return null }
         val dump = exec("dumpsys batterystats --charged") ?: return null
         return parseEstimatedPower(ctx, dump)
     }

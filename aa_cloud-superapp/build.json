@@ -134,7 +134,8 @@
         "libs:kde-connect",
         "libs:shizuku-adb-debug-tools",
         "libs:keyboard",
-        "libs:firewall"
+        "libs:firewall",
+        "libs:battery"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -274,6 +275,14 @@
         "libs:core"
       ],
       "comment": "No-root per-app outbound firewall (original, clean-room). Local VpnService drops blocked apps' packets while allowed apps bypass the tun. Surfaced in the About screen under Battery (info rows + gray 'Firewall Details' button → FirewallDialog). Complex tooling cherry-picked from the RethinkDNS reference clone (upstreams.firewall)."
+    },
+    "libs:battery": {
+      "type": "library",
+      "depends_on": [
+        "libs:core",
+        "libs:shizuku-adb-debug-tools"
+      ],
+      "comment": "Battery/energy engine + its dialogs, extracted from app so it sits as a sibling of libs:firewall. Tier-1 (no-root): BatteryManager/sysfs correlation. Tier-2 (privileged): ShizukuEnergy reads `dumpsys batterystats` via the Shizuku user-service (IUserService/ShizukuUserService) now consolidated into libs:shizuku-adb-debug-tools — hence the lib→lib dep (not lib→app). Consumed by app/devcontrol (the About UI)."
     }
   },
   "shizuku_diagnostics": {
