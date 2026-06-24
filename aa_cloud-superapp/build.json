@@ -20,8 +20,9 @@
   },
   "signing": {
     "_doc": "Stable SHARED Cloud-constellation signing key — the same key signs SuperApp / Cloud-Nav / Cloud-Comms / Cloud-IDE so cross-app installs + the in-app updater never hit a signature mismatch. The keystore (raw credential) and passwords live ONLY in vault; only these non-secret path refs are here. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts vault_secrets, exporting ANDROID_KEYSTORE_FILE / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD which app/build.gradle's signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. When the vault key is unavailable (pure-local dev), gradle falls back to the legacy per-project debug keystore. Paths are relative to the vault repo root.",
-    "vault_keystore": "A0_keys/providers/android/release.jks",
-    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+    "_disabled_2026_06_24": "vault/shared-key signing DISABLED — it signed OU=Cloud Constellation (wrong key c0f94b17), poisoned GHCR and broke installs on every device. Empty vault_keystore => _resolve_signing returns early => legacy per-app keystore (the canonical published key). Do NOT restore without a deliberate full re-key + one-time reinstall on every device.",
+    "vault_keystore": "",
+    "vault_secrets": ""
   },
   "emulator": {
     "_doc": "build.sh emulator boots an arm64 AVD for FULL-FIDELITY testing of the arm64-v8a APK — the emulator emulates arm64 wholesale (TCG/software on this x86_64 host: slow but faithful), so NO libhoudini translation is involved (unlike the Waydroid path). The emulator binary + system image come from the Nix devShell (flake.nix composeAndroidPackages includeEmulator/includeSystemImages). system_image ABI+API MUST match flake.nix abiVersions/systemImageTypes/platformVersions. avd_name is created idempotently by build.sh from system_image; boot_args are passed verbatim to `emulator`.",
