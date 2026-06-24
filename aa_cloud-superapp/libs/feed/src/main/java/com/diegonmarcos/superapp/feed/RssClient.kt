@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.rss
+package com.diegonmarcos.superapp.feed
 
 import android.util.Xml
 import org.xmlpull.v1.XmlPullParser

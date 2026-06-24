@@ -16,7 +16,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.rss.RssClient
+import com.diegonmarcos.superapp.feed.RssClient
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
