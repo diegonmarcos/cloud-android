@@ -169,26 +169,21 @@ android {
     // Stable signing — the WHOLE constellation (this hub + 3 forks + cloud-comms
     // + SuperApp) must share ONE key: the IPC permission is
     // protectionLevel=signature, so a mismatched signature means the forks /
-    // SuperApp can't talk to the hub. The keystore at hub/keystores/ide.keystore
-    // MUST contain the SAME keypair as cloud-comms' keystore (one constellation
-    // signing identity) — generated once, stored in vault, wired via CI sops.
-    // Local fallback to the framework default keystore keeps dev builds working
-    // (they just can't cross-talk with CI-signed APKs).
+    // SuperApp can't talk to the hub. The ONE shared key lives ONLY in vault
+    // (A0_keys/providers/android/release.jks, OU=Cloud Constellation); build.sh
+    // ::_resolve_signing sops-decrypts it and exports ANDROID_KEYSTORE_* (CI via
+    // vault checkout + SOPS_AGE_KEY). THERE IS NO FALLBACK — if the env is not
+    // set the build FAILS rather than producing a debug-signed/random-key APK.
     signingConfigs {
         debug {
-            // Shared Cloud-constellation key from vault (build.sh exports
-            // ANDROID_KEYSTORE_*; CI via vault checkout + SOPS_AGE_KEY). Same
-            // key across all constellation apps so the fleet updater can install
-            // updates. Falls back to the legacy ide keystore for local dev.
             def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
-            def legacy   = file('keystores/ide.keystore')
-            def ks = (envStore != null && !envStore.isEmpty() && file(envStore).exists()) ? file(envStore) : legacy
-            if (ks.exists()) {
-                storeFile     ks
-                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: 'android'
-                keyAlias      System.getenv("ANDROID_KEY_ALIAS")         ?: 'idekey'
-                keyPassword   System.getenv("ANDROID_KEY_PASSWORD")      ?: 'android'
+            if (envStore == null || envStore.isEmpty() || !file(envStore).exists()) {
+                throw new GradleException("ONE shared constellation key required; run via build.sh / set ANDROID_KEYSTORE_FILE; no fallback")
             }
+            storeFile     file(envStore)
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias      System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword   System.getenv("ANDROID_KEY_PASSWORD")
         }
     }
 

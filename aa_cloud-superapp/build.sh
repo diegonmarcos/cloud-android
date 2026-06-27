@@ -78,34 +78,52 @@ prefer_host() {
 # ── signing-key resolver (build.json::signing → vault → env) ──────────
 # Resolves the SHARED Cloud-constellation key from vault and exports the
 # ANDROID_KEYSTORE_* env that app/build.gradle's signingConfig reads, so
-# local builds + CI produce a byte-identical signature. Graceful no-op
-# (gradle then falls back to the legacy debug keystore) when the vault
-# key / sops / age key isn't available — keeps pure-local dev working.
+# local builds + CI produce a byte-identical signature. There is NO
+# fallback: if the ONE shared constellation key / sops / age key isn't
+# available the build FAILS LOUD (exit 1) — it never substitutes or
+# generates another key.
 # CI sets VAULT_DIR (vault checkout) + SOPS_AGE_KEY so it resolves there too.
 _resolve_signing() {
   local ks_rel sec_rel vault ks store_pw key_pw alias_
+  # CI delivery (two-secret): if the workflow already populated a valid keystore
+  # env from the ANDROID_KEYSTORE_B64 + creds GitHub secrets, trust it as-is —
+  # still the ONE shared constellation key, just delivered via CI secret instead
+  # of a vault checkout. Requires a real on-disk keystore + alias, so this is NOT
+  # a fallback to a random/legacy key.
+  if [ -n "${ANDROID_KEYSTORE_FILE:-}" ] && [ -f "${ANDROID_KEYSTORE_FILE}" ] && [ -n "${ANDROID_KEY_ALIAS:-}" ]; then
+    log "signing: using pre-set ANDROID_KEYSTORE_* (CI secret delivery)"
+    return 0
+  fi
   ks_rel="$(_release_var '.signing.vault_keystore')"
   sec_rel="$(_release_var '.signing.vault_secrets')"
-  [ -n "$ks_rel" ] || return 0
+  if [ -z "$ks_rel" ] || [ -z "$sec_rel" ]; then
+    errlog "FATAL signing: .signing.vault_keystore/.vault_secrets are empty in build.json."
+    errlog "  ALL constellation apps MUST sign with the ONE shared key:"
+    errlog "    vault/A0_keys/providers/android/release.jks (OU=Cloud Constellation)"
+    errlog "  Set both paths in build.json::signing. Refusing to build with any other key."
+    exit 1
+  fi
   vault="${VAULT_DIR:-$HOME/git/vault}"
   ks="$vault/$ks_rel"
   if [ ! -f "$ks" ]; then
-    errlog "signing: shared keystore not at $ks — using legacy debug keystore (local/CI signatures will differ)"
-    return 0
+    errlog "FATAL signing: the ONE shared constellation keystore is missing at $ks"
+    errlog "  Check out the vault repo (set VAULT_DIR if elsewhere). NO random/legacy fallback key is allowed."
+    exit 1
   fi
-  command -v sops >/dev/null 2>&1 || { errlog "signing: sops not on PATH — using legacy debug keystore"; return 0; }
+  command -v sops >/dev/null 2>&1 || { errlog "FATAL signing: sops not on PATH; cannot decrypt the shared key. Refusing to build."; exit 1; }
   store_pw="$(sops -d --extract '["keystore_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
-  key_pw="$(sops   -d --extract '["key_password"]'      "$vault/$sec_rel" 2>/dev/null || true)"
-  alias_="$(sops   -d --extract '["key_alias"]'         "$vault/$sec_rel" 2>/dev/null || true)"
+  key_pw="$(sops -d --extract '["key_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  alias_="$(sops -d --extract '["key_alias"]' "$vault/$sec_rel" 2>/dev/null || true)"
   if [ -z "$store_pw" ] || [ -z "$alias_" ]; then
-    errlog "signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY[_FILE]) — using legacy debug keystore"
-    return 0
+    errlog "FATAL signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY / SOPS_AGE_KEY_FILE)."
+    errlog "  The ONE shared constellation key must be used — refusing to fall back to any other key."
+    exit 1
   fi
   export ANDROID_KEYSTORE_FILE="$ks"
   export ANDROID_KEYSTORE_PASSWORD="$store_pw"
   export ANDROID_KEY_PASSWORD="$key_pw"
   export ANDROID_KEY_ALIAS="$alias_"
-  log "signing: shared constellation key (alias $alias_) from vault"
+  log "signing: ONE shared constellation key (alias $alias_) from vault/$ks_rel"
 }
 
 step_build() {

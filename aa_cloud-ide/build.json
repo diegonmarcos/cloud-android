@@ -18,10 +18,9 @@
     "abi_filters": ["arm64-v8a"]
   },
   "signing": {
-    "_doc": "Stable SHARED Cloud-constellation signing key — the same key signs SuperApp / Cloud-Nav / Cloud-Comms / Cloud-IDE so cross-app installs + the in-app updater never hit a signature mismatch. The keystore (raw credential) + passwords live ONLY in vault; only these non-secret path refs are here. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts vault_secrets, exporting ANDROID_KEYSTORE_FILE / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. Without the vault key (pure-local dev) gradle falls back to the legacy debug keystore. Paths relative to the vault repo root.",
-    "_disabled_2026_06_24": "vault/shared-key signing DISABLED — it signed OU=Cloud Constellation (wrong key c0f94b17), poisoned GHCR and broke installs on every device. Empty vault_keystore => _resolve_signing returns early => legacy per-app keystore (the canonical published key). Do NOT restore without a deliberate full re-key + one-time reinstall on every device.",
-    "vault_keystore": "",
-    "vault_secrets": ""
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key — it never generates or substitutes a random/legacy key.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
   "toolchain": {
     "_doc": "Pinned for reproducibility — all derived in flake.nix. Mirrors ea_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",

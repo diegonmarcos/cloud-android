@@ -131,33 +131,51 @@ step_bundle_forks() {
 # ── signing-key resolver (build.json::signing → vault → env) ──────────
 # Resolves the SHARED Cloud-constellation key from vault and exports the
 # ANDROID_KEYSTORE_* env the gradle signingConfig reads, so local + CI sign
-# identically (and the fleet updater can install updates). Graceful no-op
-# (gradle falls back to the legacy ide keystore) when the vault key / sops
-# / age key isn't available. CI sets VAULT_DIR + SOPS_AGE_KEY.
+# identically (and the fleet updater can install updates). THERE IS NO
+# FALLBACK: if the vault key / sops / age key isn't available the build FAILS
+# LOUD (exit 1) telling you to use the one shared constellation key — it never
+# generates or substitutes a random/legacy key. CI sets VAULT_DIR + SOPS_AGE_KEY.
 _resolve_signing() {
   local ks_rel sec_rel vault ks store_pw key_pw alias_
+  # CI delivery (two-secret): if the workflow already populated a valid keystore
+  # env from the ANDROID_KEYSTORE_B64 + creds GitHub secrets, trust it as-is —
+  # still the ONE shared constellation key, just delivered via CI secret instead
+  # of a vault checkout. Requires a real on-disk keystore + alias, so this is NOT
+  # a fallback to a random/legacy key.
+  if [ -n "${ANDROID_KEYSTORE_FILE:-}" ] && [ -f "${ANDROID_KEYSTORE_FILE}" ] && [ -n "${ANDROID_KEY_ALIAS:-}" ]; then
+    log "signing: using pre-set ANDROID_KEYSTORE_* (CI secret delivery)"
+    return 0
+  fi
   ks_rel="$(_json '.signing.vault_keystore')"
   sec_rel="$(_json '.signing.vault_secrets')"
-  [ -n "$ks_rel" ] || return 0
+  if [ -z "$ks_rel" ] || [ -z "$sec_rel" ]; then
+    errlog "FATAL signing: .signing.vault_keystore/.vault_secrets are empty in build.json."
+    errlog "  ALL constellation apps MUST sign with the ONE shared key:"
+    errlog "    vault/A0_keys/providers/android/release.jks (OU=Cloud Constellation)"
+    errlog "  Set both paths in build.json::signing. Refusing to build with any other key."
+    exit 1
+  fi
   vault="${VAULT_DIR:-$HOME/git/vault}"
   ks="$vault/$ks_rel"
   if [ ! -f "$ks" ]; then
-    errlog "signing: shared keystore not at $ks — using legacy keystore (local/CI signatures will differ)"
-    return 0
+    errlog "FATAL signing: the ONE shared constellation keystore is missing at $ks"
+    errlog "  Check out the vault repo (set VAULT_DIR if elsewhere). NO random/legacy fallback key is allowed."
+    exit 1
   fi
-  command -v sops >/dev/null 2>&1 || { errlog "signing: sops not on PATH — using legacy keystore"; return 0; }
+  command -v sops >/dev/null 2>&1 || { errlog "FATAL signing: sops not on PATH; cannot decrypt the shared key. Refusing to build."; exit 1; }
   store_pw="$(sops -d --extract '["keystore_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
-  key_pw="$(sops   -d --extract '["key_password"]'      "$vault/$sec_rel" 2>/dev/null || true)"
-  alias_="$(sops   -d --extract '["key_alias"]'         "$vault/$sec_rel" 2>/dev/null || true)"
+  key_pw="$(sops -d --extract '["key_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  alias_="$(sops -d --extract '["key_alias"]' "$vault/$sec_rel" 2>/dev/null || true)"
   if [ -z "$store_pw" ] || [ -z "$alias_" ]; then
-    errlog "signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY[_FILE]) — using legacy keystore"
-    return 0
+    errlog "FATAL signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY / SOPS_AGE_KEY_FILE)."
+    errlog "  The ONE shared constellation key must be used — refusing to fall back to any other key."
+    exit 1
   fi
   export ANDROID_KEYSTORE_FILE="$ks"
   export ANDROID_KEYSTORE_PASSWORD="$store_pw"
   export ANDROID_KEY_PASSWORD="$key_pw"
   export ANDROID_KEY_ALIAS="$alias_"
-  log "signing: shared constellation key (alias $alias_) from vault"
+  log "signing: ONE shared constellation key (alias $alias_) from vault/$ks_rel"
 }
 
 # ── hub build/test ─────────────────────────────────────────────────────
@@ -324,23 +342,30 @@ step_build_fork() {
   dest="$SCRIPT_DIR/../$tracker"
   [ -d "$dest/.git" ] || { errlog "fork '$key' not materialized — run: ./build.sh materialize-fork $key"; exit 1; }
 
-  # Ensure the fork's signing keystore exists before gradle config (the patch's
-  # signing config references it at evaluation time). Generated once per clone
-  # with keytool + the universal debug password 'android' — data-driven from
-  # build.json::forks.<key>.build.keystore. Gitignored (lives in the ignored
-  # tracker clone). Constellation key unification is a later phase.
+  # Provision the fork's signing keystore BEFORE gradle config (the patch's
+  # signing config references it at evaluation time). The fork APKs MUST sign
+  # with the ONE shared constellation key like every other app — so instead of
+  # generating a random per-fork key, we IMPORT the resolved vault keypair into
+  # the keystore file the fork's gradle expects (storepass/keypass 'android',
+  # alias from build.json). The APK signature is the keypair, not the alias or
+  # store password, so every fork APK signs with the SAME constellation cert.
+  # NO random keytool -genkeypair, EVER. _resolve_signing fails loud (exit 1)
+  # if the shared key is unavailable — no random/legacy fallback.
   local ks alias kspath
   ks="$(_json ".forks.${key}.build.keystore")"
   alias="$(_json ".forks.${key}.build.keystore_alias")"; alias="${alias:-idekey}"
   if [ -n "$ks" ]; then
     kspath="$dest/$ks"
-    if [ ! -f "$kspath" ]; then
-      log "build-fork[$key]: generating signing keystore $ks (alias $alias)"
-      mkdir -p "$(dirname "$kspath")"
-      in_nix keytool -genkeypair -keystore "$kspath" -storepass android -keypass android \
-        -alias "$alias" -keyalg RSA -keysize 2048 -validity 10950 \
-        -dname "CN=Cloud-IDE, OU=$key, O=diegonmarcos.com, L=Madrid, ST=Madrid, C=ES"
-    fi
+    _resolve_signing
+    log "build-fork[$key]: importing ONE shared constellation key → $ks (alias $alias)"
+    rm -f "$kspath"
+    mkdir -p "$(dirname "$kspath")"
+    in_nix keytool -importkeystore -noprompt \
+      -srckeystore "$ANDROID_KEYSTORE_FILE" -srcstoretype PKCS12 \
+      -srcstorepass "$ANDROID_KEYSTORE_PASSWORD" -srcalias "$ANDROID_KEY_ALIAS" \
+      -srckeypass "${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}" \
+      -destkeystore "$kspath" -deststoretype PKCS12 \
+      -deststorepass android -destkeypass android -destalias "$alias"
   fi
 
   # ABI-switch clean: rust-android-gradle leaves prior-ABI .so in

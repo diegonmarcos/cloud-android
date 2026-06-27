@@ -194,22 +194,23 @@ android {
         buildConfig = true
     }
 
-    // Shared Cloud-constellation key: build.sh resolves release.jks + sops
-    // passwords from vault and exports ANDROID_KEYSTORE_* (CI does the same via
-    // a vault checkout + SOPS_AGE_KEY). The SAME key signs SuperApp/Cloud-Nav/
-    // Cloud-Comms/Cloud-IDE so the in-app updater never hits a signature
-    // mismatch. Falls back to the legacy debug keystore for pure-local dev.
+    // ONE shared Cloud-constellation key: build.sh::_resolve_signing resolves
+    // release.jks + sops passwords from vault and exports ANDROID_KEYSTORE_*
+    // (CI does the same via a vault checkout + SOPS_AGE_KEY). The SAME key signs
+    // SuperApp/Cloud-Nav/Cloud-Comms/Cloud-IDE so cross-app signature-IPC + the
+    // in-app updater never hit a signature mismatch. THERE IS NO FALLBACK — no
+    // legacy/debug keystore, no keytool -genkeypair. If ANDROID_KEYSTORE_FILE is
+    // unset the build FAILS LOUD; always invoke via build.sh.
     signingConfigs {
         debug {
             def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
-            def legacy   = file('keystores/debug.keystore')
-            def ks = (envStore != null && !envStore.isEmpty() && file(envStore).exists()) ? file(envStore) : legacy
-            if (ks.exists()) {
-                storeFile     ks
-                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: 'android'
-                keyAlias      System.getenv("ANDROID_KEY_ALIAS")         ?: 'androiddebugkey'
-                keyPassword   System.getenv("ANDROID_KEY_PASSWORD")      ?: 'android'
+            if (envStore == null || envStore.isEmpty() || !file(envStore).exists()) {
+                throw new GradleException("ONE shared constellation key required; run via build.sh / set ANDROID_KEYSTORE_FILE; no fallback")
             }
+            storeFile     file(envStore)
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias      System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword   System.getenv("ANDROID_KEY_PASSWORD")
         }
     }
 

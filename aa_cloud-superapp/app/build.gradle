@@ -561,25 +561,25 @@ android {
     }
 
     // Stable signing — required for the in-app updater to install update APKs.
-    // The SHARED Cloud-constellation key (release.jks + sops passwords) lives in
-    // vault; build.sh resolves it and exports ANDROID_KEYSTORE_FILE / _PASSWORD /
-    // KEY_ALIAS / KEY_PASSWORD (CI does the same via the vault checkout +
-    // SOPS_AGE_KEY). The SAME key signs SuperApp / Cloud-Nav / Cloud-Comms /
-    // Cloud-IDE so local + CI + every app produce a matching signature and the
-    // in-app updater never rejects an install on a signature mismatch.
-    // When that env is absent (pure-local dev, no vault), fall back to the
-    // legacy per-project debug keystore so a bare `gradle` still builds.
+    // The ONE shared Cloud-constellation key (release.jks + sops passwords) lives
+    // in vault; build.sh::_resolve_signing resolves it and exports
+    // ANDROID_KEYSTORE_FILE / _PASSWORD / KEY_ALIAS / KEY_PASSWORD (CI does the
+    // same via the vault checkout + SOPS_AGE_KEY). The SAME key signs SuperApp /
+    // Cloud-Nav / Cloud-Comms / Cloud-IDE so local + CI + every app produce a
+    // matching signature and the in-app updater never rejects an install on a
+    // signature mismatch. THERE IS NO FALLBACK: if ANDROID_KEYSTORE_FILE is
+    // absent the build FAILS LOUD — it never substitutes a debug/legacy/freshly
+    // generated key. Run via build.sh (or export the env yourself from vault).
     signingConfigs {
         debug {
             def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
-            def legacy   = file('keystores/debug.keystore')
-            def ks = (envStore != null && !envStore.isEmpty() && file(envStore).exists()) ? file(envStore) : legacy
-            if (ks.exists()) {
-                storeFile     ks
-                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: 'android'
-                keyAlias      System.getenv("ANDROID_KEY_ALIAS")         ?: 'androiddebugkey'
-                keyPassword   System.getenv("ANDROID_KEY_PASSWORD")      ?: 'android'
+            if (envStore == null || envStore.isEmpty() || !file(envStore).exists()) {
+                throw new GradleException("ONE shared constellation key required; run via build.sh / set ANDROID_KEYSTORE_FILE; no fallback")
             }
+            storeFile     file(envStore)
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias      System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword   System.getenv("ANDROID_KEY_PASSWORD")
         }
     }
 
