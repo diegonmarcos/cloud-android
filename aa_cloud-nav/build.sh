@@ -101,9 +101,9 @@ _resolve_signing() {
     exit 1
   fi
   command -v sops >/dev/null 2>&1 || { errlog "FATAL signing: sops not on PATH; cannot decrypt the shared key. Refusing to build."; exit 1; }
-  store_pw="$(sops -d --extract '["keystore_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
-  key_pw="$(sops -d --extract '["key_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
-  alias_="$(sops -d --extract '["key_alias"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  store_pw="$(sops --config /dev/null -d --extract '["keystore_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  key_pw="$(sops --config /dev/null -d --extract '["key_password"]' "$vault/$sec_rel" 2>/dev/null || true)"
+  alias_="$(sops --config /dev/null -d --extract '["key_alias"]' "$vault/$sec_rel" 2>/dev/null || true)"
   if [ -z "$store_pw" ] || [ -z "$alias_" ]; then
     errlog "FATAL signing: cannot decrypt $sec_rel (need SOPS_AGE_KEY / SOPS_AGE_KEY_FILE)."
     errlog "  The ONE shared constellation key must be used — refusing to fall back to any other key."
