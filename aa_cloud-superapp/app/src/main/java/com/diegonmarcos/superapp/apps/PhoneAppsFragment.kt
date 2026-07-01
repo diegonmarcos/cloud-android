@@ -107,8 +107,84 @@ class PhoneAppsFragment : Fragment() {
         return bar
     }
 
-    /** Build (or rebuild) the folder grid + smart folders into [rootCol]. */
+    /** true = A–Z folders (alphabetic), false = category + smart folders.
+     *  In-memory only — resets to Categories each time the sheet opens. */
+    private var alphaMode = false
+
+    /** Dispatcher: segmented "Categories | Alphabetic" toggle under the
+     *  host search bar, then the chosen layout. Re-invoked in place when
+     *  the toggle or refresh fires (caller clears [rootCol] first). */
     private fun buildContent(ctx: Context, rootCol: LinearLayout) {
+        rootCol.addView(modeToggle(ctx, rootCol))
+        if (alphaMode) buildAlphabetic(ctx, rootCol) else buildCategories(ctx, rootCol)
+    }
+
+    /** Right-aligned segmented control. Switching mode rebuilds [content]
+     *  in place (same clear+rebuild shape as the refresh affordance). */
+    private fun modeToggle(ctx: Context, content: LinearLayout): View {
+        val bar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(ctx, 4); bottomMargin = dp(ctx, 4) }
+        }
+        fun rebuild() { content.removeAllViews(); buildContent(ctx, content) }
+        fun seg(label: String, active: Boolean, side: String, onPick: () -> Unit) = TextView(ctx).apply {
+            text = label
+            textSize = 12f
+            setTextColor(if (active) 0xFF0A0A14.toInt() else 0xFFE9D8FD.toInt())
+            gravity = Gravity.CENTER
+            val h = dp(ctx, 8); val v = dp(ctx, 6); setPadding(h, v, h, v)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(if (active) 0xFFE9D8FD.toInt() else 0x22FFFFFF)
+                val r = dp(ctx, 14).toFloat()
+                cornerRadii = when (side) {
+                    "l" -> floatArrayOf(r, r, 0f, 0f, 0f, 0f, r, r)
+                    else -> floatArrayOf(0f, 0f, r, r, r, r, 0f, 0f)
+                }
+            }
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                Haptics.tap(it)
+                if (active) return@setOnClickListener
+                onPick(); rebuild()
+            }
+        }
+        bar.addView(seg("Categories", !alphaMode, "l") { alphaMode = false })
+        bar.addView(seg("Alphabetic", alphaMode, "r") { alphaMode = true })
+        return bar
+    }
+
+    /** A–Z (plus a trailing "#" bucket for non-letter labels) folders of
+     *  every launchable app, 6 per row. All 26 letter folders are always
+     *  shown — empty ones render as empty glass squares, per spec. */
+    private fun buildAlphabetic(ctx: Context, rootCol: LinearLayout) {
+        val apps    = sCachedApps ?: collectLaunchableApps(ctx).also { sCachedApps = it }
+        val columns = BuildConfig.UI_PHONE_GRID_COLUMNS
+        val byLetter = LinkedHashMap<String, MutableList<PhoneApp>>()
+        for (c in 'A'..'Z') byLetter[c.toString()] = mutableListOf()
+        val hash = mutableListOf<PhoneApp>()
+        for (app in apps) {
+            val ch = app.label.trim().firstOrNull()?.uppercaseChar()
+            if (ch != null && ch in 'A'..'Z') byLetter.getValue(ch.toString()).add(app) else hash.add(app)
+        }
+        val folders = mutableListOf<PhoneFolders.Folder>()
+        val grouped = HashMap<String, List<PhoneApp>>()
+        for ((letter, list) in byLetter) {
+            folders.add(PhoneFolders.Folder("alpha:$letter", letter, letter, emptyList()))
+            grouped["alpha:$letter"] = list.sortedBy { it.label.lowercase() }
+        }
+        if (hash.isNotEmpty()) {
+            folders.add(PhoneFolders.Folder("alpha:#", "zz", "#", emptyList()))
+            grouped["alpha:#"] = hash.sortedBy { it.label.lowercase() }
+        }
+        renderFolderGrid(rootCol, ctx, folders, grouped, columns)
+    }
+
+    /** Build (or rebuild) the folder grid + smart folders into [rootCol]. */
+    private fun buildCategories(ctx: Context, rootCol: LinearLayout) {
         // Process-level cache populated by [warmUp] at app launch. By
         // the time the user navigates here it's usually already
         // primed → render is instant. If the user got here BEFORE the
