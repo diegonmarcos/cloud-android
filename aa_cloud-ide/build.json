@@ -24,7 +24,7 @@
   },
   "diagnostics": {
     "_doc": "Hub AboutActivity diagnostics → cloud sink + local download (DiagnosticsPush). Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by hub/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store) ingest reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK. '{stream}' is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (Download logs still works); set it to the confirmed collector ingest path to enable Send logs → cloud. Data-driven — never hardcode in Kotlin.",
-    "log_sink_url": "",
+    "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-ide-hub",
     "enabled": true
   },
