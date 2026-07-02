@@ -307,6 +307,25 @@ class AboutActivity : AppCompatActivity() {
             })
         }
 
+        // ── Diagnostics (download / push logs to OpenObserve, the Loki-equiv) ──
+        section(ctx, column, "Diagnostics") {
+            it.addView(small(ctx, "Capture this app's logcat + device info. Download saves a JSON bundle to Downloads; Send posts it to the cloud log store (OpenObserve)."))
+            it.addView(actionButton(ctx, "Download logs") {
+                Thread {
+                    val name = "cloud-diag-${BuildConfig.APPLICATION_ID}-${BuildConfig.GIT_SHORT_SHA}.json"
+                    val saved = DiagnosticsPush.downloadBundle(ctx, name, DiagnosticsPush.captureRecord(ctx))
+                    runOnUiThread { Toast.makeText(ctx, if (saved != null) "Saved $saved to Downloads" else "Download failed", Toast.LENGTH_LONG).show() }
+                }.start()
+            })
+            it.addView(actionButton(ctx, "Send logs → cloud") {
+                Thread {
+                    val code = DiagnosticsPush.pushToCloud(DiagnosticsPush.captureRecord(ctx))
+                    val msg = when { code in 200..299 -> "Sent to cloud ($code)"; code == -2 -> "Cloud sink not configured (build.json diagnostics.log_sink_url)"; else -> "Send failed ($code)" }
+                    runOnUiThread { Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show() }
+                }.start()
+            })
+        }
+
         // ── Copy All Infos ─────────────────────────────────────────────
         column.addView(actionButton(ctx, "Copy All Infos") {
             val snapshot = infoBuf.toString()

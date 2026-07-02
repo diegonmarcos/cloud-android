@@ -22,6 +22,12 @@
     "vault_keystore": "A0_keys/providers/android/release.jks",
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
+  "diagnostics": {
+    "_doc": "Hub AboutActivity diagnostics → cloud sink + local download (DiagnosticsPush). Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by hub/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store) ingest reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK. '{stream}' is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (Download logs still works); set it to the confirmed collector ingest path to enable Send logs → cloud. Data-driven — never hardcode in Kotlin.",
+    "log_sink_url": "",
+    "log_sink_stream": "cloud-ide-hub",
+    "enabled": true
+  },
   "toolchain": {
     "_doc": "Pinned for reproducibility — all derived in flake.nix. Mirrors ea_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
     "agp": "8.7.3",

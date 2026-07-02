@@ -51,6 +51,10 @@ def endpointsB64 = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64()
 // com.diegonmarcos.ide.update package self-updates the hub APK from here; no
 // hardcoded URLs in Kotlin (FIRE rule 4). Mirrors ea_cloud-superapp/libs:updater.
 def ghcr = buildJson.release.ghcr
+// Diagnostics cloud sink (DiagnosticsPush → OpenObserve/Loki). Data-driven from
+// build.json::diagnostics; empty url = cloud push disabled (download still works).
+def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
+def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-ide-hub')
 def au   = buildJson.release.auto_update
 
 // ── About stack-scan (ported from ea_cloud-superapp via ea_cloud-comms) ──
@@ -120,6 +124,8 @@ android {
         buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
         buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
+        buildConfigField "String", "LOG_SINK_URL",     "\"${logSinkUrl}\""
+        buildConfigField "String", "LOG_SINK_STREAM",  "\"${logSinkStream}\""
 
         // UI defaults (build.json::ui). Floating wrapper bar off by default —
         // Cloud-SuperApp owns the system bar; Configs toggle re-enables it.
