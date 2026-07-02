@@ -2,21 +2,21 @@ package com.diegonmarcos.superapp.firewall
 
 /**
  * Pure, netstack-agnostic decision core. No Android deps → unit-testable.
- *
- * The firestack bridge calls [block] per connection from `FlowListener.flow`
- * (OUT) / `inflow` (IN) with the real direction; [FirewallFlowPolicy] wraps
- * this with the cloud-VPN routing decision.
+ * A flow is blocked if ANY axis of the [AppRule] blocks it (parallel sum).
  */
 object FirewallDecider {
 
-    /** true = drop this flow. Blocked if ANY assigned rule matches.
-     *  Used by [FirewallFlowPolicy] (staged firestack merge). */
-    fun block(rules: List<RuleSpec>, flow: Direction, t: Transport, e: Energy): Boolean =
-        rules.any { it.blocks(flow, t, e) }
+    /** Direction-aware per-flow verdict (firestack path): true = drop. */
+    fun block(r: AppRule, flow: Direction, t: Transport, isBackground: Boolean): Boolean =
+        r.transportBlocks(t) ||
+            (isBackground && !r.background) ||
+            r.directionBlocks(flow)
 
-    /** Interim verdict for the shipping drain-engine: true = drop ALL of this
-     *  app's traffic right now. Inbound-only rules can't be honoured by
-     *  drain-and-drop, so they're skipped (they light up under firestack). */
-    fun interimBlocked(rules: List<RuleSpec>, t: Transport, e: Energy): Boolean =
-        rules.any { it.appliesInterim(t, e) }
+    /** Interim drain-engine verdict: true = drop ALL of this app's traffic now.
+     *  The drain-engine can't split inbound/outbound, so only the direction=ALL
+     *  case of the direction axis is honoured here; IN/OUT need firestack. */
+    fun interimBlocked(r: AppRule, t: Transport, isBackground: Boolean): Boolean =
+        r.transportBlocks(t) ||
+            (isBackground && !r.background) ||
+            r.direction == Direction.ALL
 }

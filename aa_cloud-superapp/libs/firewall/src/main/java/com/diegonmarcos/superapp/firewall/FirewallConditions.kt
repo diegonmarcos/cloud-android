@@ -28,7 +28,7 @@ object FirewallConditions {
         return when {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> Transport.VPN
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Transport.WIFI
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Transport.CELL
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Transport.CELLULAR
             else -> Transport.OTHER
         }
     }
@@ -64,14 +64,15 @@ object FirewallConditions {
     }.getOrNull()
 
     /**
-     * Per-app energy: ACTIVE only when the screen is on AND [pkg] is the
-     * current foreground app. Without usage-access we can't know the app,
-     * so we fall back to device screen state (screen-on ⇒ ACTIVE).
+     * Is [pkg] currently in the background? True unless the screen is on AND
+     * [pkg] is the foreground app. Without usage-access we can't know the
+     * foreground app, so we degrade to device screen state (screen-off ⇒
+     * background, screen-on ⇒ treated as foreground).
      */
-    fun energy(ctx: Context, pkg: String): Energy {
-        if (!screenOn(ctx)) return Energy.BACKGROUND
-        if (!hasUsageAccess(ctx)) return Energy.ACTIVE
-        return if (foregroundPkg(ctx) == pkg) Energy.ACTIVE else Energy.BACKGROUND
+    fun isBackground(ctx: Context, pkg: String): Boolean {
+        if (!screenOn(ctx)) return true
+        if (!hasUsageAccess(ctx)) return false
+        return foregroundPkg(ctx) != pkg
     }
 
     /** Intent action to send the user to the usage-access grant screen. */

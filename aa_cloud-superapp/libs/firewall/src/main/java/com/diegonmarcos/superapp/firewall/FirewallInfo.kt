@@ -47,7 +47,7 @@ object FirewallInfo {
 
         return State(
             enabled = FirewallPrefs.isEnabled(ctx),
-            blockedCount = FirewallRules.policies(ctx).size,
+            blockedCount = FirewallRules.configured(ctx).size,
             transport = transport,
             systemVpnActive = vpn,
             privateDns = privateDns,

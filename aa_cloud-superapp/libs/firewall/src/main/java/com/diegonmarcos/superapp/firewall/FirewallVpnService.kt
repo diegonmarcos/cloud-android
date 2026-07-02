@@ -10,22 +10,27 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.VpnService
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import android.widget.Toast
 import java.io.FileInputStream
 
 /**
- * No-root per-app firewall engine (SHIPPING interim). A local tun captures
- * traffic; apps whose per-app policy blocks them UNDER THE CURRENT conditions
- * (transport × energy) fall into the tun and are drained/dropped, everything
- * else bypasses the tunnel.
+ * No-root per-app firewall engine (shipping interim). A local tun captures
+ * traffic; apps blocked by their [AppRule] UNDER THE CURRENT conditions
+ * (transport × background) fall into the tun and are drained/dropped, while
+ * every other app is excluded and uses the network normally.
  *
- * The blocked set is DYNAMIC: recomputed from [FirewallRules] policies + live
- * [FirewallConditions] and re-applied on every network/screen change.
+ * The tun is established whenever the firewall is enabled — even with zero
+ * apps currently blocked — so toggling the firewall on VISIBLY activates the
+ * VPN (key icon) and rules take effect live. The blocked set is recomputed on
+ * every network/screen change.
  *
- * Direction (IN/OUT) split and running alongside the WireGuard tunnel are the
- * staged firestack merge (libs/firewall/phase3-firestack/ + upstreams.firestack)
- * — not wired into the shipped build yet. See README.
+ * Direction IN/OUT and running alongside the WireGuard tunnel are the staged
+ * firestack merge (libs/firewall/phase3-firestack/); the drain-engine enforces
+ * transport + background + block-all only.
  */
 class FirewallVpnService : VpnService() {
 
@@ -39,65 +44,59 @@ class FirewallVpnService : VpnService() {
         return when (intent?.action) {
             ACTION_STOP -> { teardown(); stopSelf(); START_NOT_STICKY }
             else -> {
-                // FGS contract: startForeground quickly on every start path.
                 startForeground(NOTIF_ID, buildNotification(0))
                 onConditionsChanged(); registerWatchers(); START_STICKY
             }
         }
     }
 
-    /** True when any app has a policy at all — the firewall has a job to do. */
-    private fun hasWork(ctx: Context): Boolean = FirewallRules.policies(ctx).isNotEmpty()
-
-    /** Apps to drop right now, given live conditions. */
+    /** Apps to drop right now, given each app's rule × live conditions. */
     private fun effectiveBlocked(ctx: Context): Set<String> {
         val t = FirewallConditions.transport(ctx)
-        return FirewallRules.policies(ctx)
+        return FirewallRules.configured(ctx)
             .filterKeys { it != packageName } // never block the launcher itself
-            .filter { (pkg, rules) ->
-                FirewallDecider.interimBlocked(rules, t, FirewallConditions.energy(ctx, pkg))
+            .filter { (pkg, rule) ->
+                FirewallDecider.interimBlocked(rule, t, FirewallConditions.isBackground(ctx, pkg))
             }
             .keys
     }
 
-    /** (Re)establish the tun to match the current effective block set. */
-    private fun onConditionsChanged() {
-        val ctx = applicationContext
-        if (!hasWork(ctx)) { teardown(); stopSelf(); return }
-        rebuild(ctx, effectiveBlocked(ctx))
-    }
+    private fun onConditionsChanged() = rebuild(applicationContext, effectiveBlocked(applicationContext))
 
+    /** (Re)establish the tun. Established whenever enabled, even if [blocked]
+     *  is empty (VPN on, blocks no one) — so the toggle visibly turns on. */
     private fun rebuild(ctx: Context, blocked: Set<String>) {
         teardownTun()
-        if (blocked.isEmpty()) {
-            // Policies exist but none match current conditions — keep watching,
-            // tunnel no one.
-            startForeground(NOTIF_ID, buildNotification(0)); return
-        }
         val builder = Builder()
             .setSession("Superapp Firewall")
+            .setMtu(MTU)
             .addAddress(TUN_ADDR4, 32)
             .addAddress(TUN_ADDR6, 128)
             .addRoute("0.0.0.0", 0)
             .addRoute("::", 0)
+            .addDnsServer(TUN_ADDR4) // some OEMs reject a VPN with no DNS
             .setBlocking(true)
 
         // Exclude every app that is NOT currently blocked → only blocked apps
-        // enter the tun. Always exclude ourselves.
+        // enter the tun. Always exclude ourselves. With an empty block set,
+        // everyone is excluded → the VPN is up but drops nothing.
         val self = packageName
         for (pkg in packageManager.getInstalledApplications(0).map { it.packageName }) {
             if (pkg == self || pkg !in blocked) runCatching { builder.addDisallowedApplication(pkg) }
         }
 
-        tun = runCatching { builder.establish() }.getOrNull()
+        tun = runCatching { builder.establish() }.getOrElse {
+            Log.e(TAG, "establish() threw", it); null
+        }
         if (tun == null) {
-            Log.w(TAG, "establish() null — VPN slot busy or consent missing")
+            Log.w(TAG, "establish() null — VPN consent missing or slot busy")
+            Toast.makeText(ctx, "Firewall couldn't start (VPN permission or another VPN active)", Toast.LENGTH_LONG).show()
             FirewallPrefs.setEnabled(ctx, false)
             teardown(); stopSelf(); return
         }
         FirewallPrefs.setEnabled(ctx, true)
         startForeground(NOTIF_ID, buildNotification(blocked.size))
-        startDrain()
+        if (blocked.isNotEmpty()) startDrain()
     }
 
     /** React to transport / screen changes by recomputing the block set. */
@@ -105,12 +104,15 @@ class FirewallVpnService : VpnService() {
         val ctx = applicationContext
         if (netCallback == null) {
             val cm = ctx.getSystemService(ConnectivityManager::class.java)
+            // Deliver callbacks on the main thread so rebuild()'s startForeground
+            // / Toast are main-thread-safe (default delivery is a binder thread).
+            val main = Handler(Looper.getMainLooper())
             netCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(n: Network) = onConditionsChanged()
                 override fun onLost(n: Network) = onConditionsChanged()
                 override fun onCapabilitiesChanged(n: Network, c: android.net.NetworkCapabilities) =
                     onConditionsChanged()
-            }.also { runCatching { cm?.registerDefaultNetworkCallback(it) } }
+            }.also { runCatching { cm?.registerDefaultNetworkCallback(it, main) } }
         }
         if (screenReceiver == null) {
             screenReceiver = object : BroadcastReceiver() {
@@ -171,7 +173,7 @@ class FirewallVpnService : VpnService() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CHANNEL, "Firewall", NotificationManager.IMPORTANCE_LOW)
         )
-        val text = if (blockedCount == 0) "Watching — no app blocked under current network"
+        val text = if (blockedCount == 0) "On — no app blocked under the current network"
         else "$blockedCount app(s) blocked from the network"
         return Notification.Builder(this, CHANNEL)
             .setContentTitle("Firewall active")
@@ -184,6 +186,7 @@ class FirewallVpnService : VpnService() {
     companion object {
         const val TAG = "FirewallVpn"
         const val ACTION_STOP = "com.diegonmarcos.superapp.firewall.STOP"
+        private const val MTU = 1500
         private const val TUN_ADDR4 = "10.111.222.1"
         private const val TUN_ADDR6 = "fd00:1:1:1::1"
         private const val CHANNEL = "firewall"

@@ -37,16 +37,16 @@ object FirewallController {
         )
     }
 
-    /** Re-apply after a policy change: (re)start if it now has work, or stop if
-     *  the user cleared the last policy. No-op when off. */
+    /** Re-apply after a rule change (the running service recomputes its block
+     *  set). No-op when off. */
     fun refresh(ctx: Context) {
         if (isEnabled(ctx)) reconcile(ctx)
     }
 
+    /** When enabled, the VPN is ALWAYS established (even with no configured
+     *  apps) so the toggle visibly turns on; per-app rules then take effect
+     *  live. Disabling stops it. */
     private fun reconcile(ctx: Context) {
-        val hasWork = FirewallRules.policies(ctx).isNotEmpty()
-        val intent = Intent(ctx, FirewallVpnService::class.java)
-        if (hasWork) ctx.startService(intent)
-        else ctx.startService(intent.setAction(FirewallVpnService.ACTION_STOP))
+        ctx.startService(Intent(ctx, FirewallVpnService::class.java))
     }
 }

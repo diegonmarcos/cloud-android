@@ -5,76 +5,77 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Proves the pure decision core against the user's own rule examples. */
+/** Proves the parallel-axis AppRule decision core against the user's examples. */
 class FirewallDeciderTest {
 
-    private val all = setOf(Transport.WIFI, Transport.CELL, Transport.VPN, Transport.OTHER)
-    private val bothEnergy = setOf(Energy.ACTIVE, Energy.BACKGROUND)
+    private val FG = false // isBackground = false → foreground
+    private val BG = true
 
-    private fun rule(block: Direction, t: Set<Transport>, e: Set<Energy>) =
-        RuleSpec("r", "r", block, t, e)
-
-    @Test fun blockAll_dropsEveryFlow() {
-        val p = listOf(rule(Direction.ALL, all, bothEnergy))
-        assertTrue(FirewallDecider.block(p, Direction.OUT, Transport.WIFI, Energy.ACTIVE))
-        assertTrue(FirewallDecider.block(p, Direction.IN, Transport.CELL, Energy.BACKGROUND))
+    @Test fun default_allowsEverything() {
+        val r = AppRule()
+        assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.CELLULAR, BG))
+        assertFalse(FirewallDecider.interimBlocked(r, Transport.CELLULAR, BG))
     }
 
-    @Test fun wifiOnly_blocksCellAllowsWifi() {
-        // "get data only in wifi" = block ALL on non-wifi transports.
-        val p = listOf(rule(Direction.ALL, setOf(Transport.CELL, Transport.OTHER), bothEnergy))
-        assertTrue(FirewallDecider.block(p, Direction.OUT, Transport.CELL, Energy.ACTIVE))
-        assertFalse(FirewallDecider.block(p, Direction.OUT, Transport.WIFI, Energy.ACTIVE))
+    // "this app on wifi is all data, network no data, energy: no background data"
+    @Test fun wifiOn_cellularOff_noBackground() {
+        val r = AppRule(wifi = true, cellular = false, background = false)
+        // Wi-Fi, foreground → allowed
+        assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
+        // Cellular → blocked (transport axis)
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.CELLULAR, FG))
+        // Wi-Fi but background → blocked (background axis)
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, BG))
     }
 
-    @Test fun vpnOnly_allowsOnlyUnderVpn() {
-        // "only get data when under cloud vpn"
-        val p = listOf(rule(Direction.ALL, setOf(Transport.WIFI, Transport.CELL, Transport.OTHER), bothEnergy))
-        assertFalse(FirewallDecider.block(p, Direction.OUT, Transport.VPN, Energy.ACTIVE))
-        assertTrue(FirewallDecider.block(p, Direction.OUT, Transport.WIFI, Energy.ACTIVE))
+    // "only get data when under cloud vpn"
+    @Test fun vpnOnly() {
+        val r = AppRule(wifi = false, cellular = false, vpn = true)
+        assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.VPN, FG))
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.CELLULAR, FG))
     }
 
-    @Test fun wifiOnly_noBackground_needsTwoRules() {
-        // "work only on wifi and no background" = block non-wifi  OR  block in background.
-        val p = listOf(
-            rule(Direction.ALL, setOf(Transport.CELL, Transport.VPN, Transport.OTHER), bothEnergy),
-            rule(Direction.ALL, all, setOf(Energy.BACKGROUND)),
-        )
-        assertFalse(FirewallDecider.block(p, Direction.OUT, Transport.WIFI, Energy.ACTIVE))   // allowed
-        assertTrue(FirewallDecider.block(p, Direction.OUT, Transport.WIFI, Energy.BACKGROUND)) // bg blocked
-        assertTrue(FirewallDecider.block(p, Direction.OUT, Transport.CELL, Energy.ACTIVE))     // cell blocked
+    // "get only data in wifi mode"
+    @Test fun wifiOnly() {
+        val r = AppRule(wifi = true, cellular = false, vpn = false)
+        assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.CELLULAR, FG))
     }
 
-    @Test fun incomingOnly_blocksInboundLeavesOutbound() {
-        val p = listOf(rule(Direction.IN, all, bothEnergy))
-        assertTrue(FirewallDecider.block(p, Direction.IN, Transport.WIFI, Energy.ACTIVE))
-        assertFalse(FirewallDecider.block(p, Direction.OUT, Transport.WIFI, Energy.ACTIVE))
+    // general axis: block all / incoming / outgoing
+    @Test fun direction_blockAll() {
+        val r = AppRule(direction = Direction.ALL)
+        assertTrue(FirewallDecider.block(r, Direction.IN, Transport.WIFI, FG))
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
+        assertTrue(FirewallDecider.interimBlocked(r, Transport.WIFI, FG)) // ALL is enforceable interim
     }
 
-    @Test fun emptyPolicy_allowsEverything() {
-        assertFalse(FirewallDecider.block(emptyList(), Direction.OUT, Transport.CELL, Energy.BACKGROUND))
+    @Test fun direction_blockIncomingOnly() {
+        val r = AppRule(direction = Direction.IN)
+        assertTrue(FirewallDecider.block(r, Direction.IN, Transport.WIFI, FG))
+        assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
+        // drain-engine can't split direction → IN is a no-op interim
+        assertFalse(FirewallDecider.interimBlocked(r, Transport.WIFI, FG))
     }
 
-    // ── shipping drain-engine (interimBlocked: drop-all when a non-IN rule's
-    //    condition matches; inbound-only rules can't be enforced this way) ──
-
-    @Test fun interim_dropsAppWhenConditionMatches() {
-        val p = listOf(rule(Direction.ALL, setOf(Transport.CELL), bothEnergy)) // no-cell
-        assertTrue(FirewallDecider.interimBlocked(p, Transport.CELL, Energy.ACTIVE))
-        assertFalse(FirewallDecider.interimBlocked(p, Transport.WIFI, Energy.ACTIVE))
+    @Test fun direction_blockOutgoingOnly() {
+        val r = AppRule(direction = Direction.OUT)
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
+        assertFalse(FirewallDecider.block(r, Direction.IN, Transport.WIFI, FG))
     }
 
-    @Test fun interim_cannotEnforceInboundOnly() {
-        val p = listOf(rule(Direction.IN, all, bothEnergy))
-        assertFalse(FirewallDecider.interimBlocked(p, Transport.WIFI, Energy.ACTIVE))
+    // axes are a parallel SUM — any one blocking blocks the flow
+    @Test fun axesCombine_anyBlocks() {
+        val r = AppRule(cellular = false, background = false, direction = Direction.OUT)
+        assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))  // direction
+        assertTrue(FirewallDecider.block(r, Direction.IN, Transport.CELLULAR, FG)) // transport
+        assertTrue(FirewallDecider.block(r, Direction.IN, Transport.WIFI, BG))   // background
+        assertFalse(FirewallDecider.block(r, Direction.IN, Transport.WIFI, FG))  // nothing blocks
     }
 
-    @Test fun interim_emptyPolicyAllows() {
-        assertFalse(FirewallDecider.interimBlocked(emptyList(), Transport.CELL, Energy.BACKGROUND))
-    }
-
-    @Test fun ruleSpec_jsonRoundTrips() {
-        val r = rule(Direction.OUT, setOf(Transport.WIFI, Transport.VPN), setOf(Energy.BACKGROUND))
-        assertEquals(r, RuleSpec.fromJson(r.toJson()))
+    @Test fun appRule_jsonRoundTrips() {
+        val r = AppRule(wifi = false, cellular = true, vpn = false, background = false, direction = Direction.IN)
+        assertEquals(r, AppRule.fromJson(r.toJson()))
     }
 }

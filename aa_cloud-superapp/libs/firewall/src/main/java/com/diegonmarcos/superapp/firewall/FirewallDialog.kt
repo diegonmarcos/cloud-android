@@ -9,6 +9,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
@@ -114,23 +116,20 @@ class FirewallDialog : DialogFragment() {
         )
     }
 
-    /** One app row: label + current policy summary; tap opens the preset picker. */
+    /** One app row: label + current-rule summary; tap opens the axis editor. */
     private fun appRow(ctx: Context, app: ApplicationInfo, dp: (Int) -> Int): View {
         val pm = ctx.packageManager
         val summary = TextView(ctx).apply {
             setTextColor(0x88FFFFFF.toInt())
             textSize = 11f
         }
-        fun renderSummary() {
-            val rules = FirewallRules.policy(ctx, app.packageName)
-            summary.text = if (rules.isEmpty()) "Allowed" else rules.joinToString(" · ") { it.label }
-        }
+        fun renderSummary() { summary.text = summarize(FirewallRules.rule(ctx, app.packageName)) }
         renderSummary()
         return LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(8), 0, dp(8))
             isClickable = true
-            setOnClickListener { pickPresets(ctx, app) { renderSummary() } }
+            setOnClickListener { editApp(ctx, app, dp) { renderSummary() } }
             addView(TextView(ctx).apply {
                 text = pm.getApplicationLabel(app).toString()
                 setTextColor(0xFFFFFFFF.toInt())
@@ -140,39 +139,99 @@ class FirewallDialog : DialogFragment() {
         }
     }
 
-    /** Multi-choice picker over the data-driven presets → the app's policy. */
-    private fun pickPresets(ctx: Context, app: ApplicationInfo, onDone: () -> Unit) {
-        val presets = FirewallRules.presets(ctx)
-        val labels = presets.map { it.label }.toTypedArray()
-        val current = FirewallRules.policy(ctx, app.packageName).map { it.id }.toSet()
-        val checked = BooleanArray(presets.size) { presets[it].id in current }
+    /** Compact human summary of an [AppRule] for the list row. */
+    private fun summarize(r: AppRule): String {
+        if (r.isDefault) return "Allowed"
+        val parts = mutableListOf<String>()
+        if (!r.wifi) parts += "No Wi-Fi"
+        if (!r.cellular) parts += "No cellular"
+        if (!r.vpn) parts += "No VPN"
+        if (!r.background) parts += "No background"
+        when (r.direction) {
+            Direction.ALL -> parts += "Block all"
+            Direction.IN -> parts += "Block incoming"
+            Direction.OUT -> parts += "Block outgoing"
+            Direction.NONE -> {}
+        }
+        return parts.joinToString(" · ")
+    }
+
+    /**
+     * Per-app rule editor — the parallel axes as independent controls:
+     * data on Wi-Fi / Cellular / Cloud-VPN, background data, and a direction
+     * selector. All combine (blocked if any axis blocks).
+     */
+    private fun editApp(ctx: Context, app: ApplicationInfo, dp: (Int) -> Int, onDone: () -> Unit) {
+        val r = FirewallRules.rule(ctx, app.packageName)
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(12), dp(20), dp(4))
+        }
+
+        fun axisRow(label: String, on: Boolean): Switch {
+            val sw = Switch(ctx).apply { isChecked = on }
+            col.addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(6), 0, dp(6))
+                addView(TextView(ctx).apply {
+                    text = label; textSize = 15f
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                addView(sw)
+            })
+            return sw
+        }
+
+        col.addView(TextView(ctx).apply {
+            text = "Data axes — turn OFF to block that path"; textSize = 11f
+            setTextColor(0x88000000.toInt()); setPadding(0, 0, 0, dp(4))
+        })
+        val wifi = axisRow("Wi-Fi data", r.wifi)
+        val cell = axisRow("Cellular data", r.cellular)
+        val vpn = axisRow("Cloud-VPN data", r.vpn)
+        val bg = axisRow("Background data", r.background)
+
+        col.addView(TextView(ctx).apply {
+            text = "Direction"; textSize = 11f
+            setTextColor(0x88000000.toInt()); setPadding(0, dp(10), 0, dp(2))
+        })
+        val dirs = listOf(
+            Direction.NONE to "None", Direction.ALL to "Block all",
+            Direction.IN to "Block incoming", Direction.OUT to "Block outgoing",
+        )
+        val group = RadioGroup(ctx)
+        dirs.forEachIndexed { i, (d, label) ->
+            // ids offset by 1 so a checked button never collides with View "no id" (0/-1)
+            group.addView(RadioButton(ctx).apply { id = i + 1; text = label; isChecked = d == r.direction })
+        }
+        col.addView(group)
+
         android.app.AlertDialog.Builder(ctx)
-            .setTitle(app.packageName)
-            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setTitle(ctx.packageManager.getApplicationLabel(app))
+            .setView(ScrollView(ctx).apply { addView(col) })
             .setPositiveButton("Save") { _, _ ->
-                val rules = presets.filterIndexed { i, _ -> checked[i] }
-                FirewallRules.setPolicy(ctx, app.packageName, rules)
+                val direction = dirs.getOrNull(group.checkedRadioButtonId - 1)?.first ?: Direction.NONE
+                val rule = AppRule(wifi.isChecked, cell.isChecked, vpn.isChecked, bg.isChecked, direction)
+                FirewallRules.setRule(ctx, app.packageName, rule)
                 FirewallController.refresh(ctx)
-                maybePromptUsageAccess(ctx, rules)
+                if (!rule.background && !FirewallConditions.hasUsageAccess(ctx)) promptUsageAccess(ctx)
                 onDone(); refreshHeader()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    /** Foreground/background rules need usage-access; nudge the user once. */
-    private fun maybePromptUsageAccess(ctx: Context, rules: List<RuleSpec>) {
-        val needsFg = rules.any { it.energy != setOf(Energy.ACTIVE, Energy.BACKGROUND) }
-        if (needsFg && !FirewallConditions.hasUsageAccess(ctx)) {
-            android.app.AlertDialog.Builder(ctx)
-                .setTitle("Usage access needed")
-                .setMessage("Per-app foreground/background rules need Usage Access to see which app is in front. Grant it now?")
-                .setPositiveButton("Open settings") { _, _ ->
-                    runCatching { startActivity(android.content.Intent(FirewallConditions.USAGE_ACCESS_SETTINGS)) }
-                }
-                .setNegativeButton("Later", null)
-                .show()
-        }
+    /** "No background data" needs usage-access to know the foreground app. */
+    private fun promptUsageAccess(ctx: Context) {
+        android.app.AlertDialog.Builder(ctx)
+            .setTitle("Usage access needed")
+            .setMessage("\"No background data\" needs Usage Access to detect which app is in the foreground. Grant it now?")
+            .setPositiveButton("Open settings") { _, _ ->
+                runCatching { startActivity(android.content.Intent(FirewallConditions.USAGE_ACCESS_SETTINGS)) }
+            }
+            .setNegativeButton("Later", null)
+            .show()
     }
 
     private fun onMasterToggle(enable: Boolean) {
