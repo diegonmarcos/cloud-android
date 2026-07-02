@@ -119,8 +119,10 @@ class PhoneAppsFragment : Fragment() {
         if (alphaMode) buildAlphabetic(ctx, rootCol) else buildCategories(ctx, rootCol)
     }
 
-    /** Right-aligned segmented control. Switching mode rebuilds [content]
-     *  in place (same clear+rebuild shape as the refresh affordance). */
+    /** Right-aligned minimalist icon toggle: folder (categories) vs
+     *  sort-alpha. Active icon is bright, inactive dim. Tap flips mode
+     *  and rebuilds [content] in place (same clear+rebuild shape as the
+     *  refresh affordance). */
     private fun modeToggle(ctx: Context, content: LinearLayout): View {
         val bar = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -128,32 +130,29 @@ class PhoneAppsFragment : Fragment() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(ctx, 4); bottomMargin = dp(ctx, 4) }
+            ).apply { topMargin = dp(ctx, 2); bottomMargin = dp(ctx, 2) }
         }
         fun rebuild() { content.removeAllViews(); buildContent(ctx, content) }
-        fun seg(label: String, active: Boolean, side: String, onPick: () -> Unit) = TextView(ctx).apply {
-            text = label
-            textSize = 12f
-            setTextColor(if (active) 0xFF0A0A14.toInt() else 0xFFE9D8FD.toInt())
-            gravity = Gravity.CENTER
-            val h = dp(ctx, 8); val v = dp(ctx, 6); setPadding(h, v, h, v)
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(if (active) 0xFFE9D8FD.toInt() else 0x22FFFFFF)
-                val r = dp(ctx, 14).toFloat()
-                cornerRadii = when (side) {
-                    "l" -> floatArrayOf(r, r, 0f, 0f, 0f, 0f, r, r)
-                    else -> floatArrayOf(0f, 0f, r, r, r, r, 0f, 0f)
-                }
-            }
+        fun iconBtn(res: Int, active: Boolean, desc: String, onPick: () -> Unit) = ImageView(ctx).apply {
+            setImageResource(res)
+            imageTintList = android.content.res.ColorStateList.valueOf(
+                if (active) 0xFFE9D8FD.toInt() else 0x55FFFFFF)
+            val sz = dp(ctx, 20); val p = dp(ctx, 6)
+            layoutParams = LinearLayout.LayoutParams(sz + 2 * p, sz + 2 * p)
+            setPadding(p, p, p, p)
+            contentDescription = desc
             isClickable = true; isFocusable = true
+            val outVal = android.util.TypedValue()
+            ctx.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outVal, true)
+            if (outVal.resourceId != 0) setBackgroundResource(outVal.resourceId)
             setOnClickListener {
                 Haptics.tap(it)
                 if (active) return@setOnClickListener
                 onPick(); rebuild()
             }
         }
-        bar.addView(seg("Categories", !alphaMode, "l") { alphaMode = false })
-        bar.addView(seg("Alphabetic", alphaMode, "r") { alphaMode = true })
+        bar.addView(iconBtn(R.drawable.ic_p_folder, !alphaMode, "Categories") { alphaMode = false })
+        bar.addView(iconBtn(R.drawable.ic_sort_alpha, alphaMode, "Alphabetic") { alphaMode = true })
         return bar
     }
 
