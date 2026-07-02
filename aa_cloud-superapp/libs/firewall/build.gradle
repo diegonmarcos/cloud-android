@@ -43,4 +43,15 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.annotation:annotation:1.8.2'
     implementation 'androidx.fragment:fragment-ktx:1.8.5'
+
+    // NOTE: the firestack netstack aar (Phase-3 merged VpnService) is STAGED,
+    // not consumed by the shipping build — the merge code lives in
+    // libs/firewall/phase3-firestack/ (outside the sourceset). When it's wired,
+    // add: implementation(name: 'firestack', ext: 'aar') + `build.sh firestack`.
+
+    // Pure-logic unit tests for FirewallDecider / RuleSpec. org.json is a
+    // stub in android.jar under unit tests, so pull the real impl for the
+    // JSON round-trip assertion.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
 }

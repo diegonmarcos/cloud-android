@@ -846,19 +846,19 @@ class DevControlFragment : Fragment() {
         }
 
         section(ctx, column, "Firewall") {
-            // No-root per-app outbound firewall (local VpnService, :libs:firewall).
+            // No-root per-app firewall (local VpnService, :libs:firewall).
             // Info rows read WITHOUT any privileged permission via
-            // ConnectivityManager / Settings. The gray button opens the
-            // control screen (master toggle + per-app block list). Complex
-            // tooling (DNS filtering, WireGuard proxying) is cherry-picked
-            // from the vendored RethinkDNS reference (upstreams.firewall).
+            // ConnectivityManager / Settings. The gray button opens the control
+            // screen (master toggle + per-app preset picker). The firestack
+            // merge (per-app filtering + WireGuard in one tunnel) is staged at
+            // libs/firewall/phase3-firestack/ (upstreams.firestack).
             val fw = com.diegonmarcos.superapp.firewall.FirewallInfo.read(ctx)
             row(ctx, it, "State", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtState(fw))
-            row(ctx, it, "Blocked apps", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtBlocked(fw))
+            row(ctx, it, "Apps with rules", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtBlocked(fw))
             row(ctx, it, "Active transport", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtTransport(fw))
             row(ctx, it, "System VPN", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtVpn(fw))
             row(ctx, it, "Private DNS", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtPrivateDns(fw))
-            it.addView(small(ctx, "Single VPN slot — the firewall and the WireGuard tunnel can't both run at once."))
+            it.addView(small(ctx, "Single VPN slot — per-app rules apply while on; firestack merge (WG-unified) is staged."))
             it.addView(actionButton(ctx, "Firewall Details", GRAY) {
                 runCatching {
                     com.diegonmarcos.superapp.firewall.FirewallDialog()

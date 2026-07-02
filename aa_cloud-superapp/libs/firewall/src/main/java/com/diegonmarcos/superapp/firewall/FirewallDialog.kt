@@ -81,9 +81,9 @@ class FirewallDialog : DialogFragment() {
         root.addView(masterRow)
 
         root.addView(TextView(ctx).apply {
-            text = "Blocked apps lose internet while the firewall is on. " +
-                "Enabling takes the device VPN slot, so the WireGuard tunnel " +
-                "can't run at the same time."
+            text = "Per-app rules apply while the firewall is on. Enabling takes " +
+                "the device VPN slot, so the WireGuard tunnel can't run at the " +
+                "same time (the staged firestack merge unifies them)."
             setTextColor(0x77FFFFFF.toInt())
             textSize = 11f
             setPadding(0, dp(6), 0, dp(12))
@@ -114,26 +114,64 @@ class FirewallDialog : DialogFragment() {
         )
     }
 
+    /** One app row: label + current policy summary; tap opens the preset picker. */
     private fun appRow(ctx: Context, app: ApplicationInfo, dp: (Int) -> Int): View {
         val pm = ctx.packageManager
+        val summary = TextView(ctx).apply {
+            setTextColor(0x88FFFFFF.toInt())
+            textSize = 11f
+        }
+        fun renderSummary() {
+            val rules = FirewallRules.policy(ctx, app.packageName)
+            summary.text = if (rules.isEmpty()) "Allowed" else rules.joinToString(" · ") { it.label }
+        }
+        renderSummary()
         return LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, dp(6))
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
+            isClickable = true
+            setOnClickListener { pickPresets(ctx, app) { renderSummary() } }
             addView(TextView(ctx).apply {
                 text = pm.getApplicationLabel(app).toString()
                 setTextColor(0xFFFFFFFF.toInt())
                 textSize = 14f
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             })
-            addView(Switch(ctx).apply {
-                isChecked = FirewallPrefs.isBlocked(ctx, app.packageName)
-                setOnClickListener {
-                    FirewallPrefs.setBlocked(ctx, app.packageName, isChecked)
-                    FirewallController.refresh(ctx) // re-apply if running
-                    refreshHeader()
+            addView(summary)
+        }
+    }
+
+    /** Multi-choice picker over the data-driven presets → the app's policy. */
+    private fun pickPresets(ctx: Context, app: ApplicationInfo, onDone: () -> Unit) {
+        val presets = FirewallRules.presets(ctx)
+        val labels = presets.map { it.label }.toTypedArray()
+        val current = FirewallRules.policy(ctx, app.packageName).map { it.id }.toSet()
+        val checked = BooleanArray(presets.size) { presets[it].id in current }
+        android.app.AlertDialog.Builder(ctx)
+            .setTitle(app.packageName)
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setPositiveButton("Save") { _, _ ->
+                val rules = presets.filterIndexed { i, _ -> checked[i] }
+                FirewallRules.setPolicy(ctx, app.packageName, rules)
+                FirewallController.refresh(ctx)
+                maybePromptUsageAccess(ctx, rules)
+                onDone(); refreshHeader()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** Foreground/background rules need usage-access; nudge the user once. */
+    private fun maybePromptUsageAccess(ctx: Context, rules: List<RuleSpec>) {
+        val needsFg = rules.any { it.energy != setOf(Energy.ACTIVE, Energy.BACKGROUND) }
+        if (needsFg && !FirewallConditions.hasUsageAccess(ctx)) {
+            android.app.AlertDialog.Builder(ctx)
+                .setTitle("Usage access needed")
+                .setMessage("Per-app foreground/background rules need Usage Access to see which app is in front. Grant it now?")
+                .setPositiveButton("Open settings") { _, _ ->
+                    runCatching { startActivity(android.content.Intent(FirewallConditions.USAGE_ACCESS_SETTINGS)) }
                 }
-            })
+                .setNegativeButton("Later", null)
+                .show()
         }
     }
 

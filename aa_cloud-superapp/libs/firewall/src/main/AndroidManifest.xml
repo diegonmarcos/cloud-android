@@ -7,7 +7,8 @@
   ~ permission is needed beyond the foreground-service declarations below.
   ~ Manifest-merged into the app.
   -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- A VPN qualifies for the systemExempted FGS type on Android 14+
          (it is managed by the platform VpnManager), keeping the engine
@@ -16,6 +17,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Per-app foreground/background energy rules read the current foreground
+         app via UsageStatsManager. Special appops permission: declaring it
+         here + the user granting Usage Access in Settings (see FirewallDialog). -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
         <service

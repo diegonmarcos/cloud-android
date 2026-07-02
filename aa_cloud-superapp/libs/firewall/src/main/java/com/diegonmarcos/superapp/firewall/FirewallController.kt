@@ -5,26 +5,28 @@ import android.content.Intent
 import android.net.VpnService
 
 /**
- * Lifecycle facade for the firewall engine. The UI talks ONLY to this —
- * it never touches [FirewallVpnService] directly.
+ * Lifecycle facade for the firewall engine. The UI talks ONLY to this.
+ *
+ * Drives the shipping interim [FirewallVpnService]. "enabled" is the user's
+ * DESIRED state (persisted); the service is started only when enabled AND at
+ * least one app has a policy — so flipping the master switch on with no rules
+ * yet is a valid idle-on state that doesn't snap back off.
+ *
+ * The staged firestack merge (phase3-firestack/) swaps the target service +
+ * adds a CloudVpnProvider; not wired into the shipped build yet.
  */
 object FirewallController {
 
-    /** True when the user has the firewall switched on (desired state). */
     fun isEnabled(ctx: Context): Boolean = FirewallPrefs.isEnabled(ctx)
 
-    /**
-     * Ask the OS for VPN consent. Returns the Intent the caller must hand
-     * to startActivityForResult, or null when consent was already granted
-     * (caller may [start] directly).
-     */
+    /** VPN consent Intent for startActivityForResult, or null if already granted. */
     fun consentIntent(ctx: Context): Intent? = VpnService.prepare(ctx)
 
-    /** Start (or restart, to pick up block-list changes) the engine. Call
+    /** Turn the firewall on (desired state) and reconcile the service. Call
      *  only after VPN consent is granted, from a foreground context. */
     fun start(ctx: Context) {
         FirewallPrefs.setEnabled(ctx, true)
-        ctx.startService(Intent(ctx, FirewallVpnService::class.java))
+        reconcile(ctx)
     }
 
     /** Stop the engine and clear the desired-on flag. */
@@ -35,8 +37,16 @@ object FirewallController {
         )
     }
 
-    /** Re-apply the engine if it is enabled (after a per-app block toggle). */
+    /** Re-apply after a policy change: (re)start if it now has work, or stop if
+     *  the user cleared the last policy. No-op when off. */
     fun refresh(ctx: Context) {
-        if (isEnabled(ctx)) start(ctx)
+        if (isEnabled(ctx)) reconcile(ctx)
+    }
+
+    private fun reconcile(ctx: Context) {
+        val hasWork = FirewallRules.policies(ctx).isNotEmpty()
+        val intent = Intent(ctx, FirewallVpnService::class.java)
+        if (hasWork) ctx.startService(intent)
+        else ctx.startService(intent.setAction(FirewallVpnService.ACTION_STOP))
     }
 }
