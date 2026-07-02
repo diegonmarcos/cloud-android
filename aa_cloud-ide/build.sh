@@ -144,7 +144,12 @@ _resolve_signing() {
   # still the ONE shared constellation key, just delivered via CI secret instead
   # of a vault checkout. Requires a real on-disk keystore + alias, so this is NOT
   # a fallback to a random/legacy key.
-  if [ -n "${ANDROID_KEYSTORE_FILE:-}" ] && [ -f "${ANDROID_KEYSTORE_FILE}" ] && [ -n "${ANDROID_KEY_ALIAS:-}" ]; then
+  # ONLY trust a pre-set keystore inside CI (GitHub Actions delivers the shared
+  # key via the ANDROID_KEYSTORE_* secrets). LOCALLY we ignore any ambient env
+  # and always resolve from the vault path below — so a stray ANDROID_KEYSTORE_*
+  # pointing at a random keystore can never sign a local build.
+  if [ -n "${GITHUB_ACTIONS:-}${CI:-}" ] \
+     && [ -n "${ANDROID_KEYSTORE_FILE:-}" ] && [ -f "${ANDROID_KEYSTORE_FILE}" ] && [ -n "${ANDROID_KEY_ALIAS:-}" ]; then
     log "signing: using pre-set ANDROID_KEYSTORE_* (CI secret delivery)"
     return 0
   fi
