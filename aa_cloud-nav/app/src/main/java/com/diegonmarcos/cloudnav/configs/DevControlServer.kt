@@ -162,6 +162,16 @@ object DevControlServer {
                 "diagnostics/logcat" -> { reply(writer, "200 OK", readLogcat(query["n"]?.toIntOrNull() ?: 300)); return }
                 "diagnostics/trace"  -> { reply(writer, "200 OK", readTraceTail(ctx, query["n"]?.toIntOrNull() ?: 300)); return }
                 "diagnostics/crashes" -> { reply(writer, "200 OK", readCrashes(ctx)); return }
+                "diagnostics/bundle" -> { reply(writer, "200 OK", diagnosticRecord(ctx), "application/json"); return }
+                "diagnostics/download" -> {
+                    val name = "cloud-diag-${BuildConfig.APPLICATION_ID}-${BuildConfig.GIT_SHORT_SHA}.json"
+                    val saved = DiagnosticsPush.downloadBundle(ctx, name, diagnosticRecord(ctx))
+                    reply(writer, "200 OK", """{"downloaded":${saved != null},"file":"${jsonEscape(saved ?: "")}"}""", "application/json"); return
+                }
+                "diagnostics/push" -> {
+                    val code = DiagnosticsPush.pushToCloud(diagnosticRecord(ctx))
+                    reply(writer, "200 OK", """{"posted":${code in 200..299},"http":$code,"sink":"${jsonEscape(BuildConfig.LOG_SINK_URL)}"}""", "application/json"); return
+                }
             }
 
             if (!authed) { reply(writer, "401 Unauthorized", "unauthorized\n"); return }
@@ -280,6 +290,9 @@ object DevControlServer {
             Spec("diagnostics/logcat",  "GET",  false, "Recent logcat lines, threadtime format", "n=lines (default 300)"),
             Spec("diagnostics/trace",   "GET",  false, "Tail of Trace.kt's trace.log", "n=lines (default 300)"),
             Spec("diagnostics/crashes", "GET",  false, "All crash files concatenated, newest first", ""),
+            Spec("diagnostics/bundle",  "GET",  false, "Full debug bundle (logcat+trace+crashes+device) as one OpenObserve JSON record", ""),
+            Spec("diagnostics/download","GET",  false, "Write the debug bundle to public Downloads; returns the filename", ""),
+            Spec("diagnostics/push",    "GET",  false, "POST the debug bundle to the cloud log sink (OpenObserve via build.json::diagnostics.log_sink_url)", ""),
             Spec("state",               "GET",  true,  "Snapshot of MainActivity's live state map (section, label, mode, …)", ""),
             Spec("haptic",              "POST", true,  "Fire a named haptic preset on the device", "preset=name (default 'tick')"),
             Spec("nav/goto",            "POST", true,  "Navigate to a tile target (section:X / page:X/Y / action:X / url)", "target=string"),
@@ -651,6 +664,27 @@ object DevControlServer {
 
     private fun jsonEscape(s: String): String =
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+
+    /** Combined debug bundle → the OpenObserve record (reuses the same
+     *  logcat/trace/crashes readers). Used by /diagnostics/{bundle,download,push}. */
+    private fun diagnosticRecord(ctx: android.content.Context): String {
+        val ts = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+            .format(java.util.Date())
+        return DiagnosticsPush.buildRecord(
+            appId = BuildConfig.APPLICATION_ID,
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE.toString(),
+            gitSha = BuildConfig.GIT_SHORT_SHA,
+            device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+            androidRelease = android.os.Build.VERSION.RELEASE,
+            sdkInt = android.os.Build.VERSION.SDK_INT,
+            tsIso = ts,
+            logcat = readLogcat(500),
+            trace = readTraceTail(ctx, 500),
+            crashes = readCrashes(ctx),
+        )
+    }
 
     /** Runs `logcat -d -t N -v threadtime`. Works without any extra
      *  permission because the app is reading ITS OWN logs (Android

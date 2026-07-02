@@ -23,6 +23,12 @@
     "vault_keystore": "A0_keys/providers/android/release.jks",
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
+  "diagnostics": {
+    "_doc": "On-device DevControlServer diagnostics → cloud sink + local download. Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by app/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store on oci-apps) ingest, reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK (the collector relays to openobserve server-side). '{stream}' in the url is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (the 'Download logs' action still works fully); set it to the confirmed collector ingest path to enable one-tap 'Send logs to cloud'. Data-driven: change here, every app rebuild picks it up — never hardcode in Kotlin.",
+    "log_sink_url": "",
+    "log_sink_stream": "cloud-nav",
+    "enabled": true
+  },
   "emulator": {
     "_doc": "build.sh emulator boots an arm64 AVD for full-fidelity testing of the arm64-v8a APK. ABI/API must match flake.nix. avd_name created idempotently from system_image.",
     "avd_name": "cloudnav-arm64",

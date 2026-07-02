@@ -23,6 +23,11 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
     setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
     format(new java.util.Date())
 }
+// Diagnostics cloud sink — DevControlServer/DiagnosticsPush POSTs the log
+// bundle here (our OpenObserve / Loki-equivalent, via the public collector).
+// Data-driven from build.json::diagnostics; empty url = cloud push disabled.
+def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
+def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-app')
 
 // ── Shell config (data-driven) — baked as base64 JSON so Kotlin reads a
 //    single source of truth at runtime (FIRE RULE #6). ────────────────
@@ -160,6 +165,8 @@ android {
         }
         buildConfigField "String", "GIT_SHORT_SHA",   "\"${shortSha}\""
         buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTimestamp}\""
+        buildConfigField "String", "LOG_SINK_URL",    "\"${logSinkUrl}\""
+        buildConfigField "String", "LOG_SINK_STREAM", "\"${logSinkStream}\""
         // Shell config
         buildConfigField "String", "UI_NAV_TABS_B64",       "\"${uiNavTabsB64}\""
         buildConfigField "String", "UI_SEARCH_ISLANDS_B64",  "\"${uiSearchIslandsB64}\""
