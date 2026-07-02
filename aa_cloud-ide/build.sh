@@ -98,6 +98,7 @@ step_bundle_forks() {
       # silent. (CI ships our patched APK via the GHCR route once fork-ship lands.)
       if ( step_build_fork build-fork "$key" "$abi_in" ) >/dev/null 2>&1; then  # subshell: contain any exit→ url fallback works (CI: fork not materialized / no rust)
         cp "$SCRIPT_DIR/dist/cloud-ide-${key}.apk" "$out"
+        _enforce_signature "$out"
         log "bundle-forks: ✓ $key embedded OUR patched APK ($(wc -c <"$out") B, $(sha256sum "$out" | cut -d' ' -f1 | cut -c1-12)…)"
         continue
       elif [ -n "$url" ] && [ -n "$sha" ]; then
@@ -120,6 +121,7 @@ step_bundle_forks() {
       rm -f "$out"
       errlog "bundle-forks: sha256 MISMATCH for $key (got $have, pinned $sha) — refusing to bundle"; exit 1
     fi
+    _enforce_signature "$out"
     log "bundle-forks: ✓ $key embedded upstream ($(wc -c <"$out") B, sha verified)"
   done < <(prefer_host jq -r '.forks | to_entries[] | select(.key|startswith("_")|not) | .key' "$SCRIPT_DIR/build.json")
   shopt -s nullglob
@@ -178,6 +180,43 @@ _resolve_signing() {
   log "signing: ONE shared constellation key (alias $alias_) from vault/$ks_rel"
 }
 
+# ── signature enforcement gate — the ONE guarantee ───────────────────────
+# Canonical SHA-256 of the shared constellation cert, read LIVE from the
+# resolved keystore (no hardcoded fingerprint, no data to drift).
+_constellation_cert_sha() {
+  _resolve_signing
+  keytool -list -v -keystore "$ANDROID_KEYSTORE_FILE" \
+      -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>/dev/null \
+    | awk -F'SHA256: ' '/SHA256: /{gsub(/[^0-9A-Fa-f]/,"",$2); print toupper($2); exit}'
+}
+
+# Force EVERY emitted APK to carry EXACTLY the shared key. Re-signs whatever
+# gradle/upstream produced (debug key, vendor key, fork keystore, unsigned) and
+# ABORTS if the final signer cert is not the one shared cert. No build.json
+# flag, gradle default, or checked-in keystore can survive this.
+_enforce_signature() {
+  local apk="$1" bt zipalign apksigner want have
+  [ -f "$apk" ] || { errlog "sign-enforce: missing APK $apk"; exit 1; }
+  _resolve_signing
+  bt="$(ls -d "${ANDROID_HOME:-/nonexistent}"/build-tools/* 2>/dev/null | sort -V | tail -1)"
+  zipalign="$bt/zipalign"; apksigner="$bt/apksigner"
+  [ -x "$apksigner" ] || { errlog "sign-enforce: apksigner missing (bt=$bt)"; exit 1; }
+  want="$(_constellation_cert_sha)"
+  [ -n "$want" ] || { errlog "sign-enforce: cannot read shared cert fingerprint"; exit 1; }
+  have="$("$apksigner" verify --print-certs "$apk" 2>/dev/null | awk -F'SHA-256 digest: ' '/SHA-256 digest: /{gsub(/[^0-9A-Fa-f]/,"",$2); print toupper($2); exit}')"
+  if [ "$have" != "$want" ]; then
+    log "sign-enforce: $(basename "$apk") signer=${have:-none} != shared -> re-signing"
+    "$zipalign" -f -p 4 "$apk" "${apk}.aln" 2>/dev/null && mv -f "${apk}.aln" "$apk" || rm -f "${apk}.aln"
+    "$apksigner" sign --ks "$ANDROID_KEYSTORE_FILE" --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" \
+      --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass "pass:${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}" \
+      "$apk" || { errlog "sign-enforce: re-sign failed for $apk"; exit 1; }
+    rm -f "${apk}.idsig"
+    have="$("$apksigner" verify --print-certs "$apk" 2>/dev/null | awk -F'SHA-256 digest: ' '/SHA-256 digest: /{gsub(/[^0-9A-Fa-f]/,"",$2); print toupper($2); exit}')"
+  fi
+  [ "$have" = "$want" ] || { errlog "sign-enforce: FATAL $(basename "$apk") signer=${have:-none} != shared after resign - refusing"; exit 1; }
+  log "sign-enforce: OK $(basename "$apk") = shared constellation key"
+}
+
 # ── hub build/test ─────────────────────────────────────────────────────
 step_build() {
   local abifields abi suffix
@@ -191,6 +230,7 @@ step_build() {
   local base out; base="$(_json '.release.artifact.debug')"
   out="$DIST_DIR/${base%.apk}${suffix}.apk"
   cp "$SCRIPT_DIR/hub/build/outputs/apk/debug/hub-debug.apk" "$out"
+  _enforce_signature "$out"
   log "→ $out"
 }
 
@@ -207,6 +247,7 @@ step_release() {
   out="$DIST_DIR/${base%.apk}${suffix}.apk"
   cp "$SCRIPT_DIR/hub/build/outputs/apk/release/hub-release.apk" "$out" 2>/dev/null \
     || cp "$SCRIPT_DIR/hub/build/outputs/apk/release/hub-release-unsigned.apk" "${out%.apk}-unsigned.apk"
+  if [ -f "$out" ]; then _enforce_signature "$out"; else _enforce_signature "${out%.apk}-unsigned.apk"; fi
   log "→ $DIST_DIR/"
 }
 
@@ -396,6 +437,7 @@ step_build_fork() {
   [ -n "$apk" ] || apk="$(prefer_host find "$dest" -path '*/outputs/apk/*release*.apk' -print -quit 2>/dev/null || true)"
   [ -n "$apk" ] || { errlog "build-fork[$key]: no APK produced (glob: ${glob:-<default>})"; exit 1; }
   cp "$apk" "$DIST_DIR/cloud-ide-${key}.apk"
+  _enforce_signature "$DIST_DIR/cloud-ide-${key}.apk"
   log "→ $DIST_DIR/cloud-ide-${key}.apk ($(wc -c <"$DIST_DIR/cloud-ide-${key}.apk") B)"
 }
 
