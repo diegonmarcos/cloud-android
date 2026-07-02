@@ -143,9 +143,14 @@ class FirewallDialog : DialogFragment() {
     private fun summarize(r: AppRule): String {
         if (r.isDefault) return "Allowed"
         val parts = mutableListOf<String>()
-        if (!r.wifi) parts += "No Wi-Fi"
-        if (!r.cellular) parts += "No cellular"
-        if (!r.vpn) parts += "No VPN"
+        when (r.vpnMode) {
+            VpnMode.WG0_ONLY -> parts += "wg0 VPN only"
+            VpnMode.WG_PUBLIC_ONLY -> parts += "wg-public VPN only"
+            VpnMode.NONE -> { // transport toggles only matter without the override
+                if (!r.wifi) parts += "No Wi-Fi"
+                if (!r.cellular) parts += "No cellular"
+            }
+        }
         if (!r.background) parts += "No background"
         when (r.direction) {
             Direction.ALL -> parts += "Block all"
@@ -189,8 +194,24 @@ class FirewallDialog : DialogFragment() {
         })
         val wifi = axisRow("Wi-Fi data", r.wifi)
         val cell = axisRow("Cellular data", r.cellular)
-        val vpn = axisRow("Cloud-VPN data", r.vpn)
         val bg = axisRow("Background data", r.background)
+
+        col.addView(TextView(ctx).apply {
+            text = "Cloud VPN — a strong override: forces the app VPN-only " +
+                "(ignores Wi-Fi/Cellular; app talks ONLY through the tunnel)"
+            textSize = 11f
+            setTextColor(0x88000000.toInt()); setPadding(0, dp(10), 0, dp(2))
+        })
+        val vpnModes = listOf(
+            VpnMode.NONE to "None",
+            VpnMode.WG0_ONLY to "wg0 VPN only",
+            VpnMode.WG_PUBLIC_ONLY to "wg-public VPN only",
+        )
+        val vpnGroup = RadioGroup(ctx)
+        vpnModes.forEachIndexed { i, (m, label) ->
+            vpnGroup.addView(RadioButton(ctx).apply { id = i + 1; text = label; isChecked = m == r.vpnMode })
+        }
+        col.addView(vpnGroup)
 
         col.addView(TextView(ctx).apply {
             text = "Direction"; textSize = 11f
@@ -212,7 +233,8 @@ class FirewallDialog : DialogFragment() {
             .setView(ScrollView(ctx).apply { addView(col) })
             .setPositiveButton("Save") { _, _ ->
                 val direction = dirs.getOrNull(group.checkedRadioButtonId - 1)?.first ?: Direction.NONE
-                val rule = AppRule(wifi.isChecked, cell.isChecked, vpn.isChecked, bg.isChecked, direction)
+                val vpnMode = vpnModes.getOrNull(vpnGroup.checkedRadioButtonId - 1)?.first ?: VpnMode.NONE
+                val rule = AppRule(wifi.isChecked, cell.isChecked, bg.isChecked, vpnMode, direction)
                 FirewallRules.setRule(ctx, app.packageName, rule)
                 FirewallController.refresh(ctx)
                 if (!rule.background && !FirewallConditions.hasUsageAccess(ctx)) promptUsageAccess(ctx)

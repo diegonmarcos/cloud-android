@@ -28,17 +28,21 @@ class FirewallDeciderTest {
         assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, BG))
     }
 
-    // "only get data when under cloud vpn"
-    @Test fun vpnOnly() {
-        val r = AppRule(wifi = false, cellular = false, vpn = true)
+    // VPN-only is a STRONG override: allowed only via VPN, ignoring wifi/cellular
+    @Test fun vpnOnly_overridesTransports() {
+        val r = AppRule(vpnMode = VpnMode.WG0_ONLY)
         assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.VPN, FG))
         assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
         assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.CELLULAR, FG))
+        // override wins even when wifi/cellular toggles would allow
+        val r2 = AppRule(wifi = true, cellular = true, vpnMode = VpnMode.WG_PUBLIC_ONLY)
+        assertTrue(FirewallDecider.block(r2, Direction.OUT, Transport.WIFI, FG))
+        assertFalse(FirewallDecider.block(r2, Direction.OUT, Transport.VPN, FG))
     }
 
     // "get only data in wifi mode"
     @Test fun wifiOnly() {
-        val r = AppRule(wifi = true, cellular = false, vpn = false)
+        val r = AppRule(wifi = true, cellular = false)
         assertFalse(FirewallDecider.block(r, Direction.OUT, Transport.WIFI, FG))
         assertTrue(FirewallDecider.block(r, Direction.OUT, Transport.CELLULAR, FG))
     }
@@ -75,7 +79,8 @@ class FirewallDeciderTest {
     }
 
     @Test fun appRule_jsonRoundTrips() {
-        val r = AppRule(wifi = false, cellular = true, vpn = false, background = false, direction = Direction.IN)
+        val r = AppRule(wifi = false, cellular = true, background = false,
+            vpnMode = VpnMode.WG_PUBLIC_ONLY, direction = Direction.IN)
         assertEquals(r, AppRule.fromJson(r.toJson()))
     }
 }

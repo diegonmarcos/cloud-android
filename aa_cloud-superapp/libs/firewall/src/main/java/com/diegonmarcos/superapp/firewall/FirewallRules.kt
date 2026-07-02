@@ -11,36 +11,53 @@ enum class Direction { NONE, ALL, IN, OUT }
 enum class Transport { WIFI, CELLULAR, VPN, OTHER }
 
 /**
- * Per-app firewall rule — a SUM of independent axes, all combined (a flow is
- * blocked if ANY axis blocks it):
- *
- *  - [wifi] / [cellular] / [vpn]  — is data allowed on that transport?
- *  - [background]                 — is data allowed while the app is backgrounded?
- *  - [direction]                  — general block-all / block-incoming / block-outgoing
+ * Cloud-VPN mode — a STRONG override (not a parallel toggle). When set to a
+ * tunnel, the app becomes VPN-ONLY: it can talk ONLY through that WireGuard
+ * tunnel, and the [AppRule.wifi] / [AppRule.cellular] toggles are ignored.
+ *  - [NONE]           — no override; use the wifi/cellular toggles.
+ *  - [WG0_ONLY]       — force routing through wg0 (private mesh) only.
+ *  - [WG_PUBLIC_ONLY] — force routing through wg-public only.
+ */
+enum class VpnMode { NONE, WG0_ONLY, WG_PUBLIC_ONLY }
+
+/**
+ * Per-app firewall rule. The parallel axes ([wifi], [cellular], [background])
+ * combine as a SUM (blocked if ANY blocks). [vpnMode] is a STRONG override: a
+ * non-NONE value forces the app VPN-only through that tunnel and overrides the
+ * wifi/cellular toggles. [background] and [direction] still apply on top.
  *
  * e.g. "Wi-Fi all data, cellular no data, no background data" =
- *      AppRule(wifi=true, cellular=false, vpn=true, background=false).
- *
- * Defaults are all-allow ([isDefault]) → an app with no configured axes is
- * unrestricted and isn't persisted.
+ *      AppRule(wifi=true, cellular=false, background=false).
+ *      "wg0 VPN only" = AppRule(vpnMode=WG0_ONLY).
  */
 data class AppRule(
     val wifi: Boolean = true,
     val cellular: Boolean = true,
-    val vpn: Boolean = true,
     val background: Boolean = true,
+    val vpnMode: VpnMode = VpnMode.NONE,
     val direction: Direction = Direction.NONE,
 ) {
     val isDefault: Boolean
-        get() = wifi && cellular && vpn && background && direction == Direction.NONE
+        get() = wifi && cellular && background && vpnMode == VpnMode.NONE && direction == Direction.NONE
 
-    /** true when the transport axis blocks data on [t]. */
-    fun transportBlocks(t: Transport): Boolean = when (t) {
-        Transport.WIFI -> !wifi
-        Transport.CELLULAR -> !cellular
-        Transport.VPN -> !vpn
-        Transport.OTHER -> false
-    }
+    /** VPN-only override active — the app may talk only through the VPN. */
+    val vpnOnly: Boolean get() = vpnMode != VpnMode.NONE
+
+    /**
+     * true when the transport axis blocks data on [t]. Under a VPN-only
+     * override, everything except the VPN transport is blocked (the wifi /
+     * cellular toggles no longer apply); the firestack merge routes the app
+     * through the specific tunnel ([vpnMode]) — the interim drain-engine can
+     * only gate on "is the active transport a VPN".
+     */
+    fun transportBlocks(t: Transport): Boolean =
+        if (vpnOnly) t != Transport.VPN
+        else when (t) {
+            Transport.WIFI -> !wifi
+            Transport.CELLULAR -> !cellular
+            Transport.VPN -> false
+            Transport.OTHER -> false
+        }
 
     /** true when the direction axis blocks a [flow]-direction connection. */
     fun directionBlocks(flow: Direction): Boolean = when (direction) {
@@ -51,16 +68,17 @@ data class AppRule(
     }
 
     fun toJson(): JSONObject = JSONObject().apply {
-        put("wifi", wifi); put("cellular", cellular); put("vpn", vpn)
-        put("background", background); put("direction", direction.name)
+        put("wifi", wifi); put("cellular", cellular); put("background", background)
+        put("vpnMode", vpnMode.name); put("direction", direction.name)
     }
 
     companion object {
         fun fromJson(o: JSONObject): AppRule = AppRule(
             wifi = o.optBoolean("wifi", true),
             cellular = o.optBoolean("cellular", true),
-            vpn = o.optBoolean("vpn", true),
             background = o.optBoolean("background", true),
+            vpnMode = runCatching { VpnMode.valueOf(o.optString("vpnMode", "NONE")) }
+                .getOrDefault(VpnMode.NONE),
             direction = runCatching { Direction.valueOf(o.optString("direction", "NONE")) }
                 .getOrDefault(Direction.NONE),
         )
