@@ -78,6 +78,8 @@
             oras              # OCI artifact push to ghcr (release.ghcr)
             gh                # GitHub Release attachment (release.gh_release)
             git               # for `git rev-parse --short` in build.sh
+            gnumake           # `build.sh firestack` runs firestack's Makefile (gomobile bind)
+            curl              # `build.sh firestack` self-downloads the pinned Go (like libwg-go)
           ];
 
           ANDROID_HOME = "${androidSdk}/libexec/android-sdk";

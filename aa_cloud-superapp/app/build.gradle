@@ -78,6 +78,15 @@ def statusPetsB64    = statusPetsJson.bytes.encodeBase64().toString()
 // Keyboard subtypes enabled on first run (App.initVendoredKeyboard). CSV of
 // BCP-47 language tags from build.json::keyboard_dicts.default_languages.
 def keyboardDefaultLangs = (buildJson.keyboard_dicts?.default_languages ?: []).join(',')
+// Keyboard media panel (Sticker/GIF) — non-secret knobs (GIF provider choice,
+// endpoints, categories) are data-driven from build.json::keyboard_media and
+// shipped as a base64 blob → BuildConfig → App → MediaRuntime. The GIF provider
+// API keys are SECRETS: injected via env (build.sh sops-decrypts them from the
+// vault), never committed. Absent keys → GIF tab degrades to "no API key".
+def keyboardMediaJson = groovy.json.JsonOutput.toJson(buildJson.keyboard_media ?: [:])
+def keyboardMediaB64  = keyboardMediaJson.bytes.encodeBase64().toString()
+def tenorApiKey = (System.getenv('TENOR_API_KEY') ?: project.findProperty('tenorApiKey') ?: '').toString()
+def giphyApiKey = (System.getenv('GIPHY_API_KEY') ?: project.findProperty('giphyApiKey') ?: '').toString()
 // Launcher themes — Configs → Launcher picker reads this list to
 // render the chooser. Single source of truth lives in
 // build.json::ui.launcher_themes; add a theme there, picker updates.
@@ -506,6 +515,9 @@ android {
         buildConfigField "String", "DRIVE_CONNECTIONS_B64", "\"${driveConnsB64}\""
         buildConfigField "String", "LINKTREE_JSON_B64",     "\"${linktreeB64}\""
         buildConfigField "String", "NEWS_FEEDS_B64",        "\"${newsFeedsB64}\""
+        buildConfigField "String", "MEDIA_CONFIG_B64",      "\"${keyboardMediaB64}\""
+        buildConfigField "String", "TENOR_API_KEY",         "\"${tenorApiKey}\""
+        buildConfigField "String", "GIPHY_API_KEY",         "\"${giphyApiKey}\""
         buildConfigField "String", "MAIL_ACCOUNTS_B64",     "\"${mailAccountsB64}\""
         buildConfigField "String", "EXTERNAL_APPS_B64",     "\"${externalAppsB64}\""
         buildConfigField "String", "UI_FLOATING_NAV_B64",   "\"${floatingNavB64}\""
@@ -635,6 +647,10 @@ dependencies {
     // app/ calls no keyboard code. Reconciliation tools: overlays live in
     // this module's AndroidManifest.xml. See libs/keyboard/README.md.
     implementation project(':libs:keyboard')
+    // libs:media — Sticker/GIF panel hosted inside the keyboard's emoji surface
+    // (patch 0007). App pushes its config + GIF API keys into MediaRuntime at
+    // startup (see App.onCreate + the MEDIA_* BuildConfig fields above).
+    implementation project(':libs:media')
     // Required because libs:keyboard enables core-library desugaring — the
     // consuming module must provide the desugared-stdlib runtime. Version
     // matches libs/keyboard/build.gradle.

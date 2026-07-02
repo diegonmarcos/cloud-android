@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- libs:media — no components. MediaPanelView is a plain View hosted by
+     libs:keyboard's EmojiPalettesView (patch 0007). INTERNET / network-state
+     and QUERY_ALL_PACKAGES (for reading WhatsApp sticker providers) are
+     already declared by app/src/main/AndroidManifest.xml. The FileProvider
+     that backs commitContent lives in app/ too (authority
+     ${applicationId}.mediaprovider). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

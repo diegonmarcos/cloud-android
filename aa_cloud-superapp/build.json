@@ -103,6 +103,24 @@
       "primary_lang": "Kotlin",
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) — zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
     },
+    "firestack": {
+      "tracker": "ea_net-firestack",
+      "repo": "https://github.com/celzero/firestack.git",
+      "ref": "n2",
+      "license": "MPL-2.0",
+      "feeds_into": "libs:firestack",
+      "primary_lang": "Go",
+      "build": {
+        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firestack/<aar_out> and wrapped as the :libs:firestack gradle module. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
+        "go_version": "1.26.4",
+        "go_sha256_linux_amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
+        "make_target": "intra",
+        "aar_built": "build/intra/tun2socks.aar",
+        "aar_out": "firestack.aar",
+        "java_pkg": "com.celzero.firestack"
+      },
+      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing depends on :libs:firestack yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
+    },
     "ops": {
       "tracker": null,
       "repo": null,
@@ -140,6 +158,7 @@
         "libs:kde-connect",
         "libs:shizuku-adb-debug-tools",
         "libs:keyboard",
+        "libs:media",
         "libs:firewall",
         "libs:battery"
       ],
@@ -197,11 +216,17 @@
       ],
       "comment": "On-device OFFLINE voice-input engine (Vosk) behind the keyboard's VOICE toolbar key. Separate module from libs:keyboard (sync-heliboard rsync --delete would clobber it, same as libs:translate). VoiceInput.toggle(ime, languageTag) records via AudioRecord, streams to a Vosk Recognizer, and commits the transcript to the InputConnection. Models download lazily on first use (data-driven from build.json::voice.models), then run fully offline — NO Google/system speech IME needed (that was why the key did nothing on de-googled devices). libs:keyboard depends on this; LatinIME's KeyCode.VOICE_INPUT handler calls it (patches/0005-voice-input.patch)."
     },
+    "libs:media": {
+      "type": "library",
+      "depends_on": [],
+      "comment": "Sticker + GIF panel for the keyboard's emoji surface. Separate module from libs:keyboard (sync-heliboard rsync --delete would clobber it, same as libs:translate/libs:voice). MediaPanelView is hosted inside EmojiPalettesView by patches/0007-emoji-media-tabs.patch, which adds a row-1 type-tab strip (Emoji/Sticker/GIF) above the existing emoji category row (row 2). Stickers come from installed WhatsApp-compatible packs (public sticker content-provider contract; needs QUERY_ALL_PACKAGES, already declared by app). GIFs come from Tenor OR Giphy — chosen data-driven in build.json::keyboard_media.gif.provider; API keys are secrets injected via env by build.sh (sops-decrypted from vault) → app BuildConfig → MediaRuntime.configure at startup. Picks are committed through the keyboard's existing RichInputConnection.commitContent via an app FileProvider (authority <applicationId>.mediaprovider). Image loading = Coil (+coil-gif) for animated previews."
+    },
     "libs:keyboard": {
       "type": "library",
       "depends_on": [
         "libs:translate",
-        "libs:voice"
+        "libs:voice",
+        "libs:media"
       ],
       "comment": "Self-contained keyboard — the LatinIME InputMethodService (keyboard provider) vendored from HeliBoard. Standalone (no libs:core dep). Upstream: github.com/Helium314/HeliBoard (GPL-3.0; whole APK is already GPL-3.0). Tracking clone lives at ../ea_keyboard-heliboard/ (gitignored sibling, ea_*-* convention); `build.sh sync-heliboard` mirrors app/src/main VERBATIM (java/kotlin + res + assets + jni + AndroidManifest) into libs/keyboard/ — zero drift. SuperApp-specific reconciliation lives in app/src/main/AndroidManifest.xml as tools: overlays (tools:replace android:name so SuperApp's App wins; tools:node=remove on HeliBoard's SettingsActivity LAUNCHER + SpellCheckerSettingsActivity MAIN filters → no second launcher icon). NDK module: ndk-build src/main/jni/Android.mk -> libjni_latinime.so (arm64-v8a, NDK 28). Compose/Kotlin-2.0 settings UI (material3 + navigation-compose). Swipe/glide needs Google's proprietary libjni_latinimegoogle.so, NOT bundled (keeps the APK FOSS): HeliBoard's built-in 'Load gesture typing library' setting is the in-app loader the user uses to fetch it on first run. Namespace helium314.keyboard.latin (matches upstream so the manifest's relative service name 'LatinIME' resolves; own R class, no collision with com.diegonmarcos.superapp). See libs/keyboard/README.md."
     },
@@ -280,7 +305,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "No-root per-app outbound firewall (original, clean-room). Local VpnService drops blocked apps' packets while allowed apps bypass the tun. Surfaced in the About screen under Battery (info rows + gray 'Firewall Details' button → FirewallDialog). Complex tooling cherry-picked from the RethinkDNS reference clone (upstreams.firewall)."
+      "comment": "No-root per-app outbound firewall. v2 = data-driven conditional per-app rules (FirewallRules/FirewallDecider/FirewallConditions, presets in assets/firewall_presets.json); interim drain-engine (FirewallVpnService). Phase 3 will consume the firestack netstack aar (flatDir libs/firestack/, `implementation(name:'firestack', ext:'aar')`) to run WG + per-app filtering + IN/OUT in one VpnService. Surfaced in About under Battery (info rows + 'Firewall Details' → FirewallDialog master switch + per-app preset picker)."
     },
     "libs:battery": {
       "type": "library",
@@ -414,6 +439,38 @@
     "types": [
       { "type": "emoji", "dir": "emoji_cldr_signal_dictionaries" }
     ]
+  },
+  "keyboard_media": {
+    "_doc": "Data-driven config for the keyboard Sticker/GIF panel (libs:media, hosted in the emoji surface by patch 0007). Non-secret ONLY — GIF provider API keys are secrets: build.sh sops-decrypts .keyboard_media.vault_secrets from the vault and exports TENOR_API_KEY/GIPHY_API_KEY into the gradle build (app/build.gradle → BuildConfig → MediaRuntime.configure). Whole block is shipped to the APK as base64 (BuildConfig.MEDIA_CONFIG_B64). Switch the GIF backend by changing gif.provider (tenor|giphy) — both are pre-configured so you flip without touching code. Row-2 GIF categories = gif.<provider>.categories; a category query \"\" means the provider's trending/featured feed. Stickers have no categories here — one row-2 tab per installed WhatsApp-compatible pack is discovered at runtime.",
+    "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
+    "enabled": true,
+    "sticker": { "enabled": true },
+    "gif": {
+      "provider": "tenor",
+      "limit": 30,
+      "tenor": {
+        "base_url": "https://tenor.googleapis.com/v2",
+        "categories": [
+          { "id": "trending", "label": "Trending", "query": "" },
+          { "id": "reactions", "label": "Reactions", "query": "reaction" },
+          { "id": "love", "label": "Love", "query": "love" },
+          { "id": "happy", "label": "Happy", "query": "happy" },
+          { "id": "sad", "label": "Sad", "query": "sad" },
+          { "id": "celebrate", "label": "Celebrate", "query": "celebrate" }
+        ]
+      },
+      "giphy": {
+        "base_url": "https://api.giphy.com/v1/gifs",
+        "categories": [
+          { "id": "trending", "label": "Trending", "query": "" },
+          { "id": "reactions", "label": "Reactions", "query": "reaction" },
+          { "id": "love", "label": "Love", "query": "love" },
+          { "id": "happy", "label": "Happy", "query": "happy" },
+          { "id": "sad", "label": "Sad", "query": "sad" },
+          { "id": "celebrate", "label": "Celebrate", "query": "celebrate" }
+        ]
+      }
+    }
   },
   "keyboard_brand_rename": {
     "_doc": "Brand-rebrand the vendored keyboard's USER-FACING display strings only. step_brand_rename (run at the end of sync-heliboard, also callable standalone) rewrites the `token` -> `replacement` inside ONLY the curated `string_keys` across every libs/keyboard values*/strings.xml, using awk + an idempotency guard (skips lines already carrying the replacement). Deliberately NARROW: it never touches package identifiers (helium314.keyboard.* — the manifest resolves the IME service by that namespace), nor upstream attribution/credit/license/URL text (legally the upstream's credit). english_ime_name is handled separately as an app/ resource override. Add a brand label = one entry in string_keys.",

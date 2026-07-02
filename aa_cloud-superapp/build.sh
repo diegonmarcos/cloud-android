@@ -155,9 +155,31 @@ _enforce_signature() {
   log "sign-enforce: OK $(basename "$apk") signed by the ONE shared constellation key"
 }
 
+# ── keyboard media GIF API keys (build.json::keyboard_media.vault_secrets) ────
+# OPTIONAL, unlike signing: exports TENOR_API_KEY / GIPHY_API_KEY that
+# app/build.gradle bakes into BuildConfig for the Sticker/GIF panel. Absent keys
+# NEVER fail the build — the GIF tab just shows "no API key configured"; stickers
+# (WhatsApp packs, no key needed) are unaffected. CI/env-provided keys win.
+_resolve_media_keys() {
+  if [ -n "${TENOR_API_KEY:-}" ] || [ -n "${GIPHY_API_KEY:-}" ]; then
+    log "media: using pre-set TENOR_API_KEY/GIPHY_API_KEY from env"; return 0
+  fi
+  local sec_rel vault sec
+  sec_rel="$(_release_var '.keyboard_media.vault_secrets')"
+  [ -z "$sec_rel" ] && return 0
+  vault="${VAULT_DIR:-$HOME/git/vault}"
+  sec="$vault/$sec_rel"
+  [ -f "$sec" ] || { log "media: no GIF key file at vault/$sec_rel — GIF tab off (stickers unaffected)"; return 0; }
+  command -v sops >/dev/null 2>&1 || { log "media: sops not on PATH — skipping GIF API keys"; return 0; }
+  export TENOR_API_KEY="$(sops --config /dev/null -d --extract '["tenor_api_key"]' "$sec" 2>/dev/null || true)"
+  export GIPHY_API_KEY="$(sops --config /dev/null -d --extract '["giphy_api_key"]' "$sec" 2>/dev/null || true)"
+  log "media: GIF keys from vault/$sec_rel (tenor=$([ -n "$TENOR_API_KEY" ] && echo yes || echo no) giphy=$([ -n "$GIPHY_API_KEY" ] && echo yes || echo no))"
+}
+
 step_build() {
   log "Build: $(_release_var '.name') (debug APK)"
   _resolve_signing
+  _resolve_media_keys
   _export_variant_abis
   in_nix gradle :app:assembleDebug
   mkdir -p "$DIST_DIR"
@@ -170,6 +192,7 @@ step_build() {
 step_release() {
   log "Build: $(_release_var '.name') (release APK)"
   _resolve_signing
+  _resolve_media_keys
   in_nix gradle :app:assembleRelease
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_release_var '.release.artifact.release')"
@@ -626,6 +649,93 @@ step_sync_firewall() {
   log "  browse: $ref"
 }
 
+# ── firestack netstack AAR build (Phase 2) ──────────────────────────────
+# VENDORED + hermetic gomobile build, mirroring libs:net/libwg-go's
+# self-download-Go approach. All params are data-driven from
+# build.json::upstreams.firestack — nothing hardcoded here (FIRE RULE #6).
+#   sync-firestack : clone/update the firestack source tracker
+#   firestack      : self-download pinned Go → firestack's own `make` → aar
+step_sync_firestack() {
+  local repo branch ref
+  repo="$(_release_var '.upstreams.firestack.repo')"
+  branch="$(_release_var '.upstreams.firestack.ref')"
+  ref="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
+  command -v git >/dev/null 2>&1 || { errlog "sync-firestack: git is required"; exit 1; }
+  if [ -d "$ref/.git" ]; then
+    log "sync-firestack: updating firestack clone ($branch): $ref"
+    git -C "$ref" fetch --depth 1 origin "$branch" && git -C "$ref" reset --hard FETCH_HEAD
+  else
+    log "sync-firestack: cloning firestack (MPL-2.0, $branch): $ref"
+    git clone --depth 1 --branch "$branch" "$repo" "$ref"
+  fi
+  log "sync-firestack: firestack source at $ref"
+}
+
+step_firestack() {
+  local tracker gover gosha target aarbuilt aarout outdir cache
+  tracker="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
+  gover="$(_release_var '.upstreams.firestack.build.go_version')"
+  gosha="$(_release_var '.upstreams.firestack.build.go_sha256_linux_amd64')"
+  target="$(_release_var '.upstreams.firestack.build.make_target')"
+  aarbuilt="$(_release_var '.upstreams.firestack.build.aar_built')"
+  aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
+  outdir="$SCRIPT_DIR/libs/firestack"
+  cache="$SCRIPT_DIR/.cache"
+
+  [ -d "$tracker/.git" ] || { errlog "firestack: source missing — run: ./build.sh sync-firestack"; exit 1; }
+  # The pinned Go tarball + sha in build.json are linux/amd64 (the x86 GHA
+  # runner). ARM runners would need their own tarball+sha added there.
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) : ;;
+    *) errlog "firestack: pinned Go is linux-amd64 only (host: $(uname -s)-$(uname -m)). Build on the x86 runner, or add this arch's tarball+sha to build.json::upstreams.firestack.build."; exit 1 ;;
+  esac
+  mkdir -p "$outdir"
+
+  log "firestack: building netstack aar (Go $gover, make $target) — this is slow"
+  # One devShell invocation (for ANDROID_HOME + NDK): download+verify Go
+  # (cached), aim gomobile at the newest NDK, run firestack's own make, emit aar.
+  in_nix bash -euc '
+    GOVER="'"$gover"'"; GOSHA="'"$gosha"'"; TARGET="'"$target"'"
+    TRACKER="'"$tracker"'"; CACHE="'"$cache"'"
+    AARBUILT="'"$aarbuilt"'"; OUTDIR="'"$outdir"'"; AAROUT="'"$aarout"'"
+    GODIR="$CACHE/golang"; export GOPATH="$CACHE/gopath"; export GOBIN="$GOPATH/bin"
+    export GOTOOLCHAIN=local
+    mkdir -p "$GODIR" "$GOPATH"
+    TARBALL="go${GOVER}.linux-amd64.tar.gz"
+    if [ ! -x "$GODIR/go/bin/go" ]; then
+      echo "firestack: downloading Go $GOVER"
+      curl -fLso "$GODIR/$TARBALL" "https://go.dev/dl/$TARBALL"
+      echo "$GOSHA  $GODIR/$TARBALL" | sha256sum -c -
+      rm -rf "$GODIR/go"; tar -C "$GODIR" -xzf "$GODIR/$TARBALL"
+    fi
+    export PATH="$GODIR/go/bin:$GOBIN:$PATH"
+    # gomobile finds the NDK via ANDROID_NDK_HOME; pick the newest the devShell
+    # ships (flake ndkVersions) — never hardcode a version.
+    NDK="$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)"
+    [ -n "$NDK" ] || { echo "firestack: no NDK under $ANDROID_HOME/ndk" >&2; exit 1; }
+    export ANDROID_NDK_HOME="$NDK" ANDROID_NDK_ROOT="$NDK"
+    echo "firestack: $(go version); ndk=$NDK"
+    make -C "$TRACKER" clean || true
+    make -C "$TRACKER" "$TARGET"
+    cp "$TRACKER/$AARBUILT" "$OUTDIR/$AAROUT"
+  '
+  _verify_firestack_aar "$outdir/$aarout"
+  log "firestack: → libs/firestack/$aarout ($(du -h "$outdir/$aarout" 2>/dev/null | cut -f1))"
+}
+
+# Tester (FIRE RULE #5): a valid gomobile aar is a zip carrying classes.jar +
+# AndroidManifest.xml. Fail loud otherwise.
+_verify_firestack_aar() {
+  local aar="$1"
+  [ -f "$aar" ] || { errlog "firestack: aar not produced: $aar"; exit 1; }
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -l "$aar" | grep -q "classes.jar"       || { errlog "firestack: aar has no classes.jar"; exit 1; }
+    unzip -l "$aar" | grep -q "AndroidManifest.xml" || { errlog "firestack: aar has no AndroidManifest.xml"; exit 1; }
+  else
+    log "firestack: unzip absent — skipping aar smoke-test (verify on runner)"
+  fi
+}
+
 # Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
 # GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
 # self-contained keyboard provider. Upstream clone lives at
@@ -828,6 +938,8 @@ case "$CMD" in
   sync-net)     step_sync_net ;;
   sync-heliboard) step_sync_heliboard ;;
   sync-firewall) step_sync_firewall ;;
+  sync-firestack) step_sync_firestack ;;
+  firestack)     step_firestack ;;
   brand-rename) step_brand_rename ;;
   sync-zoomies) step_sync_zoomies ;;
   sync-keyboard-dicts) step_sync_keyboard_dicts ;;

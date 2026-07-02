@@ -87,6 +87,14 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // LatinIME crashed with "parameter prefs is null". Replicate HeliBoard
         // App.onCreate's synchronous init here so both work.
         runCatching { initVendoredKeyboard() }
+        // Push the keyboard Sticker/GIF panel config (build.json::keyboard_media
+        // → BuildConfig) + the sops-injected GIF provider API keys into the
+        // libs:media runtime holder. Libraries can't read the app's BuildConfig,
+        // so the app is the only place this can be wired.
+        runCatching {
+            com.diegonmarcos.superapp.media.MediaRuntime.configure(
+                BuildConfig.MEDIA_CONFIG_B64, BuildConfig.TENOR_API_KEY, BuildConfig.GIPHY_API_KEY)
+        }
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
     }
 

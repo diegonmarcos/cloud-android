@@ -17,6 +17,10 @@ dependencyResolutionManagement {
         // JitPack — libadb-android (com.github.MuntashirAkon). FAIL_ON_PROJECT_REPOS
         // forbids per-module repos, so the central declaration lives here.
         maven { url 'https://jitpack.io' }
+        // Prebuilt firestack netstack aar (`build.sh firestack` → libs/firestack/
+        // firestack.aar), consumed by :libs:firewall. Central for the same
+        // FAIL_ON_PROJECT_REPOS reason. See libs/firestack/README.md.
+        flatDir { dirs "${rootDir}/libs/firestack" }
     }
 }
 

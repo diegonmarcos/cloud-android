@@ -102,6 +102,11 @@ dependencies {
     // KeyCode.VOICE_INPUT handler in LatinIME calls VoiceInput.toggle.
     implementation project(':libs:voice')
 
+    // SuperApp addition (NOT upstream): Sticker + GIF panel hosted inside the
+    // emoji surface. Injected by patches/0007-emoji-media-tabs.patch; the
+    // EmojiPalettesView type-tab row shows a MediaPanelView from this module.
+    implementation project(':libs:media')
+
     // ── Mirror of HeliBoard main app/build.gradle.kts dependencies. ──────
     // Keep in sync with upstream on every `build.sh sync-heliboard` bump.
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
