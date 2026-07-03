@@ -4,7 +4,7 @@ package com.diegonmarcos.superapp.firewall
  * Phase-3 decision core: maps ONE firestack flow to a routing verdict. PURE
  * (no Android / no firestack deps) so it is unit-testable without the aar.
  *
- * Firestack calls `FlowListener.Flow()` (outbound) / `Inflow()` (inbound) per
+ * Firestack calls `FlowListener.flow()` (outbound) / `inflow()` (inbound) per
  * connection with the owning app's `uid`; [FirewallFlowBridge] resolves the
  * uid→package + live conditions and delegates the actual decision here.
  *
@@ -19,39 +19,40 @@ enum class FlowVerdict { BLOCK, ALLOW_DIRECT, ALLOW_VPN }
 object FirewallFlowPolicy {
 
     /**
-     * @param policy       the app's assigned rules (empty ⇒ fully allowed)
-     * @param direction    OUT for Flow(), IN for Inflow()
-     * @param transport    the real physical transport right now (never VPN —
-     *                     the VPN *is* our tunnel; VPN intent is expressed by
-     *                     routing via the WG proxy, below)
-     * @param energy       per-app energy (screen × foreground)
+     * @param rule         the app's rule (default ⇒ fully allowed)
+     * @param direction    OUT for flow(), IN for inflow()
+     * @param transport    the real physical transport right now
+     * @param isBackground per-app background state (screen × foreground)
      * @param cloudVpnUp   true when a WireGuard proxy is registered & usable
      *
-     * "Cloud-VPN only" apps (policy blocks every physical transport but would
-     * allow VPN) are ROUTED through the WG proxy when it's up — so they're
-     * effectively always-under-VPN — and blocked when it's down. This is the
-     * merged-service superpower the interim drain-engine couldn't do.
+     * VPN routing is driven by the EXPLICIT [AppRule.vpnOnly] override (the
+     * user picking "wg0 / wg-public VPN only"), NOT by an implicit heuristic —
+     * "Wi-Fi only" means block off-Wi-Fi, it does not silently tunnel. The
+     * background / direction axes still apply on top of a VPN-only rule. This
+     * is the merged-service superpower the interim drain-engine couldn't do.
      */
     fun verdict(
-        policy: List<RuleSpec>,
+        rule: AppRule,
         direction: Direction,
         transport: Transport,
-        energy: Energy,
+        isBackground: Boolean,
         cloudVpnUp: Boolean,
     ): FlowVerdict {
-        if (policy.isEmpty()) return FlowVerdict.ALLOW_DIRECT
+        if (rule.isDefault) return FlowVerdict.ALLOW_DIRECT
 
-        val blockedOnPhysical = FirewallDecider.block(policy, direction, transport, energy)
-        val blockedIfVpn = FirewallDecider.block(policy, direction, Transport.VPN, energy)
-
-        return when {
-            // Allowed on the real network as-is.
-            !blockedOnPhysical -> FlowVerdict.ALLOW_DIRECT
-            // Blocked physically but permitted under VPN, and VPN is up →
-            // tunnel it through WG to honour the "only under cloud VPN" intent.
-            !blockedIfVpn && cloudVpnUp -> FlowVerdict.ALLOW_VPN
-            // Blocked, and VPN can't rescue it.
-            else -> FlowVerdict.BLOCK
+        if (rule.vpnOnly) {
+            // Explicit cloud-VPN-only: the wifi/cellular toggles don't apply,
+            // but the background / direction axes still can block outright.
+            val blockedByOtherAxis =
+                (isBackground && !rule.background) || rule.directionBlocks(direction)
+            return when {
+                blockedByOtherAxis -> FlowVerdict.BLOCK
+                cloudVpnUp -> FlowVerdict.ALLOW_VPN
+                else -> FlowVerdict.BLOCK // VPN-only but the tunnel is down
+            }
         }
+
+        return if (FirewallDecider.block(rule, direction, transport, isBackground))
+            FlowVerdict.BLOCK else FlowVerdict.ALLOW_DIRECT
     }
 }

@@ -117,7 +117,15 @@
         "make_target": "intra",
         "aar_built": "build/intra/tun2socks.aar",
         "aar_out": "firestack.aar",
-        "java_pkg": "com.celzero.firestack"
+        "java_pkg": "com.celzero.firestack",
+        "_doc_abi": "gomobile bind defaults to ALL android ABIs (arm,arm64,x86,x86_64) — ~4× build time, blows the 30-min CI job. build.sh restricts it to the ONE ABI the SUPERAPP_VARIANT ships by overriding firestack's Makefile ANDROID23 var with a single -target. These flags MIRROR firestack Makefile's ANDROID23 (`-androidapi 23 -target=android -tags='android' -work`) minus the ABI; keep in sync on firestack bumps.",
+        "android_api": "23",
+        "gomobile_tags": "android",
+        "gomobile_targets": {
+          "": "android/arm64",
+          "arm64": "android/arm64",
+          "x86_64": "android/amd64"
+        }
       },
       "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing depends on :libs:firestack yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
     },

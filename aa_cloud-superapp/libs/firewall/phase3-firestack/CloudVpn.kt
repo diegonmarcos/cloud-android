@@ -12,21 +12,22 @@ interface CloudVpnProvider {
     /** True when a usable WireGuard tunnel/proxy is available right now. */
     fun isUp(): Boolean
 
-    /** The firestack proxy id the WG peer is registered under (e.g. "wg1"),
-     *  or null when no cloud VPN is configured. */
-    fun proxyId(): String?
+    /** The firestack proxy id to route a flow through, chosen by the app's
+     *  [AppRule.vpnMode] ([VpnMode.WG0_ONLY] → wg0 peer, [VpnMode.WG_PUBLIC_ONLY]
+     *  → wg-public peer). [VpnMode.NONE] asks for the default/preferred cloud
+     *  tunnel. Returns null when that tunnel isn't configured. */
+    fun proxyId(mode: VpnMode = VpnMode.NONE): String?
 
     /** The WireGuard config (wg-quick / uapi form) to register as a firestack
      *  proxy, or null when unconfigured. Consumed by the tunnel service. */
-    fun wgConfig(): String?
+    fun wgConfig(mode: VpnMode = VpnMode.NONE): String?
 
     companion object {
-        /** No cloud VPN — every "vpn-only" app is simply blocked when its
-         *  physical transport is disallowed. */
+        /** No cloud VPN — every "vpn-only" app is simply blocked. */
         val NONE: CloudVpnProvider = object : CloudVpnProvider {
             override fun isUp() = false
-            override fun proxyId(): String? = null
-            override fun wgConfig(): String? = null
+            override fun proxyId(mode: VpnMode): String? = null
+            override fun wgConfig(mode: VpnMode): String? = null
         }
     }
 }

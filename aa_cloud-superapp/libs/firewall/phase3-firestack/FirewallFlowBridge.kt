@@ -53,17 +53,18 @@ class FirewallFlowBridge(
 
     private fun decide(uid: Int, direction: Direction): Mark {
         val pkg = packageForUid(uid) ?: return mark(Backend.Exit) // unknown → allow direct
-        val policy = FirewallRules.policy(appContext, pkg)
-        if (policy.isEmpty()) return mark(Backend.Exit)
+        val rule = FirewallRules.rule(appContext, pkg)
+        if (rule.isDefault) return mark(Backend.Exit)
 
         val transport = FirewallConditions.transport(appContext)
-        val energy = FirewallConditions.energy(appContext, pkg)
-        val verdict = FirewallFlowPolicy.verdict(policy, direction, transport, energy, cloudVpn.isUp())
+        val isBackground = FirewallConditions.isBackground(appContext, pkg)
+        val verdict = FirewallFlowPolicy.verdict(rule, direction, transport, isBackground, cloudVpn.isUp())
 
         return when (verdict) {
             FlowVerdict.BLOCK -> mark(Backend.Block)
             FlowVerdict.ALLOW_DIRECT -> mark(Backend.Exit)
-            FlowVerdict.ALLOW_VPN -> mark(cloudVpn.proxyId() ?: Backend.Block) // up-check already passed; guard anyway
+            // Route via the tunnel the rule's vpnMode names (NONE ⇒ default).
+            FlowVerdict.ALLOW_VPN -> mark(cloudVpn.proxyId(rule.vpnMode) ?: Backend.Block)
         }
     }
 

@@ -176,12 +176,30 @@ _resolve_media_keys() {
   log "media: GIF keys from vault/$sec_rel (tenor=$([ -n "$TENOR_API_KEY" ] && echo yes || echo no) giphy=$([ -n "$GIPHY_API_KEY" ] && echo yes || echo no))"
 }
 
+# :libs:firewall consumes the firestack netstack aar, so it must exist before
+# any gradle configure/compile. Built once on demand (idempotent — skips when
+# present). Data-driven from build.json::upstreams.firestack.
+_ensure_firestack() {
+  local aarout outdir tracker
+  aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
+  outdir="$SCRIPT_DIR/libs/firestack"
+  [ -f "$outdir/$aarout" ] && return 0
+  log "firestack: aar missing → building once (libs:firewall depends on it)"
+  tracker="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
+  [ -d "$tracker/.git" ] || step_sync_firestack
+  step_firestack
+}
+
+# Every gradle invocation that compiles the app goes through here so the aar is
+# guaranteed present. `clean` deliberately does NOT (no netstack to delete dirs).
+run_gradle() { _ensure_firestack; in_nix gradle "$@"; }
+
 step_build() {
   log "Build: $(_release_var '.name') (debug APK)"
   _resolve_signing
   _resolve_media_keys
   _export_variant_abis
-  in_nix gradle :app:assembleDebug
+  run_gradle :app:assembleDebug
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_variant_artifact)"
   cp "$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$out"
@@ -672,7 +690,7 @@ step_sync_firestack() {
 }
 
 step_firestack() {
-  local tracker gover gosha target aarbuilt aarout outdir cache
+  local tracker gover gosha target aarbuilt aarout outdir cache api tags gt variant
   tracker="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
   gover="$(_release_var '.upstreams.firestack.build.go_version')"
   gosha="$(_release_var '.upstreams.firestack.build.go_sha256_linux_amd64')"
@@ -681,6 +699,12 @@ step_firestack() {
   aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
   outdir="$SCRIPT_DIR/libs/firestack"
   cache="$SCRIPT_DIR/.cache"
+  # Single-ABI gomobile target for the current SUPERAPP_VARIANT (data-driven) —
+  # avoids gomobile's all-ABI default (~4× time → CI timeout).
+  variant="${SUPERAPP_VARIANT:-}"
+  api="$(_release_var '.upstreams.firestack.build.android_api')"
+  tags="$(_release_var '.upstreams.firestack.build.gomobile_tags')"
+  gt="$(prefer_host jq -r --arg v "$variant" '.upstreams.firestack.build.gomobile_targets[$v] // .upstreams.firestack.build.gomobile_targets[""]' "$SCRIPT_DIR/build.json")"
 
   [ -d "$tracker/.git" ] || { errlog "firestack: source missing — run: ./build.sh sync-firestack"; exit 1; }
   # The pinned Go tarball + sha in build.json are linux/amd64 (the x86 GHA
@@ -698,6 +722,7 @@ step_firestack() {
     GOVER="'"$gover"'"; GOSHA="'"$gosha"'"; TARGET="'"$target"'"
     TRACKER="'"$tracker"'"; CACHE="'"$cache"'"
     AARBUILT="'"$aarbuilt"'"; OUTDIR="'"$outdir"'"; AAROUT="'"$aarout"'"
+    API="'"$api"'"; TAGS="'"$tags"'"; GT="'"$gt"'"
     GODIR="$CACHE/golang"; export GOPATH="$CACHE/gopath"; export GOBIN="$GOPATH/bin"
     export GOTOOLCHAIN=local
     mkdir -p "$GODIR" "$GOPATH"
@@ -714,9 +739,10 @@ step_firestack() {
     NDK="$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)"
     [ -n "$NDK" ] || { echo "firestack: no NDK under $ANDROID_HOME/ndk" >&2; exit 1; }
     export ANDROID_NDK_HOME="$NDK" ANDROID_NDK_ROOT="$NDK"
-    echo "firestack: $(go version); ndk=$NDK"
+    echo "firestack: $(go version); ndk=$NDK; abi-target=$GT"
     make -C "$TRACKER" clean || true
-    make -C "$TRACKER" "$TARGET"
+    # Override firestack Makefile ANDROID23 to build ONLY the shipped ABI.
+    make -C "$TRACKER" "$TARGET" ANDROID23="-androidapi $API -target=$GT -tags=$TAGS -work"
     cp "$TRACKER/$AARBUILT" "$OUTDIR/$AAROUT"
   '
   _verify_firestack_aar "$outdir/$aarout"

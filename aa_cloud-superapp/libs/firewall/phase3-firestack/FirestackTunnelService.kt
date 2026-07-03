@@ -54,7 +54,7 @@ class FirestackTunnelService : VpnService() {
 
     private fun establish() {
         val ctx = applicationContext
-        if (FirewallRules.policies(ctx).isEmpty()) { teardown(); stopSelf(); return }
+        if (FirewallRules.configured(ctx).isEmpty()) { teardown(); stopSelf(); return }
         teardown()
 
         val fd = buildTun() ?: run {
