@@ -572,6 +572,8 @@
         "id": "communication",
         "label": "Inboxes",
         "icon": "ic_chat",
+        "icon_apps": "ic_chat",
+        "icon_admin": "ic_p_c3_workflows",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
@@ -580,7 +582,16 @@
           { "id": "apps",  "label": "Apps",  "icon": "ic_chat",             "target": "mode:apps:communication" },
           { "id": "admin", "label": "Admin", "icon": "ic_p_c3_workflows",   "target": "mode:admin:communication" }
         ],
-        "tiles_shared": [
+        "_doc_modes": "Split from the old single-mode tiles_shared/stack_shared into tiles_apps/stack_apps (today's Inboxes content, unchanged) + tiles_admin (new). Both tilesApps/tilesAdmin non-empty now qualifies Inboxes for TabbedSectionFragment (LauncherNavController.goSection), same as Infos/Labs — real in-page Apps|Admin tab buttons, not just the long_press fan menu.",
+        "tiles_admin": [
+          {
+            "id": "pmboards",
+            "label": "Product Management Boards",
+            "icon": "ic_pm_boards",
+            "target": "https://paca.diegonmarcos.com"
+          }
+        ],
+        "tiles_apps": [
           {
             "id": "mail",
             "label": "Mail",
@@ -600,7 +611,7 @@
             "target": "extapp:cloud-comms/chat"
           }
         ],
-        "stack_shared": [
+        "stack_apps": [
           {
             "kind": "mail_accounts",
             "title": "Mail · accounts"
