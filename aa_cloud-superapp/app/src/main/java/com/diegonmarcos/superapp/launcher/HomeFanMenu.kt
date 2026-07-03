@@ -38,30 +38,23 @@ object HomeFanMenu {
         fun dismiss()
     }
 
-    fun show(host: View, onPick: (target: String) -> Unit): Controller {
+    /** Home's own fixed 4-bubble layout — unchanged by the generic
+     *  [show] overload other bottom-nav items now use (build.json::
+     *  sections[*].long_press). Kept separate per the user's "Home
+     *  stays as it is" instruction. */
+    val HOME_ITEMS = listOf(
+        "action:open_home_apps"   to (R.drawable.ic_home_apps to "Home Apps"),
+        "page:browser/all"        to (R.drawable.ic_world     to "Browser"),
+        "page:apptabs/grid"       to (R.drawable.ic_mode_apps to "Tabs"),
+        "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
+    )
+
+    /** items ordering = render order = bubble index. Top entry FIRST so
+     *  bubbles[0] is the centered top bubble; commit() reads items[idx]
+     *  by the same index the finger-detection loop fills in. 1 item ⇒
+     *  top-only; 2-4 items ⇒ 1 top + rest along the bottom row. */
+    fun show(host: View, items: List<Pair<String, Pair<Int, String>>>, onPick: (target: String) -> Unit): Controller {
         val ctx = host.context
-        // Triangle layout per user spec:
-        //     • TOP row (1 bubble, centered): Home Apps — pulls up the
-        //       home-sheet icon grid. ic_home_apps is a dedicated 3×3
-        //       dot launcher glyph reserved for THIS surface.
-        //     • BOTTOM row (3 bubbles, left → right):
-        //         · Browser  → page:browser/all (BrowserHostFragment grid).
-        //                      ic_world matches the build.json Browser
-        //                      tile so the same icon means the same thing
-        //                      across the app.
-        //         · Tabs     → page:apptabs/grid (AppTabsFragment LRU
-        //                      shelf). ic_mode_apps matches the apptabs
-        //                      section icon — same icon = same destination.
-        //         · Update   → action:check_updates.
-        // items ordering = render order = bubble index. Top entry FIRST so
-        // bubbles[0] is the centered top bubble; commit() reads items[idx]
-        // by the same index the finger-detection loop fills in.
-        val items = listOf(
-            "action:open_home_apps"   to (R.drawable.ic_home_apps to "Home Apps"),
-            "page:browser/all"        to (R.drawable.ic_world     to "Browser"),
-            "page:apptabs/grid"       to (R.drawable.ic_mode_apps to "Tabs"),
-            "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
-        )
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             isClickable = false; isFocusable = false

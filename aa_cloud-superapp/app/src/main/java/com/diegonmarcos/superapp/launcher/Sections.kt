@@ -82,6 +82,13 @@ object Sections {
          *  section_footer / phone_footer. */
         val sectionFooter: AggTile? = null,
         val phoneFooter:   AggTile? = null,
+        /** Long-press fan-menu items for this bottom-nav item (build.json::
+         *  sections[*].long_press). Same {id,label,icon,target} shape as any
+         *  other tile — dispatched through onTileClicked, plus two extra
+         *  target prefixes it understands: mode:<apps|admin>:<sectionId> and
+         *  tab:<cloud|phone>:<sectionId>. Empty ⇒ no fan menu (e.g. Home,
+         *  which keeps its own separate hardcoded HomeFanMenu). */
+        val longPress: List<AggTile> = emptyList(),
     ) {
         /** Pick the right icon for the user's current mode.
          *  Apps vs Admin fall back to [iconName] when no override exists. */
@@ -579,6 +586,7 @@ object Sections {
                     stackAdmin      = parseStack("stack_admin"),
                     sectionFooter   = parseFooter("section_footer"),
                     phoneFooter     = parseFooter("phone_footer"),
+                    longPress       = parseTiles("long_press"),
                 )
             )
         }

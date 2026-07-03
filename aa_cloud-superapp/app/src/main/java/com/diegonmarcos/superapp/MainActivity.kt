@@ -395,7 +395,7 @@ class MainActivity : AppCompatActivity(),
             }
 
             installNavSwipeGesture()
-            toolbarFx = LauncherToolbarFx(this, bottomNav) { onTileClicked(it) }
+            toolbarFx = LauncherToolbarFx(this, bottomNav, { onTileClicked(it) }, ::sectionIdForNavId)
             toolbarFx.install()
 
             Updater.start(applicationContext)
@@ -1281,6 +1281,20 @@ class MainActivity : AppCompatActivity(),
                 runCatching { recordPage(currentSection, pid, page.label, "") }
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
+            // mode:<apps|admin>:<sectionId> / tab:<cloud|phone>:<sectionId> —
+            // long-press fan-menu targets (build.json::sections[*].long_press,
+            // LauncherToolbarFx). Force a mode/Suite-tab then open the section.
+            tileId.startsWith("mode:") -> {
+                val (m, sec) = tileId.removePrefix("mode:").split(":", limit = 2)
+                    .let { it[0] to it.getOrElse(1) { currentSection } }
+                applyMode(m)
+                goSection(sec, Sections.byId(sec)?.label ?: sec)
+            }
+            tileId.startsWith("tab:") -> {
+                val (t, sec) = tileId.removePrefix("tab:").split(":", limit = 2)
+                    .let { it[0] to it.getOrElse(1) { currentSection } }
+                goSection(sec, Sections.byId(sec)?.label ?: sec, t)
+            }
             // extapp:<appId>/<forkKey> — open a companion app (Cloud-Comms),
             // installing it from build.json::ui.external_apps if absent.
             tileId.startsWith("extapp:") -> launchExternalApp(tileId.removePrefix("extapp:"))

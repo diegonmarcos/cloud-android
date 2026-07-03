@@ -27,6 +27,10 @@ class LauncherToolbarFx(
     private val activity: AppCompatActivity,
     private val bottomNav: BottomNavigationView,
     private val onTile: (String) -> Unit,
+    /** Resolve a bottom_nav.xml menu item id to its build.json section id
+     *  (MainActivity.sectionIdForNavId) — reused here instead of duplicating
+     *  the id↔section mapping. */
+    private val sectionIdForNavId: (Int) -> String?,
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private val rng = Random()
@@ -41,33 +45,52 @@ class LauncherToolbarFx(
 
     /** One-time setup from onCreate. */
     fun install() {
-        installHomeLongPressFan()
+        installNavFanMenus()
         installTooltipConsumer()
     }
 
     fun resume() = scheduleHamburgerJitter()
     fun pause() = cancelHamburgerJitter()
 
-    // ── long-press fan on the Home item ─────────────────────────────────
-    private fun installHomeLongPressFan() {
+    // ── long-press fan menu on every bottom-nav item ─────────────────────
+    /** Home keeps its own fixed 4-bubble layout ([HomeFanMenu.HOME_ITEMS]);
+     *  the other 4 items render their build.json::sections[*].long_press
+     *  list (Sections.longPress) — empty ⇒ no fan menu for that item. */
+    private fun installNavFanMenus() {
         bottomNav.post {
-            val homeView = findHomeNavView()
-            if (homeView == null) { Trace.w(TAG, "fan install: no homeView — long-press disabled"); return@post }
-            Trace.i(TAG, "fan install: attaching listener to home item view")
-            attachHomeFanTouchListener(homeView)
+            val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: run {
+                Trace.w(TAG, "fan install: no menuView — long-press disabled"); return@post
+            }
+            val items = bottomNav.menu
+            for (i in 0 until items.size()) {
+                val navId = items.getItem(i).itemId
+                val itemView = menuView.getChildAt(i) ?: continue
+                val fanItems: List<Pair<String, Pair<Int, String>>> = if (navId == R.id.nav_home) {
+                    HomeFanMenu.HOME_ITEMS
+                } else {
+                    val sectionId = sectionIdForNavId(navId) ?: continue
+                    val section = Sections.byId(sectionId) ?: continue
+                    section.longPress.map { t ->
+                        t.target to (Sections.iconResFor(itemView.context, t.iconName) to t.label)
+                    }
+                }
+                if (fanItems.isEmpty()) continue
+                Trace.i(TAG, "fan install: attaching listener to nav item id=$navId")
+                attachFanTouchListener(itemView, fanItems)
+            }
         }
     }
 
-    private fun attachHomeFanTouchListener(homeView: View) {
-        homeView.setOnTouchListener { _, ev ->
+    private fun attachFanTouchListener(itemView: View, items: List<Pair<String, Pair<Int, String>>>) {
+        itemView.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = ev.x; downY = ev.y
                     pending?.let { handler.removeCallbacks(it) }
                     fanCtrl = null
                     val p = Runnable {
-                        homeView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                        fanCtrl = HomeFanMenu.show(homeView) { target -> onTile(target) }
+                        itemView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        fanCtrl = HomeFanMenu.show(itemView, items) { target -> onTile(target) }
                     }
                     pending = p
                     handler.postDelayed(p, 380)
@@ -94,15 +117,6 @@ class LauncherToolbarFx(
                 else -> false
             }
         }
-    }
-
-    private fun findHomeNavView(): View? {
-        val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: return null
-        val items = bottomNav.menu
-        for (i in 0 until items.size()) {
-            if (items.getItem(i).itemId == R.id.nav_home) return menuView.getChildAt(i)
-        }
-        return null
     }
 
     // ── tooltip consumer (OEM long-press tooltip suppression) ───────────

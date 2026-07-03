@@ -575,6 +575,11 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "_doc_long_press": "Long-press the Inboxes bottom-nav item — same mechanism as Infos/Labs. `mode:<apps|admin>` (MainActivity.onTileClicked) applies the ModePrefs mode then re-opens this section.",
+        "long_press": [
+          { "id": "apps",  "label": "Apps",  "icon": "ic_chat",             "target": "mode:apps:communication" },
+          { "id": "admin", "label": "Admin", "icon": "ic_p_c3_workflows",   "target": "mode:admin:communication" }
+        ],
         "tiles_shared": [
           {
             "id": "mail",
@@ -642,6 +647,10 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "long_press": [
+          { "id": "apps",  "label": "Apps",  "icon": "ic_p_logs",         "target": "mode:apps:infos" },
+          { "id": "admin", "label": "Admin", "icon": "ic_p_c3_workflows", "target": "mode:admin:infos" }
+        ],
         "tiles_apps": [
           {
             "id": "calendar",
@@ -865,6 +874,12 @@
           "icon": "ic_p_more",
           "target": "action:open_home_apps_phone"
         },
+        "_doc_long_press": "Long-press the Suite bottom-nav item. `tab:<cloud|phone>` (MainActivity.onTileClicked) re-opens Suite on that SuiteCloudPhoneTabsFragment tab; More mirrors phone_footer's target (the Phone tab's own More subpage).",
+        "long_press": [
+          { "id": "cloud", "label": "Cloud", "icon": "ic_suite",    "target": "tab:cloud:suite" },
+          { "id": "phone", "label": "Phone", "icon": "ic_p_dialer", "target": "tab:phone:suite" },
+          { "id": "more",  "label": "More",  "icon": "ic_p_more",  "target": "action:open_home_apps_phone" }
+        ],
         "_doc_phone_app_groups": "Curated phone apps surfaced in Suite/Phone, grouped under the same titled sections used by Suite/Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
         "phone_app_groups": [
           {
@@ -1132,6 +1147,10 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
+        "long_press": [
+          { "id": "apps",  "label": "Apps",  "icon": "ic_p_sol_tools", "target": "mode:apps:tools" },
+          { "id": "admin", "label": "Admin", "icon": "ic_p_c3_stack", "target": "mode:admin:tools" }
+        ],
         "tiles_shared": [
           {
             "id": "c3",
