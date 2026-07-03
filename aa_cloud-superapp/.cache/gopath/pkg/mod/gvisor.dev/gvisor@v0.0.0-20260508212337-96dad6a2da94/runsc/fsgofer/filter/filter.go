@@ -1,0 +1,97 @@
+// Copyright 2018 The gVisor Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package filter defines all syscalls the gofer is allowed to make, and
+// installs seccomp filters to prevent prohibited syscalls in case it's
+// compromised.
+package filter
+
+import (
+	"gvisor.dev/gvisor/pkg/log"
+	"gvisor.dev/gvisor/pkg/seccomp"
+)
+
+// Options are seccomp filter related options.
+type Options struct {
+	UDSOpenEnabled   bool
+	UDSCreateEnabled bool
+	ProfileEnabled   bool
+	DirectFS         bool
+	CgoEnabled       bool
+}
+
+// Rules returns the seccomp rules for a gofer process without installing
+// them. Callers can merge additional rules before building and installing
+// the seccomp program. This is useful for custom gofer implementations
+// that need the stock gofer's baseline syscall allowlist but also require
+// additional syscalls (e.g. for networking or namespace switching).
+func Rules(opt Options) seccomp.SyscallRules {
+	s := allowedSyscalls.Copy()
+
+	if opt.ProfileEnabled {
+		report("profile enabled: syscall filters less restrictive!")
+		s.Merge(profileFilters)
+	}
+
+	if opt.UDSOpenEnabled || opt.UDSCreateEnabled {
+		report("host UDS enabled: syscall filters less restrictive!")
+		s.Merge(udsCommonSyscalls)
+		if opt.UDSOpenEnabled {
+			s.Merge(udsOpenSyscalls)
+		}
+		if opt.UDSCreateEnabled {
+			s.Merge(udsCreateSyscalls)
+		}
+	}
+
+	if opt.CgoEnabled {
+		report("CGO enabled: syscall filters less restrictive!")
+		s.Merge(cgoFilters)
+	}
+
+	// Set of additional filters used by -race and -msan. Returns empty
+	// when not enabled.
+	s.Merge(instrumentationFilters())
+
+	// When DirectFS is not enabled, filters for LisaFS are installed.
+	if !opt.DirectFS {
+		s.Merge(lisafsFilters)
+	}
+
+	return s
+}
+
+// Install installs seccomp filters.
+func Install(opt Options) error {
+	s := Rules(opt)
+
+	program := &seccomp.Program{
+		RuleSets: []seccomp.RuleSet{
+			{
+				Rules: seccomp.DenyNewExecMappings,
+			},
+			{
+				Rules:  s,
+				Action: seccomp.Allow,
+			},
+		},
+	}
+
+	return program.Install()
+}
+
+// report writes a warning message to the log.
+func report(msg string) {
+	log.Warningf("*** SECCOMP WARNING: %s", msg)
+}

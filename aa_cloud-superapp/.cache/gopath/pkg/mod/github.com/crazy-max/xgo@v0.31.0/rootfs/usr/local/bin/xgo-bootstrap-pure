@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+#
+# Contains the Go tool-chain pure-Go bootstrapper, that as of Go 1.5, initiates
+# not only a few pre-built Go cross compilers, but rather bootstraps all of the
+# supported platforms from the origin Linux amd64 distribution.
+#
+# Usage: xgo-bootstrap-pure
+#
+# Environment variables for remote bootstrapping:
+#   GO_DIST_URL   - 64 bit Linux Go binary distribution package url
+#   GO_DIST_SHA   - 64 bit Linux Go distribution package checksum
+#
+# Environment variables for local bootstrapping:
+#   GOROOT - Path to the already installed Go runtime
+set -e
+
+export GOROOT_BOOTSTRAP=$GOROOT
+
+xgobootstrap() {
+  if command -v "$3" >/dev/null 2>/dev/null; then
+    echo "Bootstrapping $1/$2..."
+    (set -x ; GOOS=$1 GOARCH=$2 CGO_ENABLED=1 CC=$3 go install std)
+  fi
+}
+
+# Fix last digit
+if [ "$(echo "$GO_VERSION" | tr -cd '.' | wc -c)" != "2" ]; then
+  export GO_VERSION="${GO_VERSION}.0"
+fi
+echo "GO_VERSION=$GO_VERSION"
+
+# Pre-build all guest distributions based on the root distribution
+xgobootstrap linux 386 i686-linux-gnu-gcc
+xgobootstrap linux amd64 x86_64-linux-gnu-gcc
+xgobootstrap linux arm64 aarch64-linux-gnu-gcc
+
+if [ "$(semver compare "$GO_VERSION" "1.7.0")" -ge 0 ]; then
+  xgobootstrap linux mips64 mips64-linux-gnuabi64-gcc
+  xgobootstrap linux mips64le mips64el-linux-gnuabi64-gcc
+fi
+
+if [ "$(semver compare "$GO_VERSION" "1.8.0")" -ge 0 ]; then
+  xgobootstrap linux mips mips-linux-gnu-gcc
+  xgobootstrap linux mipsle mipsel-linux-gnu-gcc
+  xgobootstrap linux ppc64le powerpc64le-linux-gnu-gcc
+  xgobootstrap linux s390x s390x-linux-gnu-gcc
+fi
+
+if [ "$(semver compare "$GO_VERSION" "1.16.0")" -ge 0 ]; then
+  xgobootstrap linux riscv64 riscv64-linux-gnu-gcc
+fi
+
+xgobootstrap windows amd64 x86_64-w64-mingw32-gcc
+xgobootstrap windows 386 i686-w64-mingw32-gcc
+
+# FIXME: gcc_libinit_windows.c:8:10: fatal error: 'windows.h' file not found
+#if [ "$(semver compare "$GO_VERSION" "1.17.0")" -ge 0 ]; then
+#  echo "Bootstrapping windows/arm64..."
+#  (set -x ; GOOS=windows GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-w64-mingw32-gcc go install std)
+#fi
+
+xgobootstrap darwin amd64 o64-clang
+
+if [ "$(semver compare "$GO_VERSION" "1.15.0")" -lt 0 ]; then
+  xgobootstrap darwin 386 o32-clang
+fi
+
+if [ "$(semver compare "$GO_VERSION" "1.16.0")" -ge 0 ]; then
+  xgobootstrap darwin arm64 o64-clang
+fi

@@ -1,0 +1,45 @@
+This tests a sequence of two patches. The patches must be applied in order,
+since the first patch creates a function used by the second one.
+-- toolchain --
+go1.24.4
+-- part1.patch --
+diff --git a/src/math/rand/rand.go b/src/math/rand/rand.go
+index 4be1ca208a..a1cba7caf6 100644
+--- a/src/math/rand/rand.go
++++ b/src/math/rand/rand.go
+@@ -445,6 +445,8 @@ func Uint64() uint64 { return globalRand().Uint64() }
+ // from the default [Source].
+ func Int31() int32 { return globalRand().Int31() }
+ 
++func NewInt() int { return 42 }
++
+ // Int returns a non-negative pseudo-random int from the default [Source].
+ func Int() int { return globalRand().Int() }
+ 
+-- part2.patch --
+diff --git a/src/math/rand/rand.go b/src/math/rand/rand.go
+index a1cba7caf6..cbce0b6c3d 100644
+--- a/src/math/rand/rand.go
++++ b/src/math/rand/rand.go
+@@ -448,7 +448,7 @@ func Int31() int32 { return globalRand().Int31() }
+ func NewInt() int { return 42 }
+ 
+ // Int returns a non-negative pseudo-random int from the default [Source].
+-func Int() int { return globalRand().Int() }
++func Int() int { return NewInt() }
+ 
+ // Int63n returns, as an int64, a non-negative pseudo-random number in the half-open interval [0,n)
+ // from the default [Source].
+-- simple.go --
+package main
+
+import (
+	"fmt"
+	"math/rand"
+)
+
+func main() {
+	fmt.Println(rand.Int())
+}
+-- output.txt --
+42

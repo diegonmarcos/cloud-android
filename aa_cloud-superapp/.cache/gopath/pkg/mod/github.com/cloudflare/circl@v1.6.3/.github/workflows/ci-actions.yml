@@ -1,0 +1,152 @@
+---
+name: CIRCL
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  amd64_job:
+    name: Go-${{matrix.GOVER}}/amd64
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        GOVER: ['1.25', '1.24']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Go-${{ matrix.GOVER }}
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.GOVER }}
+      - name: Linting
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.3.1
+      - name: Check shadowing
+        run: |
+         go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+         go vet -vettool=$(which shadow) ./... 2>&1 | awk -f .etc/action.awk
+        shell: bash
+      - name: Verifying Code
+        run: |
+         go generate -v ./...
+         test -z "$(git status --porcelain)"
+         go vet ./...
+        shell: bash
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v -count=1 ./...
+  arm64_job:
+    name: Go-${{matrix.GOVER}}/arm64
+    needs: [amd64_job]
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        GOVER: ['1.25', '1.24']
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Go-${{ matrix.GOVER }}
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.GOVER }}
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v -count=1 ./...
+  wasm_job:
+    needs: [amd64_job]
+    runs-on: ubuntu-24.04
+    name: Testing on WASM
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Setting WASM Runtime
+        run: echo $(go env GOROOT)/lib/wasm >> $GITHUB_PATH
+      - name: Building
+        run: GOOS=js GOARCH=wasm go build -v ./...
+      - name: Testing
+        run: GOOS=js GOARCH=wasm go test -v -count=1 ./...
+  build_modes:
+    needs: [amd64_job]
+    runs-on: ubuntu-24.04
+    name: Testing Build Modes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Build as Static
+        run: make circl_static
+      - name: Build as Plugin
+        run: make circl_plugin
+  coverage_amd64_job:
+    needs: [amd64_job]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    name: amd64/coverage
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Produce Coverage
+        run: go test -coverprofile=./coverage.txt ./...
+      - name: Upload Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.txt
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  osCompat:
+    runs-on: ${{ matrix.os }}
+    needs: [amd64_job]
+    name: Running on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v -count=1 ./...
+  analyze:
+    name: Analyze with CodeQL
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:go"
