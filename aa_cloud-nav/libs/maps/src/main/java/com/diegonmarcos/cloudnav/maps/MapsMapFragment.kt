@@ -32,6 +32,7 @@ import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 
 /**
@@ -50,13 +51,26 @@ import org.maplibre.android.style.sources.GeoJsonSource
  */
 class MapsMapFragment : Fragment() {
 
-    /** One coloured dot to render. [color] is a CSS hex string. */
-    data class Pin(val lat: Double, val lon: Double, val color: String = COLOR_RESULT)
+    /** One coloured dot to render. [color] is a CSS hex string. [title] is the
+     *  always-on map label; [id] is echoed back by [onPinClick] on tap. */
+    data class Pin(
+        val lat: Double,
+        val lon: Double,
+        val color: String = COLOR_RESULT,
+        val title: String = "",
+        val id: String = "",
+    )
 
     var onMapReady: ((MapLibreMap) -> Unit)? = null
 
     /** Fired on every successful my-location fix. Navigation drives its HUD. */
     var onUserLocation: ((Location) -> Unit)? = null
+
+    /** Fired with a pin's [Pin.id] when its marker/label is tapped. */
+    var onPinClick: ((String) -> Unit)? = null
+
+    /** Fired with (lat, lon) on a long-press anywhere on the map. */
+    var onMapLongClick: ((Double, Double) -> Unit)? = null
 
     private var mapView: MapView? = null
     private var map: MapLibreMap? = null
@@ -112,6 +126,19 @@ class MapsMapFragment : Fragment() {
                 .tilt(if (nav3d) NAV_TILT else 0.0)
                 .build()
             applyStyle(styleKey, firstLoad = true)
+
+            // Tap a pin → resolve its feature → echo the id back to the caller.
+            m.addOnMapClickListener { latLng ->
+                val cb = onPinClick ?: return@addOnMapClickListener false
+                val pt = m.projection.toScreenLocation(latLng)
+                val feats = m.queryRenderedFeatures(pt, LYR_PINS, LYR_PIN_LABELS)
+                val id = feats.firstOrNull { it.hasProperty("id") }?.getStringProperty("id")
+                if (!id.isNullOrEmpty()) { cb(id); true } else false
+            }
+            m.addOnMapLongClickListener { latLng ->
+                val cb = onMapLongClick ?: return@addOnMapLongClickListener false
+                cb(latLng.latitude, latLng.longitude); true
+            }
         }
         root.addView(mv)
 
@@ -238,9 +265,23 @@ class MapsMapFragment : Fragment() {
             style.addLayer(
                 CircleLayer(LYR_PINS, SRC_PINS).withProperties(
                     PropertyFactory.circleColor(Expression.get("color")),
-                    PropertyFactory.circleRadius(7f),
+                    PropertyFactory.circleRadius(8f),
                     PropertyFactory.circleStrokeColor("#FFFFFF"),
-                    PropertyFactory.circleStrokeWidth(2f),
+                    PropertyFactory.circleStrokeWidth(2.5f),
+                )
+            )
+            // Always-on title label above each pin (the "balloon" text).
+            style.addLayer(
+                SymbolLayer(LYR_PIN_LABELS, SRC_PINS).withProperties(
+                    PropertyFactory.textField(Expression.get("title")),
+                    PropertyFactory.textSize(12f),
+                    PropertyFactory.textColor("#FFFFFF"),
+                    PropertyFactory.textHaloColor("#101418"),
+                    PropertyFactory.textHaloWidth(1.6f),
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                    PropertyFactory.textOffset(arrayOf(0f, 0.9f)),
+                    PropertyFactory.textAllowOverlap(false),
+                    PropertyFactory.textOptional(true),
                 )
             )
             style.addSource(GeoJsonSource(SRC_ME, featureCollection(emptyList())))
@@ -318,11 +359,15 @@ class MapsMapFragment : Fragment() {
     }
 
     private fun featureCollection(items: List<Pin>): String {
-        val feats = items.joinToString(",") { p ->
-            """{"type":"Feature","properties":{"color":"${p.color}"},""" +
-                """"geometry":{"type":"Point","coordinates":[${p.lon},${p.lat}]}}"""
+        val features = org.json.JSONArray()
+        items.forEach { p ->
+            val props = org.json.JSONObject()
+                .put("color", p.color).put("title", p.title).put("id", p.id)
+            val geom = org.json.JSONObject().put("type", "Point")
+                .put("coordinates", org.json.JSONArray().put(p.lon).put(p.lat))
+            features.put(org.json.JSONObject().put("type", "Feature").put("properties", props).put("geometry", geom))
         }
-        return """{"type":"FeatureCollection","features":[$feats]}"""
+        return org.json.JSONObject().put("type", "FeatureCollection").put("features", features).toString()
     }
 
     private fun toast(msg: String) { context?.let { Toast.makeText(it, msg, Toast.LENGTH_SHORT).show() } }
@@ -357,6 +402,7 @@ class MapsMapFragment : Fragment() {
 
         private const val SRC_PINS  = "pins-src"
         private const val LYR_PINS  = "pins-layer"
+        private const val LYR_PIN_LABELS = "pins-labels"
         private const val SRC_ME    = "me-src"
         private const val LYR_ME    = "me-layer"
         private const val SRC_ROUTE = "route-src"

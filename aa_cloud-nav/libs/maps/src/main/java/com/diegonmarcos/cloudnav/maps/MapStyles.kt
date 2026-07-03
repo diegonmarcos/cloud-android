@@ -19,7 +19,15 @@ object MapStyles {
         val attribution: String,
         val background: String,
         val maxzoom: Int,
+        val glyphs: String,
     )
+
+    /** Glyph (font PBF) endpoint for SymbolLayer text — data-driven, one for all
+     *  styles (build.json::ui.map_styles.glyphs). Without it label text can't
+     *  rasterise; the public MapLibre demotiles font server is the default. */
+    private val glyphs: String by lazy {
+        root.optString("glyphs", "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf")
+    }
 
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_MAP_STYLES_B64, Base64.DEFAULT))) }
@@ -42,6 +50,7 @@ object MapStyles {
             attribution = o.optString("attribution", "© OpenStreetMap contributors"),
             background = o.optString("background", "#e8eef4"),
             maxzoom = o.optInt("maxzoom", 19),
+            glyphs = glyphs,
         )
     }
 
@@ -56,6 +65,7 @@ object MapStyles {
         {
           "version": 8,
           "name": "cloudnav-${s.key}",
+          "glyphs": "${s.glyphs}",
           "sources": {
             "raster": {
               "type": "raster",

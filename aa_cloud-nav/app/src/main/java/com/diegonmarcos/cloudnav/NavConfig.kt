@@ -12,6 +12,10 @@ import org.json.JSONObject
 data class NavTab(val id: String, val label: String, val icon: String)
 data class SearchIsland(val id: String, val label: String, val icon: String, val action: String)
 data class PlaceCategory(val id: String, val label: String, val icon: String, val query: String, val emoji: String)
+
+/** One row of the Places POI detail sheet. [tag]/[alt] are OSM tag keys tried in
+ *  order; [kind] = text | url | phone | email (controls the tap action). */
+data class PoiField(val tag: String, val alt: List<String>, val label: String, val emoji: String, val kind: String)
 data class SearchScope(val id: String, val label: String, val emoji: String, val radiusKm: Double)
 
 /** Navigation-tab vehicle cockpit profile. Drives the instrument panel + map camera. */
@@ -61,6 +65,21 @@ object NavConfig {
                 o.getString("id"), o.getString("label"),
                 o.optString("icon", "place"), o.optString("query", ""),
                 o.optString("emoji", ""),
+            )
+        }
+    }
+
+    val poiDetailFields: List<PoiField> by lazy {
+        val arr = JSONArray(decode(BuildConfig.UI_POI_DETAIL_FIELDS_B64))
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            val altArr = o.optJSONArray("alt") ?: JSONArray()
+            PoiField(
+                tag = o.getString("tag"),
+                alt = (0 until altArr.length()).map { altArr.getString(it) },
+                label = o.optString("label", o.getString("tag")),
+                emoji = o.optString("emoji", ""),
+                kind = o.optString("kind", "text"),
             )
         }
     }

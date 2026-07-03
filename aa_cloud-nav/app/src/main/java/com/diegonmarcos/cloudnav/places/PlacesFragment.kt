@@ -38,6 +38,7 @@ class PlacesFragment : Fragment() {
     private lateinit var sheetTitle: TextView
     private lateinit var resultsContainer: LinearLayout
     private var activeRadiusKm: Double = 0.0   // search scope: City/Country/World
+    private var currentHits: List<MapsProviderClient.SearchHit> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?,
@@ -51,6 +52,8 @@ class PlacesFragment : Fragment() {
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }
+        // Tap a pin → open its rich detail card.
+        mapFragment.onPinClick = { id -> currentHits.getOrNull(id.toIntOrNull() ?: -1)?.let { openDetail(it) } }
 
         // Top overlay: simple search + radius-scope islands + category islands.
         val top = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
@@ -179,7 +182,8 @@ class PlacesFragment : Fragment() {
     /** Drop pins, frame them, and populate + peek the results sheet. */
     private fun showResults(hits: List<MapsProviderClient.SearchHit>, label: String, color: String) {
         val ctx = context ?: return
-        val pins = hits.map { MapsMapFragment.Pin(it.lat, it.lon, color) }
+        currentHits = hits
+        val pins = hits.mapIndexed { i, h -> MapsMapFragment.Pin(h.lat, h.lon, color, title = h.title, id = i.toString()) }
         mapFragment.setPins(pins)
         mapFragment.fitTo(pins)
 
@@ -204,7 +208,7 @@ class PlacesFragment : Fragment() {
                 }
                 setOnClickListener {
                     mapFragment.recenter(hit.lat, hit.lon, 16.0)
-                    sheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+                    openDetail(hit)
                 }
             })
             resultsContainer.addView(View(ctx).apply {
@@ -213,6 +217,13 @@ class PlacesFragment : Fragment() {
             })
         }
         sheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+    }
+
+    /** Open the rich POI detail sheet, with distance measured from the user. */
+    private fun openDetail(hit: MapsProviderClient.SearchHit) {
+        val ctx = context ?: return
+        val here = mapFragment.myLatLon()
+        PlaceDetailSheet.show(ctx, hit, here?.first ?: Double.NaN, here?.second ?: Double.NaN)
     }
 
     private fun ui(block: () -> Unit) {

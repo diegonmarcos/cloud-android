@@ -145,6 +145,22 @@
       { "id": "pharmacies",   "label": "Pharmacies",      "emoji": "💊", "icon": "pharmacy",    "query": "amenity=pharmacy" },
       { "id": "hotels",       "label": "Hotels",          "emoji": "🏨", "icon": "hotel",       "query": "tourism=hotel" }
     ],
+    "_doc_poi_detail_fields": "Rows shown in the Places POI detail sheet (tap a pin). Iterated in order; each pulls its OSM [tag] from the hit's raw tags — absent tags are skipped. kind: text (plain) | url (opens browser) | phone (dials) | email. First non-blank of tag|alt tags wins. name/type/distance are rendered separately at the top; remaining un-listed tags collapse under 'More'. Data-driven — add a row here, no Kotlin change.",
+    "poi_detail_fields": [
+      { "tag": "cuisine",       "alt": [],                              "label": "Cuisine",       "emoji": "🍽️", "kind": "text" },
+      { "tag": "opening_hours", "alt": [],                              "label": "Hours",         "emoji": "🕒", "kind": "text" },
+      { "tag": "phone",         "alt": [ "contact:phone" ],             "label": "Phone",         "emoji": "📞", "kind": "phone" },
+      { "tag": "website",       "alt": [ "contact:website", "url" ],    "label": "Website",       "emoji": "🌐", "kind": "url" },
+      { "tag": "email",         "alt": [ "contact:email" ],             "label": "Email",         "emoji": "✉️", "kind": "email" },
+      { "tag": "addr:street",   "alt": [],                              "label": "Street",        "emoji": "🏠", "kind": "text" },
+      { "tag": "addr:housenumber", "alt": [],                           "label": "No.",           "emoji": "🔢", "kind": "text" },
+      { "tag": "addr:city",     "alt": [ "addr:town" ],                 "label": "City",          "emoji": "🏙️", "kind": "text" },
+      { "tag": "addr:postcode", "alt": [],                              "label": "Postcode",      "emoji": "📮", "kind": "text" },
+      { "tag": "brand",         "alt": [ "operator" ],                  "label": "Brand",         "emoji": "🏷️", "kind": "text" },
+      { "tag": "wheelchair",    "alt": [],                              "label": "Wheelchair",    "emoji": "♿", "kind": "text" },
+      { "tag": "outdoor_seating","alt": [],                             "label": "Outdoor seat.", "emoji": "🪑", "kind": "text" },
+      { "tag": "internet_access","alt": [ "wifi" ],                     "label": "Wi-Fi",         "emoji": "📶", "kind": "text" }
+    ],
     "_doc_map_styles": "Raster basemaps. `order` = the cycle the in-map Map-switcher FAB (under locate-me) steps through. light = OSM standard; dark = CARTO Dark Matter (also Navigation's night view); satellite = Esri World Imagery. background paints behind a tile gap. Consumed by MapsMapFragment (baked UI_MAP_STYLES_B64) — no hardcoded tile URLs in Kotlin.",
     "map_styles": {
       "order": [ "light", "dark", "satellite" ],

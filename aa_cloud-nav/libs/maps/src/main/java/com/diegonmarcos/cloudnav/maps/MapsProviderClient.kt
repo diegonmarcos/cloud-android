@@ -249,18 +249,26 @@ object MapsProviderClient {
                 tags.optStringOrNull("addr:street"),
                 tags.optStringOrNull("opening_hours"),
             ).joinToString(" · ").ifEmpty { null }
-            SearchHit(title, sub, lat, lon, tags.optStringOrNull("amenity") ?: tags.optStringOrNull("shop"))
+            SearchHit(
+                title, sub, lat, lon,
+                type = tags.optStringOrNull("amenity") ?: tags.optStringOrNull("shop")
+                    ?: tags.optStringOrNull("tourism") ?: tags.optStringOrNull("leisure"),
+                tags = tags.toStringMap(),
+            )
         }
     }.getOrDefault(emptyList())
 
     /** One forward-search / POI result. [type] is the OSM class/amenity tag
-     *  when known (used for icon/colour selection by callers). */
+     *  when known (used for icon/colour selection by callers). [tags] carries
+     *  the full raw OSM tag set for POI hits (website, phone, opening_hours,
+     *  addr:*, …) so the detail sheet can surface everything the API returned. */
     data class SearchHit(
         val title: String,
         val subtitle: String?,
         val lat: Double,
         val lon: Double,
         val type: String?,
+        val tags: Map<String, String> = emptyMap(),
     )
 
     // ── search cache (forward + POI) ─────────────────────────────────
@@ -296,6 +304,7 @@ object MapsProviderClient {
                     .put("la", it.lat)
                     .put("lo", it.lon)
                     .put("ty", it.type)
+                    .put("tg", if (it.tags.isEmpty()) null else JSONObject(it.tags))
             )
         }
         return arr.toString()
@@ -311,6 +320,7 @@ object MapsProviderClient {
                 lat = o.optDouble("la"),
                 lon = o.optDouble("lo"),
                 type = o.optStringOrNull("ty"),
+                tags = o.optJSONObject("tg")?.toStringMap() ?: emptyMap(),
             )
         }
     }.getOrDefault(emptyList())
@@ -383,4 +393,11 @@ private fun JSONObject.optStringOrNull(key: String): String? {
     if (!has(key) || isNull(key)) return null
     val v = optString(key, "")
     return v.takeIf { it.isNotEmpty() }
+}
+
+/** Flatten a JSON object of string values into a Map (OSM tag sets). */
+private fun JSONObject.toStringMap(): Map<String, String> {
+    val out = LinkedHashMap<String, String>(length())
+    keys().forEach { k -> if (!isNull(k)) out[k] = optString(k, "") }
+    return out
 }

@@ -66,6 +66,8 @@ class RoutesFragment : Fragment() {
         // onUserLocation uses android.location.Location — no MapLibre type leaks
         // into the app module (unlike onMapReady).
         mapFragment.onUserLocation = { recomputeRoute() }
+        // Long-press the map → mark that spot as a stop and (re)trace the route.
+        mapFragment.onMapLongClick = { lat, lon -> addStopFromMap(lat, lon) }
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }
@@ -175,6 +177,25 @@ class RoutesFragment : Fragment() {
                     SearchUi.field(searchCard).text?.clear()
                     renderStops(); recomputeRoute()
                 }
+            }
+        }.start()
+    }
+
+    /** Long-press handler: add the tapped coordinate as a stop immediately (so
+     *  the route traces right away), then reverse-geocode a nicer label. */
+    private fun addStopFromMap(lat: Double, lon: Double) {
+        val ctx = context ?: return
+        val stop = Stop("Dropped pin (%.4f, %.4f)".format(lat, lon), lat to lon)
+        stops.add(stop)
+        renderStops(); recomputeRoute()
+        Toast.makeText(ctx, "Marked — tracing route…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val r = MapsProviderClient.reverseGeocode(ctx, lat, lon)
+            val name = r?.placeName?.substringBefore(",")?.trim()?.ifEmpty { null }
+                ?: r?.city ?: return@Thread
+            ui {
+                val idx = stops.indexOf(stop)
+                if (idx >= 0) { stops[idx] = Stop(name, lat to lon); renderStops() }
             }
         }.start()
     }

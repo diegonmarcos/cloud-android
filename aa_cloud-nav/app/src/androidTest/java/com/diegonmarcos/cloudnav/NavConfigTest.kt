@@ -117,6 +117,30 @@ class NavConfigTest {
         assertEquals(0.0, s.first { it.id == "world" }.radiusKm, 1e-9)  // world = unbounded
     }
 
+    @Test fun poi_detail_fields_decode() {
+        val f = NavConfig.poiDetailFields
+        assertTrue("detail fields decode", f.isNotEmpty())
+        // website + phone rows must exist (the actionable ones) with the right kind.
+        assertEquals("url", f.first { it.tag == "website" }.kind)
+        assertEquals("phone", f.first { it.tag == "phone" }.kind)
+        // website carries fallback tags (contact:website / url) so odd OSM data still resolves.
+        assertTrue(f.first { it.tag == "website" }.alt.contains("contact:website"))
+        f.forEach {
+            assertTrue(it.tag.isNotBlank() && it.label.isNotBlank())
+            assertTrue(it.kind in listOf("text", "url", "phone", "email"))
+        }
+    }
+
+    @Test fun search_hit_carries_raw_tags() {
+        // The POI pipeline must preserve the full OSM tag set for the detail sheet.
+        val hit = MapsProviderClient.SearchHit(
+            "Bar X", null, 1.0, 2.0, "bar",
+            tags = mapOf("website" to "https://x.test", "phone" to "+1"),
+        )
+        assertEquals("https://x.test", hit.tags["website"])
+        assertEquals(2, hit.tags.size)
+    }
+
     @Test fun place_categories_have_emoji() {
         assertTrue(NavConfig.placeCategories.all { it.emoji.isNotBlank() })
     }
