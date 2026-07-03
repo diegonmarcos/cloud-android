@@ -97,6 +97,8 @@ class MapsMapFragment : Fragment() {
 
         mv.getMapAsync { m ->
             map = m
+            // Native compass: appears when rotated, tap = snap back to north.
+            m.uiSettings.isCompassEnabled = true
             m.cameraPosition = CameraPosition.Builder()
                 .target(LatLng(initialLat, initialLon))
                 .zoom(initialZoom)
@@ -157,6 +159,11 @@ class MapsMapFragment : Fragment() {
                     .tilt(if (nav3d) NAV_TILT else 0.0).build()
             )
         )
+    }
+
+    /** Rotate the camera back to north-up (bearing 0), keeping target/zoom. */
+    fun resetNorth() {
+        map?.animateCamera(CameraUpdateFactory.bearingTo(0.0))
     }
 
     fun fitTo(pts: List<Pin>) {
