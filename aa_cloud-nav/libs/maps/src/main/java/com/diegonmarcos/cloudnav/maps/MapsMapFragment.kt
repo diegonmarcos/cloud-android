@@ -72,6 +72,13 @@ class MapsMapFragment : Fragment() {
     private val autoLocate: Boolean get() = arguments?.getBoolean(ARG_AUTOLOCATE, false) ?: false
     private var autoLocateDone = false
 
+    // Cockpit-mode camera overrides (null → fall back to nav3d defaults). Set via [applyNavMode].
+    private var modeZoom: Double? = null
+    private var modeTilt: Double? = null
+    private var modeFollowBearing: Boolean = true
+    private val effZoom: Double get() = modeZoom ?: if (nav3d) NAV_ZOOM else 16.0
+    private val effTilt: Double get() = modeTilt ?: if (nav3d) NAV_TILT else 0.0
+
     private val locPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) fetchAndCenter()
@@ -156,7 +163,7 @@ class MapsMapFragment : Fragment() {
         map?.animateCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom)
-                    .tilt(if (nav3d) NAV_TILT else 0.0).build()
+                    .tilt(effTilt).build()
             )
         )
     }
@@ -164,6 +171,30 @@ class MapsMapFragment : Fragment() {
     /** Rotate the camera back to north-up (bearing 0), keeping target/zoom. */
     fun resetNorth() {
         map?.animateCamera(CameraUpdateFactory.bearingTo(0.0))
+    }
+
+    /**
+     * Retune the live camera + basemap for a cockpit mode (Navigation tab).
+     * Switches the raster style if it changed, updates zoom/tilt/heading-follow,
+     * and re-frames on the last known position (or fetches one).
+     */
+    fun applyNavMode(zoom: Double, tilt: Double, styleKey: String, followBearing: Boolean) {
+        modeZoom = zoom; modeTilt = tilt; modeFollowBearing = followBearing
+        val m = map
+        if (m == null) { this.styleKey = styleKey; return }  // pre-map: onCreate reads styleKey
+        if (styleKey != this.styleKey) {
+            this.styleKey = styleKey
+            applyStyle(styleKey, firstLoad = false)
+        }
+        val here = me
+        if (here != null) {
+            m.animateCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder().target(here).zoom(zoom).tilt(tilt)
+                        .bearing(if (followBearing) m.cameraPosition.bearing else 0.0).build()
+                )
+            )
+        } else recenterOnUser()
     }
 
     fun fitTo(pts: List<Pin>) {
@@ -253,9 +284,9 @@ class MapsMapFragment : Fragment() {
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
                     .target(LatLng(loc.latitude, loc.longitude))
-                    .zoom(if (nav3d) NAV_ZOOM else 16.0)
-                    .tilt(if (nav3d) NAV_TILT else 0.0)
-                    .bearing(if (nav3d && loc.hasBearing()) loc.bearing.toDouble() else 0.0)
+                    .zoom(effZoom)
+                    .tilt(effTilt)
+                    .bearing(if (modeFollowBearing && loc.hasBearing()) loc.bearing.toDouble() else 0.0)
                     .build()
             )
         )

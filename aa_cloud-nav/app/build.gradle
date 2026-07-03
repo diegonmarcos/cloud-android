@@ -38,6 +38,8 @@ def uiPlacesCatsB64     = b64(buildJson.ui.places_categories ?: [])
 def uiSearchScopesB64   = b64(buildJson.ui.search_scopes ?: [])
 def defaultSearchScope  = (buildJson.ui.default_search_scope ?: 'city').toString()
 def defaultTab          = (buildJson.ui.default_tab ?: 'routes').toString()
+def uiCockpitModesB64   = b64(buildJson.ui.cockpit_modes ?: [])
+def defaultCockpitMode  = (buildJson.ui.default_cockpit_mode ?: 'car').toString()
 
 // ── About page config (data-driven) ─────────────────────────────────
 def uiPermissionsRuntimeB64 = b64(buildJson.ui.permissions?.runtime ?: [])
@@ -174,6 +176,8 @@ android {
         buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""
         buildConfigField "String", "UI_DEFAULT_SEARCH_SCOPE", "\"${defaultSearchScope}\""
         buildConfigField "String", "UI_DEFAULT_TAB",         "\"${defaultTab}\""
+        buildConfigField "String", "UI_COCKPIT_MODES_B64",   "\"${uiCockpitModesB64}\""
+        buildConfigField "String", "UI_DEFAULT_COCKPIT_MODE","\"${defaultCockpitMode}\""
         // About page config
         buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
         buildConfigField "String", "UI_PERMISSIONS_ROLES_B64",   "\"${uiPermissionsRolesB64}\""

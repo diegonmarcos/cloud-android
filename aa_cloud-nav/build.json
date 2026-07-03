@@ -211,6 +211,14 @@
       { "id": "flying",    "label": "Flight", "emoji": "✈️", "engine": "geodesic", "avg_speed_kmh": 800,    "estimated": true  },
       { "id": "swimming",  "label": "Swim",   "emoji": "🏊", "engine": "geodesic", "avg_speed_kmh": 4,      "estimated": true  }
     ],
+    "_doc_cockpit_modes": "Navigation-tab vehicle cockpit switcher. Distinct from travel_modes (routing costing) — this drives the live instrument PANEL + map camera on the Navigation tab. Per mode: accent (hex), style (map_styles key), zoom/tilt/follow_bearing (camera), speed_unit (kmh|kn|mph), alt_unit (m|ft), gauges (ordered instrument ids rendered left→right). Gauge ids: speed, heading (compass rose), attitude (artificial horizon), altitude (tape), vspeed, grade, avg, dist, eta, position, track. Add a mode = one entry here (data-driven; no Kotlin change).",
+    "default_cockpit_mode": "car",
+    "cockpit_modes": [
+      { "id": "bike",     "label": "Bike",     "emoji": "🚲", "accent": "#34C759", "style": "light",     "zoom": 17.0, "tilt": 0.0,  "follow_bearing": true,  "speed_unit": "kmh", "alt_unit": "m",  "gauges": [ "speed", "avg", "grade", "heading" ] },
+      { "id": "car",      "label": "Car",      "emoji": "🚗", "accent": "#4DA3FF", "style": "dark",      "zoom": 18.0, "tilt": 55.0, "follow_bearing": true,  "speed_unit": "kmh", "alt_unit": "m",  "gauges": [ "speed", "heading", "dist", "eta" ] },
+      { "id": "boat",     "label": "Boat",     "emoji": "⛵", "accent": "#00C2C7", "style": "satellite", "zoom": 13.0, "tilt": 0.0,  "follow_bearing": false, "speed_unit": "kn",  "alt_unit": "m",  "gauges": [ "speed", "heading", "dist", "position" ] },
+      { "id": "airplane", "label": "Airplane", "emoji": "✈️", "accent": "#FFB020", "style": "satellite", "zoom": 10.0, "tilt": 0.0,  "follow_bearing": false, "speed_unit": "kn",  "alt_unit": "ft", "gauges": [ "attitude", "altitude", "vspeed", "speed" ] }
+    ],
     "maps_tracking": {
       "interval_moving_ms": 30000,
       "interval_stopped_ms": 300000,

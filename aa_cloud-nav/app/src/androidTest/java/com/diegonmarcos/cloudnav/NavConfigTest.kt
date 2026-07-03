@@ -76,6 +76,30 @@ class NavConfigTest {
         }
     }
 
+    @Test fun cockpit_modes_decode() {
+        val m = NavConfig.cockpitModes
+        assertTrue("at least the 4 vehicle modes", m.size >= 4)
+        assertTrue(m.map { it.id }.containsAll(listOf("bike", "car", "boat", "airplane")))
+        // default belongs to the decoded set (no dangling default_cockpit_mode).
+        assertTrue(m.any { it.id == NavConfig.defaultCockpitMode })
+        m.forEach {
+            assertTrue("${it.id} has gauges", it.gauges.isNotEmpty())
+            assertTrue("${it.id} accent parsed (opaque)", it.accent != 0)
+            assertTrue("${it.id} speed unit", it.speedUnit in listOf("kmh", "kn", "mph"))
+        }
+        // Airplane is the PFD profile: attitude + altitude instruments, feet.
+        val air = m.first { it.id == "airplane" }
+        assertTrue(air.gauges.containsAll(listOf("attitude", "altitude")))
+        assertEquals("ft", air.altUnit)
+    }
+
+    @Test fun cockpit_unit_conversions() {
+        // knots ≈ km/h ÷ 1.852; feet ≈ m × 3.28084 (the gauge feeders).
+        assertEquals(100.0 / 1.852, com.diegonmarcos.cloudnav.cockpit.CockpitGauges.kmhTo("kn", 100.0), 1e-6)
+        assertEquals(100.0, com.diegonmarcos.cloudnav.cockpit.CockpitGauges.kmhTo("kmh", 100.0), 1e-9)
+        assertEquals(328.084, com.diegonmarcos.cloudnav.cockpit.CockpitGauges.metersTo("ft", 100.0), 1e-3)
+    }
+
     @Test fun polyline6_decodes() {
         // "?" encodes a zero delta, so "??" = one (0,0) point, "????" = two.
         val one = MapsRouting.decodePolyline6("??")
