@@ -22,7 +22,14 @@ internal class UpdateInstaller(private val context: Context) {
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(targetPackage)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+                // Auto-update toggle (default ON) → silent install; OFF → the
+                // normal system prompt. NOT_REQUIRED degrades to a prompt on its
+                // own when "install unknown apps" isn't granted, so the About
+                // grant row is what turns it truly silent.
+                setRequireUserAction(
+                    if (AutoUpdatePrefs.silent(context)) PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+                    else PackageInstaller.SessionParams.USER_ACTION_REQUIRED
+                )
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 // Android 14/15 ECM restricts apps installed without an explicit

@@ -202,6 +202,33 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Open Settings → "Install unknown apps" scoped to the launcher so the
+     *  user grants REQUEST_INSTALL_PACKAGES — what makes silent auto-update
+     *  (USER_ACTION_NOT_REQUIRED) actually skip the install prompt. Falls back
+     *  to the global list, then this app's details screen. */
+    private fun openUnknownAppSourcesSettings() {
+        val ctx = requireContext()
+        val scoped = android.content.Intent(
+            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+            android.net.Uri.fromParts("package", ctx.packageName, null),
+        )
+        if (scoped.resolveActivity(ctx.packageManager) != null) {
+            runCatching { startActivity(scoped) }
+            return
+        }
+        val list = android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+        if (list.resolveActivity(ctx.packageManager) != null) {
+            runCatching { startActivity(list) }
+            return
+        }
+        runCatching {
+            startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", ctx.packageName, null),
+            ))
+        }
+    }
+
     /** Jump to the system "Default apps" picker (Phone app · Caller ID &
      *  spam app live here) so the user can select the Cloud-Comms phone
      *  fork. The launcher can't set another app's role programmatically —
@@ -720,6 +747,27 @@ class DevControlFragment : Fragment() {
                 permButton(ctx, "Set Display-over-apps", android.provider.Settings.canDrawOverlays(ctxAny())) { openOverlaySettings() },
                 permButton(ctx, "Set Modify-system-settings", android.provider.Settings.System.canWrite(ctxAny())) { openWriteSettings() },
                 navToggle,
+            ))
+            // ── Auto-update — silent self-update toggle (default ON). ON →
+            //    the updater installs new APKs with USER_ACTION_NOT_REQUIRED (no
+            //    prompt); OFF → the normal install prompt. Silent only skips the
+            //    prompt once "Install unknown apps" is granted — Android prompts
+            //    transparently without it.
+            it.addView(small(ctx, "Auto-update — silent self-update (default ON). Grant 'Install unknown apps' to skip the install prompt:"))
+            row(ctx, it, "Auto-update (silent)",
+                if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) "✓ ON" else "✗ OFF")
+            row(ctx, it, "Install unknown apps",
+                if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) "✓ Granted" else "◯ Not granted")
+            it.addView(permButtonRow(ctx,
+                permButton(ctx, "Auto-update: " + (if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) "ON" else "OFF"),
+                           com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) {
+                    val now = !com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())
+                    com.diegonmarcos.superapp.updater.AutoUpdatePrefs.setSilent(ctxAny(), now)
+                    Toast.makeText(ctxAny(), "Auto-update " + (if (now) "ON (silent)" else "OFF (prompt)"), Toast.LENGTH_SHORT).show()
+                    rebuildFragment()
+                },
+                permButton(ctx, "Set Install-unknown-apps",
+                           com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) { openUnknownAppSourcesSettings() },
             ))
             // ── Copy the full status block (matches what's rendered above).
             //    Utility action (not a pending grant) → darker violet.

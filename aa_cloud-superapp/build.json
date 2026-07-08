@@ -5266,8 +5266,8 @@
       "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
       "require_unmetered_network": false,
       "require_charging": false,
-      "_doc_install": "Behavior when an update is available: 'prompt' uses PackageInstaller with a foreground notification — user must accept install per Android security model. 'silent' requires the system updater privilege which only F-Droid Privileged Extension can grant.",
-      "install_mode": "prompt"
+      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions, user-overridable via AutoUpdatePrefs). 'silent' → installer commits with USER_ACTION_NOT_REQUIRED (no install prompt) once the one-time 'Install unknown apps' grant is given; without the grant Android transparently falls back to a prompt. 'prompt' → always USER_ACTION_REQUIRED.",
+      "install_mode": "silent"
     }
   }
 }

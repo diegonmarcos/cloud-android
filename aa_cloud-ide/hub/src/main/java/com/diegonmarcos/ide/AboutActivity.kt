@@ -287,6 +287,25 @@ class AboutActivity : AppCompatActivity() {
                 it.addView(small(ctx, "Pre-API 33 — notifications are granted by default."))
             }
             it.addView(actionButton(ctx, "Open System App Settings") { openAppSettings() })
+
+            // ── Auto-update — silent self-update toggle (default ON). ON →
+            //    installer commits with USER_ACTION_NOT_REQUIRED (no prompt);
+            //    OFF → normal prompt. Silent only skips the prompt once "Install
+            //    unknown apps" is granted — Android prompts transparently without it.
+            it.addView(small(ctx, "Auto-update — silent self-update (default ON). Grant 'Install unknown apps' to skip the install prompt:"))
+            row(ctx, it, "Auto-update (silent)",
+                if (com.diegonmarcos.ide.update.AutoUpdatePrefs.silent(ctx)) "✓ ON" else "✗ OFF")
+            row(ctx, it, "Install unknown apps",
+                if (com.diegonmarcos.ide.update.AutoUpdatePrefs.canInstallSilently(ctx)) "✓ Granted" else "◯ Not granted")
+            it.addView(actionButton(ctx,
+                if (com.diegonmarcos.ide.update.AutoUpdatePrefs.silent(ctx)) "Auto-update: ON → tap to turn OFF"
+                else "Auto-update: OFF → tap to turn ON") {
+                com.diegonmarcos.ide.update.AutoUpdatePrefs.setSilent(ctx, !com.diegonmarcos.ide.update.AutoUpdatePrefs.silent(ctx))
+                recreate()
+            })
+            if (!com.diegonmarcos.ide.update.AutoUpdatePrefs.canInstallSilently(ctx)) {
+                it.addView(actionButton(ctx, "Grant install unknown apps") { openUnknownAppSourcesSettings() })
+            }
         }
 
         // ── Updates ────────────────────────────────────────────────────
@@ -481,6 +500,20 @@ class AboutActivity : AppCompatActivity() {
                 android.net.Uri.fromParts("package", packageName, null),
             ))
         }
+    }
+
+    /** Open Settings → "Install unknown apps" scoped to this app so the user
+     *  grants REQUEST_INSTALL_PACKAGES — what makes silent auto-update actually
+     *  skip the install prompt. Falls back to the global list, then app details. */
+    private fun openUnknownAppSourcesSettings() {
+        val scoped = android.content.Intent(
+            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+            android.net.Uri.fromParts("package", packageName, null),
+        )
+        if (scoped.resolveActivity(packageManager) != null) { runCatching { startActivity(scoped) }; return }
+        val list = android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+        if (list.resolveActivity(packageManager) != null) { runCatching { startActivity(list) }; return }
+        openAppSettings()
     }
 
     private fun fmtMillis(ms: Long): String =

@@ -18,6 +18,11 @@
     <!-- Long-press → Uninstall, via PackageInstaller.uninstall (shows the
          system confirm dialog). Normal permission, auto-granted on API 26+. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Silent self-update: the fleet updater installs new APKs without a
+         prompt (USER_ACTION_NOT_REQUIRED) once the user grants "Install unknown
+         apps" (Configs/About → Permissions → Auto-update). Falls back to a
+         prompt when the grant is absent. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Floating Top Nav Bar overlay (FloatingNavService). SYSTEM_ALERT_WINDOW
          ("Display over other apps") is a Special-access perm — NOT runtime-
          grantable; the user toggles it in Settings → Special access → Display

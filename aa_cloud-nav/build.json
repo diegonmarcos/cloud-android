@@ -538,7 +538,8 @@
       "interval_hours": 6,
       "require_unmetered_network": false,
       "require_charging": false,
-      "install_mode": "prompt"
+      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions). 'silent' → USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' → always USER_ACTION_REQUIRED.",
+      "install_mode": "silent"
     },
     "ghcr": {
       "_doc": "ORAS push as an OCI artifact (APK blob, not a container). one :latest + per-sha + per-version tags; per-variant suffix -x86_64 for the x86 artifact.",
