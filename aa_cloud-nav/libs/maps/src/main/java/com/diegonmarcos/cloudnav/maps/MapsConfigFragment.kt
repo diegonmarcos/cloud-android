@@ -290,6 +290,21 @@ class MapsConfigFragment : Fragment() {
         val apiKeyPrefs   = MapsApiKeyPrefs(ctx)
         val all           = MapsProviders.loadFromBuildConfig()
 
+        // Basemap rendering: vector (English labels, on-device) vs raster
+        // (fixed local-language tile images). Only affects screens that don't
+        // force a specific style (Places' satellite, cockpit vehicle styles).
+        val basemapPrefs = MapsBasemapPrefs(ctx)
+        root.addView(header(ctx, "Basemap"))
+        root.addView(caption(ctx, "Vector renders on-device with English city/country/street labels everywhere; if it can't be fetched (offline, provider down) the app automatically falls back to the raster map."))
+        root.addView(basemapRow(ctx, "Vector (English labels)", "On-device rendering · OpenFreeMap",
+            isSelected = basemapPrefs.preferVector,
+            onPick = { basemapPrefs.preferVector = true; rerender() }))
+        root.addView(spacer(ctx, dp(ctx, 6)))
+        root.addView(basemapRow(ctx, "Raster (local names)", "Fixed tile images · OSM / CARTO / Esri",
+            isSelected = !basemapPrefs.preferVector,
+            onPick = { basemapPrefs.preferVector = false; rerender() }))
+        root.addView(spacer(ctx, dp(ctx, 20)))
+
         // Search (forward geocode) — the universal search bar's backend.
         root.addView(header(ctx, "Search (geocoder)"))
         root.addView(caption(ctx, "Backs the search bar across Routes / Navigation / Places — turns 'Berlin', a street, a restaurant, anything into coordinates."))
@@ -326,6 +341,33 @@ class MapsConfigFragment : Fragment() {
     /** Re-attach to repaint the radio state after a pick. */
     private fun rerender() {
         parentFragmentManager.beginTransaction().detach(this).attach(this).commit()
+    }
+
+    private fun basemapRow(
+        ctx: android.content.Context,
+        label: String,
+        sub: String,
+        isSelected: Boolean,
+        onPick: () -> Unit,
+    ): View {
+        val tile = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(ctx, 12); setPadding(pad, pad, pad, pad)
+            setBackgroundColor(if (isSelected) COL_TILE_SELECTED else MapsStopsFragment.COL_TILE)
+            isClickable = true; isFocusable = true
+            setOnClickListener { MapsHaptics.tap(it); onPick() }
+        }
+        tile.addView(TextView(ctx).apply {
+            text = (if (isSelected) "● " else "○ ") + label
+            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+            setTextColor(MapsStopsFragment.COL_PRIMARY)
+        })
+        tile.addView(TextView(ctx).apply {
+            text = sub
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setTextColor(MapsStopsFragment.COL_SECONDARY)
+        })
+        return tile
     }
 
     private fun providerRow(

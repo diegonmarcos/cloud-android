@@ -103,7 +103,7 @@ class MapsMapFragment : Fragment() {
         val ctx = inflater.context
         MapLibre.getInstance(ctx)   // idempotent one-shot init.
 
-        styleKey = arguments?.getString(ARG_STYLE) ?: if (nav3d) "dark" else "light"
+        styleKey = arguments?.getString(ARG_STYLE) ?: defaultStyleKey(ctx)
 
         val root = FrameLayout(ctx).apply { layoutParams = ViewGroup.LayoutParams(MATCH, MATCH) }
 
@@ -269,17 +269,31 @@ class MapsMapFragment : Fragment() {
         styleReady = false
         val s = MapStyles.get(key)
         if (s.vectorStyleUrl != null) {
-            val ctx = context ?: return
             Thread {
                 val json = VectorStyleLoader.loadLocalized(s.vectorStyleUrl, s.labelFieldPref)
                 ui {
-                    if (json == null) { toast("Vector style unavailable — offline?"); return@ui }
+                    if (json == null) {
+                        // Breakdown fallback: vector fetch/localize failed (offline, DNS,
+                        // provider down) — never leave the user with a blank map.
+                        val fallback = if (nav3d) "dark" else "light"
+                        toast("Vector map unavailable — using raster")
+                        styleKey = fallback
+                        applyStyle(fallback, firstLoad)
+                        return@ui
+                    }
                     map?.setStyle(Style.Builder().fromJson(json)) { style -> onStyleLoaded(style, m, firstLoad) }
                 }
             }.start()
         } else {
             m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(s))) { style -> onStyleLoaded(style, m, firstLoad) }
         }
+    }
+
+    /** Initial style when the caller doesn't force one (e.g. Routes) — honors
+     *  the user's Configs > APIs "Basemap" toggle ([MapsBasemapPrefs]). */
+    private fun defaultStyleKey(ctx: android.content.Context): String {
+        val raster = if (nav3d) "dark" else "light"
+        return if (MapsBasemapPrefs(ctx).preferVector) "vector_en" else raster
     }
 
     /** Re-add pins/route/me overlays after any style (re)load, raster or vector. */

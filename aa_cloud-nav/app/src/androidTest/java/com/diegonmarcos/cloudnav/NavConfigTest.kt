@@ -132,6 +132,18 @@ class NavConfigTest {
         assertEquals(328.084, com.diegonmarcos.cloudnav.cockpit.CockpitGauges.metersTo("ft", 100.0), 1e-3)
     }
 
+    @Test fun basemap_pref_defaults_to_vector_and_is_toggleable() {
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        // Isolate from any state a previous test run left behind.
+        ctx.getSharedPreferences("maps_basemap_prefs", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        val prefs = com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx)
+        assertEquals("vector", com.diegonmarcos.cloudnav.maps.MapStyles.defaultFamily)
+        assertTrue("first-run default follows build.json (vector)", prefs.preferVector)
+        prefs.preferVector = false
+        assertTrue("toggle persists", !com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx).preferVector)
+        prefs.preferVector = true  // restore, so this test is order-independent
+    }
+
     @Test fun polyline6_decodes() {
         // "?" encodes a zero delta, so "??" = one (0,0) point, "????" = two.
         val one = MapsRouting.decodePolyline6("??")

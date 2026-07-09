@@ -34,6 +34,10 @@ object MapStyles {
         root.optString("glyphs", "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf")
     }
 
+    /** Default basemap family ("vector" | "raster") — [MapsBasemapPrefs]' first-run
+     *  value; user-toggleable in Configs > APIs from then on. */
+    val defaultFamily: String by lazy { root.optString("default_family", "vector") }
+
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_MAP_STYLES_B64, Base64.DEFAULT))) }
             .getOrDefault(JSONObject())
