@@ -2232,6 +2232,13 @@
             "action": "action:check_updates"
           },
           {
+            "_doc": "Constellation AppStore — superapp is the fleet manager: install/update/uninstall/open every constellation APK, full per-app data (installed version+sha, remote GHCR digest, status). Fleet list is data-driven from data/constellation-fleet.json (auto-scanned from each app's build.json by data/regen.sh) → BuildConfig.CONSTELLATION_FLEET_B64. Opens ConstellationFragment via MainActivity.dispatchHomeAction.",
+            "id": "constellation",
+            "label": "Constellation",
+            "icon": "ic_refresh",
+            "action": "action:constellation"
+          },
+          {
             "id": "about",
             "label": "About",
             "icon": "ic_settings"

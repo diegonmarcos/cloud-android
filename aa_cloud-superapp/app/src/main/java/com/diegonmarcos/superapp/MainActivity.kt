@@ -1332,6 +1332,16 @@ class MainActivity : AppCompatActivity(),
                     .addToBackStack(null)
                     .commit()
             }
+            // Constellation AppStore — Configs → Constellation.
+            actionType == "constellation" -> {
+                val frag = com.diegonmarcos.superapp.configs.ConstellationFragment()
+                applyChrome(frag)
+                supportFragmentManager.beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.fragment_container, frag)
+                    .addToBackStack(null)
+                    .commit()
+            }
             // Drawer "Home Apps" entry → open the same pull-up sheet the
             // home-screen swipe-up gesture shows.
             actionType == "open_home_apps" -> {

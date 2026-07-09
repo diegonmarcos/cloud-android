@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "apps": [
+    {
+      "id": "superapp",
+      "label": "cloud-superapp",
+      "package": "com.diegonmarcos.superapp",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-superapp",
+      "tag": "latest",
+      "blocked": false
+    },
+    {
+      "id": "comms-hub",
+      "label": "cloud-comms",
+      "package": "com.diegonmarcos.comms",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-comms-hub",
+      "tag": "latest",
+      "blocked": false
+    },
+    {
+      "id": "nav",
+      "label": "cloud-nav",
+      "package": "com.diegonmarcos.cloudnav",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-nav",
+      "tag": "latest",
+      "blocked": false
+    },
+    {
+      "id": "ide-hub",
+      "label": "cloud-ide",
+      "package": "com.diegonmarcos.ide",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-ide-hub",
+      "tag": "latest",
+      "blocked": false
+    },
+    {
+      "id": "comms-mail",
+      "label": "Cloud Mail (Fairmail)",
+      "package": "com.diegonmarcos.comms.mail",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-comms-mail",
+      "tag": "latest",
+      "blocked": false
+    },
+    {
+      "id": "comms-chat",
+      "label": "Chat (Mattermost)",
+      "package": "com.diegonmarcos.comms.chat",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-comms-chat",
+      "tag": "latest",
+      "blocked": false
+    },
+    {
+      "id": "comms-matrix",
+      "label": "Messenger (Element)",
+      "package": "com.diegonmarcos.comms.matrix",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-comms-matrix",
+      "tag": "latest",
+      "blocked": true
+    },
+    {
+      "id": "comms-dialer",
+      "label": "Dialer (Fossy)",
+      "package": "com.diegonmarcos.comms.dialer",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-comms-dialer",
+      "tag": "latest",
+      "blocked": false
+    }
+  ]
+}

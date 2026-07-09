@@ -23,6 +23,52 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
+# ── constellation-fleet.json — the Constellation AppStore's app registry.
+# Auto-scanned from each sibling app's OWN build.json (self-registering, DRY):
+# top-level hubs (superapp/comms-hub/nav/ide-hub) from android.application_id +
+# release.ghcr, plus the cloud-comms forks (mail/chat/matrix/dialer) from
+# ea_cloud-comms/build.json::forks.*. No hand-maintained app list (FIRE 4/6).
+# Baked into BuildConfig.CONSTELLATION_FLEET_B64 by app/build.gradle. Depends
+# ONLY on the sibling repos (always present), so it runs before the cloud-data
+# snapshot resolution below.
+UNIX="$(cd "$HERE/../.." && pwd)"
+regen_constellation() {
+    command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; return 1; }
+    jq -n \
+        --slurpfile sa "$UNIX/ea_cloud-superapp/build.json" \
+        --slurpfile co "$UNIX/ea_cloud-comms/build.json" \
+        --slurpfile nv "$UNIX/ea_cloud-nav/build.json" \
+        --slurpfile id "$UNIX/ea_cloud-ide/build.json" '
+        def top($b; $id):
+            $b[0] as $j
+            | { id: $id,
+                label: ($j.name // $id),
+                package: $j.android.application_id,
+                registry: $j.release.ghcr.registry,
+                namespace: $j.release.ghcr.namespace,
+                image: $j.release.ghcr.image,
+                tag: ($j.release.auto_update.tag // "latest"),
+                blocked: false };
+        ($co[0].release.ghcr) as $cg
+        | { version: 1,
+            apps: (
+                [ top($sa; "superapp"), top($co; "comms-hub"),
+                  top($nv; "nav"),      top($id; "ide-hub") ]
+              + ( $co[0].forks | to_entries
+                  | map(select(.value | type == "object"))
+                  | map({ id: ("comms-" + .key),
+                          label: .value.label,
+                          package: .value.app_id,
+                          registry: $cg.registry,
+                          namespace: $cg.namespace,
+                          image: .value.image,
+                          tag: "latest",
+                          blocked: (.value.blocked_on != null) }) ) ) }
+        ' > "$HERE/constellation-fleet.json"
+    echo "constellation apps: $(jq '.apps | length' "$HERE/constellation-fleet.json")"
+}
+regen_constellation
+
 CONSOLIDATED="${1:-}"
 MESH="${2:-}"
 LINKTREE="${3:-}"

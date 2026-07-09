@@ -162,6 +162,12 @@ def svcPrivB64       = svcPrivJson.bytes.encodeBase64().toString()
 def cloudSvcFile     = file("../data/cloud_services.json")
 def cloudSvcJson     = cloudSvcFile.exists() ? cloudSvcFile.text : "{}"
 def cloudSvcB64      = cloudSvcJson.bytes.encodeBase64().toString()
+// Constellation AppStore fleet registry — every constellation APK + its GHCR
+// image, auto-scanned from each app's own build.json by data/regen.sh. The
+// Constellation page + libs:fleet engine read CONSTELLATION_FLEET_B64.
+def constellationFleetFile = file("../data/constellation-fleet.json")
+def constellationFleetJson = constellationFleetFile.exists() ? constellationFleetFile.text : "{\"version\":1,\"apps\":[]}"
+def constellationFleetB64  = constellationFleetJson.bytes.encodeBase64().toString()
 def importSchemaJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(buildJson.ui.import_schema ?: [:]))
 def importSchemaB64  = importSchemaJson.bytes.encodeBase64().toString()
 def driveConnsJson   = groovy.json.JsonOutput.toJson(buildJson.ui.drive_connections ?: [])
@@ -482,6 +488,7 @@ android {
         buildConfigField "String", "LOG_SINK_URL",          "\"${logSinkUrl}\""
         buildConfigField "String", "LOG_SINK_STREAM",       "\"${logSinkStream}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
+        buildConfigField "String", "CONSTELLATION_FLEET_B64", "\"${constellationFleetB64}\""
         buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
         buildConfigField "String", "UI_PERMISSIONS_ROLES_B64", "\"${uiPermissionsRolesB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""

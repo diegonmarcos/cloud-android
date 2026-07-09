@@ -80,6 +80,10 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // at ≤15 min granularity even when PowerStateReceiver is
         // suppressed by Samsung Sleeping Apps.
         runCatching { BatterySessionWorker.schedule(this) }
+        // Constellation AppStore — periodic fleet check across every
+        // constellation APK (Configs → Constellation). Notifies when siblings
+        // have GHCR updates; install stays user-initiated. Idempotent (KEEP).
+        runCatching { com.diegonmarcos.superapp.configs.ConstellationWorker.start(this) }
         // HeliBoard (libs:keyboard) is vendored WITHOUT its own Application —
         // our .App wins the manifest merge (tools:replace android:name), so the
         // keyboard's app-level init never ran. That left Settings /
