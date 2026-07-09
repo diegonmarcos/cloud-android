@@ -1342,6 +1342,17 @@ class MainActivity : AppCompatActivity(),
                     .addToBackStack(null)
                     .commit()
             }
+            // Config → Update tile: update EVERY constellation app. Opens the
+            // Constellation page (per-app progress) and kicks Update-all. The
+            // shared update overlay (with Cancel) shows install progress.
+            actionType == "update_all" -> {
+                dispatchHomeAction("constellation")
+                kotlin.concurrent.thread {
+                    val fleet = com.diegonmarcos.superapp.updater.Fleet
+                        .parse(BuildConfig.CONSTELLATION_FLEET_B64)
+                    com.diegonmarcos.superapp.updater.Fleet.installAll(applicationContext, fleet)
+                }
+            }
             // Drawer "Home Apps" entry → open the same pull-up sheet the
             // home-screen swipe-up gesture shows.
             actionType == "open_home_apps" -> {

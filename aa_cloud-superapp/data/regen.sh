@@ -39,8 +39,11 @@ regen_constellation() {
         --slurpfile co "$UNIX/ea_cloud-comms/build.json" \
         --slurpfile nv "$UNIX/ea_cloud-nav/build.json" \
         --slurpfile id "$UNIX/ea_cloud-ide/build.json" '
-        def top($b; $id):
+        # owner/repo = the monorepo these apps ship from (invariant identity).
+        "https://github.com/diegonmarcos/unix/releases" as $rel
+        | def top($b; $id):
             $b[0] as $j
+            | ($j.release.gh_release.asset_name) as $asset
             | { id: $id,
                 label: ($j.name // $id),
                 package: $j.android.application_id,
@@ -48,6 +51,10 @@ regen_constellation() {
                 namespace: $j.release.ghcr.namespace,
                 image: $j.release.ghcr.image,
                 tag: ($j.release.auto_update.tag // "latest"),
+                asset: $asset,
+                # top-level apps publish a rolling `latest` release → stable
+                # direct-download URL.
+                release_url: ($rel + "/latest/download/" + $asset),
                 blocked: false };
         ($co[0].release.ghcr) as $cg
         | { version: 1,
@@ -63,6 +70,10 @@ regen_constellation() {
                           namespace: $cg.namespace,
                           image: .value.image,
                           tag: "latest",
+                          asset: (.value.image + ".apk"),
+                          # forks publish --latest=false tagged releases → no
+                          # stable /latest/download; link the releases page.
+                          release_url: $rel,
                           blocked: (.value.blocked_on != null) }) ) ) }
         ' > "$HERE/constellation-fleet.json"
     echo "constellation apps: $(jq '.apps | length' "$HERE/constellation-fleet.json")"

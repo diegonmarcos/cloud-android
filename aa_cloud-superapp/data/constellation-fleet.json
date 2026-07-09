@@ -9,6 +9,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-superapp",
       "tag": "latest",
+      "asset": "Cloud-SuperApp.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-SuperApp.apk",
       "blocked": false
     },
     {
@@ -19,6 +21,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-comms-hub",
       "tag": "latest",
+      "asset": "Cloud-Comms-Hub.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Comms-Hub.apk",
       "blocked": false
     },
     {
@@ -29,6 +33,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-nav",
       "tag": "latest",
+      "asset": "Cloud-Nav.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
       "blocked": false
     },
     {
@@ -39,6 +45,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-ide-hub",
       "tag": "latest",
+      "asset": "Cloud-IDE-Hub.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-IDE-Hub.apk",
       "blocked": false
     },
     {
@@ -49,6 +57,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-comms-mail",
       "tag": "latest",
+      "asset": "cloud-comms-mail.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases",
       "blocked": false
     },
     {
@@ -59,6 +69,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-comms-chat",
       "tag": "latest",
+      "asset": "cloud-comms-chat.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases",
       "blocked": false
     },
     {
@@ -69,6 +81,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-comms-matrix",
       "tag": "latest",
+      "asset": "cloud-comms-matrix.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases",
       "blocked": true
     },
     {
@@ -79,6 +93,8 @@
       "namespace": "diegonmarcos",
       "image": "cloud-comms-dialer",
       "tag": "latest",
+      "asset": "cloud-comms-dialer.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases",
       "blocked": false
     }
   ]

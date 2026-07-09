@@ -17,7 +17,8 @@ class UpdateWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (!BuildConfig.AUTO_UPDATE_ENABLED) return@withContext Result.success()
+        if (!BuildConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext))
+            return@withContext Result.success()
         try {
             val update = UpdateChecker(applicationContext).check()
                 ?: return@withContext Result.success()

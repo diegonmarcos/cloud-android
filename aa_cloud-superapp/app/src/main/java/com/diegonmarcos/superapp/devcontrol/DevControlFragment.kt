@@ -748,22 +748,24 @@ class DevControlFragment : Fragment() {
                 permButton(ctx, "Set Modify-system-settings", android.provider.Settings.System.canWrite(ctxAny())) { openWriteSettings() },
                 navToggle,
             ))
-            // ── Auto-update — silent self-update toggle (default ON). ON →
-            //    the updater installs new APKs with USER_ACTION_NOT_REQUIRED (no
-            //    prompt); OFF → the normal install prompt. Silent only skips the
-            //    prompt once "Install unknown apps" is granted — Android prompts
-            //    transparently without it.
-            it.addView(small(ctx, "Auto-update — silent self-update (default ON). Grant 'Install unknown apps' to skip the install prompt:"))
-            row(ctx, it, "Auto-update (silent)",
-                if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) "✓ ON" else "✗ OFF")
+            // ── Auto-update — master on/off (default ON). ON → the periodic
+            //    updater checks + installs new APKs automatically (silently once
+            //    "Install unknown apps" is granted, else via a prompt). OFF →
+            //    manual updates only (the workers no-op). This toggles the REAL
+            //    runtime enable flag, so flipping it actually stops auto-update.
+            it.addView(small(ctx, "Auto-update — automatic app updates (default ON). Grant 'Install unknown apps' below for no-tap installs:"))
+            row(ctx, it, "Auto-update",
+                if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())) "✓ ON" else "✗ OFF")
             row(ctx, it, "Install unknown apps",
                 if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) "✓ Granted" else "◯ Not granted")
             it.addView(permButtonRow(ctx,
-                permButton(ctx, "Auto-update: " + (if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) "ON" else "OFF"),
-                           com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) {
-                    val now = !com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())
-                    com.diegonmarcos.superapp.updater.AutoUpdatePrefs.setSilent(ctxAny(), now)
-                    Toast.makeText(ctxAny(), "Auto-update " + (if (now) "ON (silent)" else "OFF (prompt)"), Toast.LENGTH_SHORT).show()
+                permButton(ctx, "Auto-update: " + (if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())) "ON" else "OFF"),
+                           com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())) {
+                    val now = !com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())
+                    com.diegonmarcos.superapp.updater.AutoUpdatePrefs.setEnabled(ctxAny(), now)
+                    com.diegonmarcos.superapp.updater.Updater.start(ctxAny())
+                    com.diegonmarcos.superapp.configs.ConstellationWorker.start(ctxAny())
+                    Toast.makeText(ctxAny(), "Auto-update " + (if (now) "ON" else "OFF"), Toast.LENGTH_SHORT).show()
                     rebuildFragment()
                 },
                 permButton(ctx, "Set Install-unknown-apps",

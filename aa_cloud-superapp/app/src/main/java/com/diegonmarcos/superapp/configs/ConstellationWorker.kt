@@ -17,6 +17,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.Fleet
 // AUTO_UPDATE_* knobs are baked into the libs:updater BuildConfig (shared AU
 // knobs), NOT the app BuildConfig — reference them explicitly.
@@ -36,17 +37,20 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
     CoroutineWorker(appCtx, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (!AuConfig.AUTO_UPDATE_ENABLED) return@withContext Result.success()
+        if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext))
+            return@withContext Result.success()
         try {
             val apps = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
+            // Fleet.status catches its own per-app errors → this never throws
+            // from one bad image (the "forever looping" bug). Always success so
+            // WorkManager doesn't hammer retries.
             val updatable = apps.count { !it.blocked && Fleet.status(applicationContext, it) is Fleet.State.UpdateAvailable }
             Log.i(TAG, "fleet check: $updatable/${apps.size} have updates")
             if (updatable > 0) notifyUpdates(applicationContext, updatable)
-            Result.success()
         } catch (t: Throwable) {
             Log.w(TAG, "fleet check failed: ${t.message}")
-            Result.retry()
         }
+        Result.success()
     }
 
     private fun notifyUpdates(ctx: Context, n: Int) {
@@ -54,8 +58,12 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL, "Constellation", NotificationManager.IMPORTANCE_DEFAULT))
+        // Deep-link via the launcher's shortcut_action grammar (MainActivity
+        // .handleShortcutIntent → onTileClicked → dispatchHomeAction) so the tap
+        // opens the Constellation page, not just Home. The old custom extra was
+        // read by nothing → fell through to Home.
         val open = Intent(ctx, MainActivity::class.java)
-            .putExtra("open_action", "constellation")
+            .putExtra("shortcut_action", "action:constellation")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         var flags = PendingIntent.FLAG_UPDATE_CURRENT
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags = flags or PendingIntent.FLAG_IMMUTABLE
@@ -78,7 +86,7 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
 
         /** Schedule the periodic fleet check. Idempotent. Call from App.onCreate. */
         fun start(context: Context) {
-            if (!AuConfig.AUTO_UPDATE_ENABLED) {
+            if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)) {
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME); return
             }
             val constraints = Constraints.Builder().apply {

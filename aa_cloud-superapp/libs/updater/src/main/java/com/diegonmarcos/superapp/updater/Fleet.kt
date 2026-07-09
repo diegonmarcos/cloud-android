@@ -33,6 +33,8 @@ object Fleet {
         val namespace: String,
         val image: String,
         val tag: String,
+        val asset: String,
+        val releaseUrl: String,
         val blocked: Boolean,
     )
 
@@ -60,6 +62,8 @@ object Fleet {
                     namespace = o.getString("namespace"),
                     image = o.getString("image"),
                     tag = o.optString("tag", "latest"),
+                    asset = o.optString("asset", ""),
+                    releaseUrl = o.optString("release_url", ""),
                     blocked = o.optBoolean("blocked", false),
                 )
             }
@@ -126,6 +130,28 @@ object Fleet {
         }
         UpdateInstaller(ctx).install(target, app.pkg)
         Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
+    }
+
+    /**
+     * Install/update every app that isn't up to date (Missing or
+     * UpdateAvailable), skipping blocked/current ones. Sequential so the
+     * PackageInstaller sessions don't collide; drives the "Update All" button.
+     * Returns how many were acted on. Per-app failures don't abort the rest.
+     */
+    fun installAll(ctx: Context, apps: List<App>): Int {
+        var acted = 0
+        for (app in apps) {
+            if (app.blocked) continue
+            val st = status(ctx, app)
+            if (st is State.Installed || st is State.Error) continue
+            try {
+                install(ctx, app)
+                acted++
+            } catch (t: Throwable) {
+                Log.w(TAG, "installAll ${app.label}: ${t.message}")
+            }
+        }
+        return acted
     }
 
     /** Uninstall [pkg] via PackageInstaller (system confirm dialog). */

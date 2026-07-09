@@ -15,6 +15,21 @@ import android.os.Build
 object AutoUpdatePrefs {
     private const val PREFS = "auto_update"
     private const val KEY_SILENT = "silent"
+    private const val KEY_ENABLED = "enabled"
+
+    /**
+     * Master runtime on/off for auto-update. This is what the "Auto-update"
+     * toggle controls — the periodic workers (self + constellation) check this
+     * at runtime, so flipping it OFF actually stops auto-updating (the baked
+     * BuildConfig.AUTO_UPDATE_ENABLED is only the shipped default). OFF ⇒ manual
+     * updates only.
+     */
+    fun enabled(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_ENABLED, BuildConfig.AUTO_UPDATE_ENABLED)
+
+    fun setEnabled(ctx: Context, on: Boolean) =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, on).apply()
 
     fun silent(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SILENT, true)

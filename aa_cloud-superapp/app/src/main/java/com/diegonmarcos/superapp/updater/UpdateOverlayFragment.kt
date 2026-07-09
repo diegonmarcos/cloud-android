@@ -30,6 +30,7 @@ class UpdateOverlayFragment : Fragment() {
     private lateinit var detailView: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var dismissButton: TextView
+    private lateinit var cancelButton: TextView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -89,9 +90,28 @@ class UpdateOverlayFragment : Fragment() {
             ).apply { topMargin = dp(28) }
             setOnClickListener { UpdateProgress.reset() }
         }
+        // Cancel control — shown DURING an active check/download/install so a
+        // stuck update can always be aborted (the reported "can't cancel when it
+        // gets stuck" bug). Aborts the worker + flips state to Cancelled.
+        cancelButton = TextView(ctx).apply {
+            text = "Cancel"
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF4A4A55.toInt())
+            setPadding(dp(28), dp(12), dp(28), dp(12))
+            isClickable = true; isFocusable = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(20) }
+            setOnClickListener { runCatching { Updater.cancelNow(requireContext()) } }
+        }
         column.addView(titleView)
         column.addView(progressBar)
         column.addView(detailView)
+        column.addView(cancelButton)
         column.addView(dismissButton)
         root.addView(column)
 
@@ -103,10 +123,14 @@ class UpdateOverlayFragment : Fragment() {
         // Terminal states (Failed / Done) get the OK button + hidden bar;
         // in-progress states show the bar and hide the button.
         val terminal = state is UpdateProgress.State.Failed || state is UpdateProgress.State.Done
+        val active = state is UpdateProgress.State.CheckingManifest ||
+            state is UpdateProgress.State.Downloading || state is UpdateProgress.State.Installing
         dismissButton.visibility = if (terminal) View.VISIBLE else View.GONE
+        cancelButton.visibility = if (active) View.VISIBLE else View.GONE
         progressBar.visibility = if (terminal) View.GONE else View.VISIBLE
         when (state) {
             is UpdateProgress.State.Idle -> { /* about to dismiss */ }
+            is UpdateProgress.State.Cancelled -> { UpdateProgress.reset() /* dismiss */ }
             is UpdateProgress.State.CheckingManifest -> {
                 titleView.text = "Checking for updates…"
                 detailView.text = "Reading GHCR manifest"

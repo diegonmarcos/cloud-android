@@ -23,6 +23,8 @@ object UpdateProgress {
         /** Install handed off — system dialog is up OR install completed. */
         object Done : State()
         data class Failed(val message: String) : State()
+        /** User hit Cancel — overlay dismisses, worker is being torn down. */
+        object Cancelled : State()
     }
 
     @Volatile var state: State = State.Idle

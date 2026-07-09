@@ -20,9 +20,10 @@ object Updater {
     private const val WORK_NAME = "superapp-auto-update"
     private const val ONE_SHOT_NAME = "superapp-update-now"
 
-    /** Enqueue (or refresh) the periodic update worker. Idempotent. */
+    /** Enqueue (or refresh) the periodic update worker. Idempotent. Respects
+     *  the runtime Auto-update toggle (AutoUpdatePrefs.enabled) — OFF cancels. */
     fun start(context: Context) {
-        if (!BuildConfig.AUTO_UPDATE_ENABLED) {
+        if (!BuildConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)) {
             cancel(context)
             return
         }
@@ -48,6 +49,21 @@ object Updater {
 
     fun cancel(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+    }
+
+    /**
+     * Abort an in-flight update the user asked to cancel (the overlay's Cancel
+     * button). Cancels the one-shot self-check, any companion installs, and the
+     * fleet check, then flips the progress state to Cancelled so the overlay
+     * dismisses. WorkManager cancellation makes the worker coroutine inactive;
+     * the download loop bails on the next isStopped check.
+     */
+    fun cancelNow(context: Context) {
+        val wm = WorkManager.getInstance(context)
+        wm.cancelUniqueWork(ONE_SHOT_NAME)
+        wm.cancelAllWorkByTag("companion-install") // no-op if none tagged
+        wm.cancelUniqueWork("superapp-constellation-now")
+        UpdateProgress.update(UpdateProgress.State.Cancelled)
     }
 
     /**

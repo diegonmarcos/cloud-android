@@ -2226,10 +2226,11 @@
             "action": "action:keyboard_settings"
           },
           {
+            "_doc": "Update ALL constellation apps (not just self). Opens the Constellation page + runs Fleet.installAll; the shared update overlay shows per-install progress with a Cancel button. MainActivity.dispatchHomeAction('update_all').",
             "id": "update",
-            "label": "Update",
+            "label": "Update All",
             "icon": "ic_refresh",
-            "action": "action:check_updates"
+            "action": "action:update_all"
           },
           {
             "_doc": "Constellation AppStore — superapp is the fleet manager: install/update/uninstall/open every constellation APK, full per-app data (installed version+sha, remote GHCR digest, status). Fleet list is data-driven from data/constellation-fleet.json (auto-scanned from each app's build.json by data/regen.sh) → BuildConfig.CONSTELLATION_FLEET_B64. Opens ConstellationFragment via MainActivity.dispatchHomeAction.",
