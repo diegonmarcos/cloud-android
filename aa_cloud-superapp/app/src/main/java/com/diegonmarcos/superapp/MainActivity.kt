@@ -76,7 +76,7 @@ import com.google.android.material.tabs.TabLayout
 import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.superapp.mail.MailHost
 import com.diegonmarcos.superapp.mail.MailPages
-import com.diegonmarcos.superapp.wallet.BackHandler
+import com.diegonmarcos.superapp.launcher.BackHandler
 // WalletHost removed — libs:wallet moved to ea_cloud-wallet (constellation APK).
 
 /**
