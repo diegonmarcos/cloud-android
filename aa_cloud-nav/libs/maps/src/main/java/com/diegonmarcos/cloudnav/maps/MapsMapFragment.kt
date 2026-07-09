@@ -103,7 +103,12 @@ class MapsMapFragment : Fragment() {
         val ctx = inflater.context
         MapLibre.getInstance(ctx)   // idempotent one-shot init.
 
-        styleKey = arguments?.getString(ARG_STYLE) ?: defaultStyleKey(ctx)
+        // Every screen's raw style request (an explicit ARG_STYLE, or the
+        // nav3d-based default) resolves through the user's Basemap choice —
+        // an explicit pin wins outright; otherwise the family preference maps
+        // this screen's raster pick to its vector/hybrid equivalent.
+        val rawStyle = arguments?.getString(ARG_STYLE) ?: if (nav3d) "dark" else "light"
+        styleKey = MapsBasemapPrefs(ctx).resolve(rawStyle)
 
         val root = FrameLayout(ctx).apply { layoutParams = ViewGroup.LayoutParams(MATCH, MATCH) }
 
@@ -215,13 +220,15 @@ class MapsMapFragment : Fragment() {
      * Switches the raster style if it changed, updates zoom/tilt/heading-follow,
      * and re-frames on the last known position (or fetches one).
      */
-    fun applyNavMode(zoom: Double, tilt: Double, styleKey: String, followBearing: Boolean) {
+    fun applyNavMode(zoom: Double, tilt: Double, rawStyleKey: String, followBearing: Boolean) {
         modeZoom = zoom; modeTilt = tilt; modeFollowBearing = followBearing
+        val ctx = context
+        val resolved = if (ctx != null) MapsBasemapPrefs(ctx).resolve(rawStyleKey) else rawStyleKey
         val m = map
-        if (m == null) { this.styleKey = styleKey; return }  // pre-map: onCreate reads styleKey
-        if (styleKey != this.styleKey) {
-            this.styleKey = styleKey
-            applyStyle(styleKey, firstLoad = false)
+        if (m == null) { this.styleKey = resolved; return }  // pre-map: onCreate reads styleKey
+        if (resolved != this.styleKey) {
+            this.styleKey = resolved
+            applyStyle(resolved, firstLoad = false)
         }
         val here = me
         if (here != null) {
@@ -257,43 +264,47 @@ class MapsMapFragment : Fragment() {
     }
 
     /**
-     * (Re)load the basemap + re-add our overlay sources/layers. Raster styles
-     * (light/dark/satellite) build inline JSON synchronously. Vector styles
-     * (e.g. "Vector (EN)") fetch a remote GL style off-thread and localize its
-     * label layers to English ([VectorStyleLoader]) before applying — a real
-     * network round-trip, so [firstLoad]'s onMapReady/auto-locate only fires
-     * once that completes.
+     * (Re)load the basemap + re-add our overlay sources/layers.
+     *   • raster — inline JSON, synchronous.
+     *   • vector — fetches + localizes a remote GL style off-thread ([VectorStyleLoader]).
+     *   • hybrid — fetches a vector overlay and composites it over a raster
+     *     style's imagery off-thread ([VectorStyleLoader.buildHybrid]).
+     * Vector/hybrid network failure falls back to [Style.rasterFallback]
+     * (toasted — never a blank map); [firstLoad]'s onMapReady/auto-locate only
+     * fires once the eventual style actually applies.
      */
     private fun applyStyle(key: String, firstLoad: Boolean) {
         val m = map ?: return
         styleReady = false
         val s = MapStyles.get(key)
-        if (s.vectorStyleUrl != null) {
-            Thread {
-                val json = VectorStyleLoader.loadLocalized(s.vectorStyleUrl, s.labelFieldPref)
-                ui {
-                    if (json == null) {
-                        // Breakdown fallback: vector fetch/localize failed (offline, DNS,
-                        // provider down) — never leave the user with a blank map.
-                        val fallback = if (nav3d) "dark" else "light"
-                        toast("Vector map unavailable — using raster")
-                        styleKey = fallback
-                        applyStyle(fallback, firstLoad)
-                        return@ui
-                    }
-                    map?.setStyle(Style.Builder().fromJson(json)) { style -> onStyleLoaded(style, m, firstLoad) }
-                }
-            }.start()
-        } else {
-            m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(s))) { style -> onStyleLoaded(style, m, firstLoad) }
+        when {
+            s.hybrid -> {
+                val base = MapStyles.get(s.baseStyleKey ?: "satellite")
+                Thread {
+                    val json = s.vectorOverlayUrl?.let { VectorStyleLoader.buildHybrid(base, it, s.labelFieldPref) }
+                    ui { applyRemoteResult(json, s, m, firstLoad) }
+                }.start()
+            }
+            s.vectorStyleUrl != null -> {
+                Thread {
+                    val json = VectorStyleLoader.loadLocalized(s.vectorStyleUrl, s.labelFieldPref)
+                    ui { applyRemoteResult(json, s, m, firstLoad) }
+                }.start()
+            }
+            else -> m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(s))) { style -> onStyleLoaded(style, m, firstLoad) }
         }
     }
 
-    /** Initial style when the caller doesn't force one (e.g. Routes) — honors
-     *  the user's Configs > APIs "Basemap" toggle ([MapsBasemapPrefs]). */
-    private fun defaultStyleKey(ctx: android.content.Context): String {
-        val raster = if (nav3d) "dark" else "light"
-        return if (MapsBasemapPrefs(ctx).preferVector) "vector_en" else raster
+    /** Applies a fetched vector/hybrid style JSON, or falls back to raster on failure. */
+    private fun applyRemoteResult(json: String?, s: MapStyles.Style, m: MapLibreMap, firstLoad: Boolean) {
+        if (json == null) {
+            val fallback = s.rasterFallback ?: if (nav3d) "dark" else "light"
+            toast("${s.label} unavailable — using raster")
+            styleKey = fallback
+            applyStyle(fallback, firstLoad)
+            return
+        }
+        map?.setStyle(Style.Builder().fromJson(json)) { style -> onStyleLoaded(style, m, firstLoad) }
     }
 
     /** Re-add pins/route/me overlays after any style (re)load, raster or vector. */

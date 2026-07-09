@@ -161,37 +161,59 @@
       { "tag": "outdoor_seating","alt": [],                             "label": "Outdoor seat.", "emoji": "🪑", "kind": "text" },
       { "tag": "internet_access","alt": [ "wifi" ],                     "label": "Wi-Fi",         "emoji": "📶", "kind": "text" }
     ],
-    "_doc_map_styles": "Basemaps. `default_family` (vector|raster) is the Configs > APIs 'Basemap' toggle's default (MapsBasemapPrefs, user-overridable, persisted) — screens that don't force a specific style (Routes) resolve to vector_en when family=vector, else dark/light by nav3d. If the vector fetch/localize fails at runtime, MapsMapFragment automatically falls back to the raster dark/light equivalent (toasted, never a blank map) — 'breakdown' is handled, not just defaulted. `order` = the cycle the in-map Map-switcher FAB (under locate-me) steps through regardless of the family toggle. light/dark/satellite are raster (tiles/attribution/background/maxzoom consumed by MapsMapFragment's inline raster style JSON — no hardcoded tile URLs in Kotlin); satellite has no vector equivalent and is never substituted. vector_en is a real vector-tile GL style (vector_style_url) fetched + localized at runtime by VectorStyleLoader, which rewrites every name-label layer to prefer label_field_pref (falls back to name:latin, then name) — so city/country/street labels render in English everywhere instead of each place's local script. Uses OpenFreeMap (openfreemap.org) — free, no API key, no rate limit.",
+    "_doc_map_styles": "Basemaps. Every raster style declares `vector_equivalent` — the real vector/hybrid style MapsBasemapPrefs.resolve() substitutes when the family preference (or an explicit pin) says 'vector': light→vector_light, dark→vector_dark, satellite→satellite_hybrid (satellite is photographic imagery, not vector geometry, so its 'vector' form is a hybrid: the raster imagery with an English roads+labels vector overlay composited on top, built by VectorStyleLoader.buildHybrid — fill/background/water polygon layers from the overlay source are dropped, only line + name-bearing symbol layers survive, recolored white-on-black-halo for legibility over arbitrary imagery). Each vector/hybrid entry declares `raster_fallback` — if its network fetch fails at runtime, MapsMapFragment falls back to that raster key automatically (toasted, never a blank map). `default_family` (vector|raster) is Configs > APIs 'Basemap' menu's default resolution when no style is explicitly pinned there; picking a concrete entry from that menu pins it everywhere, overriding the family default. `order` = every entry, in the cycle the in-map Map-switcher FAB (under locate-me) steps through AND the full list shown in the Configs menu. vector_light/vector_dark are real vector-tile GL styles (vector_style_url, OpenFreeMap 'positron'/'dark') localized at runtime to prefer label_field_pref (falls back to name:latin, then name) — city/country/street labels render in English everywhere instead of each place's local script. Uses OpenFreeMap (openfreemap.org) — free, no API key, no rate limit.",
     "map_styles": {
       "default_family": "vector",
-      "order": [ "light", "dark", "satellite", "vector_en" ],
+      "order": [ "light", "dark", "satellite", "vector_light", "vector_dark", "satellite_hybrid" ],
       "light": {
         "label": "Standard",
         "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         "attribution": "© OpenStreetMap contributors",
         "background": "#e8eef4",
-        "maxzoom": 19
+        "maxzoom": 19,
+        "vector_equivalent": "vector_light"
       },
       "dark": {
         "label": "Dark",
         "tiles": "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
         "attribution": "© OpenStreetMap, © CARTO",
         "background": "#0a0e14",
-        "maxzoom": 20
+        "maxzoom": 20,
+        "vector_equivalent": "vector_dark"
       },
       "satellite": {
         "label": "Satellite",
         "tiles": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         "attribution": "© Esri, Maxar, Earthstar Geographics",
         "background": "#0a0e14",
-        "maxzoom": 19
+        "maxzoom": 19,
+        "vector_equivalent": "satellite_hybrid"
       },
-      "vector_en": {
-        "label": "Vector (EN)",
+      "vector_light": {
+        "label": "Light (Vector)",
         "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
         "background": "#e8eef4",
-        "vector_style_url": "https://tiles.openfreemap.org/styles/liberty",
-        "label_field_pref": "name_en"
+        "vector_style_url": "https://tiles.openfreemap.org/styles/positron",
+        "label_field_pref": "name_en",
+        "raster_fallback": "light"
+      },
+      "vector_dark": {
+        "label": "Dark (Vector)",
+        "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
+        "background": "#0a0e14",
+        "vector_style_url": "https://tiles.openfreemap.org/styles/dark",
+        "label_field_pref": "name_en",
+        "raster_fallback": "dark"
+      },
+      "satellite_hybrid": {
+        "label": "Satellite (labels)",
+        "attribution": "© Esri, Maxar, Earthstar Geographics · © OpenFreeMap, © OpenMapTiles",
+        "background": "#0a0e14",
+        "hybrid": true,
+        "base_style": "satellite",
+        "vector_overlay_url": "https://tiles.openfreemap.org/styles/positron",
+        "label_field_pref": "name_en",
+        "raster_fallback": "satellite"
       }
     },
     "maps_active": {

@@ -290,19 +290,30 @@ class MapsConfigFragment : Fragment() {
         val apiKeyPrefs   = MapsApiKeyPrefs(ctx)
         val all           = MapsProviders.loadFromBuildConfig()
 
-        // Basemap rendering: vector (English labels, on-device) vs raster
-        // (fixed local-language tile images). Only affects screens that don't
-        // force a specific style (Places' satellite, cockpit vehicle styles).
+        // Basemap: "Auto" lets each screen keep its own smart default (Navigation
+        // dark, Places satellite, Routes light, …) resolved to vector/hybrid or
+        // raster by the family choice; picking a concrete style below PINS it
+        // everywhere, overriding every screen's default. Vector/hybrid styles
+        // fall back to raster automatically if their fetch fails at runtime.
         val basemapPrefs = MapsBasemapPrefs(ctx)
         root.addView(header(ctx, "Basemap"))
-        root.addView(caption(ctx, "Vector renders on-device with English city/country/street labels everywhere; if it can't be fetched (offline, provider down) the app automatically falls back to the raster map."))
-        root.addView(basemapRow(ctx, "Vector (English labels)", "On-device rendering · OpenFreeMap",
-            isSelected = basemapPrefs.preferVector,
-            onPick = { basemapPrefs.preferVector = true; rerender() }))
+        root.addView(caption(ctx, "Auto keeps each screen's own look (Navigation dark, Places satellite, Routes light…), just swapping vector/raster/hybrid rendering. Pinning a specific map below overrides that everywhere."))
+        root.addView(basemapRow(ctx, "Auto — Vector (recommended)", "Each screen's default, rendered as English-labelled vector/hybrid",
+            isSelected = basemapPrefs.explicitStyleKey == null && basemapPrefs.preferVectorFamily,
+            onPick = { basemapPrefs.explicitStyleKey = null; basemapPrefs.preferVectorFamily = true; rerender() }))
         root.addView(spacer(ctx, dp(ctx, 6)))
-        root.addView(basemapRow(ctx, "Raster (local names)", "Fixed tile images · OSM / CARTO / Esri",
-            isSelected = !basemapPrefs.preferVector,
-            onPick = { basemapPrefs.preferVector = false; rerender() }))
+        root.addView(basemapRow(ctx, "Auto — Raster", "Each screen's default, rendered as fixed local-language tile images",
+            isSelected = basemapPrefs.explicitStyleKey == null && !basemapPrefs.preferVectorFamily,
+            onPick = { basemapPrefs.explicitStyleKey = null; basemapPrefs.preferVectorFamily = false; rerender() }))
+        root.addView(spacer(ctx, dp(ctx, 14)))
+        MapStyles.order.forEach { key ->
+            val s = MapStyles.get(key)
+            val kind = when { s.hybrid -> "Hybrid — imagery + English vector overlay"; s.vectorStyleUrl != null -> "Vector — English labels, on-device"; else -> "Raster — fixed tile images" }
+            root.addView(basemapRow(ctx, s.label, kind,
+                isSelected = basemapPrefs.explicitStyleKey == key,
+                onPick = { basemapPrefs.explicitStyleKey = key; rerender() }))
+            root.addView(spacer(ctx, dp(ctx, 6)))
+        }
         root.addView(spacer(ctx, dp(ctx, 20)))
 
         // Search (forward geocode) — the universal search bar's backend.

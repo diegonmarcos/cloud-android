@@ -4,11 +4,21 @@ import android.util.Base64
 import org.json.JSONObject
 
 /**
- * Data-driven raster basemap styles, decoded from build.json::ui.map_styles
- * (baked into BuildConfig.UI_MAP_STYLES_B64). [order] is the cycle the in-map
- * Map-switcher FAB steps through. Each [Style] builds its own MapLibre raster
- * style JSON inline — no remote style.json, only the tile server. No hardcoded
- * tile URLs in Kotlin (FIRE RULE #6).
+ * Data-driven basemap styles, decoded from build.json::ui.map_styles (baked
+ * into BuildConfig.UI_MAP_STYLES_B64). Three kinds of entry, told apart by
+ * which optional fields are set:
+ *   • raster   — [vectorStyleUrl]/[hybrid] both unset. Built inline from
+ *                tiles/attribution/background/maxzoom (no remote style.json).
+ *   • vector   — [vectorStyleUrl] set, [hybrid] false. A real GL style fetched
+ *                + localized by [VectorStyleLoader].
+ *   • hybrid   — [hybrid] true. Raster imagery ([baseStyleKey]'s tiles) with an
+ *                English roads+labels-only vector overlay ([vectorOverlayUrl])
+ *                composited on top by [VectorStyleLoader.buildHybrid] — for
+ *                "satellite", which has no vector form of its own (imagery
+ *                isn't vector geometry).
+ * [order] is every entry, in the cycle the in-map Map-switcher FAB steps
+ * through AND the full picker in Configs > APIs > Basemap. No hardcoded tile
+ * URLs in Kotlin (FIRE RULE #6) — all of it is JSON.
  */
 object MapStyles {
 
@@ -20,22 +30,33 @@ object MapStyles {
         val background: String,
         val maxzoom: Int,
         val glyphs: String,
-        /** Non-null → a vector GL style ([VectorStyleLoader] fetches + localizes it);
-         *  raster fields above are unused for this style. */
+        /** Raster entries only: the vector/hybrid style [MapsBasemapPrefs.resolve]
+         *  substitutes when the vector family is preferred. */
+        val vectorEquivalent: String? = null,
+        /** Non-null → a vector GL style ([VectorStyleLoader] fetches + localizes it). */
         val vectorStyleUrl: String? = null,
-        /** Preferred label tag for vector styles, e.g. "name:en". */
-        val labelFieldPref: String = "name:en",
+        /** Preferred label tag for vector/hybrid styles, e.g. "name_en". */
+        val labelFieldPref: String = "name_en",
+        /** True → this is a raster+vector hybrid (see [baseStyleKey]/[vectorOverlayUrl]). */
+        val hybrid: Boolean = false,
+        /** Hybrid only: the raster style whose imagery is the base layer. */
+        val baseStyleKey: String? = null,
+        /** Hybrid only: vector style fetched for its roads+labels overlay. */
+        val vectorOverlayUrl: String? = null,
+        /** Vector/hybrid only: raster style to fall back to if the network fetch fails. */
+        val rasterFallback: String? = null,
     )
 
     /** Glyph (font PBF) endpoint for SymbolLayer text — data-driven, one for all
-     *  styles (build.json::ui.map_styles.glyphs). Without it label text can't
-     *  rasterise; the public MapLibre demotiles font server is the default. */
+     *  raster styles (build.json::ui.map_styles.glyphs). Vector/hybrid styles use
+     *  the glyphs endpoint from their own fetched style instead. */
     private val glyphs: String by lazy {
         root.optString("glyphs", "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf")
     }
 
     /** Default basemap family ("vector" | "raster") — [MapsBasemapPrefs]' first-run
-     *  value; user-toggleable in Configs > APIs from then on. */
+     *  value; user-overridable (family default, or a pinned concrete style) in
+     *  Configs > APIs. */
     val defaultFamily: String by lazy { root.optString("default_family", "vector") }
 
     private val root: JSONObject by lazy {
@@ -43,7 +64,7 @@ object MapStyles {
             .getOrDefault(JSONObject())
     }
 
-    /** Ordered style keys for the switcher; falls back to [light] if absent. */
+    /** Every style key, in FAB-cycle / Configs-menu order; falls back to [light] if absent. */
     val order: List<String> by lazy {
         val arr = root.optJSONArray("order")
         if (arr == null || arr.length() == 0) listOf("light")
@@ -60,8 +81,13 @@ object MapStyles {
             background = o.optString("background", "#e8eef4"),
             maxzoom = o.optInt("maxzoom", 19),
             glyphs = glyphs,
+            vectorEquivalent = o.optString("vector_equivalent", "").ifBlank { null },
             vectorStyleUrl = o.optString("vector_style_url", "").ifBlank { null },
-            labelFieldPref = o.optString("label_field_pref", "name:en"),
+            labelFieldPref = o.optString("label_field_pref", "name_en"),
+            hybrid = o.optBoolean("hybrid", false),
+            baseStyleKey = o.optString("base_style", "").ifBlank { null },
+            vectorOverlayUrl = o.optString("vector_overlay_url", "").ifBlank { null },
+            rasterFallback = o.optString("raster_fallback", "").ifBlank { null },
         )
     }
 
@@ -69,6 +95,13 @@ object MapStyles {
     fun next(current: String): String {
         val i = order.indexOf(current)
         return order[(if (i < 0) 0 else i + 1) % order.size]
+    }
+
+    /** Pure resolution: [key] as-is when raster is preferred (or it has no
+     *  vector form); its [Style.vectorEquivalent] when vector is preferred. */
+    fun resolve(key: String, preferVector: Boolean): String {
+        if (!preferVector) return key
+        return get(key).vectorEquivalent ?: key
     }
 
     /** Inline MapLibre raster style JSON for [s]. */
