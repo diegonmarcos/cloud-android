@@ -1,9 +1,8 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    // Kotlin 2.0+ Compose compiler plugin (replaces composeOptions.
-    // kotlinCompilerExtensionVersion). Version pinned in root build.gradle.
-    id 'org.jetbrains.kotlin.plugin.compose'
+    // Compose compiler plugin removed — libs:wallet (the only Compose
+    // surface) moved to ea_cloud-wallet; buildFeatures.compose = false.
 }
 
 // Capture wall-clock start so we can emit gradle's config-phase
