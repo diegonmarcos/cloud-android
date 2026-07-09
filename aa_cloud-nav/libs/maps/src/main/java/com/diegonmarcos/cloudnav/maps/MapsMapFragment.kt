@@ -143,16 +143,25 @@ class MapsMapFragment : Fragment() {
         root.addView(mv)
 
         if (showFab) {
-            // Map-style switcher (small, on top).
+            // Map-style switcher (top of the stack).
             val switchFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_map_layers)
                 contentDescription = "Switch map style"
                 size = FloatingActionButton.SIZE_MINI
                 layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
-                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(140)) }
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(200)) }
                 setOnClickListener { cycleStyle() }
             }
-            // Locate-me (below the switcher).
+            // Reset-to-north (between switcher and locate-me).
+            val northFab = FloatingActionButton(ctx).apply {
+                setImageResource(R.drawable.ic_compass_north)
+                contentDescription = "Face north"
+                size = FloatingActionButton.SIZE_MINI
+                layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(140)) }
+                setOnClickListener { resetNorth() }
+            }
+            // Locate-me (bottom of the stack).
             val locFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_my_location)
                 contentDescription = "Find my location"
@@ -162,6 +171,7 @@ class MapsMapFragment : Fragment() {
                 setOnClickListener { recenterOnUser() }
             }
             root.addView(locFab)
+            root.addView(northFab)
             root.addView(switchFab)
         }
         return root
