@@ -115,11 +115,7 @@ class MapsDailyFragment : Fragment() {
             val s = stop.startedAt
             val e = stop.endedAt ?: now
             if (e <= s) continue
-            cal.timeInMillis = s
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
+            cal.timeInMillis = localMidnight(s)
             while (cal.timeInMillis <= e) {
                 val dayStart = cal.timeInMillis
                 val dayEnd   = dayStart + 24L * 3600_000L - 1L
@@ -157,5 +153,18 @@ class MapsDailyFragment : Fragment() {
 
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
-    companion object { fun newInstance() = MapsDailyFragment() }
+    companion object {
+        fun newInstance() = MapsDailyFragment()
+
+        /** Device-local midnight (epoch ms) of the calendar day [ts] falls in —
+         *  the day-bucketing convention shared with [MapsDayMapFragment] and
+         *  [MapsStopsFragment]'s "open this stop's day" tap. */
+        fun localMidnight(ts: Long): Long {
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = ts
+            cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+            return cal.timeInMillis
+        }
+    }
 }

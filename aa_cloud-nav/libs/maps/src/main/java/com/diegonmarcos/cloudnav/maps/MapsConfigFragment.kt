@@ -225,9 +225,9 @@ class MapsConfigFragment : Fragment() {
         // Tester seed — a full demo day (1987-07-18, Rio) so Timeline/Daily/
         // Stops/day-map render without a live tracker. Idempotent.
         root.addView(spacer(ctx, dp(ctx, 12)))
-        root.addView(caption(ctx, "No tracker history yet? Load a demo day (1987-07-18) to explore the Timeline, Daily, Stops and day-map views."))
+        root.addView(caption(ctx, "No tracker history yet? Load a demo 3-day trip (ending today) to explore the Timeline, Daily, Stops and day-map views — includes a place visited twice."))
         root.addView(android.widget.Button(ctx).apply {
-            text = "Load demo data (1987-07-18)"
+            text = "Load demo data (last few days)"
             setOnClickListener {
                 MapsHaptics.tap(it)
                 val n = MapsDemo.seed(ctx)

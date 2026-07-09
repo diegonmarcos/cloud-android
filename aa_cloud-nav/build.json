@@ -272,16 +272,26 @@
       "stops_radius_m": 100,
       "stops_dwell_min": 2
     },
-    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — a full day on 1987-07-18 in Rio de Janeiro so Timeline/Daily/Stops/day-map all populate without a live tracker. day_epoch_ms = 1987-07-18 00:00 UTC; each stop's start_min/end_min = minutes from that midnight. Inserted by MapsDemo.seed() (idempotent). Longest dwell (Home) is what Daily surfaces.",
+    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — a 3-day trip ending TODAY (days_ago is relative to the UTC midnight of the moment Load-demo-data is tapped, computed by MapsDemo.seed(); NOT a fixed historical date — every screen (Daily/Stops/MyTrips) queries a window ending at System.currentTimeMillis(), so a fixed past date could fall outside all of them and silently never appear, which was the bug). Includes a deliberate revisit (Home — Copacabana / Rio de Janeiro on two different days) so the 'been here more than once' pin feature has something to show. Each stop's start_min/end_min = minutes from that day's midnight. Idempotent per calendar day (re-tapping the same day is a no-op; a new day reseeds a fresh 3-day window ending then).",
     "demo_stops": {
-      "day_epoch_ms": 553564800000,
-      "stops": [
-        { "start_min": 0,    "end_min": 510,  "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",                "neighborhood": "Copacabana",        "city": "Rio de Janeiro", "country": "Brazil" },
-        { "start_min": 540,  "end_min": 600,  "lat": -22.9050, "lon": -43.1791, "place": "Confeitaria Colombo",             "neighborhood": "Centro",            "city": "Rio de Janeiro", "country": "Brazil" },
-        { "start_min": 660,  "end_min": 780,  "lat": -22.9869, "lon": -43.2045, "place": "Ipanema Beach",                   "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
-        { "start_min": 810,  "end_min": 870,  "lat": -22.9838, "lon": -43.2057, "place": "Garota de Ipanema",              "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
-        { "start_min": 960,  "end_min": 1050, "lat": -22.9519, "lon": -43.2105, "place": "Cristo Redentor",                "neighborhood": "Alto da Boa Vista", "city": "Rio de Janeiro", "country": "Brazil" },
-        { "start_min": 1260, "end_min": 1410, "lat": -22.9099, "lon": -43.1786, "place": "Rio Scenarium",                  "neighborhood": "Lapa",              "city": "Rio de Janeiro", "country": "Brazil" }
+      "days": [
+        { "days_ago": 5, "stops": [
+          { "start_min": 0,    "end_min": 510,  "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",     "neighborhood": "Copacabana",        "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 540,  "end_min": 600,  "lat": -22.9050, "lon": -43.1791, "place": "Confeitaria Colombo",  "neighborhood": "Centro",            "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 660,  "end_min": 780,  "lat": -22.9869, "lon": -43.2045, "place": "Ipanema Beach",        "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 810,  "end_min": 870,  "lat": -22.9838, "lon": -43.2057, "place": "Garota de Ipanema",    "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 960,  "end_min": 1050, "lat": -22.9519, "lon": -43.2105, "place": "Cristo Redentor",      "neighborhood": "Alto da Boa Vista", "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 1260, "end_min": 1410, "lat": -22.9099, "lon": -43.1786, "place": "Rio Scenarium",        "neighborhood": "Lapa",              "city": "Rio de Janeiro", "country": "Brazil" }
+        ] },
+        { "days_ago": 3, "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -23.5629, "lon": -46.6544, "place": "Hotel — Jardins",      "neighborhood": "Jardins", "city": "São Paulo", "country": "Brazil" },
+          { "start_min": 540, "end_min": 600, "lat": -23.5427, "lon": -46.6291, "place": "Mercado Municipal",    "neighborhood": "Centro",  "city": "São Paulo", "country": "Brazil" },
+          { "start_min": 660, "end_min": 810, "lat": -23.5874, "lon": -46.6576, "place": "Ibirapuera Park",      "neighborhood": "Vila Mariana", "city": "São Paulo", "country": "Brazil" }
+        ] },
+        { "days_ago": 1, "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",     "neighborhood": "Copacabana", "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 600, "end_min": 720, "lat": -22.9490, "lon": -43.1546, "place": "Pão de Açúcar (Sugarloaf)", "neighborhood": "Urca", "city": "Rio de Janeiro", "country": "Brazil" }
+        ] }
       ]
     },
     "maps_providers": [

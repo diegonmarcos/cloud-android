@@ -14,10 +14,13 @@ import com.google.android.material.tabs.TabLayout
  * tab row above a single FrameLayout host. Tab change replaces the
  * host's child fragment.
  *
- *   • Daily — one row per calendar day showing where the user slept
- *             that night (see [MapsDailyFragment]).
- *   • Stops — flat reverse-chrono list of every Stop in the DB
- *             (existing [MapsStopsFragment], unchanged).
+ *   • Daily     — one row per calendar day showing where the user slept
+ *                 that night (see [MapsDailyFragment]).
+ *   • Stops     — flat reverse-chrono list of every Stop in the DB
+ *                 (existing [MapsStopsFragment], unchanged).
+ *   • Explored  — every place ever visited, pinned once each (all-time, no
+ *                 window) — tap a pin for its full visit history (see
+ *                 [MapsExploredFragment]).
  *
  * Tab labels live in code rather than build.json because there's no
  * other consumer; promoting them to ui.maps_timeline_tabs is fine
@@ -39,6 +42,7 @@ class MapsTimelineTabsFragment : Fragment() {
         val tabs = TabLayout(ctx).apply {
             addTab(newTab().setText("Daily"))
             addTab(newTab().setText("Stops"))
+            addTab(newTab().setText("Explored"))
             tabMode = TabLayout.MODE_FIXED
             tabGravity = TabLayout.GRAVITY_FILL
             layoutParams = LinearLayout.LayoutParams(
@@ -60,6 +64,7 @@ class MapsTimelineTabsFragment : Fragment() {
         fun show(position: Int) {
             val frag: Fragment = when (position) {
                 1    -> MapsStopsFragment.newInstance()
+                2    -> MapsExploredFragment.newInstance()
                 else -> MapsDailyFragment.newInstance()  // 0 = Daily, default
             }
             childFragmentManager.beginTransaction()

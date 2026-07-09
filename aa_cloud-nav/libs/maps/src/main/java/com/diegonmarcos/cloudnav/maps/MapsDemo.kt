@@ -2,14 +2,29 @@ package com.diegonmarcos.cloudnav.maps
 
 import android.content.Context
 import android.util.Base64
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import org.json.JSONObject
 
 /**
- * Tester seed data — a full day on 1987-07-18 (Rio de Janeiro), data-driven
- * from build.json::ui.demo_stops (baked into BuildConfig.UI_DEMO_STOPS_B64).
- * Lets Timeline / Daily / Stops / day-map render real content without a live
- * tracker. Inserted by [seed] (idempotent — skips if that day already has
- * stops). Wired to Configs → Tracker → "Load demo data".
+ * Tester seed data — a 3-day trip data-driven from build.json::ui.demo_stops
+ * (baked into BuildConfig.UI_DEMO_STOPS_B64). Lets Timeline / Daily / Stops /
+ * day-map render real content without a live tracker. Inserted by [seed].
+ *
+ * Each demo day is expressed as `days_ago` (0 = today), resolved against
+ * *today's* UTC midnight at seed time — NOT a fixed historical date. Every
+ * screen that reads this data (MapsDailyFragment, MapsStopsFragment,
+ * MytripsDashboardFragment, …) queries a window ending at
+ * `System.currentTimeMillis()`; a fixed past date drifts out of that window
+ * and the "loaded" demo silently never appears anywhere (the bug this fixes).
+ * Relative-to-today means it's always inside every such window.
+ *
+ * Idempotent per calendar day (Configs → Tracker → "Load demo data"):
+ * re-tapping the same day is a no-op; tapping again on a later day reseeds a
+ * fresh window ending then.
  */
 object MapsDemo {
 
@@ -19,55 +34,81 @@ object MapsDemo {
         val place: String, val neighborhood: String, val city: String, val country: String,
     )
 
+    data class DemoDay(val daysAgo: Int, val stops: List<DemoStop>)
+
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_DEMO_STOPS_B64, Base64.DEFAULT))) }
             .getOrDefault(JSONObject())
     }
 
-    /** Local midnight (epoch ms) of the demo day = 1987-07-18 00:00 UTC. */
-    val dayEpochMs: Long get() = root.optLong("day_epoch_ms", 0L)
-
-    fun stops(): List<DemoStop> {
-        val arr = root.optJSONArray("stops") ?: return emptyList()
-        return (0 until arr.length()).map { i ->
+    val demoDays: List<DemoDay> by lazy {
+        val arr = root.optJSONArray("days") ?: return@lazy emptyList()
+        (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            DemoStop(
-                startMin = o.optInt("start_min"),
-                endMin = o.optInt("end_min"),
-                lat = o.optDouble("lat"),
-                lon = o.optDouble("lon"),
-                place = o.optString("place"),
-                neighborhood = o.optString("neighborhood"),
-                city = o.optString("city"),
-                country = o.optString("country"),
-            )
-        }
-    }
-
-    /** True when the demo day already has stops in the DB. */
-    fun isSeeded(ctx: Context): Boolean {
-        if (dayEpochMs <= 0L) return false
-        return MapsDb.get(ctx).stopsBetween(dayEpochMs, dayEpochMs + DAY_MS).isNotEmpty()
-    }
-
-    /** Insert the demo day (already-enriched stops). Returns the number
-     *  inserted; 0 if already seeded or no data. Idempotent. */
-    fun seed(ctx: Context): Int {
-        if (dayEpochMs <= 0L || isSeeded(ctx)) return 0
-        val db = MapsDb.get(ctx)
-        val demo = stops()
-        for (s in demo) {
-            val id = db.insertStop(
-                MapsDb.StopRow(
-                    startedAt = dayEpochMs + s.startMin * 60_000L,
-                    endedAt = dayEpochMs + s.endMin * 60_000L,
-                    lat = s.lat, lon = s.lon,
+            val stopsArr = o.optJSONArray("stops")
+            val stops = if (stopsArr == null) emptyList() else (0 until stopsArr.length()).map { j ->
+                val s = stopsArr.getJSONObject(j)
+                DemoStop(
+                    startMin = s.optInt("start_min"),
+                    endMin = s.optInt("end_min"),
+                    lat = s.optDouble("lat"),
+                    lon = s.optDouble("lon"),
+                    place = s.optString("place"),
+                    neighborhood = s.optString("neighborhood"),
+                    city = s.optString("city"),
+                    country = s.optString("country"),
                 )
-            )
-            db.enrichStop(id, s.place, s.neighborhood, s.city, s.country)
+            }
+            DemoDay(daysAgo = o.optInt("days_ago"), stops = stops)
         }
-        return demo.size
+    }
+
+    /** UTC midnight of [instantMs] — the anchor every [demoDays] entry's
+     *  `daysAgo` is measured back from. Pure function of the clock, so tests
+     *  can pass a fixed instant instead of depending on the real current time. */
+    fun utcMidnightOf(instantMs: Long): Long {
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        cal.timeInMillis = instantMs
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    private fun dayKey(instantMs: Long): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+            .format(Date(instantMs))
+
+    private fun prefs(ctx: Context) = ctx.getSharedPreferences("maps_demo_prefs", Context.MODE_PRIVATE)
+
+    /** True once [seed] has already run for today (UTC) — the idempotency guard. */
+    fun isSeededToday(ctx: Context): Boolean =
+        prefs(ctx).getString(KEY_SEEDED_DAY, null) == dayKey(utcMidnightOf(System.currentTimeMillis()))
+
+    /** Insert every demo day, anchored to today. Returns the number of stops
+     *  inserted; 0 if already seeded today or no data configured. */
+    fun seed(ctx: Context): Int {
+        if (demoDays.isEmpty() || isSeededToday(ctx)) return 0
+        val db = MapsDb.get(ctx)
+        val today = utcMidnightOf(System.currentTimeMillis())
+        var inserted = 0
+        for (day in demoDays) {
+            val dayStart = today - day.daysAgo * DAY_MS
+            for (s in day.stops) {
+                val id = db.insertStop(
+                    MapsDb.StopRow(
+                        startedAt = dayStart + s.startMin * 60_000L,
+                        endedAt = dayStart + s.endMin * 60_000L,
+                        lat = s.lat, lon = s.lon,
+                    )
+                )
+                db.enrichStop(id, s.place, s.neighborhood, s.city, s.country)
+                inserted++
+            }
+        }
+        prefs(ctx).edit().putString(KEY_SEEDED_DAY, dayKey(today)).apply()
+        return inserted
     }
 
     private const val DAY_MS = 24L * 3600_000L
+    private const val KEY_SEEDED_DAY = "seeded_day"
 }

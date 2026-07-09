@@ -63,11 +63,15 @@ class MapsStopsFragment : Fragment() {
                 orientation = LinearLayout.VERTICAL
                 val pad = dp(ctx, 10); setPadding(pad, pad, pad, pad)
                 setBackgroundColor(COL_TILE)
+                isClickable = true
                 val m = dp(ctx, 4)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply { setMargins(0, m, 0, m) }
+                // Tap → the same full-screen day-map Daily opens (every place
+                // visited that calendar day, pinned).
+                setOnClickListener { openDayMap(MapsDailyFragment.localMidnight(stop.startedAt)) }
             }
             tile.addView(TextView(ctx).apply {
                 text = tsFmt.format(Date(stop.startedAt))
@@ -81,7 +85,7 @@ class MapsStopsFragment : Fragment() {
                 typeface = android.graphics.Typeface.MONOSPACE
             })
             tile.addView(TextView(ctx).apply {
-                text = stop.placeName ?: "Resolving…"
+                text = (stop.placeName ?: "Resolving…") + "   ·  tap for this day's map ▸"
                 setTextAppearance(android.R.style.TextAppearance_Material_Body1)
                 setTextColor(COL_PRIMARY)
                 maxLines = 3
@@ -91,6 +95,13 @@ class MapsStopsFragment : Fragment() {
             root.addView(tile)
         }
         return scroll
+    }
+
+    private fun openDayMap(dayMs: Long) {
+        requireActivity().supportFragmentManager.beginTransaction()
+            .add(android.R.id.content, MapsDayMapFragment.newInstance(dayMs), "day-map")
+            .addToBackStack("day-map")
+            .commit()
     }
 
     private fun dp(ctx: android.content.Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
