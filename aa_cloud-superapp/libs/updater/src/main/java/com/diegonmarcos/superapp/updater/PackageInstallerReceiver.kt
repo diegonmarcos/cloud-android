@@ -3,6 +3,7 @@ package com.diegonmarcos.superapp.updater
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -46,7 +47,16 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(confirm)
+                // The 6h auto-update runs in WorkManager; Android 10+ BLOCKS
+                // background activity starts, so startActivity silently no-ops
+                // and the update dies invisibly. Fall back to a tap-to-install
+                // notification (launchable from the background) on failure.
+                try {
+                    context.startActivity(confirm)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "confirm launch blocked (background?): ${t.message}")
+                    notifyConfirm(context, confirm)
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> {
                 // Resolve the install overlay (it sat on "Installing…" while the
@@ -73,6 +83,29 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 surface(context, "$verb failed: $label", message.ifEmpty { label },
                     severity = NotificationStore.Sev.ERROR)
             }
+        }
+    }
+
+    /** Background-safe fallback for STATUS_PENDING_USER_ACTION: a tap-to-install
+     *  notification wrapping the system confirm Intent (notifications can launch
+     *  activities from the background, unlike startActivity). */
+    private fun notifyConfirm(context: Context, confirm: Intent) {
+        runCatching {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                nm.createNotificationChannel(
+                    NotificationChannel(NOTIF_CHANNEL, "Updater", NotificationManager.IMPORTANCE_HIGH))
+            var flags = PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags = flags or PendingIntent.FLAG_IMMUTABLE
+            val pi = PendingIntent.getActivity(context, NOTIF_ID + 1, confirm, flags)
+            val notif = Notification.Builder(context, NOTIF_CHANNEL)
+                .setContentTitle("Update ready — tap to install")
+                .setContentText("Tap to finish installing the update.")
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build()
+            nm.notify(NOTIF_ID + 1, notif)
         }
     }
 
