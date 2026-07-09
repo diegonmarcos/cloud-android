@@ -14,6 +14,64 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+/** One row of the Daily list: the calendar day + its LONGEST-dwell place.
+ *  Also [MapsExploredFragment]'s data source, grouped by city. Top-level
+ *  (not nested in [MapsDailyFragment]) so both fragments share it plainly. */
+data class DailyEntry(
+    val dayMs: Long,
+    val placeName: String?,
+    val neighborhood: String?,
+    val city: String?,
+    val country: String?,
+    val lat: Double,
+    val lon: Double,
+)
+
+/** For each calendar day touched by any Stop, pick the Stop with the LONGEST
+ *  overlap into that day. Reverse-chronological. Pure — no DB/Android
+ *  dependency beyond the passed-in stops, so it's directly testable and
+ *  reusable by both [MapsDailyFragment] and [MapsExploredFragment]. */
+fun computeDailyLocations(stops: List<MapsDb.RichStop>): List<DailyEntry> {
+    if (stops.isEmpty()) return emptyList()
+    val now = System.currentTimeMillis()
+    val dayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    data class Best(val anchorMs: Long, val stop: MapsDb.RichStop, val overlapMs: Long)
+    val perDay = mutableMapOf<String, Best>()
+    val cal = Calendar.getInstance()
+    for (stop in stops) {
+        val s = stop.startedAt
+        val e = stop.endedAt ?: now
+        if (e <= s) continue
+        cal.timeInMillis = MapsDailyFragment.localMidnight(s)
+        while (cal.timeInMillis <= e) {
+            val dayStart = cal.timeInMillis
+            val dayEnd   = dayStart + 24L * 3600_000L - 1L
+            val overlap  = (minOf(dayEnd, e) - maxOf(dayStart, s)).coerceAtLeast(0)
+            if (overlap > 0) {
+                val key = dayFmt.format(Date(dayStart))
+                val cur = perDay[key]
+                if (cur == null || overlap > cur.overlapMs) {
+                    perDay[key] = Best(dayStart, stop, overlap)
+                }
+            }
+            cal.add(Calendar.DAY_OF_MONTH, 1)
+        }
+    }
+    return perDay.entries
+        .sortedByDescending { it.key }
+        .map { (_, b) ->
+            DailyEntry(
+                dayMs        = b.anchorMs,
+                placeName    = b.stop.placeName,
+                neighborhood = b.stop.neighborhood,
+                city         = b.stop.city,
+                country      = b.stop.country,
+                lat          = b.stop.lat,
+                lon          = b.stop.lon,
+            )
+        }
+}
+
 /**
  * "Daily" tab — one row per calendar day showing the user's primary
  * place that day (the LONGEST-dwell Stop overlapping that day). Tapping a
@@ -102,8 +160,6 @@ class MapsDailyFragment : Fragment() {
         return scroll
     }
 
-    private fun computeDailyLocations(stops: List<MapsDb.RichStop>) = Companion.computeDailyLocations(stops)
-
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
     companion object {
@@ -118,63 +174,6 @@ class MapsDailyFragment : Fragment() {
             cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
             cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
             return cal.timeInMillis
-        }
-
-        /** One row of the Daily list: the calendar day + its LONGEST-dwell
-         *  place. Also [MapsExploredFragment]'s data source, grouped by city. */
-        data class DailyEntry(
-            val dayMs: Long,
-            val placeName: String?,
-            val neighborhood: String?,
-            val city: String?,
-            val country: String?,
-            val lat: Double,
-            val lon: Double,
-        )
-
-        /** For each calendar day touched by any Stop, pick the Stop with the
-         *  LONGEST overlap into that day. Reverse-chronological. Pure — no
-         *  DB/Android dependency beyond the passed-in stops, so it's directly
-         *  testable and reusable by Explored. */
-        fun computeDailyLocations(stops: List<MapsDb.RichStop>): List<DailyEntry> {
-            if (stops.isEmpty()) return emptyList()
-            val now = System.currentTimeMillis()
-            val dayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            data class Best(val anchorMs: Long, val stop: MapsDb.RichStop, val overlapMs: Long)
-            val perDay = mutableMapOf<String, Best>()
-            val cal = Calendar.getInstance()
-            for (stop in stops) {
-                val s = stop.startedAt
-                val e = stop.endedAt ?: now
-                if (e <= s) continue
-                cal.timeInMillis = localMidnight(s)
-                while (cal.timeInMillis <= e) {
-                    val dayStart = cal.timeInMillis
-                    val dayEnd   = dayStart + 24L * 3600_000L - 1L
-                    val overlap  = (minOf(dayEnd, e) - maxOf(dayStart, s)).coerceAtLeast(0)
-                    if (overlap > 0) {
-                        val key = dayFmt.format(Date(dayStart))
-                        val cur = perDay[key]
-                        if (cur == null || overlap > cur.overlapMs) {
-                            perDay[key] = Best(dayStart, stop, overlap)
-                        }
-                    }
-                    cal.add(Calendar.DAY_OF_MONTH, 1)
-                }
-            }
-            return perDay.entries
-                .sortedByDescending { it.key }
-                .map { (_, b) ->
-                    DailyEntry(
-                        dayMs        = b.anchorMs,
-                        placeName    = b.stop.placeName,
-                        neighborhood = b.stop.neighborhood,
-                        city         = b.stop.city,
-                        country      = b.stop.country,
-                        lat          = b.stop.lat,
-                        lon          = b.stop.lon,
-                    )
-                }
         }
     }
 }

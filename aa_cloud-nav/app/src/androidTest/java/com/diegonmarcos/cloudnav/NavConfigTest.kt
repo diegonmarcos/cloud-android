@@ -74,7 +74,7 @@ class NavConfigTest {
 
     @Test fun explored_groups_by_city_from_daily_entries_not_raw_stops() {
         fun entry(dayMs: Long, city: String?, place: String?, lat: Double, lon: Double) =
-            com.diegonmarcos.cloudnav.maps.MapsDailyFragment.DailyEntry(dayMs, place, null, city, "Brazil", lat, lon)
+            com.diegonmarcos.cloudnav.maps.DailyEntry(dayMs, place, null, city, "Brazil", lat, lon)
 
         // Rio appears on two DIFFERENT days (a revisit — what Explored exists to
         // show); São Paulo appears once. Sourced from Daily's one-pick-per-day
@@ -98,7 +98,7 @@ class NavConfigTest {
 
     @Test fun explored_drops_entries_with_no_resolved_city() {
         fun entry(dayMs: Long, city: String?) =
-            com.diegonmarcos.cloudnav.maps.MapsDailyFragment.DailyEntry(dayMs, null, null, city, null, 0.0, 0.0)
+            com.diegonmarcos.cloudnav.maps.DailyEntry(dayMs, null, null, city, null, 0.0, 0.0)
 
         // An unresolved (still-enriching) daily entry has nothing meaningful to
         // pin or title — must not produce a bogus/blank pin.

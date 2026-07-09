@@ -16,7 +16,7 @@ import java.util.Locale
 
 /**
  * Timeline → "Explored" tab — every CITY the user has ever been, one pin
- * each (all-time, no window). Sourced from [MapsDailyFragment.computeDailyLocations]
+ * each (all-time, no window). Sourced from [computeDailyLocations]
  * — the same one-representative-place-per-calendar-day picks Daily shows —
  * grouped by city, NOT raw per-Stop data, so a city visited on many days
  * (lots of Stops) still collapses to one clean pin instead of polluting the
@@ -34,7 +34,7 @@ class MapsExploredFragment : Fragment() {
         root.addView(mapHost, FrameLayout.LayoutParams(MATCH, MATCH))
 
         val stops = MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis())
-        val daily = MapsDailyFragment.computeDailyLocations(stops)
+        val daily = computeDailyLocations(stops)
         cities = groupByCity(daily)
         val pins = cities.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, MapsMapFragment.COLOR_PLACE, title = c.city, id = i.toString()) }
 
@@ -88,7 +88,7 @@ class MapsExploredFragment : Fragment() {
         /** Pure (no DB/Android) grouping — exposed for testing. One pin per
          *  distinct, non-blank city name; blank/unresolved-city daily entries
          *  are dropped (nothing meaningful to pin or title). */
-        fun groupByCity(daily: List<MapsDailyFragment.DailyEntry>): List<ExploredCity> {
+        fun groupByCity(daily: List<DailyEntry>): List<ExploredCity> {
             return daily.filter { !it.city.isNullOrBlank() }
                 .groupBy { it.city }
                 .map { (city, entries) ->
