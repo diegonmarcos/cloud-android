@@ -132,18 +132,18 @@ class UpdateOverlayFragment : Fragment() {
             is UpdateProgress.State.Idle -> { /* about to dismiss */ }
             is UpdateProgress.State.Cancelled -> { UpdateProgress.reset() /* dismiss */ }
             is UpdateProgress.State.CheckingManifest -> {
-                titleView.text = "Checking for updates…"
+                titleView.text = batch("Checking for updates…")
                 detailView.text = "Reading GHCR manifest"
                 progressBar.isIndeterminate = true
             }
             is UpdateProgress.State.Downloading -> {
-                titleView.text = "Downloading ${state.percent}%"
+                titleView.text = batch("Downloading ${state.percent}%")
                 detailView.text = "${state.bytes.toMib()} / ${state.total.toMib()} MiB"
                 progressBar.isIndeterminate = state.total <= 0
                 progressBar.progress = state.percent
             }
             is UpdateProgress.State.Installing -> {
-                titleView.text = "Installing…"
+                titleView.text = batch("Installing…")
                 detailView.text = "Handing the APK to the system installer"
                 progressBar.isIndeterminate = true
             }
@@ -159,6 +159,11 @@ class UpdateOverlayFragment : Fragment() {
             }
         }
     }
+
+    /** Prefix an active-state title with the "Chat · 2/5" batch header when a
+     *  multi-app "Update all" is running; plain title for single installs. */
+    private fun batch(title: String): String =
+        UpdateProgress.batchLabel?.let { "$it\n$title" } ?: title
 
     private fun Long.toMib(): String = "%.2f".format(this / (1024.0 * 1024.0))
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()

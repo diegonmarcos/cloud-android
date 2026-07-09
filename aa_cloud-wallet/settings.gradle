@@ -1,0 +1,29 @@
+// Settings — gradle module graph.
+// Data-driven from build.json::modules (FIRE RULE #6: never hardcode lists).
+// Adding a new feature module = one entry in build.json + mkdir.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "cloud-wallet"
+
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return  // skip _doc keys
+    include ":${name}"
+    // Map gradle path :libs:foo → libs/foo/  (vs. :app → app/)
+    def path = name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}

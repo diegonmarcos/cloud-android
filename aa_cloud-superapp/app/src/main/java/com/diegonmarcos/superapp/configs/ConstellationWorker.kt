@@ -11,7 +11,9 @@ import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -102,6 +104,28 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             ).setConstraints(constraints).build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request,
+            )
+            // The periodic worker's first run is a full interval out, so on a
+            // fresh install/launch auto-update wouldn't fire for hours ("still
+            // not being triggered"). Kick a one-shot ~30s after launch so the
+            // fleet is checked promptly, then hourly-ish via the periodic.
+            checkNow(context)
+        }
+
+        /** One-shot fleet check shortly after launch. Same gating as [start]. */
+        fun checkNow(context: Context) {
+            if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)) return
+            val constraints = Constraints.Builder().apply {
+                if (AuConfig.AU_REQUIRE_UNMETERED) setRequiredNetworkType(NetworkType.UNMETERED)
+                else setRequiredNetworkType(NetworkType.CONNECTED)
+                if (AuConfig.AU_REQUIRE_CHARGING) setRequiresCharging(true)
+            }.build()
+            val req = OneTimeWorkRequestBuilder<ConstellationWorker>()
+                .setConstraints(constraints)
+                .setInitialDelay(30, TimeUnit.SECONDS)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "$WORK_NAME-now", ExistingWorkPolicy.KEEP, req,
             )
         }
     }

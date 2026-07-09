@@ -77,7 +77,7 @@ import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.superapp.mail.MailHost
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.wallet.BackHandler
-import com.diegonmarcos.superapp.wallet.WalletHost
+// WalletHost removed — libs:wallet moved to ea_cloud-wallet (constellation APK).
 
 /**
  * Top-level shell.
@@ -98,7 +98,6 @@ class MainActivity : AppCompatActivity(),
     TileGridFragment.TileClickListener,
     com.diegonmarcos.superapp.devcontrol.DevControlBridge.ActivityHost,
     MailHost,
-    WalletHost,
     SearchOpener,
     com.diegonmarcos.superapp.apptabs.AppTabsHost,
     LauncherNavController.NavHost {
@@ -121,13 +120,6 @@ class MainActivity : AppCompatActivity(),
             }
         }
     }
-
-    /** [WalletHost] — delegates straight to the existing drawer-
-     *  business-card navigation so there's still only ONE path into
-     *  the Virtual Business Card surface, whether the user gets here
-     *  via the drawer identity row or by tapping the pinned vCard in
-     *  the wallet deck. */
-    override fun onOpenVcard() = onDrawerBusinessCardOpen()
 
     private val TAG = "MainActivity"
     private lateinit var drawerLayout: DrawerLayout
@@ -1114,23 +1106,16 @@ class MainActivity : AppCompatActivity(),
     private fun launchUri(uri: String) {
         if (uri.isBlank()) return
 
-        // http(s):// → open in OUR internal browser (Tabs section) in
-        // DETAIL mode for the tapped URL. Tab is added to BrowserTabPrefs
-        // inside BrowserHostFragment on creation when ARG_OPEN_URL is
-        // present.
+        // http(s):// → hand off to Cloud-Browser (external constellation APK).
+        // Cloud-Browser's manifest declares http/https VIEW filter; a targeted
+        // ACTION_VIEW routes straight to it when installed. If not yet installed,
+        // launchExternalApp downloads + installs it first (URL lost, acceptable).
         if (uri.startsWith("http://") || uri.startsWith("https://")) {
-            currentSection = "browser"
-            currentLabel = Sections.byId("browser")?.label ?: "Tabs"
-            supportActionBar?.title = currentLabel
-            syncBottomNav("browser")
-            val frag = com.diegonmarcos.superapp.browser.BrowserHostFragment.newInstance(uri)
-            applyChrome(frag)
-            supportFragmentManager.beginTransaction()
-                .setCustomAnimations(R.anim.fade_in, R.anim.fade_out,
-                                      R.anim.fade_in, R.anim.fade_out)
-                .replace(R.id.fragment_container, frag)
-                .addToBackStack(null)
-                .commit()
+            val viewIntent = android.content.Intent(android.content.Intent.ACTION_VIEW,
+                                                     android.net.Uri.parse(uri))
+            viewIntent.setPackage("com.diegonmarcos.cloudbrowser")
+            val launched = runCatching { startActivity(viewIntent); true }.getOrElse { false }
+            if (!launched) launchExternalApp("cloud-browser")
             return
         }
 
@@ -1571,12 +1556,9 @@ class MainActivity : AppCompatActivity(),
                 return true
             }
             R.id.action_wallet -> {
-                // Open the Wallet section page. The Virtual Business
-                // Card surface is now reachable from inside Wallet
-                // (tap the pinned vCard at the top of the deck) — same
-                // NavigationListener wiring as the drawer-header
-                // identity row, just routed through one extra hop.
-                openSectionPage("wallet", "cards")
+                // Wallet moved to ea_cloud-wallet (constellation APK).
+                // Launch it as an external app; installs from GHCR if absent.
+                launchExternalApp("cloud-wallet")
                 return true
             }
         }

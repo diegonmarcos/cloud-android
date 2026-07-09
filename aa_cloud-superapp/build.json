@@ -156,12 +156,9 @@
         "libs:feed",
         "libs:net",
         "libs:ops",
-        "libs:vault",
         "libs:chat",
-        "libs:wallet",
         "libs:health",
         "libs:fin",
-        "libs:browser",
         "libs:apptabs",
         "libs:kde-connect",
         "libs:shizuku-adb-debug-tools",
@@ -259,13 +256,6 @@
       ],
       "comment": "Chat / messaging. Likely integrates with mattermost-bots (chat.diegonmarcos.com) — could fork Mattermost-Mobile / SimpleX / Conversations later."
     },
-    "libs:wallet": {
-      "type": "library",
-      "depends_on": [
-        "libs:core"
-      ],
-      "comment": "Apple/Google-Wallet-style Compose surface. Cards / Tickets / Calendar / Archive tabs. Sources its vCard data from assets/qrcodes/qrcodes.json (the front repo's generated contact block). First Compose-only lib in the project — drives the kotlinCompilerExtensionVersion pin."
-    },
     "libs:health": {
       "type": "library",
       "depends_on": [
@@ -273,13 +263,7 @@
       ],
       "comment": "MyHealth — native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device — single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface — pages declared in build.json::ui.sections[id=health]."
     },
-    "libs:browser": {
-      "type": "library",
-      "depends_on": [
-        "libs:core"
-      ],
-      "comment": "Browser — in-app WebView host + tab persistence. Was com.diegonmarcos.superapp.tabs in app/.../tabs/ until the libs:browser lift; renamed Tabs → Browser so the 'Tabs' namespace is free for the future App Tabs feature (last 6 opened pages/apps). BrowserHostFragment hosts the WebView in two modes — GRID (open-tab cards) and DETAIL (fullscreen WebView). BrowserTabPrefs persists the open-tabs list in SharedPreferences (file kept as 'tabs' so users' existing list survives the rename). Pulls in Collapsible / SuppressHorizontalSwipe / SuppressVerticalSwipe from libs:core (they were promoted from app/ during this lift so libs:browser doesn't back-reference app/). No native deps; WebView is part of the Android framework."
-    },
+    "_libs_browser_tombstone": "libs:browser MOVED to ea_cloud-browser (constellation APK). Removed from app.depends_on and from this module list 2026-07. The Tools tile target is now extapp:cloud-browser. launchUri http/https now sends ACTION_VIEW to com.diegonmarcos.cloudbrowser instead of instantiating BrowserHostFragment.",
     "libs:fin": {
       "type": "library",
       "depends_on": [
@@ -1077,11 +1061,11 @@
             "title": "Tools Primary",
             "tiles": [
               {
-                "_doc": "Browser uses ic_world (globe) so it's visually distinct from the Tabs tile (which keeps ic_mode_apps). target=page:browser/all lands the user directly on BrowserHostFragment's GRID instead of the section's page menu.",
+                "_doc": "Cloud-Browser — the dedicated WebView browser app (ea_cloud-browser). libs:browser (BrowserHostFragment + BrowserTabPrefs) was MOVED out of the SuperApp into Cloud-Browser, so this tile no longer routes to an in-app section. target=extapp:cloud-browser → MainActivity.launchExternalApp opens com.diegonmarcos.cloudbrowser if installed, else downloads + installs ui.external_apps[id=cloud-browser].install_apk_url. Browser also handles http/https VIEW intents so other apps can open links in it. icon ic_world (globe) stays — visually distinct from the App Tabs tile (ic_mode_apps).",
                 "id": "browser",
                 "label": "Browser",
                 "icon": "ic_world",
-                "target": "page:browser/all"
+                "target": "extapp:cloud-browser"
               },
               {
                 "_doc": "App Tabs — surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs→Browser rename). target=page:apptabs/grid so a tap goes STRAIGHT to AppTabsFragment; without this the section's single 'grid' page would still get wrapped in a page-menu intermediate.",
@@ -1091,11 +1075,11 @@
                 "target": "page:apptabs/grid"
               },
               {
-                "_doc": "In-app card-stack wallet (WalletFragment / Compose). page:wallet/cards routes through openSectionPage → SectionPages.factoryFor → WalletFragment. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
+                "_doc": "Cloud-Wallet — the dedicated cards/passes/tickets app (ea_cloud-wallet). libs:wallet (Compose deck) was MOVED out of the SuperApp into Cloud-Wallet, so this tile no longer routes to an in-app section. target=extapp:cloud-wallet → MainActivity.launchExternalApp opens com.diegonmarcos.cloudwallet if installed, else downloads + installs ui.external_apps[id=cloud-wallet].install_apk_url. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
                 "id": "wallet",
                 "label": "Wallet",
                 "icon": "ic_wallet",
-                "target": "page:wallet/cards"
+                "target": "extapp:cloud-wallet"
               },
               {
                 "_doc": "Navigation — hands off to the dedicated Cloud-Nav app (ea_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav → MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
@@ -1105,10 +1089,11 @@
                 "target": "extapp:cloud-nav"
               },
               {
+                "_doc": "Cloud-Vault — the dedicated Vaultwarden client app (ea_cloud-vault). libs:vault (KeePassDX stub) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). target=extapp:cloud-vault → MainActivity.launchExternalApp opens com.diegonmarcos.cloudvault if installed, else downloads + installs ui.external_apps[id=cloud-vault].install_apk_url.",
                 "id": "vault",
                 "label": "Vault",
                 "icon": "ic_vault",
-                "target": "section:vault"
+                "target": "extapp:cloud-vault"
               }
             ]
           },
@@ -1736,10 +1721,10 @@
         ]
       },
       {
+        "_doc": "Vault — MIGRATED to Cloud-Vault (ea_cloud-vault, com.diegonmarcos.cloudvault). libs:vault (KeePassDX stub, never shipped) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). The home tile target is now extapp:cloud-vault. Section entry kept as a tombstone; module removed + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "vault",
         "label": "Vault",
         "icon": "ic_vault",
-        "module": "libs:vault",
         "supports_accounts": false,
         "bottom_nav": false,
         "drawer_default_children": [
@@ -2011,7 +1996,7 @@
         ]
       },
       {
-        "_doc": "In-app Wallet — first Jetpack Compose surface. Renders cards in a stack-overlap deck (Apple Wallet-style). Data layer = WalletStore in libs:core; SharedPreferences-backed; seeded with mock cards on first launch. Single page 'cards' so the tile target page:wallet/cards routes through the standard openSectionPage → SectionPages factory dispatcher (which knows about WalletFragment) instead of the bare-section placeholder.",
+        "_doc": "Wallet — MIGRATED to Cloud-Wallet (ea_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Suite/Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "wallet",
         "label": "Wallet",
         "icon": "ic_wallet",
@@ -4820,6 +4805,33 @@
         "hub_package": "com.diegonmarcos.cloudnav",
         "install_package": "com.diegonmarcos.cloudnav",
         "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Cloud-Wallet — standalone cards/passes/tickets app (ea_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Suite/Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors ea_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
+        "id": "cloud-wallet",
+        "label": "Cloud-Wallet",
+        "hub_package": "com.diegonmarcos.cloudwallet",
+        "install_package": "com.diegonmarcos.cloudwallet",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Wallet.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Cloud-Browser — standalone WebView browser app (ea_cloud-browser). libs:browser (BrowserHostFragment + multi-tab BrowserTabPrefs) was MOVED out of the SuperApp into this standalone APK; the Tools 'Browser' tile (target extapp:cloud-browser) opens it if installed, else downloads + installs install_apk_url. Also handles http/https VIEW intents (declared in its manifest) so any app can open links in it. install_apk_url mirrors ea_cloud-browser/build.json::release.gh_release (asset Cloud-Browser.apk, published by ship-cloud-browser.yml). Signs with the shared constellation key.",
+        "id": "cloud-browser",
+        "label": "Cloud-Browser",
+        "hub_package": "com.diegonmarcos.cloudbrowser",
+        "install_package": "com.diegonmarcos.cloudbrowser",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Browser.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Cloud-Vault — standalone Vaultwarden client app (ea_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Suite/Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors ea_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
+        "id": "cloud-vault",
+        "label": "Cloud-Vault",
+        "hub_package": "com.diegonmarcos.cloudvault",
+        "install_package": "com.diegonmarcos.cloudvault",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Vault.apk",
         "forks": {}
       }
     ],

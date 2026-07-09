@@ -23,6 +23,13 @@
          apps" (Configs/About → Permissions → Auto-update). Falls back to a
          prompt when the grant is absent. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- THE permission that makes USER_ACTION_NOT_REQUIRED actually silent on
+         Android 12+ (API 31). Without it the platform IGNORES the no-user-action
+         flag and forces the confirm dialog every time — the "Android warnings"
+         seen on auto-update. Normal permission, auto-granted at install. Silent
+         still requires this app to be the installer-of-record of the target
+         (it becomes so the first time it installs/updates that app). -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Floating Top Nav Bar overlay (FloatingNavService). SYSTEM_ALERT_WINDOW
          ("Display over other apps") is a Special-access perm — NOT runtime-
          grantable; the user toggles it in Settings → Special access → Display

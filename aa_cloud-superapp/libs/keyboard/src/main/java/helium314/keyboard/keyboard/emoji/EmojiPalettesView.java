@@ -235,8 +235,19 @@ public final class EmojiPalettesView extends LinearLayout
         // The main keyboard expands to the entire this {@link KeyboardView}.
         final int width = ResourceUtils.getKeyboardWidth(getContext(), Settings.getValues())
                 + getPaddingLeft() + getPaddingRight();
-        final int height = ResourceUtils.getSecondaryKeyboardHeight(res, Settings.getValues())
+        int height = ResourceUtils.getSecondaryKeyboardHeight(res, Settings.getValues())
                 + getPaddingTop() + getPaddingBottom();
+        // SuperApp (patch 0008): the media type-tab row (patch 0007) stacks
+        // ABOVE the emoji list, but stock onMeasure budgets only the keyboard
+        // height — so the bottom_row_keyboard (ABC / space / delete) gets pushed
+        // off-screen whenever the Emoji/Sticker/GIF tabs are shown. Add the
+        // row's own height when it's visible so the full palette fits.
+        if (mTypeTabRow != null && mTypeTabRow.getVisibility() == VISIBLE) {
+            mTypeTabRow.measure(
+                    MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            height += mTypeTabRow.getMeasuredHeight();
+        }
         mEmojiCategoryPageIndicatorView.mWidth = width;
         setMeasuredDimension(width, height);
     }

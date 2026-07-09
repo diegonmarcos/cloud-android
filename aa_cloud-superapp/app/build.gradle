@@ -578,12 +578,11 @@ android {
         // that runs `dumpsys batterystats` in shell context for exact
         // per-app energy attribution.
         aidl = true
-        // Jetpack Compose is enabled but used SURGICALLY — only the
-        // Wallet surface (WalletFragment hosting a ComposeView) right
-        // now. Every other fragment remains programmatic-View based.
-        // Adopt per-fragment as new surfaces benefit from declarative
-        // recomposition (animation-heavy, dynamic theming).
-        compose = true
+        // Jetpack Compose was used for libs:wallet (now moved to
+        // ea_cloud-wallet — standalone constellation APK). No remaining
+        // compose surfaces in this module; disabled so the Compose
+        // compiler plugin is not invoked unnecessarily.
+        compose = false
     }
 
     // Stable signing — required for the in-app updater to install update APKs.
@@ -663,9 +662,9 @@ dependencies {
     // matches libs/keyboard/build.gradle.
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation project(':libs:ops')
-    implementation project(':libs:vault')
+    // libs:vault MOVED to ea_cloud-vault (standalone constellation APK hosting vault.diegonmarcos.com).
     implementation project(':libs:chat')
-    implementation project(':libs:wallet')
+    // libs:wallet MOVED to ea_cloud-wallet (standalone constellation APK).
     implementation project(':libs:health')
     implementation project(':libs:fin')
     implementation project(':libs:kde-connect')
@@ -696,11 +695,8 @@ dependencies {
     // jobs under the same tag set without touching the orchestrator.
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
 
-    // libs:browser — the in-app WebView host (was app/.../tabs/ until
-    // the rename to Browser to free 'Tabs' for the App Tabs feature).
-    // app/'s SectionPages dispatcher + MainActivity.launchUri import
-    // BrowserHostFragment from this module.
-    implementation project(':libs:browser')
+    // libs:browser MOVED to ea_cloud-browser (constellation APK).
+    // launchUri http/https now fires ACTION_VIEW → com.diegonmarcos.cloudbrowser.
 
     // libs:apptabs — the App Tabs (last-6 LRU shelf) feature.
     // MainActivity implements AppTabsHost (defined in libs:apptabs)
@@ -728,20 +724,8 @@ dependencies {
     implementation 'dev.rikka.shizuku:api:13.1.5'
     implementation 'dev.rikka.shizuku:provider:13.1.5'
 
-    // ── Jetpack Compose (surgical adoption — WalletFragment only). ──
-    // BOM pin keeps every Compose module on a compatible release; only
-    // the artifacts we actually need are pulled in to keep the APK
-    // delta minimal.
-    implementation platform('androidx.compose:compose-bom:2025.11.01')
-    implementation 'androidx.compose.ui:ui'
-    implementation 'androidx.compose.foundation:foundation'
-    implementation 'androidx.compose.material3:material3'
-    implementation 'androidx.compose.animation:animation'
-    implementation 'androidx.compose.runtime:runtime'
-    // activity-compose provides rememberLauncherForActivityResult — the
-    // Wallet add-card sheet uses it for the .vcf / .pkpass / .pass file
-    // picker (ActivityResultContracts.GetContent).
-    implementation 'androidx.activity:activity-compose:1.9.0'
+    // Compose BOM removed — libs:wallet (the only compose surface) was
+    // moved to ea_cloud-wallet standalone APK (see compose = false above).
 
     // ── Maps / Tracker stack lifted OUT to the ea_cloud-nav app ──
     // libs:maps (MapLibre Native + tracker + timeline + MyTrips) was moved

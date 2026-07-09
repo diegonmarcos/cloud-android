@@ -14,7 +14,7 @@ import com.diegonmarcos.superapp.chat.ChatPages
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.ops.OpsPages
 import com.diegonmarcos.superapp.fin.MyFinDashboardFragment
-import com.diegonmarcos.superapp.wallet.WalletFragment
+// libs:wallet MOVED to ea_cloud-wallet (constellation APK). No WalletFragment here.
 
 /**
  * Per-section page registry — now driven by [Sections] (which mirrors
@@ -51,13 +51,12 @@ object SectionPages {
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
         sectionId == "config" && pageId == "kde"       -> com.diegonmarcos.superapp.kdeconnect.KdeConnectFragment.newInstance()
         sectionId == "myfin"   && pageId == "dashboard" -> MyFinDashboardFragment.newInstance()
-        sectionId == "wallet" && pageId == "cards"     -> WalletFragment.newInstance()
+        // "wallet" section is dead — tile target extapp:cloud-wallet bypasses openSectionPage.
         sectionId == "health"                           -> HealthFragment.newInstance(pageId)
         sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()
         sectionId == "config" && (pageId == "about" || pageId == "dev") ->
             com.diegonmarcos.superapp.devcontrol.DevControlFragment.newInstance()
-        sectionId == "browser"   && pageId == "all"        ->
-            com.diegonmarcos.superapp.browser.BrowserHostFragment.newInstance()
+        // "browser" section is dead — tile target extapp:cloud-browser bypasses openSectionPage.
         sectionId == "apptabs"                              ->
             com.diegonmarcos.superapp.apptabs.AppTabsFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)

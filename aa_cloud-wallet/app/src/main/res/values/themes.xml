@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Forced LIGHT (not DayNight) — Cloud Wallet is light-mode only so the
+         map (light OSM raster) and the chrome (bars / nav / timeline) never
+         disagree, regardless of the system dark-mode setting. -->
+    <style name="Theme.CloudWallet" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/nav_primary</item>
+        <item name="colorOnPrimary">@color/nav_on_primary</item>
+        <item name="colorPrimaryContainer">@color/nav_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/nav_on_primary_container</item>
+        <item name="colorSecondary">@color/nav_secondary</item>
+        <item name="colorSecondaryContainer">@color/nav_secondary_container</item>
+
+        <item name="android:statusBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
+        <item name="android:navigationBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds" tools:targetApi="lollipop">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+</resources>
