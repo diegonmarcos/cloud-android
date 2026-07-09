@@ -13,6 +13,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.gms.location.LocationServices
@@ -155,7 +156,7 @@ class MapsMapFragment : Fragment() {
                 size = FloatingActionButton.SIZE_MINI
                 layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
                     .apply { val m = dp(16); setMargins(m, m, m, m + dp(200)) }
-                setOnClickListener { cycleStyle() }
+                setOnClickListener { showStyleMenu() }
             }
             // Reset-to-north (between switcher and locate-me).
             val northFab = FloatingActionButton(ctx).apply {
@@ -257,10 +258,27 @@ class MapsMapFragment : Fragment() {
     }
 
     // ── style switching ──────────────────────────────────────────────
-    private fun cycleStyle() {
-        styleKey = MapStyles.next(styleKey)
-        applyStyle(styleKey, firstLoad = false)
-        toast("Map: ${MapStyles.get(styleKey).label}")
+    /** Tap the map-style FAB → a picker of every [MapStyles.order] entry
+     *  (label shown, current one pre-selected) — jump straight to one instead
+     *  of blindly cycling through them one at a time. */
+    private fun showStyleMenu() {
+        val ctx = context ?: return
+        val keys = MapStyles.order
+        val labels = keys.map { MapStyles.get(it).label }.toTypedArray()
+        val current = keys.indexOf(styleKey).let { if (it < 0) 0 else it }
+        AlertDialog.Builder(ctx)
+            .setTitle("Map style")
+            .setSingleChoiceItems(labels, current) { dialog, which ->
+                dialog.dismiss()
+                val key = keys[which]
+                if (key != styleKey) {
+                    styleKey = key
+                    applyStyle(key, firstLoad = false)
+                    toast("Map: ${MapStyles.get(key).label}")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /**
