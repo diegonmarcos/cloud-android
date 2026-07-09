@@ -20,6 +20,11 @@ object MapStyles {
         val background: String,
         val maxzoom: Int,
         val glyphs: String,
+        /** Non-null → a vector GL style ([VectorStyleLoader] fetches + localizes it);
+         *  raster fields above are unused for this style. */
+        val vectorStyleUrl: String? = null,
+        /** Preferred label tag for vector styles, e.g. "name:en". */
+        val labelFieldPref: String = "name:en",
     )
 
     /** Glyph (font PBF) endpoint for SymbolLayer text — data-driven, one for all
@@ -51,6 +56,8 @@ object MapStyles {
             background = o.optString("background", "#e8eef4"),
             maxzoom = o.optInt("maxzoom", 19),
             glyphs = glyphs,
+            vectorStyleUrl = o.optString("vector_style_url", "").ifBlank { null },
+            labelFieldPref = o.optString("label_field_pref", "name:en"),
         )
     }
 

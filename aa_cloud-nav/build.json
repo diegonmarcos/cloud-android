@@ -161,9 +161,9 @@
       { "tag": "outdoor_seating","alt": [],                             "label": "Outdoor seat.", "emoji": "🪑", "kind": "text" },
       { "tag": "internet_access","alt": [ "wifi" ],                     "label": "Wi-Fi",         "emoji": "📶", "kind": "text" }
     ],
-    "_doc_map_styles": "Raster basemaps. `order` = the cycle the in-map Map-switcher FAB (under locate-me) steps through. light = OSM standard; dark = CARTO Dark Matter (also Navigation's night view); satellite = Esri World Imagery. background paints behind a tile gap. Consumed by MapsMapFragment (baked UI_MAP_STYLES_B64) — no hardcoded tile URLs in Kotlin.",
+    "_doc_map_styles": "Basemaps. `order` = the cycle the in-map Map-switcher FAB (under locate-me) steps through. light/dark/satellite are raster (tiles/attribution/background/maxzoom consumed by MapsMapFragment's inline raster style JSON — no hardcoded tile URLs in Kotlin). vector_en is a real vector-tile GL style (vector_style_url) fetched + localized at runtime by VectorStyleLoader, which rewrites every name-label layer to prefer label_field_pref (falls back to name:latin, then name) — so city/country/street labels render in English everywhere instead of each place's local script. Uses OpenFreeMap (openfreemap.org) — free, no API key, no rate limit.",
     "map_styles": {
-      "order": [ "light", "dark", "satellite" ],
+      "order": [ "light", "dark", "satellite", "vector_en" ],
       "light": {
         "label": "Standard",
         "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -184,6 +184,13 @@
         "attribution": "© Esri, Maxar, Earthstar Geographics",
         "background": "#0a0e14",
         "maxzoom": 19
+      },
+      "vector_en": {
+        "label": "Vector (EN)",
+        "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
+        "background": "#e8eef4",
+        "vector_style_url": "https://tiles.openfreemap.org/styles/liberty",
+        "label_field_pref": "name_en"
       }
     },
     "maps_active": {

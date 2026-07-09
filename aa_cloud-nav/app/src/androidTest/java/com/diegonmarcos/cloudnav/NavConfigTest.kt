@@ -45,9 +45,41 @@ class NavConfigTest {
     }
 
     @Test fun map_switcher_cycle_decodes() {
-        assertEquals(listOf("light", "dark", "satellite"), MapStyles.order)
+        assertEquals(listOf("light", "dark", "satellite", "vector_en"), MapStyles.order)
         assertEquals("dark", MapStyles.next("light"))
-        assertEquals("light", MapStyles.next("satellite"))  // wraps
+        assertEquals("light", MapStyles.next("vector_en"))  // wraps
+    }
+
+    @Test fun vector_style_is_data_driven_and_localized_to_english() {
+        val v = MapStyles.get("vector_en")
+        assertTrue("vector style carries a real GL style URL", v.vectorStyleUrl?.startsWith("https://") == true)
+        assertEquals("name_en", v.labelFieldPref)
+        // Raster styles must NOT declare a vector URL (branch selector in MapsMapFragment.applyStyle).
+        assertTrue(MapStyles.get("light").vectorStyleUrl == null)
+        assertTrue(MapStyles.get("dark").vectorStyleUrl == null)
+        assertTrue(MapStyles.get("satellite").vectorStyleUrl == null)
+    }
+
+    @Test fun vector_style_localizer_prefers_english_and_skips_ref_shields() {
+        // Fixture mirrors OpenFreeMap "liberty"'s actual shape (verified live):
+        // name labels are case/coalesce expressions on name/name:latin/name:nonlatin/name_en;
+        // road shields render `ref` and must NOT be touched.
+        val fixture = """
+            { "layers": [
+                { "id": "label_city", "type": "symbol", "layout": { "text-field":
+                    ["case", ["has","name:nonlatin"], ["concat", ["get","name:latin"], "\n", ["get","name:nonlatin"]],
+                     ["coalesce", ["get","name_en"], ["get","name"]]] } },
+                { "id": "highway-shield-non-us", "type": "symbol", "layout": { "text-field": ["to-string", ["get","ref"]] } }
+            ] }
+        """.trimIndent()
+        val out = org.json.JSONObject(
+            com.diegonmarcos.cloudnav.maps.VectorStyleLoader.localize(fixture, "name_en"),
+        )
+        val cityField = out.getJSONArray("layers").getJSONObject(0).getJSONObject("layout").get("text-field").toString()
+        assertTrue("rewritten to a name_en-first coalesce", cityField.contains("name_en") && cityField.startsWith("[\"coalesce\""))
+        assertTrue("no longer branches on nonlatin script", !cityField.contains("nonlatin"))
+        val shieldField = out.getJSONArray("layers").getJSONObject(1).getJSONObject("layout").get("text-field").toString()
+        assertEquals("ref shield untouched", """["to-string",["get","ref"]]""", shieldField)
     }
 
     @Test fun search_cache_is_configured() {

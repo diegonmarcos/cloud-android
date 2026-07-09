@@ -256,62 +256,84 @@ class MapsMapFragment : Fragment() {
         toast("Map: ${MapStyles.get(styleKey).label}")
     }
 
-    /** (Re)load the raster style + re-add our overlay sources/layers. */
+    /**
+     * (Re)load the basemap + re-add our overlay sources/layers. Raster styles
+     * (light/dark/satellite) build inline JSON synchronously. Vector styles
+     * (e.g. "Vector (EN)") fetch a remote GL style off-thread and localize its
+     * label layers to English ([VectorStyleLoader]) before applying — a real
+     * network round-trip, so [firstLoad]'s onMapReady/auto-locate only fires
+     * once that completes.
+     */
     private fun applyStyle(key: String, firstLoad: Boolean) {
         val m = map ?: return
         styleReady = false
-        m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(MapStyles.get(key)))) { style ->
-            // Route line FIRST so pins/me render on top of it.
-            style.addSource(GeoJsonSource(SRC_ROUTE, routeFeatureCollection()))
-            style.addLayer(
-                LineLayer(LYR_ROUTE, SRC_ROUTE).withProperties(
-                    PropertyFactory.lineColor(COLOR_ROUTE),
-                    PropertyFactory.lineWidth(5f),
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                )
+        val s = MapStyles.get(key)
+        if (s.vectorStyleUrl != null) {
+            val ctx = context ?: return
+            Thread {
+                val json = VectorStyleLoader.loadLocalized(s.vectorStyleUrl, s.labelFieldPref)
+                ui {
+                    if (json == null) { toast("Vector style unavailable — offline?"); return@ui }
+                    map?.setStyle(Style.Builder().fromJson(json)) { style -> onStyleLoaded(style, m, firstLoad) }
+                }
+            }.start()
+        } else {
+            m.setStyle(Style.Builder().fromJson(MapStyles.styleJson(s))) { style -> onStyleLoaded(style, m, firstLoad) }
+        }
+    }
+
+    /** Re-add pins/route/me overlays after any style (re)load, raster or vector. */
+    private fun onStyleLoaded(style: Style, m: MapLibreMap, firstLoad: Boolean) {
+        // Route line FIRST so pins/me render on top of it.
+        style.addSource(GeoJsonSource(SRC_ROUTE, routeFeatureCollection()))
+        style.addLayer(
+            LineLayer(LYR_ROUTE, SRC_ROUTE).withProperties(
+                PropertyFactory.lineColor(COLOR_ROUTE),
+                PropertyFactory.lineWidth(5f),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             )
-            style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
-            style.addLayer(
-                CircleLayer(LYR_PINS, SRC_PINS).withProperties(
-                    PropertyFactory.circleColor(Expression.get("color")),
-                    PropertyFactory.circleRadius(8f),
-                    PropertyFactory.circleStrokeColor("#FFFFFF"),
-                    PropertyFactory.circleStrokeWidth(2.5f),
-                )
+        )
+        style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
+        style.addLayer(
+            CircleLayer(LYR_PINS, SRC_PINS).withProperties(
+                PropertyFactory.circleColor(Expression.get("color")),
+                PropertyFactory.circleRadius(8f),
+                PropertyFactory.circleStrokeColor("#FFFFFF"),
+                PropertyFactory.circleStrokeWidth(2.5f),
             )
-            // Always-on title label above each pin (the "balloon" text).
-            style.addLayer(
-                SymbolLayer(LYR_PIN_LABELS, SRC_PINS).withProperties(
-                    PropertyFactory.textField(Expression.get("title")),
-                    PropertyFactory.textSize(12f),
-                    PropertyFactory.textColor("#FFFFFF"),
-                    PropertyFactory.textHaloColor("#101418"),
-                    PropertyFactory.textHaloWidth(1.6f),
-                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
-                    PropertyFactory.textOffset(arrayOf(0f, 0.9f)),
-                    PropertyFactory.textAllowOverlap(false),
-                    PropertyFactory.textOptional(true),
-                )
+        )
+        // Always-on title label above each pin (the "balloon" text).
+        style.addLayer(
+            SymbolLayer(LYR_PIN_LABELS, SRC_PINS).withProperties(
+                PropertyFactory.textField(Expression.get("title")),
+                PropertyFactory.textSize(12f),
+                PropertyFactory.textColor("#FFFFFF"),
+                PropertyFactory.textHaloColor("#101418"),
+                PropertyFactory.textHaloWidth(1.6f),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PropertyFactory.textOffset(arrayOf(0f, 0.9f)),
+                PropertyFactory.textAllowOverlap(false),
+                PropertyFactory.textOptional(true),
             )
-            style.addSource(GeoJsonSource(SRC_ME, featureCollection(emptyList())))
-            style.addLayer(
-                CircleLayer(LYR_ME, SRC_ME).withProperties(
-                    PropertyFactory.circleColor(COLOR_ME),
-                    PropertyFactory.circleRadius(8f),
-                    PropertyFactory.circleStrokeColor("#FFFFFF"),
-                    PropertyFactory.circleStrokeWidth(3f),
-                )
+        )
+        style.addSource(GeoJsonSource(SRC_ME, featureCollection(emptyList())))
+        style.addLayer(
+            CircleLayer(LYR_ME, SRC_ME).withProperties(
+                PropertyFactory.circleColor(COLOR_ME),
+                PropertyFactory.circleRadius(8f),
+                PropertyFactory.circleStrokeColor("#FFFFFF"),
+                PropertyFactory.circleStrokeWidth(3f),
             )
-            styleReady = true
-            pushMe()
-            pushRoute()
-            if (firstLoad) {
-                onMapReady?.invoke(m)
-                // Auto-locate once on open (Routes) → drops the my-location dot
-                // and fires onUserLocation so the route can auto-render.
-                if (autoLocate && !autoLocateDone) { autoLocateDone = true; recenterOnUser() }
-            }
+        )
+        styleReady = true
+        pushMe()
+        pushRoute()
+        if (firstLoad) {
+            onMapReady?.invoke(m)
+            // Auto-locate once on open (Routes) → drops the my-location dot
+            // and fires onUserLocation so the route can auto-render.
+            if (autoLocate && !autoLocateDone) { autoLocateDone = true; recenterOnUser() }
         }
     }
 
@@ -381,6 +403,7 @@ class MapsMapFragment : Fragment() {
     }
 
     private fun toast(msg: String) { context?.let { Toast.makeText(it, msg, Toast.LENGTH_SHORT).show() } }
+    private fun ui(block: () -> Unit) { if (!isAdded) return; activity?.runOnUiThread { if (isAdded) block() } }
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     override fun onStart()   { super.onStart();   mapView?.onStart() }
