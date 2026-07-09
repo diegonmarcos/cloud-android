@@ -225,15 +225,15 @@ class MapsConfigFragment : Fragment() {
         // Tester seed — a full demo day (1987-07-18, Rio) so Timeline/Daily/
         // Stops/day-map render without a live tracker. Idempotent.
         root.addView(spacer(ctx, dp(ctx, 12)))
-        root.addView(caption(ctx, "No tracker history yet? Load a demo 3-day trip (ending today) to explore the Timeline, Daily, Stops and day-map views — includes a place visited twice."))
+        root.addView(caption(ctx, "No tracker history yet? Load a rich demo trip (1987-1992 — deliberately historical so it never conflicts with your real tracked data) to explore Timeline, Daily, Stops, Explored and MyTrips — 8 days across 4 countries, with two cities revisited."))
         root.addView(android.widget.Button(ctx).apply {
-            text = "Load demo data (last few days)"
+            text = "Load demo data (1987-1992)"
             setOnClickListener {
                 MapsHaptics.tap(it)
                 val n = MapsDemo.seed(ctx)
                 Toast.makeText(
                     ctx,
-                    if (n > 0) "Loaded $n demo stops — open Timeline" else "Demo day already loaded",
+                    if (n > 0) "Loaded $n demo stops (1987-1992) — open Timeline" else "Demo trip already loaded",
                     Toast.LENGTH_LONG,
                 ).show()
                 refreshTrackerSection()

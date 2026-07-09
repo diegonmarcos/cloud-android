@@ -13,7 +13,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * MyTrips → Stats page. 5-year rollups grouped by year. Each year row
+ * MyTrips → Stats page. All-time rollups grouped by year. Each year row
  * shows: # Stops, # Cities, # Countries, top 3 cities. Cheap to
  * compute from the existing Stop table — no extra DB schema.
  *
@@ -32,10 +32,11 @@ class MytripsStatsFragment : Fragment() {
         scroll.addView(root)
 
         val now = System.currentTimeMillis()
-        val from5y = now - 5L * 365L * 24L * 3600L * 1000L
-        val stops = MapsDb.get(ctx).stopsBetween(from5y, now)
+        // All-time — see MapsDailyFragment's comment: a "last N years" bound
+        // would hide the deliberately historical (1987-1992) demo dataset.
+        val stops = MapsDb.get(ctx).stopsBetween(0L, now)
 
-        root.addView(header(ctx, "Stats — last 5 years"))
+        root.addView(header(ctx, "Stats — all time"))
 
         if (stops.isEmpty()) {
             root.addView(caption(ctx, "No Stops collected yet."))

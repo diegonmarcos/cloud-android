@@ -15,21 +15,17 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Timeline → "Explored" tab — every place the user has ever been, pinned on
- * one map (all-time, no window — the whole point is "everyplace I've been").
- * Places visited more than once collapse to a single pin; tapping it opens a
- * sheet listing every visit (date + how long).
- *
- * Grouping key is (place name if resolved, else "lat,lon" rounded to ~100m) +
- * city — [ExploredPlace.key] — so "Home — Copacabana" visited on three
- * different days is one pin with a 3-entry visit history, while two
- * different unresolved stops a few blocks apart in the same city stay
- * separate pins instead of merging.
+ * Timeline → "Explored" tab — every CITY the user has ever been, one pin
+ * each (all-time, no window). Sourced from [MapsDailyFragment.computeDailyLocations]
+ * — the same one-representative-place-per-calendar-day picks Daily shows —
+ * grouped by city, NOT raw per-Stop data, so a city visited on many days
+ * (lots of Stops) still collapses to one clean pin instead of polluting the
+ * map. Tapping a pin lists every day the user was in that city.
  */
 class MapsExploredFragment : Fragment() {
 
     private val mapFragment = MapsMapFragment.newInstance(fab = true)
-    private var places: List<ExploredPlace> = emptyList()
+    private var cities: List<ExploredCity> = emptyList()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -38,10 +34,11 @@ class MapsExploredFragment : Fragment() {
         root.addView(mapHost, FrameLayout.LayoutParams(MATCH, MATCH))
 
         val stops = MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis())
-        places = groupByPlace(stops)
-        val pins = places.mapIndexed { i, p -> MapsMapFragment.Pin(p.lat, p.lon, MapsMapFragment.COLOR_PLACE, title = p.title, id = i.toString()) }
+        val daily = MapsDailyFragment.computeDailyLocations(stops)
+        cities = groupByCity(daily)
+        val pins = cities.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, MapsMapFragment.COLOR_PLACE, title = c.city, id = i.toString()) }
 
-        mapFragment.onPinClick = { id -> places.getOrNull(id.toIntOrNull() ?: -1)?.let { showVisitHistory(it) } }
+        mapFragment.onPinClick = { id -> cities.getOrNull(id.toIntOrNull() ?: -1)?.let { showVisitHistory(it) } }
         mapFragment.onMapReady = { _ -> mapFragment.setPins(pins); if (pins.isNotEmpty()) mapFragment.fitTo(pins) }
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
@@ -49,7 +46,7 @@ class MapsExploredFragment : Fragment() {
         return root
     }
 
-    private fun showVisitHistory(place: ExploredPlace) {
+    private fun showVisitHistory(city: ExploredCity) {
         val ctx = context ?: return
         val dialog = BottomSheetDialog(ctx)
         val d = resources.displayMetrics.density
@@ -59,19 +56,18 @@ class MapsExploredFragment : Fragment() {
             setPadding(dp(20), dp(16), dp(20), dp(24))
         }
         col.addView(TextView(ctx).apply {
-            text = place.title; textSize = 20f
+            text = city.city; textSize = 20f
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         col.addView(TextView(ctx).apply {
-            text = "${place.visits.size} visit${if (place.visits.size == 1) "" else "s"}"
+            text = "${city.visits.size} visit${if (city.visits.size == 1) "" else "s"}"
             textSize = 13f; setTextColor(0xFF5C5F5C.toInt()); setPadding(0, dp(2), 0, dp(10))
         })
-        val fmt = SimpleDateFormat("EEE, dd MMM yyyy · HH:mm", Locale.US)
+        val fmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
         val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        place.visits.sortedByDescending { it.startedAt }.forEach { v ->
+        city.visits.sortedByDescending { it.dayMs }.forEach { v ->
             body.addView(TextView(ctx).apply {
-                val mins = ((v.endedAt ?: v.startedAt) - v.startedAt) / 60_000L
-                text = fmt.format(Date(v.startedAt)) + if (mins > 0) "  ·  ${mins} min" else ""
+                text = fmt.format(Date(v.dayMs)) + (v.placeName?.let { "  ·  $it" } ?: "")
                 textSize = 14f; setPadding(0, dp(6), 0, dp(6))
             })
         }
@@ -80,36 +76,28 @@ class MapsExploredFragment : Fragment() {
         dialog.show()
     }
 
-    /** One visit to a resolved-or-not place. */
-    data class Visit(val startedAt: Long, val endedAt: Long?)
+    /** One day the user was in a given [ExploredCity]. */
+    data class CityVisit(val dayMs: Long, val placeName: String?)
 
-    /** A deduplicated pin: every [Visit] the user ever made to this place. */
-    data class ExploredPlace(val key: String, val title: String, val lat: Double, val lon: Double, val visits: List<Visit>)
+    /** A deduplicated city pin: every day-visit ([CityVisit]) to it. */
+    data class ExploredCity(val city: String, val lat: Double, val lon: Double, val visits: List<CityVisit>)
 
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 
-        /** Pure (no DB/Android) grouping — exposed for testing. Dedupe key:
-         *  the resolved place name when known (so "Home — Copacabana" merges
-         *  across every visit regardless of GPS jitter), else the rounded
-         *  lat/lon (~3 decimals, ~100m) so nearby-but-distinct unresolved
-         *  stops don't wrongly merge. City is folded into the key too, so a
-         *  same-named place in two different cities never collapses together. */
-        fun groupByPlace(stops: List<MapsDb.RichStop>): List<ExploredPlace> {
-            return stops.groupBy { s ->
-                val name = s.placeName?.trim()?.takeIf { it.isNotEmpty() }
-                val locator = name ?: "%.3f,%.3f".format(s.lat, s.lon)
-                "${s.city.orEmpty()}|$locator"
-            }.map { (key, group) ->
-                val first = group.first()
-                val title = first.placeName?.takeIf { it.isNotBlank() }
-                    ?: listOfNotNull(first.neighborhood, first.city).joinToString(", ").ifBlank { "Unnamed place" }
-                ExploredPlace(
-                    key = key, title = title,
-                    lat = group.map { it.lat }.average(), lon = group.map { it.lon }.average(),
-                    visits = group.map { Visit(it.startedAt, it.endedAt) },
-                )
-            }.sortedByDescending { it.visits.maxOf { v -> v.startedAt } }
+        /** Pure (no DB/Android) grouping — exposed for testing. One pin per
+         *  distinct, non-blank city name; blank/unresolved-city daily entries
+         *  are dropped (nothing meaningful to pin or title). */
+        fun groupByCity(daily: List<MapsDailyFragment.DailyEntry>): List<ExploredCity> {
+            return daily.filter { !it.city.isNullOrBlank() }
+                .groupBy { it.city }
+                .map { (city, entries) ->
+                    ExploredCity(
+                        city = city!!,
+                        lat = entries.map { it.lat }.average(), lon = entries.map { it.lon }.average(),
+                        visits = entries.map { CityVisit(it.dayMs, it.placeName) },
+                    )
+                }.sortedByDescending { it.visits.maxOf { v -> v.dayMs } }
         }
 
         fun newInstance() = MapsExploredFragment()

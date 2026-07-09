@@ -3,28 +3,30 @@ package com.diegonmarcos.cloudnav.maps
 import android.content.Context
 import android.util.Base64
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import org.json.JSONObject
 
 /**
- * Tester seed data — a 3-day trip data-driven from build.json::ui.demo_stops
- * (baked into BuildConfig.UI_DEMO_STOPS_B64). Lets Timeline / Daily / Stops /
- * day-map render real content without a live tracker. Inserted by [seed].
+ * Tester seed data — a rich 5-year historical trip (1987-1992), data-driven
+ * from build.json::ui.demo_stops (baked into BuildConfig.UI_DEMO_STOPS_B64).
+ * Lets Timeline / Daily / Stops / Explored / MyTrips render real content
+ * without a live tracker. Inserted by [seed].
  *
- * Each demo day is expressed as `days_ago` (0 = today), resolved against
- * *today's* UTC midnight at seed time — NOT a fixed historical date. Every
- * screen that reads this data (MapsDailyFragment, MapsStopsFragment,
- * MytripsDashboardFragment, …) queries a window ending at
- * `System.currentTimeMillis()`; a fixed past date drifts out of that window
- * and the "loaded" demo silently never appears anywhere (the bug this fixes).
- * Relative-to-today means it's always inside every such window.
+ * Dates are FIXED (each demo day carries an explicit `date`, e.g.
+ * "1987-07-18") rather than relative to "today" — deliberately historical so
+ * the demo trip can never collide with the user's real tracked data (nobody
+ * has real GPS history from 1987-1992). This only works because every screen
+ * that reads Stops (MapsDailyFragment, MapsStopsFragment, MapsExploredFragment,
+ * MytripsDashboardFragment/StatsFragment) queries ALL-TIME
+ * (`stopsBetween(0L, now)`), not a rolling "last N years" window — a bounded
+ * recent-only query would hide 30+-year-old data just as badly as it
+ * previously hid data anchored the other way (a fixed date landing outside a
+ * "last 5 years" window). Widening those queries to all-time is what makes a
+ * fixed historical demo date safe to use.
  *
- * Idempotent per calendar day (Configs → Tracker → "Load demo data"):
- * re-tapping the same day is a no-op; tapping again on a later day reseeds a
- * fresh window ending then.
+ * Seeded once (idempotent) — the historical range never changes, so there's
+ * no reason to reseed on a later day the way a relative-to-today scheme would.
  */
 object MapsDemo {
 
@@ -34,7 +36,7 @@ object MapsDemo {
         val place: String, val neighborhood: String, val city: String, val country: String,
     )
 
-    data class DemoDay(val daysAgo: Int, val stops: List<DemoStop>)
+    data class DemoDay(val dateIso: String, val stops: List<DemoStop>)
 
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_DEMO_STOPS_B64, Base64.DEFAULT))) }
@@ -59,40 +61,32 @@ object MapsDemo {
                     country = s.optString("country"),
                 )
             }
-            DemoDay(daysAgo = o.optInt("days_ago"), stops = stops)
+            DemoDay(dateIso = o.optString("date"), stops = stops)
         }
     }
 
-    /** UTC midnight of [instantMs] — the anchor every [demoDays] entry's
-     *  `daysAgo` is measured back from. Pure function of the clock, so tests
-     *  can pass a fixed instant instead of depending on the real current time. */
-    fun utcMidnightOf(instantMs: Long): Long {
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        cal.timeInMillis = instantMs
-        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
-
-    private fun dayKey(instantMs: Long): String =
-        SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
-            .format(Date(instantMs))
+    /** UTC midnight epoch of an ISO "yyyy-MM-dd" date string. Pure — no clock
+     *  dependency, since these are fixed historical dates, not "today". */
+    fun utcMidnightOf(dateIso: String): Long =
+        runCatching {
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+                .parse(dateIso)?.time
+        }.getOrNull() ?: 0L
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("maps_demo_prefs", Context.MODE_PRIVATE)
 
-    /** True once [seed] has already run for today (UTC) — the idempotency guard. */
-    fun isSeededToday(ctx: Context): Boolean =
-        prefs(ctx).getString(KEY_SEEDED_DAY, null) == dayKey(utcMidnightOf(System.currentTimeMillis()))
+    /** True once [seed] has already inserted this fixed historical dataset. */
+    fun isSeeded(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_SEEDED, false)
 
-    /** Insert every demo day, anchored to today. Returns the number of stops
-     *  inserted; 0 if already seeded today or no data configured. */
+    /** Insert every demo day at its fixed historical date. Returns the number
+     *  of stops inserted; 0 if already seeded or no data configured. */
     fun seed(ctx: Context): Int {
-        if (demoDays.isEmpty() || isSeededToday(ctx)) return 0
+        if (demoDays.isEmpty() || isSeeded(ctx)) return 0
         val db = MapsDb.get(ctx)
-        val today = utcMidnightOf(System.currentTimeMillis())
         var inserted = 0
         for (day in demoDays) {
-            val dayStart = today - day.daysAgo * DAY_MS
+            val dayStart = utcMidnightOf(day.dateIso)
+            if (dayStart <= 0L) continue
             for (s in day.stops) {
                 val id = db.insertStop(
                     MapsDb.StopRow(
@@ -105,10 +99,9 @@ object MapsDemo {
                 inserted++
             }
         }
-        prefs(ctx).edit().putString(KEY_SEEDED_DAY, dayKey(today)).apply()
+        prefs(ctx).edit().putBoolean(KEY_SEEDED, true).apply()
         return inserted
     }
 
-    private const val DAY_MS = 24L * 3600_000L
-    private const val KEY_SEEDED_DAY = "seeded_day"
+    private const val KEY_SEEDED = "seeded"
 }

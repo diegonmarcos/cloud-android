@@ -272,10 +272,10 @@
       "stops_radius_m": 100,
       "stops_dwell_min": 2
     },
-    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — a 3-day trip ending TODAY (days_ago is relative to the UTC midnight of the moment Load-demo-data is tapped, computed by MapsDemo.seed(); NOT a fixed historical date — every screen (Daily/Stops/MyTrips) queries a window ending at System.currentTimeMillis(), so a fixed past date could fall outside all of them and silently never appear, which was the bug). Includes a deliberate revisit (Home — Copacabana / Rio de Janeiro on two different days) so the 'been here more than once' pin feature has something to show. Each stop's start_min/end_min = minutes from that day's midnight. Idempotent per calendar day (re-tapping the same day is a no-op; a new day reseeds a fresh 3-day window ending then).",
+    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — a VERY rich 5-year historical trip (1987-1992), FIXED dates (not relative to today) so it can NEVER collide with real tracked data (the user has no real GPS history from that era). Every screen that reads Stops (MapsDailyFragment/MapsStopsFragment/MapsExploredFragment/MytripsDashboardFragment/MytripsStatsFragment) queries ALL-TIME (stopsBetween(0L, now)), not a rolling 'last N years' window — a bounded recent window would hide this deliberately old data. 14 days across 4 continents / 7 countries (Brazil, Argentina, Portugal, France, USA, Japan, UK), with FIVE cities each revisited 2-3x (Rio de Janeiro x3, São Paulo x2, Buenos Aires x2, Lisbon x2, Paris x2) — real material for the Explored tab's visit-history feature. Each stop's start_min/end_min = minutes from that day's UTC midnight. Seeded once (idempotent — Configs button is a no-op after the first tap; the historical range never changes).",
     "demo_stops": {
       "days": [
-        { "days_ago": 5, "stops": [
+        { "date": "1987-07-18", "stops": [
           { "start_min": 0,    "end_min": 510,  "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",     "neighborhood": "Copacabana",        "city": "Rio de Janeiro", "country": "Brazil" },
           { "start_min": 540,  "end_min": 600,  "lat": -22.9050, "lon": -43.1791, "place": "Confeitaria Colombo",  "neighborhood": "Centro",            "city": "Rio de Janeiro", "country": "Brazil" },
           { "start_min": 660,  "end_min": 780,  "lat": -22.9869, "lon": -43.2045, "place": "Ipanema Beach",        "neighborhood": "Ipanema",           "city": "Rio de Janeiro", "country": "Brazil" },
@@ -283,14 +283,67 @@
           { "start_min": 960,  "end_min": 1050, "lat": -22.9519, "lon": -43.2105, "place": "Cristo Redentor",      "neighborhood": "Alto da Boa Vista", "city": "Rio de Janeiro", "country": "Brazil" },
           { "start_min": 1260, "end_min": 1410, "lat": -22.9099, "lon": -43.1786, "place": "Rio Scenarium",        "neighborhood": "Lapa",              "city": "Rio de Janeiro", "country": "Brazil" }
         ] },
-        { "days_ago": 3, "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": -23.5629, "lon": -46.6544, "place": "Hotel — Jardins",      "neighborhood": "Jardins", "city": "São Paulo", "country": "Brazil" },
-          { "start_min": 540, "end_min": 600, "lat": -23.5427, "lon": -46.6291, "place": "Mercado Municipal",    "neighborhood": "Centro",  "city": "São Paulo", "country": "Brazil" },
+        { "date": "1987-11-03", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -34.5779, "lon": -58.4116, "place": "Hotel — Palermo",   "neighborhood": "Palermo",     "city": "Buenos Aires", "country": "Argentina" },
+          { "start_min": 540, "end_min": 660, "lat": -34.6011, "lon": -58.3831, "place": "Teatro Colón",      "neighborhood": "San Nicolás", "city": "Buenos Aires", "country": "Argentina" },
+          { "start_min": 720, "end_min": 840, "lat": -34.6091, "lon": -58.3633, "place": "Puerto Madero",     "neighborhood": "Puerto Madero","city": "Buenos Aires", "country": "Argentina" }
+        ] },
+        { "date": "1988-03-10", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -23.5629, "lon": -46.6544, "place": "Hotel — Jardins",      "neighborhood": "Jardins",      "city": "São Paulo", "country": "Brazil" },
+          { "start_min": 540, "end_min": 600, "lat": -23.5427, "lon": -46.6291, "place": "Mercado Municipal",    "neighborhood": "Centro",       "city": "São Paulo", "country": "Brazil" },
           { "start_min": 660, "end_min": 810, "lat": -23.5874, "lon": -46.6576, "place": "Ibirapuera Park",      "neighborhood": "Vila Mariana", "city": "São Paulo", "country": "Brazil" }
         ] },
-        { "days_ago": 1, "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",     "neighborhood": "Copacabana", "city": "Rio de Janeiro", "country": "Brazil" },
-          { "start_min": 600, "end_min": 720, "lat": -22.9490, "lon": -43.1546, "place": "Pão de Açúcar (Sugarloaf)", "neighborhood": "Urca", "city": "Rio de Janeiro", "country": "Brazil" }
+        { "date": "1988-06-20", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": 40.7580, "lon": -73.9855, "place": "Hotel — Midtown",    "neighborhood": "Midtown Manhattan", "city": "New York", "country": "United States" },
+          { "start_min": 540, "end_min": 660, "lat": 40.7829, "lon": -73.9654, "place": "Central Park",       "neighborhood": "Upper Manhattan",   "city": "New York", "country": "United States" },
+          { "start_min": 720, "end_min": 840, "lat": 40.7033, "lon": -74.0170, "place": "Battery Park",       "neighborhood": "Financial District","city": "New York", "country": "United States" }
+        ] },
+        { "date": "1988-11-22", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -34.5875, "lon": -58.3931, "place": "Hotel — Recoleta",       "neighborhood": "Recoleta",   "city": "Buenos Aires", "country": "Argentina" },
+          { "start_min": 540, "end_min": 660, "lat": -34.6037, "lon": -58.3816, "place": "Obelisco de Buenos Aires","neighborhood": "San Nicolás","city": "Buenos Aires", "country": "Argentina" },
+          { "start_min": 720, "end_min": 900, "lat": -34.6345, "lon": -58.3627, "place": "Caminito, La Boca",      "neighborhood": "La Boca",    "city": "Buenos Aires", "country": "Argentina" }
+        ] },
+        { "date": "1989-02-14", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": 35.7148, "lon": 139.7967, "place": "Ryokan — Asakusa",  "neighborhood": "Asakusa", "city": "Tokyo", "country": "Japan" },
+          { "start_min": 540, "end_min": 660, "lat": 35.6595, "lon": 139.7004, "place": "Shibuya Crossing",  "neighborhood": "Shibuya", "city": "Tokyo", "country": "Japan" },
+          { "start_min": 720, "end_min": 840, "lat": 35.6586, "lon": 139.7454, "place": "Tokyo Tower",       "neighborhood": "Minato",  "city": "Tokyo", "country": "Japan" }
+        ] },
+        { "date": "1989-06-05", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",         "neighborhood": "Copacabana", "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 600, "end_min": 720, "lat": -22.9490, "lon": -43.1546, "place": "Pão de Açúcar (Sugarloaf)", "neighborhood": "Urca",       "city": "Rio de Janeiro", "country": "Brazil" }
+        ] },
+        { "date": "1989-09-12", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": 51.5007, "lon": -0.1246, "place": "Hotel — Westminster","neighborhood": "Westminster", "city": "London", "country": "United Kingdom" },
+          { "start_min": 540, "end_min": 660, "lat": 51.5194, "lon": -0.1270, "place": "British Museum",     "neighborhood": "Bloomsbury",  "city": "London", "country": "United Kingdom" },
+          { "start_min": 720, "end_min": 840, "lat": 51.5055, "lon": -0.0754, "place": "Tower Bridge",       "neighborhood": "Southwark",   "city": "London", "country": "United Kingdom" }
+        ] },
+        { "date": "1990-04-14", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -38.7107, "lon": -9.1334, "place": "Pousada — Alfama",   "neighborhood": "Alfama", "city": "Lisbon", "country": "Portugal" },
+          { "start_min": 540, "end_min": 660, "lat": -38.7077, "lon": -9.1365, "place": "Praça do Comércio",  "neighborhood": "Baixa",  "city": "Lisbon", "country": "Portugal" },
+          { "start_min": 720, "end_min": 870, "lat": -38.6916, "lon": -9.2160, "place": "Torre de Belém",     "neighborhood": "Belém",  "city": "Lisbon", "country": "Portugal" }
+        ] },
+        { "date": "1990-09-30", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": 48.8867, "lon": 2.3431, "place": "Hôtel — Montmartre",  "neighborhood": "Montmartre",       "city": "Paris", "country": "France" },
+          { "start_min": 540, "end_min": 660, "lat": 48.8606, "lon": 2.3376, "place": "Musée du Louvre",     "neighborhood": "1er Arrondissement","city": "Paris", "country": "France" },
+          { "start_min": 720, "end_min": 840, "lat": 48.8584, "lon": 2.2945, "place": "Tour Eiffel",         "neighborhood": "7e Arrondissement", "city": "Paris", "country": "France" }
+        ] },
+        { "date": "1991-01-25", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -38.7107, "lon": -9.1334, "place": "Pousada — Alfama",       "neighborhood": "Alfama", "city": "Lisbon", "country": "Portugal" },
+          { "start_min": 540, "end_min": 660, "lat": -38.6979, "lon": -9.2068, "place": "Mosteiro dos Jerónimos", "neighborhood": "Belém",  "city": "Lisbon", "country": "Portugal" }
+        ] },
+        { "date": "1991-05-08", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": -23.5822, "lon": -46.6795, "place": "Hotel — Vila Madalena", "neighborhood": "Vila Madalena", "city": "São Paulo", "country": "Brazil" },
+          { "start_min": 540, "end_min": 660, "lat": -23.5613, "lon": -46.6558, "place": "Avenida Paulista",      "neighborhood": "Bela Vista",    "city": "São Paulo", "country": "Brazil" }
+        ] },
+        { "date": "1991-10-19", "stops": [
+          { "start_min": 0,   "end_min": 480, "lat": 48.8575, "lon": 2.3622, "place": "Hôtel — Le Marais",  "neighborhood": "Le Marais",         "city": "Paris", "country": "France" },
+          { "start_min": 540, "end_min": 660, "lat": 48.8530, "lon": 2.3499, "place": "Notre-Dame",         "neighborhood": "Île de la Cité",    "city": "Paris", "country": "France" },
+          { "start_min": 720, "end_min": 840, "lat": 48.8698, "lon": 2.3079, "place": "Champs-Élysées",     "neighborhood": "8e Arrondissement", "city": "Paris", "country": "France" }
+        ] },
+        { "date": "1992-01-20", "stops": [
+          { "start_min": 0,    "end_min": 480,  "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana", "neighborhood": "Copacabana", "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 600,  "end_min": 720,  "lat": -22.9869, "lon": -43.2045, "place": "Ipanema Beach",     "neighborhood": "Ipanema",    "city": "Rio de Janeiro", "country": "Brazil" },
+          { "start_min": 1260, "end_min": 1350, "lat": -22.9519, "lon": -43.2105, "place": "Cristo Redentor",   "neighborhood": "Alto da Boa Vista", "city": "Rio de Janeiro", "country": "Brazil" }
         ] }
       ]
     },

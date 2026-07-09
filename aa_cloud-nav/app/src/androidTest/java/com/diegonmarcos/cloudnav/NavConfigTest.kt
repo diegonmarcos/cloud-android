@@ -31,84 +31,81 @@ class NavConfigTest {
         assertEquals("routes", NavConfig.defaultTab)
     }
 
-    @Test fun demo_data_spans_several_days_ending_today_with_a_revisit() {
+    @Test fun demo_data_is_rich_fixed_historical_1987_1992_with_revisits() {
         val days = MapsDemo.demoDays
-        assertTrue("demo trip should span multiple days", days.size >= 3)
-        assertTrue("every daysAgo must be small — anchored near 'today', never a fixed historical date", days.all { it.daysAgo in 0..14 })
+        assertTrue("demo trip should be VERY rich — many days", days.size >= 14)
+        // Fixed historical dates (1987-01-01..1992-12-31), NEVER relative to
+        // "today" — this is the whole point: it can't collide with real data.
+        days.forEach { d ->
+            assertTrue("every date must be ISO yyyy-MM-dd", d.dateIso.matches(Regex("""\d{4}-\d{2}-\d{2}""")))
+            val year = d.dateIso.substring(0, 4).toInt()
+            assertTrue("$year must fall in 1987..1992", year in 1987..1992)
+        }
         val allStops = days.flatMap { it.stops }
-        assertTrue("demo trip should have several stops total", allStops.size >= 8)
+        assertTrue("demo trip should have many stops total", allStops.size >= 35)
         allStops.forEach {
             assertTrue(it.startMin in 0..1440 && it.endMin in it.startMin..1440)
             assertTrue(it.place.isNotBlank() && it.city.isNotBlank())
         }
-        // The revisit: at least one place/city visited on two DIFFERENT demo days
-        // (this is what the "been here more than once" pin feature demonstrates).
-        val cityToDays = allStops.groupBy { it.city }.mapValues { (_, s) -> s.size }
-        assertTrue("at least one city must be visited across multiple stops (revisit)", cityToDays.values.any { it > 1 })
-        val perDayCities = days.map { d -> d.daysAgo to d.stops.map { it.city }.toSet() }
-        val revisited = perDayCities.flatMap { (_, cities) -> cities }
-            .groupingBy { it }.eachCount().filterValues { it > 1 }
-        assertTrue("at least one city appears on 2+ distinct demo days", revisited.isNotEmpty())
+        // Richness: multiple continents' worth of countries, not just one region.
+        val countries = allStops.map { it.country }.toSet()
+        assertTrue("demo trip should span many countries", countries.size >= 7)
+
+        // Revisits: FIVE distinct cities each appear on 2+ DISTINCT demo days —
+        // real material for the Explored tab's visit-history feature.
+        val cityToDistinctDays = days.flatMap { d -> d.stops.map { it.city }.toSet().map { city -> city to d.dateIso } }
+            .groupBy({ it.first }, { it.second }).mapValues { (_, dates) -> dates.toSet().size }
+        assertTrue("Rio de Janeiro must be revisited 3x", (cityToDistinctDays["Rio de Janeiro"] ?: 0) >= 3)
+        listOf("São Paulo", "Buenos Aires", "Lisbon", "Paris").forEach { city ->
+            assertTrue("$city must be revisited 2x", (cityToDistinctDays[city] ?: 0) >= 2)
+        }
+        assertTrue("at least 5 distinct cities must be revisited", cityToDistinctDays.values.count { it >= 2 } >= 5)
     }
 
-    @Test fun demo_seed_anchors_to_today_not_a_fixed_past_date() {
-        // Pure-function check (no DB): the seeded start of the OLDEST demo day
-        // must land within the last 30 days of "now" — i.e. inside every
-        // now-bounded query window the app uses (5y for MyTrips, etc). This is
-        // exactly the bug: a fixed historical day_epoch_ms could silently drift
-        // outside all of them.
-        val now = System.currentTimeMillis()
-        val today = MapsDemo.utcMidnightOf(now)
-        val oldestDaysAgo = MapsDemo.demoDays.maxOf { it.daysAgo }
-        val oldestDayStart = today - oldestDaysAgo * 24L * 3600_000L
-        assertTrue("oldest demo day must be recent (within 30 days of now)", now - oldestDayStart < 30L * 24 * 3600_000L)
-        assertTrue("oldest demo day must not be in the future", oldestDayStart <= now)
+    @Test fun demo_dates_parse_to_the_correct_fixed_utc_midnight() {
+        // Pure-function check (no DB, no clock dependency) — proves dates are
+        // resolved to a fixed instant, not "N days before whenever this runs".
+        val ms = MapsDemo.utcMidnightOf("1987-07-18")
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        assertEquals("1987-07-18", fmt.format(java.util.Date(ms)))
+        assertTrue("must be decades before now, not near 'today'", System.currentTimeMillis() - ms > 30L * 365 * 24 * 3600_000L)
     }
 
-    @Test fun explored_groups_revisits_by_resolved_place_name() {
-        fun stop(id: Long, startedAt: Long, lat: Double, lon: Double, place: String?, city: String?) =
-            com.diegonmarcos.cloudnav.maps.MapsDb.RichStop(id, startedAt, startedAt + 3_600_000L, lat, lon, place, null, city, "Brazil")
+    @Test fun explored_groups_by_city_from_daily_entries_not_raw_stops() {
+        fun entry(dayMs: Long, city: String?, place: String?, lat: Double, lon: Double) =
+            com.diegonmarcos.cloudnav.maps.MapsDailyFragment.DailyEntry(dayMs, place, null, city, "Brazil", lat, lon)
 
-        val stops = listOf(
-            stop(1, 1000L, -22.9711, -43.1822, "Home — Copacabana", "Rio de Janeiro"),
-            stop(2, 2000L, -22.9711, -43.1822, "Home — Copacabana", "Rio de Janeiro"),   // same place, different day → revisit
-            stop(3, 3000L, -23.5629, -46.6544, "Hotel — Jardins", "São Paulo"),          // different place entirely
+        // Rio appears on two DIFFERENT days (a revisit — what Explored exists to
+        // show); São Paulo appears once. Sourced from Daily's one-pick-per-day
+        // output, not raw Stops, so a city with many Stops in one day still
+        // collapses to a single visit entry for that day.
+        val daily = listOf(
+            entry(1000L, "Rio de Janeiro", "Home — Copacabana", -22.9711, -43.1822),
+            entry(2000L, "Rio de Janeiro", "Ipanema Beach", -22.9869, -43.2045),
+            entry(3000L, "São Paulo", "Hotel — Jardins", -23.5629, -46.6544),
         )
-        val places = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.groupByPlace(stops)
-        assertEquals("two distinct places, one collapsed from two visits", 2, places.size)
+        val cities = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.groupByCity(daily)
+        assertEquals("two distinct cities", 2, cities.size)
 
-        val home = places.first { it.title == "Home — Copacabana" }
-        assertEquals(2, home.visits.size)
-        assertTrue("visit history carries both timestamps", home.visits.map { it.startedAt }.toSet() == setOf(1000L, 2000L))
+        val rio = cities.first { it.city == "Rio de Janeiro" }
+        assertEquals("revisited on 2 distinct days", 2, rio.visits.size)
+        assertTrue(rio.visits.map { it.dayMs }.toSet() == setOf(1000L, 2000L))
 
-        val hotel = places.first { it.title == "Hotel — Jardins" }
-        assertEquals(1, hotel.visits.size)
+        val sp = cities.first { it.city == "São Paulo" }
+        assertEquals(1, sp.visits.size)
     }
 
-    @Test fun explored_does_not_merge_same_name_across_different_cities() {
-        fun stop(id: Long, lat: Double, lon: Double, place: String?, city: String?) =
-            com.diegonmarcos.cloudnav.maps.MapsDb.RichStop(id, 0L, null, lat, lon, place, null, city, null)
+    @Test fun explored_drops_entries_with_no_resolved_city() {
+        fun entry(dayMs: Long, city: String?) =
+            com.diegonmarcos.cloudnav.maps.MapsDailyFragment.DailyEntry(dayMs, null, null, city, null, 0.0, 0.0)
 
-        // Two different real cities could plausibly share a generic place name
-        // like "Home" — must stay two separate pins, not one merged visit history.
-        val stops = listOf(
-            stop(1, -22.97, -43.18, "Home", "Rio de Janeiro"),
-            stop(2, -23.56, -46.65, "Home", "São Paulo"),
-        )
-        val places = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.groupByPlace(stops)
-        assertEquals(2, places.size)
-        places.forEach { assertEquals(1, it.visits.size) }
-    }
-
-    @Test fun explored_falls_back_to_rounded_coords_when_unresolved() {
-        fun stop(id: Long, lat: Double, lon: Double) =
-            com.diegonmarcos.cloudnav.maps.MapsDb.RichStop(id, 0L, null, lat, lon, null, null, null, null)
-
-        // Same rounded (~100m) spot twice, unresolved → still merges as one place.
-        val stops = listOf(stop(1, 1.00001, 2.00001), stop(2, 1.00002, 2.00002))
-        val places = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.groupByPlace(stops)
-        assertEquals("unresolved stops within ~100m merge on rounded coords", 1, places.size)
-        assertEquals(2, places.first().visits.size)
+        // An unresolved (still-enriching) daily entry has nothing meaningful to
+        // pin or title — must not produce a bogus/blank pin.
+        val daily = listOf(entry(1000L, null), entry(2000L, "Rio de Janeiro"))
+        val cities = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.groupByCity(daily)
+        assertEquals(1, cities.size)
+        assertEquals("Rio de Janeiro", cities.first().city)
     }
 
     @Test fun map_switcher_cycle_decodes() {

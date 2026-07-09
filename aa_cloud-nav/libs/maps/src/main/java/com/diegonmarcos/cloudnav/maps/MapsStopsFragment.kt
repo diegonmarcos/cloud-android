@@ -13,10 +13,13 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Maps → Stops page. Flat reverse-chronological list of every Stop in
- * the local DB — no day grouping (that's the Timeline/Daily page). Each
- * row shows full timestamp + lat/lon (debug-grade detail) + the resolved
- * address line.
+ * Maps → Stops page. Flat reverse-chronological list of Stops — no day
+ * grouping (that's the Timeline/Daily page). Each row shows full timestamp +
+ * lat/lon (debug-grade detail) + the resolved address line.
+ *
+ * All-time by default; when opened via a Daily row's tap (see
+ * [MapsTimelineTabsFragment.openStopsForDay]) it's scoped to just that one
+ * calendar day instead ([ARG_DAY_MS]).
  *
  * Light theme: dark text on a light surface. `setTextColor` is applied
  * AFTER `setTextAppearance` so the appearance's own (theme-derived) colour
@@ -24,6 +27,8 @@ import java.util.Locale
  * invisible on the light background.
  */
 class MapsStopsFragment : Fragment() {
+
+    private val dayFilterMs: Long? get() = arguments?.getLong(ARG_DAY_MS, -1L)?.takeIf { it >= 0L }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -37,12 +42,17 @@ class MapsStopsFragment : Fragment() {
         }
         scroll.addView(root)
 
-        val now = System.currentTimeMillis()
-        val fromMs = now - 5L * 365L * 24L * 3600L * 1000L
-        val stops = MapsDb.get(ctx).stopsBetween(fromMs, now)
+        val dayMs = dayFilterMs
+        val (fromMs, toMs) = if (dayMs != null) dayMs to (dayMs + 24L * 3600_000L - 1L)
+                             else 0L to System.currentTimeMillis()
+        // All-time when unfiltered — see MapsDailyFragment's comment: a
+        // "last N years" bound would hide the deliberately historical
+        // (1987-1992) demo dataset.
+        val stops = MapsDb.get(ctx).stopsBetween(fromMs, toMs)
 
+        val dayFmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
         root.addView(TextView(ctx).apply {
-            text = "Stops (${stops.size})"
+            text = if (dayMs != null) "Stops on ${dayFmt.format(Date(dayMs))} (${stops.size})" else "Stops (${stops.size})"
             setTextAppearance(android.R.style.TextAppearance_Material_Headline)
             setTextColor(COL_PRIMARY)
             setPadding(0, 0, 0, dp(ctx, 12))
@@ -113,7 +123,12 @@ class MapsStopsFragment : Fragment() {
         const val COL_PRIMARY   = 0xFF1A1C1A.toInt()   // near-black body
         const val COL_SECONDARY = 0xFF5C5F5C.toInt()   // grey caption
         const val COL_ACCENT    = 0xFF0B8043.toInt()   // maps-green subhead
+        private const val ARG_DAY_MS = "day_ms"
 
-        fun newInstance() = MapsStopsFragment()
+        /** [dayMs] non-null → scope to just that calendar day (local midnight,
+         *  see [MapsDailyFragment.localMidnight]); null → all-time (default). */
+        fun newInstance(dayMs: Long? = null) = MapsStopsFragment().apply {
+            arguments = Bundle().apply { if (dayMs != null) putLong(ARG_DAY_MS, dayMs) }
+        }
     }
 }

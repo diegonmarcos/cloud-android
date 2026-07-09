@@ -21,7 +21,7 @@ import java.util.Locale
  *   • Today      — list of cities visited today (de-duped).
  *   • This week  — same for last 7 days.
  *   • Last month — same for last 30 days.
- *   • Most-visited cities (last 5y) — top 10.
+ *   • Most-visited cities (all time) — top 10.
  *
  * Push 3.5 can add charts (chart.js / MPAndroidChart) — for now the
  * text-only dashboard exposes the data and lets the user feel the
@@ -43,13 +43,14 @@ class MytripsDashboardFragment : Fragment() {
 
     private fun renderInto(ctx: android.content.Context, root: LinearLayout) {
         val now = System.currentTimeMillis()
-        val from5y  = now - 5L * 365L * 24L * 3600L * 1000L
+        // All-time — see MapsDailyFragment's comment: a "last N years" bound
+        // would hide the deliberately historical (1987-1992) demo dataset.
         val from30d = now - 30L      * 24L * 3600L * 1000L
         val from7d  = now - 7L       * 24L * 3600L * 1000L
         val fromToday = startOfDayMs(now)
 
         val db = MapsDb.get(ctx)
-        val all5y = db.stopsBetween(from5y, now)
+        val all5y = db.stopsBetween(0L, now)
 
         // ── Headline counters (always rendered — useful even at 0
         //    because the user can SEE the wiring is live before any
@@ -67,7 +68,7 @@ class MytripsDashboardFragment : Fragment() {
             "Countries" to countries.size.toString(),
             "Days" to days.size.toString(),
         ))
-        root.addView(caption(ctx, "Last 5 years"))
+        root.addView(caption(ctx, "All time"))
 
         // ── Raw DB telemetry — proves the tracker → DB → dashboard
         //    wiring is live even when Stops detection hasn't yet
@@ -128,7 +129,7 @@ class MytripsDashboardFragment : Fragment() {
             section(ctx, root, "Last 30 days", all5y.filter { it.startedAt >= from30d })
 
             root.addView(spacer(ctx, dp(ctx, 16)))
-            root.addView(subhead(ctx, "Most-visited cities — last 5y"))
+            root.addView(subhead(ctx, "Most-visited cities — all time"))
             val topCities = all5y.mapNotNull { it.city }
                 .groupingBy { it }.eachCount()
                 .entries.sortedByDescending { it.value }

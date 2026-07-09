@@ -10,16 +10,22 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.tabs.TabLayout
 
 /**
- * Maps → Timeline page — top-level wrapper that puts a `Daily | Stops`
- * tab row above a single FrameLayout host. Tab change replaces the
+ * Maps → Timeline page — top-level wrapper that puts a `Daily | Stops |
+ * Explored` tab row above a single FrameLayout host. Tab change replaces the
  * host's child fragment.
  *
  *   • Daily     — one row per calendar day showing where the user slept
- *                 that night (see [MapsDailyFragment]).
- *   • Stops     — flat reverse-chrono list of every Stop in the DB
- *                 (existing [MapsStopsFragment], unchanged).
- *   • Explored  — every place ever visited, pinned once each (all-time, no
- *                 window) — tap a pin for its full visit history (see
+ *                 that night (see [MapsDailyFragment]). Tapping a row calls
+ *                 [openStopsForDay] on this host, switching to Stops filtered
+ *                 to that one day.
+ *   • Stops     — flat reverse-chrono list of Stops (existing
+ *                 [MapsStopsFragment]); all-time by default, or scoped to a
+ *                 single day when arrived at via [openStopsForDay]. Tapping a
+ *                 row opens the full-screen day map ([MapsDayMapFragment]).
+ *   • Explored  — every CITY ever visited (sourced from Daily's per-day
+ *                 picks, not raw Stops — keeps the map from being polluted by
+ *                 same-city noise), one pin each (all-time, no window) — tap
+ *                 a pin for its full day-by-day visit history (see
  *                 [MapsExploredFragment]).
  *
  * Tab labels live in code rather than build.json because there's no
@@ -29,6 +35,12 @@ import com.google.android.material.tabs.TabLayout
 class MapsTimelineTabsFragment : Fragment() {
 
     private var hostId: Int = 0
+    private lateinit var tabs: TabLayout
+
+    /** One-shot day filter consumed by the next Stops-tab render — set by
+     *  [openStopsForDay], cleared once [showTab] reads it, so a later manual
+     *  tap on the Stops tab header shows the unfiltered all-time list again. */
+    private var pendingStopsDayMs: Long? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -39,7 +51,7 @@ class MapsTimelineTabsFragment : Fragment() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
-        val tabs = TabLayout(ctx).apply {
+        tabs = TabLayout(ctx).apply {
             addTab(newTab().setText("Daily"))
             addTab(newTab().setText("Stops"))
             addTab(newTab().setText("Explored"))
@@ -61,24 +73,34 @@ class MapsTimelineTabsFragment : Fragment() {
         root.addView(tabs)
         root.addView(host)
 
-        fun show(position: Int) {
-            val frag: Fragment = when (position) {
-                1    -> MapsStopsFragment.newInstance()
-                2    -> MapsExploredFragment.newInstance()
-                else -> MapsDailyFragment.newInstance()  // 0 = Daily, default
-            }
-            childFragmentManager.beginTransaction()
-                .replace(hostId, frag)
-                .commitAllowingStateLoss()
-        }
-
-        if (s == null) show(0)
+        if (s == null) showTab(0)
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab)   { show(tab.position) }
+            override fun onTabSelected(tab: TabLayout.Tab)   { showTab(tab.position) }
             override fun onTabReselected(tab: TabLayout.Tab) {}
             override fun onTabUnselected(tab: TabLayout.Tab) {}
         })
         return root
+    }
+
+    /** Called by a Daily row's tap — switches to Stops, scoped to [dayMs]. */
+    fun openStopsForDay(dayMs: Long) {
+        pendingStopsDayMs = dayMs
+        tabs.getTabAt(1)?.select() ?: showTab(1)  // select() no-ops if already on tab 1
+    }
+
+    private fun showTab(position: Int) {
+        val frag: Fragment = when (position) {
+            1 -> {
+                val dayMs = pendingStopsDayMs
+                pendingStopsDayMs = null
+                MapsStopsFragment.newInstance(dayMs)
+            }
+            2 -> MapsExploredFragment.newInstance()
+            else -> MapsDailyFragment.newInstance()  // 0 = Daily, default
+        }
+        childFragmentManager.beginTransaction()
+            .replace(hostId, frag)
+            .commitAllowingStateLoss()
     }
 
     companion object { fun newInstance() = MapsTimelineTabsFragment() }
