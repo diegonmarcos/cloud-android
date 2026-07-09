@@ -2225,6 +2225,11 @@
             "action": "action:constellation"
           },
           {
+            "id": "perms",
+            "label": "Permissions",
+            "icon": "ic_settings"
+          },
+          {
             "id": "about",
             "label": "About",
             "icon": "ic_settings"
