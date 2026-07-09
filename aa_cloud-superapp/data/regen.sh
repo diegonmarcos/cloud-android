@@ -51,6 +51,7 @@ regen_constellation() {
                 namespace: $j.release.ghcr.namespace,
                 image: $j.release.ghcr.image,
                 tag: ($j.release.auto_update.tag // "latest"),
+                alt_id: null,
                 asset: $asset,
                 # top-level apps publish a rolling `latest` release → stable
                 # direct-download URL.
@@ -66,6 +67,7 @@ regen_constellation() {
                   | map({ id: ("comms-" + .key),
                           label: .value.label,
                           package: .value.app_id,
+                          alt_id: (.value.alt_id // null),
                           registry: $cg.registry,
                           namespace: $cg.namespace,
                           image: .value.image,

@@ -26,7 +26,11 @@ internal class UpdateInstaller(private val context: Context) {
         UpdateProgress.update(UpdateProgress.State.Installing)
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(targetPackage)
+            // NO setAppPackageName: it's only a hint, and forcing our fork id on
+            // a resigned STOCK upstream APK (chat=com.mattermost.rnbeta,
+            // matrix=io.element.android.x) makes PackageInstaller reject it with
+            // INSTALL_FAILED_INVALID_APK. Let the APK declare its own package —
+            // correct for self-update + patched forks + stock upstream alike.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 // Auto-update toggle (default ON) → silent install; OFF → the
                 // normal system prompt. NOT_REQUIRED degrades to a prompt on its

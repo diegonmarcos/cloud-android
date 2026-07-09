@@ -111,10 +111,12 @@ class ConstellationFragment : Fragment() {
 
         val actions = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         actionRows[app.id] = actions
-        actions.addView(btn(ctx, "Open", 0xFF2A2A33.toInt()) { openApp(ctx, app.pkg) })
+        // Open / Uninstall target the REAL installed package (pkg or the stock
+        // upstream altId), else fall back to pkg.
+        actions.addView(btn(ctx, "Open", 0xFF2A2A33.toInt()) { openApp(ctx, Fleet.installedId(ctx, app) ?: app.pkg) })
         if (!app.blocked) actions.addView(btn(ctx, "Install / Update", 0xFF7C3AED.toInt()) { install(ctx, app) })
         actions.addView(btn(ctx, "Uninstall", 0xFF4A4A55.toInt()) {
-            runCatching { Fleet.uninstall(ctx, app.pkg) }
+            runCatching { Fleet.uninstall(ctx, Fleet.installedId(ctx, app) ?: app.pkg) }
                 .onFailure { Toast.makeText(ctx, "Uninstall: ${it.message}", Toast.LENGTH_LONG).show() }
         })
         card.addView(actions)

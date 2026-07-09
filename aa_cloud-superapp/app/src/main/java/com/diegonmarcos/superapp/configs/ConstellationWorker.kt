@@ -41,14 +41,17 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             return@withContext Result.success()
         try {
             val apps = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
-            // Fleet.status catches its own per-app errors → this never throws
-            // from one bad image (the "forever looping" bug). Always success so
-            // WorkManager doesn't hammer retries.
-            val updatable = apps.count { !it.blocked && Fleet.status(applicationContext, it) is Fleet.State.UpdateAvailable }
-            Log.i(TAG, "fleet check: $updatable/${apps.size} have updates")
-            if (updatable > 0) notifyUpdates(applicationContext, updatable)
+            // Auto-update ON ⇒ actually INSTALL available updates for the whole
+            // fleet (updatesOnly = don't auto-install apps the user never chose).
+            // Silent when 'install unknown apps' is granted; otherwise each
+            // install posts a tap-to-confirm notification (PackageInstallerReceiver).
+            // Fleet.status catches its own per-app errors so one bad image can't
+            // throw here (the old 'forever looping' bug); always return success.
+            val acted = Fleet.installAll(applicationContext, apps, updatesOnly = true)
+            Log.i(TAG, "auto-update: acted on $acted app(s)")
+            if (acted > 0) notifyUpdates(applicationContext, acted)
         } catch (t: Throwable) {
-            Log.w(TAG, "fleet check failed: ${t.message}")
+            Log.w(TAG, "fleet auto-update failed: ${t.message}")
         }
         Result.success()
     }

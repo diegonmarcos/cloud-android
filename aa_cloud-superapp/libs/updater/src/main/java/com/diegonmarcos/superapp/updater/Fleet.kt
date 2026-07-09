@@ -29,6 +29,11 @@ object Fleet {
         val id: String,
         val label: String,
         val pkg: String,
+        // Real installed package of a resigned STOCK upstream APK that isn't
+        // repackaged to `pkg` yet (chat=com.mattermost.rnbeta,
+        // matrix=io.element.android.x). Detection accepts either; null = the
+        // APK already declares `pkg` (patched forks + self).
+        val altId: String?,
         val registry: String,
         val namespace: String,
         val image: String,
@@ -58,6 +63,7 @@ object Fleet {
                     id = o.getString("id"),
                     label = o.optString("label", o.getString("id")),
                     pkg = o.getString("package"),
+                    altId = o.optString("alt_id").takeIf { it.isNotEmpty() },
                     registry = o.getString("registry"),
                     namespace = o.getString("namespace"),
                     image = o.getString("image"),
@@ -87,7 +93,7 @@ object Fleet {
     /** Compute install/update status for one app. Network per call. */
     fun status(ctx: Context, app: App): State {
         if (app.blocked) return State.Blocked
-        val installed = installedInfo(ctx, app.pkg)
+        val installed = installedInfo(ctx, app)
         return try {
             val client = GhcrClient(app.registry, app.namespace, app.image)
             val layer = remoteLayer(app, client, client.token())
@@ -133,17 +139,23 @@ object Fleet {
     }
 
     /**
-     * Install/update every app that isn't up to date (Missing or
-     * UpdateAvailable), skipping blocked/current ones. Sequential so the
-     * PackageInstaller sessions don't collide; drives the "Update All" button.
-     * Returns how many were acted on. Per-app failures don't abort the rest.
+     * Install/update fleet apps. [updatesOnly]=false (the "Update All" button)
+     * also installs Missing apps; [updatesOnly]=true (background auto-update)
+     * touches only apps with an update available — never auto-installs apps the
+     * user hasn't chosen. Sequential (PackageInstaller sessions mustn't collide);
+     * per-app failures don't abort the rest. Returns how many were acted on.
      */
-    fun installAll(ctx: Context, apps: List<App>): Int {
+    fun installAll(ctx: Context, apps: List<App>, updatesOnly: Boolean = false): Int {
         var acted = 0
         for (app in apps) {
             if (app.blocked) continue
             val st = status(ctx, app)
-            if (st is State.Installed || st is State.Error) continue
+            val act = when (st) {
+                is State.UpdateAvailable -> true
+                State.Missing -> !updatesOnly
+                else -> false
+            }
+            if (!act) continue
             try {
                 install(ctx, app)
                 acted++
@@ -167,15 +179,28 @@ object Fleet {
 
     private data class Installed(val versionName: String, val versionCode: Long, val sha: String)
 
-    private fun installedInfo(ctx: Context, pkg: String): Installed? = try {
-        @Suppress("DEPRECATION")
-        val pi = ctx.packageManager.getPackageInfo(pkg, 0)
-        val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pi.longVersionCode
-        else @Suppress("DEPRECATION") pi.versionCode.toLong()
-        val path = pi.applicationInfo?.sourceDir
-        Installed(pi.versionName ?: "—", code, if (path != null) sha256(File(path)) else "")
-    } catch (_: PackageManager.NameNotFoundException) {
-        null
+    /** The package actually on the device for this app — pkg if present, else
+     *  the stock upstream altId. null when neither is installed. Used by the UI
+     *  for Open / Uninstall so they target the real installed package. */
+    fun installedId(ctx: Context, app: App): String? =
+        listOfNotNull(app.pkg, app.altId).firstOrNull { pkgInstalled(ctx, it) }
+
+    private fun pkgInstalled(ctx: Context, pkg: String): Boolean = try {
+        @Suppress("DEPRECATION") ctx.packageManager.getPackageInfo(pkg, 0); true
+    } catch (_: PackageManager.NameNotFoundException) { false }
+
+    private fun installedInfo(ctx: Context, app: App): Installed? {
+        val pkg = installedId(ctx, app) ?: return null
+        return try {
+            @Suppress("DEPRECATION")
+            val pi = ctx.packageManager.getPackageInfo(pkg, 0)
+            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pi.longVersionCode
+            else @Suppress("DEPRECATION") pi.versionCode.toLong()
+            val path = pi.applicationInfo?.sourceDir
+            Installed(pi.versionName ?: "—", code, if (path != null) sha256(File(path)) else "")
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        }
     }
 
     private fun sha256(file: File): String {
