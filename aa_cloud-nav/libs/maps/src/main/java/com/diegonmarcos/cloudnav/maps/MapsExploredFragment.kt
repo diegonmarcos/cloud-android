@@ -12,25 +12,42 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Timeline → "Explored" tab — every CITY the user has ever been, one pin
- * each (all-time, no window). Sourced from [computeDailyLocations]
- * — the same one-representative-place-per-calendar-day picks Daily shows —
- * grouped by city, NOT raw per-Stop data, so a city visited on many days
- * (lots of Stops) still collapses to one clean pin instead of polluting the
- * map. Tapping a pin lists every day the user was in that city.
+ * Timeline → "Explored" tab — a world map of everywhere the user has been.
+ *
+ * A FAB (bottom-start) switches the aggregation level:
+ *   • COUNTRY — one pin per country (at its cities' centroid). Tap → the list
+ *     of cities visited in that country.
+ *   • CITY (default) — one pin per city. Tap → every day the user was there.
+ *   • PLACES — one pin per distinct place. Tap → that place's visit days.
+ *
+ * All pins are COLOURED BY COUNTRY (deterministic hue, [countryColor]). Data
+ * is sourced from [computeDailyLocations] (Daily's one-place-per-day picks),
+ * NOT raw per-Stop rows, so revisited spots collapse to one clean pin.
  */
 class MapsExploredFragment : Fragment() {
 
-    // worldView: this is a GLOBAL overview — the camera must start showing the
-    // whole world, NOT the user's last GPS fix (which put pins on other
-    // continents off-screen: the "empty map" bug).
-    private val mapFragment = MapsMapFragment.newInstance(fab = true, worldView = true)
+    enum class Mode { COUNTRY, CITY, PLACES }
+
+    private var mode = Mode.CITY
+    private var daily: List<DailyEntry> = emptyList()
+
+    // The live child map fragment — kept so a mode switch re-pushes pins to the
+    // SAME instance that loaded the style (the delivery bug that made the map
+    // render empty was pins reaching a different/older instance).
+    private var mapFrag: MapsMapFragment? = null
+    private var chip: TextView? = null
+
+    // Current mode's pin-backing objects, index-aligned with the pins' ids, so
+    // a pin tap resolves straight back to its country/city/place.
+    private var countries: List<ExploredCountry> = emptyList()
     private var cities: List<ExploredCity> = emptyList()
+    private var places: List<ExploredPlace> = emptyList()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -38,54 +55,131 @@ class MapsExploredFragment : Fragment() {
         val mapHost = FrameLayout(ctx).apply { id = View.generateViewId() }
         root.addView(mapHost, FrameLayout.LayoutParams(MATCH, MATCH))
 
-        val stops = MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis())
-        val daily = computeDailyLocations(stops)
+        daily = computeDailyLocations(MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis()))
         cities = groupByCity(daily)
-        // One pin per city, COLOURED BY COUNTRY — deterministic hue per
-        // country name, so all Brazilian cities share one colour, all French
-        // another, etc. (countryColor is pure/tested).
-        val pins = cities.mapIndexed { i, c ->
-            MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), title = c.city, id = i.toString())
-        }
+        countries = groupByCountry(cities)
+        places = groupByPlace(daily)
 
-        mapFragment.onPinClick = { id -> cities.getOrNull(id.toIntOrNull() ?: -1)?.let { showVisitHistory(it) } }
-        // Pins set BEFORE the map fragment commits: onStyleLoaded bakes the
-        // pins field into the GeoJSON source at style-load time, so rendering
-        // never depends on the async onMapReady callback racing the nested
-        // child-fragment + vector-fetch chain. onMapReady only frames the camera.
-        mapFragment.setPins(pins)
-        mapFragment.onMapReady = { _ -> if (pins.isNotEmpty()) mapFragment.fitTo(pins) }
-        if (childFragmentManager.findFragmentById(mapHost.id) == null) {
-            childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
-        }
+        // worldView: global overview — start showing the whole world, not the
+        // user's last GPS fix (that put pins off-screen on other continents).
+        val frag = MapsMapFragment.newInstance(fab = true, worldView = true)
+        mapFrag = frag
+        frag.onPinClick = ::onPinTap
+        frag.onMapReady = { _ -> pushPinsForMode(frame = true) }
+        childFragmentManager.beginTransaction().replace(mapHost.id, frag).commit()
+        // Also push immediately (covers the case where the style is already
+        // loaded by the time we'd otherwise wait for onMapReady).
+        pushPinsForMode(frame = false)
 
-        // Always-visible summary chip — so "nothing on screen" is never
-        // ambiguous between "no data yet" and "a real rendering bug".
-        val totalVisits = cities.sumOf { it.visits.size }
+        // Summary chip (top).
         val card = MaterialCardView(ctx).apply {
             radius = dp(22f); cardElevation = dp(8f); useCompatPadding = true
             setCardBackgroundColor(0xF2141A25.toInt())
             strokeColor = MapsStopsFragment.COL_ACCENT; strokeWidth = dp(1f).toInt()
         }
-        val countryCount = cities.mapNotNull { it.country }.toSet().size
-        card.addView(TextView(ctx).apply {
-            text = if (cities.isEmpty())
-                "No places yet — load demo data or start the tracker (Configs → Tracker)."
-            else "🌍  ${cities.size} cities · $countryCount countries · $totalVisits day-visits — tap a pin"
+        chip = TextView(ctx).apply {
             textSize = 13f
             setTextColor(MapsStopsFragment.COL_PRIMARY)
             setPadding(dp(16f).toInt(), dp(9f).toInt(), dp(16f).toInt(), dp(9f).toInt())
-        })
+        }
+        card.addView(chip)
         root.addView(card, FrameLayout.LayoutParams(WRAP, WRAP).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             setMargins(dp(8f).toInt(), dp(10f).toInt(), dp(8f).toInt(), 0)
         })
+        updateChip()
+
+        // Mode-switch FAB (bottom-START — the map's own locate/style FABs sit
+        // bottom-END, so no overlap).
+        root.addView(FloatingActionButton(ctx).apply {
+            setImageResource(android.R.drawable.ic_menu_mapmode)
+            contentDescription = "View mode"
+            setOnClickListener { showModeMenu() }
+            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.START)
+                .apply { val m = dp(16f).toInt(); setMargins(m, m, m, m) }
+        })
         return root
     }
 
-    private fun dp(v: Float): Float = v * resources.displayMetrics.density
+    /** Build the pins for the current [mode] and push them to the live map. */
+    private fun pushPinsForMode(frame: Boolean) {
+        val pins = when (mode) {
+            Mode.COUNTRY -> countries.mapIndexed { i, c ->
+                MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), title = c.country, id = i.toString())
+            }
+            Mode.CITY -> cities.mapIndexed { i, c ->
+                MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), title = c.city, id = i.toString())
+            }
+            Mode.PLACES -> places.mapIndexed { i, p ->
+                MapsMapFragment.Pin(p.lat, p.lon, countryColor(p.country), title = p.name, id = i.toString())
+            }
+        }
+        android.util.Log.i("MapPins", "Explored.push mode=$mode pins=${pins.size} frag=${System.identityHashCode(mapFrag)}")
+        mapFrag?.setPins(pins)
+        if (frame && pins.isNotEmpty()) mapFrag?.fitTo(pins)
+    }
 
-    private fun showVisitHistory(city: ExploredCity) {
+    private fun onPinTap(id: String) {
+        val i = id.toIntOrNull() ?: return
+        when (mode) {
+            Mode.COUNTRY -> countries.getOrNull(i)?.let(::showCountrySheet)
+            Mode.CITY -> cities.getOrNull(i)?.let(::showCitySheet)
+            Mode.PLACES -> places.getOrNull(i)?.let(::showPlaceSheet)
+        }
+    }
+
+    private fun showModeMenu() {
+        val ctx = context ?: return
+        val dialog = BottomSheetDialog(ctx)
+        val d = resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF141A25.toInt())
+            setPadding(dp(12), dp(12), dp(12), dp(18))
+        }
+        col.addView(TextView(ctx).apply {
+            text = "View mode"; textSize = 16f
+            setTextColor(MapsStopsFragment.COL_SECONDARY)
+            setPadding(dp(8), dp(4), dp(8), dp(10))
+        })
+        listOf(
+            Mode.COUNTRY to "🌐  Countries  (${countries.size})",
+            Mode.CITY to "🏙️  Cities  (${cities.size})",
+            Mode.PLACES to "📍  Places  (${places.size})",
+        ).forEach { (m, label) ->
+            col.addView(TextView(ctx).apply {
+                text = (if (m == mode) "✓  " else "     ") + label
+                textSize = 17f
+                setTextColor(if (m == mode) MapsStopsFragment.COL_ACCENT else MapsStopsFragment.COL_PRIMARY)
+                setPadding(dp(12), dp(14), dp(12), dp(14))
+                isClickable = true
+                setOnClickListener {
+                    dialog.dismiss()
+                    if (m != mode) { mode = m; updateChip(); pushPinsForMode(frame = true) }
+                }
+            })
+        }
+        dialog.setContentView(col)
+        dialog.show()
+    }
+
+    private fun updateChip() {
+        val c = chip ?: return
+        if (cities.isEmpty()) {
+            c.text = "No places yet — load demo data or start the tracker (Configs → Tracker)."
+            return
+        }
+        val countryCount = cities.mapNotNull { it.country }.toSet().size
+        c.text = when (mode) {
+            Mode.COUNTRY -> "🌐  ${countries.size} countries · ${cities.size} cities — tap a pin"
+            Mode.CITY -> "🏙️  ${cities.size} cities · $countryCount countries — tap a pin"
+            Mode.PLACES -> "📍  ${places.size} places · ${cities.size} cities — tap a pin"
+        }
+    }
+
+    // ── detail sheets ──────────────────────────────────────────────────
+    private fun sheet(title: String, subtitle: String, rows: List<String>) {
         val ctx = context ?: return
         val dialog = BottomSheetDialog(ctx)
         val d = resources.displayMetrics.density
@@ -96,21 +190,19 @@ class MapsExploredFragment : Fragment() {
             setPadding(dp(20), dp(18), dp(20), dp(24))
         }
         col.addView(TextView(ctx).apply {
-            text = "📍  ${city.city}" + (city.country?.let { c -> ", $c" } ?: "")
-            textSize = 21f
+            text = title; textSize = 21f
             setTextColor(MapsStopsFragment.COL_PRIMARY)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         col.addView(TextView(ctx).apply {
-            text = "${city.visits.size} visit${if (city.visits.size == 1) "" else "s"}"
-            textSize = 13f; setTextColor(MapsStopsFragment.COL_ACCENT); setPadding(0, dp(3), 0, dp(12))
+            text = subtitle; textSize = 13f
+            setTextColor(MapsStopsFragment.COL_ACCENT); setPadding(0, dp(3), 0, dp(12))
         })
-        val fmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
         val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        city.visits.sortedByDescending { it.dayMs }.forEach { v ->
+        rows.forEach { r ->
             body.addView(TextView(ctx).apply {
-                text = fmt.format(Date(v.dayMs)) + (v.placeName?.let { "  ·  $it" } ?: "")
-                textSize = 14f; setTextColor(MapsStopsFragment.COL_PRIMARY); setPadding(0, dp(7), 0, dp(7))
+                text = r; textSize = 14f
+                setTextColor(MapsStopsFragment.COL_PRIMARY); setPadding(0, dp(7), 0, dp(7))
             })
         }
         col.addView(ScrollView(ctx).apply { addView(body) })
@@ -118,27 +210,55 @@ class MapsExploredFragment : Fragment() {
         dialog.show()
     }
 
-    /** One day the user was in a given [ExploredCity]. */
-    data class CityVisit(val dayMs: Long, val placeName: String?)
+    private fun showCountrySheet(c: ExploredCountry) = sheet(
+        "🌐  ${c.country}",
+        "${c.cities.size} cit${if (c.cities.size == 1) "y" else "ies"} · ${c.cities.sumOf { it.visits.size }} day-visits",
+        c.cities.sortedByDescending { it.visits.size }
+            .map { "${it.city}  ·  ${it.visits.size} visit${if (it.visits.size == 1) "" else "s"}" },
+    )
 
-    /** A deduplicated city pin: every day-visit ([CityVisit]) to it. */
+    private fun showCitySheet(city: ExploredCity) {
+        val fmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
+        sheet(
+            "🏙️  ${city.city}" + (city.country?.let { ", $it" } ?: ""),
+            "${city.visits.size} visit${if (city.visits.size == 1) "" else "s"}",
+            city.visits.sortedByDescending { it.dayMs }
+                .map { fmt.format(Date(it.dayMs)) + (it.placeName?.let { p -> "  ·  $p" } ?: "") },
+        )
+    }
+
+    private fun showPlaceSheet(p: ExploredPlace) {
+        val fmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
+        sheet(
+            "📍  ${p.name}",
+            listOfNotNull(p.city, p.country).joinToString(", ") + " · ${p.days.size} day${if (p.days.size == 1) "" else "s"}",
+            p.days.sortedDescending().map { fmt.format(Date(it)) },
+        )
+    }
+
+    private fun dp(v: Float): Float = v * resources.displayMetrics.density
+
+    // ── data model ─────────────────────────────────────────────────────
+    data class CityVisit(val dayMs: Long, val placeName: String?)
     data class ExploredCity(
-        val city: String,
-        val country: String?,
-        val lat: Double,
-        val lon: Double,
-        val visits: List<CityVisit>,
+        val city: String, val country: String?,
+        val lat: Double, val lon: Double, val visits: List<CityVisit>,
+    )
+    data class ExploredCountry(
+        val country: String, val lat: Double, val lon: Double, val cities: List<ExploredCity>,
+    )
+    data class ExploredPlace(
+        val name: String, val city: String?, val country: String?,
+        val lat: Double, val lon: Double, val days: List<Long>,
     )
 
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
-        /** Pure (no DB/Android) grouping — exposed for testing. One pin per
-         *  distinct, non-blank city name; blank/unresolved-city daily entries
-         *  are dropped (nothing meaningful to pin or title). */
-        fun groupByCity(daily: List<DailyEntry>): List<ExploredCity> {
-            return daily.filter { !it.city.isNullOrBlank() }
+        /** One [ExploredCity] per distinct, non-blank city. Pure/tested. */
+        fun groupByCity(daily: List<DailyEntry>): List<ExploredCity> =
+            daily.filter { !it.city.isNullOrBlank() }
                 .groupBy { it.city }
                 .map { (city, entries) ->
                     ExploredCity(
@@ -148,19 +268,43 @@ class MapsExploredFragment : Fragment() {
                         visits = entries.map { CityVisit(it.dayMs, it.placeName) },
                     )
                 }.sortedByDescending { it.visits.maxOf { v -> v.dayMs } }
-        }
 
-        /** Deterministic pin colour per COUNTRY — a stable hue derived from the
-         *  country name (same country → same colour on every run and device),
-         *  spread around the wheel via the golden angle so neighbouring names
-         *  don't collide. Vivid saturation/value for legibility on the dark
-         *  basemap. Null/blank country → the neutral place-blue. Pure/tested. */
+        /** One [ExploredCountry] per distinct country, positioned at the
+         *  centroid of its cities. Pure/tested. */
+        fun groupByCountry(cities: List<ExploredCity>): List<ExploredCountry> =
+            cities.filter { !it.country.isNullOrBlank() }
+                .groupBy { it.country }
+                .map { (country, cs) ->
+                    ExploredCountry(
+                        country = country!!,
+                        lat = cs.map { it.lat }.average(), lon = cs.map { it.lon }.average(),
+                        cities = cs,
+                    )
+                }.sortedByDescending { it.cities.sumOf { c -> c.visits.size } }
+
+        /** One [ExploredPlace] per distinct place name; the days collapse
+         *  repeats. Pure/tested. */
+        fun groupByPlace(daily: List<DailyEntry>): List<ExploredPlace> =
+            daily.filter { !it.placeName.isNullOrBlank() }
+                .groupBy { it.placeName }
+                .map { (name, entries) ->
+                    val e0 = entries.first()
+                    ExploredPlace(
+                        name = name!!, city = e0.city, country = e0.country,
+                        lat = entries.map { it.lat }.average(), lon = entries.map { it.lon }.average(),
+                        days = entries.map { it.dayMs },
+                    )
+                }.sortedByDescending { it.days.size }
+
+        /** Deterministic pin colour per COUNTRY — stable hue from the name,
+         *  golden-angle spread, vivid on the dark basemap. Null/blank → the
+         *  neutral place-blue. Pure/tested. */
         fun countryColor(country: String?): String {
             val c = country?.trim().orEmpty()
             if (c.isEmpty()) return MapsMapFragment.COLOR_PLACE
             var h = 0
-            for (ch in c) h = h * 31 + ch.code   // stable across JVMs/devices
-            val hue = ((h * 137) % 360 + 360) % 360   // golden-angle spread
+            for (ch in c) h = h * 31 + ch.code
+            val hue = ((h * 137) % 360 + 360) % 360
             val rgb = android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.78f, 0.95f))
             return "#%06X".format(rgb and 0xFFFFFF)
         }

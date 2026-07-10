@@ -194,7 +194,11 @@ class MapsMapFragment : Fragment() {
     }
 
     // ── public API ───────────────────────────────────────────────────
-    fun setPins(newPins: List<Pin>) { pins = newPins; pushPins() }
+    fun setPins(newPins: List<Pin>) {
+        pins = newPins
+        android.util.Log.i("MapPins", "setPins ${newPins.size} inst=${System.identityHashCode(this)} styleReady=$styleReady")
+        pushPins()
+    }
     fun clearPins() = setPins(emptyList())
 
     fun centerTarget(): Pair<Double, Double>? =
@@ -452,6 +456,7 @@ class MapsMapFragment : Fragment() {
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             )
         )
+        android.util.Log.i("MapPins", "onStyleLoaded pins=${pins.size} inst=${System.identityHashCode(this)} firstLoad=$firstLoad")
         style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
         style.addLayer(
             CircleLayer(LYR_PINS, SRC_PINS).withProperties(

@@ -347,6 +347,33 @@ class NavConfigTest {
         cities.forEach { assertTrue("no null-island pin", it.lat != 0.0 || it.lon != 0.0) }
     }
 
+    @Test fun explored_country_and_place_grouping() {
+        // COUNTRY mode groups cities by country at their centroid; PLACES mode
+        // gives one pin per distinct place with its visit days. (The Explored
+        // FAB switches between these + CITY.)
+        fun entry(dayMs: Long, place: String, city: String, country: String, lat: Double, lon: Double) =
+            com.diegonmarcos.cloudnav.maps.DailyEntry(dayMs, place, null, city, country, lat, lon)
+        val daily = listOf(
+            entry(1L, "Ipanema", "Rio de Janeiro", "Brazil", -22.98, -43.20),
+            entry(2L, "Se", "Sao Paulo", "Brazil", -23.55, -46.63),
+            entry(3L, "Ipanema", "Rio de Janeiro", "Brazil", -22.98, -43.20),  // revisit
+            entry(4L, "Eiffel", "Paris", "France", 48.85, 2.29),
+        )
+        val exp = com.diegonmarcos.cloudnav.maps.MapsExploredFragment
+        val cities = exp.groupByCity(daily)
+        val countries = exp.groupByCountry(cities)
+        assertEquals("two countries", 2, countries.size)
+        val brazil = countries.first { it.country == "Brazil" }
+        assertEquals("Brazil has 2 cities", 2, brazil.cities.size)
+        // centroid between Rio and Sao Paulo
+        assertEquals(-23.265, brazil.lat, 0.05)
+
+        val places = exp.groupByPlace(daily)
+        assertEquals("3 distinct places (Ipanema collapses)", 3, places.size)
+        val ipanema = places.first { it.name == "Ipanema" }
+        assertEquals("Ipanema visited 2 days", 2, ipanema.days.size)
+    }
+
     @Test fun raster_styles_point_at_their_vector_equivalent() {
         assertEquals("vector_light", MapStyles.get("light").vectorEquivalent)
         assertEquals("vector_dark", MapStyles.get("dark").vectorEquivalent)
