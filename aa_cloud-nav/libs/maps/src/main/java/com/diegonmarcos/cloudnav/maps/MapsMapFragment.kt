@@ -79,6 +79,19 @@ class MapsMapFragment : Fragment() {
     /** Fired with (lat, lon) on a long-press anywhere on the map. */
     var onMapLongClick: ((Double, Double) -> Unit)? = null
 
+    /** Fired on every camera change — for a caller-drawn overlay to re-project. */
+    var onCameraChanged: (() -> Unit)? = null
+
+    /** Fired on every single-tap with the tapped LatLng — for a caller-drawn
+     *  overlay to hit-test its own pins in screen space. */
+    var onMapClickAt: ((LatLng) -> Unit)? = null
+
+    /** Project a geo coordinate to a screen pixel (null until the map is ready).
+     *  Lets a caller draw its own pin overlay on top of the map — bypassing the
+     *  GeoJSON/CircleLayer pin path. */
+    fun screenFor(lat: Double, lon: Double): android.graphics.PointF? =
+        map?.projection?.toScreenLocation(LatLng(lat, lon))
+
     private var mapView: MapView? = null
     private var map: MapLibreMap? = null
     private var styleReady = false
@@ -149,12 +162,20 @@ class MapsMapFragment : Fragment() {
 
             // Tap a pin → resolve its feature → echo the id back to the caller.
             m.addOnMapClickListener { latLng ->
+                // Overlay-drawn pins (Explored) hit-test in screen space via
+                // onMapClickAt; GeoJSON-layer pins (Places/etc) via onPinClick.
+                onMapClickAt?.invoke(latLng)
                 val cb = onPinClick ?: return@addOnMapClickListener false
                 val pt = m.projection.toScreenLocation(latLng)
                 val feats = m.queryRenderedFeatures(pt, LYR_PINS, LYR_PIN_LABELS)
                 val id = feats.firstOrNull { it.hasProperty("id") }?.getStringProperty("id")
                 if (!id.isNullOrEmpty()) { cb(id); true } else false
             }
+            // Custom-overlay support (Explored draws its own dots on top): notify
+            // on every camera change so the overlay re-projects, and expose the
+            // projection. Bypasses the GeoJSON/CircleLayer pin path entirely.
+            m.addOnCameraMoveListener { onCameraChanged?.invoke() }
+            m.addOnCameraIdleListener { onCameraChanged?.invoke() }
             m.addOnMapLongClickListener { latLng ->
                 val cb = onMapLongClick ?: return@addOnMapLongClickListener false
                 cb(latLng.latitude, latLng.longitude); true

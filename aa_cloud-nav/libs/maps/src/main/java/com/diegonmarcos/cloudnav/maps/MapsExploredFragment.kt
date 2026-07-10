@@ -37,11 +37,18 @@ class MapsExploredFragment : Fragment() {
     private var mode = Mode.CITY
     private var daily: List<DailyEntry> = emptyList()
 
-    // The live child map fragment — kept so a mode switch re-pushes pins to the
-    // SAME instance that loaded the style (the delivery bug that made the map
-    // render empty was pins reaching a different/older instance).
+    // The live child map fragment — provides ONLY the basemap + camera. Pins
+    // are drawn by our own Canvas overlay (see PinOverlay), NOT MapLibre's
+    // GeoJSON/CircleLayer path, which was proven to never render features on
+    // this stack (source registered + layer on top, yet 0 features tile).
     private var mapFrag: MapsMapFragment? = null
     private var chip: TextView? = null
+    private var overlay: PinOverlay? = null
+    private var overlayPins: List<OverlayPin> = emptyList()
+
+    /** A single dot to draw: geo position, colour, and index back into the
+     *  current mode's list (for tap → detail sheet). */
+    class OverlayPin(val lat: Double, val lon: Double, val colorInt: Int, val index: Int)
 
     // Current mode's pin-backing objects, index-aligned with the pins' ids, so
     // a pin tap resolves straight back to its country/city/place.
@@ -64,12 +71,21 @@ class MapsExploredFragment : Fragment() {
         // user's last GPS fix (that put pins off-screen on other continents).
         val frag = MapsMapFragment.newInstance(fab = true, worldView = true)
         mapFrag = frag
-        frag.onPinClick = ::onPinTap
-        frag.onMapReady = { _ -> pushPinsForMode(frame = true) }
         childFragmentManager.beginTransaction().replace(mapHost.id, frag).commit()
-        // Also push immediately (covers the case where the style is already
-        // loaded by the time we'd otherwise wait for onMapReady).
-        pushPinsForMode(frame = false)
+
+        // Our own pin overlay ON TOP of the map (transparent, non-touchable so
+        // the map keeps pan/zoom; taps come via the map's onMapClickAt).
+        val pinOverlay = PinOverlay(ctx)
+        overlay = pinOverlay
+        root.addView(pinOverlay, FrameLayout.LayoutParams(MATCH, MATCH))
+
+        frag.onCameraChanged = { pinOverlay.invalidate() }
+        frag.onMapClickAt = { ll -> hitTest(ll) }
+        frag.onMapReady = { _ ->
+            recomputeOverlayPins(frame = true)
+            pinOverlay.invalidate()
+        }
+        recomputeOverlayPins(frame = false)
 
         // Summary chip (top).
         val card = MaterialCardView(ctx).apply {
@@ -101,30 +117,81 @@ class MapsExploredFragment : Fragment() {
         return root
     }
 
-    /** Build the pins for the current [mode] and push them to the live map. */
-    private fun pushPinsForMode(frame: Boolean) {
-        val pins = when (mode) {
-            Mode.COUNTRY -> countries.mapIndexed { i, c ->
-                MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), title = c.country, id = i.toString())
-            }
-            Mode.CITY -> cities.mapIndexed { i, c ->
-                MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), title = c.city, id = i.toString())
-            }
-            Mode.PLACES -> places.mapIndexed { i, p ->
-                MapsMapFragment.Pin(p.lat, p.lon, countryColor(p.country), title = p.name, id = i.toString())
-            }
+    /** Rebuild [overlayPins] for the current [mode] and repaint the overlay.
+     *  Optionally frames the camera to the pins (via the map's own fitTo). */
+    private fun recomputeOverlayPins(frame: Boolean) {
+        overlayPins = when (mode) {
+            Mode.COUNTRY -> countries.mapIndexed { i, c -> OverlayPin(c.lat, c.lon, colorInt(c.country), i) }
+            Mode.CITY -> cities.mapIndexed { i, c -> OverlayPin(c.lat, c.lon, colorInt(c.country), i) }
+            Mode.PLACES -> places.mapIndexed { i, p -> OverlayPin(p.lat, p.lon, colorInt(p.country), i) }
         }
-        android.util.Log.i("MapPins", "Explored.push mode=$mode pins=${pins.size} frag=${System.identityHashCode(mapFrag)}")
-        mapFrag?.setPins(pins)
-        if (frame && pins.isNotEmpty()) mapFrag?.fitTo(pins)
+        android.util.Log.i("MapPins", "Explored.overlay mode=$mode pins=${overlayPins.size}")
+        overlay?.invalidate()
+        if (frame && overlayPins.isNotEmpty()) {
+            mapFrag?.fitTo(overlayPins.map { MapsMapFragment.Pin(it.lat, it.lon, "#000000") })
+        }
     }
 
-    private fun onPinTap(id: String) {
-        val i = id.toIntOrNull() ?: return
+    private fun colorInt(country: String?): Int =
+        runCatching { android.graphics.Color.parseColor(countryColor(country)) }
+            .getOrDefault(android.graphics.Color.parseColor(MapsMapFragment.COLOR_PLACE))
+
+    /** Map tapped at [ll] → find the nearest overlay pin within a finger-radius
+     *  (screen space) and open its detail sheet. */
+    private fun hitTest(ll: org.maplibre.android.geometry.LatLng) {
+        val frag = mapFrag ?: return
+        val tap = frag.screenFor(ll.latitude, ll.longitude) ?: return
+        val threshold = dp(22f)
+        var bestI = -1; var bestD = Float.MAX_VALUE
+        overlayPins.forEach { p ->
+            val s = frag.screenFor(p.lat, p.lon) ?: return@forEach
+            val d = kotlin.math.hypot((s.x - tap.x).toDouble(), (s.y - tap.y).toDouble()).toFloat()
+            if (d < threshold && d < bestD) { bestD = d; bestI = p.index }
+        }
+        if (bestI < 0) return
         when (mode) {
-            Mode.COUNTRY -> countries.getOrNull(i)?.let(::showCountrySheet)
-            Mode.CITY -> cities.getOrNull(i)?.let(::showCitySheet)
-            Mode.PLACES -> places.getOrNull(i)?.let(::showPlaceSheet)
+            Mode.COUNTRY -> countries.getOrNull(bestI)?.let(::showCountrySheet)
+            Mode.CITY -> cities.getOrNull(bestI)?.let(::showCitySheet)
+            Mode.PLACES -> places.getOrNull(bestI)?.let(::showPlaceSheet)
+        }
+    }
+
+    /** Transparent, non-touchable overlay that paints one dot per [overlayPins]
+     *  entry by projecting its geo position to screen via the map. This is the
+     *  actual pin renderer — MapLibre's GeoJSON layer path does not render on
+     *  this stack, so we draw the dots ourselves. */
+    private inner class PinOverlay(ctx: android.content.Context) : View(ctx) {
+        private val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        private val stroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            color = 0xFFFFFFFF.toInt(); strokeWidth = dp(1.5f)
+        }
+        private val label = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFFFFFFF.toInt(); textSize = dp(11f)
+            setShadowLayer(dp(2f), 0f, 0f, 0xFF101418.toInt())
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+        init { setWillNotDraw(false); isClickable = false; isFocusable = false }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            val frag = mapFrag ?: return
+            val r = dp(6f)
+            val drawLabels = overlayPins.size <= 60   // countries: label; cities/places: dots only
+            overlayPins.forEach { p ->
+                val s = frag.screenFor(p.lat, p.lon) ?: return@forEach
+                if (s.x < -r || s.y < -r || s.x > width + r || s.y > height + r) return@forEach
+                fill.color = p.colorInt
+                canvas.drawCircle(s.x, s.y, r, fill)
+                canvas.drawCircle(s.x, s.y, r, stroke)
+                if (drawLabels) {
+                    val title = when (mode) {
+                        Mode.COUNTRY -> countries.getOrNull(p.index)?.country
+                        Mode.CITY -> cities.getOrNull(p.index)?.city
+                        Mode.PLACES -> places.getOrNull(p.index)?.name
+                    }
+                    if (title != null) canvas.drawText(title, s.x, s.y - r - dp(4f), label)
+                }
+            }
         }
     }
 
@@ -156,7 +223,7 @@ class MapsExploredFragment : Fragment() {
                 isClickable = true
                 setOnClickListener {
                     dialog.dismiss()
-                    if (m != mode) { mode = m; updateChip(); pushPinsForMode(frame = true) }
+                    if (m != mode) { mode = m; updateChip(); recomputeOverlayPins(frame = true) }
                 }
             })
         }
@@ -237,6 +304,17 @@ class MapsExploredFragment : Fragment() {
     }
 
     private fun dp(v: Float): Float = v * resources.displayMetrics.density
+
+    /** Test hooks (the overlay is a plain View, so unlike the GL map it can be
+     *  drawn to a Bitmap even on a headless emulator). */
+    fun debugOverlayPinCount(): Int = overlayPins.size
+    fun debugDrawOverlay(): android.graphics.Bitmap? {
+        val o = overlay ?: return null
+        if (o.width == 0 || o.height == 0) return null
+        val b = android.graphics.Bitmap.createBitmap(o.width, o.height, android.graphics.Bitmap.Config.ARGB_8888)
+        o.draw(android.graphics.Canvas(b))
+        return b
+    }
 
     // ── data model ─────────────────────────────────────────────────────
     data class CityVisit(val dayMs: Long, val placeName: String?)
