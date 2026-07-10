@@ -293,6 +293,22 @@ class MapsDb private constructor(ctx: Context) :
     /** Write/replace a generic cache entry, stamping updated_at = now. */
     fun cachePut(key: String, json: String) = cacheReverse(key, json)
 
+    /** Runs [block] inside a single SQLite transaction — for bulk writes
+     *  (e.g. [MapsDemo.seed]'s thousands of demo rows) this is the difference
+     *  between a sub-second insert and a multi-second one, since every
+     *  untransacted `insert` otherwise fsyncs individually. */
+    fun <T> runInTransaction(block: () -> T): T {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val result = block()
+            db.setTransactionSuccessful()
+            return result
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     /** Wipe every table — backs Configs → Maps → Reset / Clear data. */
     fun clearAll() {
         val db = writableDatabase

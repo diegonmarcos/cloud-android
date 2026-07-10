@@ -31,35 +31,47 @@ class NavConfigTest {
         assertEquals("routes", NavConfig.defaultTab)
     }
 
-    @Test fun demo_data_is_rich_fixed_historical_1987_1992_with_revisits() {
-        val days = MapsDemo.demoDays
-        assertTrue("demo trip should be VERY rich — many days", days.size >= 14)
-        // Fixed historical dates (1987-01-01..1992-12-31), NEVER relative to
-        // "today" — this is the whole point: it can't collide with real data.
-        days.forEach { d ->
-            assertTrue("every date must be ISO yyyy-MM-dd", d.dateIso.matches(Regex("""\d{4}-\d{2}-\d{2}""")))
-            val year = d.dateIso.substring(0, 4).toInt()
-            assertTrue("$year must fall in 1987..1992", year in 1987..1992)
-        }
-        val allStops = days.flatMap { it.stops }
-        assertTrue("demo trip should have many stops total", allStops.size >= 35)
-        allStops.forEach {
-            assertTrue(it.startMin in 0..1440 && it.endMin in it.startMin..1440)
-            assertTrue(it.place.isNotBlank() && it.city.isNotBlank())
-        }
-        // Richness: multiple continents' worth of countries, not just one region.
-        val countries = allStops.map { it.country }.toSet()
-        assertTrue("demo trip should span many countries", countries.size >= 7)
+    @Test fun demo_range_covers_every_day_1987_to_1992() {
+        // FULL daily coverage, not a sparse sample: totalDays must span the
+        // entire fixed historical range (1987-01-01..1992-12-31 inclusive,
+        // across 2 leap years = 2192 days), never relative to "today".
+        assertEquals("1987-01-01", MapsDemo.rangeStartIso)
+        assertEquals("1992-12-31", MapsDemo.rangeEndIso)
+        assertEquals(2192, MapsDemo.totalDays)
+    }
 
-        // Revisits: FIVE distinct cities each appear on 2+ DISTINCT demo days —
-        // real material for the Explored tab's visit-history feature.
-        val cityToDistinctDays = days.flatMap { d -> d.stops.map { it.city }.toSet().map { city -> city to d.dateIso } }
-            .groupBy({ it.first }, { it.second }).mapValues { (_, dates) -> dates.toSet().size }
-        assertTrue("Rio de Janeiro must be revisited 3x", (cityToDistinctDays["Rio de Janeiro"] ?: 0) >= 3)
-        listOf("São Paulo", "Buenos Aires", "Lisbon", "Paris").forEach { city ->
-            assertTrue("$city must be revisited 2x", (cityToDistinctDays[city] ?: 0) >= 2)
+    @Test fun demo_city_templates_are_rich_and_span_continents() {
+        val cities = MapsDemo.cityTemplates
+        assertTrue("many distinct cities to cycle through", cities.size >= 8)
+        val countries = cities.map { it.country }.toSet()
+        assertTrue("many countries — multi-continent", countries.size >= 7)
+        cities.forEach { c ->
+            assertTrue("${c.city} needs at least one stop", c.stops.isNotEmpty())
+            c.stops.forEach { s ->
+                assertTrue(s.startMin in 0..1440 && s.endMin in s.startMin..1440)
+                assertTrue(s.place.isNotBlank())
+            }
         }
-        assertTrue("at least 5 distinct cities must be revisited", cityToDistinctDays.values.count { it >= 2 } >= 5)
+    }
+
+    @Test fun demo_generation_gives_every_day_a_city_and_revisits_all_of_them() {
+        // Pure — the whole generation algorithm (cityForDayIndex), no DB. Every
+        // one of the ~2192 days must resolve to SOME city (full coverage), and
+        // because there are far more days than cities × stay_days, every city
+        // gets cycled back to many times (the revisit material Explored needs).
+        val days = MapsDemo.totalDays
+        val stay = MapsDemo.stayDays
+        val cities = MapsDemo.cityTemplates
+        assertTrue("stay_days must be positive", stay >= 1)
+        val visitsPerCity = HashMap<String, Int>()
+        for (i in 0 until days) {
+            val c = MapsDemo.cityForDayIndex(i)
+            assertTrue("every day resolves to a real city", cities.any { it.city == c.city })
+            visitsPerCity[c.city] = (visitsPerCity[c.city] ?: 0) + 1
+        }
+        assertEquals("every city gets covered", cities.size, visitsPerCity.size)
+        assertTrue("with $days days over ${cities.size} cities, every city is revisited dozens of times",
+            visitsPerCity.values.all { it >= 10 })
     }
 
     @Test fun demo_dates_parse_to_the_correct_fixed_utc_midnight() {

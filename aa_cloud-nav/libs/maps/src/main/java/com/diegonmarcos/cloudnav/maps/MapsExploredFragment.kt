@@ -1,6 +1,7 @@
 package com.diegonmarcos.cloudnav.maps
 
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,8 +45,28 @@ class MapsExploredFragment : Fragment() {
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }
+
+        // Always-visible summary — so "nothing on screen" is never ambiguous
+        // between "no data yet" and "a real rendering bug".
+        val totalVisits = cities.sumOf { it.visits.size }
+        val card = MaterialCardView(ctx).apply {
+            radius = dp(14f); cardElevation = dp(6f); useCompatPadding = true
+        }
+        card.addView(TextView(ctx).apply {
+            text = if (cities.isEmpty())
+                "No places yet — load demo data or start the tracker (Configs → Tracker)."
+            else "${cities.size} cities · $totalVisits day-visits"
+            textSize = 14f
+            setPadding(dp(14).toInt(), dp(10).toInt(), dp(14).toInt(), dp(10).toInt())
+        })
+        root.addView(card, FrameLayout.LayoutParams(WRAP, WRAP).apply {
+            gravity = Gravity.TOP or Gravity.START
+            setMargins(dp(8).toInt(), dp(8).toInt(), dp(8).toInt(), 0)
+        })
         return root
     }
+
+    private fun dp(v: Float): Float = v * resources.displayMetrics.density
 
     private fun showVisitHistory(city: ExploredCity) {
         val ctx = context ?: return
@@ -84,6 +106,7 @@ class MapsExploredFragment : Fragment() {
 
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
         /** Pure (no DB/Android) grouping — exposed for testing. One pin per
          *  distinct, non-blank city name; blank/unresolved-city daily entries

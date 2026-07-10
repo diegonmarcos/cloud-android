@@ -222,21 +222,29 @@ class MapsConfigFragment : Fragment() {
         }
         root.addView(trackerResetBtn)
 
-        // Tester seed — a full demo day (1987-07-18, Rio) so Timeline/Daily/
-        // Stops/day-map render without a live tracker. Idempotent.
+        // Tester seed — FULL daily coverage 1987-1992 (~2192 days) so Timeline/
+        // Daily/Stops/Explored/MyTrips render real content without a live
+        // tracker. Idempotent. Generates thousands of rows — off-thread.
         root.addView(spacer(ctx, dp(ctx, 12)))
-        root.addView(caption(ctx, "No tracker history yet? Load a rich demo trip (1987-1992 — deliberately historical so it never conflicts with your real tracked data) to explore Timeline, Daily, Stops, Explored and MyTrips — 8 days across 4 countries, with two cities revisited."))
+        root.addView(caption(ctx, "No tracker history yet? Load a full 5-year demo trip (1987-1992, one day at a time — deliberately historical so it never conflicts with your real tracked data) to explore Timeline, Daily, Stops, Explored and MyTrips — every single day populated, cycling through 8 cities across 4 continents."))
         root.addView(android.widget.Button(ctx).apply {
-            text = "Load demo data (1987-1992)"
+            text = "Load demo data (1987-1992, full)"
             setOnClickListener {
                 MapsHaptics.tap(it)
-                val n = MapsDemo.seed(ctx)
-                Toast.makeText(
-                    ctx,
-                    if (n > 0) "Loaded $n demo stops (1987-1992) — open Timeline" else "Demo trip already loaded",
-                    Toast.LENGTH_LONG,
-                ).show()
-                refreshTrackerSection()
+                text = "Loading…"; isEnabled = false
+                val btn = this
+                Thread {
+                    val n = MapsDemo.seed(ctx)
+                    activity?.runOnUiThread {
+                        Toast.makeText(
+                            ctx,
+                            if (n > 0) "Loaded $n demo stops across ${MapsDemo.totalDays} days — open Timeline" else "Demo trip already loaded",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                        btn.text = "Load demo data (1987-1992, full)"; btn.isEnabled = true
+                        refreshTrackerSection()
+                    }
+                }.start()
             }
         })
 

@@ -8,43 +8,48 @@ import java.util.TimeZone
 import org.json.JSONObject
 
 /**
- * Tester seed data — a rich 5-year historical trip (1987-1992), data-driven
- * from build.json::ui.demo_stops (baked into BuildConfig.UI_DEMO_STOPS_B64).
- * Lets Timeline / Daily / Stops / Explored / MyTrips render real content
- * without a live tracker. Inserted by [seed].
+ * Tester seed data — FULL daily coverage across a 5-year historical span
+ * (1987-1992), data-driven from build.json::ui.demo_stops (baked into
+ * BuildConfig.UI_DEMO_STOPS_B64). Lets Timeline / Daily / Stops / Explored /
+ * MyTrips render real content — one populated day for EVERY calendar day in
+ * the range, not a sparse sample — without a live tracker.
  *
- * Dates are FIXED (each demo day carries an explicit `date`, e.g.
- * "1987-07-18") rather than relative to "today" — deliberately historical so
+ * Generated, not hand-enumerated: [seed] cycles through [cityTemplates] (each
+ * a full day's worth of stops), staying [stayDays] days per city before
+ * rotating to the next, for every day between [rangeStartIso] and
+ * [rangeEndIso]. ~2192 days × ~3 stops ≈ several thousand rows — inserted
+ * inside a single [MapsDb.runInTransaction] so it stays fast.
+ *
+ * Dates are FIXED (never relative to "today") — deliberately historical so
  * the demo trip can never collide with the user's real tracked data (nobody
  * has real GPS history from 1987-1992). This only works because every screen
  * that reads Stops (MapsDailyFragment, MapsStopsFragment, MapsExploredFragment,
  * MytripsDashboardFragment/StatsFragment) queries ALL-TIME
- * (`stopsBetween(0L, now)`), not a rolling "last N years" window — a bounded
- * recent-only query would hide 30+-year-old data just as badly as it
- * previously hid data anchored the other way (a fixed date landing outside a
- * "last 5 years" window). Widening those queries to all-time is what makes a
- * fixed historical demo date safe to use.
+ * (`stopsBetween(0L, now)`), not a rolling "last N years" window.
  *
- * Seeded once (idempotent) — the historical range never changes, so there's
- * no reason to reseed on a later day the way a relative-to-today scheme would.
+ * Seeded once (idempotent) — the historical range never changes.
  */
 object MapsDemo {
 
     data class DemoStop(
         val startMin: Int, val endMin: Int,
         val lat: Double, val lon: Double,
-        val place: String, val neighborhood: String, val city: String, val country: String,
+        val place: String, val neighborhood: String,
     )
 
-    data class DemoDay(val dateIso: String, val stops: List<DemoStop>)
+    data class CityTemplate(val city: String, val country: String, val stops: List<DemoStop>)
 
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_DEMO_STOPS_B64, Base64.DEFAULT))) }
             .getOrDefault(JSONObject())
     }
 
-    val demoDays: List<DemoDay> by lazy {
-        val arr = root.optJSONArray("days") ?: return@lazy emptyList()
+    val rangeStartIso: String get() = root.optString("range_start")
+    val rangeEndIso: String get() = root.optString("range_end")
+    val stayDays: Int get() = root.optInt("stay_days", 1).coerceAtLeast(1)
+
+    val cityTemplates: List<CityTemplate> by lazy {
+        val arr = root.optJSONArray("city_templates") ?: return@lazy emptyList()
         (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
             val stopsArr = o.optJSONArray("stops")
@@ -57,11 +62,9 @@ object MapsDemo {
                     lon = s.optDouble("lon"),
                     place = s.optString("place"),
                     neighborhood = s.optString("neighborhood"),
-                    city = s.optString("city"),
-                    country = s.optString("country"),
                 )
             }
-            DemoDay(dateIso = o.optString("date"), stops = stops)
+            CityTemplate(city = o.optString("city"), country = o.optString("country"), stops = stops)
         }
     }
 
@@ -73,35 +76,58 @@ object MapsDemo {
                 .parse(dateIso)?.time
         }.getOrNull() ?: 0L
 
+    /** Inclusive day-count of [rangeStartIso]..[rangeEndIso] — pure, no DB. */
+    val totalDays: Int
+        get() {
+            val start = utcMidnightOf(rangeStartIso); val end = utcMidnightOf(rangeEndIso)
+            if (start <= 0L || end < start) return 0
+            return ((end - start) / DAY_MS).toInt() + 1
+        }
+
+    /** Which [cityTemplates] entry covers day index [dayIndex] (0 = range start),
+     *  cycling every [stayDays] days. Pure — the whole generation algorithm in
+     *  one testable function. */
+    fun cityForDayIndex(dayIndex: Int): CityTemplate {
+        val cities = cityTemplates
+        return cities[(dayIndex / stayDays) % cities.size]
+    }
+
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("maps_demo_prefs", Context.MODE_PRIVATE)
 
     /** True once [seed] has already inserted this fixed historical dataset. */
     fun isSeeded(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_SEEDED, false)
 
-    /** Insert every demo day at its fixed historical date. Returns the number
-     *  of stops inserted; 0 if already seeded or no data configured. */
+    /** Generate + insert one populated day for every day in the historical
+     *  range. Returns the number of stops inserted; 0 if already seeded or no
+     *  data configured. Call off the main thread — this can be several
+     *  thousand rows (still fast: one transaction, not one fsync per row). */
     fun seed(ctx: Context): Int {
-        if (demoDays.isEmpty() || isSeeded(ctx)) return 0
+        val days = totalDays
+        if (days <= 0 || cityTemplates.isEmpty() || isSeeded(ctx)) return 0
         val db = MapsDb.get(ctx)
+        val rangeStart = utcMidnightOf(rangeStartIso)
         var inserted = 0
-        for (day in demoDays) {
-            val dayStart = utcMidnightOf(day.dateIso)
-            if (dayStart <= 0L) continue
-            for (s in day.stops) {
-                val id = db.insertStop(
-                    MapsDb.StopRow(
-                        startedAt = dayStart + s.startMin * 60_000L,
-                        endedAt = dayStart + s.endMin * 60_000L,
-                        lat = s.lat, lon = s.lon,
+        db.runInTransaction {
+            for (dayIndex in 0 until days) {
+                val dayStart = rangeStart + dayIndex * DAY_MS
+                val city = cityForDayIndex(dayIndex)
+                for (s in city.stops) {
+                    val id = db.insertStop(
+                        MapsDb.StopRow(
+                            startedAt = dayStart + s.startMin * 60_000L,
+                            endedAt = dayStart + s.endMin * 60_000L,
+                            lat = s.lat, lon = s.lon,
+                        )
                     )
-                )
-                db.enrichStop(id, s.place, s.neighborhood, s.city, s.country)
-                inserted++
+                    db.enrichStop(id, s.place, s.neighborhood, city.city, city.country)
+                    inserted++
+                }
             }
         }
         prefs(ctx).edit().putBoolean(KEY_SEEDED, true).apply()
         return inserted
     }
 
+    private const val DAY_MS = 24L * 3600_000L
     private const val KEY_SEEDED = "seeded"
 }
