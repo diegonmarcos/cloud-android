@@ -487,6 +487,24 @@ class MapsMapFragment : Fragment() {
                 PropertyFactory.textOptional(true),
             )
         )
+        // DIAGNOSTIC: is the pins source/layer actually registered in the
+        // style, and how many layers total? (Confirms addSource/addLayer took.)
+        android.util.Log.i(
+            "MapPins",
+            "styleState src=${style.getSource(SRC_PINS) != null} " +
+                "layer=${style.getLayer(LYR_PINS) != null} " +
+                "totalLayers=${style.layers.size} firstPinLayerAbove=${style.layers.indexOfFirst { it.id == LYR_PINS }}",
+        )
+        // Delayed self-query from inside the fragment (avoids the external
+        // probe's timing): how many features does the source report once tiles
+        // have had a moment to load?
+        mapView?.postDelayed({
+            val n = runCatching {
+                map?.style?.getSourceAs<GeoJsonSource>(SRC_PINS)
+                    ?.querySourceFeatures(null as Expression?)?.size ?: -1
+            }.getOrDefault(-2)
+            android.util.Log.i("MapPins", "selfQuery SRC_PINS features=$n")
+        }, 4000)
         style.addSource(GeoJsonSource(SRC_ME, featureCollection(emptyList())))
         style.addLayer(
             CircleLayer(LYR_ME, SRC_ME).withProperties(
