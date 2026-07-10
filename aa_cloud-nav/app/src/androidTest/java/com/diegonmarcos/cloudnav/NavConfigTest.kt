@@ -41,10 +41,12 @@ class NavConfigTest {
     }
 
     @Test fun demo_city_templates_are_rich_and_span_continents() {
+        // Per direct request: at LEAST 200 distinct cities (generated from the
+        // real travel-data.json city set — 228 cities / 38 countries).
         val cities = MapsDemo.cityTemplates
-        assertTrue("many distinct cities to cycle through", cities.size >= 8)
+        assertTrue("at least 200 distinct cities (got ${cities.size})", cities.size >= 200)
         val countries = cities.map { it.country }.toSet()
-        assertTrue("many countries — multi-continent", countries.size >= 7)
+        assertTrue("dozens of countries (got ${countries.size})", countries.size >= 30)
         cities.forEach { c ->
             assertTrue("${c.city} needs at least one stop", c.stops.isNotEmpty())
             c.stops.forEach { s ->
@@ -52,26 +54,50 @@ class NavConfigTest {
                 assertTrue(s.place.isNotBlank())
             }
         }
+        // No duplicate city entries (each city = exactly one template).
+        assertEquals("city names unique", cities.size, cities.map { it.city }.toSet().size)
     }
 
     @Test fun demo_generation_gives_every_day_a_city_and_revisits_all_of_them() {
         // Pure — the whole generation algorithm (cityForDayIndex), no DB. Every
-        // one of the ~2192 days must resolve to SOME city (full coverage), and
-        // because there are far more days than cities × stay_days, every city
-        // gets cycled back to many times (the revisit material Explored needs).
+        // one of the 2192 days must resolve to SOME city (full coverage), and
+        // the cycle wraps past the whole 228-city list at least twice, so EVERY
+        // city is a multi-visit city (the Explored revisit material) — per
+        // direct request: "double visits in many cities".
         val days = MapsDemo.totalDays
         val stay = MapsDemo.stayDays
         val cities = MapsDemo.cityTemplates
         assertTrue("stay_days must be positive", stay >= 1)
-        val visitsPerCity = HashMap<String, Int>()
+        val daysPerCity = HashMap<String, Int>()
         for (i in 0 until days) {
             val c = MapsDemo.cityForDayIndex(i)
             assertTrue("every day resolves to a real city", cities.any { it.city == c.city })
-            visitsPerCity[c.city] = (visitsPerCity[c.city] ?: 0) + 1
+            daysPerCity[c.city] = (daysPerCity[c.city] ?: 0) + 1
         }
-        assertEquals("every city gets covered", cities.size, visitsPerCity.size)
-        assertTrue("with $days days over ${cities.size} cities, every city is revisited dozens of times",
-            visitsPerCity.values.all { it >= 10 })
+        assertEquals("every city gets covered", cities.size, daysPerCity.size)
+        // days/stay = 548 stays over 228 cities → every city has ≥2 separate
+        // multi-day stays (≥ 2×stay days), many have 3.
+        assertTrue("EVERY city is visited at least twice (2 separate stays)",
+            daysPerCity.values.all { it >= 2 * stay })
+        assertTrue("many cities get a third visit",
+            daysPerCity.values.count { it >= 3 * stay } >= 50)
+    }
+
+    @Test fun explored_country_colors_are_deterministic_and_distinct() {
+        val f = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.Companion
+        // Deterministic: same country → same colour, every call.
+        assertEquals(f.countryColor("Brazil"), f.countryColor("Brazil"))
+        // Valid hex.
+        listOf("Brazil", "France", "Japan", "Argentina").forEach { c ->
+            assertTrue("hex colour for $c", f.countryColor(c).matches(Regex("#[0-9A-F]{6}")))
+        }
+        // Different countries → different colours (for these real demo countries).
+        val cols = listOf("Brazil", "France", "Japan", "Argentina", "Portugal", "United Kingdom")
+            .map { f.countryColor(it) }
+        assertEquals("no colour collisions among core demo countries", cols.size, cols.toSet().size)
+        // Null/blank → the neutral place colour, never a crash.
+        assertEquals(com.diegonmarcos.cloudnav.maps.MapsMapFragment.COLOR_PLACE, f.countryColor(null))
+        assertEquals(com.diegonmarcos.cloudnav.maps.MapsMapFragment.COLOR_PLACE, f.countryColor("  "))
     }
 
     @Test fun demo_dates_parse_to_the_correct_fixed_utc_midnight() {

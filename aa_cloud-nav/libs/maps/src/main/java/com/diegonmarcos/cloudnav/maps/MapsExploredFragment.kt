@@ -41,7 +41,12 @@ class MapsExploredFragment : Fragment() {
         val stops = MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis())
         val daily = computeDailyLocations(stops)
         cities = groupByCity(daily)
-        val pins = cities.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, MapsMapFragment.COLOR_PLACE, title = c.city, id = i.toString()) }
+        // One pin per city, COLOURED BY COUNTRY — deterministic hue per
+        // country name, so all Brazilian cities share one colour, all French
+        // another, etc. (countryColor is pure/tested).
+        val pins = cities.mapIndexed { i, c ->
+            MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), title = c.city, id = i.toString())
+        }
 
         mapFragment.onPinClick = { id -> cities.getOrNull(id.toIntOrNull() ?: -1)?.let { showVisitHistory(it) } }
         // Pins set BEFORE the map fragment commits: onStyleLoaded bakes the
@@ -62,10 +67,11 @@ class MapsExploredFragment : Fragment() {
             setCardBackgroundColor(0xF2141A25.toInt())
             strokeColor = MapsStopsFragment.COL_ACCENT; strokeWidth = dp(1f).toInt()
         }
+        val countryCount = cities.mapNotNull { it.country }.toSet().size
         card.addView(TextView(ctx).apply {
             text = if (cities.isEmpty())
                 "No places yet — load demo data or start the tracker (Configs → Tracker)."
-            else "🌍  ${cities.size} cities · $totalVisits day-visits — tap a pin"
+            else "🌍  ${cities.size} cities · $countryCount countries · $totalVisits day-visits — tap a pin"
             textSize = 13f
             setTextColor(MapsStopsFragment.COL_PRIMARY)
             setPadding(dp(16f).toInt(), dp(9f).toInt(), dp(16f).toInt(), dp(9f).toInt())
@@ -90,7 +96,8 @@ class MapsExploredFragment : Fragment() {
             setPadding(dp(20), dp(18), dp(20), dp(24))
         }
         col.addView(TextView(ctx).apply {
-            text = "📍  ${city.city}"; textSize = 21f
+            text = "📍  ${city.city}" + (city.country?.let { c -> ", $c" } ?: "")
+            textSize = 21f
             setTextColor(MapsStopsFragment.COL_PRIMARY)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
@@ -115,7 +122,13 @@ class MapsExploredFragment : Fragment() {
     data class CityVisit(val dayMs: Long, val placeName: String?)
 
     /** A deduplicated city pin: every day-visit ([CityVisit]) to it. */
-    data class ExploredCity(val city: String, val lat: Double, val lon: Double, val visits: List<CityVisit>)
+    data class ExploredCity(
+        val city: String,
+        val country: String?,
+        val lat: Double,
+        val lon: Double,
+        val visits: List<CityVisit>,
+    )
 
     companion object {
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
@@ -130,10 +143,26 @@ class MapsExploredFragment : Fragment() {
                 .map { (city, entries) ->
                     ExploredCity(
                         city = city!!,
+                        country = entries.firstNotNullOfOrNull { it.country },
                         lat = entries.map { it.lat }.average(), lon = entries.map { it.lon }.average(),
                         visits = entries.map { CityVisit(it.dayMs, it.placeName) },
                     )
                 }.sortedByDescending { it.visits.maxOf { v -> v.dayMs } }
+        }
+
+        /** Deterministic pin colour per COUNTRY — a stable hue derived from the
+         *  country name (same country → same colour on every run and device),
+         *  spread around the wheel via the golden angle so neighbouring names
+         *  don't collide. Vivid saturation/value for legibility on the dark
+         *  basemap. Null/blank country → the neutral place-blue. Pure/tested. */
+        fun countryColor(country: String?): String {
+            val c = country?.trim().orEmpty()
+            if (c.isEmpty()) return MapsMapFragment.COLOR_PLACE
+            var h = 0
+            for (ch in c) h = h * 31 + ch.code   // stable across JVMs/devices
+            val hue = ((h * 137) % 360 + 360) % 360   // golden-angle spread
+            val rgb = android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.78f, 0.95f))
+            return "#%06X".format(rgb and 0xFFFFFF)
         }
 
         fun newInstance() = MapsExploredFragment()

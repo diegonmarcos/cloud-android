@@ -666,8 +666,9 @@ object DevControlServer {
         s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 
     /** Combined debug bundle → the OpenObserve record (reuses the same
-     *  logcat/trace/crashes readers). Used by /diagnostics/{bundle,download,push}. */
-    private fun diagnosticRecord(ctx: android.content.Context): String {
+     *  logcat/trace/crashes readers). Used by /diagnostics/{bundle,download,push}
+     *  AND the About → Debug channel UI (internal for that reuse). */
+    internal fun diagnosticRecord(ctx: android.content.Context): String {
         val ts = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
             .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
             .format(java.util.Date())

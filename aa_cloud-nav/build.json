@@ -132,39 +132,209 @@
     ],
     "_doc_places_categories": "Place categories for the Places tab islands. query is the Overpass POI tag filter; emoji is the chip glyph (Google-Maps-style, data-driven — no per-category drawables).",
     "places_categories": [
-      { "id": "bars",         "label": "Bars",            "emoji": "🍺", "icon": "bar",         "query": "amenity=bar" },
-      { "id": "nightlife",    "label": "Nightlife",       "emoji": "🍸", "icon": "nightlife",   "query": "amenity=nightclub" },
-      { "id": "restaurants",  "label": "Restaurants",     "emoji": "🍽️", "icon": "restaurant",  "query": "amenity=restaurant" },
-      { "id": "cafes",        "label": "Cafés",           "emoji": "☕", "icon": "cafe",        "query": "amenity=cafe" },
-      { "id": "supermarkets", "label": "Supermarkets",    "emoji": "🛒", "icon": "supermarket", "query": "shop=supermarket" },
-      { "id": "beaches",      "label": "Beaches",         "emoji": "🏖️", "icon": "beach",       "query": "natural=beach" },
-      { "id": "nature",       "label": "Natural Wonders", "emoji": "🏞️", "icon": "nature",      "query": "leisure=park" },
-      { "id": "gyms",         "label": "Gyms",            "emoji": "🏋️", "icon": "gym",         "query": "leisure=fitness_centre" },
-      { "id": "atms",         "label": "ATMs",            "emoji": "🏧", "icon": "atm",         "query": "amenity=atm" },
-      { "id": "fuel",         "label": "Fuel",            "emoji": "⛽", "icon": "fuel",        "query": "amenity=fuel" },
-      { "id": "pharmacies",   "label": "Pharmacies",      "emoji": "💊", "icon": "pharmacy",    "query": "amenity=pharmacy" },
-      { "id": "hotels",       "label": "Hotels",          "emoji": "🏨", "icon": "hotel",       "query": "tourism=hotel" }
+      {
+        "id": "bars",
+        "label": "Bars",
+        "emoji": "🍺",
+        "icon": "bar",
+        "query": "amenity=bar"
+      },
+      {
+        "id": "nightlife",
+        "label": "Nightlife",
+        "emoji": "🍸",
+        "icon": "nightlife",
+        "query": "amenity=nightclub"
+      },
+      {
+        "id": "restaurants",
+        "label": "Restaurants",
+        "emoji": "🍽️",
+        "icon": "restaurant",
+        "query": "amenity=restaurant"
+      },
+      {
+        "id": "cafes",
+        "label": "Cafés",
+        "emoji": "☕",
+        "icon": "cafe",
+        "query": "amenity=cafe"
+      },
+      {
+        "id": "supermarkets",
+        "label": "Supermarkets",
+        "emoji": "🛒",
+        "icon": "supermarket",
+        "query": "shop=supermarket"
+      },
+      {
+        "id": "beaches",
+        "label": "Beaches",
+        "emoji": "🏖️",
+        "icon": "beach",
+        "query": "natural=beach"
+      },
+      {
+        "id": "nature",
+        "label": "Natural Wonders",
+        "emoji": "🏞️",
+        "icon": "nature",
+        "query": "leisure=park"
+      },
+      {
+        "id": "gyms",
+        "label": "Gyms",
+        "emoji": "🏋️",
+        "icon": "gym",
+        "query": "leisure=fitness_centre"
+      },
+      {
+        "id": "atms",
+        "label": "ATMs",
+        "emoji": "🏧",
+        "icon": "atm",
+        "query": "amenity=atm"
+      },
+      {
+        "id": "fuel",
+        "label": "Fuel",
+        "emoji": "⛽",
+        "icon": "fuel",
+        "query": "amenity=fuel"
+      },
+      {
+        "id": "pharmacies",
+        "label": "Pharmacies",
+        "emoji": "💊",
+        "icon": "pharmacy",
+        "query": "amenity=pharmacy"
+      },
+      {
+        "id": "hotels",
+        "label": "Hotels",
+        "emoji": "🏨",
+        "icon": "hotel",
+        "query": "tourism=hotel"
+      }
     ],
     "_doc_poi_detail_fields": "Rows shown in the Places POI detail sheet (tap a pin). Iterated in order; each pulls its OSM [tag] from the hit's raw tags — absent tags are skipped. kind: text (plain) | url (opens browser) | phone (dials) | email. First non-blank of tag|alt tags wins. name/type/distance are rendered separately at the top; remaining un-listed tags collapse under 'More'. Data-driven — add a row here, no Kotlin change.",
     "poi_detail_fields": [
-      { "tag": "cuisine",       "alt": [],                              "label": "Cuisine",       "emoji": "🍽️", "kind": "text" },
-      { "tag": "opening_hours", "alt": [],                              "label": "Hours",         "emoji": "🕒", "kind": "text" },
-      { "tag": "phone",         "alt": [ "contact:phone" ],             "label": "Phone",         "emoji": "📞", "kind": "phone" },
-      { "tag": "website",       "alt": [ "contact:website", "url" ],    "label": "Website",       "emoji": "🌐", "kind": "url" },
-      { "tag": "email",         "alt": [ "contact:email" ],             "label": "Email",         "emoji": "✉️", "kind": "email" },
-      { "tag": "addr:street",   "alt": [],                              "label": "Street",        "emoji": "🏠", "kind": "text" },
-      { "tag": "addr:housenumber", "alt": [],                           "label": "No.",           "emoji": "🔢", "kind": "text" },
-      { "tag": "addr:city",     "alt": [ "addr:town" ],                 "label": "City",          "emoji": "🏙️", "kind": "text" },
-      { "tag": "addr:postcode", "alt": [],                              "label": "Postcode",      "emoji": "📮", "kind": "text" },
-      { "tag": "brand",         "alt": [ "operator" ],                  "label": "Brand",         "emoji": "🏷️", "kind": "text" },
-      { "tag": "wheelchair",    "alt": [],                              "label": "Wheelchair",    "emoji": "♿", "kind": "text" },
-      { "tag": "outdoor_seating","alt": [],                             "label": "Outdoor seat.", "emoji": "🪑", "kind": "text" },
-      { "tag": "internet_access","alt": [ "wifi" ],                     "label": "Wi-Fi",         "emoji": "📶", "kind": "text" }
+      {
+        "tag": "cuisine",
+        "alt": [],
+        "label": "Cuisine",
+        "emoji": "🍽️",
+        "kind": "text"
+      },
+      {
+        "tag": "opening_hours",
+        "alt": [],
+        "label": "Hours",
+        "emoji": "🕒",
+        "kind": "text"
+      },
+      {
+        "tag": "phone",
+        "alt": [
+          "contact:phone"
+        ],
+        "label": "Phone",
+        "emoji": "📞",
+        "kind": "phone"
+      },
+      {
+        "tag": "website",
+        "alt": [
+          "contact:website",
+          "url"
+        ],
+        "label": "Website",
+        "emoji": "🌐",
+        "kind": "url"
+      },
+      {
+        "tag": "email",
+        "alt": [
+          "contact:email"
+        ],
+        "label": "Email",
+        "emoji": "✉️",
+        "kind": "email"
+      },
+      {
+        "tag": "addr:street",
+        "alt": [],
+        "label": "Street",
+        "emoji": "🏠",
+        "kind": "text"
+      },
+      {
+        "tag": "addr:housenumber",
+        "alt": [],
+        "label": "No.",
+        "emoji": "🔢",
+        "kind": "text"
+      },
+      {
+        "tag": "addr:city",
+        "alt": [
+          "addr:town"
+        ],
+        "label": "City",
+        "emoji": "🏙️",
+        "kind": "text"
+      },
+      {
+        "tag": "addr:postcode",
+        "alt": [],
+        "label": "Postcode",
+        "emoji": "📮",
+        "kind": "text"
+      },
+      {
+        "tag": "brand",
+        "alt": [
+          "operator"
+        ],
+        "label": "Brand",
+        "emoji": "🏷️",
+        "kind": "text"
+      },
+      {
+        "tag": "wheelchair",
+        "alt": [],
+        "label": "Wheelchair",
+        "emoji": "♿",
+        "kind": "text"
+      },
+      {
+        "tag": "outdoor_seating",
+        "alt": [],
+        "label": "Outdoor seat.",
+        "emoji": "🪑",
+        "kind": "text"
+      },
+      {
+        "tag": "internet_access",
+        "alt": [
+          "wifi"
+        ],
+        "label": "Wi-Fi",
+        "emoji": "📶",
+        "kind": "text"
+      }
     ],
     "_doc_map_styles": "Basemaps. Every raster style declares `vector_equivalent` — the real vector/hybrid style MapsBasemapPrefs.resolve() substitutes when the family preference (or an explicit pin) says 'vector': light→vector_light, dark→vector_dark, satellite→satellite_hybrid (satellite is photographic imagery, not vector geometry, so its 'vector' form is a hybrid: the raster imagery with an English roads+labels vector overlay composited on top, built by VectorStyleLoader.buildHybrid — fill/background/water polygon layers from the overlay source are dropped, only line + name-bearing symbol layers survive, recolored white-on-black-halo for legibility over arbitrary imagery). Each vector/hybrid entry declares `raster_fallback` — if its network fetch fails at runtime, MapsMapFragment falls back to that raster key automatically (toasted, never a blank map). `default_family` (vector|raster) is Configs > APIs 'Basemap' menu's default resolution when no style is explicitly pinned there; picking a concrete entry from that menu pins it everywhere, overriding the family default. `order` = every entry, in the cycle the in-map Map-switcher FAB (under locate-me) steps through AND the full list shown in the Configs menu. vector_light/vector_dark are real vector-tile GL styles (vector_style_url, OpenFreeMap 'positron'/'dark') localized at runtime to prefer label_field_pref (falls back to name:latin, then name) — city/country/street labels render in English everywhere instead of each place's local script. Uses OpenFreeMap (openfreemap.org) — free, no API key, no rate limit.",
     "map_styles": {
       "default_family": "vector",
-      "order": [ "light", "dark", "satellite", "vector_light", "vector_dark", "satellite_hybrid" ],
+      "order": [
+        "light",
+        "dark",
+        "satellite",
+        "vector_light",
+        "vector_dark",
+        "satellite_hybrid"
+      ],
       "light": {
         "label": "Standard",
         "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -230,9 +400,24 @@
     "_doc_search_scopes": "Radius-scope islands shown when the Places search bar is focused. radius_km bounds the forward search around the user (0 = worldwide). default_search_scope = the one pre-selected.",
     "default_search_scope": "city",
     "search_scopes": [
-      { "id": "city",    "label": "City",    "emoji": "🏙️", "radius_km": 30 },
-      { "id": "country", "label": "Country", "emoji": "🗺️", "radius_km": 700 },
-      { "id": "world",   "label": "World",   "emoji": "🌍", "radius_km": 0 }
+      {
+        "id": "city",
+        "label": "City",
+        "emoji": "🏙️",
+        "radius_km": 30
+      },
+      {
+        "id": "country",
+        "label": "Country",
+        "emoji": "🗺️",
+        "radius_km": 700
+      },
+      {
+        "id": "world",
+        "label": "World",
+        "emoji": "🌍",
+        "radius_km": 0
+      }
     ],
     "_doc_routing": "Route geometry + per-mode distance/time. valhalla_public = FOSSGIS Valhalla (free, no key, fair-use) — real road routes for car/walk/bike/bus. boat/flight/swim have no router → great-circle estimate. Consumed by MapsRouting (baked UI_ROUTING_ENDPOINT).",
     "routing": {
@@ -249,21 +434,138 @@
     "_doc_travel_modes": "Route mode switcher (Routes tab) + the all-modes stats panel. engine=valhalla → real route via `costing`; engine=geodesic → straight-line distance ÷ avg_speed_kmh estimate. estimated=true flags approximations (bus = road approximation, not transit timetables). default_travel_mode = the one selected on open.",
     "default_travel_mode": "walking",
     "travel_modes": [
-      { "id": "walking",   "label": "Walk",   "emoji": "🚶", "engine": "valhalla", "costing": "pedestrian", "estimated": false },
-      { "id": "bike",      "label": "Bike",   "emoji": "🚲", "engine": "valhalla", "costing": "bicycle",    "estimated": false },
-      { "id": "bus",       "label": "Bus",    "emoji": "🚌", "engine": "valhalla", "costing": "bus",        "estimated": true  },
-      { "id": "car",       "label": "Car",    "emoji": "🚗", "engine": "valhalla", "costing": "auto",       "estimated": false },
-      { "id": "boat",      "label": "Boat",   "emoji": "⛵", "engine": "geodesic", "avg_speed_kmh": 40,     "estimated": true  },
-      { "id": "flying",    "label": "Flight", "emoji": "✈️", "engine": "geodesic", "avg_speed_kmh": 800,    "estimated": true  },
-      { "id": "swimming",  "label": "Swim",   "emoji": "🏊", "engine": "geodesic", "avg_speed_kmh": 4,      "estimated": true  }
+      {
+        "id": "walking",
+        "label": "Walk",
+        "emoji": "🚶",
+        "engine": "valhalla",
+        "costing": "pedestrian",
+        "estimated": false
+      },
+      {
+        "id": "bike",
+        "label": "Bike",
+        "emoji": "🚲",
+        "engine": "valhalla",
+        "costing": "bicycle",
+        "estimated": false
+      },
+      {
+        "id": "bus",
+        "label": "Bus",
+        "emoji": "🚌",
+        "engine": "valhalla",
+        "costing": "bus",
+        "estimated": true
+      },
+      {
+        "id": "car",
+        "label": "Car",
+        "emoji": "🚗",
+        "engine": "valhalla",
+        "costing": "auto",
+        "estimated": false
+      },
+      {
+        "id": "boat",
+        "label": "Boat",
+        "emoji": "⛵",
+        "engine": "geodesic",
+        "avg_speed_kmh": 40,
+        "estimated": true
+      },
+      {
+        "id": "flying",
+        "label": "Flight",
+        "emoji": "✈️",
+        "engine": "geodesic",
+        "avg_speed_kmh": 800,
+        "estimated": true
+      },
+      {
+        "id": "swimming",
+        "label": "Swim",
+        "emoji": "🏊",
+        "engine": "geodesic",
+        "avg_speed_kmh": 4,
+        "estimated": true
+      }
     ],
     "_doc_cockpit_modes": "Navigation-tab vehicle cockpit switcher. Distinct from travel_modes (routing costing) — this drives the live instrument PANEL + map camera on the Navigation tab. Per mode: accent (hex), style (map_styles key), zoom/tilt/follow_bearing (camera), speed_unit (kmh|kn|mph), alt_unit (m|ft), gauges (ordered instrument ids rendered left→right). Gauge ids: speed, heading (compass rose), attitude (artificial horizon), altitude (tape), vspeed, grade, avg, dist, eta, position, track. Add a mode = one entry here (data-driven; no Kotlin change).",
     "default_cockpit_mode": "car",
     "cockpit_modes": [
-      { "id": "bike",     "label": "Bike",     "emoji": "🚲", "accent": "#34C759", "style": "light",     "zoom": 17.0, "tilt": 0.0,  "follow_bearing": true,  "speed_unit": "kmh", "alt_unit": "m",  "gauges": [ "speed", "avg", "grade", "heading" ] },
-      { "id": "car",      "label": "Car",      "emoji": "🚗", "accent": "#4DA3FF", "style": "dark",      "zoom": 18.0, "tilt": 55.0, "follow_bearing": true,  "speed_unit": "kmh", "alt_unit": "m",  "gauges": [ "speed", "heading", "dist", "eta" ] },
-      { "id": "boat",     "label": "Boat",     "emoji": "⛵", "accent": "#00C2C7", "style": "satellite", "zoom": 13.0, "tilt": 0.0,  "follow_bearing": false, "speed_unit": "kn",  "alt_unit": "m",  "gauges": [ "speed", "heading", "dist", "position" ] },
-      { "id": "airplane", "label": "Airplane", "emoji": "✈️", "accent": "#FFB020", "style": "satellite", "zoom": 10.0, "tilt": 0.0,  "follow_bearing": false, "speed_unit": "kn",  "alt_unit": "ft", "gauges": [ "attitude", "altitude", "vspeed", "speed" ] }
+      {
+        "id": "bike",
+        "label": "Bike",
+        "emoji": "🚲",
+        "accent": "#34C759",
+        "style": "light",
+        "zoom": 17.0,
+        "tilt": 0.0,
+        "follow_bearing": true,
+        "speed_unit": "kmh",
+        "alt_unit": "m",
+        "gauges": [
+          "speed",
+          "avg",
+          "grade",
+          "heading"
+        ]
+      },
+      {
+        "id": "car",
+        "label": "Car",
+        "emoji": "🚗",
+        "accent": "#4DA3FF",
+        "style": "dark",
+        "zoom": 18.0,
+        "tilt": 55.0,
+        "follow_bearing": true,
+        "speed_unit": "kmh",
+        "alt_unit": "m",
+        "gauges": [
+          "speed",
+          "heading",
+          "dist",
+          "eta"
+        ]
+      },
+      {
+        "id": "boat",
+        "label": "Boat",
+        "emoji": "⛵",
+        "accent": "#00C2C7",
+        "style": "satellite",
+        "zoom": 13.0,
+        "tilt": 0.0,
+        "follow_bearing": false,
+        "speed_unit": "kn",
+        "alt_unit": "m",
+        "gauges": [
+          "speed",
+          "heading",
+          "dist",
+          "position"
+        ]
+      },
+      {
+        "id": "airplane",
+        "label": "Airplane",
+        "emoji": "✈️",
+        "accent": "#FFB020",
+        "style": "satellite",
+        "zoom": 10.0,
+        "tilt": 0.0,
+        "follow_bearing": false,
+        "speed_unit": "kn",
+        "alt_unit": "ft",
+        "gauges": [
+          "attitude",
+          "altitude",
+          "vspeed",
+          "speed"
+        ]
+      }
     ],
     "maps_tracking": {
       "interval_moving_ms": 30000,
@@ -272,55 +574,3204 @@
       "stops_radius_m": 100,
       "stops_dwell_min": 2
     },
-    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — FULL daily coverage across a 5-year historical span (1987-01-01..1992-12-31, ~2192 days), FIXED (not relative to today) so it can NEVER collide with real tracked data. Generated, not hand-enumerated: MapsDemo.seed() cycles through `city_templates` (one full day's stops each), staying `stay_days` days per city before rotating to the next, for EVERY calendar day in [range_start, range_end] — so Daily/Stops/Explored all get one populated day per day of the entire range, not a sparse sample, and every one of the 8 cities is revisited dozens of times (real material for Explored's visit-history feature). Every screen that reads Stops (MapsDailyFragment/MapsStopsFragment/MapsExploredFragment/MytripsDashboardFragment/MytripsStatsFragment) queries ALL-TIME (stopsBetween(0L, now)) — a rolling 'last N years' window would hide this deliberately old data. Each stop's start_min/end_min = minutes from that day's UTC midnight. The whole ~2192-day generation runs inside one MapsDb.runInTransaction (thousands of rows, single fsync). Seeded once (idempotent — Configs button is a no-op after the first tap).",
+    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data) — FULL daily coverage across a 5-year historical span (1987-01-01..1992-12-31, 2192 days), FIXED dates so it can never collide with real tracked data. city_templates = 228 REAL cities across 38 countries, generated deterministically from front/b-MyData/mymaps-mytrips/public/travel-data.json (unique city, first-seen coords, sorted by country+city — regenerate with the same one-liner if the source changes). MapsDemo.seed() cycles the templates every stay_days days over every day of the range: 2192 days / 4-day stays = 548 city-stays over the city list, so EVERY city is visited at least twice (the Explored revisit material). Explored colours each city pin BY COUNTRY (deterministic hue from the country name — MapsExploredFragment.countryColor). All-time queries + one-transaction seeding + content-signature reseed as before.",
     "demo_stops": {
       "range_start": "1987-01-01",
       "range_end": "1992-12-31",
       "stay_days": 4,
       "city_templates": [
-        { "city": "Rio de Janeiro", "country": "Brazil", "stops": [
-          { "start_min": 0,    "end_min": 510,  "lat": -22.9711, "lon": -43.1822, "place": "Home — Copacabana",     "neighborhood": "Copacabana" },
-          { "start_min": 540,  "end_min": 600,  "lat": -22.9050, "lon": -43.1791, "place": "Confeitaria Colombo",  "neighborhood": "Centro" },
-          { "start_min": 660,  "end_min": 780,  "lat": -22.9869, "lon": -43.2045, "place": "Ipanema Beach",        "neighborhood": "Ipanema" },
-          { "start_min": 810,  "end_min": 870,  "lat": -22.9838, "lon": -43.2057, "place": "Garota de Ipanema",    "neighborhood": "Ipanema" },
-          { "start_min": 960,  "end_min": 1050, "lat": -22.9519, "lon": -43.2105, "place": "Cristo Redentor",      "neighborhood": "Alto da Boa Vista" },
-          { "start_min": 1260, "end_min": 1410, "lat": -22.9099, "lon": -43.1786, "place": "Rio Scenarium",        "neighborhood": "Lapa" }
-        ] },
-        { "city": "Buenos Aires", "country": "Argentina", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": -34.5875, "lon": -58.3931, "place": "Hotel — Recoleta",        "neighborhood": "Recoleta" },
-          { "start_min": 540, "end_min": 660, "lat": -34.6037, "lon": -58.3816, "place": "Obelisco de Buenos Aires","neighborhood": "San Nicolás" },
-          { "start_min": 720, "end_min": 900, "lat": -34.6345, "lon": -58.3627, "place": "Caminito, La Boca",       "neighborhood": "La Boca" }
-        ] },
-        { "city": "São Paulo", "country": "Brazil", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": -23.5629, "lon": -46.6544, "place": "Hotel — Jardins",   "neighborhood": "Jardins" },
-          { "start_min": 540, "end_min": 600, "lat": -23.5427, "lon": -46.6291, "place": "Mercado Municipal", "neighborhood": "Centro" },
-          { "start_min": 660, "end_min": 810, "lat": -23.5874, "lon": -46.6576, "place": "Ibirapuera Park",   "neighborhood": "Vila Mariana" }
-        ] },
-        { "city": "New York", "country": "United States", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": 40.7580, "lon": -73.9855, "place": "Hotel — Midtown", "neighborhood": "Midtown Manhattan" },
-          { "start_min": 540, "end_min": 660, "lat": 40.7829, "lon": -73.9654, "place": "Central Park",    "neighborhood": "Upper Manhattan" },
-          { "start_min": 720, "end_min": 840, "lat": 40.7033, "lon": -74.0170, "place": "Battery Park",    "neighborhood": "Financial District" }
-        ] },
-        { "city": "Tokyo", "country": "Japan", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": 35.7148, "lon": 139.7967, "place": "Ryokan — Asakusa", "neighborhood": "Asakusa" },
-          { "start_min": 540, "end_min": 660, "lat": 35.6595, "lon": 139.7004, "place": "Shibuya Crossing", "neighborhood": "Shibuya" },
-          { "start_min": 720, "end_min": 840, "lat": 35.6586, "lon": 139.7454, "place": "Tokyo Tower",      "neighborhood": "Minato" }
-        ] },
-        { "city": "London", "country": "United Kingdom", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": 51.5007, "lon": -0.1246, "place": "Hotel — Westminster","neighborhood": "Westminster" },
-          { "start_min": 540, "end_min": 660, "lat": 51.5194, "lon": -0.1270, "place": "British Museum",     "neighborhood": "Bloomsbury" },
-          { "start_min": 720, "end_min": 840, "lat": 51.5055, "lon": -0.0754, "place": "Tower Bridge",       "neighborhood": "Southwark" }
-        ] },
-        { "city": "Lisbon", "country": "Portugal", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": -38.7107, "lon": -9.1334, "place": "Pousada — Alfama",  "neighborhood": "Alfama" },
-          { "start_min": 540, "end_min": 660, "lat": -38.7077, "lon": -9.1365, "place": "Praça do Comércio", "neighborhood": "Baixa" },
-          { "start_min": 720, "end_min": 870, "lat": -38.6916, "lon": -9.2160, "place": "Torre de Belém",    "neighborhood": "Belém" }
-        ] },
-        { "city": "Paris", "country": "France", "stops": [
-          { "start_min": 0,   "end_min": 480, "lat": 48.8867, "lon": 2.3431, "place": "Hôtel — Montmartre", "neighborhood": "Montmartre" },
-          { "start_min": 540, "end_min": 660, "lat": 48.8606, "lon": 2.3376, "place": "Musée du Louvre",    "neighborhood": "1er Arrondissement" },
-          { "start_min": 720, "end_min": 840, "lat": 48.8584, "lon": 2.2945, "place": "Tour Eiffel",        "neighborhood": "7e Arrondissement" }
-        ] }
+        {
+          "city": "la Massana",
+          "country": "Andorra",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.547,
+              "lon": 1.5137,
+              "place": "Stay — la Massana",
+              "neighborhood": "La Massana"
+            }
+          ]
+        },
+        {
+          "city": "Vienna",
+          "country": "Austria",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 48.1934,
+              "lon": 16.3354,
+              "place": "Stay — Vienna",
+              "neighborhood": "Vienna"
+            }
+          ]
+        },
+        {
+          "city": "Antwerpen",
+          "country": "Belgium",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.2205,
+              "lon": 4.4169,
+              "place": "Stay — Antwerpen",
+              "neighborhood": "Flanders"
+            }
+          ]
+        },
+        {
+          "city": "Brussels",
+          "country": "Belgium",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.8456,
+              "lon": 4.3531,
+              "place": "Stay — Brussels",
+              "neighborhood": "Brussels Capital"
+            }
+          ]
+        },
+        {
+          "city": "Gent",
+          "country": "Belgium",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.0539,
+              "lon": 3.7199,
+              "place": "Stay — Gent",
+              "neighborhood": "Flanders"
+            }
+          ]
+        },
+        {
+          "city": "Zaventem",
+          "country": "Belgium",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.901,
+              "lon": 4.4856,
+              "place": "Stay — Zaventem",
+              "neighborhood": "Flanders"
+            }
+          ]
+        },
+        {
+          "city": "Izacic",
+          "country": "Bosnia and Herzegovina",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 44.7479,
+              "lon": 15.7024,
+              "place": "Stay — Izacic",
+              "neighborhood": "Federation of Bosnia and Herzegovina"
+            }
+          ]
+        },
+        {
+          "city": "Mostar",
+          "country": "Bosnia and Herzegovina",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.3461,
+              "lon": 17.8119,
+              "place": "Stay — Mostar",
+              "neighborhood": "Federation of Bosnia and Herzegovina"
+            }
+          ]
+        },
+        {
+          "city": "Andradina",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.864,
+              "lon": -51.2632,
+              "place": "Stay — Andradina",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Angra dos Reis",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.1415,
+              "lon": -44.1614,
+              "place": "Stay — Angra dos Reis",
+              "neighborhood": "Rio de Janeiro"
+            }
+          ]
+        },
+        {
+          "city": "Armacao de Buzios",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -22.7808,
+              "lon": -41.9227,
+              "place": "Stay — Armacao de Buzios",
+              "neighborhood": "Rio de Janeiro"
+            }
+          ]
+        },
+        {
+          "city": "Atibaia",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.153,
+              "lon": -46.5862,
+              "place": "Stay — Atibaia",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Balneario Camboriu",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -26.998,
+              "lon": -48.6245,
+              "place": "Stay — Balneario Camboriu",
+              "neighborhood": "Santa Catarina"
+            }
+          ]
+        },
+        {
+          "city": "Barretos",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.5544,
+              "lon": -48.5812,
+              "place": "Stay — Barretos",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Belo Horizonte",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -19.9339,
+              "lon": -43.9253,
+              "place": "Stay — Belo Horizonte",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Biritiba Mirim",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.7616,
+              "lon": -45.7613,
+              "place": "Stay — Biritiba Mirim",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Boipeba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -13.6105,
+              "lon": -38.907,
+              "place": "Stay — Boipeba",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Boituva",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.2937,
+              "lon": -47.7521,
+              "place": "Stay — Boituva",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Brumadinho",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.1506,
+              "lon": -44.201,
+              "place": "Stay — Brumadinho",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Cafelandia",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -21.8054,
+              "lon": -49.6035,
+              "place": "Stay — Cafelandia",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Camamu",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -13.919,
+              "lon": -38.9315,
+              "place": "Stay — Camamu",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Camocim",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -2.8529,
+              "lon": -40.6914,
+              "place": "Stay — Camocim",
+              "neighborhood": "Ceara"
+            }
+          ]
+        },
+        {
+          "city": "Campinas",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -22.8928,
+              "lon": -46.9922,
+              "place": "Stay — Campinas",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Canela",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -29.357,
+              "lon": -50.8474,
+              "place": "Stay — Canela",
+              "neighborhood": "Rio Grande do Sul"
+            }
+          ]
+        },
+        {
+          "city": "Castanhal",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -1.2984,
+              "lon": -47.9207,
+              "place": "Stay — Castanhal",
+              "neighborhood": "Para"
+            }
+          ]
+        },
+        {
+          "city": "Cruz",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -2.8126,
+              "lon": -40.4163,
+              "place": "Stay — Cruz",
+              "neighborhood": "Ceara"
+            }
+          ]
+        },
+        {
+          "city": "Curitiba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -25.4408,
+              "lon": -49.2875,
+              "place": "Stay — Curitiba",
+              "neighborhood": "Parana"
+            }
+          ]
+        },
+        {
+          "city": "Embu",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.6247,
+              "lon": -46.8457,
+              "place": "Stay — Embu",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Ferraz de Vasconcelos",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.606,
+              "lon": -46.4026,
+              "place": "Stay — Ferraz de Vasconcelos",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Fortaleza",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -3.7921,
+              "lon": -38.5653,
+              "place": "Stay — Fortaleza",
+              "neighborhood": "Ceara"
+            }
+          ]
+        },
+        {
+          "city": "Goiania",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -16.6857,
+              "lon": -49.2651,
+              "place": "Stay — Goiania",
+              "neighborhood": "Goias"
+            }
+          ]
+        },
+        {
+          "city": "Guaratuba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -25.9113,
+              "lon": -48.5733,
+              "place": "Stay — Guaratuba",
+              "neighborhood": "Parana"
+            }
+          ]
+        },
+        {
+          "city": "Guarulhos",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.5189,
+              "lon": -46.473,
+              "place": "Stay — Guarulhos",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Ibiracu",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -19.8309,
+              "lon": -40.3793,
+              "place": "Stay — Ibiracu",
+              "neighborhood": "Espirito Santo"
+            }
+          ]
+        },
+        {
+          "city": "Ilhabela",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.8185,
+              "lon": -45.3678,
+              "place": "Stay — Ilhabela",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Ilheus",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -14.8113,
+              "lon": -39.0279,
+              "place": "Stay — Ilheus",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Indaiatuba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.0082,
+              "lon": -47.1376,
+              "place": "Stay — Indaiatuba",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Ipatinga",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -19.4667,
+              "lon": -42.5689,
+              "place": "Stay — Ipatinga",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Itabirito",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.3145,
+              "lon": -44.0204,
+              "place": "Stay — Itabirito",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Itacare",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -14.2756,
+              "lon": -38.9911,
+              "place": "Stay — Itacare",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Itamaraju",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -16.8964,
+              "lon": -39.1115,
+              "place": "Stay — Itamaraju",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Itatiba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.0119,
+              "lon": -46.8193,
+              "place": "Stay — Itatiba",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Itu",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.2995,
+              "lon": -47.2989,
+              "place": "Stay — Itu",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Itupeva",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.1613,
+              "lon": -47.0189,
+              "place": "Stay — Itupeva",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Ivoti",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -29.5836,
+              "lon": -51.0878,
+              "place": "Stay — Ivoti",
+              "neighborhood": "Rio Grande do Sul"
+            }
+          ]
+        },
+        {
+          "city": "Mairipora",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.3798,
+              "lon": -46.6174,
+              "place": "Stay — Mairipora",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Maua",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.6347,
+              "lon": -46.454,
+              "place": "Stay — Maua",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Mirandopolis",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -21.1357,
+              "lon": -51.1037,
+              "place": "Stay — Mirandopolis",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Mongagua",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -24.1002,
+              "lon": -46.6495,
+              "place": "Stay — Mongagua",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Nilopolis",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.032,
+              "lon": -43.4715,
+              "place": "Stay — Nilopolis",
+              "neighborhood": "Rio de Janeiro"
+            }
+          ]
+        },
+        {
+          "city": "Osasco",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.5463,
+              "lon": -46.7254,
+              "place": "Stay — Osasco",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Paranagua",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -25.5112,
+              "lon": -48.5032,
+              "place": "Stay — Paranagua",
+              "neighborhood": "Parana"
+            }
+          ]
+        },
+        {
+          "city": "Paraty",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.2041,
+              "lon": -44.7227,
+              "place": "Stay — Paraty",
+              "neighborhood": "Rio de Janeiro"
+            }
+          ]
+        },
+        {
+          "city": "Passos",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.7308,
+              "lon": -46.6085,
+              "place": "Stay — Passos",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Pocos de Caldas",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -21.7898,
+              "lon": -46.5676,
+              "place": "Stay — Pocos de Caldas",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Porto Alegre",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -30.0213,
+              "lon": -51.2033,
+              "place": "Stay — Porto Alegre",
+              "neighborhood": "Rio Grande do Sul"
+            }
+          ]
+        },
+        {
+          "city": "Porto Seguro",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -16.8061,
+              "lon": -39.1457,
+              "place": "Stay — Porto Seguro",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Ribeirao Preto",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -21.204,
+              "lon": -47.8219,
+              "place": "Stay — Ribeirao Preto",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Rio de Janeiro",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.0098,
+              "lon": -43.3539,
+              "place": "Stay — Rio de Janeiro",
+              "neighborhood": "Rio de Janeiro"
+            }
+          ]
+        },
+        {
+          "city": "Santa Cruz Cabralia",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -16.2484,
+              "lon": -39.0113,
+              "place": "Stay — Santa Cruz Cabralia",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Santo Andre",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.6496,
+              "lon": -46.5536,
+              "place": "Stay — Santo Andre",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Santo Antonio de Posse",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -22.6049,
+              "lon": -46.9479,
+              "place": "Stay — Santo Antonio de Posse",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Sao Caetano do Sul",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.6479,
+              "lon": -46.5735,
+              "place": "Stay — Sao Caetano do Sul",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Sao Jose dos Campos",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.2542,
+              "lon": -45.8647,
+              "place": "Stay — Sao Jose dos Campos",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Sao Paulo",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.4933,
+              "lon": -46.6383,
+              "place": "Stay — Sao Paulo",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Sao Roque",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.4297,
+              "lon": -47.1383,
+              "place": "Stay — Sao Roque",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Sao Sebastiao",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.7691,
+              "lon": -45.7236,
+              "place": "Stay — Sao Sebastiao",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Sarzedo",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.0251,
+              "lon": -44.1461,
+              "place": "Stay — Sarzedo",
+              "neighborhood": "Minas Gerais"
+            }
+          ]
+        },
+        {
+          "city": "Seropedica",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -22.7093,
+              "lon": -43.7363,
+              "place": "Stay — Seropedica",
+              "neighborhood": "Rio de Janeiro"
+            }
+          ]
+        },
+        {
+          "city": "Sorocaba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.4064,
+              "lon": -47.3534,
+              "place": "Stay — Sorocaba",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Ubatuba",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.401,
+              "lon": -45.0158,
+              "place": "Stay — Ubatuba",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Valenca",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -13.4095,
+              "lon": -38.908,
+              "place": "Stay — Valenca",
+              "neighborhood": "Bahia"
+            }
+          ]
+        },
+        {
+          "city": "Valinhos",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -22.9623,
+              "lon": -46.9891,
+              "place": "Stay — Valinhos",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Vargem Grande Paulista",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -23.5978,
+              "lon": -47.0511,
+              "place": "Stay — Vargem Grande Paulista",
+              "neighborhood": "Sao Paulo"
+            }
+          ]
+        },
+        {
+          "city": "Vila Velha",
+          "country": "Brazil",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": -20.2908,
+              "lon": -40.294,
+              "place": "Stay — Vila Velha",
+              "neighborhood": "Espirito Santo"
+            }
+          ]
+        },
+        {
+          "city": "Burgas",
+          "country": "Bulgaria",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.4904,
+              "lon": 27.4737,
+              "place": "Stay — Burgas",
+              "neighborhood": "Burgas"
+            }
+          ]
+        },
+        {
+          "city": "Sofia",
+          "country": "Bulgaria",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.6947,
+              "lon": 23.3147,
+              "place": "Stay — Sofia",
+              "neighborhood": "Sofia-Capital"
+            }
+          ]
+        },
+        {
+          "city": "Sozopol",
+          "country": "Bulgaria",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.4231,
+              "lon": 27.6945,
+              "place": "Stay — Sozopol",
+              "neighborhood": "Burgas"
+            }
+          ]
+        },
+        {
+          "city": "Jezerce",
+          "country": "Croatia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 44.8654,
+              "lon": 15.582,
+              "place": "Stay — Jezerce",
+              "neighborhood": "Licko-Senjska"
+            }
+          ]
+        },
+        {
+          "city": "Split",
+          "country": "Croatia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.5066,
+              "lon": 16.4442,
+              "place": "Stay — Split",
+              "neighborhood": "Splitsko-Dalmatinska"
+            }
+          ]
+        },
+        {
+          "city": "Zagreb - Centar",
+          "country": "Croatia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 45.812,
+              "lon": 15.9643,
+              "place": "Stay — Zagreb - Centar",
+              "neighborhood": "Grad Zagreb"
+            }
+          ]
+        },
+        {
+          "city": "Prague",
+          "country": "Czech Republic",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.087,
+              "lon": 14.4338,
+              "place": "Stay — Prague",
+              "neighborhood": "Praha"
+            }
+          ]
+        },
+        {
+          "city": "Copenhagen",
+          "country": "Denmark",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 55.6763,
+              "lon": 12.5598,
+              "place": "Stay — Copenhagen",
+              "neighborhood": "Capital Region"
+            }
+          ]
+        },
+        {
+          "city": "Frederiksberg",
+          "country": "Denmark",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 55.7033,
+              "lon": 12.5384,
+              "place": "Stay — Frederiksberg",
+              "neighborhood": "Capital Region"
+            }
+          ]
+        },
+        {
+          "city": "Tallinn",
+          "country": "Estonia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 59.4391,
+              "lon": 24.7451,
+              "place": "Stay — Tallinn",
+              "neighborhood": "Harju"
+            }
+          ]
+        },
+        {
+          "city": "Bayonne",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.4953,
+              "lon": -1.4688,
+              "place": "Stay — Bayonne",
+              "neighborhood": "Aquitaine"
+            }
+          ]
+        },
+        {
+          "city": "Beaulieu-sur-Mer",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.7055,
+              "lon": 7.3289,
+              "place": "Stay — Beaulieu-sur-Mer",
+              "neighborhood": "Provence-Alpes-Cote d'Azur"
+            }
+          ]
+        },
+        {
+          "city": "Bordeaux",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 44.8413,
+              "lon": -0.5728,
+              "place": "Stay — Bordeaux",
+              "neighborhood": "Aquitaine"
+            }
+          ]
+        },
+        {
+          "city": "Cabries",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.4816,
+              "lon": 5.366,
+              "place": "Stay — Cabries",
+              "neighborhood": "Provence-Alpes-Cote d'Azur"
+            }
+          ]
+        },
+        {
+          "city": "Capbreton",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.657,
+              "lon": -1.4401,
+              "place": "Stay — Capbreton",
+              "neighborhood": "Aquitaine"
+            }
+          ]
+        },
+        {
+          "city": "Gordes",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.9159,
+              "lon": 5.2073,
+              "place": "Stay — Gordes",
+              "neighborhood": "Provence-Alpes-Cote d'Azur"
+            }
+          ]
+        },
+        {
+          "city": "Grenoble",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 45.1525,
+              "lon": 5.7044,
+              "place": "Stay — Grenoble",
+              "neighborhood": "Rhone-Alpes"
+            }
+          ]
+        },
+        {
+          "city": "Hendaye",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.3729,
+              "lon": -1.7401,
+              "place": "Stay — Hendaye",
+              "neighborhood": "Aquitaine"
+            }
+          ]
+        },
+        {
+          "city": "Le Pre-Saint-Gervais",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 48.8885,
+              "lon": 2.379,
+              "place": "Stay — Le Pre-Saint-Gervais",
+              "neighborhood": "Ile-de-France"
+            }
+          ]
+        },
+        {
+          "city": "Lyon",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 45.7512,
+              "lon": 4.8428,
+              "place": "Stay — Lyon",
+              "neighborhood": "Rhone-Alpes"
+            }
+          ]
+        },
+        {
+          "city": "Marignane",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.4384,
+              "lon": 5.2144,
+              "place": "Stay — Marignane",
+              "neighborhood": "Provence-Alpes-Cote d'Azur"
+            }
+          ]
+        },
+        {
+          "city": "Marseille 02",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.2916,
+              "lon": 5.3716,
+              "place": "Stay — Marseille 02",
+              "neighborhood": "Provence-Alpes-Cote d'Azur"
+            }
+          ]
+        },
+        {
+          "city": "Montpellier",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.6059,
+              "lon": 3.8776,
+              "place": "Stay — Montpellier",
+              "neighborhood": "Languedoc-Roussillon"
+            }
+          ]
+        },
+        {
+          "city": "Paris",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 48.8419,
+              "lon": 2.3529,
+              "place": "Stay — Paris",
+              "neighborhood": "Ile-de-France"
+            }
+          ]
+        },
+        {
+          "city": "Perpignan",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.7009,
+              "lon": 2.884,
+              "place": "Stay — Perpignan",
+              "neighborhood": "Languedoc-Roussillon"
+            }
+          ]
+        },
+        {
+          "city": "Tarbes",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.2531,
+              "lon": 0.0732,
+              "place": "Stay — Tarbes",
+              "neighborhood": "Midi-Pyrenees"
+            }
+          ]
+        },
+        {
+          "city": "Toulouse",
+          "country": "France",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.6091,
+              "lon": 1.4382,
+              "place": "Stay — Toulouse",
+              "neighborhood": "Midi-Pyrenees"
+            }
+          ]
+        },
+        {
+          "city": "Aachen",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.7687,
+              "lon": 6.2267,
+              "place": "Stay — Aachen",
+              "neighborhood": "North Rhine-Westphalia"
+            }
+          ]
+        },
+        {
+          "city": "Berlin",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 52.5087,
+              "lon": 13.4622,
+              "place": "Stay — Berlin",
+              "neighborhood": "Berlin"
+            }
+          ]
+        },
+        {
+          "city": "Cologne",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.9463,
+              "lon": 6.9256,
+              "place": "Stay — Cologne",
+              "neighborhood": "North Rhine-Westphalia"
+            }
+          ]
+        },
+        {
+          "city": "Freiburg",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 47.9921,
+              "lon": 7.8582,
+              "place": "Stay — Freiburg",
+              "neighborhood": "Baden-Wuerttemberg"
+            }
+          ]
+        },
+        {
+          "city": "Hamburg",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 53.5507,
+              "lon": 10.0228,
+              "place": "Stay — Hamburg",
+              "neighborhood": "Hamburg"
+            }
+          ]
+        },
+        {
+          "city": "Kehl",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 48.5659,
+              "lon": 7.7997,
+              "place": "Stay — Kehl",
+              "neighborhood": "Baden-Wuerttemberg"
+            }
+          ]
+        },
+        {
+          "city": "Leipzig",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.3358,
+              "lon": 12.326,
+              "place": "Stay — Leipzig",
+              "neighborhood": "Saxony"
+            }
+          ]
+        },
+        {
+          "city": "Stuttgart",
+          "country": "Germany",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 48.7933,
+              "lon": 9.1915,
+              "place": "Stay — Stuttgart",
+              "neighborhood": "Baden-Wuerttemberg"
+            }
+          ]
+        },
+        {
+          "city": "Athens",
+          "country": "Greece",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 37.982,
+              "lon": 23.7246,
+              "place": "Stay — Athens",
+              "neighborhood": "Attica"
+            }
+          ]
+        },
+        {
+          "city": "Chania",
+          "country": "Greece",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.5146,
+              "lon": 24.0264,
+              "place": "Stay — Chania",
+              "neighborhood": "Crete"
+            }
+          ]
+        },
+        {
+          "city": "Daratsos",
+          "country": "Greece",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.5117,
+              "lon": 23.9792,
+              "place": "Stay — Daratsos",
+              "neighborhood": "Crete"
+            }
+          ]
+        },
+        {
+          "city": "Kalampaka",
+          "country": "Greece",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 39.7047,
+              "lon": 21.6275,
+              "place": "Stay — Kalampaka",
+              "neighborhood": "Thessaly"
+            }
+          ]
+        },
+        {
+          "city": "Rethymno",
+          "country": "Greece",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.3674,
+              "lon": 24.4752,
+              "place": "Stay — Rethymno",
+              "neighborhood": "Crete"
+            }
+          ]
+        },
+        {
+          "city": "Sykies",
+          "country": "Greece",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 40.6441,
+              "lon": 22.9443,
+              "place": "Stay — Sykies",
+              "neighborhood": "Central Macedonia"
+            }
+          ]
+        },
+        {
+          "city": "Budapest XI. keruelet",
+          "country": "Hungary",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 47.4738,
+              "lon": 19.0306,
+              "place": "Stay — Budapest XI. keruelet",
+              "neighborhood": "Budapest"
+            }
+          ]
+        },
+        {
+          "city": "Catania",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 37.5136,
+              "lon": 15.0856,
+              "place": "Stay — Catania",
+              "neighborhood": "Sicily"
+            }
+          ]
+        },
+        {
+          "city": "Ercolano",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 40.7949,
+              "lon": 14.3551,
+              "place": "Stay — Ercolano",
+              "neighborhood": "Campania"
+            }
+          ]
+        },
+        {
+          "city": "Florence",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.7842,
+              "lon": 11.2421,
+              "place": "Stay — Florence",
+              "neighborhood": "Tuscany"
+            }
+          ]
+        },
+        {
+          "city": "Mestre",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 45.4834,
+              "lon": 12.2333,
+              "place": "Stay — Mestre",
+              "neighborhood": "Veneto"
+            }
+          ]
+        },
+        {
+          "city": "Milano",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 45.4498,
+              "lon": 9.1669,
+              "place": "Stay — Milano",
+              "neighborhood": "Lombardy"
+            }
+          ]
+        },
+        {
+          "city": "Napoli",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 40.8456,
+              "lon": 14.2499,
+              "place": "Stay — Napoli",
+              "neighborhood": "Campania"
+            }
+          ]
+        },
+        {
+          "city": "Palermo",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 38.1234,
+              "lon": 13.3654,
+              "place": "Stay — Palermo",
+              "neighborhood": "Sicily"
+            }
+          ]
+        },
+        {
+          "city": "Rome",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.8955,
+              "lon": 12.4971,
+              "place": "Stay — Rome",
+              "neighborhood": "Latium"
+            }
+          ]
+        },
+        {
+          "city": "San Teodoro",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 44.4052,
+              "lon": 8.9395,
+              "place": "Stay — San Teodoro",
+              "neighborhood": "Liguria"
+            }
+          ]
+        },
+        {
+          "city": "Scandicci",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.7548,
+              "lon": 11.1723,
+              "place": "Stay — Scandicci",
+              "neighborhood": "Tuscany"
+            }
+          ]
+        },
+        {
+          "city": "Turin",
+          "country": "Italy",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 45.0763,
+              "lon": 7.6857,
+              "place": "Stay — Turin",
+              "neighborhood": "Piedmont"
+            }
+          ]
+        },
+        {
+          "city": "Al Jizah",
+          "country": "Jordan",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 31.7223,
+              "lon": 35.9865,
+              "place": "Stay — Al Jizah",
+              "neighborhood": "Amman"
+            }
+          ]
+        },
+        {
+          "city": "Al Quwayrah",
+          "country": "Jordan",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 29.5559,
+              "lon": 35.4076,
+              "place": "Stay — Al Quwayrah",
+              "neighborhood": "Ma'an"
+            }
+          ]
+        },
+        {
+          "city": "Amman",
+          "country": "Jordan",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 31.9579,
+              "lon": 35.922,
+              "place": "Stay — Amman",
+              "neighborhood": "Amman"
+            }
+          ]
+        },
+        {
+          "city": "Riga",
+          "country": "Latvia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 56.9469,
+              "lon": 24.113,
+              "place": "Stay — Riga",
+              "neighborhood": "Riga"
+            }
+          ]
+        },
+        {
+          "city": "Ventspils",
+          "country": "Latvia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 57.3946,
+              "lon": 21.5622,
+              "place": "Stay — Ventspils",
+              "neighborhood": "Ventspils"
+            }
+          ]
+        },
+        {
+          "city": "Klaipeda",
+          "country": "Lithuania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 55.8017,
+              "lon": 21.0706,
+              "place": "Stay — Klaipeda",
+              "neighborhood": "Klaipedos apskritis"
+            }
+          ]
+        },
+        {
+          "city": "Naujamiestis",
+          "country": "Lithuania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 54.6792,
+              "lon": 25.2659,
+              "place": "Stay — Naujamiestis",
+              "neighborhood": "Vilnius County"
+            }
+          ]
+        },
+        {
+          "city": "Nida",
+          "country": "Lithuania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 55.2989,
+              "lon": 20.9824,
+              "place": "Stay — Nida",
+              "neighborhood": ""
+            }
+          ]
+        },
+        {
+          "city": "Palanga",
+          "country": "Lithuania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 55.8786,
+              "lon": 21.0638,
+              "place": "Stay — Palanga",
+              "neighborhood": "Klaipedos apskritis"
+            }
+          ]
+        },
+        {
+          "city": "Rasos",
+          "country": "Lithuania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 54.6778,
+              "lon": 25.3022,
+              "place": "Stay — Rasos",
+              "neighborhood": "Vilnius County"
+            }
+          ]
+        },
+        {
+          "city": "Vilnius",
+          "country": "Lithuania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 54.687,
+              "lon": 25.285,
+              "place": "Stay — Vilnius",
+              "neighborhood": "Vilnius County"
+            }
+          ]
+        },
+        {
+          "city": "Luqa",
+          "country": "Malta",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.8517,
+              "lon": 14.4863,
+              "place": "Stay — Luqa",
+              "neighborhood": "Luqa"
+            }
+          ]
+        },
+        {
+          "city": "San Giljan",
+          "country": "Malta",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.9138,
+              "lon": 14.4901,
+              "place": "Stay — San Giljan",
+              "neighborhood": "Saint Julian"
+            }
+          ]
+        },
+        {
+          "city": "Kotor",
+          "country": "Montenegro",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.4233,
+              "lon": 18.7717,
+              "place": "Stay — Kotor",
+              "neighborhood": "Kotor"
+            }
+          ]
+        },
+        {
+          "city": "Chefchaouene",
+          "country": "Morocco",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.168,
+              "lon": -5.2632,
+              "place": "Stay — Chefchaouene",
+              "neighborhood": "Tanger-Tetouan"
+            }
+          ]
+        },
+        {
+          "city": "Inezgane",
+          "country": "Morocco",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 30.3299,
+              "lon": -9.4103,
+              "place": "Stay — Inezgane",
+              "neighborhood": "Souss-Massa-Draa"
+            }
+          ]
+        },
+        {
+          "city": "Marrakesh",
+          "country": "Morocco",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 31.629,
+              "lon": -7.9859,
+              "place": "Stay — Marrakesh",
+              "neighborhood": "Marrakech-Tensift-Al Haouz"
+            }
+          ]
+        },
+        {
+          "city": "Rabat",
+          "country": "Morocco",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 34.0169,
+              "lon": -6.8322,
+              "place": "Stay — Rabat",
+              "neighborhood": "Rabat-Sale-Zemmour-Zaer"
+            }
+          ]
+        },
+        {
+          "city": "Taghazout",
+          "country": "Morocco",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 31.5032,
+              "lon": -9.7627,
+              "place": "Stay — Taghazout",
+              "neighborhood": "Marrakech-Tensift-Al Haouz"
+            }
+          ]
+        },
+        {
+          "city": "Tangier",
+          "country": "Morocco",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 35.7872,
+              "lon": -5.8102,
+              "place": "Stay — Tangier",
+              "neighborhood": "Tanger-Tetouan"
+            }
+          ]
+        },
+        {
+          "city": "Amsterdam",
+          "country": "Netherlands",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 52.3842,
+              "lon": 4.9037,
+              "place": "Stay — Amsterdam",
+              "neighborhood": "North Holland"
+            }
+          ]
+        },
+        {
+          "city": "Rotterdam",
+          "country": "Netherlands",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.9215,
+              "lon": 4.4656,
+              "place": "Stay — Rotterdam",
+              "neighborhood": "South Holland"
+            }
+          ]
+        },
+        {
+          "city": "Zaandam",
+          "country": "Netherlands",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 52.3891,
+              "lon": 4.8389,
+              "place": "Stay — Zaandam",
+              "neighborhood": "North Holland"
+            }
+          ]
+        },
+        {
+          "city": "Oslo",
+          "country": "Norway",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 59.9274,
+              "lon": 10.767,
+              "place": "Stay — Oslo",
+              "neighborhood": "Oslo"
+            }
+          ]
+        },
+        {
+          "city": "Jericho",
+          "country": "Palestine",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 31.7667,
+              "lon": 35.5778,
+              "place": "Stay — Jericho",
+              "neighborhood": "West Bank"
+            }
+          ]
+        },
+        {
+          "city": "Krakow",
+          "country": "Poland",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.064,
+              "lon": 19.9409,
+              "place": "Stay — Krakow",
+              "neighborhood": "Lesser Poland Voivodeship"
+            }
+          ]
+        },
+        {
+          "city": "Warsaw",
+          "country": "Poland",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 52.245,
+              "lon": 21.0139,
+              "place": "Stay — Warsaw",
+              "neighborhood": "Masovian Voivodeship"
+            }
+          ]
+        },
+        {
+          "city": "Ericeira",
+          "country": "Portugal",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 38.9649,
+              "lon": -9.4146,
+              "place": "Stay — Ericeira",
+              "neighborhood": "Lisbon"
+            }
+          ]
+        },
+        {
+          "city": "Lisbon",
+          "country": "Portugal",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 38.7146,
+              "lon": -9.1414,
+              "place": "Stay — Lisbon",
+              "neighborhood": "Lisbon"
+            }
+          ]
+        },
+        {
+          "city": "Porto",
+          "country": "Portugal",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.1497,
+              "lon": -8.6149,
+              "place": "Stay — Porto",
+              "neighborhood": "Porto"
+            }
+          ]
+        },
+        {
+          "city": "Al Wakrah",
+          "country": "Qatar",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 25.2609,
+              "lon": 51.6138,
+              "place": "Stay — Al Wakrah",
+              "neighborhood": "Al Wakrah"
+            }
+          ]
+        },
+        {
+          "city": "Doha",
+          "country": "Qatar",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 25.363,
+              "lon": 51.5566,
+              "place": "Stay — Doha",
+              "neighborhood": "Baladiyat ad Dawhah"
+            }
+          ]
+        },
+        {
+          "city": "Bucuresti",
+          "country": "Romania",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 44.422,
+              "lon": 26.0988,
+              "place": "Stay — Bucuresti",
+              "neighborhood": "Bucuresti"
+            }
+          ]
+        },
+        {
+          "city": "Stari Grad",
+          "country": "Serbia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 44.8174,
+              "lon": 20.4637,
+              "place": "Stay — Stari Grad",
+              "neighborhood": "Central Serbia"
+            }
+          ]
+        },
+        {
+          "city": "Bratislava",
+          "country": "Slovakia",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 48.1462,
+              "lon": 17.1096,
+              "place": "Stay — Bratislava",
+              "neighborhood": "Bratislavsky"
+            }
+          ]
+        },
+        {
+          "city": "Alboraya",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 39.4718,
+              "lon": -0.3389,
+              "place": "Stay — Alboraya",
+              "neighborhood": "Valencia"
+            }
+          ]
+        },
+        {
+          "city": "Balaguer",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.7913,
+              "lon": 0.8105,
+              "place": "Stay — Balaguer",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Barcelona",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.3935,
+              "lon": 2.1579,
+              "place": "Stay — Barcelona",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Bilbao",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.2669,
+              "lon": -2.9316,
+              "place": "Stay — Bilbao",
+              "neighborhood": "Basque Country"
+            }
+          ]
+        },
+        {
+          "city": "Cadiz",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 36.5317,
+              "lon": -6.2961,
+              "place": "Stay — Cadiz",
+              "neighborhood": "Andalusia"
+            }
+          ]
+        },
+        {
+          "city": "Cornella de Llobregat",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.3518,
+              "lon": 2.0789,
+              "place": "Stay — Cornella de Llobregat",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "El Prat de Llobregat",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.2983,
+              "lon": 2.08,
+              "place": "Stay — El Prat de Llobregat",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Esplugues de Llobregat",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.3865,
+              "lon": 2.1063,
+              "place": "Stay — Esplugues de Llobregat",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Girona",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.9761,
+              "lon": 2.8127,
+              "place": "Stay — Girona",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Granada",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 37.1782,
+              "lon": -3.6033,
+              "place": "Stay — Granada",
+              "neighborhood": "Andalusia"
+            }
+          ]
+        },
+        {
+          "city": "Madrid",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 40.4207,
+              "lon": -3.7081,
+              "place": "Stay — Madrid",
+              "neighborhood": "Madrid"
+            }
+          ]
+        },
+        {
+          "city": "Malaga",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 36.7179,
+              "lon": -4.4239,
+              "place": "Stay — Malaga",
+              "neighborhood": "Andalusia"
+            }
+          ]
+        },
+        {
+          "city": "Montornes del Valles",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.5662,
+              "lon": 2.2824,
+              "place": "Stay — Montornes del Valles",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Oliana",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.0594,
+              "lon": 1.3121,
+              "place": "Stay — Oliana",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "San Sebastian",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.3071,
+              "lon": -1.9665,
+              "place": "Stay — San Sebastian",
+              "neighborhood": "Basque Country"
+            }
+          ]
+        },
+        {
+          "city": "Santander",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.4621,
+              "lon": -3.7205,
+              "place": "Stay — Santander",
+              "neighborhood": "Cantabria"
+            }
+          ]
+        },
+        {
+          "city": "Sevilla",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 37.3855,
+              "lon": -5.99,
+              "place": "Stay — Sevilla",
+              "neighborhood": "Andalusia"
+            }
+          ]
+        },
+        {
+          "city": "Tarifa",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 36.0142,
+              "lon": -5.6072,
+              "place": "Stay — Tarifa",
+              "neighborhood": "Andalusia"
+            }
+          ]
+        },
+        {
+          "city": "Tavernes Blanques",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 39.4853,
+              "lon": -0.3622,
+              "place": "Stay — Tavernes Blanques",
+              "neighborhood": "Valencia"
+            }
+          ]
+        },
+        {
+          "city": "Torroella de Montgri",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.0485,
+              "lon": 3.1949,
+              "place": "Stay — Torroella de Montgri",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Valencia",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 39.4579,
+              "lon": -0.3701,
+              "place": "Stay — Valencia",
+              "neighborhood": "Valencia"
+            }
+          ]
+        },
+        {
+          "city": "Zahara de los Atunes",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 36.0733,
+              "lon": -5.7522,
+              "place": "Stay — Zahara de los Atunes",
+              "neighborhood": "Andalusia"
+            }
+          ]
+        },
+        {
+          "city": "Zarautz",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 43.2865,
+              "lon": -2.1746,
+              "place": "Stay — Zarautz",
+              "neighborhood": "Basque Country"
+            }
+          ]
+        },
+        {
+          "city": "la Seu d'Urgell",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 42.3601,
+              "lon": 1.4558,
+              "place": "Stay — la Seu d'Urgell",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "les Corts",
+          "country": "Spain",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.3877,
+              "lon": 2.1087,
+              "place": "Stay — les Corts",
+              "neighborhood": "Catalonia"
+            }
+          ]
+        },
+        {
+          "city": "Goeteborg",
+          "country": "Sweden",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 57.6926,
+              "lon": 11.9478,
+              "place": "Stay — Goeteborg",
+              "neighborhood": "Vaestra Goetaland"
+            }
+          ]
+        },
+        {
+          "city": "Majorna",
+          "country": "Sweden",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 57.6992,
+              "lon": 11.9376,
+              "place": "Stay — Majorna",
+              "neighborhood": "Vaestra Goetaland"
+            }
+          ]
+        },
+        {
+          "city": "Malmoe",
+          "country": "Sweden",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 55.5943,
+              "lon": 13.0215,
+              "place": "Stay — Malmoe",
+              "neighborhood": "Skane"
+            }
+          ]
+        },
+        {
+          "city": "Stockholm",
+          "country": "Sweden",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 59.3359,
+              "lon": 18.0507,
+              "place": "Stay — Stockholm",
+              "neighborhood": "Stockholm"
+            }
+          ]
+        },
+        {
+          "city": "Interlaken",
+          "country": "Switzerland",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 46.6813,
+              "lon": 7.8639,
+              "place": "Stay — Interlaken",
+              "neighborhood": "Bern"
+            }
+          ]
+        },
+        {
+          "city": "Zuerich (Kreis 1) / Lindenhof",
+          "country": "Switzerland",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 47.3781,
+              "lon": 8.5403,
+              "place": "Stay — Zuerich (Kreis 1) / Lindenhof",
+              "neighborhood": "Zurich"
+            }
+          ]
+        },
+        {
+          "city": "Zuerich (Kreis 2)",
+          "country": "Switzerland",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 47.3416,
+              "lon": 8.5201,
+              "place": "Stay — Zuerich (Kreis 2)",
+              "neighborhood": "Zurich"
+            }
+          ]
+        },
+        {
+          "city": "Ban Ao Nang",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 8.0134,
+              "lon": 98.8426,
+              "place": "Stay — Ban Ao Nang",
+              "neighborhood": "Phangnga"
+            }
+          ]
+        },
+        {
+          "city": "Ban Phru Nai",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 7.7392,
+              "lon": 98.7662,
+              "place": "Stay — Ban Phru Nai",
+              "neighborhood": "Phangnga"
+            }
+          ]
+        },
+        {
+          "city": "Bang Sue",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 13.8044,
+              "lon": 100.5399,
+              "place": "Stay — Bang Sue",
+              "neighborhood": "Bangkok"
+            }
+          ]
+        },
+        {
+          "city": "Bangkok",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 13.7516,
+              "lon": 100.5032,
+              "place": "Stay — Bangkok",
+              "neighborhood": "Bangkok"
+            }
+          ]
+        },
+        {
+          "city": "Chaiya",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 9.3586,
+              "lon": 99.1741,
+              "place": "Stay — Chaiya",
+              "neighborhood": "Surat Thani"
+            }
+          ]
+        },
+        {
+          "city": "Chiang Mai",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 18.7935,
+              "lon": 98.982,
+              "place": "Stay — Chiang Mai",
+              "neighborhood": "Chiang Mai"
+            }
+          ]
+        },
+        {
+          "city": "Khlong San",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 13.7182,
+              "lon": 100.501,
+              "place": "Stay — Khlong San",
+              "neighborhood": "Bangkok"
+            }
+          ]
+        },
+        {
+          "city": "Ko Pha-Ngan",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 9.6765,
+              "lon": 100.0675,
+              "place": "Stay — Ko Pha-Ngan",
+              "neighborhood": "Surat Thani"
+            }
+          ]
+        },
+        {
+          "city": "Lat Krabang",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 13.6819,
+              "lon": 100.7469,
+              "place": "Stay — Lat Krabang",
+              "neighborhood": "Bangkok"
+            }
+          ]
+        },
+        {
+          "city": "Pai",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 19.3606,
+              "lon": 98.449,
+              "place": "Stay — Pai",
+              "neighborhood": "Chiang Mai"
+            }
+          ]
+        },
+        {
+          "city": "Patong",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 7.8952,
+              "lon": 98.3002,
+              "place": "Stay — Patong",
+              "neighborhood": "Phuket"
+            }
+          ]
+        },
+        {
+          "city": "Phra Nakhon",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 13.7632,
+              "lon": 100.4968,
+              "place": "Stay — Phra Nakhon",
+              "neighborhood": "Bangkok"
+            }
+          ]
+        },
+        {
+          "city": "Phunphin",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 9.1056,
+              "lon": 99.2289,
+              "place": "Stay — Phunphin",
+              "neighborhood": "Surat Thani"
+            }
+          ]
+        },
+        {
+          "city": "Yan Nawa",
+          "country": "Thailand",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 13.6999,
+              "lon": 100.5341,
+              "place": "Stay — Yan Nawa",
+              "neighborhood": "Bangkok"
+            }
+          ]
+        },
+        {
+          "city": "Eminoenue",
+          "country": "Turkey",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 41.0037,
+              "lon": 28.9804,
+              "place": "Stay — Eminoenue",
+              "neighborhood": "Istanbul"
+            }
+          ]
+        },
+        {
+          "city": "Pendik",
+          "country": "Turkey",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 40.9054,
+              "lon": 29.3169,
+              "place": "Stay — Pendik",
+              "neighborhood": "Istanbul"
+            }
+          ]
+        },
+        {
+          "city": "Kiev",
+          "country": "Ukraine",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.4486,
+              "lon": 30.5273,
+              "place": "Stay — Kiev",
+              "neighborhood": "Kyiv City"
+            }
+          ]
+        },
+        {
+          "city": "Barbican",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.5204,
+              "lon": -0.085,
+              "place": "Stay — Barbican",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Bethnal Green",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.5105,
+              "lon": -0.0682,
+              "place": "Stay — Bethnal Green",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Camden Town",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.536,
+              "lon": -0.1396,
+              "place": "Stay — Camden Town",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Chalford",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.6857,
+              "lon": -2.142,
+              "place": "Stay — Chalford",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Colchester",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.8896,
+              "lon": 0.9004,
+              "place": "Stay — Colchester",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Great Yarmouth",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 52.6035,
+              "lon": 1.7386,
+              "place": "Stay — Great Yarmouth",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "London",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.4957,
+              "lon": -0.1892,
+              "place": "Stay — London",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Newquay",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 50.4161,
+              "lon": -5.0719,
+              "place": "Stay — Newquay",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "West Drayton",
+          "country": "United Kingdom",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 51.47,
+              "lon": -0.4543,
+              "place": "Stay — West Drayton",
+              "neighborhood": "England"
+            }
+          ]
+        },
+        {
+          "city": "Aldine",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 29.9469,
+              "lon": -95.4069,
+              "place": "Stay — Aldine",
+              "neighborhood": "Texas"
+            }
+          ]
+        },
+        {
+          "city": "Grapevine",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 32.8998,
+              "lon": -97.0403,
+              "place": "Stay — Grapevine",
+              "neighborhood": "Texas"
+            }
+          ]
+        },
+        {
+          "city": "Key Largo",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 25.1104,
+              "lon": -80.4307,
+              "place": "Stay — Key Largo",
+              "neighborhood": "Florida"
+            }
+          ]
+        },
+        {
+          "city": "Miami",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 25.765,
+              "lon": -80.1901,
+              "place": "Stay — Miami",
+              "neighborhood": "Florida"
+            }
+          ]
+        },
+        {
+          "city": "Paradise",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 36.1277,
+              "lon": -115.1673,
+              "place": "Stay — Paradise",
+              "neighborhood": "Nevada"
+            }
+          ]
+        },
+        {
+          "city": "San Francisco",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 37.7867,
+              "lon": -122.4119,
+              "place": "Stay — San Francisco",
+              "neighborhood": "California"
+            }
+          ]
+        },
+        {
+          "city": "South Miami",
+          "country": "United States",
+          "stops": [
+            {
+              "start_min": 0,
+              "end_min": 600,
+              "lat": 25.7088,
+              "lon": -80.2836,
+              "place": "Stay — South Miami",
+              "neighborhood": "Florida"
+            }
+          ]
+        }
       ]
     },
     "maps_providers": [

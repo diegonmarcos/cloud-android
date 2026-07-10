@@ -3,6 +3,7 @@ package com.diegonmarcos.cloudnav.configs
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -378,6 +379,99 @@ class DevControlFragment : Fragment() {
         scroll.addView(column)
 
         column.addView(title(ctx, "About Cloud Nav"))
+
+        // ══ DEBUG CHANNEL — first thing on the page: one-tap capture of the
+        //    full diagnostic bundle (identity + this app's own logcat + trace +
+        //    crash files, via DevControlServer.diagnosticRecord) with
+        //    Copy-to-clipboard / Share / Send-to-c3-cloud-sink / Save-to-
+        //    Downloads. Exists so "what build am I actually running and what
+        //    is it logging" is answerable from the phone in two taps.
+        column.addView(macroHeader(ctx, "🐞  DEBUG CHANNEL"))
+        section(ctx, column, "Capture & send logs") {
+            row(ctx, it, "Build",   BuildConfig.VERSION_NAME)
+            row(ctx, it, "Sha",     BuildConfig.GIT_SHORT_SHA)
+            row(ctx, it, "Code",    BuildConfig.VERSION_CODE.toString())
+            row(ctx, it, "c3 sink", BuildConfig.LOG_SINK_URL.ifBlank { "(disabled)" })
+            it.addView(small(ctx, "Capture = identity + last 500 logcat lines + trace + crashes. Copy → clipboard · Share → any app · Send → c3 log sink (stream: ${BuildConfig.LOG_SINK_STREAM}) · Save → Downloads."))
+
+            val out = TextView(ctx).apply {
+                text = "(tap Capture to fill)"
+                typeface = Typeface.MONOSPACE
+                setTextColor(0xFFE9D8FD.toInt())
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setTextIsSelectable(true)
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                setBackgroundColor(0x33000000)
+                maxLines = 28
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+
+            var bundle = ""
+            // Capture off-thread (logcat exec + file reads), act on main.
+            fun withBundle(action: (String) -> Unit) {
+                val appCtx = ctxAny().applicationContext
+                Thread {
+                    if (bundle.isEmpty()) bundle = DevControlServer.diagnosticRecord(appCtx)
+                    val b = bundle
+                    activity?.runOnUiThread { if (isAdded) action(b) }
+                }.start()
+            }
+            fun btn(label: String, onTap: () -> Unit) = android.widget.Button(ctx).apply {
+                text = label
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener { onTap() }
+            }
+
+            val row1 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            row1.addView(btn("Capture") { bundle = ""; withBundle { b -> out.text = b.take(20_000) } })
+            row1.addView(btn("Copy") { withBundle { b ->
+                val cm = ctxAny().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("cloud-nav-debug", b))
+                Toast.makeText(ctxAny(), "Debug bundle copied (${b.length} chars)", Toast.LENGTH_SHORT).show()
+            } })
+            row1.addView(btn("Share") { withBundle { b ->
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "cloud-nav debug ${BuildConfig.GIT_SHORT_SHA}")
+                    putExtra(Intent.EXTRA_TEXT, b)
+                }
+                startActivity(Intent.createChooser(send, "Send debug logs"))
+            } })
+            it.addView(row1)
+
+            val row2 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            row2.addView(btn("Send → c3") {
+                val appCtx = ctxAny().applicationContext
+                Thread {
+                    if (bundle.isEmpty()) bundle = DevControlServer.diagnosticRecord(appCtx)
+                    val code = DiagnosticsPush.pushToCloud(bundle)
+                    activity?.runOnUiThread {
+                        if (isAdded) Toast.makeText(
+                            ctxAny(),
+                            if (code in 200..299) "Sent to c3 log sink (HTTP $code)" else "c3 push failed ($code) — use Copy/Share instead",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }.start()
+            })
+            row2.addView(btn("Save ⤓") {
+                val appCtx = ctxAny().applicationContext
+                Thread {
+                    if (bundle.isEmpty()) bundle = DevControlServer.diagnosticRecord(appCtx)
+                    val name = "cloud-nav-debug-${BuildConfig.GIT_SHORT_SHA}.json"
+                    val saved = DiagnosticsPush.downloadBundle(appCtx, name, bundle)
+                    activity?.runOnUiThread {
+                        if (isAdded) Toast.makeText(
+                            ctxAny(),
+                            saved?.let { s -> "Saved to Downloads/$s" } ?: "Save failed",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }.start()
+            })
+            it.addView(row2)
+            it.addView(out)
+        }
 
         // ══ CLOUD macro section — who/what this device is in the cloud
         //    mesh: the owner profile + repos + consolidated config.
