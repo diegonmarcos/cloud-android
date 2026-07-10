@@ -31,7 +31,7 @@ class MapsDayMapFragment : Fragment() {
         val ctx = inflater.context
         val root = FrameLayout(ctx).apply {
             layoutParams = ViewGroup.LayoutParams(MATCH, MATCH)
-            setBackgroundColor(0xFFFFFFFF.toInt())   // opaque — covers the timeline beneath.
+            setBackgroundColor(MapsStopsFragment.COL_SURFACE)   // opaque — covers the timeline beneath.
             isClickable = true                        // swallow taps to the layer below.
         }
 

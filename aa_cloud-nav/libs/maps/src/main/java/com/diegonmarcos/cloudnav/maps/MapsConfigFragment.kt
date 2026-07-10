@@ -502,8 +502,8 @@ class MapsConfigFragment : Fragment() {
         const val SECTION_APIS    = "apis"
         private const val ARG_SECTION = "section"
 
-        private const val COL_WARN          = 0xFFB45309.toInt()  // dark amber (readable on light)
-        private const val COL_TILE_SELECTED = 0xFFD7F3E1.toInt()  // light green tint
+        private const val COL_WARN          = 0xFFFBBF24.toInt()  // bright amber (readable on dark)
+        private const val COL_TILE_SELECTED = 0xFF16351F.toInt()  // dark green tint (selected on dark)
 
         fun newInstance(section: String = SECTION_TRACKER) = MapsConfigFragment().apply {
             arguments = Bundle().apply { putString(ARG_SECTION, section) }

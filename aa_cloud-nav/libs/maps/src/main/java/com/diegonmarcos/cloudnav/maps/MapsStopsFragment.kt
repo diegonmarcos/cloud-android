@@ -87,12 +87,13 @@ class MapsStopsFragment : Fragment() {
     private fun dp(ctx: android.content.Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
     companion object {
-        // Light-mode palette (shared with MapsDailyFragment).
-        const val COL_SURFACE   = 0xFFFFFFFF.toInt()
-        const val COL_TILE      = 0x0F000000           // ~6% black — subtle card
-        const val COL_PRIMARY   = 0xFF1A1C1A.toInt()   // near-black body
-        const val COL_SECONDARY = 0xFF5C5F5C.toInt()   // grey caption
-        const val COL_ACCENT    = 0xFF0B8043.toInt()   // maps-green subhead
+        // DARK palette (shared across all Maps/Timeline/Configs surfaces).
+        // Matches app theme colors.xml + the cockpit HUD.
+        const val COL_SURFACE   = 0xFF0B0F17.toInt()   // deep blue-black base
+        const val COL_TILE      = 0x14FFFFFF           // ~8% white — subtle raised card
+        const val COL_PRIMARY   = 0xFFECEFF4.toInt()   // near-white body
+        const val COL_SECONDARY = 0xFF9AA3B2.toInt()   // muted grey caption
+        const val COL_ACCENT    = 0xFF4ADE80.toInt()   // vivid green subhead
         private const val ARG_DAY_MS = "day_ms"
 
         /** [dayMs] non-null → scope to just that calendar day (local midnight,

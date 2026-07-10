@@ -232,6 +232,41 @@ class NavConfigTest {
         assertTrue(h.vectorStyleUrl == null)
     }
 
+    @Test fun style_picker_kind_detection_is_structural() {
+        // The dark FAB style-picker labels each row by structural kind
+        // (hybrid → imagery+labels, vectorStyleUrl → vector, else raster) —
+        // same fields the picker's `when` reads. Guards that classification.
+        fun kind(key: String): String {
+            val s = MapStyles.get(key)
+            return when { s.hybrid -> "hybrid"; s.vectorStyleUrl != null -> "vector"; else -> "raster" }
+        }
+        assertEquals("raster", kind("light"))
+        assertEquals("raster", kind("dark"))
+        assertEquals("raster", kind("satellite"))
+        assertEquals("vector", kind("vector_light"))
+        assertEquals("vector", kind("vector_dark"))
+        assertEquals("hybrid", kind("satellite_hybrid"))
+    }
+
+    @Test fun explored_pins_get_real_nonzero_coordinates() {
+        // Pins are built from ExploredCity.lat/lon; a 0,0 (null-island) bug would
+        // put every pin in the ocean off Africa. Prove grouping yields the real
+        // averaged coordinates the map pins render at.
+        fun entry(dayMs: Long, city: String, lat: Double, lon: Double) =
+            com.diegonmarcos.cloudnav.maps.DailyEntry(dayMs, "$city place", null, city, "X", lat, lon)
+        val cities = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.groupByCity(listOf(
+            entry(1L, "Rio de Janeiro", -22.9711, -43.1822),
+            entry(2L, "Rio de Janeiro", -22.9869, -43.2045),
+            entry(3L, "Tokyo", 35.7148, 139.7967),
+        ))
+        val rio = cities.first { it.city == "Rio de Janeiro" }
+        assertEquals(-22.979, rio.lat, 0.01)   // average of the two Rio days
+        assertEquals(-43.193, rio.lon, 0.01)
+        val tokyo = cities.first { it.city == "Tokyo" }
+        assertTrue("Tokyo pin is in the eastern hemisphere, not null-island", tokyo.lon > 100.0)
+        cities.forEach { assertTrue("no null-island pin", it.lat != 0.0 || it.lon != 0.0) }
+    }
+
     @Test fun raster_styles_point_at_their_vector_equivalent() {
         assertEquals("vector_light", MapStyles.get("light").vectorEquivalent)
         assertEquals("vector_dark", MapStyles.get("dark").vectorEquivalent)

@@ -11,14 +11,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -104,11 +106,12 @@ class MapsMapFragment : Fragment() {
         val ctx = inflater.context
         MapLibre.getInstance(ctx)   // idempotent one-shot init.
 
-        // Every screen's raw style request (an explicit ARG_STYLE, or the
-        // nav3d-based default) resolves through the user's Basemap choice —
-        // an explicit pin wins outright; otherwise the family preference maps
-        // this screen's raster pick to its vector/hybrid equivalent.
-        val rawStyle = arguments?.getString(ARG_STYLE) ?: if (nav3d) "dark" else "light"
+        // Every screen's raw style request (an explicit ARG_STYLE, else DARK —
+        // Cloud Nav is a dark-mode app) resolves through the user's Basemap
+        // choice: an explicit pin wins outright; otherwise the family preference
+        // maps this screen's raster pick to its vector/hybrid equivalent
+        // (dark → vector_dark by default).
+        val rawStyle = arguments?.getString(ARG_STYLE) ?: "dark"
         styleKey = MapsBasemapPrefs(ctx).resolve(rawStyle)
 
         val root = FrameLayout(ctx).apply { layoutParams = ViewGroup.LayoutParams(MATCH, MATCH) }
@@ -261,24 +264,76 @@ class MapsMapFragment : Fragment() {
     /** Tap the map-style FAB → a picker of every [MapStyles.order] entry
      *  (label shown, current one pre-selected) — jump straight to one instead
      *  of blindly cycling through them one at a time. */
+    /** Tap the map-style FAB → a dark bottom sheet with a rich row per style
+     *  (kind glyph + label + one-line description + a ✓ on the current one). */
     private fun showStyleMenu() {
         val ctx = context ?: return
-        val keys = MapStyles.order
-        val labels = keys.map { MapStyles.get(it).label }.toTypedArray()
-        val current = keys.indexOf(styleKey).let { if (it < 0) 0 else it }
-        AlertDialog.Builder(ctx)
-            .setTitle("Map style")
-            .setSingleChoiceItems(labels, current) { dialog, which ->
-                dialog.dismiss()
-                val key = keys[which]
-                if (key != styleKey) {
-                    styleKey = key
-                    applyStyle(key, firstLoad = false)
-                    toast("Map: ${MapStyles.get(key).label}")
+        fun dpi(v: Int) = (v * resources.displayMetrics.density).toInt()
+        val dialog = BottomSheetDialog(ctx)
+
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF141A25.toInt())
+            setPadding(dpi(8), dpi(14), dpi(8), dpi(18))
+        }
+        // Grab handle + title.
+        col.addView(View(ctx).apply {
+            setBackgroundColor(0xFF3A4557.toInt())
+            layoutParams = LinearLayout.LayoutParams(dpi(36), dpi(4)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dpi(12)
+            }
+        })
+        col.addView(TextView(ctx).apply {
+            text = "Map style"; textSize = 17f
+            setTextColor(0xFFECEFF4.toInt())
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(dpi(12), 0, dpi(12), dpi(8))
+        })
+
+        val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        MapStyles.order.forEach { key ->
+            val s = MapStyles.get(key)
+            val (glyph, kind) = when {
+                s.hybrid -> "🛰️" to "Imagery + English labels"
+                s.vectorStyleUrl != null -> "✨" to "Vector · English labels · sharp"
+                else -> "🗺️" to "Raster tiles"
+            }
+            val selected = key == styleKey
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dpi(14), dpi(12), dpi(14), dpi(12))
+                setBackgroundColor(if (selected) 0xFF1F2A1F.toInt() else 0x00000000)
+                isClickable = true
+                setOnClickListener {
+                    dialog.dismiss()
+                    if (key != styleKey) {
+                        styleKey = key
+                        applyStyle(key, firstLoad = false)
+                        toast("Map: ${s.label}")
+                    }
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            row.addView(TextView(ctx).apply { text = glyph; textSize = 22f; setPadding(0, 0, dpi(14), 0) })
+            val texts = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+            }
+            texts.addView(TextView(ctx).apply {
+                text = s.label; textSize = 16f
+                setTextColor(if (selected) 0xFF4ADE80.toInt() else 0xFFECEFF4.toInt())
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            })
+            texts.addView(TextView(ctx).apply {
+                text = kind; textSize = 12f; setTextColor(0xFF9AA3B2.toInt())
+            })
+            row.addView(texts)
+            if (selected) row.addView(TextView(ctx).apply { text = "✓"; textSize = 18f; setTextColor(0xFF4ADE80.toInt()) })
+            list.addView(row)
+        }
+        col.addView(ScrollView(ctx).apply { addView(list) })
+        dialog.setContentView(col)
+        dialog.show()
     }
 
     /**

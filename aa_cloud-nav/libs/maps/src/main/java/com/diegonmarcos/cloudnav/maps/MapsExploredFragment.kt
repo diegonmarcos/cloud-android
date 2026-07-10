@@ -46,22 +46,25 @@ class MapsExploredFragment : Fragment() {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }
 
-        // Always-visible summary — so "nothing on screen" is never ambiguous
-        // between "no data yet" and "a real rendering bug".
+        // Always-visible summary chip — so "nothing on screen" is never
+        // ambiguous between "no data yet" and "a real rendering bug".
         val totalVisits = cities.sumOf { it.visits.size }
         val card = MaterialCardView(ctx).apply {
-            radius = dp(14f); cardElevation = dp(6f); useCompatPadding = true
+            radius = dp(22f); cardElevation = dp(8f); useCompatPadding = true
+            setCardBackgroundColor(0xF2141A25.toInt())
+            strokeColor = MapsStopsFragment.COL_ACCENT; strokeWidth = dp(1f).toInt()
         }
         card.addView(TextView(ctx).apply {
             text = if (cities.isEmpty())
                 "No places yet — load demo data or start the tracker (Configs → Tracker)."
-            else "${cities.size} cities · $totalVisits day-visits"
-            textSize = 14f
-            setPadding(dp(14f).toInt(), dp(10f).toInt(), dp(14f).toInt(), dp(10f).toInt())
+            else "🌍  ${cities.size} cities · $totalVisits day-visits — tap a pin"
+            textSize = 13f
+            setTextColor(MapsStopsFragment.COL_PRIMARY)
+            setPadding(dp(16f).toInt(), dp(9f).toInt(), dp(16f).toInt(), dp(9f).toInt())
         })
         root.addView(card, FrameLayout.LayoutParams(WRAP, WRAP).apply {
-            gravity = Gravity.TOP or Gravity.START
-            setMargins(dp(8f).toInt(), dp(8f).toInt(), dp(8f).toInt(), 0)
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            setMargins(dp(8f).toInt(), dp(10f).toInt(), dp(8f).toInt(), 0)
         })
         return root
     }
@@ -75,22 +78,24 @@ class MapsExploredFragment : Fragment() {
         fun dp(v: Int) = (v * d).toInt()
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(16), dp(20), dp(24))
+            setBackgroundColor(0xFF141A25.toInt())
+            setPadding(dp(20), dp(18), dp(20), dp(24))
         }
         col.addView(TextView(ctx).apply {
-            text = city.city; textSize = 20f
+            text = "📍  ${city.city}"; textSize = 21f
+            setTextColor(MapsStopsFragment.COL_PRIMARY)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         col.addView(TextView(ctx).apply {
             text = "${city.visits.size} visit${if (city.visits.size == 1) "" else "s"}"
-            textSize = 13f; setTextColor(0xFF5C5F5C.toInt()); setPadding(0, dp(2), 0, dp(10))
+            textSize = 13f; setTextColor(MapsStopsFragment.COL_ACCENT); setPadding(0, dp(3), 0, dp(12))
         })
         val fmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
         val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         city.visits.sortedByDescending { it.dayMs }.forEach { v ->
             body.addView(TextView(ctx).apply {
                 text = fmt.format(Date(v.dayMs)) + (v.placeName?.let { "  ·  $it" } ?: "")
-                textSize = 14f; setPadding(0, dp(6), 0, dp(6))
+                textSize = 14f; setTextColor(MapsStopsFragment.COL_PRIMARY); setPadding(0, dp(7), 0, dp(7))
             })
         }
         col.addView(ScrollView(ctx).apply { addView(body) })

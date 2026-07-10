@@ -24,5 +24,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:labelVisibilityMode="labeled"
-        android:background="@color/nav_surface" />
+        app:elevation="12dp"
+        android:background="@color/nav_surface_container" />
 </LinearLayout>

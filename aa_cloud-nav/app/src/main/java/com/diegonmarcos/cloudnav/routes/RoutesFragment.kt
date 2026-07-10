@@ -73,7 +73,7 @@ class RoutesFragment : Fragment() {
         }
 
         // Top routing card.
-        val card = MaterialCardView(ctx).apply { radius = dpf(16f); cardElevation = dpf(6f); useCompatPadding = true }
+        val card = MaterialCardView(ctx).apply { radius = dpf(20f); cardElevation = dpf(8f); useCompatPadding = true; setCardBackgroundColor(COL_CARD) }
         val panel = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
@@ -328,8 +328,9 @@ class RoutesFragment : Fragment() {
     private companion object {
         const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-        const val COL_PRIMARY = 0xFF1A1C1A.toInt()
-        const val COL_SECONDARY = 0xFF5C5F5C.toInt()
-        const val COL_ACCENT = 0xFF0B8043.toInt()
+        const val COL_PRIMARY = 0xFFECEFF4.toInt()   // near-white (dark theme)
+        const val COL_SECONDARY = 0xFF9AA3B2.toInt() // muted grey
+        const val COL_ACCENT = 0xFF4ADE80.toInt()    // vivid green
+        const val COL_CARD = 0xFF141A25.toInt()      // dark card container
     }
 }
