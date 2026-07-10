@@ -7,8 +7,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- In-app updater: install the hub APK via PackageInstaller (user prompt)
-         + post download/result notifications. -->
+         + post download/result notifications.
+         UPDATE_PACKAGES_WITHOUT_USER_ACTION is THE permission that makes
+         USER_ACTION_NOT_REQUIRED (silent self-update) legal on Android 12+ —
+         without it the OS silently downgrades every install to a prompt, so
+         the updater's silent mode could never engage for this hub. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Wrapper bar overlay over the embedded apps (NavOverlayService). -->
