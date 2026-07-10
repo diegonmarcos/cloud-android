@@ -94,8 +94,21 @@ object MapsDemo {
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("maps_demo_prefs", Context.MODE_PRIVATE)
 
-    /** True once [seed] has already inserted this fixed historical dataset. */
-    fun isSeeded(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_SEEDED, false)
+    /** A signature of the ACTUAL dataset content (range + stay + every city's
+     *  name/country/stop-count), not a version number someone has to remember
+     *  to bump. Editing build.json::ui.demo_stops in any way that changes what
+     *  gets generated automatically produces a different signature, so a
+     *  device that already seeded an OLDER shape of this dataset reseeds
+     *  instead of silently no-op'ing forever on a stale boolean flag — the
+     *  exact bug this replaces (a bare "seeded=true" surviving across this
+     *  dataset's several redesigns this project went through). */
+    private fun contentSignature(): String {
+        val cities = cityTemplates.joinToString("|") { "${it.city}:${it.country}:${it.stops.size}" }
+        return "$rangeStartIso..$rangeEndIso@$stayDays#$cities"
+    }
+
+    /** True once [seed] has already inserted THIS EXACT dataset shape. */
+    fun isSeeded(ctx: Context): Boolean = prefs(ctx).getString(KEY_SEEDED_SIGNATURE, null) == contentSignature()
 
     /** Generate + insert one populated day for every day in the historical
      *  range. Returns the number of stops inserted; 0 if already seeded or no
@@ -124,10 +137,17 @@ object MapsDemo {
                 }
             }
         }
-        prefs(ctx).edit().putBoolean(KEY_SEEDED, true).apply()
+        prefs(ctx).edit().putString(KEY_SEEDED_SIGNATURE, contentSignature()).apply()
         return inserted
     }
 
+    /** Clears the seed signature — a fresh "Load demo data" tap reseeds even
+     *  if this exact dataset was already inserted. Paired with wiping the
+     *  Stops table itself (see Configs → Tracker → "Reset all tracker data",
+     *  which calls both — resetting the DB alone left this flag stale and
+     *  Load-demo-data a permanent no-op after a reset). */
+    fun resetSeedFlag(ctx: Context) = prefs(ctx).edit().remove(KEY_SEEDED_SIGNATURE).apply()
+
     private const val DAY_MS = 24L * 3600_000L
-    private const val KEY_SEEDED = "seeded"
+    private const val KEY_SEEDED_SIGNATURE = "seeded_signature"
 }

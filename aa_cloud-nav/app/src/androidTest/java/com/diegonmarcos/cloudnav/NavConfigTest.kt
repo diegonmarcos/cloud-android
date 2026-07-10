@@ -84,6 +84,38 @@ class NavConfigTest {
         assertTrue("must be decades before now, not near 'today'", System.currentTimeMillis() - ms > 30L * 365 * 24 * 3600_000L)
     }
 
+    @Test fun demo_seed_reseeds_after_a_stale_flag_or_a_reset() {
+        // Regression test for a real bug: this demo dataset's SHAPE changed
+        // three times (relative-to-today -> 14 fixed days -> full ~2192-day
+        // generator) while reusing the same bare "seeded=true" flag. Any
+        // earlier tap of "Load demo data" left that flag permanently set, so
+        // re-tapping on a build with the corrected/expanded generator silently
+        // no-op'd forever — the DB kept whatever partial/stale dataset an
+        // older build had inserted. Fixed by keying the flag to a signature of
+        // the ACTUAL dataset content, so a changed dataset always reseeds.
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val db = com.diegonmarcos.cloudnav.maps.MapsDb.get(ctx)
+        val prefs = ctx.getSharedPreferences("maps_demo_prefs", android.content.Context.MODE_PRIVATE)
+        val stopCountBefore = db.stopCount()
+        try {
+            // Simulate a stale flag left by an OLDER build's different dataset shape.
+            prefs.edit().putString("seeded_signature", "some-old-build-left-this-behind").commit()
+            assertTrue("a stale/foreign signature must not match the current dataset", !MapsDemo.isSeeded(ctx))
+            val inserted = MapsDemo.seed(ctx)
+            assertTrue("must actually reseed instead of no-op'ing on the stale flag", inserted > 0)
+            assertTrue("isSeeded now reflects the CURRENT dataset", MapsDemo.isSeeded(ctx))
+            assertEquals("re-tapping Load-demo-data after a real seed is a true no-op", 0, MapsDemo.seed(ctx))
+
+            // A DB reset without clearing the flag would leave Load-demo-data
+            // silently no-op'ing on empty data forever — resetSeedFlag is the fix.
+            MapsDemo.resetSeedFlag(ctx)
+            assertTrue("cleared flag means not-seeded again", !MapsDemo.isSeeded(ctx))
+        } finally {
+            db.clearAll(); prefs.edit().clear().commit()
+            assertEquals("test must not leak rows into other runs", stopCountBefore, db.stopCount())
+        }
+    }
+
     @Test fun daily_adapter_recycles_and_binds_correctly() {
         // Daily/Stops moved from LinearLayout-in-ScrollView (inflates every row
         // up front) to RecyclerView (only the visible rows) — the full

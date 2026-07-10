@@ -214,6 +214,10 @@ class MapsConfigFragment : Fragment() {
                     text = "Tap again to confirm wipe"
                 } else {
                     MapsDb.get(ctx).clearAll()
+                    // Also clear the demo-seed flag — otherwise a wiped DB stays
+                    // permanently empty, since Load-demo-data would see "already
+                    // seeded" and silently no-op forever after this reset.
+                    MapsDemo.resetSeedFlag(ctx)
                     trackerResetArmed = false
                     text = "Reset all tracker data"
                     refreshTrackerSection()
