@@ -220,6 +220,31 @@ class MapsMapFragment : Fragment() {
     }
 
     /**
+     * Test/diagnostic probe (MAIN THREAD only): first = feature count in the
+     * pins GeoJSON source (data plumbed into the style), second = pin circles
+     * actually RENDERED in the current viewport (GL really drew them). -1 =
+     * map/style not ready yet. Backs the CI emulator render test
+     * (ExploredRenderTest) — the machine check this screen never had while it
+     * shipped broken four times on static review alone.
+     */
+    fun pinProbe(): Pair<Int, Int> {
+        val m = map ?: return -1 to -1
+        val src = runCatching {
+            m.style?.getSourceAs<GeoJsonSource>(SRC_PINS)
+                ?.querySourceFeatures(null as Expression?)?.size ?: -1
+        }.getOrDefault(-1)
+        val mv = mapView ?: return src to -1
+        if (mv.width == 0 || mv.height == 0) return src to -1
+        val rendered = runCatching {
+            m.queryRenderedFeatures(
+                android.graphics.RectF(0f, 0f, mv.width.toFloat(), mv.height.toFloat()),
+                LYR_PINS,
+            ).size
+        }.getOrDefault(-1)
+        return src to rendered
+    }
+
+    /**
      * Retune the live camera + basemap for a cockpit mode (Navigation tab).
      * Switches the raster style if it changed, updates zoom/tilt/heading-follow,
      * and re-frames on the last known position (or fetches one).

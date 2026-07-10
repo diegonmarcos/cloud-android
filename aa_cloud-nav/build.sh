@@ -177,7 +177,16 @@ step_dev() {
 }
 
 step_test()       { log "Test: JVM unit tests"; in_nix gradle test; }
-step_instrument() { log "Test: instrumented (needs device)"; in_nix gradle connectedAndroidTest; }
+step_instrument() {
+  # connectedAndroidTest builds the debug + androidTest APKs, so it needs the
+  # same signing + ABI resolution as step_build (engine bug, fixed 2026-07-10:
+  # without _resolve_signing this step only worked in a shell that happened to
+  # have ANDROID_KEYSTORE_* pre-exported — CI never could).
+  log "Test: instrumented (needs device)"
+  _resolve_signing
+  _export_variant_abis
+  in_nix gradle connectedAndroidTest
+}
 step_lint()       { log "Lint"; in_nix gradle lint; }
 step_clean()      { log "Clean"; in_nix gradle clean; rm -rf "$DIST_DIR"; }
 step_shell()      { log "Entering Nix devShell"; exec nix develop "$SCRIPT_DIR"; }

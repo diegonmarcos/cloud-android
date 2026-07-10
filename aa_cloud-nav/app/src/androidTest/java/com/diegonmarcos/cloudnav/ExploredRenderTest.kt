@@ -1,0 +1,107 @@
+package com.diegonmarcos.cloudnav
+
+import android.graphics.Bitmap
+import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.matcher.ViewMatchers.withText
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.diegonmarcos.cloudnav.maps.MapsDb
+import com.diegonmarcos.cloudnav.maps.MapsDemo
+import com.diegonmarcos.cloudnav.maps.MapsMapFragment
+import java.io.File
+import java.io.FileOutputStream
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * THE Explored regression test — runs on a real emulator in CI
+ * (test-cloud-nav.yml) and proves, end to end, what four rounds of static
+ * review could not: that the Explored tab's city pins are (a) plumbed into
+ * the map's GeoJSON source and (b) ACTUALLY RENDERED by the GL layer on
+ * screen. It also drops a screenshot into the app's external files dir
+ * (copied to /data/local/tmp so it survives the post-test uninstall) for
+ * human inspection as a CI artifact.
+ *
+ * Flow: wipe DB + seed the full 1987-1992 demo trip → launch MainActivity →
+ * tap "Timeline" (bottom nav) → tap "Explored" (tab) → poll
+ * [MapsMapFragment.pinProbe] until the pins source holds one feature per
+ * demo city AND at least one pin is rendered in the viewport (vector-style
+ * fetch + GL warm-up are async, so poll with a generous deadline).
+ */
+@RunWith(AndroidJUnit4::class)
+class ExploredRenderTest {
+
+    @Test fun explored_renders_one_pin_per_city_from_daily_data() {
+        val inst = InstrumentationRegistry.getInstrumentation()
+        val ctx = inst.targetContext
+
+        // Clean slate → full demo seed (same path as the Configs button).
+        MapsDb.get(ctx).clearAll()
+        MapsDemo.resetSeedFlag(ctx)
+        assertTrue("demo seed must insert rows", MapsDemo.seed(ctx) > 0)
+        val expectedCities = MapsDemo.cityTemplates.size
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            onView(withText("Timeline")).perform(click())
+            onView(withText("Explored")).perform(click())
+
+            var src = -1
+            var rendered = -1
+            val deadline = System.currentTimeMillis() + 120_000
+            while (System.currentTimeMillis() < deadline) {
+                scenario.onActivity { act ->
+                    runCatching {
+                        val mapFrag = act.supportFragmentManager.fragments
+                            .flatMap { it.childFragmentManager.fragments }
+                            .flatMap { listOf(it) + it.childFragmentManager.fragments }
+                            .filterIsInstance<MapsMapFragment>()
+                            .firstOrNull()
+                        if (mapFrag != null) {
+                            val p = mapFrag.pinProbe()
+                            src = p.first; rendered = p.second
+                        }
+                    }
+                }
+                android.util.Log.i("ExploredRenderTest", "probe src=$src rendered=$rendered (want src>=$expectedCities, rendered>0)")
+                if (src >= expectedCities && rendered > 0) break
+                Thread.sleep(1000)
+            }
+
+            // Screenshot FIRST (artifact exists even when the asserts fail).
+            runCatching {
+                val shot: Bitmap? = inst.uiAutomation.takeScreenshot()
+                if (shot != null) {
+                    val dir = File(ctx.getExternalFilesDir(null), "test-screens").apply { mkdirs() }
+                    val png = File(dir, "explored.png")
+                    FileOutputStream(png).use { shot.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                    // Copy out of the app sandbox — Android deletes
+                    // Android/data/<pkg> when AGP uninstalls the APK post-test,
+                    // but /data/local/tmp survives for the workflow's adb pull.
+                    shell(inst, "cp ${png.absolutePath} /data/local/tmp/explored.png")
+                    shell(inst, "chmod 644 /data/local/tmp/explored.png")
+                }
+            }
+
+            assertTrue(
+                "Explored pins source must contain one feature per demo city " +
+                    "(want >=$expectedCities, got $src) — pins never reached the style source",
+                src >= expectedCities,
+            )
+            assertTrue(
+                "at least one Explored pin must be RENDERED in the viewport " +
+                    "(got $rendered) — pins are in the source but the GL layer drew nothing",
+                rendered > 0,
+            )
+        }
+    }
+
+    /** Run a shell command via UiAutomation and drain its output (the command
+     *  only completes reliably once the returned fd is fully read + closed). */
+    private fun shell(inst: android.app.Instrumentation, cmd: String) {
+        val pfd = inst.uiAutomation.executeShellCommand(cmd)
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
+    }
+}
