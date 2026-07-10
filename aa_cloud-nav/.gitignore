@@ -31,3 +31,4 @@ dist/.secrets
 !gradle/wrapper/gradle-wrapper.properties
 !gradlew
 !gradlew.bat
+test-out/

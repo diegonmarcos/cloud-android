@@ -227,6 +227,14 @@ class MapsMapFragment : Fragment() {
      * (ExploredRenderTest) — the machine check this screen never had while it
      * shipped broken four times on static review alone.
      */
+    /** Test/diagnostic: render the current GL map (basemap + pins) to a Bitmap
+     *  offscreen — works on a headless emulator where UiAutomation screenshots
+     *  return null. Backs ExploredRenderTest's evidence PNG. */
+    fun snapshot(cb: (android.graphics.Bitmap) -> Unit) {
+        val m = map ?: return
+        m.snapshot(cb)
+    }
+
     fun pinProbe(): Pair<Int, Int> {
         val m = map ?: return -1 to -1
         val src = runCatching {

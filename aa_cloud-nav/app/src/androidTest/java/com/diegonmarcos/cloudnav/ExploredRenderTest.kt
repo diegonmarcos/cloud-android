@@ -70,16 +70,30 @@ class ExploredRenderTest {
                 Thread.sleep(1000)
             }
 
-            // Screenshot FIRST (artifact exists even when the asserts fail).
+            // Evidence PNG FIRST (so the artifact exists even if asserts fail).
+            // Use MapLibre's own map.snapshot() — it renders the GL scene (pins
+            // included) offscreen, which works on the headless -no-window CI
+            // emulator where UiAutomation.takeScreenshot() returns null.
             runCatching {
-                val shot: Bitmap? = inst.uiAutomation.takeScreenshot()
-                if (shot != null) {
+                val latch = java.util.concurrent.CountDownLatch(1)
+                var shot: Bitmap? = null
+                scenario.onActivity { act ->
+                    val mapFrag = act.supportFragmentManager.fragments
+                        .flatMap { it.childFragmentManager.fragments }
+                        .flatMap { listOf(it) + it.childFragmentManager.fragments }
+                        .filterIsInstance<MapsMapFragment>().firstOrNull()
+                    if (mapFrag != null) mapFrag.snapshot { bmp -> shot = bmp; latch.countDown() }
+                    else latch.countDown()
+                }
+                latch.await(20, java.util.concurrent.TimeUnit.SECONDS)
+                val bmp = shot
+                if (bmp != null) {
+                    // App uid can only write its own dir; write there, then use
+                    // the UiAutomation shell (shell uid) to copy it to
+                    // /data/local/tmp, which survives the AGP post-test uninstall.
                     val dir = File(ctx.getExternalFilesDir(null), "test-screens").apply { mkdirs() }
                     val png = File(dir, "explored.png")
-                    FileOutputStream(png).use { shot.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                    // Copy out of the app sandbox — Android deletes
-                    // Android/data/<pkg> when AGP uninstalls the APK post-test,
-                    // but /data/local/tmp survives for the workflow's adb pull.
+                    FileOutputStream(png).use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
                     shell(inst, "cp ${png.absolutePath} /data/local/tmp/explored.png")
                     shell(inst, "chmod 644 /data/local/tmp/explored.png")
                 }
