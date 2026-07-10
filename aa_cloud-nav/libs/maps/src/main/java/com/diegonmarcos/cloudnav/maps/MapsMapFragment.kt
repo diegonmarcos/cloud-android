@@ -37,6 +37,10 @@ import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.LineString
+import org.maplibre.geojson.Point
 
 /**
  * Shared interactive MapLibre map — embedded by Routes / Navigation / Places
@@ -460,7 +464,10 @@ class MapsMapFragment : Fragment() {
         style.addSource(GeoJsonSource(SRC_PINS, featureCollection(pins)))
         style.addLayer(
             CircleLayer(LYR_PINS, SRC_PINS).withProperties(
-                PropertyFactory.circleColor(Expression.get("color")),
+                // toColor: coerce the "color" STRING property to a colour —
+                // a bare get() yields a string type the circle-color paint
+                // won't accept, leaving pins uncoloured.
+                PropertyFactory.circleColor(Expression.toColor(Expression.get("color"))),
                 PropertyFactory.circleRadius(8f),
                 PropertyFactory.circleStrokeColor("#FFFFFF"),
                 PropertyFactory.circleStrokeWidth(2.5f),
@@ -545,25 +552,28 @@ class MapsMapFragment : Fragment() {
         map?.style?.getSourceAs<GeoJsonSource>(SRC_ROUTE)?.setGeoJson(routeFeatureCollection())
     }
 
-    /** A FeatureCollection holding one LineString (coords are [lon,lat]). */
-    private fun routeFeatureCollection(): String {
-        if (routeGeometry.size < 2) return """{"type":"FeatureCollection","features":[]}"""
-        val coords = routeGeometry.joinToString(",") { "[${it[1]},${it[0]}]" }
-        return """{"type":"FeatureCollection","features":[""" +
-            """{"type":"Feature","properties":{},"geometry":{"type":"LineString","coordinates":[$coords]}}]}"""
+    /** A FeatureCollection holding one LineString. Typed MapLibre geojson —
+     *  NOT a raw JSON string: under MapLibre 11.7 a String passed to
+     *  GeoJsonSource/setGeoJson was NOT parsed into features (the source stayed
+     *  empty → every pin invisible, `querySourceFeatures`=0). Root cause of the
+     *  Explored "empty map" that survived six review-only fixes; only the CI
+     *  emulator probe (src=0 with pins=228 confirmed delivered) pinned it down. */
+    private fun routeFeatureCollection(): FeatureCollection {
+        if (routeGeometry.size < 2) return FeatureCollection.fromFeatures(emptyList())
+        val line = LineString.fromLngLats(routeGeometry.map { Point.fromLngLat(it[1], it[0]) })
+        return FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(line)))
     }
 
-    private fun featureCollection(items: List<Pin>): String {
-        val features = org.json.JSONArray()
-        items.forEach { p ->
-            val props = org.json.JSONObject()
-                .put("color", p.color).put("title", p.title).put("id", p.id)
-            val geom = org.json.JSONObject().put("type", "Point")
-                .put("coordinates", org.json.JSONArray().put(p.lon).put(p.lat))
-            features.put(org.json.JSONObject().put("type", "Feature").put("properties", props).put("geometry", geom))
-        }
-        return org.json.JSONObject().put("type", "FeatureCollection").put("features", features).toString()
-    }
+    private fun featureCollection(items: List<Pin>): FeatureCollection =
+        FeatureCollection.fromFeatures(
+            items.map { p ->
+                Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
+                    addStringProperty("color", p.color)
+                    addStringProperty("title", p.title)
+                    addStringProperty("id", p.id)
+                }
+            }
+        )
 
     private fun toast(msg: String) { context?.let { Toast.makeText(it, msg, Toast.LENGTH_SHORT).show() } }
     private fun ui(block: () -> Unit) { if (!isAdded) return; activity?.runOnUiThread { if (isAdded) block() } }
