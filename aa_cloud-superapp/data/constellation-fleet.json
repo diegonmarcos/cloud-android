@@ -109,7 +109,7 @@
       "id": "comms-chat",
       "label": "Chat (Mattermost)",
       "package": "com.diegonmarcos.comms.chat",
-      "alt_id": "com.mattermost.rnbeta",
+      "alt_id": null,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "image": "cloud-comms-chat",
