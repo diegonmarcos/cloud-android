@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -12,6 +13,7 @@ import com.diegonmarcos.cloudnav.maps.MapsDemo
 import com.diegonmarcos.cloudnav.maps.MapsMapFragment
 import java.io.File
 import java.io.FileOutputStream
+import org.hamcrest.Matchers.allOf
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,9 +58,13 @@ class ExploredRenderTest {
             lastFixTs = System.currentTimeMillis()
         }
 
+        try {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            onView(withText("Timeline")).perform(click())
-            onView(withText("Explored")).perform(click())
+            // The bottom-nav item renders TWO "Timeline" TextViews (a visible
+            // small-label + an INVISIBLE large-label), so a bare withText is
+            // ambiguous — match only the displayed one. Same for the tab.
+            onView(allOf(withText("Timeline"), isDisplayed())).perform(click())
+            onView(allOf(withText("Explored"), isDisplayed())).perform(click())
 
             var src = -1
             var rendered = -1
@@ -121,6 +127,12 @@ class ExploredRenderTest {
                     "(got $rendered) — pins are in the source but the GL layer drew nothing",
                 rendered > 0,
             )
+        }
+        } finally {
+            // Never leave the 2192-row demo seed behind — it pollutes the
+            // other DB-touching instrumented tests (class E runs before N).
+            MapsDb.get(ctx).clearAll()
+            MapsDemo.resetSeedFlag(ctx)
         }
     }
 

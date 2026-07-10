@@ -122,7 +122,9 @@ class NavConfigTest {
         val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
         val db = com.diegonmarcos.cloudnav.maps.MapsDb.get(ctx)
         val prefs = ctx.getSharedPreferences("maps_demo_prefs", android.content.Context.MODE_PRIVATE)
-        val stopCountBefore = db.stopCount()
+        // Isolate from any rows another instrumented test left behind (e.g.
+        // ExploredRenderTest's seed) — start from a known-empty DB.
+        db.clearAll(); prefs.edit().clear().commit()
         try {
             // Simulate a stale flag left by an OLDER build's different dataset shape.
             prefs.edit().putString("seeded_signature", "some-old-build-left-this-behind").commit()
@@ -138,7 +140,7 @@ class NavConfigTest {
             assertTrue("cleared flag means not-seeded again", !MapsDemo.isSeeded(ctx))
         } finally {
             db.clearAll(); prefs.edit().clear().commit()
-            assertEquals("test must not leak rows into other runs", stopCountBefore, db.stopCount())
+            assertEquals("test cleans up after itself", 0, db.stopCount())
         }
     }
 
