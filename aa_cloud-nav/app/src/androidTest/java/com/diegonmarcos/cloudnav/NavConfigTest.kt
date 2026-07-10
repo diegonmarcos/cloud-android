@@ -84,6 +84,53 @@ class NavConfigTest {
         assertTrue("must be decades before now, not near 'today'", System.currentTimeMillis() - ms > 30L * 365 * 24 * 3600_000L)
     }
 
+    @Test fun daily_adapter_recycles_and_binds_correctly() {
+        // Daily/Stops moved from LinearLayout-in-ScrollView (inflates every row
+        // up front) to RecyclerView (only the visible rows) — the full
+        // 1987-1992 demo trip is ~2192/several-thousand rows. This proves the
+        // adapter itself (item count + bound content) is wired correctly.
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val entries = listOf(
+            com.diegonmarcos.cloudnav.maps.DailyEntry(0L, "Home — Copacabana", "Copacabana", "Rio de Janeiro", "Brazil", -22.97, -43.18),
+            com.diegonmarcos.cloudnav.maps.DailyEntry(86_400_000L, null, null, null, null, 0.0, 0.0),
+        )
+        var tapped: Long? = null
+        val adapter = com.diegonmarcos.cloudnav.maps.DailyAdapter(entries) { tapped = it }
+        assertEquals(2, adapter.itemCount)
+
+        val parent = android.widget.FrameLayout(ctx)
+        val holder = adapter.onCreateViewHolder(parent, 0)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("Home — Copacabana", holder.place.text)
+        assertTrue(holder.sub.text.toString().contains("Rio de Janeiro"))
+
+        adapter.onBindViewHolder(holder, 1)
+        assertEquals("Resolving…", holder.place.text)  // unresolved entry — no crash, clear placeholder
+
+        holder.tile.performClick()
+        assertEquals(86_400_000L, tapped)  // last-bound row (index 1) is what the click fires for
+    }
+
+    @Test fun stops_adapter_recycles_and_binds_correctly() {
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val stops = listOf(
+            com.diegonmarcos.cloudnav.maps.MapsDb.RichStop(1L, 0L, 3_600_000L, -22.9711, -43.1822, "Home — Copacabana", "Copacabana", "Rio de Janeiro", "Brazil"),
+        )
+        var tappedDay: Long? = null
+        val adapter = com.diegonmarcos.cloudnav.maps.StopsAdapter(stops) { tappedDay = it }
+        assertEquals(1, adapter.itemCount)
+
+        val parent = android.widget.FrameLayout(ctx)
+        val holder = adapter.onCreateViewHolder(parent, 0)
+        adapter.onBindViewHolder(holder, 0)
+        assertTrue(holder.place.text.toString().startsWith("Home — Copacabana"))
+        assertEquals("-22.97110, -43.18220", holder.coords.text)
+
+        holder.tile.performClick()
+        // Tap resolves to that stop's LOCAL calendar-day midnight (see MapsDailyFragment.localMidnight).
+        assertEquals(com.diegonmarcos.cloudnav.maps.MapsDailyFragment.localMidnight(0L), tappedDay)
+    }
+
     @Test fun explored_groups_by_city_from_daily_entries_not_raw_stops() {
         fun entry(dayMs: Long, city: String?, place: String?, lat: Double, lon: Double) =
             com.diegonmarcos.cloudnav.maps.DailyEntry(dayMs, place, null, city, "Brazil", lat, lon)

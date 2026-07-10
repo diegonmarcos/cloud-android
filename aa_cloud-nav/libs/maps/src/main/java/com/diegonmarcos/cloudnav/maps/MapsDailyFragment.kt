@@ -6,9 +6,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -83,6 +84,10 @@ fun computeDailyLocations(stops: List<MapsDb.RichStop>): List<DailyEntry> {
  * ([MapsExploredFragment]) — Explored groups these same per-day city picks
  * by city, so it never shows raw per-stop noise.
  *
+ * RecyclerView-backed — the full 1987-1992 demo trip is ~2192 rows; a
+ * LinearLayout-in-ScrollView would inflate every row up front (slow to open,
+ * janky scroll). RecyclerView only inflates what's on screen.
+ *
  * Light theme: dark text on a light surface (palette shared with
  * [MapsStopsFragment]); `setTextColor` applied AFTER `setTextAppearance`
  * so the appearance can't override the colour.
@@ -91,15 +96,6 @@ class MapsDailyFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        val scroll = ScrollView(ctx).apply {
-            isFillViewport = true
-            setBackgroundColor(MapsStopsFragment.COL_SURFACE)
-        }
-        val root = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            val p = dp(ctx, 16); setPadding(p, p, p, p)
-        }
-        scroll.addView(root)
 
         val now = System.currentTimeMillis()
         // All-time — not a rolling "last N years" window. The demo dataset is a
@@ -110,54 +106,23 @@ class MapsDailyFragment : Fragment() {
         val daily = computeDailyLocations(stops)
 
         if (daily.isEmpty()) {
-            root.addView(TextView(ctx).apply {
+            return TextView(ctx).apply {
                 text = "No daily locations yet. Daily picks the LONGEST-dwell Stop per day — needs at least one Stop in the DB. Start the tracker on the Configs page, dwell ≥ 5 min in one spot, and refresh."
                 setTextAppearance(android.R.style.TextAppearance_Material_Body2)
                 setTextColor(MapsStopsFragment.COL_SECONDARY)
-            })
-            return scroll
+                setBackgroundColor(MapsStopsFragment.COL_SURFACE)
+                val p = dp(ctx, 16); setPadding(p, p, p, p)
+            }
         }
 
-        val dayFmt = SimpleDateFormat("EEE  ·  dd MMM yyyy", Locale.US)
-        for (entry in daily) {
-            val tile = LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
-                val pad = dp(ctx, 12); setPadding(pad, pad, pad, pad)
-                setBackgroundColor(MapsStopsFragment.COL_TILE)
-                isClickable = true
-                val m = dp(ctx, 4)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { setMargins(0, m, 0, m) }
-                setOnClickListener {
-                    (parentFragment as? MapsTimelineTabsFragment)?.openStopsForDay(entry.dayMs)
-                }
+        return RecyclerView(ctx).apply {
+            setBackgroundColor(MapsStopsFragment.COL_SURFACE)
+            val p = dp(ctx, 16); setPadding(p, p, p, p); clipToPadding = false
+            layoutManager = LinearLayoutManager(ctx)
+            adapter = DailyAdapter(daily) { dayMs ->
+                (parentFragment as? MapsTimelineTabsFragment)?.openStopsForDay(dayMs)
             }
-            tile.addView(TextView(ctx).apply {
-                text = dayFmt.format(Date(entry.dayMs))
-                setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
-                setTextColor(MapsStopsFragment.COL_ACCENT)
-            })
-            tile.addView(TextView(ctx).apply {
-                text = entry.placeName ?: "Resolving…"
-                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-                setTextColor(MapsStopsFragment.COL_PRIMARY)
-                maxLines = 2
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, dp(ctx, 4), 0, 0)
-            })
-            val parts = listOfNotNull(entry.neighborhood, entry.city, entry.country)
-            tile.addView(TextView(ctx).apply {
-                text = if (parts.isNotEmpty()) parts.joinToString("  ·  ") + "    ·  tap for this day's stops ▸"
-                       else "tap for this day's stops ▸"
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setTextColor(MapsStopsFragment.COL_SECONDARY)
-                setPadding(0, dp(ctx, 2), 0, 0)
-            })
-            root.addView(tile)
         }
-        return scroll
     }
 
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
@@ -176,4 +141,64 @@ class MapsDailyFragment : Fragment() {
             return cal.timeInMillis
         }
     }
+}
+
+/** Row view holder for [DailyAdapter] — top-level (not nested) so it stays
+ *  visible for testing, avoiding the cross-file companion-nested-member
+ *  resolution quirk this codebase already hit once (see git history). */
+class DailyViewHolder(val tile: LinearLayout, val title: TextView, val place: TextView, val sub: TextView) :
+    RecyclerView.ViewHolder(tile)
+
+/** Feeds [DailyEntry] rows into a [RecyclerView] — view recycling instead of
+ *  inflating all ~2192 rows up front (the full 1987-1992 demo trip). */
+class DailyAdapter(private val items: List<DailyEntry>, private val onTap: (Long) -> Unit) :
+    RecyclerView.Adapter<DailyViewHolder>() {
+
+    private val dayFmt = SimpleDateFormat("EEE  ·  dd MMM yyyy", Locale.US)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DailyViewHolder {
+        val ctx = parent.context
+        fun dp(v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
+        val tile = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(12); setPadding(pad, pad, pad, pad)
+            setBackgroundColor(MapsStopsFragment.COL_TILE)
+            isClickable = true
+            val m = dp(4)
+            layoutParams = RecyclerView.LayoutParams(
+                RecyclerView.LayoutParams.MATCH_PARENT,
+                RecyclerView.LayoutParams.WRAP_CONTENT,
+            ).apply { setMargins(0, m, 0, m) }
+        }
+        val title = TextView(ctx).apply {
+            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+            setTextColor(MapsStopsFragment.COL_ACCENT)
+        }
+        val place = TextView(ctx).apply {
+            setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+            setTextColor(MapsStopsFragment.COL_PRIMARY)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(4), 0, 0)
+        }
+        val sub = TextView(ctx).apply {
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setTextColor(MapsStopsFragment.COL_SECONDARY)
+            setPadding(0, dp(2), 0, 0)
+        }
+        tile.addView(title); tile.addView(place); tile.addView(sub)
+        return DailyViewHolder(tile, title, place, sub)
+    }
+
+    override fun onBindViewHolder(holder: DailyViewHolder, position: Int) {
+        val entry = items[position]
+        holder.title.text = dayFmt.format(Date(entry.dayMs))
+        holder.place.text = entry.placeName ?: "Resolving…"
+        val parts = listOfNotNull(entry.neighborhood, entry.city, entry.country)
+        holder.sub.text = if (parts.isNotEmpty()) parts.joinToString("  ·  ") + "    ·  tap for this day's stops ▸"
+                          else "tap for this day's stops ▸"
+        holder.tile.setOnClickListener { onTap(entry.dayMs) }
+    }
+
+    override fun getItemCount() = items.size
 }

@@ -98,6 +98,12 @@ dependencies {
     // app/'s Material pin so version skew is impossible.
     implementation 'com.google.android.material:material:1.12.0'
 
+    // RecyclerView — Daily/Stops render up to ~2200/~7000 rows (full 1987-1992
+    // demo coverage); a LinearLayout-in-ScrollView inflates every row up front
+    // (janky scroll, slow to open). RecyclerView only inflates what's on
+    // screen (view recycling).
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+
     // Fused Location Provider — battery-efficient GPS via Play Services
     // sensor-fusion + activity-recognition.
     implementation 'com.google.android.gms:play-services-location:21.3.0'
