@@ -79,13 +79,16 @@ object Fleet {
         }
     }
 
-    /** ABI-aware tag: try `<tag>-<deviceAbi>` first, fall back to `<tag>`. */
+    /** ABI-aware tag. Across the constellation, x86_64 is the ONLY ABI that
+     *  publishes a suffixed variant tag (`<tag>-x86_64`); arm64 is the default
+     *  publish under the universal `<tag>`. The old code composed
+     *  `<tag>-arm64-v8a`, which never exists — a guaranteed 404 + fallback
+     *  round-trip on every arm64 device. Only reach for the suffix on x86_64. */
     private fun remoteLayer(app: App, client: GhcrClient, token: String): GhcrClient.ManifestLayer {
-        val abi = Build.SUPPORTED_ABIS.firstOrNull()
-        if (abi != null) {
+        if (Build.SUPPORTED_ABIS.firstOrNull() == "x86_64") {
             try {
-                return client.manifest("${app.tag}-$abi", token)
-            } catch (_: Throwable) { /* fall back to the universal tag */ }
+                return client.manifest("${app.tag}-x86_64", token)
+            } catch (_: Throwable) { /* variant not published yet — universal tag */ }
         }
         return client.manifest(app.tag, token)
     }
@@ -100,6 +103,16 @@ object Fleet {
             val remote12 = layer.digest.substringAfter(':').take(12)
             // Valid manifest ⇒ remote APK exists. Not installed ⇒ offer install.
             if (installed == null) return State.Missing
+            // Code-identity short-circuit for the SELF entry: builds are not
+            // byte-reproducible, so a same-commit rebuild has a different APK
+            // sha and would show a phantom "update available". When this is our
+            // own package and the manifest revision matches our built-in git
+            // sha, we are up to date regardless of bytes. (Foreign apps don't
+            // expose their revision, so sha comparison remains their signal.)
+            if (app.pkg == ctx.packageName && layer.revision != null &&
+                layer.revision == BuildConfig.GIT_SHORT_SHA) {
+                return State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12))
+            }
             val currentSha = "sha256:" + installed.sha
             if (currentSha == layer.digest)
                 State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12))
