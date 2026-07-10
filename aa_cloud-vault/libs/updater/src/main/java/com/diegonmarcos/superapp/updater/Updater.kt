@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit
 object Updater {
     private const val WORK_NAME = "superapp-auto-update"
     private const val ONE_SHOT_NAME = "superapp-update-now"
+    private const val KICK_NAME = "superapp-update-kick"
+    private const val COMPANION_TAG = "companion-install"
 
     /** Enqueue (or refresh) the periodic update worker. Idempotent. Respects
      *  the runtime Auto-update toggle (AutoUpdatePrefs.enabled) — OFF cancels. */
@@ -42,13 +44,31 @@ object Updater {
             BuildConfig.AUTO_UPDATE_INTERVAL_HOURS, TimeUnit.HOURS,
         ).setConstraints(constraints).build()
 
+        // UPDATE (not KEEP): a KEEP'd request pins the FIRST interval/constraints
+        // an installed device ever saw, so later build.json::auto_update changes
+        // never reach it. UPDATE re-applies the current spec while preserving the
+        // running schedule.
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request,
+            WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request,
+        )
+
+        // A periodic worker's first run is a full interval out, so on a fresh
+        // install/launch the self-update wouldn't fire for hours. Kick a one-shot
+        // ~30s after launch so the first check happens promptly. KEEP so repeated
+        // launches don't stack kicks; same constraints as the periodic run.
+        val kick = OneTimeWorkRequestBuilder<UpdateWorker>()
+            .setConstraints(constraints)
+            .setInitialDelay(30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            KICK_NAME, ExistingWorkPolicy.KEEP, kick,
         )
     }
 
     fun cancel(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+        val wm = WorkManager.getInstance(context)
+        wm.cancelUniqueWork(WORK_NAME)
+        wm.cancelUniqueWork(KICK_NAME)
     }
 
     /**
@@ -61,7 +81,8 @@ object Updater {
     fun cancelNow(context: Context) {
         val wm = WorkManager.getInstance(context)
         wm.cancelUniqueWork(ONE_SHOT_NAME)
-        wm.cancelAllWorkByTag("companion-install") // no-op if none tagged
+        wm.cancelUniqueWork(KICK_NAME)
+        wm.cancelAllWorkByTag(COMPANION_TAG)
         wm.cancelUniqueWork("superapp-constellation-now")
         UpdateProgress.update(UpdateProgress.State.Cancelled)
     }
@@ -101,6 +122,7 @@ object Updater {
             .build()
         val request = OneTimeWorkRequestBuilder<ApkInstallWorker>()
             .setInputData(data)
+            .addTag(COMPANION_TAG) // so cancelNow's cancelAllWorkByTag(COMPANION_TAG) matches
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)

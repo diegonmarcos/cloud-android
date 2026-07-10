@@ -1,5 +1,6 @@
 package com.diegonmarcos.cloudnav.updater
 
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -39,14 +40,17 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // The 6h auto-update runs in WorkManager; Android 10+ BLOCKS
-                // background activity starts, so startActivity silently no-ops
-                // and the update dies invisibly. Fall back to a tap-to-install
-                // notification (launchable from the background) on failure.
-                try {
+                // The 6h auto-update runs in WorkManager. Android 10+ BLOCKS
+                // background activity starts but does NOT throw — startActivity
+                // silently no-ops, so a try/catch fallback never fires and the
+                // update dies invisibly. Decide by real process importance:
+                // foreground → launch the system confirm dialog directly;
+                // background → a tap-to-install notification (the only
+                // background-safe launch path).
+                if (isForeground(context)) {
                     context.startActivity(confirm)
-                } catch (t: Throwable) {
-                    Log.w(TAG, "confirm launch blocked (background?): ${t.message}")
+                } else {
+                    Log.w(TAG, "confirm launch deferred to notification (app backgrounded)")
                     notifyConfirm(context, confirm)
                 }
             }
@@ -71,6 +75,19 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                     severity = NotificationStore.Sev.ERROR)
             }
         }
+    }
+
+    /** True when THIS app's process is currently foreground — the only state in
+     *  which a background-context startActivity is honoured on Android 10+.
+     *  Anything else (WorkManager auto-update tick with no visible Activity)
+     *  must route the confirm Intent through a notification instead. */
+    private fun isForeground(context: Context): Boolean {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return false
+        val mine = context.packageName
+        return am.runningAppProcesses?.any {
+            it.processName == mine &&
+                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        } ?: false
     }
 
     /** Background-safe fallback for STATUS_PENDING_USER_ACTION: a tap-to-install
