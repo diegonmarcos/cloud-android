@@ -57,11 +57,11 @@ class MapsExploredFragment : Fragment() {
                 "No places yet — load demo data or start the tracker (Configs → Tracker)."
             else "${cities.size} cities · $totalVisits day-visits"
             textSize = 14f
-            setPadding(dp(14).toInt(), dp(10).toInt(), dp(14).toInt(), dp(10).toInt())
+            setPadding(dp(14f).toInt(), dp(10f).toInt(), dp(14f).toInt(), dp(10f).toInt())
         })
         root.addView(card, FrameLayout.LayoutParams(WRAP, WRAP).apply {
             gravity = Gravity.TOP or Gravity.START
-            setMargins(dp(8).toInt(), dp(8).toInt(), dp(8).toInt(), 0)
+            setMargins(dp(8f).toInt(), dp(8f).toInt(), dp(8f).toInt(), 0)
         })
         return root
     }
