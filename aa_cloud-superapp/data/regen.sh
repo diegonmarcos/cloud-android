@@ -34,34 +34,48 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 UNIX="$(cd "$HERE/../.." && pwd)"
 regen_constellation() {
     command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; return 1; }
+    # owner/repo = the monorepo these apps ship from (invariant identity).
+    local rel="https://github.com/diegonmarcos/unix/releases"
+
+    # ── Top-level apps: TRULY auto-discovered (FIRE 4/6) ──────────────────
+    # Scan every sibling ea_cloud-*/build.json and keep the ones that declare
+    # BOTH a GHCR image and an Android application_id — the shippable-app
+    # marker. A new ea_cloud-<x> app self-registers into the AppStore the
+    # instant its build.json has release.ghcr + android.application_id; nothing
+    # here is hand-listed. id = the dir basename sans the ea_cloud- prefix
+    # (browser/vault/wallet/superapp/comms/ide/nav). The cloud-comms FORKS
+    # (mail/chat/matrix/dialer) are NOT separate dirs — they live under
+    # ea_cloud-comms/build.json::forks.* and are appended below.
+    local tops="[]" bj id
+    for bj in "$UNIX"/ea_cloud-*/build.json; do
+        [ -f "$bj" ] || continue
+        jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1 || continue
+        id="$(basename "$(dirname "$bj")")"; id="${id#ea_cloud-}"
+        tops="$(jq --argjson acc "$tops" --arg id "$id" --arg rel "$rel" '
+            ($rel + "/latest/download/" + .release.gh_release.asset_name) as $url
+            | $acc + [ { id: $id,
+                         label: (.name // $id),
+                         package: .android.application_id,
+                         registry: .release.ghcr.registry,
+                         namespace: .release.ghcr.namespace,
+                         image: .release.ghcr.image,
+                         tag: (.release.auto_update.tag // "latest"),
+                         alt_id: null,
+                         asset: .release.gh_release.asset_name,
+                         # top-level apps publish a rolling `latest` release →
+                         # stable direct-download URL.
+                         release_url: $url,
+                         blocked: false } ]' "$bj")"
+    done
+
     jq -n \
-        --slurpfile sa "$UNIX/ea_cloud-superapp/build.json" \
+        --argjson tops "$tops" \
         --slurpfile co "$UNIX/ea_cloud-comms/build.json" \
-        --slurpfile nv "$UNIX/ea_cloud-nav/build.json" \
-        --slurpfile id "$UNIX/ea_cloud-ide/build.json" '
-        # owner/repo = the monorepo these apps ship from (invariant identity).
-        "https://github.com/diegonmarcos/unix/releases" as $rel
-        | def top($b; $id):
-            $b[0] as $j
-            | ($j.release.gh_release.asset_name) as $asset
-            | { id: $id,
-                label: ($j.name // $id),
-                package: $j.android.application_id,
-                registry: $j.release.ghcr.registry,
-                namespace: $j.release.ghcr.namespace,
-                image: $j.release.ghcr.image,
-                tag: ($j.release.auto_update.tag // "latest"),
-                alt_id: null,
-                asset: $asset,
-                # top-level apps publish a rolling `latest` release → stable
-                # direct-download URL.
-                release_url: ($rel + "/latest/download/" + $asset),
-                blocked: false };
+        --arg rel "$rel" '
         ($co[0].release.ghcr) as $cg
         | { version: 1,
             apps: (
-                [ top($sa; "superapp"), top($co; "comms-hub"),
-                  top($nv; "nav"),      top($id; "ide-hub") ]
+                $tops
               + ( $co[0].forks | to_entries
                   | map(select(.value | type == "object"))
                   | map({ id: ("comms-" + .key),

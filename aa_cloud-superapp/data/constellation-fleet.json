@@ -2,20 +2,20 @@
   "version": 1,
   "apps": [
     {
-      "id": "superapp",
-      "label": "cloud-superapp",
-      "package": "com.diegonmarcos.superapp",
+      "id": "browser",
+      "label": "cloud-browser",
+      "package": "com.diegonmarcos.cloudbrowser",
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
-      "image": "cloud-superapp",
+      "image": "cloud-browser",
       "tag": "latest",
       "alt_id": null,
-      "asset": "Cloud-SuperApp.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-SuperApp.apk",
+      "asset": "Cloud-Browser.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Browser.apk",
       "blocked": false
     },
     {
-      "id": "comms-hub",
+      "id": "comms",
       "label": "cloud-comms",
       "package": "com.diegonmarcos.comms",
       "registry": "ghcr.io",
@@ -25,6 +25,19 @@
       "alt_id": null,
       "asset": "Cloud-Comms-Hub.apk",
       "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Comms-Hub.apk",
+      "blocked": false
+    },
+    {
+      "id": "ide",
+      "label": "cloud-ide",
+      "package": "com.diegonmarcos.ide",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-ide-hub",
+      "tag": "latest",
+      "alt_id": null,
+      "asset": "Cloud-IDE-Hub.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-IDE-Hub.apk",
       "blocked": false
     },
     {
@@ -41,16 +54,42 @@
       "blocked": false
     },
     {
-      "id": "ide-hub",
-      "label": "cloud-ide",
-      "package": "com.diegonmarcos.ide",
+      "id": "superapp",
+      "label": "cloud-superapp",
+      "package": "com.diegonmarcos.superapp",
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
-      "image": "cloud-ide-hub",
+      "image": "cloud-superapp",
       "tag": "latest",
       "alt_id": null,
-      "asset": "Cloud-IDE-Hub.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-IDE-Hub.apk",
+      "asset": "Cloud-SuperApp.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-SuperApp.apk",
+      "blocked": false
+    },
+    {
+      "id": "vault",
+      "label": "cloud-vault",
+      "package": "com.diegonmarcos.cloudvault",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-vault",
+      "tag": "latest",
+      "alt_id": null,
+      "asset": "Cloud-Vault.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Vault.apk",
+      "blocked": false
+    },
+    {
+      "id": "wallet",
+      "label": "cloud-wallet",
+      "package": "com.diegonmarcos.cloudwallet",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-wallet",
+      "tag": "latest",
+      "alt_id": null,
+      "asset": "Cloud-Wallet.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Wallet.apk",
       "blocked": false
     },
     {
