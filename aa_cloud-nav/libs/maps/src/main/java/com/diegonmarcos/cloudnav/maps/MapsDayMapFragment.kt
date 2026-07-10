@@ -44,11 +44,11 @@ class MapsDayMapFragment : Fragment() {
         val stops = MapsDb.get(ctx).stopsBetween(dayStart, dayEnd)
         val pins = stops.map { MapsMapFragment.Pin(it.lat, it.lon, MapsMapFragment.COLOR_DAY) }
 
+        // Pins set BEFORE commit → baked into the style source at load time
+        // (see MapsExploredFragment); onMapReady only frames the camera.
         val mapFragment = MapsMapFragment.newInstance(nav3d = false, fab = true).apply {
-            onMapReady = {
-                setPins(pins)
-                if (pins.isNotEmpty()) fitTo(pins)
-            }
+            setPins(pins)
+            onMapReady = { if (pins.isNotEmpty()) fitTo(pins) }
         }
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()

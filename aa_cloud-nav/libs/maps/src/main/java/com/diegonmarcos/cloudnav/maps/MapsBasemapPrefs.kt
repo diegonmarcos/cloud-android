@@ -25,8 +25,14 @@ class MapsBasemapPrefs(ctx: Context) {
 
     /** Resolve a screen's own raw style key ("light"/"dark"/"satellite"/…)
      *  against the user's basemap choice: an explicit pin wins outright,
-     *  otherwise [MapStyles.resolve] applies the family preference. */
-    fun resolve(rawKey: String): String = explicitStyleKey ?: MapStyles.resolve(rawKey, preferVectorFamily)
+     *  otherwise [MapStyles.resolve] applies the family preference.
+     *  A pinned key that no longer exists in [MapStyles.order] (e.g. the
+     *  removed "vector_en" surviving in prefs from an older build) is ignored
+     *  — it would otherwise resolve to a phantom default style forever. */
+    fun resolve(rawKey: String): String {
+        val pinned = explicitStyleKey?.takeIf { it in MapStyles.order }
+        return pinned ?: MapStyles.resolve(rawKey, preferVectorFamily)
+    }
 
     private companion object {
         const val KEY_EXPLICIT = "explicit_style_key"

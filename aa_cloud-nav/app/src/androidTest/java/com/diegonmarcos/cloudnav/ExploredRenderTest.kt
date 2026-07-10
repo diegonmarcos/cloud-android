@@ -44,6 +44,18 @@ class ExploredRenderTest {
         assertTrue("demo seed must insert rows", MapsDemo.seed(ctx) > 0)
         val expectedCities = MapsDemo.cityTemplates.size
 
+        // Simulate a REAL user's device: the tracker has a last GPS fix
+        // (Berlin — deliberately in none of the demo cities). Without the
+        // worldView camera fix, the map opens zoomed ~14 into this fix and
+        // every pin is off-screen on another continent — the exact
+        // "empty map, no pins" report that a fresh no-fix emulator never
+        // reproduced (its world-zoom default made the old code look fine).
+        com.diegonmarcos.cloudnav.maps.MapsTrackerPrefs(ctx).apply {
+            lastFixLat = 52.5200
+            lastFixLon = 13.4050
+            lastFixTs = System.currentTimeMillis()
+        }
+
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             onView(withText("Timeline")).perform(click())
             onView(withText("Explored")).perform(click())

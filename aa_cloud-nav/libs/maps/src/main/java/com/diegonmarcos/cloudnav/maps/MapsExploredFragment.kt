@@ -26,7 +26,10 @@ import java.util.Locale
  */
 class MapsExploredFragment : Fragment() {
 
-    private val mapFragment = MapsMapFragment.newInstance(fab = true)
+    // worldView: this is a GLOBAL overview — the camera must start showing the
+    // whole world, NOT the user's last GPS fix (which put pins on other
+    // continents off-screen: the "empty map" bug).
+    private val mapFragment = MapsMapFragment.newInstance(fab = true, worldView = true)
     private var cities: List<ExploredCity> = emptyList()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
@@ -41,7 +44,12 @@ class MapsExploredFragment : Fragment() {
         val pins = cities.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, MapsMapFragment.COLOR_PLACE, title = c.city, id = i.toString()) }
 
         mapFragment.onPinClick = { id -> cities.getOrNull(id.toIntOrNull() ?: -1)?.let { showVisitHistory(it) } }
-        mapFragment.onMapReady = { _ -> mapFragment.setPins(pins); if (pins.isNotEmpty()) mapFragment.fitTo(pins) }
+        // Pins set BEFORE the map fragment commits: onStyleLoaded bakes the
+        // pins field into the GeoJSON source at style-load time, so rendering
+        // never depends on the async onMapReady callback racing the nested
+        // child-fragment + vector-fetch chain. onMapReady only frames the camera.
+        mapFragment.setPins(pins)
+        mapFragment.onMapReady = { _ -> if (pins.isNotEmpty()) mapFragment.fitTo(pins) }
         if (childFragmentManager.findFragmentById(mapHost.id) == null) {
             childFragmentManager.beginTransaction().replace(mapHost.id, mapFragment).commit()
         }

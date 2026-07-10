@@ -484,6 +484,21 @@ class NavConfigTest {
         prefs.explicitStyleKey = null  // restore
     }
 
+    @Test fun basemap_stale_pinned_key_is_ignored() {
+        // "vector_en" existed in an older build and was later replaced by
+        // vector_light/vector_dark/satellite_hybrid. A device that pinned it
+        // back then still carries the string in prefs — resolve() must ignore
+        // any key no longer in MapStyles.order and fall back to the family
+        // resolution, not resolve a phantom default style forever.
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        ctx.getSharedPreferences("maps_basemap_prefs", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        val prefs = com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx)
+        prefs.explicitStyleKey = "vector_en"   // stale key from a removed build
+        prefs.preferVectorFamily = true
+        assertEquals("stale pin ignored → family resolution", "vector_dark", prefs.resolve("dark"))
+        prefs.explicitStyleKey = null; ctx.getSharedPreferences("maps_basemap_prefs", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+    }
+
     @Test fun polyline6_decodes() {
         // "?" encodes a zero delta, so "??" = one (0,0) point, "????" = two.
         val one = MapsRouting.decodePolyline6("??")

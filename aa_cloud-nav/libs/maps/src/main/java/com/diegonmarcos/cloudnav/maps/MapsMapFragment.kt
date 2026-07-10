@@ -87,6 +87,13 @@ class MapsMapFragment : Fragment() {
     private val nav3d: Boolean get() = arguments?.getBoolean(ARG_NAV3D, false) ?: false
     private val showFab: Boolean get() = arguments?.getBoolean(ARG_FAB, true) ?: true
     private val autoLocate: Boolean get() = arguments?.getBoolean(ARG_AUTOLOCATE, false) ?: false
+    /** Start at a whole-world camera instead of the user's last GPS fix —
+     *  for global-overview screens (Explored). Without this, a device with
+     *  tracker history opens the map zoomed ~14 into the user's own city and
+     *  pins on other continents are simply off-screen ("empty map"), while a
+     *  fresh device/emulator (no fix → world zoom) looks fine — the exact
+     *  device-vs-CI split that hid the Explored bug. */
+    private val worldView: Boolean get() = arguments?.getBoolean(ARG_WORLD_VIEW, false) ?: false
     private var autoLocateDone = false
 
     // Cockpit-mode camera overrides (null → fall back to nav3d defaults). Set via [applyNavMode].
@@ -117,9 +124,9 @@ class MapsMapFragment : Fragment() {
         val root = FrameLayout(ctx).apply { layoutParams = ViewGroup.LayoutParams(MATCH, MATCH) }
 
         val prefs = MapsTrackerPrefs(ctx)
-        val initialLat = if (prefs.hasLastFix()) prefs.lastFixLat else 20.0
-        val initialLon = if (prefs.hasLastFix()) prefs.lastFixLon else 0.0
-        val initialZoom = if (prefs.hasLastFix()) 14.0 else 2.0
+        val initialLat = if (worldView) 15.0 else if (prefs.hasLastFix()) prefs.lastFixLat else 20.0
+        val initialLon = if (worldView) 0.0 else if (prefs.hasLastFix()) prefs.lastFixLon else 0.0
+        val initialZoom = if (worldView) 0.8 else if (prefs.hasLastFix()) 14.0 else 2.0
 
         val mv = MapView(ctx).apply { layoutParams = FrameLayout.LayoutParams(MATCH, MATCH) }
         mapView = mv
@@ -279,11 +286,31 @@ class MapsMapFragment : Fragment() {
     }
 
     fun fitTo(pts: List<Pin>) {
+        val m = map ?: return
         val all = (pts.map { LatLng(it.lat, it.lon) } + listOfNotNull(me))
         if (all.isEmpty()) return
         if (all.size == 1) { recenter(all[0].latitude, all[0].longitude, 15.0); return }
-        val bounds = LatLngBounds.Builder().apply { all.forEach { include(it) } }.build()
-        map?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, dp(64)))
+        // getCameraForLatLngBounds is NULLABLE — for very wide (multi-continent)
+        // bounds it can fail, and the old newLatLngBounds animateCamera then
+        // silently no-ops, leaving the camera wherever it was (e.g. zoomed into
+        // the user's home city with every pin off-screen). Fall back to an
+        // explicit centred world-ish view so the pins are ALWAYS on screen.
+        runCatching {
+            val bounds = LatLngBounds.Builder().apply { all.forEach { include(it) } }.build()
+            val pad = dp(48)
+            val cam = m.getCameraForLatLngBounds(bounds, intArrayOf(pad, pad, pad, pad))
+            if (cam != null) {
+                m.animateCamera(CameraUpdateFactory.newCameraPosition(cam))
+            } else {
+                val cLat = all.map { it.latitude }.average()
+                val cLon = all.map { it.longitude }.average()
+                m.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(cLat, cLon), 1.0))
+            }
+        }.onFailure {
+            val cLat = all.map { it.latitude }.average()
+            val cLon = all.map { it.longitude }.average()
+            m.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(cLat, cLon), 1.0))
+        }
     }
 
     fun recenterOnUser() {
@@ -558,6 +585,7 @@ class MapsMapFragment : Fragment() {
         const val ARG_FAB   = "fab"
         const val ARG_STYLE = "style"
         const val ARG_AUTOLOCATE = "autolocate"
+        const val ARG_WORLD_VIEW = "world_view"
 
         const val COLOR_RESULT = "#D93025"
         const val COLOR_PLACE  = "#1A73E8"
@@ -576,12 +604,19 @@ class MapsMapFragment : Fragment() {
         private const val NAV_TILT = 55.0
         private const val NAV_ZOOM = 18.0
 
-        fun newInstance(nav3d: Boolean = false, fab: Boolean = true, style: String? = null, autoLocate: Boolean = false) =
+        fun newInstance(
+            nav3d: Boolean = false,
+            fab: Boolean = true,
+            style: String? = null,
+            autoLocate: Boolean = false,
+            worldView: Boolean = false,
+        ) =
             MapsMapFragment().apply {
                 arguments = Bundle().apply {
                     putBoolean(ARG_NAV3D, nav3d)
                     putBoolean(ARG_FAB, fab)
                     putBoolean(ARG_AUTOLOCATE, autoLocate)
+                    putBoolean(ARG_WORLD_VIEW, worldView)
                     if (style != null) putString(ARG_STYLE, style)
                 }
             }
