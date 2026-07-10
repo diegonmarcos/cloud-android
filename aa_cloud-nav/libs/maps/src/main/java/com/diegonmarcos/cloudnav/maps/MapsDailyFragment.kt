@@ -1,19 +1,24 @@
 package com.diegonmarcos.cloudnav.maps
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 /** One row of the Daily list: the calendar day + its LONGEST-dwell place.
  *  Also [MapsExploredFragment]'s data source, grouped by city. Top-level
@@ -115,19 +120,52 @@ class MapsDailyFragment : Fragment() {
             }
         }
 
-        return RecyclerView(ctx).apply {
-            setBackgroundColor(MapsStopsFragment.COL_SURFACE)
+        val root = FrameLayout(ctx).apply { setBackgroundColor(MapsStopsFragment.COL_SURFACE) }
+        val recycler = RecyclerView(ctx).apply {
             val p = dp(ctx, 16); setPadding(p, p, p, p); clipToPadding = false
             layoutManager = LinearLayoutManager(ctx)
             adapter = DailyAdapter(daily) { dayMs ->
                 (parentFragment as? MapsTimelineTabsFragment)?.openStopsForDay(dayMs)
             }
         }
+        root.addView(recycler, FrameLayout.LayoutParams(MATCH, MATCH))
+
+        // Calendar jump — pick a date, scroll to the nearest day in the list
+        // (2192 days of demo history is a lot to scroll by hand).
+        root.addView(FloatingActionButton(ctx).apply {
+            setImageResource(android.R.drawable.ic_menu_my_calendar)
+            contentDescription = "Jump to date"
+            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                .apply { val m = dp(ctx, 16); setMargins(m, m, m, m) }
+            setOnClickListener { showDatePicker(ctx, daily, recycler) }
+        })
+        return root
+    }
+
+    /** Date picker → smooth-scroll the [recycler] to the entry whose day is
+     *  nearest the chosen date (the list is descending by day). */
+    private fun showDatePicker(ctx: Context, daily: List<DailyEntry>, recycler: RecyclerView) {
+        val cal = Calendar.getInstance().apply { timeInMillis = daily.first().dayMs }
+        DatePickerDialog(ctx, { _, y, mo, d ->
+            val target = Calendar.getInstance().apply {
+                set(Calendar.YEAR, y); set(Calendar.MONTH, mo); set(Calendar.DAY_OF_MONTH, d)
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val idx = daily.indices.minByOrNull { abs(daily[it].dayMs - target) } ?: 0
+            (recycler.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(idx, 0)
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).apply {
+            // Clamp the picker to the actual data range (oldest..newest).
+            datePicker.minDate = daily.minOf { it.dayMs }
+            datePicker.maxDate = daily.maxOf { it.dayMs }
+        }.show()
     }
 
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
     companion object {
+        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+
         fun newInstance() = MapsDailyFragment()
 
         /** Device-local midnight (epoch ms) of the calendar day [ts] falls in —

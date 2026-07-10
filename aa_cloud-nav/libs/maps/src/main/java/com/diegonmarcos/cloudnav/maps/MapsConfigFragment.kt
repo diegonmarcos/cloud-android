@@ -61,6 +61,26 @@ class MapsConfigFragment : Fragment() {
             refreshTrackerSection()
         }
 
+    /** SAF file-picker for "Import JSON" — parses the picked file off-thread
+     *  and inserts every trip as a Stop (see [MapsImport]). */
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val ctx = context ?: return@registerForActivityResult
+            if (uri == null) return@registerForActivityResult
+            Toast.makeText(ctx, "Importing…", Toast.LENGTH_SHORT).show()
+            Thread {
+                val r = MapsImport.importFrom(ctx, uri)
+                activity?.runOnUiThread {
+                    Toast.makeText(
+                        ctx,
+                        r.error ?: "Imported ${r.inserted} places — open Timeline",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    refreshTrackerSection()
+                }
+            }.start()
+        }
+
     private fun openAppSettings(ctx: android.content.Context) {
         runCatching {
             startActivity(
@@ -249,6 +269,19 @@ class MapsConfigFragment : Fragment() {
                         refreshTrackerSection()
                     }
                 }.start()
+            }
+        })
+
+        // Import the user's OWN location history from a JSON file (e.g. the
+        // travel-data.json export) → inserted as Stops via MapsImport.
+        root.addView(spacer(ctx, dp(ctx, 12)))
+        root.addView(caption(ctx, "Already have your own location history? Import a JSON file (travel-data.json / trips export) — each trip becomes a place in Timeline, Daily, Stops and Explored."))
+        root.addView(android.widget.Button(ctx).apply {
+            text = "Import location data (JSON)"
+            setOnClickListener {
+                MapsHaptics.tap(it)
+                // application/json first; some pickers only expose text/* or */*.
+                importLauncher.launch(arrayOf("application/json", "text/json", "text/plain", "*/*"))
             }
         })
 

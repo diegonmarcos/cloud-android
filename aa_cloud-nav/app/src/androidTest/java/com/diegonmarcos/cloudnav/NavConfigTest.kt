@@ -232,6 +232,58 @@ class NavConfigTest {
         assertTrue(h.vectorStyleUrl == null)
     }
 
+    @Test fun import_parses_travel_data_trips_shape() {
+        // The real travel-data.json shape: { trips: [ {dateIn,dateOut,lat,lng,city,country,nomadRegion,state} ] }.
+        val json = """
+            { "traveler": "X", "trips": [
+              { "dateIn": "2011-08-06", "dateOut": "2015-01-13", "lat": -23.4932, "lng": -46.6382,
+                "city": "Sao Paulo", "country": "Brazil", "nomadRegion": "Sao Paulo, Brazil", "state": "Sao Paulo" },
+              { "dateIn": "2015-01-15", "dateOut": "2015-01-16", "lat": -22.9622, "lng": -46.9890,
+                "city": "Valinhos", "country": "Brazil" }
+            ] }
+        """.trimIndent()
+        val stops = com.diegonmarcos.cloudnav.maps.MapsImport.parseStops(json)
+        assertEquals(2, stops.size)
+        val sp = stops[0]
+        assertEquals(-23.4932, sp.lat, 1e-4)
+        assertEquals(-46.6382, sp.lon, 1e-4)              // "lng" mapped to lon
+        assertEquals("Sao Paulo, Brazil", sp.place)       // nomadRegion preferred for place
+        assertEquals("Sao Paulo", sp.city)
+        assertEquals("Brazil", sp.country)
+        assertTrue("end after start", sp.endedAt > sp.startedAt)
+        // dateIn parsed to UTC midnight.
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        assertEquals("2011-08-06", fmt.format(java.util.Date(sp.startedAt)))
+    }
+
+    @Test fun import_accepts_bare_array_and_lon_and_epoch_variants() {
+        // A bare array (no "trips" wrapper), "lon" instead of "lng", and an
+        // epoch-ms startedAt instead of an ISO dateIn — all must parse.
+        val json = """
+            [ { "lat": 48.8584, "lon": 2.2945, "startedAt": 1000000000000, "city": "Paris", "country": "France" } ]
+        """.trimIndent()
+        val stops = com.diegonmarcos.cloudnav.maps.MapsImport.parseStops(json)
+        assertEquals(1, stops.size)
+        assertEquals(2.2945, stops[0].lon, 1e-4)
+        assertEquals(1000000000000L, stops[0].startedAt)
+        assertEquals("Paris", stops[0].place)             // falls back to city when no place/nomadRegion
+    }
+
+    @Test fun import_skips_rows_without_coords_or_date_and_bad_json() {
+        val json = """
+            { "trips": [
+              { "city": "NoCoords", "dateIn": "2020-01-01" },
+              { "lat": 1.0, "lng": 2.0 },
+              { "lat": 1.0, "lng": 2.0, "dateIn": "2020-05-05", "city": "Good" }
+            ] }
+        """.trimIndent()
+        val stops = com.diegonmarcos.cloudnav.maps.MapsImport.parseStops(json)
+        assertEquals("only the fully-formed row survives", 1, stops.size)
+        assertEquals("Good", stops[0].city)
+        assertTrue("malformed JSON yields empty, never crashes", com.diegonmarcos.cloudnav.maps.MapsImport.parseStops("not json {").isEmpty())
+    }
+
     @Test fun style_picker_kind_detection_is_structural() {
         // The dark FAB style-picker labels each row by structural kind
         // (hybrid → imagery+labels, vectorStyleUrl → vector, else raster) —
