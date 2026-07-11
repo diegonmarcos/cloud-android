@@ -103,16 +103,18 @@ class NavConfigTest {
 
     @Test fun geo_assets_are_valid_and_present() {
         // The bundled choropleth assets exist, parse, and carry the keyed props
-        // the manager filters on (guards the tools/geo pipeline output).
+        // the manager filters on (guards the tools/geo pipeline output). Parsed
+        // with org.json (the MapLibre geojson types are internal to :libs:maps).
         val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
-        fun fc(name: String) = org.maplibre.geojson.FeatureCollection.fromJson(
-            ctx.assets.open(name).bufferedReader().use { it.readText() })
-        val countries = fc("geo/countries.geojson")
-        assertTrue("countries has features", (countries.features()?.size ?: 0) > 100)
-        assertTrue("country carries NAME", countries.features()!!.first().getStringProperty("NAME") != null)
-        assertTrue("continents present", (fc("geo/continents.geojson").features()?.size ?: 0) in 5..7)
-        assertTrue("regions present", (fc("geo/regions.geojson").features()?.size ?: 0) > 20)
-        assertTrue("nomad present", (fc("geo/nomad.geojson").features()?.size ?: 0) > 0)
+        fun feats(name: String) = org.json.JSONObject(
+            ctx.assets.open(name).bufferedReader().use { it.readText() }).getJSONArray("features")
+        val countries = feats("geo/countries.geojson")
+        assertTrue("countries has features", countries.length() > 100)
+        assertTrue("country carries NAME",
+            countries.getJSONObject(0).getJSONObject("properties").has("NAME"))
+        assertTrue("continents present", feats("geo/continents.geojson").length() in 5..7)
+        assertTrue("regions present", feats("geo/regions.geojson").length() > 20)
+        assertTrue("nomad present", feats("geo/nomad.geojson").length() > 0)
     }
 
     @Test fun explored_pin_radius_scales_with_zoom() {
