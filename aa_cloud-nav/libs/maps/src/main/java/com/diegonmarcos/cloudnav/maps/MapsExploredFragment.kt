@@ -62,14 +62,20 @@ class MapsExploredFragment : Fragment() {
         val mapHost = FrameLayout(ctx).apply { id = View.generateViewId() }
         root.addView(mapHost, FrameLayout.LayoutParams(MATCH, MATCH))
 
-        daily = computeDailyLocations(MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis()))
+        val stops = MapsDb.get(ctx).stopsBetween(0L, System.currentTimeMillis())
+        daily = computeDailyLocations(stops)
         cities = groupByCity(daily)
         countries = groupByCountry(cities)
-        places = groupByPlace(daily)
+        // PLACES groups ALL raw stops (not the one-per-day `daily`), so a city
+        // with several distinct places shows several pins → PLACES renders many
+        // more pins than CITY.
+        places = groupByPlaceFromStops(stops)
 
         // worldView: global overview — start showing the whole world, not the
         // user's last GPS fix (that put pins off-screen on other continents).
-        val frag = MapsMapFragment.newInstance(fab = true, worldView = true)
+        // textureMode: composite the map + our pin overlay in one frame so pins
+        // stay glued during pan/zoom (SurfaceView would let them trail/shake).
+        val frag = MapsMapFragment.newInstance(fab = true, worldView = true, textureMode = true)
         mapFrag = frag
         childFragmentManager.beginTransaction().replace(mapHost.id, frag).commit()
 
@@ -114,7 +120,72 @@ class MapsExploredFragment : Fragment() {
             layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.START)
                 .apply { val m = dp(16f).toInt(); setMargins(m, m, m, m) }
         })
+        // List FAB (bottom-CENTER) — opens the full scrollable list of the
+        // current mode's countries / cities / places; tap a row → fly there +
+        // open its detail.
+        root.addView(FloatingActionButton(ctx).apply {
+            setImageResource(android.R.drawable.ic_menu_agenda)
+            contentDescription = "Browse list"
+            setOnClickListener { showListSheet() }
+            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+                .apply { val m = dp(16f).toInt(); setMargins(m, m, m, m) }
+        })
         return root
+    }
+
+    /** Full scrollable list of the current mode's items. Tap a row → recenter
+     *  the map on it and open its detail sheet. */
+    private fun showListSheet() {
+        val ctx = context ?: return
+        val d = resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
+        val dialog = BottomSheetDialog(ctx)
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF141A25.toInt())
+            setPadding(dp(16), dp(14), dp(16), dp(20))
+        }
+        val header = when (mode) {
+            Mode.COUNTRY -> "🌐  ${countries.size} countries"
+            Mode.CITY -> "🏙️  ${cities.size} cities"
+            Mode.PLACES -> "📍  ${places.size} places"
+        }
+        col.addView(TextView(ctx).apply {
+            text = header; textSize = 17f
+            setTextColor(MapsStopsFragment.COL_PRIMARY)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(0, 0, 0, dp(8))
+        })
+        // rows: (label, lat, lon, onOpen)
+        data class Row(val label: String, val lat: Double, val lon: Double, val open: () -> Unit)
+        val rows: List<Row> = when (mode) {
+            Mode.COUNTRY -> countries.map { c ->
+                Row("${c.country}   ·   ${c.cities.size} cities", c.lat, c.lon) { showCountrySheet(c) }
+            }
+            Mode.CITY -> cities.map { c ->
+                Row("${c.city}${c.country?.let { ", $it" } ?: ""}   ·   ${c.visits.size} visits", c.lat, c.lon) { showCitySheet(c) }
+            }
+            Mode.PLACES -> places.map { p ->
+                Row("${p.name}${p.city?.let { ", $it" } ?: ""}   ·   ${p.days.size} days", p.lat, p.lon) { showPlaceSheet(p) }
+            }
+        }
+        val body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        rows.forEach { r ->
+            body.addView(TextView(ctx).apply {
+                text = r.label; textSize = 15f
+                setTextColor(MapsStopsFragment.COL_PRIMARY)
+                setPadding(dp(8), dp(12), dp(8), dp(12))
+                isClickable = true
+                setOnClickListener {
+                    dialog.dismiss()
+                    mapFrag?.recenter(r.lat, r.lon, 6.0)
+                    r.open()
+                }
+            })
+        }
+        col.addView(ScrollView(ctx).apply { addView(body) })
+        dialog.setContentView(col)
+        dialog.show()
     }
 
     /** Rebuild [overlayPins] for the current [mode] and repaint the overlay.
@@ -360,17 +431,19 @@ class MapsExploredFragment : Fragment() {
                     )
                 }.sortedByDescending { it.cities.sumOf { c -> c.visits.size } }
 
-        /** One [ExploredPlace] per distinct place name; the days collapse
-         *  repeats. Pure/tested. */
-        fun groupByPlace(daily: List<DailyEntry>): List<ExploredPlace> =
-            daily.filter { !it.placeName.isNullOrBlank() }
+        /** One [ExploredPlace] per distinct place name across ALL raw stops
+         *  (not the one-per-day picks) — so every place the user stopped at gets
+         *  its own pin, and a city with N distinct places shows N pins. Pure/
+         *  tested. */
+        fun groupByPlaceFromStops(stops: List<MapsDb.RichStop>): List<ExploredPlace> =
+            stops.filter { !it.placeName.isNullOrBlank() }
                 .groupBy { it.placeName }
-                .map { (name, entries) ->
-                    val e0 = entries.first()
+                .map { (name, group) ->
+                    val g0 = group.first()
                     ExploredPlace(
-                        name = name!!, city = e0.city, country = e0.country,
-                        lat = entries.map { it.lat }.average(), lon = entries.map { it.lon }.average(),
-                        days = entries.map { it.dayMs },
+                        name = name!!, city = g0.city, country = g0.country,
+                        lat = group.map { it.lat }.average(), lon = group.map { it.lon }.average(),
+                        days = group.map { MapsDailyFragment.localMidnight(it.startedAt) }.distinct(),
                     )
                 }.sortedByDescending { it.days.size }
 

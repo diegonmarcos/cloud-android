@@ -28,6 +28,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
@@ -111,6 +112,10 @@ class MapsMapFragment : Fragment() {
      *  fresh device/emulator (no fix → world zoom) looks fine — the exact
      *  device-vs-CI split that hid the Explored bug. */
     private val worldView: Boolean get() = arguments?.getBoolean(ARG_WORLD_VIEW, false) ?: false
+    /** Render the map into a TextureView (not the default SurfaceView) so a
+     *  caller-drawn overlay (Explored's pins) composites in the SAME frame as
+     *  the map and stays glued during pan/zoom instead of trailing/shaking. */
+    private val textureMode: Boolean get() = arguments?.getBoolean(ARG_TEXTURE, false) ?: false
     private var autoLocateDone = false
 
     // Cockpit-mode camera overrides (null → fall back to nav3d defaults). Set via [applyNavMode].
@@ -145,7 +150,9 @@ class MapsMapFragment : Fragment() {
         val initialLon = if (worldView) 0.0 else if (prefs.hasLastFix()) prefs.lastFixLon else 0.0
         val initialZoom = if (worldView) 0.8 else if (prefs.hasLastFix()) 14.0 else 2.0
 
-        val mv = MapView(ctx).apply { layoutParams = FrameLayout.LayoutParams(MATCH, MATCH) }
+        val mv = (if (textureMode)
+            MapView(ctx, MapLibreMapOptions.createFromAttributes(ctx).textureMode(true))
+        else MapView(ctx)).apply { layoutParams = FrameLayout.LayoutParams(MATCH, MATCH) }
         mapView = mv
         mv.onCreate(s)
 
@@ -640,6 +647,7 @@ class MapsMapFragment : Fragment() {
         const val ARG_STYLE = "style"
         const val ARG_AUTOLOCATE = "autolocate"
         const val ARG_WORLD_VIEW = "world_view"
+        const val ARG_TEXTURE = "texture_mode"
 
         const val COLOR_RESULT = "#D93025"
         const val COLOR_PLACE  = "#1A73E8"
@@ -664,6 +672,7 @@ class MapsMapFragment : Fragment() {
             style: String? = null,
             autoLocate: Boolean = false,
             worldView: Boolean = false,
+            textureMode: Boolean = false,
         ) =
             MapsMapFragment().apply {
                 arguments = Bundle().apply {
@@ -671,6 +680,7 @@ class MapsMapFragment : Fragment() {
                     putBoolean(ARG_FAB, fab)
                     putBoolean(ARG_AUTOLOCATE, autoLocate)
                     putBoolean(ARG_WORLD_VIEW, worldView)
+                    putBoolean(ARG_TEXTURE, textureMode)
                     if (style != null) putString(ARG_STYLE, style)
                 }
             }

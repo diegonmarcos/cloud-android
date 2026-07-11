@@ -48,7 +48,11 @@ class NavConfigTest {
         val countries = cities.map { it.country }.toSet()
         assertTrue("dozens of countries (got ${countries.size})", countries.size >= 30)
         cities.forEach { c ->
-            assertTrue("${c.city} needs at least one stop", c.stops.isNotEmpty())
+            // >=2 stops/day so PLACES mode renders more pins than CITY, and the
+            // stops are DISTINCT places (not the same point repeated).
+            assertTrue("${c.city} needs >=2 stops/day (got ${c.stops.size})", c.stops.size >= 2)
+            assertTrue("${c.city} stops must be distinct places",
+                c.stops.map { it.place }.toSet().size == c.stops.size)
             c.stops.forEach { s ->
                 assertTrue(s.startMin in 0..1440 && s.endMin in s.startMin..1440)
                 assertTrue(s.place.isNotBlank())
@@ -368,10 +372,32 @@ class NavConfigTest {
         // centroid between Rio and Sao Paulo
         assertEquals(-23.265, brazil.lat, 0.05)
 
-        val places = exp.groupByPlace(daily)
-        assertEquals("3 distinct places (Ipanema collapses)", 3, places.size)
-        val ipanema = places.first { it.name == "Ipanema" }
-        assertEquals("Ipanema visited 2 days", 2, ipanema.days.size)
+        // PLACES groups ALL raw stops → a city with several distinct places
+        // yields several place-pins (more than its one city-pin).
+        fun stop(started: Long, place: String, city: String, country: String, lat: Double, lon: Double) =
+            com.diegonmarcos.cloudnav.maps.MapsDb.RichStop(0L, started, started + 1, lat, lon, place, null, city, country)
+        val stops = listOf(
+            stop(1_000L, "Ipanema", "Rio de Janeiro", "Brazil", -22.98, -43.20),
+            stop(2_000L, "Copacabana", "Rio de Janeiro", "Brazil", -22.97, -43.18),
+            stop(3_000L, "Maracana", "Rio de Janeiro", "Brazil", -22.91, -43.23),
+            stop(4_000L, "Se", "Sao Paulo", "Brazil", -23.55, -46.63),
+        )
+        val placesFromStops = exp.groupByPlaceFromStops(stops)
+        assertEquals("4 distinct places across all stops", 4, placesFromStops.size)
+        assertTrue("PLACES (4) must render more pins than CITIES (2)",
+            placesFromStops.size > exp.groupByCity(
+                stops.map { com.diegonmarcos.cloudnav.maps.DailyEntry(it.startedAt, it.placeName, null, it.city, it.country, it.lat, it.lon) },
+            ).size)
+    }
+
+    @Test fun map_texture_mode_arg_only_for_overlay_screens() {
+        // Explored requests textureMode so its pin overlay composites in the
+        // same frame as the map (no shake); other screens keep the default.
+        val overlayMap = com.diegonmarcos.cloudnav.maps.MapsMapFragment
+            .newInstance(worldView = true, textureMode = true)
+        assertTrue("overlay map must be texture mode", overlayMap.arguments!!.getBoolean("texture_mode"))
+        val normalMap = com.diegonmarcos.cloudnav.maps.MapsMapFragment.newInstance()
+        assertTrue("normal map stays SurfaceView", !normalMap.arguments!!.getBoolean("texture_mode"))
     }
 
     @Test fun raster_styles_point_at_their_vector_equivalent() {
