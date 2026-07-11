@@ -79,6 +79,42 @@ class NavConfigTest {
         }
     }
 
+    @Test fun geo_country_name_normalizes_with_aliases() {
+        // Tolerant match between the traveller's stored names and Natural Earth's
+        // NAME field, so visited-country fills actually hit their polygons.
+        assertEquals("united states of america", com.diegonmarcos.cloudnav.maps.MapsGeoLayers.normalize("United States"))
+        assertEquals("united states of america", com.diegonmarcos.cloudnav.maps.MapsGeoLayers.normalize("  the USA "))
+        assertEquals("czechia", com.diegonmarcos.cloudnav.maps.MapsGeoLayers.normalize("Czech Republic"))
+        assertEquals("france", com.diegonmarcos.cloudnav.maps.MapsGeoLayers.normalize("France"))
+    }
+
+    @Test fun geo_visited_subregions_from_visited_iso() {
+        // Political-Cultural region is "visited" iff any member country is visited.
+        val members = listOf(
+            com.diegonmarcos.cloudnav.maps.MapsGeoLayers.RegionMembers("Norse-Scandinavian", setOf("SE", "NO", "DK", "IS")),
+            com.diegonmarcos.cloudnav.maps.MapsGeoLayers.RegionMembers("Iberians", setOf("ES", "PT")),
+        )
+        assertEquals(
+            setOf("Norse-Scandinavian"),
+            com.diegonmarcos.cloudnav.maps.MapsGeoLayers.visitedSubregionsFor(members, setOf("NO", "JP")),
+        )
+        assertTrue(com.diegonmarcos.cloudnav.maps.MapsGeoLayers.visitedSubregionsFor(members, setOf("JP")).isEmpty())
+    }
+
+    @Test fun geo_assets_are_valid_and_present() {
+        // The bundled choropleth assets exist, parse, and carry the keyed props
+        // the manager filters on (guards the tools/geo pipeline output).
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        fun fc(name: String) = org.maplibre.geojson.FeatureCollection.fromJson(
+            ctx.assets.open(name).bufferedReader().use { it.readText() })
+        val countries = fc("geo/countries.geojson")
+        assertTrue("countries has features", (countries.features()?.size ?: 0) > 100)
+        assertTrue("country carries NAME", countries.features()!!.first().getStringProperty("NAME") != null)
+        assertTrue("continents present", (fc("geo/continents.geojson").features()?.size ?: 0) in 5..7)
+        assertTrue("regions present", (fc("geo/regions.geojson").features()?.size ?: 0) > 20)
+        assertTrue("nomad present", (fc("geo/nomad.geojson").features()?.size ?: 0) > 0)
+    }
+
     @Test fun explored_pin_radius_scales_with_zoom() {
         // Pins shrink when zoomed out (world) so 200+ don't overflow into a blob,
         // and grow when zoomed in — monotonic, clamped both ends.

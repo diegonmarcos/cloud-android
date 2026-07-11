@@ -1,0 +1,545 @@
+{
+ "layers": [
+  {
+   "id": "political",
+   "name": "Political Cultural Regions"
+  },
+  {
+   "id": "country",
+   "name": "Countries"
+  },
+  {
+   "id": "region",
+   "name": "NomadMania Regions"
+  },
+  {
+   "id": "pin",
+   "name": "Cities"
+  }
+ ],
+ "tree": [
+  {
+   "region": "EUROPE",
+   "civilizations": [
+    {
+     "name": "Germanics",
+     "subregions": [
+      {
+       "name": "Central Germanic",
+       "countries": [
+        "DE",
+        "CH",
+        "NL",
+        "AT",
+        "LI",
+        "LU"
+       ]
+      },
+      {
+       "name": "Anglo-Germanic",
+       "countries": [
+        "GB",
+        "IE"
+       ]
+      },
+      {
+       "name": "Norse-Scandinavian",
+       "countries": [
+        "SE",
+        "NO",
+        "DK",
+        "IS"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Greco-Romans",
+     "subregions": [
+      {
+       "name": "Franco",
+       "countries": [
+        "FR",
+        "BE",
+        "MC"
+       ]
+      },
+      {
+       "name": "Iberians",
+       "countries": [
+        "ES",
+        "PT",
+        "AD"
+       ]
+      },
+      {
+       "name": "Italics",
+       "countries": [
+        "IT",
+        "VA",
+        "MT",
+        "SM"
+       ]
+      },
+      {
+       "name": "Hellenics",
+       "countries": [
+        "GR",
+        "CY"
+       ]
+      },
+      {
+       "name": "Romance East",
+       "countries": [
+        "RO",
+        "MD"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Slavs",
+     "subregions": [
+      {
+       "name": "Balkan Slavs",
+       "countries": [
+        "BG",
+        "MK",
+        "RS",
+        "BA",
+        "ME",
+        "HR",
+        "SI"
+       ]
+      },
+      {
+       "name": "West Slavs",
+       "countries": [
+        "PL",
+        "CZ",
+        "SK"
+       ]
+      },
+      {
+       "name": "East Slavs",
+       "countries": [
+        "UA",
+        "RU",
+        "BY"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Others Europe",
+     "subregions": [
+      {
+       "name": "Finno-Ugric",
+       "countries": [
+        "EE",
+        "HU",
+        "FI"
+       ]
+      },
+      {
+       "name": "Baltic",
+       "countries": [
+        "LT",
+        "LV"
+       ]
+      },
+      {
+       "name": "Caucasus",
+       "countries": [
+        "AL",
+        "XK",
+        "GE",
+        "AM",
+        "AZ"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "region": "AMERICAS",
+   "civilizations": [
+    {
+     "name": "Anglo Americas",
+     "subregions": [
+      {
+       "name": "Anglo-America",
+       "countries": [
+        "US",
+        "CA"
+       ]
+      },
+      {
+       "name": "Francophone Am.",
+       "countries": [
+        "HT"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Hispanic Americas",
+     "subregions": [
+      {
+       "name": "Aztec & Maya",
+       "countries": [
+        "MX",
+        "GT",
+        "HN",
+        "SV",
+        "NI",
+        "CR",
+        "PA"
+       ]
+      },
+      {
+       "name": "Inca-Andeans",
+       "countries": [
+        "AR",
+        "CL",
+        "PE",
+        "BO",
+        "EC",
+        "CO",
+        "VE"
+       ]
+      },
+      {
+       "name": "Caribbean & Other",
+       "countries": [
+        "PY",
+        "CU",
+        "DO",
+        "UY"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Luso Americas",
+     "subregions": [
+      {
+       "name": "Luso-African Am.",
+       "countries": [
+        "BR"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "region": "OCEANIA",
+   "civilizations": [
+    {
+     "name": "Australasia",
+     "subregions": [
+      {
+       "name": "Anglo-Aboriginal",
+       "countries": [
+        "AU"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Polynesia",
+     "subregions": [
+      {
+       "name": "Anglo-Maori",
+       "countries": [
+        "NZ"
+       ]
+      },
+      {
+       "name": "Island Polynesia",
+       "countries": [
+        "WS",
+        "TO",
+        "TV"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Micromelanesia",
+     "subregions": [
+      {
+       "name": "Micronesia",
+       "countries": [
+        "PW",
+        "FM",
+        "MH",
+        "NR",
+        "KI"
+       ]
+      },
+      {
+       "name": "Melanesia",
+       "countries": [
+        "FJ",
+        "PG",
+        "SB",
+        "VU"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "region": "ASIA",
+   "civilizations": [
+    {
+     "name": "Abrahamic Asia",
+     "subregions": [
+      {
+       "name": "Muslim Arabs",
+       "countries": [
+        "JO",
+        "QA",
+        "SA",
+        "AE",
+        "KW",
+        "BH",
+        "OM",
+        "YE",
+        "IQ",
+        "SY",
+        "LB",
+        "PS"
+       ]
+      },
+      {
+       "name": "Muslim Turkish",
+       "countries": [
+        "TR",
+        "KZ",
+        "UZ",
+        "TM",
+        "KG"
+       ]
+      },
+      {
+       "name": "Muslim Persians",
+       "countries": [
+        "IR",
+        "AF",
+        "PK",
+        "TJ"
+       ]
+      },
+      {
+       "name": "Muslim SE Asia",
+       "countries": [
+        "ID",
+        "MY",
+        "BD",
+        "BN",
+        "MV"
+       ]
+      },
+      {
+       "name": "Catholic Asia",
+       "countries": [
+        "PH",
+        "TL"
+       ]
+      },
+      {
+       "name": "Jewish",
+       "countries": [
+        "IL"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Hindu",
+     "subregions": [
+      {
+       "name": "Hindus",
+       "countries": [
+        "IN",
+        "NP"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Buddhist & Taoist",
+     "subregions": [
+      {
+       "name": "Theravada Buddhist",
+       "countries": [
+        "TH",
+        "MM",
+        "KH",
+        "LA",
+        "LK"
+       ]
+      },
+      {
+       "name": "Vajrayana Buddhist",
+       "countries": [
+        "MN",
+        "BT"
+       ]
+      },
+      {
+       "name": "Mahayana Buddhist",
+       "countries": [
+        "JP",
+        "KR",
+        "VN"
+       ]
+      },
+      {
+       "name": "Taoist-Confucian",
+       "countries": [
+        "CN",
+        "TW",
+        "KP",
+        "SG"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "region": "AFRICA",
+   "civilizations": [
+    {
+     "name": "Maghreb & North",
+     "subregions": [
+      {
+       "name": "Arab-Berber",
+       "countries": [
+        "MA",
+        "DZ",
+        "TN",
+        "LY",
+        "MR"
+       ]
+      },
+      {
+       "name": "Nile Valley",
+       "countries": [
+        "EG",
+        "SD"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Anglophone Africa",
+     "subregions": [
+      {
+       "name": "West Anglophone",
+       "countries": [
+        "NG",
+        "GH",
+        "SL",
+        "LR",
+        "GM"
+       ]
+      },
+      {
+       "name": "East Swahili",
+       "countries": [
+        "KE",
+        "TZ",
+        "UG",
+        "RW",
+        "BI",
+        "SS"
+       ]
+      },
+      {
+       "name": "Southern Africa",
+       "countries": [
+        "ZA",
+        "ZW",
+        "ZM",
+        "BW",
+        "NA",
+        "LS",
+        "SZ",
+        "MW"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Francophone Africa",
+     "subregions": [
+      {
+       "name": "West Francophone",
+       "countries": [
+        "SN",
+        "ML",
+        "CI",
+        "BF",
+        "NE",
+        "TG",
+        "BJ",
+        "GN"
+       ]
+      },
+      {
+       "name": "Central Africa",
+       "countries": [
+        "CD",
+        "CG",
+        "GA",
+        "CM",
+        "TD",
+        "CF"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Luso & Others Africa",
+     "subregions": [
+      {
+       "name": "Lusophone Africa",
+       "countries": [
+        "AO",
+        "MZ",
+        "GW",
+        "CV",
+        "ST"
+       ]
+      },
+      {
+       "name": "Horn (Cushitic)",
+       "countries": [
+        "ET",
+        "SO",
+        "ER",
+        "DJ"
+       ]
+      },
+      {
+       "name": "Indian Ocean",
+       "countries": [
+        "MG",
+        "MU",
+        "SC",
+        "KM"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

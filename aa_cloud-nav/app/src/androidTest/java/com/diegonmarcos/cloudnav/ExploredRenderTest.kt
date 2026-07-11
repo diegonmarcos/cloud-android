@@ -100,6 +100,31 @@ class ExploredRenderTest {
                     coloured > 0,
                 )
 
+                // ── Approach A proof: the choropleth FillLayer actually
+                // registers its TYPED FeatureCollection on this stack. The
+                // earlier string-geojson pin path reported 0 features here; a
+                // positive count means fills work (Countries is enabled by
+                // default → visited countries painted light gray).
+                var visitedBuilt = -1
+                var fillSourceFeatures = -1
+                val fillDeadline = System.currentTimeMillis() + 30_000
+                while (System.currentTimeMillis() < fillDeadline) {
+                    scenario.onActivity {
+                        explored()?.let { f ->
+                            visitedBuilt = f.debugGeoVisitedCount(com.diegonmarcos.cloudnav.maps.MapsGeoLayers.Layer.COUNTRIES)
+                            fillSourceFeatures = f.debugFillSourceCount(com.diegonmarcos.cloudnav.maps.MapsGeoLayers.Layer.COUNTRIES)
+                        }
+                    }
+                    android.util.Log.i("MapPins", "fillProbe visitedBuilt=$visitedBuilt sourceFeatures=$fillSourceFeatures")
+                    if (visitedBuilt > 0 && fillSourceFeatures > 0) break
+                    Thread.sleep(1000)
+                }
+                assertTrue("manager must build >0 visited country fills (got $visitedBuilt)", visitedBuilt > 0)
+                assertTrue(
+                    "MapLibre fill SOURCE must report >0 features — typed geojson FillLayer works on this stack (got $fillSourceFeatures)",
+                    fillSourceFeatures > 0,
+                )
+
                 // Timeline map defaults to vector-light: the child map fragment
                 // is created with style "light" (→ vector_light via prefs).
                 var mapStyle: String? = null

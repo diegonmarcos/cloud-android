@@ -46,6 +46,11 @@ class MapsExploredFragment : Fragment() {
     private var overlay: PinOverlay? = null
     private var overlayPins: List<OverlayPin> = emptyList()
 
+    // Choropleth fill layers (visited continents/countries/regions/nomad).
+    private var geo: MapsGeoLayers? = null
+    // Default: paint visited COUNTRIES light gray (the original ask).
+    private var geoLayers: Set<MapsGeoLayers.Layer> = setOf(MapsGeoLayers.Layer.COUNTRIES)
+
     /** A single dot to draw: geo position, colour, and index back into the
      *  current mode's list (for tap → detail sheet). */
     class OverlayPin(val lat: Double, val lon: Double, val colorInt: Int, val index: Int)
@@ -94,6 +99,15 @@ class MapsExploredFragment : Fragment() {
         }
         recomputeOverlayPins(frame = false)
 
+        // Choropleth fill layers — paint visited areas. Visited countries come
+        // from the same grouped data the pins use; regions/continents are
+        // derived inside the manager. Reinstalled on every style (re)load.
+        val geoMgr = MapsGeoLayers(ctx, frag)
+        geo = geoMgr
+        geoMgr.setVisitedCountries(cities.map { it.country })
+        geoMgr.setEnabled(geoLayers)
+        frag.onStyleReady = { geoMgr.reinstall() }
+
         // Summary "island" chip (top-center) — TAP it to open the full
         // scrollable list of the current mode's countries / cities / places.
         val card = MaterialCardView(ctx).apply {
@@ -124,6 +138,16 @@ class MapsExploredFragment : Fragment() {
             setOnClickListener { showModeMenu() }
             layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END)
                 .apply { val m = dp(12f).toInt(); setMargins(m, m, m, m) }
+        })
+
+        // Layers FAB — toggle the choropleth fills (below the mode FAB).
+        root.addView(FloatingActionButton(ctx).apply {
+            setImageResource(android.R.drawable.ic_menu_gallery)
+            contentDescription = "Map layers"
+            size = FloatingActionButton.SIZE_MINI
+            setOnClickListener { showLayersSheet() }
+            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END)
+                .apply { val m = dp(12f).toInt(); setMargins(m, m, dp(64f).toInt(), m) }
         })
         return root
     }
@@ -252,6 +276,41 @@ class MapsExploredFragment : Fragment() {
         }
     }
 
+    /** Multi-toggle sheet for the choropleth fill layers (visited areas). */
+    private fun showLayersSheet() {
+        val ctx = context ?: return
+        val dialog = BottomSheetDialog(ctx)
+        val d = resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF141A25.toInt())
+            setPadding(dp(12), dp(12), dp(12), dp(18))
+        }
+        col.addView(TextView(ctx).apply {
+            text = "Painted layers (visited)"; textSize = 16f
+            setTextColor(MapsStopsFragment.COL_SECONDARY)
+            setPadding(dp(8), dp(4), dp(8), dp(10))
+        })
+        MapsGeoLayers.Layer.values().forEach { layer ->
+            col.addView(TextView(ctx).apply {
+                val on = layer in geoLayers
+                text = (if (on) "☑  " else "☐  ") + layer.label
+                textSize = 17f
+                setTextColor(if (on) MapsStopsFragment.COL_ACCENT else MapsStopsFragment.COL_PRIMARY)
+                setPadding(dp(12), dp(14), dp(12), dp(14))
+                isClickable = true
+                setOnClickListener {
+                    geoLayers = if (on) geoLayers - layer else geoLayers + layer
+                    geo?.setEnabled(geoLayers)
+                    dialog.dismiss(); showLayersSheet()   // reopen to reflect new state
+                }
+            })
+        }
+        dialog.setContentView(col)
+        dialog.show()
+    }
+
     private fun showModeMenu() {
         val ctx = context ?: return
         val dialog = BottomSheetDialog(ctx)
@@ -372,6 +431,16 @@ class MapsExploredFragment : Fragment() {
     /** Test hooks (the overlay is a plain View, so unlike the GL map it can be
      *  drawn to a Bitmap even on a headless emulator). */
     fun debugOverlayPinCount(): Int = overlayPins.size
+    /** Visited-only feature count the manager built for [layer] (needs assets). */
+    fun debugGeoVisitedCount(layer: MapsGeoLayers.Layer): Int = geo?.visitedCount(layer) ?: -1
+    /** Feature count the LIVE MapLibre fill SOURCE reports — proves the typed
+     *  FeatureCollection actually registered on this stack (the make-or-break
+     *  for Approach A: the earlier string-geojson pin path reported 0 here). */
+    fun debugFillSourceCount(layer: MapsGeoLayers.Layer): Int =
+        mapFrag?.debugFillFeatureCount("geo-src-${layer.id}") ?: -1
+    fun debugEnableGeoLayer(layer: MapsGeoLayers.Layer) {
+        geoLayers = geoLayers + layer; geo?.setEnabled(geoLayers)
+    }
     fun debugDrawOverlay(): android.graphics.Bitmap? {
         val o = overlay ?: return null
         if (o.width == 0 || o.height == 0) return null

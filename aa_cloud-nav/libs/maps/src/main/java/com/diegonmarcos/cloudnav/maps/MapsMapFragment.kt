@@ -33,6 +33,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
@@ -86,6 +87,56 @@ class MapsMapFragment : Fragment() {
     /** Fired on every single-tap with the tapped LatLng — for a caller-drawn
      *  overlay to hit-test its own pins in screen space. */
     var onMapClickAt: ((LatLng) -> Unit)? = null
+
+    /** Fired every time a GL style finishes (re)loading and the base overlays
+     *  (route/pins/me) are registered — the moment a caller can (re)install its
+     *  own extra fill layers, which are lost on every style switch. */
+    var onStyleReady: ((Style) -> Unit)? = null
+
+    /** Add (or refresh) a choropleth fill + outline from a TYPED
+     *  [FeatureCollection] (NOT a JSON string — MapLibre 11.7 silently drops
+     *  string geojson, see [routeFeatureCollection]). Inserted BELOW the
+     *  route/pins overlays so pins stay on top. Idempotent per id. */
+    fun addFillLayer(
+        sourceId: String, fillId: String, outlineId: String,
+        fc: FeatureCollection, fillColor: String, fillOpacity: Float, lineColor: String,
+    ) {
+        val style = if (styleReady) map?.style else null
+        style ?: return
+        if (style.getSource(sourceId) == null) style.addSource(GeoJsonSource(sourceId, fc))
+        else style.getSourceAs<GeoJsonSource>(sourceId)?.setGeoJson(fc)
+        val anchor = style.getLayer(LYR_ROUTE)
+        if (style.getLayer(fillId) == null) {
+            val fill = FillLayer(fillId, sourceId).withProperties(
+                PropertyFactory.fillColor(fillColor),
+                PropertyFactory.fillOpacity(fillOpacity),
+            )
+            if (anchor != null) style.addLayerBelow(fill, LYR_ROUTE) else style.addLayer(fill)
+        }
+        if (style.getLayer(outlineId) == null) {
+            val line = LineLayer(outlineId, sourceId).withProperties(
+                PropertyFactory.lineColor(lineColor),
+                PropertyFactory.lineWidth(1f),
+                PropertyFactory.lineOpacity(0.9f),
+            )
+            if (anchor != null) style.addLayerBelow(line, LYR_ROUTE) else style.addLayer(line)
+        }
+    }
+
+    /** Remove a fill layer previously added by [addFillLayer]. */
+    fun removeFillLayer(sourceId: String, fillId: String, outlineId: String) {
+        val style = map?.style ?: return
+        style.getLayer(outlineId)?.let { style.removeLayer(it) }
+        style.getLayer(fillId)?.let { style.removeLayer(it) }
+        style.getSource(sourceId)?.let { style.removeSource(it) }
+    }
+
+    /** Feature count a fill source reports — test hook for the FillLayer path. */
+    fun debugFillFeatureCount(sourceId: String): Int =
+        runCatching {
+            map?.style?.getSourceAs<GeoJsonSource>(sourceId)
+                ?.querySourceFeatures(null as Expression?)?.size ?: -1
+        }.getOrDefault(-2)
 
     /** Project a geo coordinate to a screen pixel (null until the map is ready).
      *  Lets a caller draw its own pin overlay on top of the map — bypassing the
@@ -549,6 +600,9 @@ class MapsMapFragment : Fragment() {
         styleReady = true
         pushMe()
         pushRoute()
+        // Let callers (re)install their own extra fill layers — they are wiped
+        // by every style switch, so this must fire on EVERY style load.
+        onStyleReady?.invoke(style)
         if (firstLoad) {
             onMapReady?.invoke(m)
             // Auto-locate once on open (Routes) → drops the my-location dot
