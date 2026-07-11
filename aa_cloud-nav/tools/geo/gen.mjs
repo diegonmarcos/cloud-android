@@ -9,6 +9,8 @@
  *   countries.geojson   Natural Earth admin_0 (10m — real coastlines), lightly
  *                       simplified. props: NAME, ISO2, CONTINENT
  *   continents.geojson  countries dissolved by CONTINENT.        props: CONTINENT
+ *   states.geojson      admin-1 (Brazil states, Spain autonomous regions…),
+ *                       Natural Earth 10m simplified to ~2km. props: name, ISO2, admin
  *   regions.geojson     Political-Cultural Regions — countries dissolved by the
  *                       civilization SUBREGION taxonomy extracted from the front
  *                       app (civilizations.json). props: subregion, region, civ
@@ -101,6 +103,16 @@ ms([countries,
   '-simplify', 'interval=1000', 'keep-shapes',
   '-o', 'format=geojson', 'precision=0.001', join(OUT, 'regions.geojson')]);
 
+// ── 3b. states.geojson — admin-1 (Brazil states, Spain autonomous regions…) ─
+// The first subdivision below country. World-wide but simplified hard (~2km) —
+// state borders don't need fine detail for a choropleth. props: name, ISO2
+// (country), admin (country name).
+const admin1 = await cache(`${NE}/ne_10m_admin_1_states_provinces.geojson`, 'admin1_10m.geojson');
+ms([admin1, '-simplify', 'interval=2000', 'visvalingam', 'weighted', 'keep-shapes',
+  '-each', 'ISO2 = iso_a2',
+  '-filter-fields', 'name,ISO2,admin',
+  '-o', 'format=geojson', 'precision=0.01', join(OUT, 'states.geojson')]);
+
 // ── 4. nomad.geojson — convex hull per nomadRegion (traveller's own points) ─
 function hull(points) {
   // Andrew's monotone chain (lng,lat). Needs >=3 distinct points for a polygon.
@@ -136,5 +148,13 @@ for (const t of travel.trips) {
   if (!cityMap.has(k)) cityMap.set(k, { type: 'Feature', properties: { city: t.city, country: t.country }, geometry: { type: 'Point', coordinates: [t.lng, t.lat] } });
 }
 writeFileSync(join(OUT, 'cities.geojson'), JSON.stringify({ type: 'FeatureCollection', features: [...cityMap.values()] }));
+
+// ── 6. capitals.json — country → [lat, lon] (COUNTRY-mode pin sits here) ─────
+const capitals = {};
+for (const t of travel.trips) {
+  const c = t.countryCapital;
+  if (t.country && c && c.lat != null && c.lng != null && !(t.country in capitals)) capitals[t.country] = [c.lat, c.lng];
+}
+writeFileSync(join(OUT, 'capitals.json'), JSON.stringify(capitals));
 
 process.stderr.write(`\nDONE. nomad regions=${nomadFeatures.length}, cities=${cityMap.size}\n`);

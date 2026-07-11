@@ -62,21 +62,30 @@ class NavConfigTest {
         assertEquals("city names unique", cities.size, cities.map { it.city }.toSet().size)
     }
 
-    @Test fun demo_places_are_spread_far_enough_to_render_as_distinct_pins() {
-        // The bug: PLACES mode built 684 pins but they LOOKED like the 228 city
-        // pins, because the 3 places/city were offset by only ~0.005-0.009°
-        // (~0.7 km) — sub-pixel at Explored's world/region framing, so all 3
-        // collapsed onto their city. Guard that every city's places fan out by a
-        // visible margin (max pairwise separation ≳ 0.1°, ~11 km) so PLACES is
-        // actually denser than CITY on screen, not just in the list.
+    @Test fun demo_places_are_distinct_but_within_the_city() {
+        // Places must be DISTINCT (separate pins) yet stay INTRA-CITY (~a few km) —
+        // a realistic spread that keeps them on land near their city. An earlier
+        // over-spread (~30km) pushed inland towns' places into the ocean and
+        // dragged the CITY centroid off the city. Guard both bounds.
         MapsDemo.cityTemplates.forEach { c ->
             var maxSep = 0.0
             for (i in c.stops.indices) for (j in i + 1 until c.stops.size) {
                 val a = c.stops[i]; val b = c.stops[j]
                 maxSep = maxOf(maxSep, kotlin.math.hypot(a.lat - b.lat, a.lon - b.lon))
             }
-            assertTrue("${c.city} places must spread visibly (got maxSep=$maxSep°)", maxSep >= 0.1)
+            assertTrue("${c.city} places must be distinct (got maxSep=$maxSep°)", maxSep > 0.005)
+            assertTrue("${c.city} places must stay intra-city (got maxSep=$maxSep°)", maxSep < 0.1)
         }
+    }
+
+    @Test fun explored_visit_blocks_counts_consecutive_runs() {
+        val f = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.Companion
+        val day = 24L * 3600_000L
+        // 3 consecutive days = 1 visit; then a gap; then 2 more = 2 visits, 5 days.
+        val days = listOf(0L, day, 2 * day, 10 * day, 11 * day)
+        assertEquals(2, f.visitBlocks(days))
+        assertEquals(0, f.visitBlocks(emptyList()))
+        assertEquals(1, f.visitBlocks(listOf(5 * day)))
     }
 
     @Test fun geo_country_name_normalizes_with_aliases() {
@@ -129,6 +138,22 @@ class NavConfigTest {
         assertTrue("continents present", feats("geo/continents.geojson").length() in 5..7)
         assertTrue("regions present", feats("geo/regions.geojson").length() > 20)
         assertTrue("nomad present", feats("geo/nomad.geojson").length() > 0)
+        val states = feats("geo/states.geojson")
+        assertTrue("states (admin-1) present", states.length() > 1000)
+        assertTrue("state carries name+ISO2",
+            states.getJSONObject(0).getJSONObject("properties").has("name"))
+    }
+
+    @Test fun geo_point_in_ring_detects_containment() {
+        // Marks visited States (a city point inside a state polygon). Unit square.
+        val sq = listOf(
+            doubleArrayOf(0.0, 0.0), doubleArrayOf(10.0, 0.0),
+            doubleArrayOf(10.0, 10.0), doubleArrayOf(0.0, 10.0),
+        )
+        val g = com.diegonmarcos.cloudnav.maps.MapsGeoLayers.Companion
+        assertTrue("inside", g.pointInRing(sq, 5.0, 5.0))
+        assertTrue("outside right", !g.pointInRing(sq, 15.0, 5.0))
+        assertTrue("outside below", !g.pointInRing(sq, 5.0, -1.0))
     }
 
     @Test fun demo_generation_gives_every_day_a_city_and_revisits_all_of_them() {

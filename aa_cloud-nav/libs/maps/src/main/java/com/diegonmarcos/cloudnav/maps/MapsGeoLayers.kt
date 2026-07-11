@@ -7,6 +7,8 @@ import android.os.Looper
 import org.json.JSONArray
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.MultiPolygon
+import org.maplibre.geojson.Polygon
 
 /**
  * Explored's choropleth layers (Approach A — MapLibre FillLayer), from compact
@@ -35,6 +37,10 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
     ) {
         CONTINENTS("continents", "Continents", "geo/continents.geojson", "CONTINENT", "#9AA7B8", "#C3D0E0"),
         COUNTRIES("countries", "Countries", "geo/countries.geojson", "NAME", "#B8C0CC", "#E6ECF3"),
+        // States / autonomous regions — admin-1, the first subdivision below
+        // country (Brazil states, Spain autonomous communities…). Ordered right
+        // after Countries in the painted-layers list.
+        STATES("states", "States", "geo/states.geojson", "name", "#C7B29A", "#E7D8C6"),
         REGIONS("political", "Political-Cultural Regions", "geo/regions.geojson", "subregion", "#A896C0", "#CDBFE0"),
         NOMAD("nomad", "NomadMania Regions", "geo/nomad.geojson", "nomad", "#7FA8C9", "#B4D2E8"),
     }
@@ -43,17 +49,25 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
     var paintMode: PaintMode = PaintMode.PIN; private set
 
     private var visitedInput: Collection<String?> = emptyList()
+    private var visitedPts: List<DoubleArray> = emptyList()   // [lat, lon] of visited cities
     private var visitedNames: Set<String> = emptySet()
     private var visitedContinents: Set<String> = emptySet()
     private var visitedSubregions: Set<String> = emptySet()
+    private var visitedStates: Set<String> = emptySet()
+    private var isoToContinent: Map<String, String> = emptyMap()
 
     private val ui = Handler(Looper.getMainLooper())
     private val baseCache = HashMap<Layer, List<Feature>>()   // parsed once (expensive)
     private val display = HashMap<Layer, FeatureCollection>() // built visited/coloured FC
 
-    /** Configure and (re)build. Heavy parsing runs on a background thread. */
-    fun configure(countryNames: Collection<String?>, layers: Set<Layer>, mode: PaintMode) {
-        visitedInput = countryNames; enabled = layers; paintMode = mode; rebuild()
+    /** Configure and (re)build. Heavy parsing runs on a background thread.
+     *  [cityPoints] are [lat, lon] of visited cities — used to mark States as
+     *  visited by point-in-polygon (stops don't carry a state name). */
+    fun configure(
+        countryNames: Collection<String?>, cityPoints: List<DoubleArray>,
+        layers: Set<Layer>, mode: PaintMode,
+    ) {
+        visitedInput = countryNames; visitedPts = cityPoints; enabled = layers; paintMode = mode; rebuild()
     }
     fun setEnabled(layers: Set<Layer>) { enabled = layers; rebuild() }
     fun setPaintMode(mode: PaintMode) { paintMode = mode; rebuild() }
@@ -115,6 +129,7 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
         Layer.NOMAD -> true
         Layer.COUNTRIES -> normalize(f.getStringProperty("NAME") ?: "") in visitedNames
         Layer.CONTINENTS -> (f.getStringProperty("CONTINENT") ?: "") in visitedContinents
+        Layer.STATES -> (f.getStringProperty("name") ?: "") in visitedStates
         Layer.REGIONS -> (f.getStringProperty("subregion") ?: "") in visitedSubregions
     }
 
@@ -123,6 +138,8 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
     private fun colorFor(layer: Layer, f: Feature): String = when (layer) {
         Layer.CONTINENTS -> continentColor(f.getStringProperty("CONTINENT"))
         Layer.COUNTRIES -> countryShade(f.getStringProperty("CONTINENT"), f.getStringProperty("NAME") ?: "")
+        // States shaded by their country's continent, keyed by state name.
+        Layer.STATES -> countryShade(isoToContinent[f.getStringProperty("ISO2")], f.getStringProperty("name") ?: "")
         Layer.REGIONS -> regionColor(f.getStringProperty("region"))
         Layer.NOMAD -> layer.fill
     }
@@ -131,14 +148,51 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
         visitedNames = countryNames.filterNotNull().map { normalize(it) }.filter { it.isNotEmpty() }.toSet()
         val nameToIso = HashMap<String, String>()
         val nameToContinent = HashMap<String, String>()
+        val isoCont = HashMap<String, String>()
         baseFeatures(Layer.COUNTRIES).forEach { f ->
             val n = f.getStringProperty("NAME") ?: return@forEach
-            f.getStringProperty("ISO2")?.let { nameToIso[normalize(n)] = it }
-            f.getStringProperty("CONTINENT")?.let { nameToContinent[normalize(n)] = it }
+            val iso = f.getStringProperty("ISO2"); val cont = f.getStringProperty("CONTINENT")
+            if (iso != null) nameToIso[normalize(n)] = iso
+            if (cont != null) nameToContinent[normalize(n)] = cont
+            if (iso != null && cont != null) isoCont[iso] = cont
         }
+        isoToContinent = isoCont
         val visitedIso = visitedNames.mapNotNull { nameToIso[it] }.toSet()
         visitedContinents = visitedNames.mapNotNull { nameToContinent[it] }.toSet()
         visitedSubregions = visitedSubregionsFor(readMembers(), visitedIso)
+        visitedStates = if (Layer.STATES in enabled || paintMode == PaintMode.DEFAULT) computeVisitedStates() else emptySet()
+    }
+
+    /** A state is visited if a visited city point falls inside it (bbox-prefiltered
+     *  ray-cast). Runs on the background thread. */
+    private fun computeVisitedStates(): Set<String> {
+        if (visitedPts.isEmpty()) return emptySet()
+        val out = HashSet<String>()
+        for (f in baseFeatures(Layer.STATES)) {
+            val name = f.getStringProperty("name") ?: continue
+            if (name in out) continue
+            val rings = outerRings(f)
+            if (rings.isEmpty()) continue
+            var minLon = 1e9; var minLat = 1e9; var maxLon = -1e9; var maxLat = -1e9
+            rings.forEach { r -> r.forEach { minLon = minOf(minLon, it[0]); maxLon = maxOf(maxLon, it[0]); minLat = minOf(minLat, it[1]); maxLat = maxOf(maxLat, it[1]) } }
+            for (p in visitedPts) {
+                val lat = p[0]; val lon = p[1]
+                if (lon < minLon || lon > maxLon || lat < minLat || lat > maxLat) continue
+                if (rings.any { pointInRing(it, lon, lat) }) { out.add(name); break }
+            }
+        }
+        return out
+    }
+
+    /** Outer rings (as [lon,lat] arrays) of a Polygon/MultiPolygon feature; holes
+     *  ignored (fine for containment). */
+    private fun outerRings(f: Feature): List<List<DoubleArray>> {
+        fun ring(pts: List<org.maplibre.geojson.Point>) = pts.map { doubleArrayOf(it.longitude(), it.latitude()) }
+        return when (val g = f.geometry()) {
+            is Polygon -> listOfNotNull(g.coordinates().firstOrNull()?.let(::ring))
+            is MultiPolygon -> g.coordinates().mapNotNull { it.firstOrNull()?.let(::ring) }
+            else -> emptyList()
+        }
     }
 
     private fun readMembers(): List<RegionMembers> = runCatching {
@@ -168,6 +222,20 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
         /** Subregions whose member countries intersect the visited ISO set. Pure/tested. */
         fun visitedSubregionsFor(members: List<RegionMembers>, visitedIso: Set<String>): Set<String> =
             members.filter { it.countries.any { c -> c in visitedIso } }.map { it.subregion }.toSet()
+
+        /** Ray-cast point-in-polygon. [ring] is a closed/open list of [lon,lat];
+         *  ([x],[y]) is (lon,lat). Pure/tested — used to mark visited States. */
+        fun pointInRing(ring: List<DoubleArray>, x: Double, y: Double): Boolean {
+            var inside = false
+            var j = ring.size - 1
+            for (i in ring.indices) {
+                val xi = ring[i][0]; val yi = ring[i][1]
+                val xj = ring[j][0]; val yj = ring[j][1]
+                if (((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside
+                j = i
+            }
+            return inside
+        }
 
         private fun hsv(h: Float, s: Float, v: Float): String =
             "#%06X".format(Color.HSVToColor(floatArrayOf(((h % 360) + 360) % 360, s, v)) and 0xFFFFFF)

@@ -59,6 +59,8 @@ class MapsExploredFragment : Fragment() {
     private var countries: List<ExploredCountry> = emptyList()
     private var cities: List<ExploredCity> = emptyList()
     private var places: List<ExploredPlace> = emptyList()
+    // country name → [lat, lon] of its capital (COUNTRY-mode pin sits here).
+    private var capitals: Map<String, DoubleArray> = emptyMap()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -74,6 +76,10 @@ class MapsExploredFragment : Fragment() {
         // with several distinct places shows several pins → PLACES renders many
         // more pins than CITY.
         places = groupByPlaceFromStops(stops)
+        capitals = runCatching {
+            val o = org.json.JSONObject(ctx.assets.open("geo/capitals.json").bufferedReader().use { it.readText() })
+            o.keys().asSequence().associateWith { k -> val a = o.getJSONArray(k); doubleArrayOf(a.getDouble(0), a.getDouble(1)) }
+        }.getOrDefault(emptyMap())
 
         // worldView: global overview — start showing the whole world, not the
         // user's last GPS fix. style "light" → vector_light (Timeline's default).
@@ -90,7 +96,11 @@ class MapsExploredFragment : Fragment() {
         // derived inside the manager. Reinstalled on every style (re)load.
         val geoMgr = MapsGeoLayers(ctx, frag)
         geo = geoMgr
-        geoMgr.configure(cities.map { it.country }, geoLayers, paintMode)
+        geoMgr.configure(
+            cities.map { it.country },
+            cities.map { doubleArrayOf(it.lat, it.lon) },   // visited points → visited States (PIP)
+            geoLayers, paintMode,
+        )
         frag.onStyleReady = { geoMgr.reinstall() }
 
         // Summary "island" chip (top-center) — TAP it to open the full
@@ -114,12 +124,14 @@ class MapsExploredFragment : Fragment() {
         })
         updateChip()
 
-        // Single Layers FAB — small circle, TOP-RIGHT. One sheet controls BOTH
-        // the pins layer (Countries/Cities/Places/off) and the 4 painted fills.
+        // Single Layers FAB — small BLACK circle (matches the island), TOP-RIGHT.
+        // One sheet controls the pins layer + the painted fills.
         root.addView(FloatingActionButton(ctx).apply {
             setImageResource(android.R.drawable.ic_menu_mapmode)
             contentDescription = "Layers"
             size = FloatingActionButton.SIZE_MINI
+            backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF141A25.toInt())
+            imageTintList = android.content.res.ColorStateList.valueOf(MapsStopsFragment.COL_PRIMARY)
             setOnClickListener { showLayersSheet() }
             layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END)
                 .apply { val m = dp(12f).toInt(); setMargins(m, m, m, m) }
@@ -154,10 +166,12 @@ class MapsExploredFragment : Fragment() {
         data class Row(val label: String, val lat: Double, val lon: Double, val open: () -> Unit)
         val rows: List<Row> = when (mode) {
             Mode.COUNTRY -> countries.map { c ->
-                Row("${c.country}   ·   ${c.cities.size} cities", c.lat, c.lon) { showCountrySheet(c) }
+                val days = c.cities.sumOf { it.visits.size }
+                Row("${c.country}   ·   ${c.cities.size} cities · $days days", c.lat, c.lon) { showCountrySheet(c) }
             }
             Mode.CITY -> cities.map { c ->
-                Row("${c.city}${c.country?.let { ", $it" } ?: ""}   ·   ${c.visits.size} visits", c.lat, c.lon) { showCitySheet(c) }
+                val blocks = visitBlocks(c.visits.map { it.dayMs })
+                Row("${c.city}${c.country?.let { ", $it" } ?: ""}   ·   $blocks visits · ${c.visits.size} days", c.lat, c.lon) { showCitySheet(c) }
             }
             Mode.PLACES -> places.map { p ->
                 Row("${p.name}${p.city?.let { ", $it" } ?: ""}   ·   ${p.days.size} days", p.lat, p.lon) { showPlaceSheet(p) }
@@ -190,7 +204,11 @@ class MapsExploredFragment : Fragment() {
         val frag = mapFrag ?: return
         if (!pinsVisible) { frag.clearPins(); return }
         val pins = when (mode) {
-            Mode.COUNTRY -> countries.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), "", "C:$i") }
+            // Country pin sits at the CAPITAL (falls back to the cities centroid).
+            Mode.COUNTRY -> countries.mapIndexed { i, c ->
+                val cap = capitals[c.country]
+                MapsMapFragment.Pin(cap?.get(0) ?: c.lat, cap?.get(1) ?: c.lon, countryColor(c.country), "", "C:$i")
+            }
             Mode.CITY -> cities.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), "", "T:$i") }
             Mode.PLACES -> places.mapIndexed { i, p -> MapsMapFragment.Pin(p.lat, p.lon, countryColor(p.country), "", "P:$i") }
         }
@@ -331,16 +349,19 @@ class MapsExploredFragment : Fragment() {
 
     private fun showCountrySheet(c: ExploredCountry) = sheet(
         "🌐  ${c.country}",
-        "${c.cities.size} cit${if (c.cities.size == 1) "y" else "ies"} · ${c.cities.sumOf { it.visits.size }} day-visits",
-        c.cities.sortedByDescending { it.visits.size }
-            .map { "${it.city}  ·  ${it.visits.size} visit${if (it.visits.size == 1) "" else "s"}" },
+        "${c.cities.size} cit${if (c.cities.size == 1) "y" else "ies"} · ${c.cities.sumOf { it.visits.size }} days total",
+        c.cities.sortedByDescending { it.visits.size }.map {
+            val blocks = visitBlocks(it.visits.map { v -> v.dayMs }); val days = it.visits.size
+            "${it.city}  ·  $blocks visit${if (blocks == 1) "" else "s"} · $days day${if (days == 1) "" else "s"}"
+        },
     )
 
     private fun showCitySheet(city: ExploredCity) {
         val fmt = SimpleDateFormat("EEE, dd MMM yyyy", Locale.US)
+        val blocks = visitBlocks(city.visits.map { it.dayMs }); val days = city.visits.size
         sheet(
             "🏙️  ${city.city}" + (city.country?.let { ", $it" } ?: ""),
-            "${city.visits.size} visit${if (city.visits.size == 1) "" else "s"}",
+            "$blocks visit${if (blocks == 1) "" else "s"} · $days day${if (days == 1) "" else "s"} total",
             city.visits.sortedByDescending { it.dayMs }
                 .map { fmt.format(Date(it.dayMs)) + (it.placeName?.let { p -> "  ·  $p" } ?: "") },
         )
@@ -444,6 +465,17 @@ class MapsExploredFragment : Fragment() {
             val hue = ((h * 137) % 360 + 360) % 360
             val rgb = android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.78f, 0.95f))
             return "#%06X".format(rgb and 0xFFFFFF)
+        }
+
+        /** Number of separate VISIT blocks (runs of consecutive days) from a list
+         *  of day-timestamps — distinct from the total day count. A gap of more
+         *  than ~1.5 days starts a new visit. Pure/tested. */
+        fun visitBlocks(dayMsList: List<Long>): Int {
+            if (dayMsList.isEmpty()) return 0
+            val days = dayMsList.map { MapsDailyFragment.localMidnight(it) }.distinct().sorted()
+            var blocks = 1
+            for (k in 1 until days.size) if (days[k] - days[k - 1] > 36L * 3600_000L) blocks++
+            return blocks
         }
 
         fun newInstance() = MapsExploredFragment()
