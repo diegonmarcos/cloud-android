@@ -5289,7 +5289,8 @@
       "tag": "latest",
       "interval_hours": 6,
       "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
-      "require_unmetered_network": false,
+      "_doc_unmetered": "true → automatic auto-download+install only on unmetered (Wi-Fi). On a metered network (mobile data) an automatic run does NOT download; it shows the 'Update available — Update now / Later' prompt so the user consents before spending data. Manual 'Check for updates' and the prompt's 'Update now' force a download on any network.",
+      "require_unmetered_network": true,
       "require_charging": false,
       "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions, user-overridable via AutoUpdatePrefs). 'silent' → installer commits with USER_ACTION_NOT_REQUIRED (no install prompt) once the one-time 'Install unknown apps' grant is given; without the grant Android transparently falls back to a prompt. 'prompt' → always USER_ACTION_REQUIRED.",
       "install_mode": "silent"

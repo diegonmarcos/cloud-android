@@ -54,6 +54,11 @@ class ApkInstallWorker(
             // install lifecycle instead of flickering straight to "Done".
             UpdateInstaller(applicationContext).install(apk, pkg)
             Result.success()
+        } catch (c: java.util.concurrent.CancellationException) {
+            // User hit Cancel: cancelNow() already flipped state to Cancelled.
+            // Don't clobber it with Failed. Worker is cancelled → success is moot.
+            Log.i(TAG, "install of $pkg cancelled by user")
+            Result.success()
         } catch (t: Throwable) {
             Log.w(TAG, "install of $pkg failed: ${t.message}", t)
             UpdateProgress.update(UpdateProgress.State.Failed(t.message ?: t.toString()))
@@ -98,6 +103,8 @@ class ApkInstallWorker(
                     var soFar = 0L
                     var lastTick = 0L
                     while (true) {
+                        // Cancel button → WorkManager cancels this worker → isStopped.
+                        if (isStopped) throw java.util.concurrent.CancellationException("install cancelled")
                         val read = input.read(buf)
                         if (read < 0) break
                         output.write(buf, 0, read)

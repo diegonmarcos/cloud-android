@@ -29,12 +29,13 @@ object Updater {
             cancel(context)
             return
         }
+        // Always CONNECTED (not UNMETERED): the worker must run on metered too so
+        // it can CHECK and — when AU_REQUIRE_UNMETERED is set — PROMPT instead of
+        // auto-downloading. The metered decision moved into UpdateWorker (runtime
+        // NET_CAPABILITY_NOT_METERED check), so gating the worker off entirely on
+        // metered would suppress the "ask for update" prompt.
         val constraints = Constraints.Builder().apply {
-            if (BuildConfig.AU_REQUIRE_UNMETERED) {
-                setRequiredNetworkType(NetworkType.UNMETERED)
-            } else {
-                setRequiredNetworkType(NetworkType.CONNECTED)
-            }
+            setRequiredNetworkType(NetworkType.CONNECTED)
             if (BuildConfig.AU_REQUIRE_CHARGING) {
                 setRequiresCharging(true)
             }
@@ -79,11 +80,16 @@ object Updater {
      * the download loop bails on the next isStopped check.
      */
     fun cancelNow(context: Context) {
+        // Arm the shared cancel flag FIRST so every download loop (the self-update
+        // worker's blocking read AND the raw fleet-install threads WorkManager
+        // can't cancel) bails on its next poll. WorkManager cancellation below is
+        // belt-and-suspenders for the workers; the flag is what makes Cancel
+        // actually stop a fleet "Update All".
+        UpdateProgress.requestCancel()
         val wm = WorkManager.getInstance(context)
         wm.cancelUniqueWork(ONE_SHOT_NAME)
         wm.cancelUniqueWork(KICK_NAME)
         wm.cancelAllWorkByTag(COMPANION_TAG)
-        wm.cancelUniqueWork("superapp-constellation-now")
         UpdateProgress.update(UpdateProgress.State.Cancelled)
     }
 
@@ -91,10 +97,21 @@ object Updater {
      * One-shot manual check. The "Check for updates" button calls this so the
      * user can install a new APK immediately instead of waiting for the next
      * periodic tick. REPLACE policy means rapid taps cancel the previous run.
-     * Same UpdateWorker class — same flow — same install prompt at the end.
+     * FORCE=true: a manual tap is explicit consent, so it downloads on any
+     * network (no metered prompt).
      */
-    fun checkNow(context: Context) {
+    fun checkNow(context: Context) = enqueueForced(context)
+
+    /**
+     * The "Update now" button on the metered prompt (UpdateProgress.State
+     * .UpdateAvailable). Same forced one-shot as checkNow — re-checks and then
+     * downloads over the metered network with the user's explicit consent.
+     */
+    fun downloadNow(context: Context) = enqueueForced(context)
+
+    private fun enqueueForced(context: Context) {
         val request = OneTimeWorkRequestBuilder<UpdateWorker>()
+            .setInputData(Data.Builder().putBoolean(UpdateWorker.KEY_FORCE, true).build())
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)

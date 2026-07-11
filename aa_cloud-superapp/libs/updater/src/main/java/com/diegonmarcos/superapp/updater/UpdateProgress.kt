@@ -16,6 +16,10 @@ object UpdateProgress {
         object Idle : State()
         /** Pulling the manifest from GHCR (small, near-instant). */
         object CheckingManifest : State()
+        /** An update exists but we're on a metered network, so auto-download was
+         *  held back. The overlay prompts the user (Update now / Later) — tapping
+         *  Update now calls Updater.downloadNow to fetch over data with consent. */
+        data class UpdateAvailable(val totalBytes: Long) : State()
         /** Streaming the APK blob — [percent] is 0..100. */
         data class Downloading(val percent: Int, val bytes: Long, val total: Long) : State()
         /** APK is on disk; PackageInstaller session in progress. */
@@ -29,6 +33,24 @@ object UpdateProgress {
 
     @Volatile var state: State = State.Idle
         private set
+
+    /**
+     * Process-wide cancel flag polled by every download loop — the WorkManager
+     * self-update worker AND the raw fleet-install threads (ConstellationFragment
+     * uses plain `thread {}`, which WorkManager.cancel can't reach). Armed by the
+     * Cancel button via [requestCancel]; stays armed until the next download
+     * session clears it with [beginDownload]. That "sticky until next session"
+     * shape avoids a race where the overlay's reset clears the flag before a
+     * background thread has polled it.
+     */
+    @Volatile var cancelRequested: Boolean = false
+        private set
+
+    /** Cancel button → arm cancellation for any in-flight download loop. */
+    fun requestCancel() { cancelRequested = true }
+
+    /** Start of a fresh user-initiated download session — disarm any stale cancel. */
+    fun beginDownload() { cancelRequested = false }
 
     /**
      * During a multi-app "Update all", names the current app + position

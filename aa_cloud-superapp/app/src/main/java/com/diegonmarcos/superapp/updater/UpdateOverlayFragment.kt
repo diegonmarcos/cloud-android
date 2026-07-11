@@ -31,6 +31,7 @@ class UpdateOverlayFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private lateinit var dismissButton: TextView
     private lateinit var cancelButton: TextView
+    private lateinit var updateNowButton: TextView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -108,10 +109,28 @@ class UpdateOverlayFragment : Fragment() {
             ).apply { topMargin = dp(20) }
             setOnClickListener { runCatching { Updater.cancelNow(requireContext()) } }
         }
+        // "Update now" — shown ONLY on the metered UpdateAvailable prompt. Grants
+        // consent to download over mobile data; kicks a forced one-shot check.
+        updateNowButton = TextView(ctx).apply {
+            text = "Update now"
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF7C3AED.toInt())
+            setPadding(dp(28), dp(12), dp(28), dp(12))
+            isClickable = true; isFocusable = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(20) }
+            setOnClickListener { runCatching { Updater.downloadNow(requireContext()) } }
+        }
         column.addView(titleView)
         column.addView(progressBar)
         column.addView(detailView)
         column.addView(cancelButton)
+        column.addView(updateNowButton)
         column.addView(dismissButton)
         root.addView(column)
 
@@ -125,12 +144,21 @@ class UpdateOverlayFragment : Fragment() {
         val terminal = state is UpdateProgress.State.Failed || state is UpdateProgress.State.Done
         val active = state is UpdateProgress.State.CheckingManifest ||
             state is UpdateProgress.State.Downloading || state is UpdateProgress.State.Installing
-        dismissButton.visibility = if (terminal) View.VISIBLE else View.GONE
+        // Metered "ask before download" prompt: Update now (primary) + Later
+        // (the reused dismiss button, which resets → dismisses the overlay).
+        val prompt = state is UpdateProgress.State.UpdateAvailable
+        dismissButton.visibility = if (terminal || prompt) View.VISIBLE else View.GONE
         cancelButton.visibility = if (active) View.VISIBLE else View.GONE
-        progressBar.visibility = if (terminal) View.GONE else View.VISIBLE
+        updateNowButton.visibility = if (prompt) View.VISIBLE else View.GONE
+        progressBar.visibility = if (terminal || prompt) View.GONE else View.VISIBLE
         when (state) {
             is UpdateProgress.State.Idle -> { /* about to dismiss */ }
             is UpdateProgress.State.Cancelled -> { UpdateProgress.reset() /* dismiss */ }
+            is UpdateProgress.State.UpdateAvailable -> {
+                titleView.text = "Update available"
+                detailView.text = "${state.totalBytes.toMib()} MiB · you're on mobile data. Download now?"
+                dismissButton.text = "Later"
+            }
             is UpdateProgress.State.CheckingManifest -> {
                 titleView.text = batch("Checking for updates…")
                 detailView.text = "Reading GHCR manifest"

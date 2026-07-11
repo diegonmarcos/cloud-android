@@ -136,7 +136,9 @@ object Fleet {
         val layer = remoteLayer(app, client, token)
         val target = File(ctx.cacheDir, "fleet-${app.id}-${layer.digest.substringAfter(':').take(12)}.apk")
         UpdateProgress.update(UpdateProgress.State.Downloading(0, 0L, layer.size))
-        client.blob(layer.digest, token, target) { bytes, total ->
+        // Raw fleet threads aren't WorkManager — the Cancel button reaches them
+        // only through UpdateProgress.cancelRequested.
+        client.blob(layer.digest, token, target, { UpdateProgress.cancelRequested }) { bytes, total ->
             val t = if (total > 0) total else layer.size
             val pct = if (t > 0) ((bytes * 100) / t).toInt().coerceIn(0, 100) else 0
             UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, t))
@@ -170,12 +172,25 @@ object Fleet {
                 else -> false
             }
         }
+        UpdateProgress.beginDownload() // disarm any stale cancel before the batch
         var acted = 0
         todo.forEachIndexed { i, app ->
+            // Cancel between apps: stop launching new installs the moment the
+            // user hits Cancel (the in-flight blob loop bails on its own poll).
+            if (UpdateProgress.cancelRequested) {
+                Log.i(TAG, "installAll cancelled by user after $acted app(s)")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                return acted
+            }
             UpdateProgress.beginBatch(app.label, i + 1, todo.size)
             try {
                 install(ctx, app)
                 acted++
+            } catch (c: java.util.concurrent.CancellationException) {
+                Log.i(TAG, "install ${app.label} cancelled")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                UpdateProgress.endBatch()
+                return acted
             } catch (t: Throwable) {
                 Log.w(TAG, "installAll ${app.label}: ${t.message}")
             }

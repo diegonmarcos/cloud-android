@@ -14,15 +14,20 @@ internal class UpdateChecker(private val context: Context) {
     private val tag = "Updater/Check"
     private val client = GhcrClient()
 
-    data class Update(
+    /** A remote update that differs from the installed APK. Carries the manifest
+     *  info + the pull token so [download] can fetch the blob in the same run
+     *  without a second manifest/token round-trip. */
+    data class Available(
         val remoteDigest: String,
         val remoteSize: Long,
         val assetTitle: String,
-        val downloadedTo: File,
+        val token: String,
     )
 
-    /** Returns Update if remote is different; null if already up to date. */
-    fun check(): Update? {
+    /** Manifest-only check — NO blob download. Returns [Available] when GHCR has
+     *  a differing APK for this ABI, null when already up to date. Cheap enough
+     *  to run on metered networks so the caller can decide download vs. prompt. */
+    fun available(): Available? {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         try {
             val token = client.token()
@@ -43,23 +48,7 @@ internal class UpdateChecker(private val context: Context) {
                 return null
             }
             Log.i(tag, "update available: $currentDigest → ${layer.digest}")
-
-            val target = File(context.cacheDir, "update-${layer.digest.substringAfter(':').take(12)}.apk")
-            UpdateProgress.update(UpdateProgress.State.Downloading(0, 0, layer.size))
-            client.blob(layer.digest, token, target) { bytes, total ->
-                val totalKnown = if (total > 0) total else layer.size
-                val pct = if (totalKnown > 0) ((bytes * 100) / totalKnown).toInt().coerceIn(0, 100) else 0
-                UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, totalKnown))
-            }
-
-            val downloadedSha = "sha256:" + sha256(target)
-            if (downloadedSha != layer.digest) {
-                target.delete()
-                UpdateProgress.update(UpdateProgress.State.Failed(
-                    "digest mismatch: $downloadedSha != ${layer.digest}"))
-                error("downloaded digest $downloadedSha != manifest ${layer.digest}")
-            }
-            return Update(layer.digest, layer.size, layer.title, target)
+            return Available(layer.digest, layer.size, layer.title, token)
         } catch (e: GhcrClient.HttpException) {
             // A 404 means the GHCR tag for THIS device's ABI hasn't been
             // published yet (e.g. an x86_64 build before its CI variant has
@@ -72,6 +61,38 @@ internal class UpdateChecker(private val context: Context) {
             }
             UpdateProgress.update(UpdateProgress.State.Failed(e.message ?: e.toString()))
             throw e
+        } catch (t: Throwable) {
+            UpdateProgress.update(UpdateProgress.State.Failed(t.message ?: t.toString()))
+            throw t
+        }
+    }
+
+    /** Fetch the blob for an [Available] update, verify its sha256, and return
+     *  the on-disk APK. [shouldCancel] is polled during the download so the
+     *  Cancel button aborts it. Sets Downloading progress; on digest mismatch
+     *  or error flips to Failed and throws. */
+    fun download(a: Available, shouldCancel: () -> Boolean = { false }): File {
+        try {
+            val target = File(context.cacheDir, "update-${a.remoteDigest.substringAfter(':').take(12)}.apk")
+            UpdateProgress.update(UpdateProgress.State.Downloading(0, 0, a.remoteSize))
+            client.blob(a.remoteDigest, a.token, target, shouldCancel) { bytes, total ->
+                val totalKnown = if (total > 0) total else a.remoteSize
+                val pct = if (totalKnown > 0) ((bytes * 100) / totalKnown).toInt().coerceIn(0, 100) else 0
+                UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, totalKnown))
+            }
+            val downloadedSha = "sha256:" + sha256(target)
+            if (downloadedSha != a.remoteDigest) {
+                target.delete()
+                UpdateProgress.update(UpdateProgress.State.Failed(
+                    "digest mismatch: $downloadedSha != ${a.remoteDigest}"))
+                error("downloaded digest $downloadedSha != manifest ${a.remoteDigest}")
+            }
+            return target
+        } catch (c: java.util.concurrent.CancellationException) {
+            // Cancel button: cancelNow() already set state to Cancelled — don't
+            // overwrite it with Failed. Rethrow so the worker unwinds.
+            Log.i(tag, "download cancelled by user")
+            throw c
         } catch (t: Throwable) {
             UpdateProgress.update(UpdateProgress.State.Failed(t.message ?: t.toString()))
             throw t

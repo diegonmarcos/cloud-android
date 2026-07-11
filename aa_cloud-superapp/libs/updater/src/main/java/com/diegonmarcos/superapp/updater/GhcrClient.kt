@@ -68,9 +68,13 @@ internal class GhcrClient(
 
     /** Streams the blob into [target]. Caller verifies sha256 against [digest].
      *  [onProgress] is called periodically with (bytesRead, totalBytes);
-     *  totalBytes may be -1 if the server didn't send Content-Length. */
+     *  totalBytes may be -1 if the server didn't send Content-Length.
+     *  [shouldCancel] is polled every 64KiB chunk so a WorkManager cancel
+     *  (Cancel button) actually aborts the blocking read loop — throwing
+     *  CancellationException. A wedged socket still bounds at readTimeout. */
     fun blob(
         digest: String, token: String, target: File,
+        shouldCancel: () -> Boolean = { false },
         onProgress: ((bytesRead: Long, totalBytes: Long) -> Unit)? = null,
     ) {
         val url = URL("https://$registry/v2/$repo/blobs/$digest")
@@ -88,6 +92,7 @@ internal class GhcrClient(
                 var soFar = 0L
                 var lastTick = 0L
                 while (true) {
+                    if (shouldCancel()) throw java.util.concurrent.CancellationException("download cancelled")
                     read = input.read(buf)
                     if (read < 0) break
                     output.write(buf, 0, read)

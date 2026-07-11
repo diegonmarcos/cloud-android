@@ -153,6 +153,7 @@ class ConstellationFragment : Fragment() {
     private fun install(ctx: Context, app: Fleet.App) {
         Toast.makeText(ctx, "Installing ${app.label}…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-install-${app.id}") {
+            com.diegonmarcos.superapp.updater.UpdateProgress.beginDownload()
             try { Fleet.install(ctx, app) }
             catch (t: Throwable) { view?.post { Toast.makeText(ctx, "${app.label}: ${t.message}", Toast.LENGTH_LONG).show() } }
             statusViews[app.id]?.let { tv -> val st = Fleet.status(ctx, app); tv.post { paint(tv, st) } }
