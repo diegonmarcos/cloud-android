@@ -6,6 +6,7 @@
 <resources>
     <item name="app_drawer_grid_host" type="id" />
     <item name="suite_tabs_host"      type="id" />
+    <item name="tabbed_section_child_host" type="id" />
     <item name="stack_embed_0"        type="id" />
     <item name="stack_embed_1"        type="id" />
     <item name="stack_embed_2"        type="id" />

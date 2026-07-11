@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.launcher
 import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.system.ModePrefs
 import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 
@@ -30,10 +31,13 @@ class TabbedSectionFragment : Fragment(), Collapsible {
 
     /** Container id of the inner child host. Stored so the
      *  bottom-nav re-tap handler can find the live child fragment and
-     *  forward [Collapsible.toggleAllCollapsed] to it. The id is
-     *  generated at runtime by View.generateViewId() in
-     *  [onCreateView]. */
-    private var childContainerId: Int = 0
+     *  forward [Collapsible.toggleAllCollapsed] to it. A STABLE resource
+     *  id (R.id.tabbed_section_child_host) — NOT View.generateViewId() —
+     *  so the committed child (e.g. AggregatorStackFragment) restores into
+     *  the same host after process death. generateViewId() returns a fresh
+     *  int each process, so the saved child's container id (e.g. 0x2) no
+     *  longer matches any view on restore → "No view found for id 0x2". */
+    private val childContainerId: Int = R.id.tabbed_section_child_host
 
     /** [Collapsible] — bottom-nav re-tap on Infos / Labs now reaches
      *  this wrapper first (since [TabbedSectionFragment] is the
@@ -79,14 +83,13 @@ class TabbedSectionFragment : Fragment(), Collapsible {
         }
 
         val childContainer = FrameLayout(ctx).apply {
-            id = View.generateViewId()
+            id = childContainerId // stable resource id — survives process death
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f,
             )
         }
-        childContainerId = childContainer.id
 
         root.addView(tabs)
         root.addView(childContainer)
