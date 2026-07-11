@@ -232,11 +232,6 @@ class MapsExploredFragment : Fragment() {
             style = android.graphics.Paint.Style.STROKE
             color = 0xFFFFFFFF.toInt(); strokeWidth = dp(1.5f)
         }
-        private val label = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFFFFFFF.toInt(); textSize = dp(11f)
-            setShadowLayer(dp(2f), 0f, 0f, 0xFF101418.toInt())
-            textAlign = android.graphics.Paint.Align.CENTER
-        }
         init { setWillNotDraw(false); isClickable = false; isFocusable = false }
 
         override fun onDraw(canvas: android.graphics.Canvas) {
@@ -245,21 +240,14 @@ class MapsExploredFragment : Fragment() {
             // pins don't overflow into one blob), growing toward street zoom.
             val r = pinRadiusPx(frag.currentZoom())
             stroke.strokeWidth = (r * 0.25f).coerceAtLeast(dp(0.75f))
-            val drawLabels = overlayPins.size <= 60   // countries: label; cities/places: dots only
+            // Dots only — the name/title is shown in the tap popup (showCountry/
+            // City/PlaceSheet), never painted on the pin itself.
             overlayPins.forEach { p ->
                 val s = frag.screenFor(p.lat, p.lon) ?: return@forEach
                 if (s.x < -r || s.y < -r || s.x > width + r || s.y > height + r) return@forEach
                 fill.color = p.colorInt
                 canvas.drawCircle(s.x, s.y, r, fill)
                 canvas.drawCircle(s.x, s.y, r, stroke)
-                if (drawLabels) {
-                    val title = when (mode) {
-                        Mode.COUNTRY -> countries.getOrNull(p.index)?.country
-                        Mode.CITY -> cities.getOrNull(p.index)?.city
-                        Mode.PLACES -> places.getOrNull(p.index)?.name
-                    }
-                    if (title != null) canvas.drawText(title, s.x, s.y - r - dp(4f), label)
-                }
             }
         }
     }
