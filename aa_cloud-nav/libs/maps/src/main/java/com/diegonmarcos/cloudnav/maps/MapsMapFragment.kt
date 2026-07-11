@@ -236,6 +236,10 @@ class MapsMapFragment : Fragment() {
     fun centerTarget(): Pair<Double, Double>? =
         map?.cameraPosition?.target?.let { it.latitude to it.longitude }
 
+    /** Current map zoom (MapLibre scale: ~1 = whole world, ~15 = street). Used
+     *  by the Explored pin overlay to size dots relative to zoom. */
+    fun currentZoom(): Double = map?.cameraPosition?.zoom ?: 2.0
+
     /** Last my-location fix, or null. The Routes "Your location" origin. */
     fun myLatLon(): Pair<Double, Double>? = me?.let { it.latitude to it.longitude }
 

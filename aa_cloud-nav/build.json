@@ -1952,22 +1952,22 @@
       "place_variations": [
         {
           "suffix": "Old Town",
-          "dlat": 0.008,
-          "dlon": 0.006,
+          "dlat": 0.075,
+          "dlon": 0.06,
           "start_min": 0,
           "end_min": 360
         },
         {
           "suffix": "Waterfront",
-          "dlat": -0.006,
-          "dlon": 0.009,
+          "dlat": -0.065,
+          "dlon": 0.09,
           "start_min": 400,
           "end_min": 720
         },
         {
           "suffix": "Market Sq",
-          "dlat": 0.005,
-          "dlon": -0.008,
+          "dlat": 0.05,
+          "dlon": -0.085,
           "start_min": 760,
           "end_min": 1200
         }

@@ -241,7 +241,10 @@ class MapsExploredFragment : Fragment() {
 
         override fun onDraw(canvas: android.graphics.Canvas) {
             val frag = mapFrag ?: return
-            val r = dp(6f)
+            // Dynamic radius: tiny when zoomed out to the whole world (so 200+
+            // pins don't overflow into one blob), growing toward street zoom.
+            val r = pinRadiusPx(frag.currentZoom())
+            stroke.strokeWidth = (r * 0.25f).coerceAtLeast(dp(0.75f))
             val drawLabels = overlayPins.size <= 60   // countries: label; cities/places: dots only
             overlayPins.forEach { p ->
                 val s = frag.screenFor(p.lat, p.lon) ?: return@forEach
@@ -289,7 +292,9 @@ class MapsExploredFragment : Fragment() {
                 isClickable = true
                 setOnClickListener {
                     dialog.dismiss()
-                    if (m != mode) { mode = m; updateChip(); recomputeOverlayPins(frame = true) }
+                    // Switching COUNTRY→CITY→PLACES must NOT jump the camera —
+                    // keep the user's current pan/zoom (frame = false).
+                    if (m != mode) { mode = m; updateChip(); recomputeOverlayPins(frame = false) }
                 }
             })
         }
@@ -370,6 +375,11 @@ class MapsExploredFragment : Fragment() {
     }
 
     private fun dp(v: Float): Float = v * resources.displayMetrics.density
+
+    /** Screen radius (px) for a pin at map [zoom]. Small when zoomed out (world
+     *  ≈ zoom 1-2 → ~3dp so 200+ pins stay separate), larger zoomed in
+     *  (country/street → ~9dp). Linear ramp between, clamped both ends. */
+    private fun pinRadiusPx(zoom: Double): Float = dp(pinRadiusDp(zoom))
 
     /** Test hooks (the overlay is a plain View, so unlike the GL map it can be
      *  drawn to a Bitmap even on a headless emulator). */
@@ -454,6 +464,20 @@ class MapsExploredFragment : Fragment() {
             val rgb = android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.78f, 0.95f))
             return "#%06X".format(rgb and 0xFFFFFF)
         }
+
+        /** Pin radius in dp as a function of map [zoom] — pure/tested. Ramps
+         *  linearly from [MIN_PIN_DP] at [ZOOM_MIN] (world) to [MAX_PIN_DP] at
+         *  [ZOOM_MAX] (country/street), clamped outside that band. Keeps 200+
+         *  pins from overflowing each other when fully zoomed out. */
+        fun pinRadiusDp(zoom: Double): Float {
+            val t = ((zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)).coerceIn(0.0, 1.0)
+            return (MIN_PIN_DP + t * (MAX_PIN_DP - MIN_PIN_DP)).toFloat()
+        }
+
+        private const val ZOOM_MIN = 2.0   // whole world
+        private const val ZOOM_MAX = 6.0   // one country in view
+        private const val MIN_PIN_DP = 3.0
+        private const val MAX_PIN_DP = 9.0
 
         fun newInstance() = MapsExploredFragment()
     }

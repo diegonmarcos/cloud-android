@@ -124,7 +124,12 @@ object MapsDemo {
      *  dataset's several redesigns this project went through). */
     private fun contentSignature(): String {
         val cities = cityTemplates.joinToString("|") { "${it.city}:${it.country}:${it.stops.size}" }
-        return "$rangeStartIso..$rangeEndIso@$stayDays#$cities"
+        // Include the place-variation GEOMETRY (offsets + time windows), not just
+        // the stop COUNT — otherwise re-tuning the offsets (e.g. spreading places
+        // so PLACES mode reads as denser than CITY) leaves already-seeded devices
+        // stuck on the old coordinates, since name/country/count are unchanged.
+        val variations = placeVariations.joinToString(",") { "${it.suffix}@${it.dLat}/${it.dLon}:${it.startMin}-${it.endMin}" }
+        return "$rangeStartIso..$rangeEndIso@$stayDays#$cities&$variations"
     }
 
     /** True once [seed] has already inserted THIS EXACT dataset shape. */

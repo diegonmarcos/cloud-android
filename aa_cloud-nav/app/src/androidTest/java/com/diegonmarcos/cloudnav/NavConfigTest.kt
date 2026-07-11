@@ -62,6 +62,36 @@ class NavConfigTest {
         assertEquals("city names unique", cities.size, cities.map { it.city }.toSet().size)
     }
 
+    @Test fun demo_places_are_spread_far_enough_to_render_as_distinct_pins() {
+        // The bug: PLACES mode built 684 pins but they LOOKED like the 228 city
+        // pins, because the 3 places/city were offset by only ~0.005-0.009°
+        // (~0.7 km) — sub-pixel at Explored's world/region framing, so all 3
+        // collapsed onto their city. Guard that every city's places fan out by a
+        // visible margin (max pairwise separation ≳ 0.1°, ~11 km) so PLACES is
+        // actually denser than CITY on screen, not just in the list.
+        MapsDemo.cityTemplates.forEach { c ->
+            var maxSep = 0.0
+            for (i in c.stops.indices) for (j in i + 1 until c.stops.size) {
+                val a = c.stops[i]; val b = c.stops[j]
+                maxSep = maxOf(maxSep, kotlin.math.hypot(a.lat - b.lat, a.lon - b.lon))
+            }
+            assertTrue("${c.city} places must spread visibly (got maxSep=$maxSep°)", maxSep >= 0.1)
+        }
+    }
+
+    @Test fun explored_pin_radius_scales_with_zoom() {
+        // Pins shrink when zoomed out (world) so 200+ don't overflow into a blob,
+        // and grow when zoomed in — monotonic, clamped both ends.
+        val f = com.diegonmarcos.cloudnav.maps.MapsExploredFragment.Companion
+        val world = f.pinRadiusDp(1.0)   // below ZOOM_MIN → clamped small
+        val country = f.pinRadiusDp(6.0) // ZOOM_MAX → clamped large
+        val street = f.pinRadiusDp(15.0) // above band → still clamped large
+        assertTrue("world pins are small (got $world)", world <= 3.5f)
+        assertTrue("country pins are large (got $country)", country >= 8.5f)
+        assertEquals("clamped above the band", country, street)
+        assertTrue("monotonic across the ramp", f.pinRadiusDp(3.0) < f.pinRadiusDp(5.0))
+    }
+
     @Test fun demo_generation_gives_every_day_a_city_and_revisits_all_of_them() {
         // Pure — the whole generation algorithm (cityForDayIndex), no DB. Every
         // one of the 2192 days must resolve to SOME city (full coverage), and
