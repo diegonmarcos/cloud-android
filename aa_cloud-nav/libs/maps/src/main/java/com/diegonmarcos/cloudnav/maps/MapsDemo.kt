@@ -48,23 +48,43 @@ object MapsDemo {
     val rangeEndIso: String get() = root.optString("range_end")
     val stayDays: Int get() = root.optInt("stay_days", 1).coerceAtLeast(1)
 
+    /** Shared place variations — the same 3 distinct places (offset + time
+     *  window) applied to EVERY city, so the data stays DRY and small (fits
+     *  the 64KB BuildConfig-string limit) while still giving each city 3
+     *  distinct places. */
+    private data class PlaceVariation(
+        val suffix: String, val dLat: Double, val dLon: Double, val startMin: Int, val endMin: Int,
+    )
+
+    private val placeVariations: List<PlaceVariation> by lazy {
+        val arr = root.optJSONArray("place_variations")
+            ?: return@lazy listOf(PlaceVariation("Stay", 0.0, 0.0, 0, 600))
+        (0 until arr.length()).map { j ->
+            val v = arr.getJSONObject(j)
+            PlaceVariation(
+                suffix = v.optString("suffix", "Stay"),
+                dLat = v.optDouble("dlat", 0.0), dLon = v.optDouble("dlon", 0.0),
+                startMin = v.optInt("start_min"), endMin = v.optInt("end_min", 600),
+            )
+        }
+    }
+
     val cityTemplates: List<CityTemplate> by lazy {
         val arr = root.optJSONArray("city_templates") ?: return@lazy emptyList()
+        val variations = placeVariations
         (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            val stopsArr = o.optJSONArray("stops")
-            val stops = if (stopsArr == null) emptyList() else (0 until stopsArr.length()).map { j ->
-                val s = stopsArr.getJSONObject(j)
+            val city = o.optString("city"); val country = o.optString("country")
+            val baseLat = o.optDouble("lat"); val baseLon = o.optDouble("lon")
+            // Expand the shared variations into this city's distinct places.
+            val stops = variations.map { v ->
                 DemoStop(
-                    startMin = s.optInt("start_min"),
-                    endMin = s.optInt("end_min"),
-                    lat = s.optDouble("lat"),
-                    lon = s.optDouble("lon"),
-                    place = s.optString("place"),
-                    neighborhood = s.optString("neighborhood"),
+                    startMin = v.startMin, endMin = v.endMin,
+                    lat = baseLat + v.dLat, lon = baseLon + v.dLon,
+                    place = "$city — ${v.suffix}", neighborhood = v.suffix,
                 )
             }
-            CityTemplate(city = o.optString("city"), country = o.optString("country"), stops = stops)
+            CityTemplate(city = city, country = country, stops = stops)
         }
     }
 
