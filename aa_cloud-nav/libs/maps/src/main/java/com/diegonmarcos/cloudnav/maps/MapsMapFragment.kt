@@ -100,17 +100,22 @@ class MapsMapFragment : Fragment() {
     fun addFillLayer(
         sourceId: String, fillId: String, outlineId: String,
         fc: FeatureCollection, fillColor: String, fillOpacity: Float, lineColor: String,
+        colorProp: String? = null,
     ) {
         val style = if (styleReady) map?.style else null
         style ?: return
         if (style.getSource(sourceId) == null) style.addSource(GeoJsonSource(sourceId, fc))
         else style.getSourceAs<GeoJsonSource>(sourceId)?.setGeoJson(fc)
         val anchor = style.getLayer(LYR_ROUTE)
+        // A data-driven colour (per-feature "col" property) OR a constant fill.
+        val colorExpr =
+            if (colorProp != null) PropertyFactory.fillColor(Expression.toColor(Expression.get(colorProp)))
+            else PropertyFactory.fillColor(fillColor)
+        // Re-added on every style reload; if the layer already exists, refresh
+        // its paint so a paint-mode switch takes effect without a full rebuild.
+        style.getLayer(fillId)?.let { (it as? FillLayer)?.setProperties(colorExpr, PropertyFactory.fillOpacity(fillOpacity)) }
         if (style.getLayer(fillId) == null) {
-            val fill = FillLayer(fillId, sourceId).withProperties(
-                PropertyFactory.fillColor(fillColor),
-                PropertyFactory.fillOpacity(fillOpacity),
-            )
+            val fill = FillLayer(fillId, sourceId).withProperties(colorExpr, PropertyFactory.fillOpacity(fillOpacity))
             if (anchor != null) style.addLayerBelow(fill, LYR_ROUTE) else style.addLayer(fill)
         }
         if (style.getLayer(outlineId) == null) {

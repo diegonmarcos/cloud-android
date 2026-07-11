@@ -101,6 +101,20 @@ class NavConfigTest {
         assertTrue(com.diegonmarcos.cloudnav.maps.MapsGeoLayers.visitedSubregionsFor(members, setOf("JP")).isEmpty())
     }
 
+    @Test fun geo_default_paint_colors_are_deterministic_family_colors() {
+        val g = com.diegonmarcos.cloudnav.maps.MapsGeoLayers.Companion
+        // Continents get distinct, valid colours.
+        val af = g.continentColor("Africa"); val eu = g.continentColor("Europe")
+        assertTrue(af.matches(Regex("#[0-9A-F]{6}")))
+        org.junit.Assert.assertNotEquals("continents differ", af, eu)
+        // Country shade: deterministic + valid; two countries in one continent differ.
+        assertEquals(g.countryShade("Europe", "France"), g.countryShade("Europe", "France"))
+        assertTrue(g.countryShade("Africa", "Kenya").matches(Regex("#[0-9A-F]{6}")))
+        org.junit.Assert.assertNotEquals(g.countryShade("Europe", "France"), g.countryShade("Europe", "Spain"))
+        // Region colour valid.
+        assertTrue(g.regionColor("EUROPE").matches(Regex("#[0-9A-F]{6}")))
+    }
+
     @Test fun geo_assets_are_valid_and_present() {
         // The bundled choropleth assets exist, parse, and carry the keyed props
         // the manager filters on (guards the tools/geo pipeline output). Parsed

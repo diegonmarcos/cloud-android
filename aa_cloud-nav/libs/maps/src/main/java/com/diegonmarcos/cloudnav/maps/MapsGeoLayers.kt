@@ -1,28 +1,34 @@
 package com.diegonmarcos.cloudnav.maps
 
 import android.content.Context
+import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
 import org.json.JSONArray
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 
 /**
- * Explored's choropleth layers (Approach A — MapLibre FillLayer). Paints the
- * areas the traveller has VISITED, at several aggregation levels, from compact
+ * Explored's choropleth layers (Approach A — MapLibre FillLayer), from compact
  * bundled GeoJSON (libs/maps/src/main/assets/geo/, produced by tools/geo/gen.mjs
- * from Natural Earth + the front app's civilization taxonomy — never hand-drawn).
+ * from Natural Earth 10m + the front app's civilization taxonomy — never hand-drawn).
  *
- * The fill source holds VISITED-ONLY features (so "paint visited in light gray"
- * is literally the source content — no per-feature paint expression needed).
- * Geometry is delivered to MapLibre as a TYPED [FeatureCollection], never a JSON
- * string (11.7 silently drops string geojson — see MapsMapFragment).
+ * Two paint modes:
+ *   • PIN     — paint only the areas the traveller has VISITED (grey), i.e. the
+ *               ones that carry a pin. The source holds visited-only features.
+ *   • DEFAULT — paint the WHOLE world: each continent a distinct colour, each
+ *               country a shade near its continent's colour, each region by its
+ *               top-level region. The source holds all features, each tagged with
+ *               a per-feature "col" property (data-driven fill).
  *
- * Layers mirror the front app's taxonomy (Political-Cultural Regions, Countries,
- * NomadMania Regions) plus Continents. Cities stay on the existing pin overlay.
+ * Geometry is delivered as a TYPED [FeatureCollection] (11.7 drops string
+ * geojson). Countries are ~100m detail (8.5MB) → all parsing runs OFF the main
+ * thread and layers are applied back on it, so opening Explored never janks.
  */
 class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment) {
 
-    /** Data-driven layer catalog. [key] is the GeoJSON property matched against
-     *  the visited set; [asset] is the bundled file; colours are the fill/outline. */
+    enum class PaintMode { PIN, DEFAULT }
+
     enum class Layer(
         val id: String, val label: String, val asset: String,
         val key: String, val fill: String, val outline: String,
@@ -33,64 +39,76 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
         NOMAD("nomad", "NomadMania Regions", "geo/nomad.geojson", "nomad", "#7FA8C9", "#B4D2E8"),
     }
 
-    var enabled: Set<Layer> = emptySet()
-        private set
+    var enabled: Set<Layer> = emptySet(); private set
+    var paintMode: PaintMode = PaintMode.PIN; private set
 
-    private var visitedNames: Set<String> = emptySet()      // normalised country names
+    private var visitedInput: Collection<String?> = emptyList()
+    private var visitedNames: Set<String> = emptySet()
     private var visitedContinents: Set<String> = emptySet()
     private var visitedSubregions: Set<String> = emptySet()
 
-    // Cache parsed assets so toggling doesn't re-read/re-parse each time.
-    private val fcCache = HashMap<Layer, FeatureCollection>()
+    private val ui = Handler(Looper.getMainLooper())
+    private val baseCache = HashMap<Layer, List<Feature>>()   // parsed once (expensive)
+    private val display = HashMap<Layer, FeatureCollection>() // built visited/coloured FC
 
-    /** Recompute visited sets from the countries the traveller has been to
-     *  (names as stored on stops). Continents/regions are derived via the
-     *  bundled countries asset + region-members.json. */
-    fun setVisitedCountries(countryNames: Collection<String?>) {
-        visitedNames = countryNames.filterNotNull().map { normalize(it) }.filter { it.isNotEmpty() }.toSet()
-        val nameToIso = HashMap<String, String>()
-        val nameToContinent = HashMap<String, String>()
-        runCatching {
-            val fc = load(Layer.COUNTRIES)
-            fc.features()?.forEach { f ->
-                val n = f.getStringProperty("NAME") ?: return@forEach
-                f.getStringProperty("ISO2")?.let { nameToIso[normalize(n)] = it }
-                f.getStringProperty("CONTINENT")?.let { nameToContinent[normalize(n)] = it }
+    /** Configure and (re)build. Heavy parsing runs on a background thread. */
+    fun configure(countryNames: Collection<String?>, layers: Set<Layer>, mode: PaintMode) {
+        visitedInput = countryNames; enabled = layers; paintMode = mode; rebuild()
+    }
+    fun setEnabled(layers: Set<Layer>) { enabled = layers; rebuild() }
+    fun setPaintMode(mode: PaintMode) { paintMode = mode; rebuild() }
+
+    /** Re-apply the already-built display collections on the main thread — called
+     *  on every style (re)load, since a style switch wipes added layers. */
+    fun reinstall() = apply()
+
+    private fun rebuild() {
+        val names = visitedInput
+        Thread {
+            runCatching {
+                computeVisited(names)
+                val built = HashMap<Layer, FeatureCollection>()
+                for (l in Layer.values()) if (l in enabled) built[l] = buildDisplayFC(l)
+                ui.post { display.clear(); display.putAll(built); apply() }
             }
-        }
-        val visitedIso = visitedNames.mapNotNull { nameToIso[it] }.toSet()
-        visitedContinents = visitedNames.mapNotNull { nameToContinent[it] }.toSet()
-        visitedSubregions = visitedSubregionsFor(readMembers(), visitedIso)
+        }.start()
     }
 
-    fun setEnabled(layers: Set<Layer>) { enabled = layers; reinstall() }
-
-    /** (Re)install every enabled layer's fill and drop disabled ones. Safe to
-     *  call on every style (re)load — layers are wiped by a style switch. */
-    fun reinstall() {
-        for (layer in Layer.values()) {
-            if (layer in enabled) {
-                val fc = visitedFeatures(layer)
+    /** Apply enabled layers, remove disabled ones. Main thread only. */
+    private fun apply() {
+        for (l in Layer.values()) {
+            val fc = display[l]
+            if (l in enabled && fc != null) {
                 frag.addFillLayer(
-                    sourceId = "geo-src-${layer.id}", fillId = "geo-fill-${layer.id}",
-                    outlineId = "geo-line-${layer.id}", fc = fc,
-                    fillColor = layer.fill, fillOpacity = 0.55f, lineColor = layer.outline,
+                    sourceId = "geo-src-${l.id}", fillId = "geo-fill-${l.id}",
+                    outlineId = "geo-line-${l.id}", fc = fc,
+                    fillColor = l.fill, fillOpacity = if (paintMode == PaintMode.DEFAULT) 0.7f else 0.55f,
+                    lineColor = l.outline,
+                    colorProp = if (paintMode == PaintMode.DEFAULT) "col" else null,
                 )
             } else {
-                frag.removeFillLayer("geo-src-${layer.id}", "geo-fill-${layer.id}", "geo-line-${layer.id}")
+                frag.removeFillLayer("geo-src-${l.id}", "geo-fill-${l.id}", "geo-line-${l.id}")
             }
         }
     }
 
-    /** Feature count of the visited-only collection for [layer] — test hook. */
-    fun visitedCount(layer: Layer): Int = visitedFeatures(layer).features()?.size ?: 0
+    private fun buildDisplayFC(layer: Layer): FeatureCollection {
+        val base = baseFeatures(layer)
+        return if (paintMode == PaintMode.DEFAULT) {
+            base.forEach { it.addStringProperty("col", colorFor(layer, it)) }
+            FeatureCollection.fromFeatures(base)
+        } else {
+            FeatureCollection.fromFeatures(base.filter { isVisited(layer, it) })
+        }
+    }
 
-    /** The visited-only FeatureCollection for [layer]. NOMAD/anything with no
-     *  key is entirely the traveller's own data → all features are "visited". */
-    private fun visitedFeatures(layer: Layer): FeatureCollection {
-        val all = load(layer).features() ?: return FeatureCollection.fromFeatures(emptyList())
-        val kept = all.filter { isVisited(layer, it) }
-        return FeatureCollection.fromFeatures(kept)
+    private fun baseFeatures(layer: Layer): List<Feature> = synchronized(baseCache) {
+        baseCache.getOrPut(layer) {
+            runCatching {
+                FeatureCollection.fromJson(ctx.assets.open(layer.asset).bufferedReader().use { it.readText() })
+                    .features() ?: emptyList()
+            }.getOrDefault(emptyList())
+        }
     }
 
     private fun isVisited(layer: Layer, f: Feature): Boolean = when (layer) {
@@ -100,8 +118,27 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
         Layer.REGIONS -> (f.getStringProperty("subregion") ?: "") in visitedSubregions
     }
 
-    private fun load(layer: Layer): FeatureCollection = fcCache.getOrPut(layer) {
-        FeatureCollection.fromJson(ctx.assets.open(layer.asset).bufferedReader().use { it.readText() })
+    /** DEFAULT-mode colour for a feature: continent-hued, countries a shade near
+     *  their continent, regions by top-level region. */
+    private fun colorFor(layer: Layer, f: Feature): String = when (layer) {
+        Layer.CONTINENTS -> continentColor(f.getStringProperty("CONTINENT"))
+        Layer.COUNTRIES -> countryShade(f.getStringProperty("CONTINENT"), f.getStringProperty("NAME") ?: "")
+        Layer.REGIONS -> regionColor(f.getStringProperty("region"))
+        Layer.NOMAD -> layer.fill
+    }
+
+    private fun computeVisited(countryNames: Collection<String?>) {
+        visitedNames = countryNames.filterNotNull().map { normalize(it) }.filter { it.isNotEmpty() }.toSet()
+        val nameToIso = HashMap<String, String>()
+        val nameToContinent = HashMap<String, String>()
+        baseFeatures(Layer.COUNTRIES).forEach { f ->
+            val n = f.getStringProperty("NAME") ?: return@forEach
+            f.getStringProperty("ISO2")?.let { nameToIso[normalize(n)] = it }
+            f.getStringProperty("CONTINENT")?.let { nameToContinent[normalize(n)] = it }
+        }
+        val visitedIso = visitedNames.mapNotNull { nameToIso[it] }.toSet()
+        visitedContinents = visitedNames.mapNotNull { nameToContinent[it] }.toSet()
+        visitedSubregions = visitedSubregionsFor(readMembers(), visitedIso)
     }
 
     private fun readMembers(): List<RegionMembers> = runCatching {
@@ -115,10 +152,12 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
 
     data class RegionMembers(val subregion: String, val countries: Set<String>)
 
+    /** Feature count of the built display collection for [layer] — test hook. */
+    fun visitedCount(layer: Layer): Int = display[layer]?.features()?.size ?: -1
+
     companion object {
-        /** Normalise a country name for tolerant matching between the traveller's
-         *  stored names and Natural Earth's NAME field (e.g. "United States" vs
-         *  "United States of America"). Pure/tested. */
+        /** Normalise a country name for tolerant matching (see NE NAME vs the
+         *  traveller's short names). Pure/tested. */
         fun normalize(name: String): String {
             var s = name.trim().lowercase()
             s = s.removePrefix("the ")
@@ -130,14 +169,43 @@ class MapsGeoLayers(private val ctx: Context, private val frag: MapsMapFragment)
         fun visitedSubregionsFor(members: List<RegionMembers>, visitedIso: Set<String>): Set<String> =
             members.filter { it.countries.any { c -> c in visitedIso } }.map { it.subregion }.toSet()
 
-        // Minimal name aliases where the traveller's short name ≠ Natural Earth NAME.
+        private fun hsv(h: Float, s: Float, v: Float): String =
+            "#%06X".format(Color.HSVToColor(floatArrayOf(((h % 360) + 360) % 360, s, v)) and 0xFFFFFF)
+
+        // Distinct hue per continent — the DEFAULT-mode palette anchor. Pure/tested.
+        private val CONTINENT_HUE = mapOf(
+            "Africa" to 40f, "Asia" to 4f, "Europe" to 212f,
+            "North America" to 130f, "South America" to 286f, "Oceania" to 170f,
+        )
+        private val REGION_HUE = mapOf(
+            "EUROPE" to 212f, "ASIA" to 4f, "AMERICAS" to 130f, "AFRICA" to 40f, "OCEANIA" to 170f,
+        )
+
+        fun continentColor(continent: String?): String =
+            hsv(CONTINENT_HUE[continent] ?: 205f, 0.55f, 0.80f)
+
+        fun regionColor(region: String?): String =
+            hsv(REGION_HUE[region] ?: 205f, 0.58f, 0.82f)
+
+        /** A country's colour: its continent's hue, nudged and shaded per-country
+         *  (deterministic from the name) so neighbours differ but all read as the
+         *  same continent family. Pure/tested. */
+        fun countryShade(continent: String?, name: String): String {
+            val base = CONTINENT_HUE[continent] ?: 205f
+            var h = 0
+            for (ch in name) h = h * 31 + ch.code
+            val jitter = ((h % 30) - 15).toFloat()          // ±15° within the family
+            val sat = 0.45f + (((h / 7) % 30) / 100f)        // 0.45..0.75
+            val value = 0.70f + (((h / 13) % 22) / 100f)     // 0.70..0.92
+            return hsv(base + jitter, sat, value)
+        }
+
         private val ALIASES = mapOf(
             "united states" to "united states of america",
             "usa" to "united states of america",
             "uk" to "united kingdom",
             "czech republic" to "czechia",
-            "south korea" to "south korea", "north korea" to "north korea",
-            "russia" to "russia", "uae" to "united arab emirates",
+            "uae" to "united arab emirates",
             "bosnia and herzegovina" to "bosnia and herz.",
         )
     }

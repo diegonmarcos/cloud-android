@@ -51,6 +51,8 @@ class MapsExploredFragment : Fragment() {
     private var geo: MapsGeoLayers? = null
     // Default: paint visited COUNTRIES light gray (the original ask).
     private var geoLayers: Set<MapsGeoLayers.Layer> = setOf(MapsGeoLayers.Layer.COUNTRIES)
+    // PIN = paint only visited areas; DEFAULT = colour the whole world by continent.
+    private var paintMode: MapsGeoLayers.PaintMode = MapsGeoLayers.PaintMode.PIN
 
     // Current mode's pin-backing objects, index-aligned with the pins' ids, so
     // a pin tap resolves straight back to its country/city/place.
@@ -88,8 +90,7 @@ class MapsExploredFragment : Fragment() {
         // derived inside the manager. Reinstalled on every style (re)load.
         val geoMgr = MapsGeoLayers(ctx, frag)
         geo = geoMgr
-        geoMgr.setVisitedCountries(cities.map { it.country })
-        geoMgr.setEnabled(geoLayers)
+        geoMgr.configure(cities.map { it.country }, geoLayers, paintMode)
         frag.onStyleReady = { geoMgr.reinstall() }
 
         // Summary "island" chip (top-center) — TAP it to open the full
@@ -208,8 +209,9 @@ class MapsExploredFragment : Fragment() {
         }
     }
 
-    /** ONE sheet for every layer: the PINS layer (off / Countries / Cities /
-     *  Places aggregation) alongside the 4 painted choropleth fills. */
+    /** ONE sheet for every layer — styled like the black "island" chip (rounded
+     *  dark card, accent stroke): the PINS layer (off / Countries / Cities /
+     *  Places), the PAINT mode (Pin vs Default), and the painted choropleth fills. */
     private fun showLayersSheet() {
         val ctx = context ?: return
         val dialog = BottomSheetDialog(ctx)
@@ -217,13 +219,12 @@ class MapsExploredFragment : Fragment() {
         fun dp(v: Int) = (v * d).toInt()
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF141A25.toInt())
-            setPadding(dp(12), dp(12), dp(12), dp(18))
+            setPadding(dp(14), dp(14), dp(14), dp(20))
         }
         fun header(t: String) = col.addView(TextView(ctx).apply {
-            text = t; textSize = 16f
+            text = t; textSize = 15f
             setTextColor(MapsStopsFragment.COL_SECONDARY)
-            setPadding(dp(8), dp(10), dp(8), dp(8))
+            setPadding(dp(8), dp(12), dp(8), dp(6))
         })
         fun row(label: String, selected: Boolean, mark: String, onTap: () -> Unit) =
             col.addView(TextView(ctx).apply {
@@ -236,22 +237,33 @@ class MapsExploredFragment : Fragment() {
 
         // ── PINS layer (single-select aggregation, or off) ──
         header("Pins")
-        val pinChoices = listOf(
+        listOf(
             null to "Off",
             Mode.COUNTRY to "🌐  Countries  (${countries.size})",
             Mode.CITY to "🏙️  Cities  (${cities.size})",
             Mode.PLACES to "📍  Places  (${places.size})",
-        )
-        pinChoices.forEach { (m, label) ->
+        ).forEach { (m, label) ->
             val sel = if (m == null) !pinsVisible else (pinsVisible && mode == m)
             row(label, sel, if (sel) "◉" else "○") {
-                if (m == null) { pinsVisible = false } else { pinsVisible = true; mode = m }
+                if (m == null) pinsVisible = false else { pinsVisible = true; mode = m }
                 updateChip(); recomputePins(frame = false)
             }
         }
 
+        // ── PAINT mode: Pin (visited only) vs Default (whole world by continent) ──
+        header("Paint mode")
+        listOf(
+            MapsGeoLayers.PaintMode.PIN to "Pin — only where I've been",
+            MapsGeoLayers.PaintMode.DEFAULT to "Default — every country by continent",
+        ).forEach { (pm, label) ->
+            val sel = paintMode == pm
+            row(label, sel, if (sel) "◉" else "○") {
+                if (paintMode != pm) { paintMode = pm; geo?.setPaintMode(pm) }
+            }
+        }
+
         // ── PAINTED fills (multi-select) ──
-        header("Painted layers (visited)")
+        header(if (paintMode == MapsGeoLayers.PaintMode.DEFAULT) "Painted layers" else "Painted layers (visited)")
         MapsGeoLayers.Layer.values().forEach { layer ->
             val on = layer in geoLayers
             row(layer.label, on, if (on) "☑" else "☐") {
@@ -259,7 +271,15 @@ class MapsExploredFragment : Fragment() {
                 geo?.setEnabled(geoLayers)
             }
         }
-        dialog.setContentView(ScrollView(ctx).apply { addView(col) })
+
+        // Island-styled container: rounded dark card + accent stroke.
+        val card = MaterialCardView(ctx).apply {
+            radius = dp(22).toFloat()
+            setCardBackgroundColor(0xF2141A25.toInt())
+            strokeColor = MapsStopsFragment.COL_ACCENT; strokeWidth = dp(1)
+            addView(ScrollView(ctx).apply { addView(col) })
+        }
+        dialog.setContentView(card)
         dialog.show()
     }
 

@@ -78,20 +78,27 @@ writeFileSync(join(OUT, 'region-members.json'), JSON.stringify(members));
 
 // ── 1. countries.geojson ───────────────────────────────────────────────────
 const countries = join(OUT, 'countries.geojson');
-ms([admin0, '-simplify', '18%', 'visvalingam', 'weighted', 'keep-shapes',
+// Countries at TRUE 100m coastline resolution (interval=100). precision=0.001
+// (~110m) matches that — finer decimals just bloat the file without adding
+// visible detail at 100m.
+ms([admin0, '-simplify', 'interval=100', 'visvalingam', 'weighted', 'keep-shapes',
   '-each', 'ISO2 = (ISO_A2 == "-99" ? ISO_A2_EH : ISO_A2)',
   '-filter', 'CONTINENT != "Antarctica" && CONTINENT != "Seven seas (open ocean)"',
   '-filter-fields', 'NAME,ISO2,CONTINENT',
   '-o', 'format=geojson', 'precision=0.001', countries]);
 
 // ── 2. continents.geojson ──────────────────────────────────────────────────
-ms([countries, '-dissolve', 'CONTINENT', '-o', 'precision=0.001', join(OUT, 'continents.geojson')]);
+// Continents/regions are huge areas — 100m detail is invisible and wasteful, so
+// dissolve then simplify to ~1km. Keeps the bundle small.
+ms([countries, '-dissolve', 'CONTINENT', '-simplify', 'interval=1000', 'keep-shapes',
+  '-o', 'precision=0.001', join(OUT, 'continents.geojson')]);
 
 // ── 3. regions.geojson (Political-Cultural Regions) ────────────────────────
 ms([countries,
   '-join', isoCsv, 'keys=ISO2,ISO2', 'string-fields=ISO2', 'fields=region,civ,subregion',
   '-filter', 'subregion != null',
   '-dissolve', 'subregion', 'copy-fields=region,civ',
+  '-simplify', 'interval=1000', 'keep-shapes',
   '-o', 'format=geojson', 'precision=0.001', join(OUT, 'regions.geojson')]);
 
 // ── 4. nomad.geojson — convex hull per nomadRegion (traveller's own points) ─

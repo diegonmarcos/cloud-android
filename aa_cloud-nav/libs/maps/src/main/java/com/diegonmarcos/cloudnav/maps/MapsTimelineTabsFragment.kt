@@ -52,9 +52,9 @@ class MapsTimelineTabsFragment : Fragment() {
             )
         }
         tabs = TabLayout(ctx).apply {
+            addTab(newTab().setText("Explored"))
             addTab(newTab().setText("Daily"))
             addTab(newTab().setText("Stops"))
-            addTab(newTab().setText("Explored"))
             tabMode = TabLayout.MODE_FIXED
             tabGravity = TabLayout.GRAVITY_FILL
             layoutParams = LinearLayout.LayoutParams(
@@ -82,21 +82,21 @@ class MapsTimelineTabsFragment : Fragment() {
         return root
     }
 
-    /** Called by a Daily row's tap — switches to Stops, scoped to [dayMs]. */
+    /** Called by a Daily row's tap — switches to Stops (tab 2), scoped to [dayMs]. */
     fun openStopsForDay(dayMs: Long) {
         pendingStopsDayMs = dayMs
-        tabs.getTabAt(1)?.select() ?: showTab(1)  // select() no-ops if already on tab 1
+        tabs.getTabAt(2)?.select() ?: showTab(2)  // select() no-ops if already on tab 2
     }
 
     private fun showTab(position: Int) {
         val frag: Fragment = when (position) {
-            1 -> {
+            1 -> MapsDailyFragment.newInstance()
+            2 -> {
                 val dayMs = pendingStopsDayMs
                 pendingStopsDayMs = null
                 MapsStopsFragment.newInstance(dayMs)
             }
-            2 -> MapsExploredFragment.newInstance()
-            else -> MapsDailyFragment.newInstance()  // 0 = Daily, default
+            else -> MapsExploredFragment.newInstance()  // 0 = Explored, default
         }
         childFragmentManager.beginTransaction()
             .replace(hostId, frag)
