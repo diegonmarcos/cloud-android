@@ -138,6 +138,10 @@ class MapsMapFragment : Fragment() {
                 ?.querySourceFeatures(null as Expression?)?.size ?: -1
         }.getOrDefault(-2)
 
+    /** Feature count the native pin source reports — proves the CircleLayer pins
+     *  render (typed FeatureCollection) on this stack. */
+    fun debugPinFeatureCount(): Int = debugFillFeatureCount(SRC_PINS)
+
     /** Project a geo coordinate to a screen pixel (null until the map is ready).
      *  Lets a caller draw its own pin overlay on top of the map — bypassing the
      *  GeoJSON/CircleLayer pin path. */
@@ -551,9 +555,19 @@ class MapsMapFragment : Fragment() {
                 // a bare get() yields a string type the circle-color paint
                 // won't accept, leaving pins uncoloured.
                 PropertyFactory.circleColor(Expression.toColor(Expression.get("color"))),
-                PropertyFactory.circleRadius(8f),
+                // Zoom-interpolated radius: small at world zoom (so hundreds of
+                // pins don't overflow into a blob), larger zoomed in. Native GL,
+                // so it stays glued to the map (no overlay shake).
+                PropertyFactory.circleRadius(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.zoom(),
+                        Expression.stop(2f, 3f),
+                        Expression.stop(6f, 7f),
+                        Expression.stop(12f, 11f),
+                    )
+                ),
                 PropertyFactory.circleStrokeColor("#FFFFFF"),
-                PropertyFactory.circleStrokeWidth(2.5f),
+                PropertyFactory.circleStrokeWidth(2f),
             )
         )
         // Always-on title label above each pin (the "balloon" text).

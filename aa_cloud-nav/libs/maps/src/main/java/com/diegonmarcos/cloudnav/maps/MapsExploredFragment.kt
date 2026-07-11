@@ -37,23 +37,20 @@ class MapsExploredFragment : Fragment() {
     private var mode = Mode.CITY
     private var daily: List<DailyEntry> = emptyList()
 
-    // The live child map fragment — provides ONLY the basemap + camera. Pins
-    // are drawn by our own Canvas overlay (see PinOverlay), NOT MapLibre's
-    // GeoJSON/CircleLayer path, which was proven to never render features on
-    // this stack (source registered + layer on top, yet 0 features tile).
+    // The live child map fragment. Pins are now NATIVE MapLibre CircleLayer
+    // features (typed FeatureCollection — proven to render on this stack once the
+    // string-geojson bug was fixed), NOT a Canvas overlay. Native pins are part
+    // of the GL frame, so they never trail/shake during pan/zoom.
     private var mapFrag: MapsMapFragment? = null
     private var chip: TextView? = null
-    private var overlay: PinOverlay? = null
-    private var overlayPins: List<OverlayPin> = emptyList()
+
+    // Pins are a toggleable layer alongside the choropleth fills.
+    private var pinsVisible = true
 
     // Choropleth fill layers (visited continents/countries/regions/nomad).
     private var geo: MapsGeoLayers? = null
     // Default: paint visited COUNTRIES light gray (the original ask).
     private var geoLayers: Set<MapsGeoLayers.Layer> = setOf(MapsGeoLayers.Layer.COUNTRIES)
-
-    /** A single dot to draw: geo position, colour, and index back into the
-     *  current mode's list (for tap → detail sheet). */
-    class OverlayPin(val lat: Double, val lon: Double, val colorInt: Int, val index: Int)
 
     // Current mode's pin-backing objects, index-aligned with the pins' ids, so
     // a pin tap resolves straight back to its country/city/place.
@@ -77,27 +74,14 @@ class MapsExploredFragment : Fragment() {
         places = groupByPlaceFromStops(stops)
 
         // worldView: global overview — start showing the whole world, not the
-        // user's last GPS fix (that put pins off-screen on other continents).
-        // textureMode: composite the map + our pin overlay in one frame so pins
-        // stay glued during pan/zoom (SurfaceView would let them trail/shake).
-        // style "light" → vector_light (Timeline's default basemap).
-        val frag = MapsMapFragment.newInstance(fab = true, worldView = true, textureMode = true, style = "light")
+        // user's last GPS fix. style "light" → vector_light (Timeline's default).
+        val frag = MapsMapFragment.newInstance(fab = true, worldView = true, style = "light")
         mapFrag = frag
         childFragmentManager.beginTransaction().replace(mapHost.id, frag).commit()
 
-        // Our own pin overlay ON TOP of the map (transparent, non-touchable so
-        // the map keeps pan/zoom; taps come via the map's onMapClickAt).
-        val pinOverlay = PinOverlay(ctx)
-        overlay = pinOverlay
-        root.addView(pinOverlay, FrameLayout.LayoutParams(MATCH, MATCH))
-
-        frag.onCameraChanged = { pinOverlay.invalidate() }
-        frag.onMapClickAt = { ll -> hitTest(ll) }
-        frag.onMapReady = { _ ->
-            recomputeOverlayPins(frame = true)
-            pinOverlay.invalidate()
-        }
-        recomputeOverlayPins(frame = false)
+        // Native pins: a tap resolves the pin id back to its country/city/place.
+        frag.onPinClick = { id -> onPinTapped(id) }
+        frag.onMapReady = { _ -> recomputePins(frame = true) }
 
         // Choropleth fill layers — paint visited areas. Visited countries come
         // from the same grouped data the pins use; regions/continents are
@@ -129,25 +113,15 @@ class MapsExploredFragment : Fragment() {
         })
         updateChip()
 
-        // Mode-switch FAB — small circle, TOP-RIGHT (mirrors the island chip's
-        // top placement; the map's own locate/style FABs sit bottom-END).
+        // Single Layers FAB — small circle, TOP-RIGHT. One sheet controls BOTH
+        // the pins layer (Countries/Cities/Places/off) and the 4 painted fills.
         root.addView(FloatingActionButton(ctx).apply {
             setImageResource(android.R.drawable.ic_menu_mapmode)
-            contentDescription = "View mode"
-            size = FloatingActionButton.SIZE_MINI
-            setOnClickListener { showModeMenu() }
-            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END)
-                .apply { val m = dp(12f).toInt(); setMargins(m, m, m, m) }
-        })
-
-        // Layers FAB — toggle the choropleth fills (below the mode FAB).
-        root.addView(FloatingActionButton(ctx).apply {
-            setImageResource(android.R.drawable.ic_menu_gallery)
-            contentDescription = "Map layers"
+            contentDescription = "Layers"
             size = FloatingActionButton.SIZE_MINI
             setOnClickListener { showLayersSheet() }
             layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END)
-                .apply { val m = dp(12f).toInt(); setMargins(m, m, dp(64f).toInt(), m) }
+                .apply { val m = dp(12f).toInt(); setMargins(m, m, m, m) }
         })
         return root
     }
@@ -207,76 +181,35 @@ class MapsExploredFragment : Fragment() {
         dialog.show()
     }
 
-    /** Rebuild [overlayPins] for the current [mode] and repaint the overlay.
-     *  Optionally frames the camera to the pins (via the map's own fitTo). */
-    private fun recomputeOverlayPins(frame: Boolean) {
-        overlayPins = when (mode) {
-            Mode.COUNTRY -> countries.mapIndexed { i, c -> OverlayPin(c.lat, c.lon, colorInt(c.country), i) }
-            Mode.CITY -> cities.mapIndexed { i, c -> OverlayPin(c.lat, c.lon, colorInt(c.country), i) }
-            Mode.PLACES -> places.mapIndexed { i, p -> OverlayPin(p.lat, p.lon, colorInt(p.country), i) }
-        }
-        android.util.Log.i("MapPins", "Explored.overlay mode=$mode pins=${overlayPins.size}")
-        overlay?.invalidate()
-        if (frame && overlayPins.isNotEmpty()) {
-            mapFrag?.fitTo(overlayPins.map { MapsMapFragment.Pin(it.lat, it.lon, "#000000") })
-        }
-    }
-
-    private fun colorInt(country: String?): Int =
-        runCatching { android.graphics.Color.parseColor(countryColor(country)) }
-            .getOrDefault(android.graphics.Color.parseColor(MapsMapFragment.COLOR_PLACE))
-
-    /** Map tapped at [ll] → find the nearest overlay pin within a finger-radius
-     *  (screen space) and open its detail sheet. */
-    private fun hitTest(ll: org.maplibre.android.geometry.LatLng) {
+    /** Rebuild the NATIVE pins for the current [mode] (one CircleLayer feature
+     *  per country/city/place, coloured by country, id = "MODE:index"). The map
+     *  renders them in-frame (no shake) and sizes them by zoom. Optionally frames
+     *  the camera to fit them (first load only). */
+    private fun recomputePins(frame: Boolean) {
         val frag = mapFrag ?: return
-        val tap = frag.screenFor(ll.latitude, ll.longitude) ?: return
-        val threshold = dp(22f)
-        var bestI = -1; var bestD = Float.MAX_VALUE
-        overlayPins.forEach { p ->
-            val s = frag.screenFor(p.lat, p.lon) ?: return@forEach
-            val d = kotlin.math.hypot((s.x - tap.x).toDouble(), (s.y - tap.y).toDouble()).toFloat()
-            if (d < threshold && d < bestD) { bestD = d; bestI = p.index }
+        if (!pinsVisible) { frag.clearPins(); return }
+        val pins = when (mode) {
+            Mode.COUNTRY -> countries.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), "", "C:$i") }
+            Mode.CITY -> cities.mapIndexed { i, c -> MapsMapFragment.Pin(c.lat, c.lon, countryColor(c.country), "", "T:$i") }
+            Mode.PLACES -> places.mapIndexed { i, p -> MapsMapFragment.Pin(p.lat, p.lon, countryColor(p.country), "", "P:$i") }
         }
-        if (bestI < 0) return
-        when (mode) {
-            Mode.COUNTRY -> countries.getOrNull(bestI)?.let(::showCountrySheet)
-            Mode.CITY -> cities.getOrNull(bestI)?.let(::showCitySheet)
-            Mode.PLACES -> places.getOrNull(bestI)?.let(::showPlaceSheet)
+        android.util.Log.i("MapPins", "Explored.pins mode=$mode pins=${pins.size}")
+        frag.setPins(pins)
+        if (frame && pins.isNotEmpty()) frag.fitTo(pins)
+    }
+
+    /** A native pin was tapped — its id is "MODE:index" → open the detail sheet. */
+    private fun onPinTapped(id: String) {
+        val i = id.substringAfter(':').toIntOrNull() ?: return
+        when (id.firstOrNull()) {
+            'C' -> countries.getOrNull(i)?.let(::showCountrySheet)
+            'T' -> cities.getOrNull(i)?.let(::showCitySheet)
+            'P' -> places.getOrNull(i)?.let(::showPlaceSheet)
         }
     }
 
-    /** Transparent, non-touchable overlay that paints one dot per [overlayPins]
-     *  entry by projecting its geo position to screen via the map. This is the
-     *  actual pin renderer — MapLibre's GeoJSON layer path does not render on
-     *  this stack, so we draw the dots ourselves. */
-    private inner class PinOverlay(ctx: android.content.Context) : View(ctx) {
-        private val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        private val stroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            style = android.graphics.Paint.Style.STROKE
-            color = 0xFFFFFFFF.toInt(); strokeWidth = dp(1.5f)
-        }
-        init { setWillNotDraw(false); isClickable = false; isFocusable = false }
-
-        override fun onDraw(canvas: android.graphics.Canvas) {
-            val frag = mapFrag ?: return
-            // Dynamic radius: tiny when zoomed out to the whole world (so 200+
-            // pins don't overflow into one blob), growing toward street zoom.
-            val r = pinRadiusPx(frag.currentZoom())
-            stroke.strokeWidth = (r * 0.25f).coerceAtLeast(dp(0.75f))
-            // Dots only — the name/title is shown in the tap popup (showCountry/
-            // City/PlaceSheet), never painted on the pin itself.
-            overlayPins.forEach { p ->
-                val s = frag.screenFor(p.lat, p.lon) ?: return@forEach
-                if (s.x < -r || s.y < -r || s.x > width + r || s.y > height + r) return@forEach
-                fill.color = p.colorInt
-                canvas.drawCircle(s.x, s.y, r, fill)
-                canvas.drawCircle(s.x, s.y, r, stroke)
-            }
-        }
-    }
-
-    /** Multi-toggle sheet for the choropleth fill layers (visited areas). */
+    /** ONE sheet for every layer: the PINS layer (off / Countries / Cities /
+     *  Places aggregation) alongside the 4 painted choropleth fills. */
     private fun showLayersSheet() {
         val ctx = context ?: return
         val dialog = BottomSheetDialog(ctx)
@@ -287,65 +220,46 @@ class MapsExploredFragment : Fragment() {
             setBackgroundColor(0xFF141A25.toInt())
             setPadding(dp(12), dp(12), dp(12), dp(18))
         }
-        col.addView(TextView(ctx).apply {
-            text = "Painted layers (visited)"; textSize = 16f
+        fun header(t: String) = col.addView(TextView(ctx).apply {
+            text = t; textSize = 16f
             setTextColor(MapsStopsFragment.COL_SECONDARY)
-            setPadding(dp(8), dp(4), dp(8), dp(10))
+            setPadding(dp(8), dp(10), dp(8), dp(8))
         })
-        MapsGeoLayers.Layer.values().forEach { layer ->
+        fun row(label: String, selected: Boolean, mark: String, onTap: () -> Unit) =
             col.addView(TextView(ctx).apply {
-                val on = layer in geoLayers
-                text = (if (on) "☑  " else "☐  ") + layer.label
-                textSize = 17f
-                setTextColor(if (on) MapsStopsFragment.COL_ACCENT else MapsStopsFragment.COL_PRIMARY)
-                setPadding(dp(12), dp(14), dp(12), dp(14))
+                text = "$mark  $label"; textSize = 17f
+                setTextColor(if (selected) MapsStopsFragment.COL_ACCENT else MapsStopsFragment.COL_PRIMARY)
+                setPadding(dp(12), dp(13), dp(12), dp(13))
                 isClickable = true
-                setOnClickListener {
-                    geoLayers = if (on) geoLayers - layer else geoLayers + layer
-                    geo?.setEnabled(geoLayers)
-                    dialog.dismiss(); showLayersSheet()   // reopen to reflect new state
-                }
+                setOnClickListener { onTap(); dialog.dismiss(); showLayersSheet() }
             })
-        }
-        dialog.setContentView(col)
-        dialog.show()
-    }
 
-    private fun showModeMenu() {
-        val ctx = context ?: return
-        val dialog = BottomSheetDialog(ctx)
-        val d = resources.displayMetrics.density
-        fun dp(v: Int) = (v * d).toInt()
-        val col = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF141A25.toInt())
-            setPadding(dp(12), dp(12), dp(12), dp(18))
-        }
-        col.addView(TextView(ctx).apply {
-            text = "View mode"; textSize = 16f
-            setTextColor(MapsStopsFragment.COL_SECONDARY)
-            setPadding(dp(8), dp(4), dp(8), dp(10))
-        })
-        listOf(
+        // ── PINS layer (single-select aggregation, or off) ──
+        header("Pins")
+        val pinChoices = listOf(
+            null to "Off",
             Mode.COUNTRY to "🌐  Countries  (${countries.size})",
             Mode.CITY to "🏙️  Cities  (${cities.size})",
             Mode.PLACES to "📍  Places  (${places.size})",
-        ).forEach { (m, label) ->
-            col.addView(TextView(ctx).apply {
-                text = (if (m == mode) "✓  " else "     ") + label
-                textSize = 17f
-                setTextColor(if (m == mode) MapsStopsFragment.COL_ACCENT else MapsStopsFragment.COL_PRIMARY)
-                setPadding(dp(12), dp(14), dp(12), dp(14))
-                isClickable = true
-                setOnClickListener {
-                    dialog.dismiss()
-                    // Switching COUNTRY→CITY→PLACES must NOT jump the camera —
-                    // keep the user's current pan/zoom (frame = false).
-                    if (m != mode) { mode = m; updateChip(); recomputeOverlayPins(frame = false) }
-                }
-            })
+        )
+        pinChoices.forEach { (m, label) ->
+            val sel = if (m == null) !pinsVisible else (pinsVisible && mode == m)
+            row(label, sel, if (sel) "◉" else "○") {
+                if (m == null) { pinsVisible = false } else { pinsVisible = true; mode = m }
+                updateChip(); recomputePins(frame = false)
+            }
         }
-        dialog.setContentView(col)
+
+        // ── PAINTED fills (multi-select) ──
+        header("Painted layers (visited)")
+        MapsGeoLayers.Layer.values().forEach { layer ->
+            val on = layer in geoLayers
+            row(layer.label, on, if (on) "☑" else "☐") {
+                geoLayers = if (on) geoLayers - layer else geoLayers + layer
+                geo?.setEnabled(geoLayers)
+            }
+        }
+        dialog.setContentView(ScrollView(ctx).apply { addView(col) })
         dialog.show()
     }
 
@@ -423,31 +337,21 @@ class MapsExploredFragment : Fragment() {
 
     private fun dp(v: Float): Float = v * resources.displayMetrics.density
 
-    /** Screen radius (px) for a pin at map [zoom]. Small when zoomed out (world
-     *  ≈ zoom 1-2 → ~3dp so 200+ pins stay separate), larger zoomed in
-     *  (country/street → ~9dp). Linear ramp between, clamped both ends. */
-    private fun pinRadiusPx(zoom: Double): Float = dp(pinRadiusDp(zoom))
-
-    /** Test hooks (the overlay is a plain View, so unlike the GL map it can be
-     *  drawn to a Bitmap even on a headless emulator). */
-    fun debugOverlayPinCount(): Int = overlayPins.size
+    // ── test hooks ──────────────────────────────────────────────────────
+    /** How many native pins the current mode built (Places must be > Cities). */
+    fun debugPinModelCount(): Int = when (mode) {
+        Mode.COUNTRY -> countries.size; Mode.CITY -> cities.size; Mode.PLACES -> places.size
+    }
+    /** Feature count the LIVE MapLibre pin SOURCE reports — proves the native
+     *  CircleLayer actually renders the typed FeatureCollection on this stack. */
+    fun debugPinSourceCount(): Int = mapFrag?.debugPinFeatureCount() ?: -1
+    fun debugSetMode(m: Mode) { mode = m; updateChip(); recomputePins(frame = false) }
     /** Visited-only feature count the manager built for [layer] (needs assets). */
     fun debugGeoVisitedCount(layer: MapsGeoLayers.Layer): Int = geo?.visitedCount(layer) ?: -1
     /** Feature count the LIVE MapLibre fill SOURCE reports — proves the typed
-     *  FeatureCollection actually registered on this stack (the make-or-break
-     *  for Approach A: the earlier string-geojson pin path reported 0 here). */
+     *  FeatureCollection registered on this stack (make-or-break for Approach A). */
     fun debugFillSourceCount(layer: MapsGeoLayers.Layer): Int =
         mapFrag?.debugFillFeatureCount("geo-src-${layer.id}") ?: -1
-    fun debugEnableGeoLayer(layer: MapsGeoLayers.Layer) {
-        geoLayers = geoLayers + layer; geo?.setEnabled(geoLayers)
-    }
-    fun debugDrawOverlay(): android.graphics.Bitmap? {
-        val o = overlay ?: return null
-        if (o.width == 0 || o.height == 0) return null
-        val b = android.graphics.Bitmap.createBitmap(o.width, o.height, android.graphics.Bitmap.Config.ARGB_8888)
-        o.draw(android.graphics.Canvas(b))
-        return b
-    }
 
     // ── data model ─────────────────────────────────────────────────────
     data class CityVisit(val dayMs: Long, val placeName: String?)
@@ -521,20 +425,6 @@ class MapsExploredFragment : Fragment() {
             val rgb = android.graphics.Color.HSVToColor(floatArrayOf(hue.toFloat(), 0.78f, 0.95f))
             return "#%06X".format(rgb and 0xFFFFFF)
         }
-
-        /** Pin radius in dp as a function of map [zoom] — pure/tested. Ramps
-         *  linearly from [MIN_PIN_DP] at [ZOOM_MIN] (world) to [MAX_PIN_DP] at
-         *  [ZOOM_MAX] (country/street), clamped outside that band. Keeps 200+
-         *  pins from overflowing each other when fully zoomed out. */
-        fun pinRadiusDp(zoom: Double): Float {
-            val t = ((zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)).coerceIn(0.0, 1.0)
-            return (MIN_PIN_DP + t * (MAX_PIN_DP - MIN_PIN_DP)).toFloat()
-        }
-
-        private const val ZOOM_MIN = 2.0   // whole world
-        private const val ZOOM_MAX = 6.0   // one country in view
-        private const val MIN_PIN_DP = 3.0
-        private const val MAX_PIN_DP = 9.0
 
         fun newInstance() = MapsExploredFragment()
     }

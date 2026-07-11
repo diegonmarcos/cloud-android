@@ -1,6 +1,5 @@
 package com.diegonmarcos.cloudnav
 
-import android.graphics.Bitmap
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
@@ -11,29 +10,29 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.diegonmarcos.cloudnav.maps.MapsDb
 import com.diegonmarcos.cloudnav.maps.MapsDemo
 import com.diegonmarcos.cloudnav.maps.MapsExploredFragment
-import java.io.File
-import java.io.FileOutputStream
+import com.diegonmarcos.cloudnav.maps.MapsGeoLayers
 import org.hamcrest.Matchers.allOf
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * THE Explored regression test. Explored draws its city pins with a custom
- * Canvas OVERLAY (a plain Android View), not MapLibre's GeoJSON/CircleLayer
- * path — which was proven never to render on this stack (source + layer
- * registered, yet 0 features tile). A plain View can be drawn to a Bitmap even
- * on the headless emulator (map.snapshot / queryRenderedFeatures could not),
- * so this test actually observes the pins:
+ * THE Explored regression test. Explored now renders pins as a NATIVE MapLibre
+ * CircleLayer (typed FeatureCollection — proven to register on this stack once
+ * the string-geojson bug was fixed), and paints visited areas with FillLayers.
+ * Both are GL layers, so this test observes them via the live SOURCE feature
+ * counts (querySourceFeatures), the exact signal that string-geojson pins failed
+ * (0 features):
  *
- *   seed 228-city demo → launch → Timeline → Explored → poll until the overlay
- *   holds one pin per city → draw the overlay to a Bitmap → assert it contains
- *   many coloured (non-transparent) pixels → save it as CI evidence.
+ *   seed 228-city demo → Timeline → Explored → poll until:
+ *     • the native pin SOURCE reports > 0 features (pins render, no overlay), and
+ *     • the Countries fill SOURCE reports > 0 features (choropleth renders), and
+ *     • switching to PLACES yields far MORE pins than CITY (684 > 228).
  */
 @RunWith(AndroidJUnit4::class)
 class ExploredRenderTest {
 
-    @Test fun explored_overlay_draws_a_pin_per_city() {
+    @Test fun explored_renders_native_pins_and_visited_fills() {
         val inst = InstrumentationRegistry.getInstrumentation()
         val ctx = inst.targetContext
 
@@ -42,7 +41,6 @@ class ExploredRenderTest {
         assertTrue("demo seed must insert rows", MapsDemo.seed(ctx) > 0)
         val expectedCities = MapsDemo.cityTemplates.size
 
-        // Real-device condition: a last GPS fix far from every demo city.
         com.diegonmarcos.cloudnav.maps.MapsTrackerPrefs(ctx).apply {
             lastFixLat = 52.5200; lastFixLon = 13.4050; lastFixTs = System.currentTimeMillis()
         }
@@ -63,70 +61,45 @@ class ExploredRenderTest {
                     found
                 }
 
-                var pinCount = -1
-                var coloured = -1
-                val deadline = System.currentTimeMillis() + 90_000
+                // ── native pins + Countries fill both register on the GL stack ──
+                var pinSource = -1
+                var fillSource = -1
+                var deadline = System.currentTimeMillis() + 90_000
                 while (System.currentTimeMillis() < deadline) {
                     scenario.onActivity {
                         explored()?.let { f ->
-                            pinCount = f.debugOverlayPinCount()
-                            f.debugDrawOverlay()?.let { bmp -> coloured = countColoured(bmp) }
+                            pinSource = f.debugPinSourceCount()
+                            fillSource = f.debugFillSourceCount(MapsGeoLayers.Layer.COUNTRIES)
                         }
                     }
-                    android.util.Log.i("MapPins", "overlayProbe pins=$pinCount coloured=$coloured (want pins>=$expectedCities, coloured>0)")
-                    if (pinCount >= expectedCities && coloured > 0) break
+                    android.util.Log.i("MapPins", "probe pinSource=$pinSource fillSource=$fillSource")
+                    if (pinSource > 0 && fillSource > 0) break
                     Thread.sleep(1000)
                 }
+                assertTrue("native pin SOURCE must report >0 features (got $pinSource)", pinSource > 0)
+                assertTrue("Countries fill SOURCE must report >0 features (got $fillSource)", fillSource > 0)
 
-                // Save the overlay bitmap as evidence (survives uninstall).
-                runCatching {
-                    var bmp: Bitmap? = null
-                    scenario.onActivity { bmp = explored()?.debugDrawOverlay() }
-                    bmp?.let {
-                        val dir = File(ctx.getExternalFilesDir(null), "test-screens").apply { mkdirs() }
-                        val png = File(dir, "explored.png")
-                        FileOutputStream(png).use { os -> it.compress(Bitmap.CompressFormat.PNG, 90, os) }
-                        shell(inst, "cp ${png.absolutePath} /data/local/tmp/explored.png")
-                        shell(inst, "chmod 644 /data/local/tmp/explored.png")
+                // ── PLACES mode must render FAR more pins than CITY (684 > 228) ──
+                var cityCount = -1
+                var placeCount = -1
+                var placePinSource = -1
+                scenario.onActivity {
+                    explored()?.let { f ->
+                        f.debugSetMode(MapsExploredFragment.Mode.CITY); cityCount = f.debugPinModelCount()
+                        f.debugSetMode(MapsExploredFragment.Mode.PLACES); placeCount = f.debugPinModelCount()
                     }
                 }
-
-                assertTrue(
-                    "overlay must hold one pin per demo city (want >=$expectedCities, got $pinCount)",
-                    pinCount >= expectedCities,
-                )
-                assertTrue(
-                    "overlay must actually PAINT pins — many coloured pixels expected (got $coloured)",
-                    coloured > 0,
-                )
-
-                // ── Approach A proof: the choropleth FillLayer actually
-                // registers its TYPED FeatureCollection on this stack. The
-                // earlier string-geojson pin path reported 0 features here; a
-                // positive count means fills work (Countries is enabled by
-                // default → visited countries painted light gray).
-                var visitedBuilt = -1
-                var fillSourceFeatures = -1
-                val fillDeadline = System.currentTimeMillis() + 30_000
-                while (System.currentTimeMillis() < fillDeadline) {
-                    scenario.onActivity {
-                        explored()?.let { f ->
-                            visitedBuilt = f.debugGeoVisitedCount(com.diegonmarcos.cloudnav.maps.MapsGeoLayers.Layer.COUNTRIES)
-                            fillSourceFeatures = f.debugFillSourceCount(com.diegonmarcos.cloudnav.maps.MapsGeoLayers.Layer.COUNTRIES)
-                        }
-                    }
-                    android.util.Log.i("MapPins", "fillProbe visitedBuilt=$visitedBuilt sourceFeatures=$fillSourceFeatures")
-                    if (visitedBuilt > 0 && fillSourceFeatures > 0) break
+                deadline = System.currentTimeMillis() + 30_000
+                while (System.currentTimeMillis() < deadline) {
+                    scenario.onActivity { explored()?.let { placePinSource = it.debugPinSourceCount() } }
+                    android.util.Log.i("MapPins", "placesProbe city=$cityCount places=$placeCount pinSource=$placePinSource")
+                    if (placePinSource > cityCount) break
                     Thread.sleep(1000)
                 }
-                assertTrue("manager must build >0 visited country fills (got $visitedBuilt)", visitedBuilt > 0)
-                assertTrue(
-                    "MapLibre fill SOURCE must report >0 features — typed geojson FillLayer works on this stack (got $fillSourceFeatures)",
-                    fillSourceFeatures > 0,
-                )
+                assertTrue("PLACES ($placeCount) must be many more than CITY ($cityCount)", placeCount > cityCount * 2)
+                assertTrue("native pin source in PLACES must exceed city count (got $placePinSource)", placePinSource > cityCount)
 
-                // Timeline map defaults to vector-light: the child map fragment
-                // is created with style "light" (→ vector_light via prefs).
+                // Timeline map defaults to vector-light (style "light").
                 var mapStyle: String? = null
                 scenario.onActivity {
                     mapStyle = explored()?.childFragmentManager?.fragments
@@ -139,27 +112,5 @@ class ExploredRenderTest {
             MapsDb.get(ctx).clearAll()
             MapsDemo.resetSeedFlag(ctx)
         }
-    }
-
-    /** Count non-transparent pixels — the overlay is transparent except where
-     *  it paints dots, so a positive count proves pins were drawn. */
-    private fun countColoured(bmp: Bitmap): Int {
-        var n = 0
-        val w = bmp.width; val h = bmp.height
-        var y = 0
-        while (y < h) {
-            var x = 0
-            while (x < w) {
-                if (bmp.getPixel(x, y) ushr 24 != 0) n++   // alpha > 0
-                x += 3
-            }
-            y += 3
-        }
-        return n
-    }
-
-    private fun shell(inst: android.app.Instrumentation, cmd: String) {
-        val pfd = inst.uiAutomation.executeShellCommand(cmd)
-        android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
     }
 }

@@ -6,7 +6,8 @@
  *   libs/maps/src/main/assets/geo/*.geojson
  * from AUTHORITATIVE, reproducible sources — never hand-drawn:
  *
- *   countries.geojson   Natural Earth admin_0 (110m), simplified. props: NAME, ISO2, CONTINENT
+ *   countries.geojson   Natural Earth admin_0 (10m — real coastlines), lightly
+ *                       simplified. props: NAME, ISO2, CONTINENT
  *   continents.geojson  countries dissolved by CONTINENT.        props: CONTINENT
  *   regions.geojson     Political-Cultural Regions — countries dissolved by the
  *                       civilization SUBREGION taxonomy extracted from the front
@@ -51,7 +52,10 @@ async function cache(url, name) {
 }
 
 // ── sources ──────────────────────────────────────────────────────────────
-const admin0 = await cache(`${NE}/ne_110m_admin_0_countries.geojson`, 'admin0.geojson');
+// 10m = the DETAILED Natural Earth scale — real country coastlines, not the
+// blocky 110m outline. Simplified only lightly (retain enough vertices to keep
+// shapes recognisably exact) with keep-shapes so small islands survive.
+const admin0 = await cache(`${NE}/ne_10m_admin_0_countries.geojson`, 'admin0_10m.geojson');
 const civ = JSON.parse(readFileSync(join(DIR, 'civilizations.json'), 'utf8'));
 const travel = JSON.parse(readFileSync(FRONT_TRAVEL, 'utf8'));
 
@@ -74,21 +78,21 @@ writeFileSync(join(OUT, 'region-members.json'), JSON.stringify(members));
 
 // ── 1. countries.geojson ───────────────────────────────────────────────────
 const countries = join(OUT, 'countries.geojson');
-ms([admin0, '-simplify', '6%', 'keep-shapes',
+ms([admin0, '-simplify', '18%', 'visvalingam', 'weighted', 'keep-shapes',
   '-each', 'ISO2 = (ISO_A2 == "-99" ? ISO_A2_EH : ISO_A2)',
   '-filter', 'CONTINENT != "Antarctica" && CONTINENT != "Seven seas (open ocean)"',
   '-filter-fields', 'NAME,ISO2,CONTINENT',
-  '-o', 'format=geojson', 'precision=0.01', countries]);
+  '-o', 'format=geojson', 'precision=0.001', countries]);
 
 // ── 2. continents.geojson ──────────────────────────────────────────────────
-ms([countries, '-dissolve', 'CONTINENT', '-o', 'precision=0.01', join(OUT, 'continents.geojson')]);
+ms([countries, '-dissolve', 'CONTINENT', '-o', 'precision=0.001', join(OUT, 'continents.geojson')]);
 
 // ── 3. regions.geojson (Political-Cultural Regions) ────────────────────────
 ms([countries,
   '-join', isoCsv, 'keys=ISO2,ISO2', 'string-fields=ISO2', 'fields=region,civ,subregion',
   '-filter', 'subregion != null',
   '-dissolve', 'subregion', 'copy-fields=region,civ',
-  '-o', 'format=geojson', 'precision=0.01', join(OUT, 'regions.geojson')]);
+  '-o', 'format=geojson', 'precision=0.001', join(OUT, 'regions.geojson')]);
 
 // ── 4. nomad.geojson — convex hull per nomadRegion (traveller's own points) ─
 function hull(points) {
