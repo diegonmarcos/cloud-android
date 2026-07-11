@@ -99,6 +99,16 @@ class ExploredRenderTest {
                     "overlay must actually PAINT pins — many coloured pixels expected (got $coloured)",
                     coloured > 0,
                 )
+
+                // Timeline map defaults to vector-light: the child map fragment
+                // is created with style "light" (→ vector_light via prefs).
+                var mapStyle: String? = null
+                scenario.onActivity {
+                    mapStyle = explored()?.childFragmentManager?.fragments
+                        ?.filterIsInstance<com.diegonmarcos.cloudnav.maps.MapsMapFragment>()
+                        ?.firstOrNull()?.arguments?.getString("style")
+                }
+                assertTrue("Timeline map must default to light (got $mapStyle)", mapStyle == "light")
             }
         } finally {
             MapsDb.get(ctx).clearAll()

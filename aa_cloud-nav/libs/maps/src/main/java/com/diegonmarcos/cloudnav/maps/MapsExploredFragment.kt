@@ -75,7 +75,8 @@ class MapsExploredFragment : Fragment() {
         // user's last GPS fix (that put pins off-screen on other continents).
         // textureMode: composite the map + our pin overlay in one frame so pins
         // stay glued during pan/zoom (SurfaceView would let them trail/shake).
-        val frag = MapsMapFragment.newInstance(fab = true, worldView = true, textureMode = true)
+        // style "light" → vector_light (Timeline's default basemap).
+        val frag = MapsMapFragment.newInstance(fab = true, worldView = true, textureMode = true, style = "light")
         mapFrag = frag
         childFragmentManager.beginTransaction().replace(mapHost.id, frag).commit()
 
@@ -93,11 +94,14 @@ class MapsExploredFragment : Fragment() {
         }
         recomputeOverlayPins(frame = false)
 
-        // Summary chip (top).
+        // Summary "island" chip (top-center) — TAP it to open the full
+        // scrollable list of the current mode's countries / cities / places.
         val card = MaterialCardView(ctx).apply {
             radius = dp(22f); cardElevation = dp(8f); useCompatPadding = true
             setCardBackgroundColor(0xF2141A25.toInt())
             strokeColor = MapsStopsFragment.COL_ACCENT; strokeWidth = dp(1f).toInt()
+            isClickable = true; isFocusable = true
+            setOnClickListener { showListSheet() }
         }
         chip = TextView(ctx).apply {
             textSize = 13f
@@ -111,24 +115,15 @@ class MapsExploredFragment : Fragment() {
         })
         updateChip()
 
-        // Mode-switch FAB (bottom-START — the map's own locate/style FABs sit
-        // bottom-END, so no overlap).
+        // Mode-switch FAB — small circle, TOP-RIGHT (mirrors the island chip's
+        // top placement; the map's own locate/style FABs sit bottom-END).
         root.addView(FloatingActionButton(ctx).apply {
             setImageResource(android.R.drawable.ic_menu_mapmode)
             contentDescription = "View mode"
+            size = FloatingActionButton.SIZE_MINI
             setOnClickListener { showModeMenu() }
-            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.START)
-                .apply { val m = dp(16f).toInt(); setMargins(m, m, m, m) }
-        })
-        // List FAB (bottom-CENTER) — opens the full scrollable list of the
-        // current mode's countries / cities / places; tap a row → fly there +
-        // open its detail.
-        root.addView(FloatingActionButton(ctx).apply {
-            setImageResource(android.R.drawable.ic_menu_agenda)
-            contentDescription = "Browse list"
-            setOnClickListener { showListSheet() }
-            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-                .apply { val m = dp(16f).toInt(); setMargins(m, m, m, m) }
+            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END)
+                .apply { val m = dp(12f).toInt(); setMargins(m, m, m, m) }
         })
         return root
     }
