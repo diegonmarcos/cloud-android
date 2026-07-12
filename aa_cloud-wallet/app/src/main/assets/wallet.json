@@ -1,4 +1,212 @@
 {
+  "vcards": [
+    {
+      "id": "vcard_profile",
+      "kind": "vcard",
+      "brand": "Virtual Business Card",
+      "tagline": "Tap to expand — QR vCard",
+      "accent": 4286331629
+    },
+    {
+      "id": "vcard_imported_1",
+      "kind": "vcard_imported",
+      "brand": "Imported vCard",
+      "tagline": "Tap to open the card details",
+      "accent": 4284704497
+    }
+  ],
+  "cards": [
+    {
+      "id": "card_amex_gold",
+      "kind": "credit",
+      "brand": "American Express Gold",
+      "tagline": "Charge · since 2019",
+      "accent": 4292128567,
+      "number": "•••• ••••• 21006"
+    },
+    {
+      "id": "card_n26_debit",
+      "kind": "debit",
+      "brand": "N26 Debit",
+      "tagline": "Visa · IBAN ending 4582",
+      "accent": 4279310375,
+      "number": "•••• •••• •••• 4582"
+    },
+    {
+      "id": "card_revolut_debit",
+      "kind": "debit",
+      "brand": "Revolut",
+      "tagline": "Personal · Visa Debit",
+      "accent": 4279769370,
+      "number": "•••• •••• •••• 9241"
+    },
+    {
+      "id": "card_revolut_credit",
+      "kind": "credit",
+      "brand": "Revolut",
+      "tagline": "Credit · Visa",
+      "accent": 4279900718,
+      "number": "•••• •••• •••• 6108"
+    },
+    {
+      "id": "card_revolut_virtual",
+      "kind": "virtual_debit",
+      "brand": "Revolut Virtual",
+      "tagline": "Virtual Debit · Disposable",
+      "accent": 4279045402,
+      "number": "•••• •••• •••• 3379"
+    },
+    {
+      "id": "card_santander_debit",
+      "kind": "debit",
+      "brand": "Santander",
+      "tagline": "Debit · Visa",
+      "accent": 4291559424,
+      "number": "•••• •••• •••• 5547"
+    },
+    {
+      "id": "card_santander_credit",
+      "kind": "credit",
+      "brand": "Santander",
+      "tagline": "Credit · Mastercard",
+      "accent": 4289331200,
+      "number": "•••• •••• •••• 2291"
+    },
+    {
+      "id": "card_btg_debit",
+      "kind": "debit",
+      "brand": "BTG Pactual",
+      "tagline": "Debit · Mastercard",
+      "accent": 4278211484,
+      "number": "•••• •••• •••• 8837"
+    },
+    {
+      "id": "card_btg_credit",
+      "kind": "credit",
+      "brand": "BTG Pactual",
+      "tagline": "Credit · Mastercard Gold",
+      "accent": 4278201216,
+      "number": "•••• •••• •••• 4410"
+    }
+  ],
+  "passes": [
+    {
+      "id": "pass_bvg",
+      "kind": "transit",
+      "brand": "BVG Berlin",
+      "tagline": "AB · Monatskarte · expires 2026-07-31",
+      "accent": 4293571336,
+      "barcode": "880088_BVG_DM"
+    },
+    {
+      "id": "pass_fitx",
+      "kind": "gym",
+      "brand": "FitX",
+      "tagline": "Berlin Mitte · since 2024",
+      "accent": 4279657780,
+      "number": "M-77129"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "ticket_lh192",
+      "kind": "flight",
+      "brand": "Lufthansa",
+      "tagline": "LH 192 · BER → MUC",
+      "accent": 4280172719,
+      "barcode": "M1MARCOS/DIEGO       EXXX23 BERMUCLH 0192",
+      "number": "Seat 12A · Gate B14",
+      "eventLocation": "BER → MUC",
+      "daysFromNow": 2,
+      "eventHour": 14,
+      "eventMinute": 35
+    },
+    {
+      "id": "ticket_ice1024",
+      "kind": "train",
+      "brand": "Deutsche Bahn ICE",
+      "tagline": "ICE 1024 · Berlin Hbf → München Hbf",
+      "accent": 4292943146,
+      "number": "Wagen 23 · Sitz 71",
+      "eventLocation": "Berlin Hbf",
+      "daysFromNow": 5,
+      "eventHour": 9,
+      "eventMinute": 12
+    },
+    {
+      "id": "ticket_berghain",
+      "kind": "music",
+      "brand": "Berghain · Klubnacht",
+      "tagline": "Friday Klubnacht",
+      "accent": 4280232247,
+      "number": "Doors 23:55",
+      "eventLocation": "Am Wriezener Bahnhof, Berlin",
+      "daysFromNow": 7,
+      "eventHour": 23,
+      "eventMinute": 55
+    },
+    {
+      "id": "ticket_berliner_ensemble",
+      "kind": "theater",
+      "brand": "Berliner Ensemble",
+      "tagline": "Die Dreigroschenoper",
+      "accent": 4287299584,
+      "number": "Reihe 7 · Sitz 14",
+      "eventLocation": "Bertolt-Brecht-Platz 1, Berlin",
+      "daysFromNow": 10,
+      "eventHour": 19,
+      "eventMinute": 30
+    },
+    {
+      "id": "ticket_lh187",
+      "kind": "flight",
+      "brand": "Lufthansa",
+      "tagline": "LH 187 · MUC → BER",
+      "accent": 4280172719,
+      "barcode": "M1MARCOS/DIEGO       OPQR45 MUCBERLH 0187",
+      "number": "Seat 8C · Gate H22",
+      "eventLocation": "MUC → BER",
+      "daysFromNow": -3,
+      "eventHour": 18,
+      "eventMinute": 50
+    },
+    {
+      "id": "ticket_funkhaus",
+      "kind": "music",
+      "brand": "Funkhaus Berlin",
+      "tagline": "Nils Frahm — Solo Piano",
+      "accent": 4286456526,
+      "number": "GA · Doors 20:00",
+      "eventLocation": "Nalepastraße 18, Berlin",
+      "daysFromNow": -14,
+      "eventHour": 20,
+      "eventMinute": 0
+    },
+    {
+      "id": "ticket_ice925",
+      "kind": "train",
+      "brand": "Deutsche Bahn ICE",
+      "tagline": "ICE 925 · Köln → Berlin",
+      "accent": 4292943146,
+      "number": "Wagen 7 · Sitz 33",
+      "eventLocation": "Köln Hbf",
+      "daysFromNow": -28,
+      "eventHour": 7,
+      "eventMinute": 47
+    },
+    {
+      "id": "ticket_schaubuehne",
+      "kind": "theater",
+      "brand": "Schaubühne",
+      "tagline": "Hamlet — Thomas Ostermeier",
+      "accent": 4284157711,
+      "number": "Reihe 4 · Sitz 9",
+      "eventLocation": "Kurfürstendamm 153, Berlin",
+      "daysFromNow": -42,
+      "eventHour": 19,
+      "eventMinute": 30
+    }
+  ],
   "ids": [
     {
       "id": "id_br_passport_1",
@@ -8,10 +216,7 @@
       "brand": "REPÚBLICA FEDERATIVA DO BRASIL",
       "tagline": "MARCOS N. COELHO, DIEGO · Nasc. 01 JAN 1990 · Vál. 15 MAR 2033",
       "number": "FX000001",
-      "accent": 4279974507,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4279974507
     },
     {
       "id": "id_br_passport_2",
@@ -21,10 +226,7 @@
       "brand": "REPÚBLICA FEDERATIVA DO BRASIL",
       "tagline": "MARCOS N. COELHO, DIEGO · Nasc. 01 JAN 1990 · Vál. 10 JUN 2028",
       "number": "FX999002",
-      "accent": 4279974507,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4279974507
     },
     {
       "id": "id_es_passport_1",
@@ -34,10 +236,7 @@
       "brand": "REINO DE ESPAÑA",
       "tagline": "MARCOS NEPOMUCENO COELHO, DIEGO · Nasc. 01/01/1990 · Vál. 20/10/2031",
       "number": "XYZ123456",
-      "accent": 4285213226,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4285213226
     },
     {
       "id": "id_es_dni",
@@ -47,10 +246,7 @@
       "brand": "DOCUMENTO NACIONAL DE IDENTIDAD",
       "tagline": "MARCOS NEPOMUCENO COELHO, DIEGO · Vál. 15/03/2025",
       "number": "12345678Z",
-      "accent": 4288224027,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4288224027
     },
     {
       "id": "id_es_nie",
@@ -60,10 +256,7 @@
       "brand": "NÚMERO DE IDENTIDAD DE EXTRANJERO",
       "tagline": "MARCOS NEPOMUCENO COELHO, DIEGO · Vál. 30/01/2027",
       "number": "X1234567B",
-      "accent": 4278607686,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4278607686
     },
     {
       "id": "id_es_tsi",
@@ -73,10 +266,7 @@
       "brand": "TARJETA SANITARIA INDIVIDUAL",
       "tagline": "NUSS: 280000000000 · Comunidad de Madrid · SNS",
       "number": "BAES00001280000",
-      "accent": 4280172719,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4280172719
     }
   ],
   "docs": [
@@ -88,10 +278,7 @@
       "brand": "CERTIFICADO DE NACIMIENTO",
       "tagline": "Registro Civil · Madrid · 01 de enero de 1990",
       "number": "0001/1990",
-      "accent": 4280171103,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4280171103
     },
     {
       "id": "doc_br_birth",
@@ -101,10 +288,7 @@
       "brand": "CERTIDÃO DE NASCIMENTO",
       "tagline": "1º Cartório de Registro Civil · Belo Horizonte, MG · 01/01/1990",
       "number": "000000 01 00 1990 0 000000 000 0000000 00",
-      "accent": 4278858081,
-      "barcode": "",
-      "eventAt": 0,
-      "eventLocation": ""
+      "accent": 4278858081
     }
   ]
 }

@@ -3,6 +3,7 @@ package com.diegonmarcos.superapp.wallet
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 /**
  * SharedPreferences-backed wallet — list of cards (loyalty / membership /
@@ -19,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 8
+    private const val SEED_VERSION = 9
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -82,16 +83,14 @@ object WalletStore {
         }
     }
 
-    /** Newest-first list of cards. On first read returns the mock seed
-     *  AND writes it to prefs so subsequent calls round-trip through
-     *  the same JSON. IDs and Docs are loaded from assets/wallet.json
-     *  and appended to the regular card/ticket seed. */
+    /** All cards. On first read (or version bump) loads entirely from
+     *  assets/wallet.json — the single source of truth for all mock data. */
     fun all(ctx: Context): List<Card> {
         val sp = ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val raw            = sp.getString(KEY, null)
         val storedVersion  = sp.getInt(SEED_VERSION_KEY, 0)
         if (raw == null || storedVersion != SEED_VERSION) {
-            val seed = mockSeed() + loadWalletJson(ctx)
+            val seed = loadWalletJson(ctx)
             saveAll(ctx, seed)
             sp.edit().putInt(SEED_VERSION_KEY, SEED_VERSION).apply()
             return seed
@@ -109,11 +108,14 @@ object WalletStore {
         parseWalletJsonText(text)
     }.getOrDefault(emptyList())
 
-    /** Parse a wallet JSON string. Handles ids / docs / passes / cards sections.
-     *  Each section may omit the "category" field — it is inferred from the key. */
+    /** Parse a wallet JSON string. Sections:
+     *  vcards/cards/passes/tickets → no forced category (category="" unless set);
+     *  ids/docs → category forced from section name.
+     *  tickets support daysFromNow+eventHour+eventMinute for relative eventAt. */
     private fun parseWalletJsonText(text: String): List<Card> {
         val root   = JSONObject(text)
         val result = mutableListOf<Card>()
+        // sections with a forced default category
         mapOf("ids" to "id", "docs" to "doc", "passes" to "pass").forEach { (section, defaultCat) ->
             val arr = root.optJSONArray(section) ?: return@forEach
             for (i in 0 until arr.length()) {
@@ -122,10 +124,28 @@ object WalletStore {
                 result.add(Card.fromJson(obj))
             }
         }
-        // "cards" section: raw cards with no forced category
-        val cardsArr = root.optJSONArray("cards")
-        if (cardsArr != null) {
-            for (i in 0 until cardsArr.length()) result.add(Card.fromJson(cardsArr.getJSONObject(i)))
+        // sections with no forced category: vcards, cards
+        for (section in listOf("vcards", "cards")) {
+            val arr = root.optJSONArray(section) ?: continue
+            for (i in 0 until arr.length()) result.add(Card.fromJson(arr.getJSONObject(i)))
+        }
+        // tickets: compute eventAt from daysFromNow/eventHour/eventMinute if present
+        val ticketsArr = root.optJSONArray("tickets")
+        if (ticketsArr != null) {
+            for (i in 0 until ticketsArr.length()) {
+                val obj = ticketsArr.getJSONObject(i)
+                if (obj.has("daysFromNow") && !obj.has("eventAt")) {
+                    val cal = java.util.Calendar.getInstance().apply {
+                        add(java.util.Calendar.DAY_OF_YEAR, obj.getInt("daysFromNow"))
+                        set(java.util.Calendar.HOUR_OF_DAY, obj.optInt("eventHour", 20))
+                        set(java.util.Calendar.MINUTE, obj.optInt("eventMinute", 0))
+                        set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    obj.put("eventAt", cal.timeInMillis)
+                }
+                result.add(Card.fromJson(obj))
+            }
         }
         return result
     }
