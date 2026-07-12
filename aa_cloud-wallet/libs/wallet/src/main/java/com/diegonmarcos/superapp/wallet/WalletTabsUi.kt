@@ -241,7 +241,7 @@ private fun CalendarRow(ticket: WalletStore.Card, onClick: () -> Unit) {
             Text(ticket.tagline, color = Color(0xCCFFFFFF), fontSize = 12.sp)
             if (ticket.eventLocation.isNotBlank()) Text(ticket.eventLocation, color = Color(0x88FFFFFF), fontSize = 11.sp)
         }
-        Box(modifier = Modifier.size(width = 6.dp, height = 36.dp).clip(RoundedCornerShape(3.dp)).background(accent))
+        Box(modifier = Modifier.width(6.dp).height(36.dp).clip(RoundedCornerShape(3.dp)).background(accent))
     }
 }
 
