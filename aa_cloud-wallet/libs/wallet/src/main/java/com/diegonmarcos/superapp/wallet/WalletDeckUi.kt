@@ -190,8 +190,10 @@ internal fun WalletIdsTab(
     onCardTap: (WalletStore.Card) -> Unit,
 ) {
     var country by remember { mutableStateOf("") }
+    // vcards (kind="vcard"/"vcard_imported") have no country — always show them regardless of filter
     val filtered = remember(allIds, country) {
-        if (country.isEmpty()) allIds else allIds.filter { it.country == country }
+        if (country.isEmpty()) allIds
+        else allIds.filter { it.country == country || it.kind == "vcard" || it.kind == "vcard_imported" }
     }
     Column(modifier = Modifier.fillMaxSize()) {
         // Minimal inline country toggle

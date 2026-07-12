@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 9
+    private const val SEED_VERSION = 10
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck

@@ -209,6 +209,16 @@
   ],
   "ids": [
     {
+      "id": "id_br_cin",
+      "kind": "id_cin_br",
+      "category": "id",
+      "country": "br",
+      "brand": "REPÚBLICA FEDERATIVA DO BRASIL",
+      "tagline": "MARCOS NEPOMUCENO COELHO, DIEGO · Nasc. 01/01/1990 · Vál. INDEFINIDA",
+      "number": "123.456.789-09",
+      "accent": 4278858081
+    },
+    {
       "id": "id_br_passport_1",
       "kind": "id_passport_br",
       "category": "id",
