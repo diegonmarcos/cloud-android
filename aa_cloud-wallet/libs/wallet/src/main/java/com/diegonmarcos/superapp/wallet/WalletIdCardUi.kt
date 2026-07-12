@@ -114,158 +114,237 @@ private fun BrazilFlagStrip(height: Int = 8) {
     }
 }
 
-// ─── Passport Brazil ─────────────────────────────────────────────────────────
+// ─── Passport shared helpers ──────────────────────────────────────────────────
+
+@Composable
+private fun PassportDataField(label: String, value: String) {
+    Column(modifier = Modifier.padding(bottom = 1.dp)) {
+        Text(label, color = Color(0x66FFFFFF), fontSize = 5.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp)
+        Text(value, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun buildPassportMrz1(country: String, holder: String): String {
+    val clean = holder.uppercase().replace(Regex("[^A-Z ]"), "").trim()
+    val parts = clean.split(Regex("\\s+"))
+    val sn = parts.firstOrNull().orEmpty()
+    val gn = parts.drop(1).joinToString("<").ifBlank { "<" }
+    return "P<$country$sn<<$gn".padEnd(44, '<').take(44)
+}
+
+private fun buildPassportMrz2(number: String, country: String, expiry: String): String {
+    val num = number.filter { it.isLetterOrDigit() }.uppercase().padEnd(9, '<').take(9)
+    val nat = country.padEnd(3, '<').take(3)
+    val digits = expiry.filter { it.isDigit() }
+    val exp = if (digits.length >= 8) {
+        // YYYYMMDD → YYMMDD
+        digits.substring(2, 4) + digits.substring(4, 6) + digits.substring(6, 8)
+    } else "300101"
+    // Positions: num(9) cd(1) nat(3) dob(6) cd(1) sex(1) exp(6) cd(1) personal(14) cd(1) = 43 + final_cd(1) = 44
+    return "${num}0${nat}0000000<${exp}0<<<<<<<<<<<<<<00".take(44)
+}
+
+// ─── Passport Brazil (biographical data page) ────────────────────────────────
 
 @Composable
 private fun PassportBrCard(card: WalletStore.Card, modifier: Modifier) {
     val (holder, expiry) = card.holderAndExpiry()
-    CardShell(modifier, Brush.linearGradient(listOf(Color(0xFF1F4A80), NavyBlue))) {
-        // Green left stripe
-        Box(modifier = Modifier.width(8.dp).fillMaxSize().background(BrGreen))
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
-        ) {
+    val mrz1 = buildPassportMrz1("BRA", holder)
+    val mrz2 = buildPassportMrz2(card.number, "BRA", expiry)
+
+    Box(
+        modifier = modifier
+            .shadow(16.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF04254F), Color(0xFF083C82), Color(0xFF042050)))),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Brazilian green top band
+            Box(modifier = Modifier.fillMaxWidth().height(4.dp).background(BrGreen))
+
             // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Emblem circle
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(BrGreen),
+                    modifier = Modifier.size(22.dp).clip(CircleShape).background(BrGreen),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⊕", color = BrYellow, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("⊕", color = BrYellow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        "REPÚBLICA FEDERATIVA DO BRASIL",
-                        color = Color.White,
-                        fontSize = 7.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-                    )
-                    Text(
-                        "PASSAPORTE  /  PASSPORT",
-                        color = BrYellow,
-                        fontSize = 6.sp,
-                        letterSpacing = 1.sp,
-                    )
+                Spacer(modifier = Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("REPÚBLICA FEDERATIVA DO BRASIL", color = Color.White, fontSize = 6.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.4.sp)
+                    Text("PASSAPORTE  ·  PASSPORT", color = BrYellow, fontSize = 5.5.sp, letterSpacing = 0.6.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("e", color = Color(0x66FFFFFF), fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                    Text("⊡", color = Color(0x44FFFFFF), fontSize = 8.sp)
                 }
             }
-            Spacer(modifier = Modifier.weight(1f))
-            // Passport number
-            Text(
-                card.number,
-                color = Color.White,
-                fontSize = 22.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            // Holder
-            Text(
-                holder.ifBlank { "TITULAR / HOLDER" },
-                color = Color(0xCCFFFFFF),
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // Expiry
-            Text(
-                expiry.ifBlank { "VALIDADE" },
-                color = BrYellow,
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            // MRZ-style bottom line decoration
-            Text(
-                "P<BRA${card.number.padEnd(20, '<').take(20)}",
-                color = Color(0x55FFFFFF),
-                fontSize = 7.sp,
-                fontFamily = FontFamily.Monospace,
-            )
+
+            // Body: photo + biographic data
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 5.dp),
+            ) {
+                // Photo column
+                Column(
+                    modifier = Modifier.width(54.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(50.dp)
+                            .weight(1f)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(Brush.linearGradient(listOf(Color(0x30FFFFFF), Color(0x12FFFFFF)))),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("👤", fontSize = 24.sp)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Biometric chip indicator
+                    Box(
+                        modifier = Modifier.size(16.dp, 11.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x55D4AF37)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("▣", color = GoldText, fontSize = 6.5.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                // Data fields
+                Column(modifier = Modifier.weight(1f)) {
+                    PassportDataField("SOBRENOME / SURNAME", holder.ifBlank { "—" })
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("NACIONALIDADE", "BRASILEIRA") }
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("SEXO / SEX", "—") }
+                    }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("NÚMERO / NUMBER", card.number.ifBlank { "——" }) }
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("VALIDADE / EXPIRY", expiry.ifBlank { "—" }) }
+                    }
+                }
+            }
+
+            // MRZ zone
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0x55000000))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+            ) {
+                Text(mrz1, color = BrGreen.copy(alpha = 0.55f), fontSize = 6.sp, fontFamily = FontFamily.Monospace, maxLines = 1, letterSpacing = 0.sp)
+                Text(mrz2, color = BrGreen.copy(alpha = 0.55f), fontSize = 6.sp, fontFamily = FontFamily.Monospace, maxLines = 1, letterSpacing = 0.sp)
+            }
         }
     }
 }
 
-// ─── Passport Spain ──────────────────────────────────────────────────────────
+// ─── Passport Spain (biographical data page) ─────────────────────────────────
 
 @Composable
 private fun PassportEsCard(card: WalletStore.Card, modifier: Modifier) {
     val (holder, expiry) = card.holderAndExpiry()
-    CardShell(modifier, Brush.linearGradient(listOf(BurgundyDark, Color(0xFF400000)))) {
+    val mrz1 = buildPassportMrz1("ESP", holder)
+    val mrz2 = buildPassportMrz2(card.number, "ESP", expiry)
+
+    Box(
+        modifier = modifier
+            .shadow(16.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF5C0010), Color(0xFF820016), Color(0xFF5C0010)))),
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Flag band at top
-            SpanishFlagStrip(height = 10)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            // Spanish flag strip
+            SpanishFlagStrip(height = 5)
+
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Coat of arms placeholder
+                Box(
+                    modifier = Modifier.size(22.dp).clip(CircleShape).background(EsYellow),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("⚜", color = EsRed, fontSize = 11.sp)
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row {
+                        Text("UNIÓN EUROPEA  ·  ", color = Color(0xBBFFFFFF), fontSize = 5.5.sp, letterSpacing = 0.3.sp)
+                        Text("ESPAÑA", color = GoldText, fontSize = 5.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.4.sp)
+                    }
+                    Text("PASAPORTE  ·  PASSPORT", color = Color(0xAAFFFFFF), fontSize = 5.5.sp, letterSpacing = 0.6.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("e", color = Color(0x66FFFFFF), fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                    Text("⊡", color = Color(0x44FFFFFF), fontSize = 8.sp)
+                }
+            }
+
+            // Body: photo + biographic data
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 5.dp),
+            ) {
+                // Photo column
+                Column(
+                    modifier = Modifier.width(54.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(EsYellow),
+                            .width(50.dp)
+                            .weight(1f)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(Brush.linearGradient(listOf(Color(0x30FFFFFF), Color(0x12FFFFFF)))),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("⚜", color = EsRed, fontSize = 16.sp)
+                        Text("👤", fontSize = 24.sp)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            "REINO DE ESPAÑA",
-                            color = GoldText,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                        )
-                        Text(
-                            "PASAPORTE  /  PASSPORT",
-                            color = Color(0xAAFFFFFF),
-                            fontSize = 6.sp,
-                            letterSpacing = 0.8.sp,
-                        )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier.size(16.dp, 11.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x55D4AF37)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("▣", color = GoldText, fontSize = 6.5.sp)
                     }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    card.number,
-                    color = GoldText,
-                    fontSize = 22.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    holder.ifBlank { "APELLIDOS, NOMBRE" },
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    expiry.ifBlank { "FECHA CADUCIDAD" },
-                    color = GoldText,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "P<ESP${card.number.padEnd(20, '<').take(20)}",
-                    color = Color(0x55FFFFFF),
-                    fontSize = 7.sp,
-                    fontFamily = FontFamily.Monospace,
-                )
+                Spacer(modifier = Modifier.width(8.dp))
+                // Data fields
+                Column(modifier = Modifier.weight(1f)) {
+                    PassportDataField("APELLIDOS / SURNAME", holder.ifBlank { "—" })
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("NACIONALIDAD", "ESPAÑOLA") }
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("SEXO / SEX", "—") }
+                    }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("NÚMERO / NUMBER", card.number.ifBlank { "——" }) }
+                        Column(modifier = Modifier.weight(1f)) { PassportDataField("CADUCIDAD / EXPIRY", expiry.ifBlank { "—" }) }
+                    }
+                }
+            }
+
+            // MRZ zone
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0x55000000))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+            ) {
+                Text(mrz1, color = GoldText.copy(alpha = 0.5f), fontSize = 6.sp, fontFamily = FontFamily.Monospace, maxLines = 1, letterSpacing = 0.sp)
+                Text(mrz2, color = GoldText.copy(alpha = 0.5f), fontSize = 6.sp, fontFamily = FontFamily.Monospace, maxLines = 1, letterSpacing = 0.sp)
             }
         }
     }
