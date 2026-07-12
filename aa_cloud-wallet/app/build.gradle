@@ -169,6 +169,14 @@ android {
                   signingConfig signingConfigs.debug }
     }
 
+    packaging {
+        resources {
+            // android-mail and android-activation both carry META-INF/NOTICE.md / LICENSE.md
+            excludes += ['META-INF/NOTICE.md', 'META-INF/LICENSE.md',
+                         'META-INF/NOTICE',    'META-INF/LICENSE']
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
