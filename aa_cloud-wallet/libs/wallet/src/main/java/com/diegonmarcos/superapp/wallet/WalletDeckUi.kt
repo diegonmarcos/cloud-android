@@ -247,9 +247,9 @@ internal fun WalletIdsTab(
                     val card = filtered[page]
                     val rawOffset  = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                     val absOffset  = abs(rawOffset.coerceIn(-2f, 2f))
-                    val scale by animateFloatAsState(1f - absOffset * 0.08f, spring(Spring.DampingRatioMediumBouncy), "s")
-                    val alpha by animateFloatAsState(1f - absOffset * 0.3f, spring(Spring.DampingRatioNoBouncy), "a")
-                    val rotY  by animateFloatAsState(rawOffset * -20f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium), "r")
+                    val scale by animateFloatAsState(1f - absOffset * 0.08f, spring(Spring.DampingRatioMediumBouncy), label = "s")
+                    val alpha by animateFloatAsState(1f - absOffset * 0.3f, spring(Spring.DampingRatioNoBouncy), label = "a")
+                    val rotY  by animateFloatAsState(rawOffset * -20f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium), label = "r")
                     val density = LocalDensity.current
                     Box(
                         modifier = Modifier
