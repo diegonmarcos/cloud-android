@@ -451,13 +451,15 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
     }
 }
 
-// ─── NIE / TIE — EU uniform Residence Permit (Tarjeta de Identidad de Extranjero) ──
-// Real design (Ministerio del Interior 2020 PDF):
-// Top bar: ESP flag block | "PERMISO DE RESIDENCIA" | card number
-// Left: photo + number vertical
-// Right: bilingual APELLIDOS, SEXO/NACION/DOB, TIPO PERMISO / VALIDEZ, NIE number
-// Bottom label: "RESIDENCE PERMIT / TITRE DE SEJOUR"
-// Background: light cream security-print paper
+// ─── NIE / TIE — Tarjeta de Identidad de Extranjero (EU Residence Permit) ────
+// Source: downloaded yourspanishpaperwork.com/images/TIE.jpg (152KB specimen)
+// Real design: mint-green polycarbonate card with security map print in background.
+// Top-left: "ESP" + biometric chip badge. Top-center: "PERMISO DE RESIDENCIA".
+// Top-right: card number (monospace, large) + small secondary photo below.
+// Below ESP badge: NIE number in smaller text.
+// Body left (≈40%): large laser-engraved B&W photo, holographic circle overlay.
+// Body right: bilingual APELLIDOS/SEXO+NACION+BIRTH DATE/TIPO PERMISO+VALIDEZ/NIE large + sig.
+// Bottom green bar: "RESIDENCE PERMIT / TITRE DE SEJOUR"
 
 @Composable
 private fun NieCard(card: WalletStore.Card, modifier: Modifier) {
@@ -467,57 +469,129 @@ private fun NieCard(card: WalletStore.Card, modifier: Modifier) {
     val surnames = (if (ci >= 0) raw.substring(0, ci) else raw).trim()
     val given = (if (ci >= 0) raw.substring(ci + 1) else "").trim()
     val expiry = parts.getOrElse(1) { "" }.removePrefix("Vál. ")
+    val TieMint    = Color(0xFFC2E8DC)   // real TIE mint-green polycarbonate
+    val TieDark    = Color(0xFF142814)   // deep text color on mint card
+    val TieBarGrn  = Color(0xFF88C4AE)   // bottom bar — slightly deeper mint
 
     Box(
         modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFF5F3EE))  // cream security paper
+            .background(TieMint),
     ) {
+        // Security map tint (map-contour pattern in background)
+        Box(modifier = Modifier.fillMaxSize().background(
+            Brush.linearGradient(listOf(Color(0x0A006040), Color(0x00C2E8DC), Color(0x08004870))),
+        ))
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top bar: ESP flag + title + card number
+            // ── Top header ───────────────────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFFE8E4DC)).padding(horizontal = 6.dp, vertical = 3.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Spanish flag box (matches real TIE top-left)
-                Row(modifier = Modifier.size(28.dp, 18.dp).clip(RoundedCornerShape(2.dp))) {
-                    Box(modifier = Modifier.weight(1f).fillMaxSize().background(EsRed))
-                    Box(modifier = Modifier.weight(2f).fillMaxSize().background(EsYellow))
-                    Box(modifier = Modifier.weight(1f).fillMaxSize().background(EsRed))
+                // "ESP" + biometric chip badge (top-left of real TIE)
+                Box(
+                    modifier = Modifier.size(36.dp, 26.dp).clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFEEF5FF)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("ESP", color = Color(0xFF003399), fontSize = 8.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.2.sp)
+                        Text("⊡", color = Color(0xFF1A8040), fontSize = 7.sp, lineHeight = 8.sp)
+                    }
                 }
-                Spacer(Modifier.width(5.dp))
-                Text("PERMISO DE RESIDENCIA", color = InkDark, fontSize = 7.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(card.number, color = InkDark, fontSize = 6.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
-            // Body: photo left | fields right
-            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
-                Column(modifier = Modifier.width(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    PhotoBox(modifier = Modifier.width(46.dp).weight(1f))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "PERMISO DE RESIDENCIA",
+                    color = TieDark, fontSize = 6.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                // Card number + small 2nd photo (top-right of real TIE)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(card.number, color = TieDark, fontSize = 7.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.height(2.dp))
-                    Text(card.number, color = InkMid, fontSize = 5.sp, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Box(
+                        modifier = Modifier.size(20.dp, 25.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF8CBCAA)),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("👤", fontSize = 10.sp) }
+                }
+            }
+            // NIE number below ESP badge
+            Text(
+                card.number,
+                color = TieDark.copy(alpha = 0.65f), fontSize = 5.5.sp, fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(start = 7.dp),
+            )
+            // ── Body: large photo left | fields right ────────────────────────
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 3.dp, bottom = 2.dp)) {
+                // Large laser-engraved photo (≈40% width) with holographic circle
+                Box(modifier = Modifier.width(58.dp).fillMaxHeight()) {
+                    PhotoBox(modifier = Modifier.width(54.dp).fillMaxHeight())
+                    Box(
+                        modifier = Modifier.size(34.dp).align(Alignment.Center).clip(CircleShape)
+                            .background(Color(0x1A0060A0)),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("⊕", color = Color(0x330060A0), fontSize = 20.sp) }
                 }
                 Spacer(Modifier.width(5.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("APELLIDOS Nombre / SURNAMES Forenames", color = InkMid, fontSize = 4.5.sp)
-                    Text("$surnames $given".trim().ifBlank { "—" }, color = InkDark, fontSize = 8.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.height(3.dp))
+                    // APELLIDOS / SURNAMES
+                    Text("APELLIDOS Nombre / SURNAMES Forenames", color = TieDark.copy(alpha = 0.55f), fontSize = 4.sp)
+                    Text(
+                        "$surnames $given".trim().ifBlank { "—" },
+                        color = TieDark, fontSize = 7.5.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 9.sp,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    // SEXO | NATIONALITY | BIRTH DATE row
                     Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(0.6f)) { DocField("SEXO / SEX", "M") }
-                        Column(Modifier.weight(1.4f)) { DocField("NACION. / NATIONALITY", "BRA") }
+                        Column(Modifier.weight(0.45f)) {
+                            Text("SEXO / SEX", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                            Text("M", color = TieDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column(Modifier.weight(0.85f)) {
+                            Text("NACION. / NATIONALITY", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                            Text("BRA", color = TieDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column(Modifier.weight(1.1f)) {
+                            Text("FECHA NAC. / BIRTH DATE", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                            Text("01 01 1990", color = TieDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
+                    Spacer(Modifier.height(2.dp))
+                    // TIPO DE PERMISO | VALIDEZ row
                     Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1.3f)) { DocField("TIPO PERMISO / TYPE OF PERMIT", "RESIDENCIA") }
-                        Column(Modifier.weight(0.7f)) { DocField("VALIDEZ / EXPIRY", expiry.ifBlank { "—" }) }
+                        Column(Modifier.weight(1.3f)) {
+                            Text("TIPO DE PERMISO / TYPE OF PERMIT", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                            Text("RESIDENCIA", color = TieDark, fontSize = 6.sp, fontWeight = FontWeight.Bold)
+                            Text("TRABAJO Y RESIDENCIA", color = TieDark, fontSize = 4.5.sp)
+                        }
+                        Column(Modifier.weight(0.7f)) {
+                            Text("VALIDEZ TARJETA / CARD EXPIRY", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                            Text(expiry.ifBlank { "—" }, color = TieDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
+                    Spacer(Modifier.height(2.dp))
+                    // NIE — large and prominent (same as real card)
+                    Text("NIE / PERSONAL NUMBER", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                    Text(
+                        "NIE: ${card.number}",
+                        color = TieDark, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
+                        fontFamily = FontFamily.Monospace,
+                    )
                     Spacer(modifier = Modifier.weight(1f))
-                    Text("NIE: ${card.number}", color = InkDark, fontSize = 8.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x44000000)))
-                    Spacer(Modifier.height(1.dp))
-                    Text("FIRMA / SIGNATURE", color = InkMid, fontSize = 4.sp)
+                    // Signature line + reference number (bottom-right of real TIE)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                        Box(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
+                            Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x66000000)).align(Alignment.BottomCenter))
+                        }
+                        Text("123456", color = TieDark.copy(alpha = 0.65f), fontSize = 7.sp, fontFamily = FontFamily.Monospace)
+                    }
                 }
             }
-            // Bottom label
-            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFDDD9D0)).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Text("RESIDENCE PERMIT / TITRE DE SÉJOUR", color = InkMid, fontSize = 5.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp)
+            // Bottom green bar
+            Box(
+                modifier = Modifier.fillMaxWidth().background(TieBarGrn).padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text("RESIDENCE PERMIT / TITRE DE SÉJOUR", color = TieDark, fontSize = 5.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp)
             }
         }
     }
