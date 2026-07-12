@@ -66,9 +66,15 @@ class AppDrawerSheetFragment : Fragment() {
                 barHeight,
             )
         }
-        // App icon — LEFT.
+        // App icon — LEFT. Uses ic_launcher_foreground (the unified icon reference)
+        // with an explicit black oval background so it matches the launcher icon exactly.
         searchInner.addView(ImageView(ctx).apply {
-            setImageResource(R.mipmap.ic_launcher_round)
+            setImageResource(R.drawable.ic_launcher_foreground)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(0xFF0A0A0A.toInt())
+            }
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             val sz = dp(24)
             layoutParams = LinearLayout.LayoutParams(sz, sz).apply { marginEnd = dp(12) }
         })

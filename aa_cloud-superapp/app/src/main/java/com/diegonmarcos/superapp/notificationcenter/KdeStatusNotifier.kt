@@ -63,7 +63,7 @@ object KdeStatusNotifier {
         // MediaStyle: 5 actions total, first 3 shown in the compact view. Icons
         // are the same fine thin-line One-UI set as "Cloud SA - Quick Actions".
         return NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_cloud)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Cloud SA - KDE · $summary")
             .setContentText(line)
             .setSubText(sub)
