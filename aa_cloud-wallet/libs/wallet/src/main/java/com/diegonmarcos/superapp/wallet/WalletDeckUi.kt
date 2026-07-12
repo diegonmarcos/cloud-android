@@ -189,36 +189,53 @@ internal fun WalletIdsTab(
     allIds: List<WalletStore.Card>,
     onCardTap: (WalletStore.Card) -> Unit,
 ) {
-    var country by remember { mutableStateOf("") }
-    // vcards (kind="vcard"/"vcard_imported") have no country — always show them regardless of filter
-    val filtered = remember(allIds, country) {
-        if (country.isEmpty()) allIds
-        else allIds.filter { it.country == country || it.kind == "vcard" || it.kind == "vcard_imported" }
+    var countries by remember { mutableStateOf(setOf("es", "br")) }
+    var types    by remember { mutableStateOf(setOf("id", "license")) }
+    val licenseKinds = setOf("id_driving_es", "id_boat_es")
+    val filtered = remember(allIds, countries, types) {
+        allIds.filter { card ->
+            val isVcard    = card.kind == "vcard" || card.kind == "vcard_imported"
+            val countryOk  = isVcard || card.country.isEmpty() || card.country in countries
+            val cardType   = if (card.kind in licenseKinds) "license" else "id"
+            val typeOk     = cardType in types
+            countryOk && typeOk
+        }
     }
     Column(modifier = Modifier.fillMaxSize()) {
-        // Minimal inline country toggle
+        // Filter strip: [ES] [BR]  |  [ID] [Licenses] — all toggled on by default
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            listOf("" to "All", "es" to "ES", "br" to "BR").forEach { (key, label) ->
-                val active = key == country
+            listOf("es" to "ES", "br" to "BR").forEach { (key, label) ->
+                val active = key in countries
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (active) Color(0xFF7C3AED) else Color(0x20FFFFFF))
-                        .clickable { country = key }
+                        .clickable { countries = if (active) countries - key else countries + key }
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        label,
-                        color      = Color.White,
-                        fontSize   = 11.sp,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                    )
+                    Text(label, color = Color.White, fontSize = 11.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                }
+            }
+            // Divider
+            Spacer(Modifier.size(1.dp, 18.dp).background(Color(0x44FFFFFF)))
+            listOf("id" to "ID", "license" to "Licenses").forEach { (key, label) ->
+                val active = key in types
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (active) Color(0xFF7C3AED) else Color(0x20FFFFFF))
+                        .clickable { types = if (active) types - key else types + key }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label, color = Color.White, fontSize = 11.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                 }
             }
         }

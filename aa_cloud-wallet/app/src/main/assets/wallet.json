@@ -277,6 +277,26 @@
       "tagline": "NUSS: 280000000000 · Comunidad de Madrid · SNS",
       "number": "BAES00001280000",
       "accent": 4280172719
+    },
+    {
+      "id": "id_es_driving",
+      "kind": "id_driving_es",
+      "category": "id",
+      "country": "es",
+      "brand": "PERMISO DE CONDUCCIÓN",
+      "tagline": "MARCOS NEPOMUCENO COELHO, DIEGO · Exp. 15/03/2031 · B",
+      "number": "12345678Z",
+      "accent": 4293655744
+    },
+    {
+      "id": "id_es_boat",
+      "kind": "id_boat_es",
+      "category": "id",
+      "country": "es",
+      "brand": "TITULACIÓN NÁUTICA DE RECREO",
+      "tagline": "MARCOS NEPOMUCENO COELHO, DIEGO · Exp. 30/01/2030 · PNB",
+      "number": "12345678Z",
+      "accent": 4279623820
     }
   ],
   "docs": [

@@ -39,6 +39,8 @@ internal fun IdCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
         "id_nie"         -> NieCard(card, modifier)
         "id_tsi"         -> TsiCard(card, modifier)
         "id_cin_br"      -> CinBrCard(card, modifier)
+        "id_driving_es"  -> DriveEsCard(card, modifier)
+        "id_boat_es"     -> BoatEsCard(card, modifier)
         else             -> GenericIdCard(card, modifier)
     }
 }
@@ -68,6 +70,10 @@ private val BrGreen      = Color(0xFF009C3B)
 private val BrYellow     = Color(0xFFFEDD00)
 private val PassportNavy = Color(0xFF022050)
 private val TsiBlue      = Color(0xFF1E40AF)
+private val DrivePink    = Color(0xFFF5C6C0)  // EU driving licence salmon-pink
+private val DriveRed     = Color(0xFFC0392B)  // DGT accent
+private val BoatBlue     = Color(0xFF0A4B8C)  // maritime navy
+private val BoatSeaBlue  = Color(0xFFD8EEFF)  // sea background
 private val HealthGreen  = Color(0xFF059669)
 private val InkNavy      = Color(0xFF1E3A5F)
 private val BrInkNavy    = Color(0xFF0A3161)
@@ -654,6 +660,155 @@ internal fun BirthCertBrCard(card: WalletStore.Card, modifier: Modifier) {
                         modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(0x22023A1A)),
                         contentAlignment = Alignment.Center,
                     ) { Text("⊕", color = BrInkNavy, fontSize = 20.sp) }
+                }
+            }
+        }
+    }
+}
+
+// ─── Spanish Driving License — Permiso de Conducción (EU format, since 2013) ─
+// Pink/salmon card, EU badge top-left, DGT authority, EU numbered fields 1-9
+
+@Composable
+private fun DriveEsCard(card: WalletStore.Card, modifier: Modifier) {
+    val parts  = card.tagline.split(" · ")
+    val raw    = parts.getOrElse(0) { "" }
+    val ci     = raw.indexOf(',')
+    val surnames = (if (ci >= 0) raw.substring(0, ci) else raw).trim()
+    val given  = (if (ci >= 0) raw.substring(ci + 1) else "").trim()
+    val expiry = parts.getOrElse(1) { "" }.removePrefix("Exp. ")
+    val cats   = parts.getOrElse(2) { "B" }
+
+    Box(
+        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
+            .background(DrivePink)
+    ) {
+        // Subtle guilloché-style diagonal tint (real card has security background)
+        Box(modifier = Modifier.fillMaxSize().background(
+            Brush.linearGradient(listOf(Color(0x10C0392B), Color(0x00F5C6C0), Color(0x08003399)))
+        ))
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header: EU badge + title
+            Row(
+                modifier = Modifier.fillMaxWidth().background(Color(0xFFECB0A8)).padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                EuBadge("ES")
+                Spacer(Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("REINO DE ESPAÑA", color = InkDark, fontSize = 6.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                    Text("PERMISO DE CONDUCCIÓN · DRIVING LICENCE", color = InkMid, fontSize = 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                // DGT badge
+                Box(
+                    modifier = Modifier.size(20.dp).clip(RoundedCornerShape(3.dp)).background(DriveRed),
+                    contentAlignment = Alignment.Center,
+                ) { Text("DGT", color = Color.White, fontSize = 4.sp, fontWeight = FontWeight.Bold) }
+            }
+            // Body: photo left | fields right
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
+                Column(modifier = Modifier.width(50.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    PhotoBox(modifier = Modifier.width(44.dp).weight(1f))
+                    Spacer(Modifier.height(3.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x55000000)))
+                    Spacer(Modifier.height(1.dp))
+                    Text("FIRMA", color = InkMid, fontSize = 4.sp)
+                }
+                Spacer(Modifier.width(5.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    DocField("1. APELLIDOS", surnames.ifBlank { "—" })
+                    DocField("2. NOMBRE", given.ifBlank { "—" })
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) { DocField("4a. EXPEDICIÓN", "15/03/2021") }
+                        Column(Modifier.weight(1f)) { DocField("4b. CADUCIDAD", expiry.ifBlank { "—" }) }
+                    }
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) { DocField("4c. EXPEDIDA POR", "DGT") }
+                        Column(Modifier.weight(1f)) { DocField("5. Nº PERMISO", card.number.ifBlank { "—" }) }
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    // Category strip
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("9.", color = InkMid, fontSize = 5.sp)
+                        Spacer(Modifier.width(3.dp))
+                        cats.split(",").map { it.trim() }.filter { it.isNotBlank() }.forEach { cat ->
+                            Box(
+                                modifier = Modifier.padding(end = 3.dp).size(18.dp, 12.dp)
+                                    .clip(RoundedCornerShape(2.dp)).background(DriveRed),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(cat, color = Color.White, fontSize = 6.5.sp, fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── Spanish Boat License — Titulación Náutica de Recreo ─────────────────────
+// Maritime blue card, Ministry of Transport, title + zone + expiry
+
+@Composable
+private fun BoatEsCard(card: WalletStore.Card, modifier: Modifier) {
+    val parts  = card.tagline.split(" · ")
+    val raw    = parts.getOrElse(0) { "" }
+    val ci     = raw.indexOf(',')
+    val surnames = (if (ci >= 0) raw.substring(0, ci) else raw).trim()
+    val given  = (if (ci >= 0) raw.substring(ci + 1) else "").trim()
+    val expiry = parts.getOrElse(1) { "" }.removePrefix("Exp. ")
+    val title  = parts.getOrElse(2) { "PNB" }
+
+    Box(
+        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
+            .background(BoatSeaBlue)
+    ) {
+        // Wave pattern overlay
+        Box(modifier = Modifier.fillMaxSize().background(
+            Brush.linearGradient(listOf(Color(0x08FFFFFF), Color(0x180A4B8C), Color(0x04FFFFFF)))
+        ))
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header: maritime navy
+            Box(
+                modifier = Modifier.fillMaxWidth().background(BoatBlue).padding(horizontal = 8.dp, vertical = 5.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("⚓", color = Color.White, fontSize = 14.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("MINISTERIO DE TRANSPORTES · ESPAÑA", color = Color(0xBBFFFFFF), fontSize = 5.sp, letterSpacing = 0.3.sp)
+                        Text("TITULACIÓN NÁUTICA DE RECREO", color = Color.White, fontSize = 7.5.sp, fontWeight = FontWeight.Bold)
+                    }
+                    // Title badge
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color.White).padding(horizontal = 4.dp, vertical = 2.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(title, color = BoatBlue, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold) }
+                }
+            }
+            // Body: photo left | fields right
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
+                Column(modifier = Modifier.width(50.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    PhotoBox(modifier = Modifier.width(44.dp).weight(1f))
+                    Spacer(Modifier.height(3.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x55000000)))
+                    Spacer(Modifier.height(1.dp))
+                    Text("FIRMA", color = InkMid, fontSize = 4.sp)
+                }
+                Spacer(Modifier.width(5.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    DocField("TITULAR", "$given $surnames".trim().ifBlank { "—" }, valueColor = BoatBlue)
+                    DocField("DNI/NIE", card.number.ifBlank { "—" })
+                    DocField("TÍTULO", title)
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) { DocField("EXPEDICIÓN", "30/01/2020") }
+                        Column(Modifier.weight(1f)) { DocField("CADUCIDAD", expiry.ifBlank { "—" }) }
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("ZONA:", color = InkMid, fontSize = 5.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(3.dp))
+                        Text("AGUAS INTERIORES / COSTERAS", color = BoatBlue, fontSize = 5.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
