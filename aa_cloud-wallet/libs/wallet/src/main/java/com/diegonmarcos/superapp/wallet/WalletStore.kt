@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 7
+    private const val SEED_VERSION = 8
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -103,18 +103,43 @@ object WalletStore {
         }.getOrDefault(emptyList())
     }
 
-    /** Load IDs and Docs from assets/wallet.json. Safe — returns empty
+    /** Load IDs, Docs and Passes from assets/wallet.json. Safe — returns empty
      *  list if file is absent or malformed. */
     private fun loadWalletJson(ctx: Context): List<Card> = runCatching {
         val text = ctx.assets.open("wallet.json").bufferedReader().readText()
-        val root = JSONObject(text)
-        val result = mutableListOf<Card>()
-        listOf("ids", "docs").forEach { section ->
-            val arr = root.optJSONArray(section) ?: return@forEach
-            for (i in 0 until arr.length()) result.add(Card.fromJson(arr.getJSONObject(i)))
-        }
-        result
+        parseWalletJsonText(text)
     }.getOrDefault(emptyList())
+
+    /** Parse a wallet JSON string. Handles ids / docs / passes / cards sections.
+     *  Each section may omit the "category" field — it is inferred from the key. */
+    private fun parseWalletJsonText(text: String): List<Card> {
+        val root   = JSONObject(text)
+        val result = mutableListOf<Card>()
+        mapOf("ids" to "id", "docs" to "doc", "passes" to "pass").forEach { (section, defaultCat) ->
+            val arr = root.optJSONArray(section) ?: return@forEach
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                if (!obj.has("category")) obj.put("category", defaultCat)
+                result.add(Card.fromJson(obj))
+            }
+        }
+        // "cards" section: raw cards with no forced category
+        val cardsArr = root.optJSONArray("cards")
+        if (cardsArr != null) {
+            for (i in 0 until cardsArr.length()) result.add(Card.fromJson(cardsArr.getJSONObject(i)))
+        }
+        return result
+    }
+
+    /** Import from a user-supplied wallet JSON. Replaces all categorized
+     *  cards (ids/docs/passes) while keeping uncategorized cards (banking,
+     *  vcard, tickets) and user-added uncategorized cards intact. */
+    fun importFromJson(ctx: Context, text: String): String = runCatching {
+        val imported = parseWalletJsonText(text)
+        val existing = all(ctx).filter { it.category.isEmpty() }
+        saveAll(ctx, existing + imported)
+        "Imported ${imported.size} item(s) ✓"
+    }.getOrElse { "Error: ${it.message}" }
 
     fun saveAll(ctx: Context, cards: List<Card>) {
         val sp = ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -196,12 +221,70 @@ object WalletStore {
             accent  = 0xFF111827,                // near-black
             number  = "•••• •••• •••• 4582",
         ),
+        // ── Banking cards ──────────────────────────────────────────
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "debit",
+            brand   = "Revolut",
+            tagline = "Personal · Visa Debit",
+            accent  = 0xFF18191A,
+            number  = "•••• •••• •••• 9241",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "credit",
+            brand   = "Revolut",
+            tagline = "Credit · Visa",
+            accent  = 0xFF1A1A2E,
+            number  = "•••• •••• •••• 6108",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "virtual_debit",
+            brand   = "Revolut Virtual",
+            tagline = "Virtual Debit · Disposable",
+            accent  = 0xFF0D0D1A,
+            number  = "•••• •••• •••• 3379",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "debit",
+            brand   = "Santander",
+            tagline = "Debit · Visa",
+            accent  = 0xFFCC0000,
+            number  = "•••• •••• •••• 5547",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "credit",
+            brand   = "Santander",
+            tagline = "Credit · Mastercard",
+            accent  = 0xFFAA0000,
+            number  = "•••• •••• •••• 2291",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "debit",
+            brand   = "BTG Pactual",
+            tagline = "Debit · Mastercard",
+            accent  = 0xFF00539C,
+            number  = "•••• •••• •••• 8837",
+        ),
+        Card(
+            id      = UUID.randomUUID().toString(),
+            kind    = "credit",
+            brand   = "BTG Pactual",
+            tagline = "Credit · Mastercard Gold",
+            accent  = 0xFF002B80,
+            number  = "•••• •••• •••• 4410",
+        ),
+        // ── Passes (transit + gym) ─────────────────────────────────
         Card(
             id      = UUID.randomUUID().toString(),
             kind    = "transit",
             brand   = "BVG Berlin",
             tagline = "AB · Monatskarte · expires 2026-07-31",
-            accent  = 0xFFEAB308,                // amber
+            accent  = 0xFFEAB308,
             barcode = "880088_BVG_DM",
         ),
         Card(
@@ -209,7 +292,7 @@ object WalletStore {
             kind    = "gym",
             brand   = "FitX",
             tagline = "Berlin Mitte · since 2024",
-            accent  = 0xFF166534,                // forest green
+            accent  = 0xFF166534,
             number  = "M-77129",
         ),
         // ── TICKETS — event-bound (eventAt > 0) ───────────────────

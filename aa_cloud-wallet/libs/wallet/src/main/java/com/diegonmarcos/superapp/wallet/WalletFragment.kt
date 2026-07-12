@@ -5,39 +5,43 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
 
-/**
- * Wallet — Compose surface. State machine across four modes:
- *   • Idle      — deck of cards in the circular swipe roll.
- *   • Selected  — one card lifted, the rest fade. Tap outside or any
- *                 different card → Idle. Tap the same card → Full.
- *   • Full      — full-page card view with info panel + Back.
- *   • Config    — per-card edit screen (reached via the (i) overlay).
- *
- * Mode state is hoisted to the Fragment (not local to WalletScreen)
- * so [tryHandleBack] can dismiss non-Idle modes when the user taps
- * the toolbar Back / hits system Back — without unwinding past
- * WalletFragment in the activity back-stack. MainActivity asks
- * BackHandler.tryHandleBack on the visible fragment first; only when
- * it returns false does popBackStack fire.
- */
 class WalletFragment : Fragment(), BackHandler {
 
     private val modeState: MutableState<WalletMode> = mutableStateOf(WalletMode.Idle)
@@ -50,17 +54,11 @@ class WalletFragment : Fragment(), BackHandler {
 
     override fun onViewCreated(view: View, s: Bundle?) {
         super.onViewCreated(view, s)
-        // System Back: dismiss the Compose state instead of popping
-        // WalletFragment off the activity back-stack — that's what
-        // "the parent of a selected card is the deck, not Home" means
-        // for the back gesture.
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     if (!tryHandleBack()) {
-                        // Compose mode is already Idle — let the
-                        // activity handle it (pop back stack).
                         isEnabled = false
                         requireActivity().onBackPressedDispatcher.onBackPressed()
                         isEnabled = true
@@ -70,10 +68,6 @@ class WalletFragment : Fragment(), BackHandler {
         )
     }
 
-    /** [BackHandler] entry point — MainActivity calls this from the
-     *  toolbar action_back before popBackStack. Returns true when we
-     *  consumed the back gesture by dismissing a non-Idle Compose
-     *  state; false when we have nothing to dismiss. */
     override fun tryHandleBack(): Boolean {
         if (modeState.value != WalletMode.Idle) {
             modeState.value = WalletMode.Idle
@@ -85,9 +79,6 @@ class WalletFragment : Fragment(), BackHandler {
     companion object { fun newInstance(): WalletFragment = WalletFragment() }
 }
 
-/** Wallet UI state. Single source of truth for everything the user can
- *  be looking at — deck/select/full/config — modeled as a sealed class
- *  so the dispatcher in [WalletScreen] is exhaustive. */
 sealed class WalletMode {
     object Idle : WalletMode()
     data class Selected(val cardId: String) : WalletMode()
@@ -95,9 +86,6 @@ sealed class WalletMode {
     data class Config(val cardId: String)   : WalletMode()
 }
 
-/** Sentinel for the synthetic "Add card" tile. Lives in the deck list
- *  but never in [WalletStore] — its id is checked everywhere the deck
- *  decides between rendering a real card vs the "+" placeholder. */
 internal val AddCardSentinel = WalletStore.Card(
     id      = "__wallet_add_sentinel__",
     kind    = "add",
@@ -109,50 +97,44 @@ internal val AddCardSentinel = WalletStore.Card(
 @Composable
 private fun WalletScreen(modeState: MutableState<WalletMode>) {
     val ctx = LocalContext.current
-    // Stable sort: vCard(s) — the user's own Virtual Business Cards —
-    // always pin to the TOP of the deck, regardless of when other
-    // cards were imported. WalletStore.push() prepends new cards at
-    // index 0; without this re-order the imported cards would bump
-    // the vCard down on every import. partition() preserves relative
-    // order within each bucket, so non-vCards keep their newest-first
-    // ordering.
     val orderedCards: (List<WalletStore.Card>) -> List<WalletStore.Card> = { raw ->
         val (vc, rest) = raw.partition { it.kind == "vcard" }
         vc + rest
     }
     var cards by remember { mutableStateOf(orderedCards(WalletStore.all(ctx))) }
-    var mode by modeState
-    var tab  by remember { mutableStateOf(WalletTab.Cards) }
+    var mode  by modeState
+    var tab   by remember { mutableStateOf(WalletTab.Cards) }
+    var ticketsSub         by remember { mutableStateOf(TicketsSubTab.Events) }
     var ticketsShowArchive by remember { mutableStateOf(false) }
-    var showAddSheet by remember { mutableStateOf(false) }
+    var calShowArchive     by remember { mutableStateOf(false) }
+    var showAddSheet       by remember { mutableStateOf(false) }
 
     val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
 
-    // Tab partitioning. Cards tab = long-lasting credentials (eventAt == 0,
-    // category != "id" / "doc"). IDs and Docs are new tabs from wallet.json.
-    // Tickets / Calendar share event-bound subset (eventAt > 0).
-    val cardsForTab = remember(cards, tab, ticketsShowArchive) {
+    // ── Tab filtering ──────────────────────────────────────────────────────
+    val bankingKinds = setOf("credit", "debit", "virtual_debit", "vcard", "vcard_imported")
+    val passKinds    = setOf("transit", "gym")
+
+    val cardsForTab = remember(cards, tab, ticketsSub, ticketsShowArchive) {
         when (tab) {
-            WalletTab.Cards    -> cards.filter { !it.isTicket && it.category != "id" && it.category != "doc" }
-            WalletTab.IDs      -> cards.filter { it.category == "id" }
-            WalletTab.Docs     -> cards.filter { it.category == "doc" }
-            WalletTab.Tickets  -> cards.filter {
-                it.isTicket && (if (ticketsShowArchive) it.isPastTicket else !it.isPastTicket)
+            WalletTab.Cards   -> cards.filter { !it.isTicket && it.category.isEmpty() && it.kind in bankingKinds }
+            WalletTab.IDs     -> cards.filter { it.category == "id" || it.category == "doc" }
+            WalletTab.Tickets -> when (ticketsSub) {
+                TicketsSubTab.Events   -> cards.filter {
+                    it.isTicket && (if (ticketsShowArchive) it.isPastTicket else !it.isPastTicket)
+                }
+                TicketsSubTab.Passes   -> cards.filter { !it.isTicket && it.kind in passKinds }
+                TicketsSubTab.Calendar -> cards.filter { it.isTicket }
             }
-            WalletTab.Calendar -> cards.filter { it.isTicket && !it.isPastTicket }
+            WalletTab.Config  -> emptyList()
         }
     }
-    val pastCount = remember(cards) { cards.count { it.isPastTicket } }
+
+    val pastCount     = remember(cards) { cards.count { it.isPastTicket } }
     val upcomingCount = remember(cards) { cards.count { it.isTicket && !it.isPastTicket } }
-    // vCard (kind="vcard") is special — it's NOT a stored, importable
-    // card, it's the user's own identity card rendered from ProfilePrefs.
-    // Tapping it skips the wallet's Compose Selected → Full state and
-    // routes straight to the existing BusinessCardFragment (same
-    // destination as the drawer-header identity row), so there's one
-    // canonical Virtual Business Card surface in the app.
-    val onOpenVcard: () -> Unit = {
-        (ctx as? WalletHost)?.onOpenVcard()
-    }
+
+    val onOpenVcard: () -> Unit = { (ctx as? WalletHost)?.onOpenVcard() }
+
     fun cardOrIdle(id: String): WalletStore.Card? {
         val c = cards.firstOrNull { it.id == id }
         if (c == null) mode = WalletMode.Idle
@@ -161,9 +143,6 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0B0414))) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Tab strip is part of the wallet root chrome — hidden when
-            // a card is opened Full or in Config (those are sub-views
-            // of a card, not of the wallet itself).
             val hideChrome = mode is WalletMode.Full || mode is WalletMode.Config
             if (!hideChrome) {
                 WalletTabStrip(
@@ -171,30 +150,33 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                     onSelect = { next ->
                         if (next != tab) {
                             tab  = next
-                            mode = WalletMode.Idle  // reset selection so the new tab opens clean
-                            ticketsShowArchive = false  // any tab change drops out of Archive
+                            mode = WalletMode.Idle
+                            ticketsShowArchive = false
+                            calShowArchive = false
                         }
                     },
                 )
+                // Tickets inner sub-tab strip
+                if (tab == WalletTab.Tickets) {
+                    TicketsSubTabStrip(
+                        selected = ticketsSub,
+                        onSelect = { next ->
+                            if (next != ticketsSub) {
+                                ticketsSub = next
+                                ticketsShowArchive = false
+                            }
+                        },
+                    )
+                }
             }
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 when (val m = mode) {
                     is WalletMode.Full -> {
                         cardOrIdle(m.cardId)?.let { card ->
-                            // Tickets get their own wider rectangular
-                            // page (route, date/time, QR, location +
-                            // map) — see WalletTicketPage. Cards keep
-                            // the existing card-on-info-panel layout.
                             if (card.isTicket) {
-                                WalletTicketPage(
-                                    ticket = card,
-                                    onBack = { mode = WalletMode.Idle },
-                                )
+                                WalletTicketPage(ticket = card, onBack = { mode = WalletMode.Idle })
                             } else {
-                                WalletFullPage(
-                                    card   = card,
-                                    onBack = { mode = WalletMode.Idle },
-                                )
+                                WalletFullPage(card = card, onBack = { mode = WalletMode.Idle })
                             }
                         }
                     }
@@ -211,39 +193,49 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                         }
                     }
                     else -> when (tab) {
-                        WalletTab.Calendar -> WalletCalendarView(
-                            tickets     = cardsForTab,
-                            onTicketTap = { mode = WalletMode.Full(it.id) },
-                        )
-                        WalletTab.Tickets -> Column(modifier = Modifier.fillMaxSize()) {
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                                WalletTicketList(
-                                    tickets     = cardsForTab,
-                                    onTicketTap = { mode = WalletMode.Full(it.id) },
+                        WalletTab.Config -> WalletSystemConfigTab(onImported = refresh)
+
+                        WalletTab.Tickets -> when (ticketsSub) {
+                            TicketsSubTab.Calendar -> WalletCalendarView(
+                                tickets          = cardsForTab,
+                                showArchive      = calShowArchive,
+                                upcomingCount    = upcomingCount,
+                                archiveCount     = pastCount,
+                                onToggleArchive  = { calShowArchive = !calShowArchive },
+                                onTicketTap      = { mode = WalletMode.Full(it.id) },
+                            )
+                            TicketsSubTab.Passes -> WalletPassesTab(
+                                passes    = cardsForTab,
+                                onCardTap = { mode = WalletMode.Full(it.id) },
+                            )
+                            TicketsSubTab.Events -> Column(modifier = Modifier.fillMaxSize()) {
+                                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                    WalletTicketList(
+                                        tickets     = cardsForTab,
+                                        onTicketTap = { mode = WalletMode.Full(it.id) },
+                                    )
+                                }
+                                WalletArchiveToggle(
+                                    showingArchive = ticketsShowArchive,
+                                    upcomingCount  = upcomingCount,
+                                    archiveCount   = pastCount,
+                                    onToggle       = { ticketsShowArchive = !ticketsShowArchive },
                                 )
                             }
-                            WalletArchiveToggle(
-                                showingArchive = ticketsShowArchive,
-                                upcomingCount  = upcomingCount,
-                                archiveCount   = pastCount,
-                                onToggle       = { ticketsShowArchive = !ticketsShowArchive },
-                            )
                         }
+
                         WalletTab.IDs -> WalletIdsTab(
                             allIds    = cardsForTab,
                             onCardTap = { mode = WalletMode.Full(it.id) },
                         )
-                        WalletTab.Docs -> WalletDocsTab(
-                            docs     = cardsForTab,
-                            onDocTap = { mode = WalletMode.Full(it.id) },
-                        )
-                        else -> WalletDeck(
+
+                        WalletTab.Cards -> WalletDeck(
                             cards        = cardsForTab,
                             mode         = m,
                             onModeChange = { mode = it },
                             onAddTap     = { showAddSheet = true },
                             onOpenVcard  = onOpenVcard,
-                            showAddTile  = tab == WalletTab.Cards,
+                            showAddTile  = true,
                         )
                     }
                 }
@@ -259,5 +251,120 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                 },
             )
         }
+    }
+}
+
+// ─── Config tab ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun WalletSystemConfigTab(onImported: () -> Unit) {
+    val ctx    = LocalContext.current
+    var status by remember { mutableStateOf("") }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        status = runCatching {
+            val text = ctx.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
+            val result = WalletStore.importFromJson(ctx, text)
+            onImported()
+            result
+        }.getOrElse { "Error: ${it.message}" }
+    }
+
+    LazyColumn(
+        modifier       = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Text("Wallet Config", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Manage your wallet data and import cards.", color = Color(0x99FFFFFF), fontSize = 13.sp)
+        }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            ConfigSection(title = "Import") {
+                ConfigAction(
+                    label    = "Import wallet.json",
+                    sublabel = "Loads IDs, Docs and Passes from a local JSON file",
+                ) { launcher.launch(arrayOf("application/json", "text/plain", "*/*")) }
+            }
+        }
+        if (status.isNotBlank()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (status.contains("Error")) Color(0x33FF4444) else Color(0x3344FF88)
+                        )
+                        .padding(12.dp),
+                ) {
+                    Text(status, color = Color.White, fontSize = 13.sp)
+                }
+            }
+        }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            ConfigSection(title = "Wallet Data") {
+                ConfigAction(
+                    label    = "Reset to defaults",
+                    sublabel = "Clears all cards and reloads the built-in seed data",
+                    danger   = true,
+                ) {
+                    WalletStore.clear(ctx)
+                    onImported()
+                    status = "Reset complete."
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfigSection(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title.uppercase(),
+            color        = Color(0x88FFFFFF),
+            fontSize     = 10.sp,
+            fontWeight   = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            modifier     = Modifier.padding(start = 4.dp),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0x18FFFFFF)),
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ConfigAction(
+    label: String,
+    sublabel: String,
+    danger: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, color = if (danger) Color(0xFFFF6B6B) else Color.White, fontSize = 15.sp)
+            Text(sublabel, color = Color(0x66FFFFFF), fontSize = 12.sp)
+        }
+        Text("›", color = Color(0x55FFFFFF), fontSize = 22.sp)
     }
 }
