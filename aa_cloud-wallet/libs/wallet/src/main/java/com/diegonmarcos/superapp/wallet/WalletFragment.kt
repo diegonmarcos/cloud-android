@@ -311,6 +311,23 @@ private fun WalletSystemConfigTab(onImported: () -> Unit) {
         item { MailConnectorSection(onImported = onImported) }
         item { Spacer(modifier = Modifier.height(8.dp)) }
         item {
+            ConfigSection(title = "Update") {
+                ConfigAction(
+                    label    = "Check for updates",
+                    sublabel = "Downloads and installs the latest build from GHCR",
+                ) { (ctx as? WalletHost)?.onCheckForUpdates() }
+            }
+        }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            val pi = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0) }.getOrNull() }
+            ConfigSection(title = "About") {
+                AboutRow("Version", pi?.versionName ?: "—")
+                AboutRow("Package", ctx.packageName)
+            }
+        }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
             ConfigSection(title = "Wallet Data") {
                 ConfigAction(
                     label    = "Reset to defaults",
@@ -505,6 +522,17 @@ private fun MailField(
             cursorColor             = Color(0xFF7C3AED),
         ),
     )
+}
+
+@Composable
+private fun AboutRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = Color(0x88FFFFFF), fontSize = 13.sp, modifier = Modifier.width(80.dp))
+        Text(value, color = Color.White, fontSize = 13.sp)
+    }
 }
 
 @Composable

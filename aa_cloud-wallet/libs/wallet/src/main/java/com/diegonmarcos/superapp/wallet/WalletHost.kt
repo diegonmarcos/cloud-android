@@ -13,4 +13,7 @@ interface WalletHost {
     /** User tapped the pinned vCard at the top of the deck — host
      *  should open the canonical Virtual Business Card surface. */
     fun onOpenVcard()
+    /** User tapped "Check for updates" in Wallet Config — host triggers
+     *  the self-update pipeline (Updater.checkNow). */
+    fun onCheckForUpdates()
 }

@@ -46,6 +46,8 @@ class MainActivity : AppCompatActivity(), WalletHost {
         UpdateProgress.setListener(null)
     }
 
+    override fun onCheckForUpdates() { Updater.checkNow(this) }
+
     override fun onOpenVcard() {
         supportFragmentManager.commit {
             add(R.id.fragment_container, BusinessCardFragment.newInstance(), "business_card")
