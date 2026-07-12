@@ -229,8 +229,7 @@ class NotificationCenterFragment : Fragment() {
             orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
         }
         head.addView(ImageView(ctx).apply {
-            setImageResource(R.drawable.ic_kde)
-            imageTintList = android.content.res.ColorStateList.valueOf(0xFFFFFFFF.toInt())
+            setImageResource(R.drawable.ic_launcher_foreground)
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 setColor(0xFF0A0A0A.toInt())
