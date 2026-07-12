@@ -98,22 +98,42 @@ class ConstellationFragment : Fragment() {
         val card = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFF1C1C24.toInt())
-            val p = dp(ctx, 12); setPadding(p, p, p, p)
+            val ph = dp(ctx, 12); val pv = dp(ctx, 8)
+            setPadding(ph, pv, ph, pv)
             val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            lp.setMargins(0, dp(ctx, 6), 0, dp(ctx, 6)); layoutParams = lp
+            lp.setMargins(0, dp(ctx, 4), 0, dp(ctx, 4)); layoutParams = lp
         }
-        card.addView(TextView(ctx).apply {
-            text = app.label; textSize = 16f; setTextColor(0xFFFFFFFF.toInt()); typeface = Typeface.DEFAULT_BOLD
+
+        // ── title row: label (left) + link chips (right) ─────────────────
+        val titleRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+        titleRow.addView(TextView(ctx).apply {
+            text = app.label; textSize = 15f; setTextColor(0xFFFFFFFF.toInt()); typeface = Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
+        fun linkChip(label: String, url: String) = TextView(ctx).apply {
+            text = label; textSize = 11f; setTextColor(cMiss)
+            setPadding(dp(ctx, 8), dp(ctx, 2), dp(ctx, 2), dp(ctx, 2)); isClickable = true
+            setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
+        }
+        if (app.releaseUrl.isNotEmpty()) titleRow.addView(linkChip("APK↗", app.releaseUrl))
+        if (app.repoUrl.isNotEmpty())    titleRow.addView(linkChip("GH↗",  app.repoUrl))
+        if (app.ghcrPage.isNotEmpty())   titleRow.addView(linkChip("PKG↗", app.ghcrPage))
+        card.addView(titleRow)
+
+        // ── pkg · image (mono, compact) ───────────────────────────────────
         card.addView(mono(ctx, app.pkg + "  ·  " + app.image))
-        val status = TextView(ctx).apply { textSize = 13f; setTextColor(cDim); text = "checking…"; setPadding(0, dp(ctx, 4), 0, dp(ctx, 2)) }
+
+        // ── status ────────────────────────────────────────────────────────
+        val status = TextView(ctx).apply {
+            textSize = 12f; setTextColor(cDim); text = "checking…"
+            setPadding(0, dp(ctx, 3), 0, dp(ctx, 2))
+        }
         statusViews[app.id] = status
         card.addView(status)
 
+        // ── action buttons (Open · Install/Update · Uninstall) ────────────
         val actions = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         actionRows[app.id] = actions
-        // Open / Uninstall target the REAL installed package (pkg or the stock
-        // upstream altId), else fall back to pkg.
         actions.addView(btn(ctx, "Open", 0xFF2A2A33.toInt()) { openApp(ctx, Fleet.installedId(ctx, app) ?: app.pkg) })
         if (!app.blocked) {
             val installBtn = btn(ctx, "Install / Update", 0xFF7C3AED.toInt()) { install(ctx, app) }
@@ -125,26 +145,6 @@ class ConstellationFragment : Fragment() {
                 .onFailure { Toast.makeText(ctx, "Uninstall: ${it.message}", Toast.LENGTH_LONG).show() }
         })
         card.addView(actions)
-        val links = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        if (app.releaseUrl.isNotEmpty())
-            links.addView(TextView(ctx).apply {
-                text = "↗ APK"; textSize = 12f; setTextColor(cMiss)
-                setPadding(0, dp(ctx, 6), dp(ctx, 14), 0); isClickable = true
-                setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.releaseUrl))) } }
-            })
-        if (app.repoUrl.isNotEmpty())
-            links.addView(TextView(ctx).apply {
-                text = "↗ Repo"; textSize = 12f; setTextColor(cMiss)
-                setPadding(0, dp(ctx, 6), dp(ctx, 14), 0); isClickable = true
-                setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.repoUrl))) } }
-            })
-        if (app.ghcrPage.isNotEmpty())
-            links.addView(TextView(ctx).apply {
-                text = "↗ GHCR"; textSize = 12f; setTextColor(cMiss)
-                setPadding(0, dp(ctx, 6), dp(ctx, 14), 0); isClickable = true
-                setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.ghcrPage))) } }
-            })
-        if (links.childCount > 0) card.addView(links)
         return card
     }
 
@@ -220,7 +220,7 @@ class ConstellationFragment : Fragment() {
     }
     private fun btn(ctx: Context, label: String, bg: Int, onClick: () -> Unit) = TextView(ctx).apply {
         text = label; gravity = Gravity.CENTER; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
-        setPadding(dp(ctx, 10), dp(ctx, 10), dp(ctx, 10), dp(ctx, 10))
+        setPadding(dp(ctx, 8), dp(ctx, 7), dp(ctx, 8), dp(ctx, 7))
         setTextColor(0xFFFFFFFF.toInt()); setBackgroundColor(bg)
         val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         lp.setMargins(dp(ctx, 3), dp(ctx, 4), dp(ctx, 3), dp(ctx, 2)); layoutParams = lp
