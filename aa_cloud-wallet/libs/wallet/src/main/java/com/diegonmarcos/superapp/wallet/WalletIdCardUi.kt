@@ -175,7 +175,8 @@ private fun buildPassportMrz2(number: String, country: String, expiry: String): 
 }
 
 // ─── Spanish Passport — real biodata page layout ──────────────────────────────
-// Real design: cream paper, dark red header band, bilingual fields, MRZ bottom
+// Real design: cream paper, NO dark band — title text printed on cream, thin flag strip,
+// bilingual fields, MRZ bottom. Same as actual interior biodata page.
 
 @Composable
 private fun PassportEsCard(card: WalletStore.Card, modifier: Modifier) {
@@ -193,23 +194,24 @@ private fun PassportEsCard(card: WalletStore.Card, modifier: Modifier) {
         modifier = modifier.shadow(16.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(PaperCream)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header: dark red band
-            Box(
-                modifier = Modifier.fillMaxWidth().background(PassportRed).padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    EuBadge("ES")
-                    Spacer(Modifier.width(7.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("UNIÓN EUROPEA · ESPAÑA", color = Color(0xBBFFFFFF), fontSize = 6.sp, letterSpacing = 0.4.sp)
-                        Text("PASAPORTE · PASSPORT", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
-                    }
-                    Text("⚜", color = GoldText, fontSize = 18.sp)
-                }
-            }
+            // Thin burgundy edge + flag — no full dark band
+            Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(PassportRed))
             SpanishFlagStrip(3)
+            // Title printed directly on cream (matching real biodata page)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                EuBadge("ES")
+                Spacer(Modifier.width(7.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("UNIÓN EUROPEA · ESPAÑA", color = InkDark, fontSize = 6.sp, letterSpacing = 0.4.sp, fontWeight = FontWeight.Medium)
+                    Text("PASAPORTE · PASSPORT", color = InkDark, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+                }
+                Text(card.number, color = InkDark, fontSize = 7.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            }
             // Body: photo left, bilingual fields right
-            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 5.dp, bottom = 2.dp)) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 3.dp, bottom = 2.dp)) {
                 Column(modifier = Modifier.width(46.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     PhotoBox(modifier = Modifier.width(42.dp).weight(1f))
                     Spacer(Modifier.height(3.dp))
@@ -247,7 +249,8 @@ private fun PassportEsCard(card: WalletStore.Card, modifier: Modifier) {
 }
 
 // ─── Brazilian Passport — real biodata page layout ────────────────────────────
-// Real design: cream-blue paper, dark navy header, Portuguese bilingual fields
+// Real design: light blue-grey paper, NO dark band — title printed on light bg,
+// coat of arms + "REPÚBLICA FEDERATIVA DO BRASIL" text, bilingual fields, MRZ bottom.
 
 @Composable
 private fun PassportBrCard(card: WalletStore.Card, modifier: Modifier) {
@@ -263,30 +266,39 @@ private fun PassportBrCard(card: WalletStore.Card, modifier: Modifier) {
 
     Box(
         modifier = modifier.shadow(16.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF0F4F8))
+            .background(Color(0xFFF0F5F8))  // light blue-grey paper
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Thin green + flag strip — no dark header band
             Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(BrGreen))
-            // Header: dark navy
-            Box(
-                modifier = Modifier.fillMaxWidth().background(PassportNavy).padding(horizontal = 10.dp, vertical = 4.dp)
+            BrazilFlagStrip(3)
+            // Title printed on light background (matching real biodata page)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(20.dp).clip(CircleShape).background(BrGreen),
-                        contentAlignment = Alignment.Center,
-                    ) { Text("◆", color = BrYellow, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-                    Spacer(Modifier.width(7.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("REPÚBLICA FEDERATIVA DO BRASIL", color = Color(0xBBFFFFFF), fontSize = 5.5.sp, letterSpacing = 0.4.sp, fontWeight = FontWeight.Bold)
-                        Text("PASSAPORTE · PASSPORT", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+                // Coat of arms simplified
+                Box(
+                    modifier = Modifier.size(22.dp).clip(CircleShape).background(BrGreen),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(BrYellow), contentAlignment = Alignment.Center) {
+                        Text("◆", color = BrGreen, fontSize = 7.sp, fontWeight = FontWeight.Bold)
                     }
-                    Text("e", color = Color(0x88FFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("REPÚBLICA FEDERATIVA DO BRASIL", color = InkDark, fontSize = 5.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp)
+                    Text("PASSAPORTE · PASSPORT", color = InkDark, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ChipBadge()
+                    Spacer(Modifier.width(3.dp))
+                    Text(card.number, color = InkDark, fontSize = 7.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
             }
-            BrazilFlagStrip(3)
             // Body
-            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 5.dp, bottom = 2.dp)) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)) {
                 Column(modifier = Modifier.width(46.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     PhotoBox(modifier = Modifier.width(42.dp).weight(1f))
                     Spacer(Modifier.height(3.dp))
@@ -309,7 +321,7 @@ private fun PassportBrCard(card: WalletStore.Card, modifier: Modifier) {
                     }
                     Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1.1f)) { DocField("NÚMERO", card.number.ifBlank { "—" }, valueSp = 9f) }
-                        Column(Modifier.weight(0.9f)) { DocField("AUTORIDADE", "DGPF") }
+                        Column(Modifier.weight(0.9f)) { DocField("AUTORIDADE", "DPAS/DPF") }
                     }
                 }
             }
@@ -322,8 +334,9 @@ private fun PassportBrCard(card: WalletStore.Card, modifier: Modifier) {
 }
 
 // ─── DNI 4.0 — real EU-regulation card format ────────────────────────────────
-// Real design: white/cream card, EU badge top-left, B&W photo left,
-// DNI number below photo, data fields right, signature line bottom
+// Real design: pale yellow-tan card (real DNI has ochre tint), EU badge + "ESPAÑA" header,
+// "DNI XXXXXXXX" printed prominently at top center (NOT below photo),
+// coat-of-arms watermark faint in background, photo left, data fields right.
 
 @Composable
 private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
@@ -335,16 +348,17 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
     val expiry = parts.getOrElse(1) { "" }.removePrefix("Vál. ")
 
     Box(
-        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp)).background(CardWhite)
+        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFFCF3DA))  // real DNI: pale yellow-ochre
     ) {
-        // Holographic shimmer (real DNI has DOVID patch)
-        Box(modifier = Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(Color(0x00FFFFFF), Color(0x09AA1515), Color(0x06003399), Color(0x00FFFFFF)))
-        ))
+        // Coat of arms watermark — faint red, right-center
+        Box(modifier = Modifier.fillMaxSize().padding(end = 6.dp), contentAlignment = Alignment.CenterEnd) {
+            Text("⊕", color = Color(0x14AA151B), fontSize = 80.sp)
+        }
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top: EU badge + title
+            // Top: EU badge + ESPAÑA label
             Row(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFFEEEEE8)).padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 EuBadge("ES")
@@ -354,20 +368,25 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
                     Text("Documento Nacional de Identidad · National Identity Card", color = InkMid, fontSize = 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            // Body: photo + number left | fields right
+            // DNI number — prominent at top center, matching real card
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 1.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    "DNI ${card.number}",
+                    color = InkDark,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp,
+                )
+            }
+            // Body: photo left | fields right
             Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
                 Column(modifier = Modifier.width(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     PhotoBox(modifier = Modifier.width(46.dp).weight(1f))
                     Spacer(Modifier.height(3.dp))
-                    Text(
-                        card.number,
-                        color = InkDark,
-                        fontSize = 8.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.3.sp,
-                        maxLines = 1,
-                    )
+                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x55000000)))
+                    Spacer(Modifier.height(1.dp))
+                    Text("FIRMA", color = InkMid, fontSize = 4.sp)
                 }
                 Spacer(Modifier.width(5.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -379,18 +398,19 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
                     }
                     DocField("FECHA DE NACIMIENTO", "01 01 1990")
                     DocField("VÁLIDO HASTA", expiry.ifBlank { "—" })
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x55000000)))
-                    Spacer(Modifier.height(1.dp))
-                    Text("FIRMA / SIGNATURE", color = InkMid, fontSize = 4.5.sp)
                 }
             }
         }
     }
 }
 
-// ─── NIE — same EU-regulation card format as DNI 4.0 ─────────────────────────
-// Same polycarbonate card layout, different title text per EU Reg 2019/1157
+// ─── NIE / TIE — EU uniform Residence Permit (Tarjeta de Identidad de Extranjero) ──
+// Real design (Ministerio del Interior 2020 PDF):
+// Top bar: ESP flag block | "PERMISO DE RESIDENCIA" | card number
+// Left: photo + number vertical
+// Right: bilingual APELLIDOS, SEXO/NACION/DOB, TIPO PERMISO / VALIDEZ, NIE number
+// Bottom label: "RESIDENCE PERMIT / TITRE DE SEJOUR"
+// Background: light cream security-print paper
 
 @Composable
 private fun NieCard(card: WalletStore.Card, modifier: Modifier) {
@@ -402,59 +422,65 @@ private fun NieCard(card: WalletStore.Card, modifier: Modifier) {
     val expiry = parts.getOrElse(1) { "" }.removePrefix("Vál. ")
 
     Box(
-        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp)).background(CardWhite)
+        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF5F3EE))  // cream security paper
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(Color(0x00FFFFFF), Color(0x09065F46), Color(0x06003399), Color(0x00FFFFFF)))
-        ))
         Column(modifier = Modifier.fillMaxSize()) {
+            // Top bar: ESP flag + title + card number
             Row(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFFEEEEE8)).padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().background(Color(0xFFE8E4DC)).padding(horizontal = 6.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                EuBadge("ES")
-                Spacer(Modifier.width(6.dp))
-                Column {
-                    Text("ESPAÑA", color = InkDark, fontSize = 7.5.sp, fontWeight = FontWeight.Bold)
-                    Text("Número de Identidad de Extranjero · Foreigners Identity Number", color = InkMid, fontSize = 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Spanish flag box (matches real TIE top-left)
+                Row(modifier = Modifier.size(28.dp, 18.dp).clip(RoundedCornerShape(2.dp))) {
+                    Box(modifier = Modifier.weight(1f).fillMaxSize().background(EsRed))
+                    Box(modifier = Modifier.weight(2f).fillMaxSize().background(EsYellow))
+                    Box(modifier = Modifier.weight(1f).fillMaxSize().background(EsRed))
                 }
+                Spacer(Modifier.width(5.dp))
+                Text("PERMISO DE RESIDENCIA", color = InkDark, fontSize = 7.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(card.number, color = InkDark, fontSize = 6.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             }
+            // Body: photo left | fields right
             Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
                 Column(modifier = Modifier.width(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     PhotoBox(modifier = Modifier.width(46.dp).weight(1f))
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        card.number,
-                        color = InkDark,
-                        fontSize = 8.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.3.sp,
-                        maxLines = 1,
-                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(card.number, color = InkMid, fontSize = 5.sp, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.width(5.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    DocField("APELLIDOS", surnames.ifBlank { "—" })
-                    DocField("NOMBRE", given.ifBlank { "—" })
+                    Text("APELLIDOS Nombre / SURNAMES Forenames", color = InkMid, fontSize = 4.5.sp)
+                    Text("$surnames $given".trim().ifBlank { "—" }, color = InkDark, fontSize = 8.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(3.dp))
                     Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) { DocField("SEXO", "M") }
-                        Column(Modifier.weight(1.5f)) { DocField("NACIÓN", "BRA") }
+                        Column(Modifier.weight(0.6f)) { DocField("SEXO / SEX", "M") }
+                        Column(Modifier.weight(1.4f)) { DocField("NACION. / NATIONALITY", "BRA") }
                     }
-                    DocField("FECHA DE NACIMIENTO", "01 01 1990")
-                    DocField("VÁLIDO HASTA", expiry.ifBlank { "—" })
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1.3f)) { DocField("TIPO PERMISO / TYPE OF PERMIT", "RESIDENCIA") }
+                        Column(Modifier.weight(0.7f)) { DocField("VALIDEZ / EXPIRY", expiry.ifBlank { "—" }) }
+                    }
                     Spacer(modifier = Modifier.weight(1f))
-                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x55000000)))
+                    Text("NIE: ${card.number}", color = InkDark, fontSize = 8.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x44000000)))
                     Spacer(Modifier.height(1.dp))
-                    Text("FIRMA / SIGNATURE", color = InkMid, fontSize = 4.5.sp)
+                    Text("FIRMA / SIGNATURE", color = InkMid, fontSize = 4.sp)
                 }
+            }
+            // Bottom label
+            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFDDD9D0)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                Text("RESIDENCE PERMIT / TITRE DE SÉJOUR", color = InkMid, fontSize = 5.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp)
             }
         }
     }
 }
 
 // ─── CIN (Carteira de Identidade Nacional) Brazil ────────────────────────────
-// Real design: green/yellow, color photo left, CPF prominent, QR code corner
+// Real design (Wikimedia image): light/white card, green top header bar,
+// "REPÚBLICA FEDERATIVA DO BRASIL" + "CARTEIRA DE IDENTIDADE" title,
+// Brazil flag strip, photo left, dark-ink fields right (NOME/FILIAÇÃO/CPF/DOB),
+// QR code bottom-right, MRZ at bottom. NOT dark-green all-over.
 
 @Composable
 private fun CinBrCard(card: WalletStore.Card, modifier: Modifier) {
@@ -468,67 +494,51 @@ private fun CinBrCard(card: WalletStore.Card, modifier: Modifier) {
 
     Box(
         modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF006B2D), Color(0xFF009C3B))))
+            .background(Color(0xFFF5F5F0))  // light cream/white — real CIN body is NOT dark green
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(Color(0x00FEDD00), Color(0x18FEDD00), Color(0x00FEDD00)))
-        ))
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFF004D1F)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+            // Green header bar + coat of arms + title
+            Box(modifier = Modifier.fillMaxWidth().background(BrGreen).padding(horizontal = 8.dp, vertical = 4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier.size(20.dp).clip(CircleShape).background(BrGreen),
+                        modifier = Modifier.size(22.dp).clip(CircleShape).background(Color(0xFF005C1F)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(BrYellow), contentAlignment = Alignment.Center) {
-                            Text("◆", color = BrGreen, fontSize = 8.sp)
+                            Text("◆", color = BrGreen, fontSize = 7.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                     Spacer(Modifier.width(6.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("REPÚBLICA FEDERATIVA DO BRASIL", color = Color(0xCCFFFFFF), fontSize = 5.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
-                        Text("CARTEIRA DE IDENTIDADE NACIONAL", color = BrYellow, fontSize = 6.5.sp, fontWeight = FontWeight.Bold)
+                        Text("REPÚBLICA FEDERATIVA DO BRASIL", color = Color.White, fontSize = 5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
+                        Text("CARTEIRA DE IDENTIDADE NACIONAL", color = BrYellow, fontSize = 6.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
-            // Body: color photo left, fields right
+            BrazilFlagStrip(2)
+            // Body: photo left | dark-ink fields right
             Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
-                Box(
-                    modifier = Modifier.width(46.dp).fillMaxSize().clip(RoundedCornerShape(3.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFFBBDDBB), Color(0xFFCCEECC)))),
-                    contentAlignment = Alignment.Center,
-                ) { Text("👤", fontSize = 20.sp) }
+                Column(modifier = Modifier.width(50.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    PhotoBox(modifier = Modifier.width(44.dp).weight(1f))
+                    Spacer(Modifier.height(4.dp))
+                    // QR code indicator
+                    Box(
+                        modifier = Modifier.size(26.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF222222)),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("▦", color = Color.White, fontSize = 15.sp) }
+                }
                 Spacer(Modifier.width(6.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    DocField("NOME", "$given $surnames".trim().ifBlank { "—" }, valueSp = 8f, valueColor = Color.White)
-                    // CPF — primary national identifier, displayed prominently
+                    DocField("NOME", "$given $surnames".trim().ifBlank { "—" })
+                    DocField("FILIAÇÃO", "—")
+                    DocField("DATA DE NASCIMENTO", birth.ifBlank { "—" })
+                    // CPF — primary national identifier, printed large
                     Column(modifier = Modifier.padding(bottom = 2.dp)) {
-                        Text("CPF", color = BrYellow.copy(alpha = 0.9f), fontSize = 5.sp, letterSpacing = 0.3.sp, fontWeight = FontWeight.Medium)
-                        Text(card.number.ifBlank { "—" }, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
-                            Text("DATA NASC.", color = BrYellow.copy(alpha = 0.9f), fontSize = 5.sp)
-                            Text(birth.ifBlank { "—" }, color = Color.White, fontSize = 7.5.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                        Column(Modifier.weight(0.5f)) {
-                            Text("SEXO", color = BrYellow.copy(alpha = 0.9f), fontSize = 5.sp)
-                            Text("M", color = Color.White, fontSize = 7.5.sp, fontWeight = FontWeight.SemiBold)
-                        }
+                        Text("CPF", color = InkMid, fontSize = 5.sp, letterSpacing = 0.3.sp, fontWeight = FontWeight.Medium)
+                        Text(card.number.ifBlank { "—" }, color = InkDark, fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("VALIDADE", color = BrYellow.copy(alpha = 0.9f), fontSize = 5.sp)
-                            Text(expiry.ifBlank { "INDEFINIDA" }, color = Color.White, fontSize = 7.5.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                        // QR code (real CIN has QR on back but shown as indicator)
-                        Box(
-                            modifier = Modifier.size(26.dp).clip(RoundedCornerShape(2.dp)).background(Color.White),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("▦", color = InkDark, fontSize = 15.sp) }
-                    }
+                    Text("VALIDADE: ${expiry.ifBlank { "INDEFINIDA" }}", color = InkMid, fontSize = 5.5.sp)
                 }
             }
         }
@@ -667,7 +677,9 @@ internal fun BirthCertBrCard(card: WalletStore.Card, modifier: Modifier) {
 }
 
 // ─── Spanish Driving License — Permiso de Conducción (EU format, since 2013) ─
-// Pink/salmon card, EU badge top-left, DGT authority, EU numbered fields 1-9
+// Real design: pink/salmon card, EU "E" badge top-left (Spain's driving-licence country
+// code is "E", not "ES"), "PERMISO DE CONDUCCIÓN · REINO DE ESPAÑA" text header,
+// numbered fields 1./2./3./4a./4b./4c./5./7./9. per EU Directive 2006/126/EC.
 
 @Composable
 private fun DriveEsCard(card: WalletStore.Card, modifier: Modifier) {
@@ -693,7 +705,7 @@ private fun DriveEsCard(card: WalletStore.Card, modifier: Modifier) {
                 modifier = Modifier.fillMaxWidth().background(Color(0xFFECB0A8)).padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                EuBadge("ES")
+                EuBadge("E")  // Spain's driving-licence code is "E", not "ES"
                 Spacer(Modifier.width(6.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("REINO DE ESPAÑA", color = InkDark, fontSize = 6.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
