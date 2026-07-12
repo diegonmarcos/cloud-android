@@ -1,9 +1,11 @@
 package com.diegonmarcos.superapp.wallet
 
 import android.graphics.Bitmap
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,17 +22,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,21 +51,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+/** Card height + visible "peek" of the next card behind it. */
 private val CardDp = 200.dp
+private val PeekDp = 96.dp
 
-/**
- * Cards-tab deck — horizontal pager with 3-D perspective tilt.
- *
- * Swipe left/right: the centred card is the "current" card. Tapping
- * a non-current card scrolls the pager to it. Tapping the current
- * card opens Full view (or vCard → BusinessCardFragment). The
- * synthetic "+" Add tile lives at the end of the deck.
- */
+// ─── Cards tab deck ──────────────────────────────────────────────────────────
+
 @Composable
 internal fun WalletDeck(
     cards: List<WalletStore.Card>,
@@ -79,130 +83,109 @@ internal fun WalletDeck(
         return
     }
 
-    val pagerState = rememberPagerState(pageCount = { deck.size })
-    val scope      = rememberCoroutineScope()
+    val slotCount  = Int.MAX_VALUE
+    val initialIdx = remember(deck.size) {
+        if (deck.isEmpty()) 0 else (slotCount / 2) - ((slotCount / 2) % deck.size)
+    }
+    val listState  = rememberLazyListState(initialFirstVisibleItemIndex = initialIdx)
+    val selectedId = (mode as? WalletMode.Selected)?.cardId
     val density    = LocalDensity.current
 
-    // When the wallet returns to Idle from a Full/Config page, snap
-    // back to the card that was open so the deck feels anchored.
-    val fullCardId = (mode as? WalletMode.Full)?.cardId
-        ?: (mode as? WalletMode.Config)?.cardId
+    var programmaticScrolling by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Current card name caption above the pager
-        val currentCard = deck.getOrNull(pagerState.currentPage)
-        Text(
-            text = currentCard?.brand.orEmpty(),
-            color = Color(0xCCFFFFFF),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp),
-        )
+    LaunchedEffect(selectedId) {
+        if (selectedId == null) return@LaunchedEffect
+        val info = listState.layoutInfo
+        val slot = info.visibleItemsInfo
+            .firstOrNull { deck[it.index % deck.size].id == selectedId }
+            ?.index
+            ?: listState.firstVisibleItemIndex
+        val viewportH = info.viewportEndOffset - info.viewportStartOffset
+        val cardPx    = with(density) { CardDp.toPx() }.toInt()
+        val offsetPx  = -((viewportH - cardPx) / 2)
+        programmaticScrolling = true
+        runCatching { listState.animateScrollToItem(slot, offsetPx) }
+        programmaticScrolling = false
+    }
 
-        HorizontalPager(
-            state = pagerState,
-            // Show a sliver of the adjacent cards on each side
-            contentPadding  = PaddingValues(horizontal = 40.dp),
-            pageSpacing     = 16.dp,
-            beyondViewportPageCount = 2,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        ) { page ->
-            val card = deck[page]
-            // pageOffset > 0 means this page is to the RIGHT of current;
-            // < 0 means to the LEFT. Used for tilt and parallax.
-            val rawOffset   = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            val pageOffset  = rawOffset.coerceIn(-2f, 2f)
-            val absOffset   = abs(pageOffset)
+    LaunchedEffect(listState, selectedId) {
+        if (selectedId == null) return@LaunchedEffect
+        snapshotFlow { listState.isScrollInProgress }
+            .distinctUntilChanged()
+            .collect { scrolling ->
+                if (scrolling && !programmaticScrolling) {
+                    onModeChange(WalletMode.Idle)
+                }
+            }
+    }
 
-            val scale by animateFloatAsState(
-                targetValue   = 1f - (absOffset * 0.08f).coerceAtMost(0.18f),
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                label         = "scale",
-            )
+    LazyColumn(
+        state               = listState,
+        verticalArrangement = Arrangement.spacedBy(-(CardDp - PeekDp)),
+        contentPadding      = PaddingValues(top = 32.dp, bottom = 96.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                enabled           = selectedId != null,
+                interactionSource = remember { MutableInteractionSource() },
+                indication        = null,
+            ) { onModeChange(WalletMode.Idle) },
+    ) {
+        items(count = slotCount) { slot ->
+            val card       = deck[slot % deck.size]
+            val isSelected = selectedId == card.id
+            val isFaded    = selectedId != null && !isSelected
+
             val alpha by animateFloatAsState(
-                targetValue   = 1f - (absOffset * 0.3f).coerceAtMost(0.55f),
-                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                targetValue   = if (isFaded) 0.22f else 1f,
+                animationSpec = tween(260),
                 label         = "alpha",
             )
-            val rotY by animateFloatAsState(
-                targetValue   = pageOffset * -22f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                label         = "rotY",
+            val lift by animateDpAsState(
+                targetValue   = if (isSelected) (-18).dp else 0.dp,
+                animationSpec = tween(260),
+                label         = "lift",
             )
-            val elevation by animateFloatAsState(
-                targetValue   = if (absOffset < 0.1f) 24f else 8f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy),
-                label         = "elevation",
+            val scale by animateFloatAsState(
+                targetValue   = if (isSelected) 1.04f else 1f,
+                animationSpec = tween(260),
+                label         = "scale",
             )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .height(CardDp)
+                    .zIndex(if (isSelected) 1f else 0f)
                     .graphicsLayer {
-                        scaleX         = scale
-                        scaleY         = scale
-                        this.alpha     = alpha
-                        rotationY      = rotY
-                        cameraDistance = 14f * density.density
-                        shadowElevation = elevation
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication        = null,
-                    ) {
-                        if (page != pagerState.currentPage) {
-                            // Tap non-current → scroll to it
-                            scope.launch { pagerState.animateScrollToPage(page) }
-                        } else {
-                            // Tap current → action
-                            when {
-                                card.id == AddCardSentinel.id -> onAddTap()
-                                card.kind == "vcard"          -> onOpenVcard()
-                                else                          -> onModeChange(WalletMode.Full(card.id))
-                            }
-                        }
+                        this.alpha  = alpha
+                        translationY = lift.toPx()
+                        scaleX = scale
+                        scaleY = scale
                     },
             ) {
                 if (card.id == AddCardSentinel.id) {
-                    WalletAddTile(onClick = onAddTap)
+                    WalletAddTile(onClick = {
+                        if (selectedId != null) onModeChange(WalletMode.Idle)
+                        else                    onAddTap()
+                    })
                 } else {
                     WalletDeckCard(
-                        card      = card,
-                        onInfoTap = { onModeChange(WalletMode.Config(card.id)) },
+                        card       = card,
+                        isSelected = isSelected,
+                        onCardTap  = {
+                            when {
+                                card.kind == "vcard" -> onOpenVcard()
+                                isSelected           -> onModeChange(WalletMode.Full(card.id))
+                                selectedId != null   -> onModeChange(WalletMode.Idle)
+                                else                 -> onModeChange(WalletMode.Selected(card.id))
+                            }
+                        },
+                        onInfoTap  = { onModeChange(WalletMode.Config(card.id)) },
                     )
                 }
             }
-        }
-
-        // Dot indicators
-        Spacer(modifier = Modifier.height(12.dp))
-        PagerDots(count = deck.size, current = pagerState.currentPage)
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
-
-/** Small dot row — shows position inside the deck. */
-@Composable
-private fun PagerDots(count: Int, current: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        val show = count.coerceAtMost(12) // don't render > 12 dots
-        repeat(show) { i ->
-            val isCurrent = i == current || (current >= show && i == show - 1)
-            Box(
-                modifier = Modifier
-                    .size(if (isCurrent) 8.dp else 5.dp)
-                    .clip(CircleShape)
-                    .background(if (isCurrent) Color(0xFF7C3AED) else Color(0x44FFFFFF)),
-            )
-            if (i < show - 1) Spacer(modifier = Modifier.width(5.dp))
         }
     }
 }
@@ -229,6 +212,7 @@ internal fun WalletIdsTab(
             val pagerState = rememberPagerState(pageCount = { filtered.size })
             val scope = rememberCoroutineScope()
             Column(modifier = Modifier.fillMaxSize()) {
+                val density = LocalDensity.current
                 val currentCard = filtered.getOrNull(pagerState.currentPage)
                 Text(
                     text = currentCard?.brand.orEmpty(),
@@ -244,13 +228,24 @@ internal fun WalletIdsTab(
                     beyondViewportPageCount = 2,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 ) { page ->
-                    val card = filtered[page]
-                    val rawOffset  = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                    val absOffset  = abs(rawOffset.coerceIn(-2f, 2f))
-                    val scale by animateFloatAsState(1f - absOffset * 0.08f, spring(Spring.DampingRatioMediumBouncy), label = "s")
-                    val alpha by animateFloatAsState(1f - absOffset * 0.3f, spring(Spring.DampingRatioNoBouncy), label = "a")
-                    val rotY  by animateFloatAsState(rawOffset * -20f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium), label = "r")
-                    val density = LocalDensity.current
+                    val card      = filtered[page]
+                    val rawOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                    val absOffset = abs(rawOffset.coerceIn(-2f, 2f))
+                    val scale by animateFloatAsState(
+                        targetValue   = 1f - absOffset * 0.08f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label         = "s",
+                    )
+                    val alpha by animateFloatAsState(
+                        targetValue   = 1f - absOffset * 0.3f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                        label         = "a",
+                    )
+                    val rotY by animateFloatAsState(
+                        targetValue   = rawOffset * -20f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                        label         = "r",
+                    )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -310,9 +305,26 @@ private fun CountryToggle(selected: String, onSelect: (String) -> Unit) {
     }
 }
 
+/** Small dot row — shows position in a pager. */
+@Composable
+private fun PagerDots(count: Int, current: Int) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        val show = count.coerceAtMost(12)
+        repeat(show) { i ->
+            val isCurrent = i == current || (current >= show && i == show - 1)
+            Box(
+                modifier = Modifier
+                    .size(if (isCurrent) 8.dp else 5.dp)
+                    .clip(CircleShape)
+                    .background(if (isCurrent) Color(0xFF7C3AED) else Color(0x44FFFFFF)),
+            )
+            if (i < show - 1) Spacer(modifier = Modifier.width(5.dp))
+        }
+    }
+}
+
 // ─── Docs tab ────────────────────────────────────────────────────────────────
 
-/** Docs tab — vertical list of document cards (birth certs, etc.). */
 @Composable
 internal fun WalletDocsTab(
     docs: List<WalletStore.Card>,
@@ -344,12 +356,13 @@ internal fun WalletDocsTab(
     }
 }
 
-/** Card in the pager with the (ⓘ) info overlay. The card body tap is
- *  handled by the pager item wrapper above; only the info button needs
- *  its own clickable here. */
+// ─── Shared card composables ──────────────────────────────────────────────────
+
 @Composable
 private fun WalletDeckCard(
     card: WalletStore.Card,
+    isSelected: Boolean,
+    onCardTap: () -> Unit,
     onInfoTap: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -367,8 +380,8 @@ private fun WalletDeckCard(
             ) else card
         } else card
     }
-    Box(modifier = Modifier.fillMaxSize()) {
-        WalletCardView(card = resolved, isExpanded = true, modifier = Modifier.fillMaxSize())
+    Box(modifier = Modifier.fillMaxSize().clickable(onClick = onCardTap)) {
+        WalletCardView(card = resolved, isExpanded = isSelected, modifier = Modifier.fillMaxSize())
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -384,7 +397,6 @@ private fun WalletDeckCard(
     }
 }
 
-/** Black "+" tile for adding a new card. Tap → bottom sheet. */
 @Composable
 private fun WalletAddTile(onClick: () -> Unit) {
     Box(
@@ -400,8 +412,7 @@ private fun WalletAddTile(onClick: () -> Unit) {
     }
 }
 
-/** Shared card visual — used in both the deck and the full-page view.
- *  ID and Doc cards are dispatched to their own composables. */
+/** Shared card visual — regular cards use gradient; id/doc dispatch to their own composables. */
 @Composable
 internal fun WalletCardView(
     card: WalletStore.Card,
@@ -430,13 +441,6 @@ internal fun WalletCardView(
         Row(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().weight(1f)) {
                 Text(card.brand, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                // Deck (isExpanded=false) shows ONLY the short subtitle
-                // already in card.tagline ("Profile Card", "vCard 3.0",
-                // "Visa · IBAN ending 4582", …). When the card expands
-                // (Selected on the deck or rendered in the wallet's
-                // Full page) AND it's a vCard kind, inflate the
-                // tagline to the full multi-line identity pulled from
-                // QrcodesData — tight font so the rows fit.
                 val isVcardLike = card.kind == "vcard" || card.kind == "vcard_imported"
                 val expandedTagline = if (isExpanded && isVcardLike) {
                     QrcodesData.contact(ctx)?.fullCardTagline()
@@ -444,8 +448,8 @@ internal fun WalletCardView(
                 val displayTagline = expandedTagline ?: card.tagline
                 Text(
                     displayTagline,
-                    color = Color(0xCCFFFFFF),
-                    fontSize  = if (expandedTagline != null) 10.sp else 13.sp,
+                    color      = Color(0xCCFFFFFF),
+                    fontSize   = if (expandedTagline != null) 10.sp else 13.sp,
                     lineHeight = if (expandedTagline != null) 13.sp else 16.sp,
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -458,11 +462,6 @@ internal fun WalletCardView(
                 Spacer(modifier = Modifier.size(4.dp))
                 Text(card.kind.uppercase(), color = Color(0x88FFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
-            // Show the QR for any vCard kind whenever the card is in
-            // the expanded state (Selected / Full). The QR encodes the
-            // full canonical vCard 3.0 payload (matches the .vcf the
-            // front repo publishes), so scanning it reproduces the
-            // same identity the card front displays.
             if ((card.kind == "vcard" || card.kind == "vcard_imported") && isExpanded) {
                 Spacer(modifier = Modifier.size(12.dp))
                 VcardQr(card = card)
@@ -471,11 +470,6 @@ internal fun WalletCardView(
     }
 }
 
-/** Live vCard 3.0 QR — encoded from the canonical QrcodesData contact
- *  block so it matches the .vcf file generated by the front repo
- *  (~/git/front/a-Portals/linktree/src/public/diegonmarcos-contact.vcf).
- *  Same data the wallet card front displays — the QR is a scannable
- *  copy of the card. */
 @Composable
 private fun VcardQr(card: WalletStore.Card) {
     val ctx = LocalContext.current
@@ -505,9 +499,6 @@ private fun VcardQr(card: WalletStore.Card) {
     }
 }
 
-/** vCard 3.0 string built from the canonical QrcodesContact. Mirrors
- *  every field that lands in the .vcf file the front repo generates:
- *  N, FN, EMAIL;TYPE, TEL;TYPE, ADR;TYPE, URL;TYPE × N, BDAY. */
 private fun vcardPayload(q: QrcodesContact): String = buildString {
     append("BEGIN:VCARD\n")
     append("VERSION:3.0\n")
