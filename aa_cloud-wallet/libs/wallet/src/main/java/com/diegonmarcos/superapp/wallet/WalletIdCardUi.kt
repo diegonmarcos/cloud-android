@@ -381,12 +381,18 @@ private fun PassportBrCard(card: WalletStore.Card, modifier: Modifier) {
 }
 
 // ─── DNI 4.0 — real EU-regulation card format ────────────────────────────────
-// Real design: pale yellow-tan card (real DNI has ochre tint), EU badge + "ESPAÑA" header,
-// "DNI XXXXXXXX" printed prominently at top center (NOT below photo),
-// coat-of-arms watermark faint in background, photo left, data fields right.
+// Real design (downloaded es_dni_front.webp):
+// Cobalt-blue header bar full-width: EU badge left + "REINO DE ESPAÑA · DOCUMENTO NACIONAL
+// DE IDENTIDAD" center + Spanish flag (red/yellow/red) right.
+// Below header on pale ochre: "DNI 99999999R" large, then photo left / fields right.
+// Fields: APELLIDOS / NOMBRE / SEXO+NACIONALIDAD+NACIMIENTO / EMISIÓN+VALIDEZ / NUM SOPORTE / FIRMA.
+// Bottom footer bar: "DOCUMENTO NACIONAL DE IDENTIDAD · NATIONAL IDENTITY CARD".
 
 @Composable
 private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
+    val DniBlue   = Color(0xFF1A4395)   // cobalt blue header — real DNI
+    val DniOchre  = Color(0xFFFCF3DA)   // pale ochre card body
+
     val parts = card.tagline.split(" · ")
     val raw = parts.getOrElse(0) { "" }
     val ci = raw.indexOf(',')
@@ -396,27 +402,33 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
 
     Box(
         modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFFCF3DA))  // real DNI: pale yellow-ochre
+            .background(DniOchre)
     ) {
         // Coat of arms watermark — faint red, right-center
         Box(modifier = Modifier.fillMaxSize().padding(end = 6.dp), contentAlignment = Alignment.CenterEnd) {
             Text("⊕", color = Color(0x14AA151B), fontSize = 80.sp)
         }
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top: EU badge + ESPAÑA label
+            // Blue header band — EU badge | title | Spanish flag (matches real DNI)
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().background(DniBlue).padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 EuBadge("ES")
-                Spacer(Modifier.width(6.dp))
-                Column {
-                    Text("ESPAÑA", color = InkDark, fontSize = 7.5.sp, fontWeight = FontWeight.Bold)
-                    Text("Documento Nacional de Identidad · National Identity Card", color = InkMid, fontSize = 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.width(5.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("REINO DE ESPAÑA", color = Color.White, fontSize = 7.5.sp, fontWeight = FontWeight.Bold)
+                    Text("DOCUMENTO NACIONAL DE IDENTIDAD", color = Color(0xCCFFFFFF), fontSize = 4.sp, letterSpacing = 0.3.sp)
+                }
+                // Spanish flag — red / yellow / red strips
+                Column(modifier = Modifier.width(20.dp)) {
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(Color(0xFFAA151B)))
+                    Box(Modifier.fillMaxWidth().height(8.dp).background(Color(0xFFF1BF00)))
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(Color(0xFFAA151B)))
                 }
             }
-            // DNI number — prominent at top center, matching real card
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 1.dp), contentAlignment = Alignment.Center) {
+            // DNI number — prominent below header, matching real card
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
                 Text(
                     "DNI ${card.number}",
                     color = InkDark,
@@ -427,7 +439,7 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
                 )
             }
             // Body: photo left | fields right
-            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp)) {
                 Column(modifier = Modifier.width(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     PhotoBox(modifier = Modifier.width(46.dp).weight(1f))
                     Spacer(Modifier.height(3.dp))
@@ -440,12 +452,27 @@ private fun DniCard(card: WalletStore.Card, modifier: Modifier) {
                     DocField("APELLIDOS", surnames.ifBlank { "—" })
                     DocField("NOMBRE", given.ifBlank { "—" })
                     Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) { DocField("SEXO", "M") }
-                        Column(Modifier.weight(1.5f)) { DocField("NACIONALIDAD", "ESP") }
+                        Column(Modifier.weight(0.6f)) { DocField("SEXO", "M") }
+                        Column(Modifier.weight(1.1f)) { DocField("NACIONALIDAD", "ESP") }
+                        Column(Modifier.weight(1.3f)) { DocField("NACIMIENTO", "01 01 1990") }
                     }
-                    DocField("FECHA DE NACIMIENTO", "01 01 1990")
-                    DocField("VÁLIDO HASTA", expiry.ifBlank { "—" })
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) { DocField("EMISIÓN", "—") }
+                        Column(Modifier.weight(1f)) { DocField("VALIDEZ", expiry.ifBlank { "—" }) }
+                    }
+                    DocField("NUM. SOPORTE", "CAA000000")
                 }
+            }
+            // Bottom footer bar — matches real DNI
+            Box(
+                modifier = Modifier.fillMaxWidth().background(DniBlue).padding(horizontal = 8.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "DOCUMENTO NACIONAL DE IDENTIDAD · NATIONAL IDENTITY CARD",
+                    color = Color.White, fontSize = 4.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -570,6 +597,10 @@ private fun NieCard(card: WalletStore.Card, modifier: Modifier) {
                         }
                     }
                     Spacer(Modifier.height(2.dp))
+                    // OBSERVACIONES — present on real TIE card (usually blank in specimen)
+                    Text("OBSERVACIONES / REMARKS", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
+                    Text("—", color = TieDark, fontSize = 5.sp)
+                    Spacer(Modifier.height(2.dp))
                     // NIE — large and prominent (same as real card)
                     Text("NIE / PERSONAL NUMBER", color = TieDark.copy(alpha = 0.55f), fontSize = 3.5.sp)
                     Text(
@@ -686,7 +717,14 @@ private fun CinBrCard(card: WalletStore.Card, modifier: Modifier) {
 @Composable
 private fun TsiCard(card: WalletStore.Card, modifier: Modifier) {
     val parts      = card.tagline.split(" · ")
-    val nuss       = parts.getOrElse(0) { "" }.removePrefix("NUSS: ").ifBlank { "—" }
+    // tagline: "SURNAME, NAME · NUSS: 000000000000 · Comunidad de Madrid"
+    val holderRaw  = parts.getOrElse(0) { "" }
+    val nussPart   = parts.firstOrNull { it.startsWith("NUSS: ") }
+    val nuss       = nussPart?.removePrefix("NUSS: ")?.ifBlank { "—" } ?: "—"
+    val holderName = if (nuss == "—") holderRaw else holderRaw
+    val ci         = holderName.indexOf(',')
+    val surnames   = (if (ci >= 0) holderName.substring(0, ci) else holderName).trim().uppercase()
+    val given      = (if (ci >= 0) holderName.substring(ci + 1) else "").trim().uppercase()
     val cipDisplay = card.number.ifBlank { "—" }
     val SaludBlue  = Color(0xFF009FCA)   // official SaludMadrid brand blue
     val MadridRed  = Color(0xFFAA151B)   // Comunidad de Madrid red
@@ -758,8 +796,8 @@ private fun TsiCard(card: WalletStore.Card, modifier: Modifier) {
                 // Auxiliary field (DOB/expiry ref — value not in current wallet.json; shown as placeholder)
                 Text("— — — — — — — —", color = Color(0xCCFFFFFF), fontSize = 8.sp, fontFamily = FontFamily.Monospace)
                 Spacer(Modifier.weight(1f))
-                // Patient name — full name from brand field
-                Text(card.brand.uppercase(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Patient name — SURNAME GIVEN (matches real TSI card name row)
+                Text("$surnames $given".trim(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -876,8 +914,9 @@ private fun DriveEsCard(card: WalletStore.Card, modifier: Modifier) {
     val ci     = raw.indexOf(',')
     val surnames = (if (ci >= 0) raw.substring(0, ci) else raw).trim()
     val given  = (if (ci >= 0) raw.substring(ci + 1) else "").trim()
-    val expiry = parts.getOrElse(1) { "" }.removePrefix("Exp. ")
-    val cats   = parts.getOrElse(2) { "B" }
+    val birth  = parts.getOrElse(1) { "" }.removePrefix("Nasc. ")
+    val expiry = parts.getOrElse(2) { "" }.removePrefix("Exp. ")
+    val cats   = parts.getOrElse(3) { "B" }
 
     Box(
         modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
@@ -918,6 +957,10 @@ private fun DriveEsCard(card: WalletStore.Card, modifier: Modifier) {
                 Column(modifier = Modifier.weight(1f)) {
                     DocField("1. APELLIDOS", surnames.ifBlank { "—" })
                     DocField("2. NOMBRE", given.ifBlank { "—" })
+                    Row(Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1.2f)) { DocField("3. F. NACIMIENTO", birth.ifBlank { "01/01/1990" }) }
+                        Column(Modifier.weight(0.8f)) { DocField("NACIÓN", "ESPAÑA") }
+                    }
                     Row(Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) { DocField("4a. EXPEDICIÓN", "15/03/2021") }
                         Column(Modifier.weight(1f)) { DocField("4b. CADUCIDAD", expiry.ifBlank { "—" }) }
