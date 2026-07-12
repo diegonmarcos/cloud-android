@@ -121,13 +121,14 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
 
     // ── Tab filtering ──────────────────────────────────────────────────────
-    val bankingKinds = setOf("credit", "debit", "virtual_debit", "vcard", "vcard_imported")
+    val bankingKinds = setOf("credit", "debit", "virtual_debit")
+    val vcardKinds   = setOf("vcard", "vcard_imported")
     val passKinds    = setOf("transit", "gym")
 
     val cardsForTab = remember(cards, tab, ticketsSub, ticketsShowArchive) {
         when (tab) {
             WalletTab.Cards   -> cards.filter { !it.isTicket && it.category.isEmpty() && it.kind in bankingKinds }
-            WalletTab.IDs     -> cards.filter { it.category == "id" || it.category == "doc" }
+            WalletTab.IDs     -> cards.filter { it.category == "id" || it.category == "doc" || it.kind in vcardKinds }
             WalletTab.Tickets -> when (ticketsSub) {
                 TicketsSubTab.Events   -> cards.filter {
                     it.isTicket && (if (ticketsShowArchive) it.isPastTicket else !it.isPastTicket)

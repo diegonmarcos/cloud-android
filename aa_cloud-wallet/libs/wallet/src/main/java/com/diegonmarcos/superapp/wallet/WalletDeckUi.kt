@@ -196,8 +196,10 @@ internal fun WalletIdsTab(
     Column(modifier = Modifier.fillMaxSize()) {
         // Minimal inline country toggle
         Row(
-            modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         ) {
             listOf("" to "All", "es" to "ES", "br" to "BR").forEach { (key, label) ->
                 val active = key == country
@@ -236,10 +238,11 @@ internal fun WalletIdsTab(
                             .shadow(8.dp, RoundedCornerShape(16.dp))
                             .clickable { onCardTap(card) },
                     ) {
-                        if (card.category == "doc") {
-                            DocCardView(card = card, modifier = Modifier.fillMaxSize())
-                        } else {
-                            IdCardView(card = card, modifier = Modifier.fillMaxSize())
+                        when {
+                            card.category == "doc" -> DocCardView(card = card, modifier = Modifier.fillMaxSize())
+                            card.kind == "vcard" || card.kind == "vcard_imported" ->
+                                WalletCardView(card = card, isExpanded = false, modifier = Modifier.fillMaxSize())
+                            else -> IdCardView(card = card, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }
