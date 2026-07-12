@@ -1,6 +1,8 @@
 package com.diegonmarcos.superapp.wallet
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +45,50 @@ internal fun IdCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
         "id_driving_es"  -> DriveEsCard(card, modifier)
         "id_boat_es"     -> BoatEsCard(card, modifier)
         else             -> GenericIdCard(card, modifier)
+    }
+}
+
+/**
+ * 3D-r: React Three Fiber via AndroidView(WebView).
+ * Load assets/wallet3d/index.html; pass card.kind via JS or URL param.
+ * See docs/3d-view-design.md for full asset + PBR pipeline notes.
+ */
+@Composable
+internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF0D0D1A)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("3D-r", color = Color(0x88FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+            Text(card.kind, color = Color(0x44FFFFFF), fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+            Text("React Three Fiber stub", color = Color(0x33FFFFFF), fontSize = 9.sp)
+        }
+    }
+}
+
+/**
+ * 3D-f: Google Filament via SceneView (Vulkan/OpenGL native).
+ * Load models/blank_passport.glb; swap cover texture per card.kind at runtime.
+ * See docs/3d-view-design.md for full material + shader mapping.
+ */
+@Composable
+internal fun IdCard3DFilamentView(card: WalletStore.Card, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF0A0D14)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("3D-f", color = Color(0x88FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+            Text(card.kind, color = Color(0x44FFFFFF), fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+            Text("Filament native stub", color = Color(0x33FFFFFF), fontSize = 9.sp)
+        }
     }
 }
 
@@ -554,73 +601,91 @@ private fun CinBrCard(card: WalletStore.Card, modifier: Modifier) {
 // Bottom band: same color — regional authority + Consejería de Sanidad
 // Madrid/national variant: SNS blue (#006699) vs Andalucia green
 
+// From actual Comunidad de Madrid official card image (comunidad.madrid/servicios/salud/tarjeta-sanitaria):
+// White top section (~38%): SaludMadrid logo left (blue cross + red Madrid star badge + "SaludMadrid" text),
+// right side has small Madrid star emblem + "Comunidad de Madrid" + large blue "TARJETA SANITARIA".
+// Bottom ~62%: vivid #009FCA blue band, white monospace data rows:
+//   Row1: CIP code (6-digit prefix + MDMD + long number + 2 digits)
+//   Row2: NUSS 12-digit national SSN
+//   Row3: 8-digit field (DOB or expiry ref)
+//   Row4: NOMBRE APELLIDO APELLIDO (patient name, bold)
 @Composable
 private fun TsiCard(card: WalletStore.Card, modifier: Modifier) {
-    val parts  = card.tagline.split(" · ")
-    val nuss   = parts.getOrElse(0) { "" }.removePrefix("NUSS: ")
-    val region = parts.getOrElse(1) { "SNS" }
-    val SnsBlue = Color(0xFF006699)
+    val parts      = card.tagline.split(" · ")
+    val nuss       = parts.getOrElse(0) { "" }.removePrefix("NUSS: ").ifBlank { "—" }
+    val cipDisplay = card.number.ifBlank { "—" }
+    val SaludBlue  = Color(0xFF009FCA)   // official SaludMadrid brand blue
+    val MadridRed  = Color(0xFFAA151B)   // Comunidad de Madrid red
 
     Box(
-        modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFFCF8EC))  // cream paper — real card body is cream/off-white
+        modifier = modifier
+            .shadow(16.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFF0F0EE)),
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(Color(0x06004488), Color(0x00FFFFFF), Color(0x03004488)))
-        ))
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top band
-            Box(modifier = Modifier.fillMaxWidth().background(SnsBlue).padding(horizontal = 8.dp, vertical = 5.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(20.dp).clip(RoundedCornerShape(3.dp)).background(Color.White),
-                        contentAlignment = Alignment.Center,
-                    ) { Text("+", color = SnsBlue, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold) }
-                    Spacer(Modifier.width(6.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("SISTEMA NACIONAL DE SALUD DE ESPAÑA", color = Color(0xAAFFFFFF), fontSize = 5.sp, letterSpacing = 0.2.sp)
-                        Text("TARJETA SANITARIA INDIVIDUAL", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.4.sp)
+            // ── White header ──────────────────────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // SaludMadrid composite logo (left)
+                Column(modifier = Modifier.width(66.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("✚", color = SaludBlue, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier.size(20.dp, 18.dp).clip(RoundedCornerShape(2.dp)).background(MadridRed),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // 7 stars (Madrid Comunidad emblem) — rendered as 3+4 tiny star rows
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("★★★", color = Color.White, fontSize = 4.sp, lineHeight = 5.sp)
+                                Text("★★★★", color = Color.White, fontSize = 4.sp, lineHeight = 5.sp)
+                            }
+                        }
                     }
-                    Text("TSI", color = Color(0xCCFFFFFF), fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(2.dp))
+                    Row {
+                        Text("Salud", color = SaludBlue, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Madrid", color = Color(0xFF222222), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
-            }
-            // Body: chip left | fields center | emblem right
-            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
-                // Gold smart card chip column
-                Column(modifier = Modifier.width(34.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(Modifier.weight(1f))
+                // Right: emblem + title
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(14.dp, 12.dp).clip(RoundedCornerShape(1.dp)).background(MadridRed),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("★★★★", color = Color.White, fontSize = 3.sp, lineHeight = 4.sp) }
+                        Spacer(Modifier.width(4.dp))
+                        Text("Comunidad de Madrid", color = Color(0xFF1A1A1A), fontSize = 7.sp, fontWeight = FontWeight.SemiBold)
+                    }
                     Spacer(Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier.size(28.dp, 20.dp).clip(RoundedCornerShape(3.dp)).background(
-                            Brush.linearGradient(listOf(Color(0xFFD4AF37), Color(0xFFF0C040), Color(0xFFC8980A)))
-                        ),
-                        contentAlignment = Alignment.Center,
-                    ) { Text("▣", color = Color(0xFFAA8800), fontSize = 13.sp) }
-                    Spacer(Modifier.height(5.dp))
-                    Text("▶", color = SnsBlue, fontSize = 9.sp)  // direction indicator on real card
-                }
-                Spacer(Modifier.width(3.dp))
-                // Fields
-                Column(modifier = Modifier.weight(1f)) {
-                    DocField("NÚMERO ÚNICO SS (NUSS)", nuss.ifBlank { card.number }, valueSp = 9f)
-                    Spacer(Modifier.height(2.dp))
-                    DocField("Nº CIP / TARJETA", card.number.ifBlank { "—" })
-                    Spacer(Modifier.height(2.dp))
-                    Text("D.N.I. / N.I.E.", color = InkMid, fontSize = 4.5.sp, letterSpacing = 0.3.sp)
-                    Text("— — — — — —", color = InkDark, fontSize = 6.5.sp, fontFamily = FontFamily.Monospace)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("FARM-P", color = InkDark, fontSize = 7.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                }
-                // Right: regional emblem placeholder (Comunidad de Madrid coat)
-                Box(modifier = Modifier.width(28.dp).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                    Box(
-                        modifier = Modifier.size(24.dp).padding(top = 4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x14004488)),
-                        contentAlignment = Alignment.Center,
-                    ) { Text("⊕", color = Color(0x550066AA), fontSize = 16.sp) }
+                    Text("TARJETA SANITARIA", color = SaludBlue, fontSize = 10.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.2.sp)
                 }
             }
-            // Bottom band
-            Box(modifier = Modifier.fillMaxWidth().background(SnsBlue).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                Text("$region · CONSEJERÍA DE SANIDAD", color = Color(0xCCFFFFFF), fontSize = 5.5.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // ── Blue data band ────────────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(SaludBlue)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            ) {
+                // CIP code
+                Text(cipDisplay, color = Color.White, fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                Spacer(Modifier.height(4.dp))
+                // NUSS
+                Text(nuss, color = Color.White, fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                Spacer(Modifier.height(4.dp))
+                // Auxiliary field (DOB/expiry ref — value not in current wallet.json; shown as placeholder)
+                Text("— — — — — — — —", color = Color(0xCCFFFFFF), fontSize = 8.sp, fontFamily = FontFamily.Monospace)
+                Spacer(Modifier.weight(1f))
+                // Patient name — full name from brand field
+                Text(card.brand.uppercase(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -807,10 +872,16 @@ private fun DriveEsCard(card: WalletStore.Card, modifier: Modifier) {
 }
 
 // ─── Spanish Boat License — Titulación Náutica de Recreo ─────────────────────
-// Real format (MITMA official certificate — Spain now issues as signed PDF with QR,
-// not a plastic ID card): cream official paper, navy government header with coat of arms,
-// "DIRECCIÓN GENERAL DE MARINA MERCANTE", full-title line (PNB/PER), photo left,
-// holder name + DNI/NIE + issue/expiry dates, QR verification at bottom-right.
+// Source: BOE Real Decreto 875/2014, Annex VII (BOE-A-2014-10344, pp.83076-83079).
+// Python-decompressed PDF streams; official spec:
+//   - A5 paper (not plastic) on special security paper with unique tracking reference
+//   - "franja oblicua con los colores de la bandera nacional en su esquina superior derecha"
+//     → oblique diagonal stripe (red/yellow/red) in upper-right corner only
+//   - Bilingual Spanish/English throughout
+//   - Front: title type, Titular, DOB, Nationality, Address, Certificate Nº, Issue date,
+//     "Expedido por" (Ministerio de Fomento / CCAA), "ESPAÑA / SPAIN"
+//   - Back: "VÁLIDA HASTA", holder + DG Marina Mercante signatures, official seal,
+//     competences table (Básicas / Complementarias / Profesionales / Observaciones)
 
 @Composable
 private fun BoatEsCard(card: WalletStore.Card, modifier: Modifier) {
@@ -822,68 +893,108 @@ private fun BoatEsCard(card: WalletStore.Card, modifier: Modifier) {
     val expiry   = parts.getOrElse(1) { "" }.removePrefix("Exp. ")
     val title    = parts.getOrElse(2) { "PNB" }
     val MitmaDark = Color(0xFF1A3A6E)
+    val fullTitle = when (title) {
+        "PNB" -> "PATRÓN PARA NAVEGACIÓN BÁSICA"
+        "PER" -> "PATRÓN DE EMBARCACIONES DE RECREO"
+        "PY"  -> "PATRÓN DE YATE"
+        else  -> "TITULACIÓN NÁUTICA · $title"
+    }
 
     Box(
         modifier = modifier.shadow(16.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFFF8F6F0))  // cream official paper
+            .background(Color(0xFFF8F6F0)),
     ) {
+        // Security background tint
+        Box(modifier = Modifier.fillMaxSize().background(
+            Brush.linearGradient(listOf(Color(0x06003399), Color(0x00F8F6F0), Color(0x04AA151B)))
+        ))
+
+        // Oblique Spanish flag stripe — upper-right corner (BOE Annex VII: "franja oblicua")
+        // Red/Yellow/Red diagonal triangles stacked from outer to inner corner
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+            Canvas(modifier = Modifier.size(54.dp, 54.dp)) {
+                val w = size.width; val h = size.height
+                // Outer red band
+                drawPath(path = Path().apply {
+                    moveTo(w, 0f); lineTo(w, h * 0.56f); lineTo(w * 0.44f, 0f); close()
+                }, color = Color(0xFFAA151B))
+                // Yellow band
+                drawPath(path = Path().apply {
+                    moveTo(w, 0f); lineTo(w, h * 0.37f); lineTo(w * 0.63f, 0f); close()
+                }, color = Color(0xFFF1BF00))
+                // Inner red (top-right corner tip — 1:2:1 flag ratio)
+                drawPath(path = Path().apply {
+                    moveTo(w, 0f); lineTo(w, h * 0.19f); lineTo(w * 0.81f, 0f); close()
+                }, color = Color(0xFFAA151B))
+            }
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top: official navy header + coat of arms + ministry text
+            // Navy header: coat of arms + ministry + title badge
             Box(modifier = Modifier.fillMaxWidth().background(MitmaDark).padding(horizontal = 8.dp, vertical = 5.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier.size(22.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33FFD700)),
+                        modifier = Modifier.size(22.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x44FFD700)),
                         contentAlignment = Alignment.Center,
-                    ) { Text("⊕", color = Color(0xCCFFD700), fontSize = 14.sp) }
+                    ) { Text("⊕", color = Color(0xEEFFD700), fontSize = 13.sp) }
                     Spacer(Modifier.width(6.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("MINISTERIO DE TRANSPORTES · ESPAÑA", color = Color(0xAAFFFFFF), fontSize = 5.sp, letterSpacing = 0.2.sp)
+                        Text("MINISTERIO DE TRANSPORTES · ESPAÑA", color = Color(0x99FFFFFF), fontSize = 4.5.sp, letterSpacing = 0.2.sp)
                         Text("DIR. GRAL. MARINA MERCANTE", color = Color.White, fontSize = 6.5.sp, fontWeight = FontWeight.Bold)
                     }
                     Box(
-                        modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(Color.White).padding(horizontal = 3.dp, vertical = 2.dp),
-                    ) { Text(title, color = MitmaDark, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold) }
+                        modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(Color.White).padding(horizontal = 4.dp, vertical = 2.dp),
+                    ) { Text(title, color = MitmaDark, fontSize = 8.5.sp, fontWeight = FontWeight.ExtraBold) }
                 }
             }
-            SpanishFlagStrip(3)
-            // Full title text band
-            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFECEAE2)).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Text(
-                    when (title) {
-                        "PNB" -> "PATRÓN DE NAVEGACIÓN BÁSICA"
-                        "PER" -> "PATRÓN DE EMBARCACIÓN DE RECREO"
-                        "PY"  -> "PATRÓN DE YATE"
-                        else  -> "TITULACIÓN NÁUTICA DE RECREO · $title"
-                    },
-                    color = MitmaDark, fontSize = 6.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp,
-                )
-            }
-            // Body: photo left | fields right
-            Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(6.dp)) {
-                Column(modifier = Modifier.width(50.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    PhotoBox(modifier = Modifier.width(44.dp).weight(1f))
-                    Spacer(Modifier.height(3.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0x55000000)))
-                    Spacer(Modifier.height(1.dp))
-                    Text("FIRMA", color = InkMid, fontSize = 4.sp)
+            // Full bilingual title (BOE Annex VII template shows title prominently)
+            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFE8E5DC)).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                Column {
+                    Text(fullTitle, color = MitmaDark, fontSize = 6.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
+                    Text(
+                        when (title) {
+                            "PNB" -> "Basic Navigation Skipper"
+                            "PER" -> "Recreational Craft Skipper"
+                            "PY"  -> "Yacht Skipper"
+                            else  -> "Recreational Nautical Certificate"
+                        },
+                        color = MitmaDark.copy(alpha = 0.65f), fontSize = 5.sp, fontStyle = FontStyle.Italic,
+                    )
                 }
-                Spacer(Modifier.width(5.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    DocField("TITULAR", "$given $surnames".trim().ifBlank { "—" }, valueColor = MitmaDark)
-                    DocField("DNI/NIE", card.number.ifBlank { "—" })
-                    Row(Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) { DocField("EXPEDICIÓN", "30/01/2020") }
-                        Column(Modifier.weight(1f)) { DocField("VALIDEZ", expiry.ifBlank { "—" }) }
-                    }
+            }
+            // Body: bilingual fields per BOE Annex VII Anverso layout
+            Column(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp)) {
+                // Titular (holder name)
+                Column(modifier = Modifier.padding(bottom = 3.dp)) {
+                    Text("Titular / Certificate Holder", color = InkMid, fontSize = 4.5.sp, letterSpacing = 0.2.sp)
+                    Text(
+                        "$given $surnames".trim().ifBlank { "—" },
+                        color = MitmaDark, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) { DocField("Fecha nac. / Date of Birth", "01/01/1990") }
+                    Column(modifier = Modifier.weight(1f)) { DocField("Nacionalidad / Nationality", "ESPAÑOLA") }
+                }
+                // Certificate Nº + validity (BOE: "Tarjeta Nº / Certificate Nº" on front)
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1.2f)) { DocField("Tarjeta Nº / Certificate Nº", card.number.ifBlank { "—" }, valueSp = 8f) }
+                    Column(modifier = Modifier.weight(0.8f)) { DocField("Válida hasta / Valid until", expiry.ifBlank { "—" }) }
+                }
+                // Issuing authority (BOE: "Expedido por, el … Ministerio de Fomento / CCAA")
+                DocField("Expedido por / Issued by", "Ministerio de Transportes · CAM")
+                Spacer(modifier = Modifier.weight(1f))
+                // Bottom: ESPAÑA / SPAIN + QR — BOE template ends with "ESPAÑA / SPAIN"
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(22.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF222222)),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("▦", color = Color.White, fontSize = 12.sp) }
+                    Spacer(Modifier.width(5.dp))
+                    Text("VERIFICAR EN\nSEDEMARINA.ES", color = InkMid, fontSize = 4.sp, lineHeight = 6.sp)
                     Spacer(modifier = Modifier.weight(1f))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(20.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF222222)),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("▦", color = Color.White, fontSize = 11.sp) }
-                        Spacer(Modifier.width(4.dp))
-                        Text("VERIFICAR EN\nSEDEMARINA.ES", color = InkMid, fontSize = 4.sp, lineHeight = 6.sp)
-                    }
+                    Text("ESPAÑA / SPAIN", color = MitmaDark, fontSize = 7.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
                 }
             }
         }
