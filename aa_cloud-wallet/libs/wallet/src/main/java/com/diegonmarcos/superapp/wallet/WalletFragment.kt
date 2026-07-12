@@ -8,7 +8,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +20,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,9 +42,14 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class WalletFragment : Fragment(), BackHandler {
 
@@ -294,19 +303,11 @@ private fun WalletSystemConfigTab(onImported: () -> Unit) {
         }
         if (status.isNotBlank()) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (status.contains("Error")) Color(0x33FF4444) else Color(0x3344FF88)
-                        )
-                        .padding(12.dp),
-                ) {
-                    Text(status, color = Color.White, fontSize = 13.sp)
-                }
+                StatusBanner(status)
             }
         }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item { MailConnectorSection(onImported = onImported) }
         item { Spacer(modifier = Modifier.height(8.dp)) }
         item {
             ConfigSection(title = "Wallet Data") {
@@ -322,6 +323,187 @@ private fun WalletSystemConfigTab(onImported: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun StatusBanner(message: String) {
+    val isError = message.contains("Error", ignoreCase = true)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isError) Color(0x33FF4444) else Color(0x3344FF88))
+            .padding(12.dp),
+    ) {
+        Text(message, color = Color.White, fontSize = 13.sp)
+    }
+}
+
+// ─── Mail Connector section ───────────────────────────────────────────────────
+
+@Composable
+private fun MailConnectorSection(onImported: () -> Unit) {
+    val ctx   = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var cfg     by remember { mutableStateOf(WalletMailConnector.loadConfig(ctx)) }
+    var expanded by remember { mutableStateOf(false) }
+    var scanning by remember { mutableStateOf(false) }
+    var status   by remember { mutableStateOf("") }
+
+    ConfigSection(title = "Mail Connector") {
+        // Header row — tap to expand/collapse settings
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("IMAP Settings", color = Color.White, fontSize = 15.sp)
+                Text(
+                    if (cfg.email.isNotBlank()) cfg.email else "Not configured",
+                    color = Color(0x66FFFFFF),
+                    fontSize = 12.sp,
+                )
+            }
+            Text(if (expanded) "▲" else "▼", color = Color(0x55FFFFFF), fontSize = 14.sp)
+        }
+
+        // Collapsible settings
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0x12FFFFFF))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MailField("IMAP Host",  cfg.host)     { cfg = cfg.copy(host = it) }
+                MailField("Port",       cfg.port.toString(), keyboard = KeyboardType.Number) {
+                    cfg = cfg.copy(port = it.toIntOrNull() ?: cfg.port)
+                }
+                MailField("Email",      cfg.email,    keyboard = KeyboardType.Email) { cfg = cfg.copy(email = it) }
+                MailField("Password",   cfg.password, password = true) { cfg = cfg.copy(password = it) }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF7C3AED))
+                        .clickable {
+                            WalletMailConnector.saveConfig(ctx, cfg)
+                            status = "Settings saved."
+                            expanded = false
+                        }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("Save", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        // Scan action
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !scanning) {
+                    if (cfg.email.isBlank() || cfg.password.isBlank()) {
+                        status = "Configure email and password first."
+                        expanded = true
+                        return@clickable
+                    }
+                    scanning = true
+                    status   = "Connecting to ${cfg.host}…"
+                    scope.launch(Dispatchers.IO) {
+                        val result = runCatching {
+                            WalletMailConnector.scan(ctx)
+                        }
+                        withContext(Dispatchers.Main) {
+                            scanning = false
+                            result.onSuccess { r ->
+                                status = r.message
+                                if (r.cards.isNotEmpty()) {
+                                    // Deduplicate by id before importing
+                                    val existing = WalletStore.all(ctx).map { it.id }.toSet()
+                                    val fresh    = r.cards.filter { it.id !in existing }
+                                    fresh.forEach { WalletStore.push(ctx, it) }
+                                    if (fresh.isNotEmpty()) {
+                                        onImported()
+                                        status = "${r.message} · imported ${fresh.size} new"
+                                    }
+                                }
+                            }.onFailure { e ->
+                                status = "Error: ${e.message}"
+                            }
+                        }
+                    }
+                }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (scanning) "Scanning…" else "Scan for Passes",
+                    color = if (scanning) Color(0xAAFFFFFF) else Color.White,
+                    fontSize = 15.sp,
+                )
+                Text(
+                    "Scans INBOX for .pkpass and wallet.json attachments",
+                    color    = Color(0x66FFFFFF),
+                    fontSize = 12.sp,
+                )
+            }
+            if (scanning) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF7C3AED)),
+                )
+            } else {
+                Text("›", color = Color(0x55FFFFFF), fontSize = 22.sp)
+            }
+        }
+
+        if (status.isNotBlank()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp)) {
+                StatusBanner(status)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MailField(
+    label:    String,
+    value:    String,
+    password: Boolean = false,
+    keyboard: KeyboardType = KeyboardType.Text,
+    onChange: (String) -> Unit,
+) {
+    TextField(
+        value         = value,
+        onValueChange = onChange,
+        label         = { Text(label, fontSize = 11.sp) },
+        singleLine    = true,
+        modifier      = Modifier.fillMaxWidth(),
+        visualTransformation = if (password) PasswordVisualTransformation() else
+            androidx.compose.ui.text.input.VisualTransformation.None,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor   = Color(0x22FFFFFF),
+            unfocusedContainerColor = Color(0x15FFFFFF),
+            focusedTextColor        = Color.White,
+            unfocusedTextColor      = Color(0xCCFFFFFF),
+            focusedLabelColor       = Color(0x88FFFFFF),
+            unfocusedLabelColor     = Color(0x55FFFFFF),
+            focusedIndicatorColor   = Color(0xFF7C3AED),
+            unfocusedIndicatorColor = Color.Transparent,
+            cursorColor             = Color(0xFF7C3AED),
+        ),
+    )
 }
 
 @Composable

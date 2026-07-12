@@ -50,4 +50,8 @@ dependencies {
     // the wallet's Add-card bottom sheet to drive the .vcf / .pkpass
     // / .pass file picker.
     implementation 'androidx.activity:activity-compose:1.9.0'
+
+    // JavaMail for Android — IMAP scanner (Mail Connector in Config tab).
+    // android-mail bundles android-activation; no second artifact needed.
+    implementation 'com.sun.mail:android-mail:1.6.7'
 }
