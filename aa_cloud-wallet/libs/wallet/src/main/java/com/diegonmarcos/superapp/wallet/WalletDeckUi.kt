@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -136,20 +137,27 @@ internal fun WalletDeck(
             val isSelected = selectedId == card.id
             val isFaded    = selectedId != null && !isSelected
 
+            // Spring physics — bouncy on lift/scale so the card feels
+            // physically lifted; no bounce on alpha (fading shouldn't wobble).
             val alpha by animateFloatAsState(
-                targetValue   = if (isFaded) 0.22f else 1f,
-                animationSpec = tween(260),
+                targetValue   = if (isFaded) 0.16f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
                 label         = "alpha",
             )
             val lift by animateDpAsState(
-                targetValue   = if (isSelected) (-18).dp else 0.dp,
-                animationSpec = tween(260),
+                targetValue   = if (isSelected) (-22).dp else 0.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
                 label         = "lift",
             )
             val scale by animateFloatAsState(
-                targetValue   = if (isSelected) 1.04f else 1f,
-                animationSpec = tween(260),
+                targetValue   = if (isSelected) 1.06f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
                 label         = "scale",
+            )
+            val elevation by animateFloatAsState(
+                targetValue   = if (isSelected) 24f else 8f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+                label         = "elev",
             )
 
             Box(
@@ -159,10 +167,11 @@ internal fun WalletDeck(
                     .height(CardDp)
                     .zIndex(if (isSelected) 1f else 0f)
                     .graphicsLayer {
-                        this.alpha  = alpha
-                        translationY = lift.toPx()
-                        scaleX = scale
-                        scaleY = scale
+                        this.alpha      = alpha
+                        translationY    = lift.toPx()
+                        scaleX          = scale
+                        scaleY          = scale
+                        shadowElevation = elevation
                     },
             ) {
                 if (card.id == AddCardSentinel.id) {
@@ -380,8 +389,27 @@ private fun WalletDeckCard(
             ) else card
         } else card
     }
+    val borderAlpha by animateFloatAsState(
+        targetValue   = if (isSelected) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label         = "borderAlpha",
+    )
     Box(modifier = Modifier.fillMaxSize().clickable(onClick = onCardTap)) {
-        WalletCardView(card = resolved, isExpanded = isSelected, modifier = Modifier.fillMaxSize())
+        WalletCardView(
+            card       = resolved,
+            isExpanded = isSelected,
+            modifier   = Modifier
+                .fillMaxSize()
+                .then(
+                    if (borderAlpha > 0f)
+                        Modifier.border(
+                            width  = 2.dp,
+                            color  = Color.White.copy(alpha = 0.55f * borderAlpha),
+                            shape  = RoundedCornerShape(20.dp),
+                        )
+                    else Modifier
+                ),
+        )
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
