@@ -37,7 +37,11 @@ import com.wireguard.android.backend.Tunnel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.pm.PackageManager
 import java.io.File
+import java.security.MessageDigest
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.text.DateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -217,6 +221,30 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Size",       sizeStr(size))
             row(ctx, it, "Installed",  fmtMillis(info.firstInstallTime))
             row(ctx, it, "Updated",    fmtMillis(info.lastUpdateTime))
+        }
+
+        section(ctx, column, "Signing") {
+            val pm = requireContext().packageManager
+            val sigFlags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P)
+                PackageManager.GET_SIGNING_CERTIFICATES
+            else @Suppress("DEPRECATION") PackageManager.GET_SIGNATURES
+            val sigPkg = runCatching { pm.getPackageInfo(requireContext().packageName, sigFlags) }.getOrNull()
+            val sigBytes = runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P)
+                    sigPkg?.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
+                else @Suppress("DEPRECATION") sigPkg?.signatures?.firstOrNull()?.toByteArray()
+            }.getOrNull()
+            if (sigBytes != null) {
+                val cert = CertificateFactory.getInstance("X.509")
+                    .generateCertificate(sigBytes.inputStream()) as X509Certificate
+                val sha256 = MessageDigest.getInstance("SHA-256").digest(cert.encoded)
+                    .joinToString(":") { "%02X".format(it) }
+                row(ctx, it, "Subject",     cert.subjectDN.name)
+                row(ctx, it, "SHA-256",     sha256)
+                row(ctx, it, "Valid until", fmtMillis(cert.notAfter.time))
+            } else {
+                row(ctx, it, "Cert", "—")
+            }
         }
 
         section(ctx, column, "Device / stack") {

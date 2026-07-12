@@ -131,6 +131,7 @@
         android:allowBackup="false"
         android:defaultToDeviceProtectedStorage="false"
         android:directBootAware="false"
+        android:notificationColor="@android:color/black"
         tools:replace="android:name,android:label,android:icon,android:roundIcon,android:allowBackup,android:defaultToDeviceProtectedStorage,android:directBootAware">
         <!-- libs:keyboard (vendored HeliBoard) ships its own <application> with
              conflicting attributes; the SuperApp is the host, so its values win

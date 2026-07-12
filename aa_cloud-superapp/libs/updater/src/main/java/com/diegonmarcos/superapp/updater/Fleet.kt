@@ -40,6 +40,8 @@ object Fleet {
         val tag: String,
         val asset: String,
         val releaseUrl: String,
+        val repoUrl: String,
+        val ghcrPage: String,
         val blocked: Boolean,
     )
 
@@ -70,6 +72,8 @@ object Fleet {
                     tag = o.optString("tag", "latest"),
                     asset = o.optString("asset", ""),
                     releaseUrl = o.optString("release_url", ""),
+                    repoUrl = o.optString("repo_url", ""),
+                    ghcrPage = o.optString("ghcr_page", ""),
                     blocked = o.optBoolean("blocked", false),
                 )
             }

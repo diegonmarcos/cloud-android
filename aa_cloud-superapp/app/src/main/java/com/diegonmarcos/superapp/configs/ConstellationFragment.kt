@@ -34,6 +34,7 @@ class ConstellationFragment : Fragment() {
     private val apps by lazy { Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64) }
     private val statusViews = HashMap<String, TextView>()
     private val actionRows = HashMap<String, LinearLayout>()
+    private val installBtns = HashMap<String, TextView>()
     private lateinit var headerControls: LinearLayout
 
     // amber, green, grey, red, orange, blue
@@ -114,18 +115,36 @@ class ConstellationFragment : Fragment() {
         // Open / Uninstall target the REAL installed package (pkg or the stock
         // upstream altId), else fall back to pkg.
         actions.addView(btn(ctx, "Open", 0xFF2A2A33.toInt()) { openApp(ctx, Fleet.installedId(ctx, app) ?: app.pkg) })
-        if (!app.blocked) actions.addView(btn(ctx, "Install / Update", 0xFF7C3AED.toInt()) { install(ctx, app) })
+        if (!app.blocked) {
+            val installBtn = btn(ctx, "Install / Update", 0xFF7C3AED.toInt()) { install(ctx, app) }
+            installBtns[app.id] = installBtn
+            actions.addView(installBtn)
+        }
         actions.addView(btn(ctx, "Uninstall", 0xFF4A4A55.toInt()) {
             runCatching { Fleet.uninstall(ctx, Fleet.installedId(ctx, app) ?: app.pkg) }
                 .onFailure { Toast.makeText(ctx, "Uninstall: ${it.message}", Toast.LENGTH_LONG).show() }
         })
         card.addView(actions)
+        val links = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         if (app.releaseUrl.isNotEmpty())
-            card.addView(TextView(ctx).apply {
-                text = "↗ GitHub release APK"; textSize = 12f; setTextColor(cMiss)
-                setPadding(0, dp(ctx, 6), 0, 0); isClickable = true
+            links.addView(TextView(ctx).apply {
+                text = "↗ APK"; textSize = 12f; setTextColor(cMiss)
+                setPadding(0, dp(ctx, 6), dp(ctx, 14), 0); isClickable = true
                 setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.releaseUrl))) } }
             })
+        if (app.repoUrl.isNotEmpty())
+            links.addView(TextView(ctx).apply {
+                text = "↗ Repo"; textSize = 12f; setTextColor(cMiss)
+                setPadding(0, dp(ctx, 6), dp(ctx, 14), 0); isClickable = true
+                setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.repoUrl))) } }
+            })
+        if (app.ghcrPage.isNotEmpty())
+            links.addView(TextView(ctx).apply {
+                text = "↗ GHCR"; textSize = 12f; setTextColor(cMiss)
+                setPadding(0, dp(ctx, 6), dp(ctx, 14), 0); isClickable = true
+                setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.ghcrPage))) } }
+            })
+        if (links.childCount > 0) card.addView(links)
         return card
     }
 
@@ -135,12 +154,17 @@ class ConstellationFragment : Fragment() {
             statusViews[app.id]?.let { tv -> tv.post { tv.text = "checking…"; tv.setTextColor(cDim) } }
             thread(name = "fleet-check-${app.id}") {
                 val st = Fleet.status(ctx, app)
-                statusViews[app.id]?.let { tv -> tv.post { paint(tv, st) } }
+                statusViews[app.id]?.let { tv -> tv.post { paint(tv, st, app.id) } }
             }
         }
     }
 
-    private fun paint(tv: TextView, s: Fleet.State) {
+    private fun paint(tv: TextView, s: Fleet.State, appId: String) {
+        val installed = s is Fleet.State.Installed
+        installBtns[appId]?.let {
+            it.setBackgroundColor(if (installed) 0xFF4A4A55.toInt() else 0xFF7C3AED.toInt())
+            it.isClickable = !installed
+        }
         when (s) {
             is Fleet.State.Installed       -> { tv.setTextColor(cUp);  tv.text = "✓ up to date  ·  v${s.versionName} (${s.versionCode})  ·  sha ${s.sha12}" }
             is Fleet.State.UpdateAvailable -> { tv.setTextColor(cUpd); tv.text = "⬆ update available  ·  installed v${s.versionName ?: "—"} → ${s.remoteDigest12}" }
@@ -156,7 +180,7 @@ class ConstellationFragment : Fragment() {
             com.diegonmarcos.superapp.updater.UpdateProgress.beginDownload()
             try { Fleet.install(ctx, app) }
             catch (t: Throwable) { view?.post { Toast.makeText(ctx, "${app.label}: ${t.message}", Toast.LENGTH_LONG).show() } }
-            statusViews[app.id]?.let { tv -> val st = Fleet.status(ctx, app); tv.post { paint(tv, st) } }
+            statusViews[app.id]?.let { tv -> val st = Fleet.status(ctx, app); tv.post { paint(tv, st, app.id) } }
         }
     }
 
