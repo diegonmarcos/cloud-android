@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp.wallet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,8 +41,10 @@ import java.util.Locale
  *  by date into an agenda view. */
 enum class WalletTab(val label: String) {
     Cards("Cards"),
+    IDs("IDs"),
+    Docs("Docs"),
     Tickets("Tickets"),
-    Calendar("Calendar"),
+    Calendar("Cal"),
 }
 
 /** Bottom button rendered on the Tickets tab that toggles between
@@ -80,9 +85,9 @@ internal fun WalletArchiveToggle(
     }
 }
 
-/** Pill tab strip rendered above the deck. Three options — Cards /
- *  Tickets / Calendar. Tap to switch; the active pill fills with the
- *  brand purple, the rest sit on a 13% white wash. */
+/** Pill tab strip — horizontally scrollable to fit all five tabs
+ *  (Cards / IDs / Docs / Tickets / Cal). Active pill fills with brand
+ *  purple; inactive tabs sit on a 13% white wash. */
 @Composable
 internal fun WalletTabStrip(
     selected: WalletTab,
@@ -91,24 +96,25 @@ internal fun WalletTabStrip(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         WalletTab.values().forEach { tab ->
             val isActive = tab == selected
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .widthIn(min = 70.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(if (isActive) Color(0xFF7C3AED) else Color(0x22FFFFFF))
                     .clickable { onSelect(tab) }
-                    .padding(vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = tab.label,
                     color = Color.White,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                 )
             }

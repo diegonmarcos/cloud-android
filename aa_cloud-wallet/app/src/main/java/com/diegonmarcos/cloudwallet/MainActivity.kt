@@ -3,6 +3,7 @@ package com.diegonmarcos.cloudwallet
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.commit
+import com.diegonmarcos.cloudwallet.profile.BusinessCardFragment
 import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.superapp.updater.UpdateProgress
 import com.diegonmarcos.superapp.wallet.WalletFragment
@@ -14,8 +15,7 @@ import com.diegonmarcos.superapp.wallet.WalletHost
  * from GHCR — same engine the SuperApp uses for each constellation member.
  *
  * Implements [WalletHost] for the one cross-surface callback the wallet lib
- * needs: [onOpenVcard]. In the standalone wallet there is no BusinessCard
- * surface, so we no-op it (the user stays in the deck).
+ * needs: [onOpenVcard].
  */
 class MainActivity : AppCompatActivity(), WalletHost {
 
@@ -46,10 +46,12 @@ class MainActivity : AppCompatActivity(), WalletHost {
         UpdateProgress.setListener(null)
     }
 
-    // WalletHost: vCard tap. Standalone wallet has no BusinessCardFragment,
-    // so no-op — user stays in the deck. (ponytail: add a BusinessCardFragment
-    // here if a full vCard surface is ever needed in the standalone app.)
-    override fun onOpenVcard() = Unit
+    override fun onOpenVcard() {
+        supportFragmentManager.commit {
+            add(R.id.fragment_container, BusinessCardFragment.newInstance(), "business_card")
+            addToBackStack("business_card")
+        }
+    }
 
     private fun handleUpdateState(state: UpdateProgress.State) {
         val tag = "update_overlay"

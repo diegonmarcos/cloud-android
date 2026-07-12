@@ -128,15 +128,14 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
 
     val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
 
-    // Tab partitioning. Cards tab = long-lasting credentials
-    // (eventAt == 0). Tickets / Calendar tabs share the same event-
-    // bound subset (eventAt > 0) but render differently — deck vs
-    // agenda view. The Tickets tab further splits into Upcoming
-    // (default) and Archive (past events) via a bottom toggle button;
-    // [ticketsShowArchive] flips the predicate.
+    // Tab partitioning. Cards tab = long-lasting credentials (eventAt == 0,
+    // category != "id" / "doc"). IDs and Docs are new tabs from wallet.json.
+    // Tickets / Calendar share event-bound subset (eventAt > 0).
     val cardsForTab = remember(cards, tab, ticketsShowArchive) {
         when (tab) {
-            WalletTab.Cards    -> cards.filter { !it.isTicket }
+            WalletTab.Cards    -> cards.filter { !it.isTicket && it.category != "id" && it.category != "doc" }
+            WalletTab.IDs      -> cards.filter { it.category == "id" }
+            WalletTab.Docs     -> cards.filter { it.category == "doc" }
             WalletTab.Tickets  -> cards.filter {
                 it.isTicket && (if (ticketsShowArchive) it.isPastTicket else !it.isPastTicket)
             }
@@ -216,11 +215,6 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                             tickets     = cardsForTab,
                             onTicketTap = { mode = WalletMode.Full(it.id) },
                         )
-                        // Tickets tab: vertical list of "stub + info"
-                        // strips, NOT the card-stack roll. Tap a strip
-                        // → wallet Full state → WalletTicketPage. A
-                        // bottom Archive button toggles between
-                        // Upcoming (default) and past tickets.
                         WalletTab.Tickets -> Column(modifier = Modifier.fillMaxSize()) {
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 WalletTicketList(
@@ -229,12 +223,20 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                                 )
                             }
                             WalletArchiveToggle(
-                                showingArchive    = ticketsShowArchive,
-                                upcomingCount     = upcomingCount,
-                                archiveCount      = pastCount,
-                                onToggle          = { ticketsShowArchive = !ticketsShowArchive },
+                                showingArchive = ticketsShowArchive,
+                                upcomingCount  = upcomingCount,
+                                archiveCount   = pastCount,
+                                onToggle       = { ticketsShowArchive = !ticketsShowArchive },
                             )
                         }
+                        WalletTab.IDs -> WalletIdsTab(
+                            allIds    = cardsForTab,
+                            onCardTap = { mode = WalletMode.Full(it.id) },
+                        )
+                        WalletTab.Docs -> WalletDocsTab(
+                            docs     = cardsForTab,
+                            onDocTap = { mode = WalletMode.Full(it.id) },
+                        )
                         else -> WalletDeck(
                             cards        = cardsForTab,
                             mode         = m,

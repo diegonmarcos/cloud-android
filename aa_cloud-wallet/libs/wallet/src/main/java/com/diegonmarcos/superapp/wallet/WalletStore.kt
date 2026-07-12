@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 6
+    private const val SEED_VERSION = 7
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -33,7 +33,7 @@ object WalletStore {
      *  The Calendar tab is just the Tickets list, regrouped by date. */
     data class Card(
         val id: String,
-        val kind: String,        // "vcard" | "vcard_imported" | "credit" | "debit" | "transit" | "gym" | "flight" | "train" | "music" | "theater" | …
+        val kind: String,        // "vcard" | "vcard_imported" | "credit" | "debit" | "transit" | "gym" | "flight" | "train" | "music" | "theater" | "id_*" | "doc_*" | …
         val brand: String,       // top-line label (e.g. "TIDAL")
         val tagline: String,     // sub-line (e.g. "Premium · since 2018")
         val accent: Long,        // ARGB int (e.g. 0xFF111827) — packed into Long so signed ints survive JSON
@@ -41,6 +41,8 @@ object WalletStore {
         val number: String = "", // visible identifier, e.g. card number, member id
         val eventAt: Long = 0L,  // epoch millis of the ticket event; 0 = no event (long-lasting card)
         val eventLocation: String = "", // venue / origin → destination, free-form
+        val category: String = "", // "" | "card" | "id" | "doc"  — drives tab routing
+        val country: String = "",  // "es" | "br" | "" — drives IDs tab country filter
     ) {
         /** Convenience — distinguishes Cards from Tickets without
          *  having to read [eventAt] directly at every call site. */
@@ -61,6 +63,8 @@ object WalletStore {
             put("number", number)
             put("eventAt", eventAt)
             put("eventLocation", eventLocation)
+            put("category", category)
+            put("country", country)
         }
         companion object {
             fun fromJson(o: JSONObject): Card = Card(
@@ -73,19 +77,22 @@ object WalletStore {
                 number        = o.optString("number", ""),
                 eventAt       = o.optLong("eventAt", 0L),
                 eventLocation = o.optString("eventLocation", ""),
+                category      = o.optString("category", ""),
+                country       = o.optString("country", ""),
             )
         }
     }
 
     /** Newest-first list of cards. On first read returns the mock seed
      *  AND writes it to prefs so subsequent calls round-trip through
-     *  the same JSON. */
+     *  the same JSON. IDs and Docs are loaded from assets/wallet.json
+     *  and appended to the regular card/ticket seed. */
     fun all(ctx: Context): List<Card> {
         val sp = ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val raw            = sp.getString(KEY, null)
         val storedVersion  = sp.getInt(SEED_VERSION_KEY, 0)
         if (raw == null || storedVersion != SEED_VERSION) {
-            val seed = mockSeed()
+            val seed = mockSeed() + loadWalletJson(ctx)
             saveAll(ctx, seed)
             sp.edit().putInt(SEED_VERSION_KEY, SEED_VERSION).apply()
             return seed
@@ -95,6 +102,19 @@ object WalletStore {
             (0 until arr.length()).map { Card.fromJson(arr.getJSONObject(it)) }
         }.getOrDefault(emptyList())
     }
+
+    /** Load IDs and Docs from assets/wallet.json. Safe — returns empty
+     *  list if file is absent or malformed. */
+    private fun loadWalletJson(ctx: Context): List<Card> = runCatching {
+        val text = ctx.assets.open("wallet.json").bufferedReader().readText()
+        val root = JSONObject(text)
+        val result = mutableListOf<Card>()
+        listOf("ids", "docs").forEach { section ->
+            val arr = root.optJSONArray(section) ?: return@forEach
+            for (i in 0 until arr.length()) result.add(Card.fromJson(arr.getJSONObject(i)))
+        }
+        result
+    }.getOrDefault(emptyList())
 
     fun saveAll(ctx: Context, cards: List<Card>) {
         val sp = ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
