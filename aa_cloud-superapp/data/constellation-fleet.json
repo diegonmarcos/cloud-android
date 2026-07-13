@@ -152,6 +152,21 @@
       "blocked": false
     },
     {
+      "id": "keyboard",
+      "label": "cloud-keyboard",
+      "package": "com.diegonmarcos.cloudkeyboard",
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard",
+      "tag": "latest",
+      "alt_id": null,
+      "asset": "Cloud-Keyboard.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard",
+      "blocked": false
+    },
+    {
       "id": "comms-dialer",
       "label": "Dialer (Fossy)",
       "package": "com.diegonmarcos.comms.dialer",
