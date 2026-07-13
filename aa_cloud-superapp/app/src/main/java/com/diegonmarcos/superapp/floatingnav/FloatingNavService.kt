@@ -500,7 +500,7 @@ class FloatingNavService : Service() {
         // view falls back to a broken default on some OEMs / after updates).
         // Collapsed shows the first compact_action_count; expanded shows all 5.
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_notify)
             .setContentTitle("Cloud SA - Quick Actions")
             .setContentText("Quick actions")
             .setOngoing(true).setOnlyAlertOnce(true)
