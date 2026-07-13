@@ -186,6 +186,7 @@ class HomeDrawerFragment : Fragment() {
                             tile.label,
                         ) else Target.Section(rest, tile.label)
                     }
+                    tile.id.startsWith("action:") -> Target.Action(tile.id.removePrefix("action:"))
                     else -> Target.Section(tile.id, tile.label)
                 }
 
