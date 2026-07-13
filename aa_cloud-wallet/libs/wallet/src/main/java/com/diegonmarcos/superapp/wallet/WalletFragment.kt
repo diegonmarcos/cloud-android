@@ -27,13 +27,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -340,6 +344,77 @@ private fun WalletSystemConfigTab(onImported: () -> Unit) {
                 }
             }
         }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item { LogcatSection() }
+    }
+}
+
+@Composable
+private fun LogcatSection() {
+    val lines by LogStore.lines.collectAsState()
+    ConfigSection(title = "Debug Log (WebView)") {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "${lines.size} lines",
+                color = Color(0x88FFFFFF),
+                fontSize = 12.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "Clear",
+                color = Color(0xFF7C3AED),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clickable { LogStore.clear() }
+                    .padding(4.dp),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(320.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF060606)),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(8.dp),
+            ) {
+                if (lines.isEmpty()) {
+                    Text(
+                        "No logs yet — open the 3D-r card view.",
+                        color = Color(0x44FFFFFF),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                } else {
+                    lines.forEach { line ->
+                        Text(
+                            line,
+                            color = when {
+                                line.startsWith("[ERROR]") -> Color(0xFFFF6B6B)
+                                line.startsWith("[WARN]")  -> Color(0xFFFFD93D)
+                                line.startsWith("[NAV]")   -> Color(0xFF64B5F6)
+                                else                      -> Color(0xFF8AFF8A)
+                            },
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
 

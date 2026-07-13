@@ -1,5 +1,8 @@
 package com.diegonmarcos.superapp.wallet
 
+import android.util.Log
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.Canvas
@@ -70,9 +73,30 @@ internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modi
                 @Suppress("SetJavaScriptEnabled")
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
+                        LogStore.add("[NAV]  onPageFinished: $url")
                         view?.evaluateJavascript("window.setCard('$kind')", null)
                     }
+                    override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, url: String?) {
+                        val line = "[ERROR] WebViewClient error $errorCode: $description @ $url"
+                        Log.e("Wallet3D", line)
+                        LogStore.add(line)
+                    }
                 }
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
+                        val level = when (msg.messageLevel()) {
+                            ConsoleMessage.MessageLevel.ERROR   -> "[ERROR]"
+                            ConsoleMessage.MessageLevel.WARNING -> "[WARN] "
+                            ConsoleMessage.MessageLevel.DEBUG   -> "[DEBUG]"
+                            else                               -> "[LOG]  "
+                        }
+                        val line = "$level ${msg.message()} (${msg.sourceId().substringAfterLast('/')}:${msg.lineNumber()})"
+                        Log.d("Wallet3D", line)
+                        LogStore.add(line)
+                        return true
+                    }
+                }
+                LogStore.add("[NAV]  loadUrl: file:///android_asset/wallet3d/index.html?kind=$kind")
                 loadUrl("file:///android_asset/wallet3d/index.html?kind=$kind")
             }
         },
