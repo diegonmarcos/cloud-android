@@ -4,31 +4,29 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <title>Wallet 3D-r</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "react":             "https://esm.sh/react@18.3.1",
-      "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-      "react-dom":         "https://esm.sh/react-dom@18.3.1",
-      "react-dom/client":  "https://esm.sh/react-dom@18.3.1/client",
-      "three":             "https://esm.sh/three@0.166.1"
-    }
-  }
-  </script>
+  <!-- UMD globals — no import map needed, works on all WebView versions -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/three@0.166.1/build/three.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+    html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #0c0d12; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel" data-type="module" data-presets="react">
-    import React, { useState, useEffect, useRef } from 'react';
-    import * as THREE from 'three';
-    import { createRoot } from 'react-dom/client';
+  <!-- Fallback visible until React mounts -->
+  <div id="root" style="display:flex;align-items:center;justify-content:center;height:100%;background:#0c0d12;color:#10b981;font-family:monospace;font-size:12px">
+    LOADING...
+  </div>
+
+  <!-- No data-type="module" — Babel inlines the transpiled code directly, UMD globals resolve identifiers -->
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef } = React;
+    const { createRoot } = ReactDOM;
+    // THREE is window.THREE from UMD build
 
     // ── 1. DATA ──────────────────────────────────────────────────────────────
     const MOCK_DATA = {
@@ -69,7 +67,7 @@
       ]
     };
 
-    // ── 2. TEX_SCALE — 75% less GPU memory, prevents WebGL Context Lost on Android ──
+    // ── 2. TEX_SCALE ─────────────────────────────────────────────────────────
     const TEX_SCALE = 0.5;
 
     // ── 3. STUDIO HDRI ───────────────────────────────────────────────────────
@@ -93,14 +91,14 @@
       const w=256, h=362;
       const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
       const ctx = canvas.getContext('2d'); const img = ctx.createImageData(w,h); const d = img.data;
-      const s=6, cx2=Math.ceil(w/s)+1, cy2=Math.ceil(h/s)+1;
-      const px = new Float32Array(cx2*cy2), py = new Float32Array(cx2*cy2);
-      for(let i=0;i<cx2;i++) for(let j=0;j<cy2;j++){const k=i*cy2+j; px[k]=(i+Math.random())*s; py[k]=(j+Math.random())*s;}
+      const s=6, GX=Math.ceil(w/s)+1, GY=Math.ceil(h/s)+1;
+      const px = new Float32Array(GX*GY), py = new Float32Array(GX*GY);
+      for(let i=0;i<GX;i++) for(let j=0;j<GY;j++){const k=i*GY+j; px[k]=(i+Math.random())*s; py[k]=(j+Math.random())*s;}
       for(let y=0;y<h;y++) for(let x=0;x<w;x++){
         let md=999999; const gx=Math.floor(x/s), gy=Math.floor(y/s);
         for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
           const nx=gx+dx, ny=gy+dy;
-          if(nx>=0&&nx<cx2&&ny>=0&&ny<cy2){const ax=px[nx*cy2+ny]-x, ay=py[nx*cy2+ny]-y; const dist=ax*ax+ay*ay; if(dist<md) md=dist;}
+          if(nx>=0&&nx<GX&&ny>=0&&ny<GY){const ax=px[nx*GY+ny]-x, ay=py[nx*GY+ny]-y; const dist=ax*ax+ay*ay; if(dist<md) md=dist;}
         }
         const v=255-(Math.sqrt(md)*35)+(Math.random()*20-10);
         const i4=(y*w+x)*4; d[i4]=d[i4+1]=d[i4+2]=Math.max(0,Math.min(255,v)); d[i4+3]=255;
@@ -157,7 +155,7 @@
       const ctx=c.getContext('2d'); ctx.scale(TEX_SCALE,TEX_SCALE);
       return {c,ctx};
     };
-    const toTex = (canvas,isColor=false) => {
+    const toTex = (canvas,isColor) => {
       const t=new THREE.CanvasTexture(canvas); if(isColor) t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;
     };
     const guilloche = (ctx,W,H,color,f1,f2,alpha) => {
@@ -190,7 +188,7 @@
         ctx.beginPath(); ctx.arc(W/2,800,200,0,Math.PI*2); ctx.stroke();
         ctx.font='75px serif'; ctx.fillText('PASSAPORTE',W/2,1250);
       }
-      return {map:toTex(cC,true), rough:toTex(rC)};
+      return {map:toTex(cC,true), rough:toTex(rC,false)};
     };
 
     // ── 9. PASS SPREAD ───────────────────────────────────────────────────────
@@ -287,7 +285,7 @@
         ctx.fillStyle='#111827'; ctx.font='bold 90px monospace';
         data.mrz.forEach((l,i)=>ctx.fillText(l,80,950+i*130));
       }
-      return {map:toTex(cC,true), rough:toTex(rC)};
+      return {map:toTex(cC,true), rough:toTex(rC,false)};
     };
 
     // ── 11. RG TEXTURES ──────────────────────────────────────────────────────
@@ -330,16 +328,17 @@
         cell('CPF',data.cpf,m,m+960,gW*0.4,200);
         cell('ASSINATURA DO DIRETOR','',m+gW*0.4,m+960,gW*0.6,200);
       }
-      return {map:toTex(cC,true), rough:toTex(rC)};
+      return {map:toTex(cC,true), rough:toTex(rC,false)};
     };
 
-    // ── 12. VANILLA THREE.JS VIEWER ──────────────────────────────────────────
+    // ── 12. THREE.JS VIEWER ──────────────────────────────────────────────────
     const ThreeViewer = ({ doc, view, setLoading }) => {
       const mountRef = useRef(null);
 
       useEffect(() => {
         if (!mountRef.current) return;
         const w=mountRef.current.clientWidth, h=mountRef.current.clientHeight;
+        if(!w||!h) return;
         const scene=new THREE.Scene();
         const camera=new THREE.PerspectiveCamera(40,w/h,0.1,100); camera.position.z=6.5;
         const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
@@ -352,45 +351,47 @@
         let animId, timeoutId, holoMesh=null, targetRotX=0, targetRotY=0;
 
         timeoutId=setTimeout(()=>{
-          const isPass=doc.includes('Pass');
-          const isSpread=isPass&&(view==='info'||view==='stamps');
-          const country=doc.includes('ES')?'ES':'BR';
-          const geoW=isSpread?4.8:(isPass?2.4:3.4);
-          const geoH=isPass?3.4:2.15;
-          const geoD=isSpread?0.02:(isPass?0.15:0.03);
-          const geometry=new THREE.BoxGeometry(geoW,geoH,geoD);
-          let materials;
+          try {
+            const isPass=doc.includes('Pass');
+            const isSpread=isPass&&(view==='info'||view==='stamps');
+            const country=doc.includes('ES')?'ES':'BR';
+            const geoW=isSpread?4.8:(isPass?2.4:3.4);
+            const geoH=isPass?3.4:2.15;
+            const geoD=isSpread?0.02:(isPass?0.15:0.03);
+            const geometry=new THREE.BoxGeometry(geoW,geoH,geoD);
+            let materials;
 
-          if(isPass&&!isSpread){
-            const front=generatePassCover(country), back=generatePassCover(country);
-            const vTex=generateVoronoiNoise(), eTex=generatePageEdges(country);
-            const eMat=new THREE.MeshStandardMaterial({map:eTex,roughness:0.8});
-            const fMat=new THREE.MeshPhysicalMaterial({map:front.map,bumpMap:vTex,bumpScale:0.03,roughnessMap:front.rough,clearcoat:0.1});
-            const bMat=new THREE.MeshPhysicalMaterial({map:back.map,bumpMap:vTex,bumpScale:0.03,roughnessMap:back.rough});
-            materials=[eMat,new THREE.MeshPhysicalMaterial({color:country==='ES'?'#4a0e1c':'#0a1931'}),eMat,eMat,fMat,bMat];
-          } else if(isPass&&isSpread){
-            const spread=generatePassSpread(country,view);
-            const eMat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:0.6});
-            const fMat=new THREE.MeshPhysicalMaterial({map:spread.map,roughness:0.8});
-            const bMat=new THREE.MeshPhysicalMaterial({color:country==='ES'?'#4a0e1c':'#0a1931'});
-            materials=[eMat,eMat,eMat,eMat,fMat,bMat];
-            if(view==='info'){holoMesh=createHologramMesh(doc,view); group.add(holoMesh);}
-          } else {
-            const front=doc==='DNI'?generateDniTextures('front'):generateRgTextures('front');
-            const back=doc==='DNI'?generateDniTextures('back'):generateRgTextures('back');
-            const eMat=new THREE.MeshStandardMaterial({color:'#d1d5db'});
-            const fMat=new THREE.MeshPhysicalMaterial({map:front.map,roughnessMap:front.rough,clearcoat:1.0,clearcoatRoughness:0.1});
-            const bMat=new THREE.MeshPhysicalMaterial({map:back.map,roughnessMap:back.rough,clearcoat:1.0,clearcoatRoughness:0.1});
-            materials=[eMat,eMat,eMat,eMat,fMat,bMat];
-            if(doc==='DNI'&&view==='front'){holoMesh=createHologramMesh(doc,view); group.add(holoMesh);}
-          }
+            if(isPass&&!isSpread){
+              const front=generatePassCover(country), back=generatePassCover(country);
+              const vTex=generateVoronoiNoise(), eTex=generatePageEdges(country);
+              const eMat=new THREE.MeshStandardMaterial({map:eTex,roughness:0.8});
+              const fMat=new THREE.MeshPhysicalMaterial({map:front.map,bumpMap:vTex,bumpScale:0.03,roughnessMap:front.rough,clearcoat:0.1});
+              const bMat=new THREE.MeshPhysicalMaterial({map:back.map,bumpMap:vTex,bumpScale:0.03,roughnessMap:back.rough});
+              materials=[eMat,new THREE.MeshPhysicalMaterial({color:country==='ES'?'#4a0e1c':'#0a1931'}),eMat,eMat,fMat,bMat];
+            } else if(isPass&&isSpread){
+              const spread=generatePassSpread(country,view);
+              const eMat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:0.6});
+              const fMat=new THREE.MeshPhysicalMaterial({map:spread.map,roughness:0.8});
+              const bMat=new THREE.MeshPhysicalMaterial({color:country==='ES'?'#4a0e1c':'#0a1931'});
+              materials=[eMat,eMat,eMat,eMat,fMat,bMat];
+              if(view==='info'){holoMesh=createHologramMesh(doc,view); group.add(holoMesh);}
+            } else {
+              const front=doc==='DNI'?generateDniTextures('front'):generateRgTextures('front');
+              const back=doc==='DNI'?generateDniTextures('back'):generateRgTextures('back');
+              const eMat=new THREE.MeshStandardMaterial({color:'#d1d5db'});
+              const fMat=new THREE.MeshPhysicalMaterial({map:front.map,roughnessMap:front.rough,clearcoat:1.0,clearcoatRoughness:0.1});
+              const bMat=new THREE.MeshPhysicalMaterial({map:back.map,roughnessMap:back.rough,clearcoat:1.0,clearcoatRoughness:0.1});
+              materials=[eMat,eMat,eMat,eMat,fMat,bMat];
+              if(doc==='DNI'&&view==='front'){holoMesh=createHologramMesh(doc,view); group.add(holoMesh);}
+            }
 
-          const mesh=new THREE.Mesh(geometry,materials);
-          if(!isPass&&view==='back') mesh.rotation.y=Math.PI;
-          group.add(mesh);
-          targetRotX=isPass&&!isSpread?0.2:0.1;
-          targetRotY=(!isPass&&view==='back')?Math.PI:(isPass&&!isSpread?-0.3:-0.15);
-          group.rotation.x=targetRotX; group.rotation.y=targetRotY;
+            const mesh=new THREE.Mesh(geometry,materials);
+            if(!isPass&&view==='back') mesh.rotation.y=Math.PI;
+            group.add(mesh);
+            targetRotX=isPass&&!isSpread?0.2:0.1;
+            targetRotY=(!isPass&&view==='back')?Math.PI:(isPass&&!isSpread?-0.3:-0.15);
+            group.rotation.x=targetRotX; group.rotation.y=targetRotY;
+          } catch(e){ console.error('3D-r build error',e); }
           setLoading(false);
         }, 50);
 
@@ -412,7 +413,7 @@
         };
         mountRef.current.addEventListener('mousemove',handleMove);
         mountRef.current.addEventListener('mouseleave',handleLeave);
-        mountRef.current.addEventListener('touchmove',handleMove);
+        mountRef.current.addEventListener('touchmove',handleMove,{passive:true});
         mountRef.current.addEventListener('touchend',handleLeave);
 
         const animate=()=>{
@@ -430,6 +431,7 @@
         const handleResize=()=>{
           if(!mountRef.current) return;
           const w=mountRef.current.clientWidth, h=mountRef.current.clientHeight;
+          if(!w||!h) return;
           renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
         };
         window.addEventListener('resize',handleResize);
@@ -437,14 +439,19 @@
         return ()=>{
           clearTimeout(timeoutId); window.removeEventListener('resize',handleResize); cancelAnimationFrame(animId);
           if(mountRef.current){
-            mountRef.current.removeEventListener('mousemove',handleMove); mountRef.current.removeEventListener('mouseleave',handleLeave);
-            mountRef.current.removeEventListener('touchmove',handleMove); mountRef.current.removeEventListener('touchend',handleLeave);
+            mountRef.current.removeEventListener('mousemove',handleMove);
+            mountRef.current.removeEventListener('mouseleave',handleLeave);
+            mountRef.current.removeEventListener('touchmove',handleMove);
+            mountRef.current.removeEventListener('touchend',handleLeave);
+            try{ renderer.dispose(); } catch(e){}
             mountRef.current.innerHTML='';
           }
         };
       }, [doc, view, setLoading]);
 
-      return <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing outline-none" />;
+      return (
+        <div ref={mountRef} style={{width:'100%',height:'100%',cursor:'grab'}} />
+      );
     };
 
     // ── 13. KIND → TYPE ──────────────────────────────────────────────────────
@@ -460,49 +467,61 @@
     };
 
     // ── 14. APP ──────────────────────────────────────────────────────────────
+    const S = {
+      root:    {width:'100vw',height:'100vh',background:'#0c0d12',display:'flex',flexDirection:'column',overflow:'hidden',color:'white',position:'relative',fontFamily:'sans-serif'},
+      topNav:  {position:'absolute',top:0,left:0,right:0,zIndex:20,padding:'16px',display:'flex',flexDirection:'column',alignItems:'center',pointerEvents:'none'},
+      title:   {fontSize:'28px',fontWeight:900,letterSpacing:'-1px',marginBottom:'12px',textAlign:'center'},
+      badge:   {fontSize:'10px',letterSpacing:'3px',fontFamily:'monospace',color:'#34d399',border:'1px solid rgba(52,211,153,0.3)',background:'rgba(52,211,153,0.1)',padding:'3px 10px',borderRadius:'20px',marginBottom:'8px',display:'block'},
+      tabBar:  {display:'flex',flexWrap:'wrap',justifyContent:'center',gap:'6px',background:'rgba(255,255,255,0.05)',padding:'6px',borderRadius:'40px',border:'1px solid rgba(255,255,255,0.1)',pointerEvents:'auto'},
+      tabBtn:  (active)=>({border:'none',cursor:'pointer',fontWeight:'bold',fontSize:'13px',borderRadius:'40px',padding:'8px 16px',transition:'all 0.2s',background:active?'white':'transparent',color:active?'#111':'#9ca3af'}),
+      viewer:  {flex:1,width:'100%',position:'relative'},
+      spinner: {position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:10,color:'rgba(52,211,153,0.6)',fontFamily:'monospace',fontSize:'11px',letterSpacing:'3px',background:'#0c0d12'},
+      ctrlBar: {position:'absolute',bottom:'24px',left:0,right:0,zIndex:20,display:'flex',justifyContent:'center',pointerEvents:'none'},
+      ctrlInner:{display:'flex',gap:'6px',background:'rgba(255,255,255,0.1)',padding:'8px',borderRadius:'16px',border:'1px solid rgba(255,255,255,0.2)',pointerEvents:'auto'},
+      ctrlBtn: (active)=>({border:'none',cursor:'pointer',fontWeight:'bold',fontSize:'13px',borderRadius:'10px',padding:'6px 18px',transition:'all 0.2s',background:active?'#6366f1':'transparent',color:active?'white':'#d1d5db'}),
+      hint:    {position:'absolute',bottom:'80px',left:0,right:0,textAlign:'center',color:'#4b5563',fontSize:'11px',fontFamily:'monospace',letterSpacing:'3px',pointerEvents:'none',zIndex:10},
+    };
+
     function App() {
       const [activeDoc, setActiveDoc] = useState(() => {
         const k=new URLSearchParams(location.search).get('kind')||'id_dni';
-        return KIND_MAP[k]?.type||'DNI';
+        return KIND_MAP[k]&&KIND_MAP[k].type||'DNI';
       });
       const [view, setView] = useState(() => {
         const k=new URLSearchParams(location.search).get('kind')||'id_dni';
-        return KIND_MAP[k]?.isPassport?'cover':'front';
+        return KIND_MAP[k]&&KIND_MAP[k].isPassport?'cover':'front';
       });
       const [isLoading, setLoading] = useState(true);
 
-      // Kotlin WebView bridge
-      useEffect(()=>{ window.setCard=(kind)=>{ const cfg=KIND_MAP[kind]; if(cfg){setActiveDoc(cfg.type); setView(cfg.isPassport?'cover':'front');} }; return ()=>{ delete window.setCard; }; },[]);
+      useEffect(()=>{
+        window.setCard=(kind)=>{ const cfg=KIND_MAP[kind]; if(cfg){setActiveDoc(cfg.type); setView(cfg.isPassport?'cover':'front');} };
+        return ()=>{ delete window.setCard; };
+      },[]);
       useEffect(()=>{ setLoading(true); if(activeDoc.includes('Pass')) setView('cover'); else setView('front'); },[activeDoc]);
 
-      const docs=[{id:'DNI',name:'🇪🇸 Spain DNI'},{id:'RG',name:'🇧🇷 Brazil RG'},{id:'ES-Pass',name:'🇪🇸 Spain Passport'},{id:'BR-Pass',name:'🇧🇷 Brazil Passport'}];
+      const docs=[{id:'DNI',name:'🇪🇸 Spain DNI'},{id:'RG',name:'🇧🇷 Brazil RG'},{id:'ES-Pass',name:'🇪🇸 Passport ES'},{id:'BR-Pass',name:'🇧🇷 Passport BR'}];
       const handleViewChange=(v)=>{ setLoading(true); setView(v); };
 
       return (
-        <div className="w-full h-screen bg-[#0c0d12] flex flex-col font-sans overflow-hidden text-white relative">
-          <div className="absolute top-0 w-full z-20 p-6 flex flex-col items-center pointer-events-none">
-            <h1 className="text-3xl md:text-5xl font-black tracking-tighter drop-shadow-xl mb-6 flex flex-col items-center">
-              <span className="text-emerald-400 text-[10px] tracking-widest font-mono mb-2 uppercase border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 rounded-full">
-                PBR · Iridescence · Leather · Hologram
-              </span>
+        <div style={S.root}>
+          <div style={S.topNav}>
+            <h1 style={S.title}>
+              <span style={S.badge}>PBR · Iridescence · Leather · Hologram</span>
               Hyper-Realistic Identity
             </h1>
-            <div className="flex flex-wrap justify-center gap-2 pointer-events-auto bg-white/5 backdrop-blur-md p-1.5 rounded-full border border-white/10 shadow-2xl">
+            <div style={S.tabBar}>
               {docs.map(d=>(
-                <button key={d.id} onClick={()=>setActiveDoc(d.id)}
-                  className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 ${activeDoc===d.id?'bg-white text-gray-900 shadow-[0_0_15px_rgba(255,255,255,0.4)]':'text-gray-400 hover:text-white hover:bg-white/10'}`}>
-                  {d.name}
-                </button>
+                <button key={d.id} onClick={()=>setActiveDoc(d.id)} style={S.tabBtn(activeDoc===d.id)}>{d.name}</button>
               ))}
             </div>
           </div>
 
-          <div className="flex-1 w-full relative">
+          <div style={S.viewer}>
             {isLoading&&(
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-emerald-500/70 font-mono text-sm tracking-widest bg-[#0c0d12]">
-                <svg className="animate-spin h-8 w-8 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              <div style={S.spinner}>
+                <svg style={{width:28,height:28,marginBottom:12,animation:'spin 1s linear infinite'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
                 </svg>
                 COMPILING PBR TEXTURES...
               </div>
@@ -510,30 +529,26 @@
             <ThreeViewer doc={activeDoc} view={view} setLoading={setLoading} />
           </div>
 
-          <div className="absolute bottom-8 w-full z-20 flex justify-center pointer-events-none">
-            <div className="pointer-events-auto flex gap-2 bg-white/10 backdrop-blur-xl p-2 rounded-2xl border border-white/20 shadow-2xl">
+          <div style={S.ctrlBar}>
+            <div style={S.ctrlInner}>
               {activeDoc.includes('Pass')?(
                 ['cover','info','stamps'].map(tab=>(
-                  <button key={tab} onClick={()=>handleViewChange(tab)}
-                    className={`px-6 py-2 text-sm font-bold rounded-xl capitalize transition-all ${view===tab?'bg-indigo-500 text-white':'text-gray-300 hover:bg-white/10'}`}>{tab}</button>
+                  <button key={tab} onClick={()=>handleViewChange(tab)} style={S.ctrlBtn(view===tab)}>{tab.charAt(0).toUpperCase()+tab.slice(1)}</button>
                 ))
               ):(
                 ['front','back'].map(tab=>(
-                  <button key={tab} onClick={()=>handleViewChange(tab)}
-                    className={`px-8 py-2 text-sm font-bold rounded-xl capitalize transition-all ${view===tab?'bg-indigo-500 text-white':'text-gray-300 hover:bg-white/10'}`}>{tab} Side</button>
+                  <button key={tab} onClick={()=>handleViewChange(tab)} style={S.ctrlBtn(view===tab)}>{tab.charAt(0).toUpperCase()+tab.slice(1)} Side</button>
                 ))
               )}
             </div>
           </div>
 
-          <div className="absolute bottom-28 w-full text-center text-gray-500 text-xs font-mono tracking-widest pointer-events-none z-10 animate-pulse">
-            DRAG TO INTERACT WITH PBR LIGHTING AND HOLOGRAMS
-          </div>
+          <div style={S.hint}>DRAG TO INTERACT WITH PBR LIGHTING AND HOLOGRAMS</div>
         </div>
       );
     }
 
-    createRoot(document.getElementById('root')).render(<App />);
+    createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
 </html>
