@@ -1,5 +1,98 @@
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000;height:100%}</style></head>
-<body></body>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body,#root{width:100%;height:100%;background:#0c0d12;overflow:hidden}
+#overlay{position:fixed;top:0;left:0;width:100%;padding:6px 10px;background:#0008;color:#0f0;font:10px/1.4 monospace;pointer-events:none;white-space:pre-wrap;word-break:break-all}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="overlay"></div>
+
+<script src="https://unpkg.com/three@0.166.1/build/three.min.js"></script>
+<script>
+// ── error plumbing ────────────────────────────────────────────────────────────
+var _ov = document.getElementById('overlay');
+function dbg(msg){ console.log(msg); _ov.textContent = ((_ov.textContent||'')+'\n'+msg).slice(-800); }
+window.onerror = function(m,s,l,c,e){ console.error('[ERROR] '+m+' ('+l+':'+c+')'); dbg('ERR: '+m); return false; };
+window.addEventListener('unhandledrejection',function(e){ console.error('[ERROR] UnhandledRejection: '+(e.reason||e)); dbg('REJ: '+e.reason); });
+
+dbg('three.js loaded: '+(typeof THREE !== 'undefined' ? THREE.REVISION : 'MISSING'));
+
+// ── scene setup ───────────────────────────────────────────────────────────────
+var renderer, scene, camera, mesh, animId;
+
+function init(){
+  var root = document.getElementById('root');
+  var W = root.clientWidth  || window.innerWidth;
+  var H = root.clientHeight || window.innerHeight;
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  root.appendChild(renderer.domElement);
+
+  scene  = new THREE.Scene();
+  scene.background = new THREE.Color(0x0c0d12);
+
+  camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
+  camera.position.set(0, 0, 4);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  var dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(2, 3, 4);
+  scene.add(dir);
+
+  // credit-card aspect ratio box
+  var geo = new THREE.BoxGeometry(3.375, 2.125, 0.08);
+  var mat = new THREE.MeshStandardMaterial({ color:0x3333aa, metalness:0.3, roughness:0.5 });
+  mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh);
+
+  dbg('scene ready');
+  animate();
+}
+
+function animate(){
+  animId = requestAnimationFrame(animate);
+  mesh.rotation.y += 0.008;
+  mesh.rotation.x += 0.003;
+  renderer.render(scene, camera);
+}
+
+// ── card map ─────────────────────────────────────────────────────────────────
+var KIND_COLORS = {
+  id_passport_es: 0x8B0000,
+  id_passport_br: 0x005C1F,
+  id_dni:         0x1A4395,
+  id_nie:         0x2e8b57,
+  id_tsi:         0x009FCA,
+  id_cin_br:      0x228B22,
+  id_driving_es:  0xC0392B,
+  id_boat_es:     0x0A4B8C,
+};
+
+// ── public API ────────────────────────────────────────────────────────────────
+window.setCard = function(kind){
+  dbg('setCard: '+kind);
+  if(!mesh) return;
+  var color = KIND_COLORS[kind] || 0x444466;
+  mesh.material.color.setHex(color);
+};
+
+// ── init ─────────────────────────────────────────────────────────────────────
+try{
+  init();
+  // read kind from URL param as initial value
+  var kind = new URLSearchParams(location.search).get('kind') || '';
+  if(kind) window.setCard(kind);
+} catch(e){
+  console.error('[ERROR] init failed: '+e.message);
+  dbg('INIT ERR: '+e.message);
+}
+</script>
+</body>
 </html>
