@@ -1,5 +1,8 @@
 package com.diegonmarcos.superapp.wallet
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -28,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -352,6 +356,7 @@ private fun WalletSystemConfigTab(onImported: () -> Unit) {
 @Composable
 private fun LogcatSection() {
     val lines by LogStore.lines.collectAsState()
+    val ctx = LocalContext.current
     ConfigSection(title = "Debug Log (WebView)") {
         Row(
             modifier = Modifier
@@ -366,13 +371,26 @@ private fun LogcatSection() {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                "Clear",
+                "Copy",
                 color = Color(0xFF7C3AED),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
+                    .clickable {
+                        val clip = lines.joinToString("\n")
+                        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText("wallet_log", clip))
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+            Text(
+                "Clear",
+                color = Color(0xFFFF6B6B),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
                     .clickable { LogStore.clear() }
-                    .padding(4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
         Box(
@@ -383,33 +401,35 @@ private fun LogcatSection() {
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF060606)),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(8.dp),
-            ) {
-                if (lines.isEmpty()) {
-                    Text(
-                        "No logs yet — open the 3D-r card view.",
-                        color = Color(0x44FFFFFF),
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                } else {
-                    lines.forEach { line ->
+            SelectionContainer {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(8.dp),
+                ) {
+                    if (lines.isEmpty()) {
                         Text(
-                            line,
-                            color = when {
-                                line.startsWith("[ERROR]") -> Color(0xFFFF6B6B)
-                                line.startsWith("[WARN]")  -> Color(0xFFFFD93D)
-                                line.startsWith("[NAV]")   -> Color(0xFF64B5F6)
-                                else                      -> Color(0xFF8AFF8A)
-                            },
-                            fontSize = 10.sp,
+                            "No logs yet — open the 3D-r card view.",
+                            color = Color(0x44FFFFFF),
+                            fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace,
-                            lineHeight = 14.sp,
                         )
+                    } else {
+                        lines.forEach { line ->
+                            Text(
+                                line,
+                                color = when {
+                                    line.startsWith("[ERROR]") -> Color(0xFFFF6B6B)
+                                    line.startsWith("[WARN]")  -> Color(0xFFFFD93D)
+                                    line.startsWith("[NAV]")   -> Color(0xFF64B5F6)
+                                    else                      -> Color(0xFF8AFF8A)
+                                },
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                lineHeight = 14.sp,
+                            )
+                        }
                     }
                 }
             }
