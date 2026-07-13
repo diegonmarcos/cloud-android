@@ -4,6 +4,8 @@ import com.diegonmarcos.superapp.settings.LauncherConfigFragment
 import com.diegonmarcos.superapp.cloud.DriveConnectionsFragment
 import com.diegonmarcos.superapp.cloud.C3MeshFragment
 import com.diegonmarcos.superapp.cloud.C3HealthFragment
+import com.diegonmarcos.superapp.cloud.CalendarMonthFragment
+import com.diegonmarcos.superapp.cloud.CalendarAgendaFragment
 import com.diegonmarcos.superapp.network.WireGuardFragment
 import com.diegonmarcos.superapp.profile.ProfileFragment
 
@@ -29,12 +31,12 @@ import com.diegonmarcos.superapp.fin.MyFinDashboardFragment
  */
 object SectionPages {
 
-    data class Page(val id: String, val label: String, val factory: () -> Fragment)
+    data class Page(val id: String, val label: String, val action: String = "", val factory: () -> Fragment)
 
     fun pagesFor(sectionId: String): List<Page> {
         val section = Sections.byId(sectionId) ?: return emptyList()
         return section.pages.map { p ->
-            Page(p.id, p.label) { factoryFor(sectionId, p.id, p.label) }
+            Page(p.id, p.label, p.action) { factoryFor(sectionId, p.id, p.label) }
         }
     }
 
@@ -49,11 +51,15 @@ object SectionPages {
         sectionId == "config" && pageId == "profile"   -> ProfileFragment.newInstance()
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
-        sectionId == "config" && pageId == "kde"       -> com.diegonmarcos.superapp.kdeconnect.KdeConnectFragment.newInstance()
-        sectionId == "myfin"   && pageId == "dashboard" -> MyFinDashboardFragment.newInstance()
+        sectionId == "config" && pageId == "kde"            -> com.diegonmarcos.superapp.kdeconnect.KdeConnectFragment.newInstance()
+        sectionId == "config" && pageId == "constellation"  -> com.diegonmarcos.superapp.configs.ConstellationFragment.newInstance()
+        sectionId == "config" && pageId == "wg"             -> WireGuardFragment.newInstance()
+        sectionId == "myfin"   && pageId == "dashboard"     -> MyFinDashboardFragment.newInstance()
+        sectionId == "cal"     && pageId == "month"         -> CalendarMonthFragment.newInstance()
+        sectionId == "cal"     && pageId == "agenda"        -> CalendarAgendaFragment.newInstance()
         // "wallet" section is dead — tile target extapp:cloud-wallet bypasses openSectionPage.
-        sectionId == "health"                           -> HealthFragment.newInstance(pageId)
-        sectionId == "wg"     && pageId == "config"    -> WireGuardFragment.newInstance()
+        sectionId == "health"                               -> HealthFragment.newInstance(pageId)
+        sectionId == "wg"     && pageId == "config"         -> WireGuardFragment.newInstance()
         sectionId == "config" && pageId == "perms" ->
             com.diegonmarcos.superapp.configs.PermissionsFragment.newInstance()
         sectionId == "config" && (pageId == "about" || pageId == "dev") ->

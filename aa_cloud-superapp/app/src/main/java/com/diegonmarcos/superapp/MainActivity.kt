@@ -1084,6 +1084,13 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun showDrawerSectionPage(page: SectionPages.Page) {
+        // Pages that are pure action launchers (keyboard, update, import…) carry
+        // an action string from build.json. Dispatch via onTileClicked so they
+        // behave identically whether reached from the tab strip or a drawer item.
+        if (page.action.isNotBlank()) {
+            onTileClicked(page.action)
+            return
+        }
         supportFragmentManager.beginTransaction()
             .replace(R.id.drawer_content, page.factory())
             .commitAllowingStateLoss()
