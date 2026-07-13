@@ -314,6 +314,7 @@ class ScreensaverService : Service() {
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notify)
+            .setColor(0xFF0A0A0A.toInt())
             .setContentTitle("Cloud SuperApp — Screensaver")
             .setContentText("Tap Unlock on screen to dismiss.")
             .setOngoing(true).setOnlyAlertOnce(true)

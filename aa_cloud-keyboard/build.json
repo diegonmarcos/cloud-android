@@ -1,0 +1,43 @@
+{
+  "name": "cloud-keyboard",
+  "description": "Cloud Keyboard — HeliBoard IME with on-device translation, voice input, and bundled sticker packs. Standalone constellation APK.",
+  "category": "keyboard",
+  "toolchain": {
+    "agp": "8.13.2",
+    "gradle": "8.14",
+    "kotlin": "2.3.20",
+    "compile_sdk": 36,
+    "jdk": "17"
+  },
+  "modules": {
+    "_doc": "Keyboard libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle.",
+    "app": {
+      "type": "application",
+      "depends_on": ["libs:keyboard", "libs:media", "libs:translate", "libs:voice"],
+      "comment": "Thin application shell. All IME components (LatinIME, SpellChecker, Settings, sticker panel, translate, voice) come from the shared keyboard libs via manifest merge."
+    }
+  },
+  "release": {
+    "artifact": {
+      "debug": "Cloud-Keyboard.apk",
+      "release": "Cloud-Keyboard-release.apk"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ea_cloud-keyboard-v*",
+      "asset_name": "Cloud-Keyboard.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

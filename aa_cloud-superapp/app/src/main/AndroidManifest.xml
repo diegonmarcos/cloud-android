@@ -132,24 +132,9 @@
         android:defaultToDeviceProtectedStorage="false"
         android:directBootAware="false"
         tools:replace="android:name,android:label,android:icon,android:roundIcon,android:allowBackup,android:defaultToDeviceProtectedStorage,android:directBootAware">
-        <!-- libs:keyboard (vendored HeliBoard) ships its own <application> with
-             conflicting attributes; the SuperApp is the host, so its values win
-             via tools:replace:
-               • name/label/icon/roundIcon/allowBackup — SuperApp branding +
-                 backup policy (HeliBoard sets allowBackup=true; we keep false).
-                 If the keyboard misbehaves, HeliBoard's App.onCreate init must
-                 be ported into .App (see libs/keyboard/README.md "App-class init").
-               • defaultToDeviceProtectedStorage / directBootAware — HeliBoard
-                 sets these true for direct-boot typing. Adopting them app-wide
-                 would move the SuperApp's default storage to device-protected
-                 and BREAK EncryptedSharedPreferences (credential-keystore). We
-                 force false; the keyboard still works post-unlock. -->
-        <!-- WorkManager on-demand initialization. The vendored HeliBoard merge
-             drops androidx.startup's auto-init, leaving WorkManager
-             uninitialized (every getInstance() throws). We complete the
-             official on-demand setup: remove the default WorkManagerInitializer
-             here and provide config via App : Configuration.Provider, so the
-             first getInstance() lazily initializes it. Keep both halves in sync. -->
+        <!-- WorkManager on-demand initialization. Remove the default
+             WorkManagerInitializer and provide config via App : Configuration.Provider
+             so the first getInstance() lazily initializes it. -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
@@ -159,29 +144,6 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 tools:node="remove" />
         </provider>
-
-        <!-- FileProvider that backs the keyboard Sticker/GIF panel (libs:media).
-             Picked GIFs/stickers are cached under cacheDir/keyboard_media and
-             served back as content:// URIs to the target app via
-             InputConnection.commitContent (GRANT_READ). -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.mediaprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/media_file_paths" />
-        </provider>
-
-        <!-- Bundled sticker packs (libs:media BundledStickerProvider).
-             Authority ends with .stickercontentprovider so StickerRepo
-             auto-discovers it alongside any installed WhatsApp sticker apps. -->
-        <provider
-            android:name="com.diegonmarcos.superapp.media.BundledStickerProvider"
-            android:authorities="${applicationId}.stickercontentprovider"
-            android:exported="false"
-            android:grantUriPermissions="true" />
 
         <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
         <receiver
@@ -234,31 +196,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
-            </intent-filter>
-        </activity>
-
-        <!-- ════════════ libs:keyboard (HeliBoard) manifest reconciliation ════════════
-             The vendored HeliBoard manifest (libs/keyboard/src/main/AndroidManifest.xml,
-             a verbatim upstream mirror) makes its SettingsActivity the LAUNCHER entry
-             and SpellCheckerSettingsActivity a MAIN entry. The SuperApp is the launcher,
-             so we strip those intent-filters at merge time via tools:node="remove".
-             The activities themselves remain (reachable from the system IME settings
-             "gear" and the SuperApp's keyboard entry point) — only their launcher hooks
-             are removed, so the keyboard adds NO second/third launcher icon.
-             See libs/keyboard/README.md. -->
-        <activity
-            android:name="helium314.keyboard.settings.SettingsActivity"
-            tools:node="merge">
-            <intent-filter tools:node="remove">
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name="helium314.keyboard.latin.spellcheck.SpellCheckerSettingsActivity"
-            tools:node="merge">
-            <intent-filter tools:node="remove">
-                <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
 

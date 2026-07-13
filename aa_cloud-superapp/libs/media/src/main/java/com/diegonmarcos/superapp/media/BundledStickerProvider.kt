@@ -45,7 +45,7 @@ class BundledStickerProvider : ContentProvider() {
                 val c = MatrixCursor(arrayOf("sticker_file_name"))
                 runCatching {
                     ctx.assets.list("stickers/$packId")
-                        ?.filter { it.endsWith(".webp") }
+                        ?.filter { it.endsWith(".webp") || it.endsWith(".png") }
                         ?.forEach { c.addRow(arrayOf(it)) }
                 }
                 c
@@ -92,7 +92,10 @@ class BundledStickerProvider : ContentProvider() {
 
     // ── unused contract methods ─────────────────────────────────────────────
 
-    override fun getType(uri: Uri): String = "image/webp"
+    override fun getType(uri: Uri): String {
+        val path = uri.lastPathSegment ?: return "image/webp"
+        return if (path.endsWith(".png")) "image/png" else "image/webp"
+    }
     override fun insert(uri: Uri, values: ContentValues?) = null
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?) = 0
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<String>?) = 0

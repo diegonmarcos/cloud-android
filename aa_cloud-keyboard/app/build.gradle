@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.diegonmarcos.cloudkeyboard'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.diegonmarcos.cloudkeyboard'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        // Shared Cloud-constellation signing key (vault). build.sh::_resolve_signing
+        // exports ANDROID_KEYSTORE_FILE/PASS/ALIAS/KEY_PASS after sops-decrypting
+        // .vault/A0_keys/providers/android/signing.secrets.yaml.
+        release {
+            storeFile     = System.getenv("ANDROID_KEYSTORE_FILE") ? file(System.getenv("ANDROID_KEYSTORE_FILE")) : null
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASS") ?: ""
+            keyAlias      = System.getenv("ANDROID_KEY_ALIAS")     ?: ""
+            keyPassword   = System.getenv("ANDROID_KEY_PASS")      ?: ""
+        }
+    }
+
+    buildTypes {
+        debug { }
+        release {
+            minifyEnabled false
+            def sc = signingConfigs.release
+            signingConfig = (sc.storeFile != null) ? sc : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    // HeliBoard uses ndk-build; inherit the same NDK version as superapp.
+    ndkVersion "28.0.13004108"
+}
+
+dependencies {
+    implementation project(':libs:keyboard')
+    implementation project(':libs:media')
+    implementation project(':libs:translate')
+    implementation project(':libs:voice')
+}
