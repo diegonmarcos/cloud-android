@@ -17,6 +17,27 @@
       "comment": "Thin application shell. All IME components (LatinIME, SpellChecker, Settings, sticker panel, translate, voice) come from the shared keyboard libs via manifest merge."
     }
   },
+  "keyboard_media": {
+    "_doc": "Same block as ea_cloud-superapp — shared vault secret. build.sh sops-decrypts vault_secrets → TENOR_API_KEY/GIPHY_API_KEY env vars → Gradle BuildConfig → MediaRuntime.configure().",
+    "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
+    "enabled": true,
+    "sticker": { "enabled": true },
+    "gif": {
+      "provider": "giphy",
+      "limit": 30,
+      "giphy": {
+        "base_url": "https://api.giphy.com/v1/gifs",
+        "categories": [
+          { "id": "trending",  "label": "Trending",   "query": ""         },
+          { "id": "reactions", "label": "Reactions",  "query": "reaction" },
+          { "id": "love",      "label": "Love",       "query": "love"     },
+          { "id": "happy",     "label": "Happy",      "query": "happy"    },
+          { "id": "sad",       "label": "Sad",        "query": "sad"      },
+          { "id": "celebrate", "label": "Celebrate",  "query": "celebrate"}
+        ]
+      }
+    }
+  },
   "release": {
     "artifact": {
       "debug": "Cloud-Keyboard.apk",

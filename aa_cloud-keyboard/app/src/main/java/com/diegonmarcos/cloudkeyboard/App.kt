@@ -2,6 +2,7 @@ package com.diegonmarcos.cloudkeyboard
 
 import android.app.Application
 import androidx.work.Configuration as WorkManagerConfiguration
+import com.diegonmarcos.superapp.media.MediaRuntime
 import helium314.keyboard.latin.utils.prefs as heliboardPrefs
 
 /**
@@ -29,5 +30,6 @@ class App : Application(), WorkManagerConfiguration.Provider {
         runCatching { helium314.keyboard.latin.RichInputMethodManager.init(this) }
         runCatching { helium314.keyboard.latin.settings.Defaults.initDynamicDefaults(this) }
         runCatching { helium314.keyboard.latin.utils.upgradeToolbarPrefs(heliboardPrefs()) }
+        runCatching { MediaRuntime.configure(BuildConfig.MEDIA_CONFIG_B64, null, BuildConfig.GIPHY_API_KEY) }
     }
 }

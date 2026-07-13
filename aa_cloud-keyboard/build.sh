@@ -20,6 +20,18 @@ in_nix() {
 
 _gradle() { in_nix gradle --no-daemon -p "$SCRIPT_DIR" "$@"; }
 
+_resolve_gif_keys() {
+  [ -n "${GIPHY_API_KEY:-}" ] && { log "media: pre-set GIPHY_API_KEY from env"; return 0; }
+  local vault="${VAULT_DIR:-}"
+  [ -z "$vault" ] && return 0
+  local sec_rel; sec_rel="$(python3 -c "import json,sys; d=json.load(open('$SCRIPT_DIR/build.json')); print(d.get('keyboard_media',{}).get('vault_secrets',''))" 2>/dev/null)"
+  [ -z "$sec_rel" ] && return 0
+  local sec="$vault/$sec_rel"
+  [ -f "$sec" ] || { log "media: $sec_rel not found; GIF tab will show no-key state"; return 0; }
+  export GIPHY_API_KEY; GIPHY_API_KEY="$(SOPS_AGE_KEY="${SOPS_AGE_KEY:-}" sops --config /dev/null -d --extract '["giphy_api_key"]' "$sec" 2>/dev/null || true)"
+  log "media: giphy=$([ -n "$GIPHY_API_KEY" ] && echo yes || echo no)"
+}
+
 _resolve_signing() {
   local vault="${VAULT_DIR:-}"
   [ -z "$vault" ] && return 0
@@ -35,6 +47,7 @@ _resolve_signing() {
 case "$CMD" in
   build)
     log "Building Cloud Keyboard APK (debug)…"
+    _resolve_gif_keys
     mkdir -p "$DIST_DIR"
     _gradle :app:assembleDebug
     find "$SCRIPT_DIR/app/build/outputs/apk/debug" -name "*.apk" \
@@ -43,6 +56,7 @@ case "$CMD" in
     ;;
   release)
     log "Building Cloud Keyboard APK (release)…"
+    _resolve_gif_keys
     _resolve_signing
     mkdir -p "$DIST_DIR"
     _gradle :app:assembleRelease
