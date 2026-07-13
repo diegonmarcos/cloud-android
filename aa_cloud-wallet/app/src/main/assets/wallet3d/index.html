@@ -2,97 +2,134 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body,#root{width:100%;height:100%;background:#0c0d12;overflow:hidden}
-#overlay{position:fixed;top:0;left:0;width:100%;padding:6px 10px;background:#0008;color:#0f0;font:10px/1.4 monospace;pointer-events:none;white-space:pre-wrap;word-break:break-all}
-</style>
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body,canvas{width:100%;height:100%;display:block;background:#0c0d12}#ov{position:fixed;top:0;left:0;padding:6px 10px;background:#0008;color:#0f0;font:10px monospace;pointer-events:none;white-space:pre-wrap;word-break:break-all;max-width:100%}</style>
 </head>
 <body>
-<div id="root"></div>
-<div id="overlay"></div>
-
-<script src="three.min.js"></script>
+<canvas id="c"></canvas>
+<div id="ov"></div>
 <script>
-// ── error plumbing ────────────────────────────────────────────────────────────
-var _ov = document.getElementById('overlay');
-function dbg(msg){ console.log(msg); _ov.textContent = ((_ov.textContent||'')+'\n'+msg).slice(-800); }
-window.onerror = function(m,s,l,c,e){ console.error('[ERROR] '+m+' ('+l+':'+c+')'); dbg('ERR: '+m); return false; };
-window.addEventListener('unhandledrejection',function(e){ console.error('[ERROR] UnhandledRejection: '+(e.reason||e)); dbg('REJ: '+e.reason); });
+var ov=document.getElementById('ov');
+function log(m){console.log(m);ov.textContent=(ov.textContent+'\n'+m).slice(-600);}
+window.onerror=function(m,s,l){console.error('[E]'+m+'('+l+')');log('ERR:'+m);return false;};
+log('WebGL init');
 
-dbg('three.js loaded: '+(typeof THREE !== 'undefined' ? THREE.REVISION : 'MISSING'));
+// ── minimal mat4 (column-major, matches WebGL) ────────────────────────────────
+function m4(){return new Float32Array(16);}
+function identity(m){for(var i=0;i<16;i++)m[i]=0;m[0]=m[5]=m[10]=m[15]=1;return m;}
+function perspective(m,fov,ar,n,f){var t=1/Math.tan(fov/2),r=1/(n-f);
+  m[0]=t/ar;m[1]=m[2]=m[3]=0;m[4]=0;m[5]=t;m[6]=m[7]=0;m[8]=m[9]=0;
+  m[10]=(n+f)*r;m[11]=-1;m[12]=m[13]=0;m[14]=2*n*f*r;m[15]=0;return m;}
+function mul(o,a,b){
+  for(var c=0;c<4;c++){var b0=b[c*4],b1=b[c*4+1],b2=b[c*4+2],b3=b[c*4+3];
+    o[c*4  ]=b0*a[0]+b1*a[4]+b2*a[8] +b3*a[12];
+    o[c*4+1]=b0*a[1]+b1*a[5]+b2*a[9] +b3*a[13];
+    o[c*4+2]=b0*a[2]+b1*a[6]+b2*a[10]+b3*a[14];
+    o[c*4+3]=b0*a[3]+b1*a[7]+b2*a[11]+b3*a[15];}return o;}
+function rotY(m,a){var s=Math.sin(a),c=Math.cos(a),x=m[0],y=m[1],z=m[2],w=m[3],X=m[8],Y=m[9],Z=m[10],W=m[11];
+  m[0]=x*c-X*s;m[1]=y*c-Y*s;m[2]=z*c-Z*s;m[3]=w*c-W*s;
+  m[8]=x*s+X*c;m[9]=y*s+Y*c;m[10]=z*s+Z*c;m[11]=w*s+W*c;return m;}
+function rotX(m,a){var s=Math.sin(a),c=Math.cos(a),x=m[4],y=m[5],z=m[6],w=m[7],X=m[8],Y=m[9],Z=m[10],W=m[11];
+  m[4]=x*c+X*s;m[5]=y*c+Y*s;m[6]=z*c+Z*s;m[7]=w*c+W*s;
+  m[8]=X*c-x*s;m[9]=Y*c-y*s;m[10]=Z*c-z*s;m[11]=W*c-w*s;return m;}
+function upper3(m){// extract upper-left 3x3 (column-major) = normal matrix for pure rotation
+  return new Float32Array([m[0],m[1],m[2],m[4],m[5],m[6],m[8],m[9],m[10]]);}
 
-// ── scene setup ───────────────────────────────────────────────────────────────
-var renderer, scene, camera, mesh, animId;
+// ── credit-card box geometry (85.6×54mm aspect, ISO/IEC 7810 ID-1) ────────────
+var W=1.6875,H=1.0625,D=0.04; // half-extents
+var vPos=new Float32Array([
+  -W,-H, D,  W,-H, D,  W, H, D, -W, H, D, // front  +Z
+   W,-H,-D, -W,-H,-D, -W, H,-D,  W, H,-D, // back   -Z
+  -W, H, D,  W, H, D,  W, H,-D, -W, H,-D, // top    +Y
+  -W,-H,-D,  W,-H,-D,  W,-H, D, -W,-H, D, // bottom -Y
+   W,-H, D,  W,-H,-D,  W, H,-D,  W, H, D, // right  +X
+  -W,-H,-D, -W,-H, D, -W, H, D, -W, H,-D  // left   -X
+]);
+var vNor=new Float32Array([
+  0,0,1, 0,0,1, 0,0,1, 0,0,1,
+  0,0,-1,0,0,-1,0,0,-1,0,0,-1,
+  0,1,0, 0,1,0, 0,1,0, 0,1,0,
+  0,-1,0,0,-1,0,0,-1,0,0,-1,0,
+  1,0,0, 1,0,0, 1,0,0, 1,0,0,
+  -1,0,0,-1,0,0,-1,0,0,-1,0,0
+]);
+var idx=new Uint16Array([
+  0,1,2, 0,2,3,   4,5,6, 4,6,7,
+  8,9,10,8,10,11, 12,13,14,12,14,15,
+  16,17,18,16,18,19, 20,21,22,20,22,23
+]);
 
-function init(){
-  var root = document.getElementById('root');
-  var W = root.clientWidth  || window.innerWidth;
-  var H = root.clientHeight || window.innerHeight;
+// ── WebGL ─────────────────────────────────────────────────────────────────────
+var cv=document.getElementById('c');
+var gl=cv.getContext('webgl')||cv.getContext('experimental-webgl');
+if(!gl){log('WebGL NOT SUPPORTED');throw new Error('no webgl');}
+log('WebGL context: OK');
 
-  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
-  renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  root.appendChild(renderer.domElement);
+var VS='attribute vec3 aP;attribute vec3 aN;uniform mat4 uMVP;uniform mat3 uNM;varying vec3 vN;void main(){vN=uNM*aN;gl_Position=uMVP*vec4(aP,1.);}';
+var FS='precision mediump float;varying vec3 vN;uniform vec3 uC;void main(){float l=max(dot(normalize(vN),normalize(vec3(2.,3.,4.))),.0)*.8+.2;gl_FragColor=vec4(uC*l,1.);}';
 
-  scene  = new THREE.Scene();
-  scene.background = new THREE.Color(0x0c0d12);
+function mkShader(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){log('shader err:'+gl.getShaderInfoLog(s));}return s;}
+var prog=gl.createProgram();
+gl.attachShader(prog,mkShader(gl.VERTEX_SHADER,VS));
+gl.attachShader(prog,mkShader(gl.FRAGMENT_SHADER,FS));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){log('link err:'+gl.getProgramInfoLog(prog));}
+gl.useProgram(prog);
+log('shaders: OK');
 
-  camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
-  camera.position.set(0, 0, 4);
+var aP=gl.getAttribLocation(prog,'aP'),aN=gl.getAttribLocation(prog,'aN');
+var uMVP=gl.getUniformLocation(prog,'uMVP'),uNM=gl.getUniformLocation(prog,'uNM'),uC=gl.getUniformLocation(prog,'uC');
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  var dir = new THREE.DirectionalLight(0xffffff, 1.2);
-  dir.position.set(2, 3, 4);
-  scene.add(dir);
+var bP=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,bP);gl.bufferData(gl.ARRAY_BUFFER,vPos,gl.STATIC_DRAW);
+var bN=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,bN);gl.bufferData(gl.ARRAY_BUFFER,vNor,gl.STATIC_DRAW);
+var bI=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,bI);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,idx,gl.STATIC_DRAW);
+gl.enable(gl.DEPTH_TEST);
 
-  // credit-card aspect ratio box
-  var geo = new THREE.BoxGeometry(3.375, 2.125, 0.08);
-  var mat = new THREE.MeshStandardMaterial({ color:0x3333aa, metalness:0.3, roughness:0.5 });
-  mesh = new THREE.Mesh(geo, mat);
-  scene.add(mesh);
+var proj=m4(),view=m4(),model=m4(),mv=m4(),mvp=m4();
+perspective(proj,Math.PI/4,1,0.1,100);
+identity(view);view[14]=-4; // camera 4 units back
+var ry=0,rx=0;
+var color=new Float32Array([0.2,0.2,0.67]);
 
-  dbg('scene ready');
-  animate();
-}
-
-function animate(){
-  animId = requestAnimationFrame(animate);
-  mesh.rotation.y += 0.008;
-  mesh.rotation.x += 0.003;
-  renderer.render(scene, camera);
-}
-
-// ── card map ─────────────────────────────────────────────────────────────────
-var KIND_COLORS = {
-  id_passport_es: 0x8B0000,
-  id_passport_br: 0x005C1F,
-  id_dni:         0x1A4395,
-  id_nie:         0x2e8b57,
-  id_tsi:         0x009FCA,
-  id_cin_br:      0x228B22,
-  id_driving_es:  0xC0392B,
-  id_boat_es:     0x0A4B8C,
+var KIND_COLORS={
+  id_passport_es:[0.545,0,0],      id_passport_br:[0,0.361,0.122],
+  id_dni:[0.102,0.267,0.584],      id_nie:[0.18,0.545,0.341],
+  id_tsi:[0,0.624,0.792],          id_cin_br:[0.137,0.545,0.137],
+  id_driving_es:[0.753,0.224,0.169],id_boat_es:[0.039,0.294,0.549]
 };
 
-// ── public API ────────────────────────────────────────────────────────────────
-window.setCard = function(kind){
-  dbg('setCard: '+kind);
-  if(!mesh) return;
-  var color = KIND_COLORS[kind] || 0x444466;
-  mesh.material.color.setHex(color);
+window.setCard=function(kind){
+  log('setCard: '+kind);
+  var c=KIND_COLORS[kind]||[0.267,0.267,0.4];
+  color[0]=c[0];color[1]=c[1];color[2]=c[2];
 };
 
-// ── init ─────────────────────────────────────────────────────────────────────
-try{
-  init();
-  // read kind from URL param as initial value
-  var kind = new URLSearchParams(location.search).get('kind') || '';
-  if(kind) window.setCard(kind);
-} catch(e){
-  console.error('[ERROR] init failed: '+e.message);
-  dbg('INIT ERR: '+e.message);
+function resize(){var w=cv.clientWidth,h=cv.clientHeight;
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h);perspective(proj,Math.PI/4,w/h,0.1,100);}}
+
+function render(){
+  requestAnimationFrame(render);
+  resize();
+  ry+=0.008;rx+=0.003;
+  identity(model);rotY(model,ry);rotX(model,rx);
+  mul(mv,view,model);mul(mvp,proj,mv);
+
+  gl.clearColor(0.047,0.051,0.071,1);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,bP);gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,bN);gl.enableVertexAttribArray(aN);gl.vertexAttribPointer(aN,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,bI);
+  gl.uniformMatrix4fv(uMVP,false,mvp);
+  gl.uniformMatrix3fv(uNM,false,upper3(model));
+  gl.uniform3fv(uC,color);
+  gl.drawElements(gl.TRIANGLES,36,gl.UNSIGNED_SHORT,0);
 }
+
+log('starting render loop');
+render();
+var k=new URLSearchParams(location.search).get('kind')||'';
+if(k)window.setCard(k);
 </script>
 </body>
 </html>

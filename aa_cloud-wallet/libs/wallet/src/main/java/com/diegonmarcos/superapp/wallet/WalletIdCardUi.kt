@@ -57,32 +57,35 @@ internal fun IdCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
 }
 
 /**
- * 3D-r: React Three Fiber via AndroidView(WebView).
- * Load assets/wallet3d/index.html; pass card.kind via JS or URL param.
- * See docs/3d-view-design.md for full asset + PBR pipeline notes.
+ * 3D-r: raw WebGL via AndroidView(WebView).
+ * Page loads ONCE; card changes are sent via window.setCard() JS call only —
+ * no URL reloads, no WebGL context leak.
  */
 @Composable
 internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modifier) {
     val kind = card.kind
     AndroidView(
-        factory = { context ->
-            WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.allowFileAccess = true
+        factory = { ctx ->
+            // Capture mutable state in closure so update() can mutate without reload
+            var currentKind = kind
+            var pageReady = false
+            WebView(ctx).also { wv ->
+                wv.settings.javaScriptEnabled = true
+                wv.settings.domStorageEnabled = true
+                wv.settings.allowFileAccess = true
                 @Suppress("SetJavaScriptEnabled")
-                webViewClient = object : WebViewClient() {
+                wv.webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         LogStore.add("[NAV]  onPageFinished: $url")
-                        view?.evaluateJavascript("window.setCard('$kind')", null)
+                        pageReady = true
+                        wv.evaluateJavascript("window.setCard('$currentKind')", null)
                     }
                     override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, url: String?) {
-                        val line = "[ERROR] WebViewClient error $errorCode: $description @ $url"
-                        Log.e("Wallet3D", line)
-                        LogStore.add(line)
+                        Log.e("Wallet3D", "[ERROR] $errorCode: $description @ $url")
+                        LogStore.add("[ERROR] WebViewClient $errorCode: $description")
                     }
                 }
-                webChromeClient = object : WebChromeClient() {
+                wv.webChromeClient = object : WebChromeClient() {
                     override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
                         val level = when (msg.messageLevel()) {
                             ConsoleMessage.MessageLevel.ERROR   -> "[ERROR]"
@@ -96,12 +99,22 @@ internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modi
                         return true
                     }
                 }
-                LogStore.add("[NAV]  loadUrl: file:///android_asset/wallet3d/index.html?kind=$kind")
-                loadUrl("file:///android_asset/wallet3d/index.html?kind=$kind")
+                // Store setter in tag so update() can call setCard without reloading the page
+                wv.tag = fun(k: String) {
+                    currentKind = k
+                    if (pageReady) wv.evaluateJavascript("window.setCard('$k')", null)
+                }
+                LogStore.add("[NAV]  loadUrl: file:///android_asset/wallet3d/index.html")
+                wv.loadUrl("file:///android_asset/wallet3d/index.html")
             }
         },
-        update = { webView ->
-            webView.evaluateJavascript("window.setCard('$kind')", null)
+        update = { wv ->
+            @Suppress("UNCHECKED_CAST")
+            (wv.tag as? ((String) -> Unit))?.invoke(kind)
+        },
+        onRelease = { wv ->
+            wv.stopLoading()
+            wv.destroy()
         },
         modifier = modifier
             .shadow(8.dp, RoundedCornerShape(16.dp))
