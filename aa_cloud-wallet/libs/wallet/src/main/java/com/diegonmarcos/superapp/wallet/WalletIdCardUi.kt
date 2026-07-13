@@ -1,5 +1,7 @@
 package com.diegonmarcos.superapp.wallet
 
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,9 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -56,19 +60,29 @@ internal fun IdCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
  */
 @Composable
 internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modifier) {
-    Box(
+    val kind = card.kind
+    AndroidView(
+        factory = { context ->
+            WebView(context).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.allowFileAccess = true
+                @Suppress("SetJavaScriptEnabled")
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        view?.evaluateJavascript("window.setCard('$kind')", null)
+                    }
+                }
+                loadUrl("file:///android_asset/wallet3d/index.html?kind=$kind")
+            }
+        },
+        update = { webView ->
+            webView.evaluateJavascript("window.setCard('$kind')", null)
+        },
         modifier = modifier
             .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF0D0D1A)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("3D-r", color = Color(0x88FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            Text(card.kind, color = Color(0x44FFFFFF), fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-            Text("React Three Fiber stub", color = Color(0x33FFFFFF), fontSize = 9.sp)
-        }
-    }
+            .clip(RoundedCornerShape(16.dp)),
+    )
 }
 
 /**
