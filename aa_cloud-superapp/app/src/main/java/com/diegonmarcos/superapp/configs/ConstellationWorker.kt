@@ -18,6 +18,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.Fleet
@@ -76,7 +77,8 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         val notif = Notification.Builder(ctx, CHANNEL)
             .setContentTitle("$n constellation update${if (n == 1) "" else "s"} available")
             .setContentText("Tap to open the Constellation AppStore")
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setColor(0xFF0A0A0A.toInt())
             .setContentIntent(pi)
             .setAutoCancel(true)
             .build()

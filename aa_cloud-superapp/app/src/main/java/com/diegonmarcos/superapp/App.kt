@@ -13,7 +13,6 @@ import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.devcontrol.DevControlServer
 import com.diegonmarcos.superapp.notificationcenter.KdeStatusService
 import com.google.android.material.color.DynamicColors
-import helium314.keyboard.latin.utils.prefs as heliboardPrefs
 
 /**
  * Application entry point — runs BEFORE any Activity. Wires:
@@ -90,63 +89,7 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // SubtypeSettings.prefs null → Configs→Keyboard (SettingsActivity) AND
         // LatinIME crashed with "parameter prefs is null". Replicate HeliBoard
         // App.onCreate's synchronous init here so both work.
-        runCatching { initVendoredKeyboard() }
-        // Push the keyboard Sticker/GIF panel config (build.json::keyboard_media
-        // → BuildConfig) + the sops-injected GIF provider API keys into the
-        // libs:media runtime holder. Libraries can't read the app's BuildConfig,
-        // so the app is the only place this can be wired.
-        runCatching {
-            com.diegonmarcos.superapp.media.MediaRuntime.configure(
-                BuildConfig.MEDIA_CONFIG_B64, BuildConfig.TENOR_API_KEY, BuildConfig.GIPHY_API_KEY)
-        }
         Trace.i("App", "Application.onCreate done — pid=${android.os.Process.myPid()}")
-    }
-
-    /** Mirrors helium314.keyboard.latin.App.onCreate's synchronous init (the
-     *  vendored HeliBoard App class is never instantiated, since our manifest
-     *  android:name wins). These are the initializers Settings / SubtypeSettings
-     *  / LatinIME read at runtime. Each wrapped so one failure can't abort
-     *  SuperApp startup. Keep in sync with libs/keyboard App.kt on resyncs. */
-    private fun initVendoredKeyboard() {
-        runCatching { helium314.keyboard.latin.define.DebugFlags.init(this) }
-        runCatching { helium314.keyboard.latin.utils.FoldableUtils.init(this) }
-        runCatching { helium314.keyboard.latin.settings.Settings.init(this) }
-        runCatching { helium314.keyboard.latin.utils.SubtypeSettings.init(this) }
-        runCatching { helium314.keyboard.latin.RichInputMethodManager.init(this) }
-        runCatching { helium314.keyboard.latin.settings.Defaults.initDynamicDefaults(this) }
-        runCatching { enableDefaultKeyboardLanguages() }
-        // Migrate the saved toolbar-key prefs so SuperApp-added keys (TRANSLATE)
-        // appear in Settings → Toolbar's reorder/enable list for EXISTING installs.
-        // HeliBoard only runs this from its own App.onCreate, and only on DEBUG
-        // builds — but our `.App` wins the manifest merge so its onCreate never
-        // fires, and our APK is release. Idempotent: a no-op once TRANSLATE is in.
-        runCatching { helium314.keyboard.latin.utils.upgradeToolbarPrefs(heliboardPrefs()) }
-    }
-
-    /** First-run only: enable the keyboard subtypes listed in
-     *  build.json::keyboard_dicts.default_languages (baked CSV) — English,
-     *  German, Spanish, Portuguese-BR. HeliBoard otherwise enables only the
-     *  system locale. Skipped once the user has any enabled subtype, so we
-     *  never clobber their later choices. Tries the exact BCP-47 tag, then
-     *  falls back to the language only. */
-    private fun enableDefaultKeyboardLanguages() {
-        val prefs = heliboardPrefs()
-        val key = helium314.keyboard.latin.settings.Settings.PREF_ENABLED_SUBTYPES
-        if (!prefs.getString(key, "").isNullOrEmpty()) return  // user already chose
-        val langs = BuildConfig.KEYBOARD_DEFAULT_LANGS
-            .split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        for (tag in langs) {
-            val locale = java.util.Locale.forLanguageTag(tag)
-            val subtypes = helium314.keyboard.latin.utils.SubtypeSettings
-                .getResourceSubtypesForLocale(locale)
-                .ifEmpty {
-                    helium314.keyboard.latin.utils.SubtypeSettings
-                        .getResourceSubtypesForLocale(java.util.Locale.forLanguageTag(locale.language))
-                }
-            subtypes.firstOrNull()?.let {
-                helium314.keyboard.latin.utils.SubtypeSettings.addEnabledSubtype(prefs, it)
-            }
-        }
     }
 
     /** Updater producer for NotificationStore. Compares the current

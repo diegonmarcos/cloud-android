@@ -1,0 +1,29 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "cloud-keyboard"
+
+include(":app")
+
+// Keyboard libs shared from ea_cloud-superapp/libs/ — compiled once,
+// referenced by relative path. No code duplication.
+include(":libs:keyboard")
+project(":libs:keyboard").projectDir = file("../ea_cloud-superapp/libs/keyboard")
+include(":libs:media")
+project(":libs:media").projectDir = file("../ea_cloud-superapp/libs/media")
+include(":libs:translate")
+project(":libs:translate").projectDir = file("../ea_cloud-superapp/libs/translate")
+include(":libs:voice")
+project(":libs:voice").projectDir = file("../ea_cloud-superapp/libs/voice")

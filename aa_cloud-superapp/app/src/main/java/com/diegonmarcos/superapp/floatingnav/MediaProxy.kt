@@ -79,6 +79,7 @@ class MediaProxy(private val ctx: Context) {
 
         val b = NotificationCompat.Builder(ctx, MEDIA_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notify)
+            .setColor(0xFF0A0A0A.toInt())
             .setContentTitle(title)
             .setContentText(artist)
             .setSubText("Cloud SA - Media")

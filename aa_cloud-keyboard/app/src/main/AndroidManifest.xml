@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cloud Keyboard — standalone IME APK.
+
+  All core IME components (LatinIME service, SpellCheckerService, SettingsActivity,
+  AndroidSpellCheckerService) are declared in :libs:keyboard AndroidManifest and
+  merged here automatically by AGP. This manifest only adds the app-level things
+  the library manifest cannot declare (applicationId-scoped providers).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- WorkManager on-demand init: HeliBoard's manifest merge drops the default
+         WorkManagerInitializer. Complete the on-demand setup here (App provides
+         Configuration.Provider so the first getInstance() lazily initializes it). -->
+    <application
+        android:name=".App"
+        android:label="Cloud Keyboard"
+        android:allowBackup="false"
+        android:defaultToDeviceProtectedStorage="false"
+        android:directBootAware="false"
+        tools:replace="android:name,android:label,android:allowBackup,android:defaultToDeviceProtectedStorage,android:directBootAware">
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                tools:node="remove" />
+        </provider>
+
+        <!-- FileProvider for keyboard Sticker/GIF panel (libs:media).
+             Stickers picked via MediaPanelView are served as content:// URIs
+             to the target app via InputConnection.commitContent. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.mediaprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/media_file_paths" />
+        </provider>
+
+        <!-- Bundled sticker packs (libs:media BundledStickerProvider).
+             Authority ends with .stickercontentprovider so StickerRepo
+             auto-discovers it alongside WhatsApp sticker apps. -->
+        <provider
+            android:name="com.diegonmarcos.superapp.media.BundledStickerProvider"
+            android:authorities="${applicationId}.stickercontentprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+    </application>
+</manifest>

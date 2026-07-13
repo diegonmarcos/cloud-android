@@ -64,6 +64,7 @@ object KdeStatusNotifier {
         // are the same fine thin-line One-UI set as "Cloud SA - Quick Actions".
         return NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notify)
+            .setColor(0xFF0A0A0A.toInt())
             .setContentTitle("Cloud SA - KDE · $summary")
             .setContentText(line)
             .setSubText(sub)
