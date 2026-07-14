@@ -37,18 +37,19 @@ import java.util.Locale
 
 // ─── Top-level tabs ───────────────────────────────────────────────────────────
 
-/** Four top-level wallet tabs. Tickets is a container with its own inner nav. */
+/** Top-level wallet tabs. Events is a container with its own inner nav
+ *  (Tickets / Bookings / Passes / Cal). */
 enum class WalletTab(val label: String) {
     Cards("Cards"),
     IDs("IDs"),
-    Tickets("Tickets"),
-    Bookings("Bookings"),
+    Tickets("Events"),
     Config("Config"),
 }
 
-/** Sub-tabs rendered inside the Tickets section. */
+/** Sub-tabs rendered inside the Events section. */
 enum class TicketsSubTab(val label: String) {
     Events("Tickets"),
+    Bookings("Bookings"),
     Passes("Passes"),
     Calendar("Cal"),
 }

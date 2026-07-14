@@ -134,7 +134,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     val vcardKinds   = setOf("vcard", "vcard_imported")
     val passKinds    = setOf("transit", "gym")
 
-    val cardsForTab = remember(cards, tab, ticketsSub, ticketsShowArchive) {
+    val cardsForTab = remember(cards, tab, ticketsSub, ticketsShowArchive, bookingsShowArchive) {
         when (tab) {
             WalletTab.Cards   -> cards.filter { !it.isTicket && it.category.isEmpty() && it.kind in bankingKinds }
             WalletTab.IDs     -> cards.filter { it.category == "id" || it.category == "doc" || it.kind in vcardKinds }
@@ -142,11 +142,11 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                 TicketsSubTab.Events   -> cards.filter {
                     it.isTicket && (if (ticketsShowArchive) it.isPastTicket else !it.isPastTicket)
                 }
+                TicketsSubTab.Bookings -> cards.filter {
+                    it.isBooking && (if (bookingsShowArchive) it.isPastBooking else !it.isPastBooking)
+                }
                 TicketsSubTab.Passes   -> cards.filter { !it.isTicket && it.kind in passKinds }
                 TicketsSubTab.Calendar -> cards.filter { it.isTicket }
-            }
-            WalletTab.Bookings -> cards.filter {
-                it.isBooking && (if (bookingsShowArchive) it.isPastBooking else !it.isPastBooking)
             }
             WalletTab.Config  -> emptyList()
         }
@@ -193,6 +193,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                             if (next != ticketsSub) {
                                 ticketsSub = next
                                 ticketsShowArchive = false
+                                bookingsShowArchive = false
                             }
                         },
                     )
@@ -253,21 +254,20 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                                     onToggle       = { ticketsShowArchive = !ticketsShowArchive },
                                 )
                             }
-                        }
-
-                        WalletTab.Bookings -> Column(modifier = Modifier.fillMaxSize()) {
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                                WalletBookingList(
-                                    bookings     = cardsForTab,
-                                    onBookingTap = { mode = WalletMode.Full(it.id) },
+                            TicketsSubTab.Bookings -> Column(modifier = Modifier.fillMaxSize()) {
+                                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                    WalletBookingList(
+                                        bookings     = cardsForTab,
+                                        onBookingTap = { mode = WalletMode.Full(it.id) },
+                                    )
+                                }
+                                WalletArchiveToggle(
+                                    showingArchive = bookingsShowArchive,
+                                    upcomingCount  = upcomingBookingCount,
+                                    archiveCount   = pastBookingCount,
+                                    onToggle       = { bookingsShowArchive = !bookingsShowArchive },
                                 )
                             }
-                            WalletArchiveToggle(
-                                showingArchive = bookingsShowArchive,
-                                upcomingCount  = upcomingBookingCount,
-                                archiveCount   = pastBookingCount,
-                                onToggle       = { bookingsShowArchive = !bookingsShowArchive },
-                            )
                         }
 
                         WalletTab.IDs -> WalletIdsTab(
