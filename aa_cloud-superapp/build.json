@@ -163,7 +163,8 @@
         "libs:kde-connect",
         "libs:shizuku-adb-debug-tools",
         "libs:firewall",
-        "libs:battery"
+        "libs:battery",
+        "libs:onehand"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -278,6 +279,26 @@
         "libs:shizuku-adb-debug-tools"
       ],
       "comment": "Battery/energy engine + its dialogs, extracted from app so it sits as a sibling of libs:firewall. Tier-1 (no-root): BatteryManager/sysfs correlation. Tier-2 (privileged): ShizukuEnergy reads `dumpsys batterystats` via the Shizuku user-service (IUserService/ShizukuUserService) now consolidated into libs:shizuku-adb-debug-tools — hence the lib→lib dep (not lib→app). Consumed by app/devcontrol (the About UI)."
+    },
+    "libs:onehand": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "One-Hand edge-gesture overlay (Samsung One Hand Operation+ style). A foreground EdgeOverlayService draws a thin near-invisible handle on the configured screen edge (WindowManager TYPE_APPLICATION_OVERLAY) and turns swipes into global actions (Back/Home/Recents/Notifications/QuickSettings) performed by OneHandAccessibilityService. Two user-granted special perms (SYSTEM_ALERT_WINDOW + Accessibility) — OneHandController does the deep-linking + start/stop; app/ (Configs/Onehand) is just the toggle. Fully data-driven from build.json::onehand (edge, handle size, gesture→action map baked to BuildConfig.ONEHAND_CONFIG_B64). PURE SwipeClassifier is JVM-tested."
+    }
+  },
+  "onehand": {
+    "_doc": "One-Hand edge-gesture config for libs:onehand, baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `edge` = which screen edge holds the handle (left|right). `gestures` keys are edge-relative logical swipes: swipe_in (inward from the edge), swipe_up, swipe_down; values are actions understood by OneHandAction (back|home|recents|notifications|quick_settings). Retune the handle or remap a gesture with a one-line JSON edit — never a Kotlin change (Pillar: DATA-DRIVEN).",
+    "edge": "right",
+    "handle_width_dp": 20,
+    "handle_height_pct": 40,
+    "swipe_threshold_dp": 24,
+    "velocity_threshold": 100,
+    "gestures": {
+      "swipe_in": "back",
+      "swipe_up": "home",
+      "swipe_down": "recents"
     }
   },
   "shizuku_diagnostics": {

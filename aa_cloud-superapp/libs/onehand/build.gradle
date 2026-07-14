@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// ── One-Hand config ─────────────────────────────────────────────────
+// Read build.json once at config time, base64-encode the `onehand`
+// block, and expose it as BuildConfig.ONEHAND_CONFIG_B64. OneHandConfig
+// decodes it once at runtime. Tuning the edge handle / gesture→action
+// map is a build.json edit — no Kotlin change (Pillar: DATA-DRIVEN).
+def ohBuildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def ohCfg       = ohBuildJson.onehand ?: [:]
+def ohCfgB64    = groovy.json.JsonOutput.toJson(ohCfg).bytes.encodeBase64().toString()
+
+android {
+    namespace 'com.diegonmarcos.superapp.onehand'
+    compileSdk 36
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+        buildConfigField "String", "ONEHAND_CONFIG_B64", "\"${ohCfgB64}\""
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+    implementation 'androidx.core:core-ktx:1.13.1'
+
+    // JVM unit test for the PURE SwipeClassifier (no Android deps).
+    testImplementation 'junit:junit:4.13.2'
+}

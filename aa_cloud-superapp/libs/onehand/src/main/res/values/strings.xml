@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onehand_a11y_description">Lets the Cloud SuperApp edge handle perform Back / Home / Recents on your behalf. No screen content is read or stored.</string>
+    <string name="onehand_notification_channel">One-Hand edge handle</string>
+    <string name="onehand_notification_text">Edge gesture handle active</string>
+</resources>
