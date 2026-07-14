@@ -801,6 +801,10 @@ class MainActivity : AppCompatActivity(),
                 as? LauncherStatusStripView)?.applyPetsPref()
         }
         runCatching {
+            (findViewById<View>(R.id.dynamic_island_wave)
+                as? com.diegonmarcos.superapp.ui.IslandWaveView)?.applyIslandPref()
+        }
+        runCatching {
             val b = prefs.brightness
             if (b >= 0 && android.provider.Settings.System.canWrite(this)) {
                 android.provider.Settings.System.putInt(contentResolver,

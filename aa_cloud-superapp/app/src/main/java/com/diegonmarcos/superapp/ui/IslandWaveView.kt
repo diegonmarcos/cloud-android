@@ -99,16 +99,23 @@ class IslandWaveView @JvmOverloads constructor(
         }
     }
 
-    // Configs → Launcher → Others → "Island animation". Off → freeze the
-    // waves (draw once at their start phase, never animate). Read once per
-    // attach; the chrome re-renders this view when the toggle flips.
-    private val islandAnimate: Boolean = runCatching {
-        com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("island_anim")
-    }.getOrDefault(true)
-
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (islandAnimate) animator.start()
+        applyIslandPref()
+    }
+
+    /** Configs → Launcher → Others → "Island animation". Off → freeze the
+     *  waves (pause the animator, draw static). This view lives in the
+     *  activity shell and is NOT recreated on a chrome re-render, so the
+     *  toggle can't take effect via re-attach — MainActivity.applyLauncherSettings()
+     *  calls this LIVE when the toggle flips (mirrors stars/pets). */
+    fun applyIslandPref() {
+        val on = runCatching {
+            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("island_anim")
+        }.getOrDefault(true)
+        if (on) { if (animator.isPaused) animator.resume() else if (!animator.isStarted) animator.start() }
+        else animator.pause()
+        invalidate()
     }
 
     override fun onDetachedFromWindow() {
