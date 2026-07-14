@@ -99,9 +99,16 @@ class IslandWaveView @JvmOverloads constructor(
         }
     }
 
+    // Configs → Launcher → Others → "Island animation". Off → freeze the
+    // waves (draw once at their start phase, never animate). Read once per
+    // attach; the chrome re-renders this view when the toggle flips.
+    private val islandAnimate: Boolean = runCatching {
+        com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("island_anim")
+    }.getOrDefault(true)
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        animator.start()
+        if (islandAnimate) animator.start()
     }
 
     override fun onDetachedFromWindow() {

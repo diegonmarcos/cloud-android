@@ -4867,6 +4867,7 @@
       "toggles": [
         { "id": "pets_anim",      "label": "Animal animations", "subtitle": "Animate the status-bar pets.",          "default": true },
         { "id": "cube_anim",      "label": "Cube animation",    "subtitle": "3D home cube motion.",                  "default": true },
+        { "id": "island_anim",    "label": "Island animation",  "subtitle": "Home-screen island wave motion.",       "default": true },
         { "id": "stars_anim",     "label": "Stars animation",   "subtitle": "Galaxy backdrop stars + comets.",       "default": true },
         { "id": "haptics",        "label": "Vibration on tap",  "subtitle": "Haptic feedback on every tap.",         "default": true },
         { "id": "eye_protection", "label": "Eye protection",    "subtitle": "Warm amber overlay to cut blue light.", "default": false }
