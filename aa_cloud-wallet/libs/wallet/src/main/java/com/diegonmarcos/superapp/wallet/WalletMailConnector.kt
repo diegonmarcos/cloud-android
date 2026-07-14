@@ -189,7 +189,7 @@ object WalletMailConnector {
     private fun parseWalletJson(text: String): List<WalletStore.Card> = runCatching {
         val root   = JSONObject(text)
         val result = mutableListOf<WalletStore.Card>()
-        mapOf("ids" to "id", "docs" to "doc", "passes" to "pass").forEach { (section, cat) ->
+        mapOf("ids" to "id", "docs" to "doc", "passes" to "pass", "bookings" to "booking").forEach { (section, cat) ->
             val arr = root.optJSONArray(section) ?: return@forEach
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)

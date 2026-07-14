@@ -121,10 +121,11 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     var cards by remember { mutableStateOf(orderedCards(WalletStore.all(ctx))) }
     var mode  by modeState
     var tab   by remember { mutableStateOf(WalletTab.Cards) }
-    var ticketsSub         by remember { mutableStateOf(TicketsSubTab.Events) }
-    var ticketsShowArchive by remember { mutableStateOf(false) }
-    var calShowArchive     by remember { mutableStateOf(false) }
-    var showAddSheet       by remember { mutableStateOf(false) }
+    var ticketsSub          by remember { mutableStateOf(TicketsSubTab.Events) }
+    var ticketsShowArchive  by remember { mutableStateOf(false) }
+    var calShowArchive      by remember { mutableStateOf(false) }
+    var bookingsShowArchive by remember { mutableStateOf(false) }
+    var showAddSheet        by remember { mutableStateOf(false) }
 
     val refresh: () -> Unit = { cards = orderedCards(WalletStore.all(ctx)) }
 
@@ -144,12 +145,21 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                 TicketsSubTab.Passes   -> cards.filter { !it.isTicket && it.kind in passKinds }
                 TicketsSubTab.Calendar -> cards.filter { it.isTicket }
             }
+            WalletTab.Bookings -> cards.filter {
+                it.isBooking && (if (bookingsShowArchive) it.isPastBooking else !it.isPastBooking)
+            }
             WalletTab.Config  -> emptyList()
         }
     }
 
+    // Calendar column needs the full ticket + booking sets (its own archive toggle filters them).
+    val allTickets  = remember(cards) { cards.filter { it.isTicket } }
+    val allBookings = remember(cards) { cards.filter { it.isBooking } }
+
     val pastCount     = remember(cards) { cards.count { it.isPastTicket } }
     val upcomingCount = remember(cards) { cards.count { it.isTicket && !it.isPastTicket } }
+    val pastBookingCount     = remember(cards) { cards.count { it.isPastBooking } }
+    val upcomingBookingCount = remember(cards) { cards.count { it.isBooking && !it.isPastBooking } }
 
     val onOpenVcard: () -> Unit = { (ctx as? WalletHost)?.onOpenVcard() }
 
@@ -171,6 +181,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                             mode = WalletMode.Idle
                             ticketsShowArchive = false
                             calShowArchive = false
+                            bookingsShowArchive = false
                         }
                     },
                 )
@@ -191,10 +202,10 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                 when (val m = mode) {
                     is WalletMode.Full -> {
                         cardOrIdle(m.cardId)?.let { card ->
-                            if (card.isTicket) {
-                                WalletTicketPage(ticket = card, onBack = { mode = WalletMode.Idle })
-                            } else {
-                                WalletFullPage(card = card, onBack = { mode = WalletMode.Idle })
+                            when {
+                                card.isBooking -> WalletBookingPage(booking = card, onBack = { mode = WalletMode.Idle })
+                                card.isTicket  -> WalletTicketPage(ticket = card, onBack = { mode = WalletMode.Idle })
+                                else           -> WalletFullPage(card = card, onBack = { mode = WalletMode.Idle })
                             }
                         }
                     }
@@ -215,12 +226,14 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
 
                         WalletTab.Tickets -> when (ticketsSub) {
                             TicketsSubTab.Calendar -> WalletCalendarView(
-                                tickets          = cardsForTab,
+                                tickets          = allTickets,
+                                bookings         = allBookings,
                                 showArchive      = calShowArchive,
-                                upcomingCount    = upcomingCount,
-                                archiveCount     = pastCount,
+                                upcomingCount    = upcomingCount + upcomingBookingCount,
+                                archiveCount     = pastCount + pastBookingCount,
                                 onToggleArchive  = { calShowArchive = !calShowArchive },
                                 onTicketTap      = { mode = WalletMode.Full(it.id) },
+                                onBookingTap     = { mode = WalletMode.Full(it.id) },
                             )
                             TicketsSubTab.Passes -> WalletPassesTab(
                                 passes    = cardsForTab,
@@ -240,6 +253,21 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                                     onToggle       = { ticketsShowArchive = !ticketsShowArchive },
                                 )
                             }
+                        }
+
+                        WalletTab.Bookings -> Column(modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                WalletBookingList(
+                                    bookings     = cardsForTab,
+                                    onBookingTap = { mode = WalletMode.Full(it.id) },
+                                )
+                            }
+                            WalletArchiveToggle(
+                                showingArchive = bookingsShowArchive,
+                                upcomingCount  = upcomingBookingCount,
+                                archiveCount   = pastBookingCount,
+                                onToggle       = { bookingsShowArchive = !bookingsShowArchive },
+                            )
                         }
 
                         WalletTab.IDs -> WalletIdsTab(

@@ -2,12 +2,15 @@ package com.diegonmarcos.superapp.wallet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +42,7 @@ enum class WalletTab(val label: String) {
     Cards("Cards"),
     IDs("IDs"),
     Tickets("Tickets"),
+    Bookings("Bookings"),
     Config("Config"),
 }
 
@@ -60,8 +64,9 @@ internal fun WalletTabStrip(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         WalletTab.values().forEach { tab ->
             val isActive = tab == selected
@@ -159,50 +164,60 @@ internal fun WalletArchiveToggle(
 @Composable
 internal fun WalletCalendarView(
     tickets: List<WalletStore.Card>,
+    bookings: List<WalletStore.Card>,
     showArchive: Boolean,
     upcomingCount: Int,
     archiveCount: Int,
     onToggleArchive: () -> Unit,
     onTicketTap: (WalletStore.Card) -> Unit,
+    onBookingTap: (WalletStore.Card) -> Unit,
 ) {
-    val filtered = remember(tickets, showArchive) {
-        if (showArchive) tickets.filter { it.isPastTicket } else tickets.filter { !it.isPastTicket }
+    val tFiltered = remember(tickets, showArchive) {
+        (if (showArchive) tickets.filter { it.isPastTicket } else tickets.filter { !it.isPastTicket })
+            .sortedBy { it.eventAt }
+    }
+    val bFiltered = remember(bookings, showArchive) {
+        (if (showArchive) bookings.filter { it.isPastBooking } else bookings.filter { !it.isPastBooking })
+            .sortedBy { it.eventAt }
     }
     Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (filtered.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        if (showArchive) "No past events." else "No upcoming events.",
-                        color = Color(0x99FFFFFF),
-                        fontSize = 14.sp,
-                    )
-                }
-            } else {
-                val sorted  = remember(filtered) { filtered.sortedBy { it.eventAt } }
-                val grouped = remember(sorted) {
+        Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // Left — event tickets, grouped by day
+            CalendarColumn(
+                title = "Tickets",
+                empty = if (showArchive) "No past events." else "No upcoming events.",
+                isEmpty = tFiltered.isEmpty(),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            ) {
+                val grouped = remember(tFiltered) {
                     val dayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    sorted.groupBy { dayKey.format(Date(it.eventAt)) }.toSortedMap()
+                    tFiltered.groupBy { dayKey.format(Date(it.eventAt)) }.toSortedMap()
                 }
-                LazyColumn(
-                    modifier       = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    grouped.forEach { (dateKey, dayTickets) ->
-                        item(key = "h-$dateKey") {
-                            Text(
-                                text = humanDate(dayTickets.first().eventAt),
-                                color = Color(0xCCFFFFFF),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 14.dp, bottom = 6.dp),
-                            )
-                        }
-                        items(dayTickets, key = { it.id }) { ticket ->
-                            CalendarRow(ticket = ticket, onClick = { onTicketTap(ticket) })
-                            Spacer(modifier = Modifier.height(6.dp))
-                        }
+                grouped.forEach { (dateKey, dayTickets) ->
+                    item(key = "h-$dateKey") {
+                        Text(
+                            text = humanDate(dayTickets.first().eventAt),
+                            color = Color(0xCCFFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                        )
                     }
+                    items(dayTickets, key = { it.id }) { t ->
+                        CalendarRow(ticket = t, onClick = { onTicketTap(t) })
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                }
+            }
+            Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(Color(0x22FFFFFF)))
+            // Right — bookings as date-range bars
+            CalendarColumn(
+                title = "Bookings",
+                empty = if (showArchive) "No past stays." else "No upcoming stays.",
+                isEmpty = bFiltered.isEmpty(),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            ) {
+                items(bFiltered, key = { it.id }) { b ->
+                    BookingRangeRow(booking = b, onClick = { onBookingTap(b) })
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -212,6 +227,65 @@ internal fun WalletCalendarView(
             archiveCount   = archiveCount,
             onToggle       = onToggleArchive,
         )
+    }
+}
+
+/** One calendar column with a sticky-ish header and a scrolling body.
+ *  [content] supplies LazyColumn items; empties render the [empty] hint. */
+@Composable
+private fun CalendarColumn(
+    title: String,
+    empty: String,
+    isEmpty: Boolean,
+    modifier: Modifier = Modifier,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    Column(modifier = modifier) {
+        Text(
+            title.uppercase(),
+            color = Color(0x88FFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
+        if (isEmpty) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(empty, color = Color(0x99FFFFFF), fontSize = 12.sp)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+/** Compact booking row for the calendar column — check-in → check-out
+ *  with the nights count, distinct from the point-in-time ticket rows. */
+@Composable
+private fun BookingRangeRow(booking: WalletStore.Card, onClick: () -> Unit) {
+    val dayFmt = remember { SimpleDateFormat("MMM d", Locale.US) }
+    val accent = Color(booking.accent.toULong().toLong())
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0x22FFFFFF))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+    ) {
+        Text(booking.brand, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(dayFmt.format(Date(booking.eventAt)), color = Color.White, fontSize = 11.sp)
+            Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp).height(3.dp)
+                .clip(RoundedCornerShape(2.dp)).background(accent))
+            Text(dayFmt.format(Date(booking.checkOutAt)), color = Color.White, fontSize = 11.sp)
+        }
+        Text("${booking.nights} night${if (booking.nights == 1) "" else "s"}",
+            color = Color(0x88FFFFFF), fontSize = 10.sp)
     }
 }
 

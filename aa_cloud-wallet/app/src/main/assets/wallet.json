@@ -320,5 +320,67 @@
       "number": "000000 01 00 1990 0 000000 000 0000000 00",
       "accent": 4278858081
     }
+  ],
+  "bookings": [
+    {
+      "id": "booking_lisbon_marvila",
+      "kind": "hotel",
+      "brand": "Marvila Boutique Hotel",
+      "tagline": "Deluxe King · Breakfast included",
+      "eventLocation": "Rua do Açúcar 82, Lisboa, PT",
+      "number": "MRV-4471902",
+      "barcode": "MRV4471902PT",
+      "accent": 4287307327,
+      "daysFromNow": 12,
+      "nights": 3
+    },
+    {
+      "id": "booking_barcelona_gracia",
+      "kind": "apartment",
+      "brand": "Gràcia Loft Apartments",
+      "tagline": "Studio · Self check-in · 2 guests",
+      "eventLocation": "Carrer de Verdi 145, Barcelona, ES",
+      "number": "BCN-889200",
+      "barcode": "BCN889200ES",
+      "accent": 4278869150,
+      "daysFromNow": 34,
+      "nights": 5
+    },
+    {
+      "id": "booking_amsterdam_jordaan",
+      "kind": "hostel",
+      "brand": "Jordaan Canal Hostel",
+      "tagline": "Private twin · Shared bath",
+      "eventLocation": "Bloemgracht 12, Amsterdam, NL",
+      "number": "AMS-203114",
+      "barcode": "AMS203114NL",
+      "accent": 4280253005,
+      "daysFromNow": 5,
+      "nights": 2
+    },
+    {
+      "id": "booking_porto_ribeira_past",
+      "kind": "hotel",
+      "brand": "Ribeira Riverside Hotel",
+      "tagline": "Superior Double · River view",
+      "eventLocation": "Cais da Ribeira 30, Porto, PT",
+      "number": "PRT-1180455",
+      "barcode": "PRT1180455PT",
+      "accent": 4285218720,
+      "daysFromNow": -30,
+      "nights": 4
+    },
+    {
+      "id": "booking_madrid_atocha_past",
+      "kind": "apartment",
+      "brand": "Atocha Central Suites",
+      "tagline": "1-Bedroom · Kitchenette",
+      "eventLocation": "Calle de Atocha 90, Madrid, ES",
+      "number": "MAD-556021",
+      "barcode": "MAD556021ES",
+      "accent": 4288436766,
+      "daysFromNow": -75,
+      "nights": 3
+    }
   ]
 }

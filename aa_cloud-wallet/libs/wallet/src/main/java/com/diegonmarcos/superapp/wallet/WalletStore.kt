@@ -20,7 +20,7 @@ object WalletStore {
      *  automatically reseed on next open. Real user-added cards are
      *  the casualty here, but during mock-data phase nobody's adding
      *  cards yet — the import path lands later. */
-    private const val SEED_VERSION = 11
+    private const val SEED_VERSION = 12
     private const val SEED_VERSION_KEY = "seed_version"
 
     /** A single card. Visual variants picked by [kind]; the deck
@@ -41,12 +41,26 @@ object WalletStore {
         val number: String = "", // visible identifier, e.g. card number, member id
         val eventAt: Long = 0L,  // epoch millis of the ticket event; 0 = no event (long-lasting card)
         val eventLocation: String = "", // venue / origin → destination, free-form
-        val category: String = "", // "" | "card" | "id" | "doc"  — drives tab routing
+        val category: String = "", // "" | "card" | "id" | "doc" | "booking" — drives tab routing
         val country: String = "",  // "es" | "br" | "" — drives IDs tab country filter
+        val checkOutAt: Long = 0L, // booking check-out epoch; 0 = not a range booking. eventAt = check-in.
     ) {
+        /** Bookings are range-bound (hotel stays etc.): category "booking",
+         *  check-in [eventAt] + check-out [checkOutAt]. Kept out of the
+         *  ticket surfaces even though they also carry eventAt > 0. */
+        val isBooking: Boolean get() = category == "booking" && eventAt > 0L
+
+        /** A booking whose check-out has passed → moves to Bookings › Archive. */
+        val isPastBooking: Boolean get() = isBooking && checkOutAt in 1 until System.currentTimeMillis()
+
+        /** Nights spanned by a booking (check-out − check-in, floored). */
+        val nights: Int get() =
+            if (isBooking && checkOutAt > eventAt) ((checkOutAt - eventAt) / 86_400_000L).toInt() else 0
+
         /** Convenience — distinguishes Cards from Tickets without
-         *  having to read [eventAt] directly at every call site. */
-        val isTicket: Boolean get() = eventAt > 0L
+         *  having to read [eventAt] directly at every call site.
+         *  Bookings carry eventAt too, so exclude them explicitly. */
+        val isTicket: Boolean get() = eventAt > 0L && category != "booking"
 
         /** True for tickets whose event time has passed. Drives the
          *  Archive view inside the Tickets tab — upcoming tickets stay
@@ -65,6 +79,7 @@ object WalletStore {
             put("eventLocation", eventLocation)
             put("category", category)
             put("country", country)
+            put("checkOutAt", checkOutAt)
         }
         companion object {
             fun fromJson(o: JSONObject): Card = Card(
@@ -79,6 +94,7 @@ object WalletStore {
                 eventLocation = o.optString("eventLocation", ""),
                 category      = o.optString("category", ""),
                 country       = o.optString("country", ""),
+                checkOutAt    = o.optLong("checkOutAt", 0L),
             )
         }
     }
@@ -143,6 +159,32 @@ object WalletStore {
                         set(java.util.Calendar.MILLISECOND, 0)
                     }
                     obj.put("eventAt", cal.timeInMillis)
+                }
+                result.add(Card.fromJson(obj))
+            }
+        }
+        // bookings: range-bound stays. category forced "booking". Relative dates via
+        // daysFromNow (check-in) + nights → eventAt (check-in 15:00) and checkOutAt (12:00).
+        val bookingsArr = root.optJSONArray("bookings")
+        if (bookingsArr != null) {
+            for (i in 0 until bookingsArr.length()) {
+                val obj = bookingsArr.getJSONObject(i)
+                obj.put("category", "booking")
+                if (obj.has("daysFromNow") && !obj.has("eventAt")) {
+                    val checkIn = java.util.Calendar.getInstance().apply {
+                        add(java.util.Calendar.DAY_OF_YEAR, obj.getInt("daysFromNow"))
+                        set(java.util.Calendar.HOUR_OF_DAY, obj.optInt("checkInHour", 15))
+                        set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    obj.put("eventAt", checkIn.timeInMillis)
+                    if (obj.has("nights") && !obj.has("checkOutAt")) {
+                        val checkOut = (checkIn.clone() as java.util.Calendar).apply {
+                            add(java.util.Calendar.DAY_OF_YEAR, obj.getInt("nights"))
+                            set(java.util.Calendar.HOUR_OF_DAY, obj.optInt("checkOutHour", 12))
+                        }
+                        obj.put("checkOutAt", checkOut.timeInMillis)
+                    }
                 }
                 result.add(Card.fromJson(obj))
             }
