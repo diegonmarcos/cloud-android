@@ -289,17 +289,50 @@
     }
   },
   "onehand": {
-    "_doc": "One-Hand edge-gesture config for libs:onehand, baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `edge` = which screen edge holds the handle (left|right). `gestures` keys are edge-relative logical swipes: swipe_in (inward from the edge), swipe_up, swipe_down; values are actions understood by OneHandAction (back|home|recents|notifications|quick_settings). Retune the handle or remap a gesture with a one-line JSON edit — never a Kotlin change (Pillar: DATA-DRIVEN).",
-    "edge": "right",
-    "handle_width_dp": 20,
-    "handle_height_pct": 40,
-    "swipe_threshold_dp": 24,
-    "velocity_threshold": 100,
-    "gestures": {
-      "swipe_in": "back",
-      "swipe_up": "home",
-      "swipe_down": "recents"
-    }
+    "_doc": "One-Hand edge-gesture config for libs:onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge; add up to as many as you like. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), and a `gestures` map. Gesture keys are `<magnitude>_<direction>`: magnitude = short|long|hold; direction for side edges = in|up|down (in = perpendicular inward), for the bottom edge = up|left|right. `hold_*` fires on swipe-and-hold (approximated as a stationary long-press → hold_in / hold_up). Values are actions understood by OneHandAction: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on older Android). `defaults` supply per-handle fallbacks + the shared thresholds. Remap anything with a one-line JSON edit — never a Kotlin change (Pillar: DATA-DRIVEN).",
+    "defaults": {
+      "length_pct": 40,
+      "thickness_dp": 20,
+      "transparency": 0,
+      "swipe_threshold_dp": 24,
+      "long_swipe_dp": 120,
+      "velocity_threshold": 100,
+      "hold_ms": 350
+    },
+    "handles": [
+      {
+        "id": "right",
+        "edge": "right",
+        "position_pct": 55,
+        "length_pct": 40,
+        "thickness_dp": 20,
+        "transparency": 0,
+        "gestures": {
+          "short_in": "back",
+          "long_in": "recents",
+          "hold_in": "home",
+          "short_up": "home",
+          "long_up": "notifications",
+          "short_down": "recents",
+          "long_down": "quick_settings"
+        }
+      },
+      {
+        "id": "left",
+        "edge": "left",
+        "position_pct": 55,
+        "length_pct": 40,
+        "thickness_dp": 20,
+        "transparency": 0,
+        "gestures": {
+          "short_in": "back",
+          "long_in": "recents",
+          "hold_in": "home",
+          "short_up": "quick_settings",
+          "short_down": "notifications"
+        }
+      }
+    ]
   },
   "shizuku_diagnostics": {
     "_doc": "Data-driven catalog of shell-domain diagnostic bundles run by libs:shizuku-adb-debug-tools. Two execution channels share this catalog (ladder, first ready wins): (1) local_server — OUR OWN app_process server (AdbShellServer) started once per boot via the adb one-liner from /api/adb/server-command; it runs in the SHELL SELinux domain (uid 2000) so dumpsys/usb/sysfs that untrusted_app is denied all work. NO third-party app. (2) Shizuku UserService — optional fallback when its app happens to be running. The lib's build.gradle base64-encodes bundles[] into BuildConfig.ADB_DIAG_BUNDLES_B64; AdbDiagnostics decodes + runs the chosen bundle, returning {bundle,label,channel,ok,results:[{id,cmd,out}]}. Adding a diagnostic = one entry here, no Kotlin edit (Pillar: DATA-DRIVEN). READ-ONLY diagnostics only — never a write/mutation.",

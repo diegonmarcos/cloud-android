@@ -1,11 +1,9 @@
 package com.diegonmarcos.superapp.configs
 
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
@@ -15,9 +13,10 @@ import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.onehand.OneHandController
 
 /**
- * Configs > One-Hand. Master toggle for the edge-gesture overlay plus the two
- * special-permission deep-links. All engine logic lives in libs:onehand
- * (OneHandController) — this fragment is just the R-bound UI shell.
+ * Configs > One-Hand. Master toggle for the edge-gesture overlay ONLY.
+ * The two special permissions it needs (Display over apps + Accessibility)
+ * are granted in the centralized Configs > Permissions page — NOT here.
+ * This fragment just reads their state to gate the switch.
  */
 class OneHandFragment : Fragment() {
 
@@ -42,20 +41,12 @@ class OneHandFragment : Fragment() {
                 if (on) {
                     if (OneHandController.ready(ctx)) OneHandController.enable(ctx)
                     else { isChecked = false; Toast.makeText(ctx,
-                        "Grant both permissions below first", Toast.LENGTH_SHORT).show() }
+                        "Grant 'Display over apps' + Accessibility in Configs › Permissions",
+                        Toast.LENGTH_LONG).show() }
                 } else OneHandController.disable(ctx)
             }
         }
         col.addView(toggle)
-
-        col.addView(Button(ctx).apply {
-            text = "Grant: Draw over other apps"
-            setOnClickListener { startActivity(OneHandController.overlaySettingsIntent(ctx)) }
-        })
-        col.addView(Button(ctx).apply {
-            text = "Enable accessibility service"
-            setOnClickListener { startActivity(OneHandController.accessibilitySettingsIntent()) }
-        })
 
         return ScrollView(ctx).apply { addView(col) }
     }
@@ -65,7 +56,8 @@ class OneHandFragment : Fragment() {
         val ctx = requireContext()
         val overlay = if (OneHandController.canDrawOverlay(ctx)) "✓" else "✗"
         val a11y = if (OneHandController.accessibilityEnabled()) "✓" else "✗"
-        status.text = "Draw over other apps: $overlay\nAccessibility service: $a11y"
+        status.text = "Requires (grant in Configs › Permissions):\n" +
+            "Display over apps: $overlay\nAccessibility service: $a11y"
         // ponytail: switch is not persisted across reboot — the overlay service
         // isn't boot-started either; add a BootReceiver + pref if that's wanted.
     }

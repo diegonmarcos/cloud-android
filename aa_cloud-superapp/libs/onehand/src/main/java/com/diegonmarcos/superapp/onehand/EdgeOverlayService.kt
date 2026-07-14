@@ -18,14 +18,14 @@ import android.view.View
 import android.view.WindowManager
 
 /**
- * Foreground service that draws a thin, near-invisible handle on the configured
- * screen edge and turns swipes into [OneHandAction]s (dispatched through the
- * accessibility service). Config is data-driven — see [OneHandConfig].
+ * Foreground service that draws one handle per configured edge (One Hand
+ * Operation+ style) and turns swipes into [OneHandAction]s via the accessibility
+ * service. All geometry + gesture→action mapping is data-driven ([OneHandConfig]).
  */
 class EdgeOverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private var edgeView: View? = null
+    private val views = mutableListOf<View>()
     private val cfg by lazy { OneHandConfig.decode(BuildConfig.ONEHAND_CONFIG_B64) }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -34,48 +34,81 @@ class EdgeOverlayService : Service() {
         super.onCreate()
         startForeground(NOTIF_ID, buildNotification())
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        addHandle()
+        cfg.handles.forEach { addHandle(it) }
     }
 
-    private fun addHandle() {
-        val gesture = GestureDetector(this, EdgeGestureListener())
+    private fun addHandle(h: OneHandConfig.Handle) {
+        val dm = resources.displayMetrics
+        val gesture = GestureDetector(this, HandleListener(h))
         val view = View(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
+            setBackgroundColor(handleColor(h.transparency))
             setOnTouchListener { _, e -> gesture.onTouchEvent(e); true }
         }
-        val heightPx = (resources.displayMetrics.heightPixels * cfg.handleHeightPct / 100)
+
         val lp = WindowManager.LayoutParams(
-            dp(cfg.handleWidthDp),
-            heightPx,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = (if (cfg.edge == OneHandConfig.Edge.LEFT) Gravity.START else Gravity.END) or
-                Gravity.CENTER_VERTICAL
+        )
+        when (h.edge) {
+            OneHandConfig.Edge.BOTTOM -> {
+                lp.width = dm.widthPixels * h.lengthPct / 100
+                lp.height = dp(h.thicknessDp)
+                lp.gravity = Gravity.BOTTOM or Gravity.START
+                lp.x = dm.widthPixels * h.positionPct / 100 - lp.width / 2
+            }
+            else -> {
+                lp.width = dp(h.thicknessDp)
+                lp.height = dm.heightPixels * h.lengthPct / 100
+                lp.gravity = (if (h.edge == OneHandConfig.Edge.LEFT) Gravity.START else Gravity.END) or
+                    Gravity.TOP
+                lp.y = dm.heightPixels * h.positionPct / 100 - lp.height / 2
+            }
         }
         windowManager.addView(view, lp)
-        edgeView = view
+        views.add(view)
     }
 
+    private fun handleColor(transparency: Int): Int =
+        if (transparency <= 0) Color.TRANSPARENT
+        else Color.argb(transparency * 255 / 100, 255, 0, 0) // debug tint
+
     override fun onDestroy() {
-        edgeView?.let { runCatching { windowManager.removeView(it) } }
-        edgeView = null
+        views.forEach { runCatching { windowManager.removeView(it) } }
+        views.clear()
         super.onDestroy()
     }
 
-    private inner class EdgeGestureListener : GestureDetector.SimpleOnGestureListener() {
-        override fun onDown(e: MotionEvent) = true // claim the stream so onFling fires
+    private inner class HandleListener(val h: OneHandConfig.Handle) :
+        GestureDetector.SimpleOnGestureListener() {
+
+        override fun onDown(e: MotionEvent) = true // claim the stream
+
         override fun onFling(e1: MotionEvent?, e2: MotionEvent, vX: Float, vY: Float): Boolean {
             if (e1 == null) return false
             val key = SwipeClassifier.classify(
-                cfg.edge, e2.x - e1.x, e2.y - e1.y, vX, vY,
-                dp(cfg.swipeThresholdDp), cfg.velocityThreshold,
+                h.edge, e2.x - e1.x, e2.y - e1.y, vX, vY,
+                dp(cfg.swipeThresholdDp), dp(cfg.longSwipeDp), cfg.velocityThreshold,
             ) ?: return false
-            cfg.gestures[key]?.let { OneHandAccessibilityService.instance?.perform(it) }
+            fire(h.gestures[key])
             return true
         }
+
+        override fun onLongPress(e: MotionEvent) {
+            // ponytail: One Hand+'s "swipe-and-hold" is approximated by a
+            // stationary long-press mapped to the handle's inward hold slot
+            // (hold_in for side edges, hold_up for bottom). Full swipe-then-hold
+            // directional detection is the upgrade path if needed.
+            val holdKey = if (h.edge == OneHandConfig.Edge.BOTTOM) "hold_up" else "hold_in"
+            fire(h.gestures[holdKey])
+        }
+    }
+
+    private fun fire(action: OneHandAction?) {
+        action?.let { OneHandAccessibilityService.instance?.perform(it) }
     }
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(

@@ -16,7 +16,9 @@ class OneHandAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* no-op */ }
     override fun onInterrupt() { /* no-op */ }
 
-    fun perform(action: OneHandAction) { performGlobalAction(action.globalAction) }
+    fun perform(action: OneHandAction) {
+        if (action.supported) performGlobalAction(action.globalAction)
+    }
 
     companion object {
         // ponytail: single-process app, one live a11y instance — a static ref
