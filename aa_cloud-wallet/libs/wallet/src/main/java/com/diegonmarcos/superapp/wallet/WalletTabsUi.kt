@@ -180,6 +180,10 @@ internal fun WalletCalendarView(
         (if (showArchive) bookings.filter { it.isPastBooking } else bookings.filter { !it.isPastBooking })
             .sortedBy { it.eventAt }
     }
+    val grouped = remember(tFiltered) {
+        val dayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        tFiltered.groupBy { dayKey.format(Date(it.eventAt)) }.toSortedMap()
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             // Left — event tickets, grouped by day
@@ -189,10 +193,6 @@ internal fun WalletCalendarView(
                 isEmpty = tFiltered.isEmpty(),
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             ) {
-                val grouped = remember(tFiltered) {
-                    val dayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    tFiltered.groupBy { dayKey.format(Date(it.eventAt)) }.toSortedMap()
-                }
                 grouped.forEach { (dateKey, dayTickets) ->
                     item(key = "h-$dateKey") {
                         Text(
