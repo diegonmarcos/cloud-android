@@ -11,7 +11,7 @@ import java.io.IOException
 
 /**
  * ContentProvider that serves bundled sticker packs from
- * `assets/stickers/index.json` + `assets/stickers/<pack_id>/*.webp`.
+ * `assets/stickers/index.json` + `assets/stickers/<pack_id>/<file>.webp`.
  *
  * Authority = `${applicationId}.stickercontentprovider` (declared in app
  * manifest with a placeholder). StickerRepo.installedStickerAuthorities()

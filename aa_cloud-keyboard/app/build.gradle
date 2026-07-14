@@ -3,6 +3,12 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// keyboard_media config → base64 → BuildConfig (mirrors superapp pattern).
+// GIF API keys come from env (exported by build.sh _resolve_gif_keys via vault/sops).
+def buildJson        = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+def keyboardMediaB64 = groovy.json.JsonOutput.toJson(buildJson.keyboard_media ?: [:]).bytes.encodeBase64().toString()
+def giphyApiKey      = (System.getenv('GIPHY_API_KEY') ?: '').toString()
+
 android {
     namespace 'com.diegonmarcos.cloudkeyboard'
     compileSdk 36
@@ -13,6 +19,8 @@ android {
         targetSdk 35
         versionCode 1
         versionName '1.0'
+        buildConfigField "String", "MEDIA_CONFIG_B64", "\"${keyboardMediaB64}\""
+        buildConfigField "String", "GIPHY_API_KEY",   "\"${giphyApiKey}\""
     }
 
     signingConfigs {
@@ -41,6 +49,8 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
+
+    buildFeatures { buildConfig = true }
 
     // HeliBoard uses ndk-build; inherit the same NDK version as superapp.
     ndkVersion "28.0.13004108"
