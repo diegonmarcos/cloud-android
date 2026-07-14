@@ -1,26 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Draw the edge handle over other apps. -->
+    <!-- Draw the edge handles over other apps. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Keep the overlay service alive once the user leaves the launcher. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application>
-        <!-- Edge overlay: draws the handle + detects swipes. Foreground so it
-             survives after the launcher goes to background. -->
-        <service
-            android:name=".EdgeOverlayService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="one_hand_edge_gesture_overlay" />
-        </service>
-
-        <!-- Accessibility service: performs the global Back/Home/Recents/etc.
-             actions on behalf of the swipe. User enables it in Settings. -->
+        <!-- Hosts BOTH the edge-handle overlay AND the global-action dispatch.
+             Being system-bound it needs no foreground service / notification.
+             User enables it in Settings > Accessibility. -->
         <service
             android:name=".OneHandAccessibilityService"
             android:exported="false"

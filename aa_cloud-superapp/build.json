@@ -311,10 +311,8 @@
           "short_in": "back",
           "long_in": "recents",
           "hold_in": "home",
-          "short_up": "home",
-          "long_up": "notifications",
-          "short_down": "recents",
-          "long_down": "quick_settings"
+          "short_up": "app:com.google.android.apps.translate",
+          "short_down": "app:md.obsidian"
         }
       },
       {
@@ -328,10 +326,21 @@
           "short_in": "back",
           "long_in": "recents",
           "hold_in": "home",
-          "short_up": "quick_settings",
-          "short_down": "notifications"
+          "short_up": "app:com.brave.browser",
+          "short_down": "app:com.google.android.apps.bard"
         }
       }
+    ],
+    "_doc_apps": "App vocabulary offered in the per-swipe action picker (OneHandFragment). Each entry launches its package via getLaunchIntentForPackage; a package the phone doesn't have is silently skipped at fire time. Add an app = one entry — no Kotlin change.",
+    "apps": [
+      { "label": "Gemini", "package": "com.google.android.apps.bard" },
+      { "label": "Brave", "package": "com.brave.browser" },
+      { "label": "Obsidian", "package": "md.obsidian" },
+      { "label": "Google Translate", "package": "com.google.android.apps.translate" },
+      { "label": "Claude", "package": "com.anthropic.claude" },
+      { "label": "Gmail", "package": "com.google.android.gm" },
+      { "label": "WhatsApp", "package": "com.whatsapp" },
+      { "label": "Files", "package": "com.google.android.apps.nbu.files" }
     ]
   },
   "shizuku_diagnostics": {

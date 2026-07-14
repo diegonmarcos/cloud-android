@@ -4,21 +4,35 @@ import android.content.Context
 import android.provider.Settings
 
 /**
- * Entry point app/ (the Configs/Onehand toggle) calls. Reads the two special
- * permission states so the toggle can gate itself, and starts/stops the overlay.
- * GRANTING those permissions is the centralized Configs > Permissions page's job
- * — this controller never deep-links to system settings (no duplicate perm UI).
+ * Entry point app/ (the Configs/Onehand toggle) calls. The overlay is hosted by
+ * the persistent accessibility service (no foreground service, no notification),
+ * so enabling/disabling just persists the flag + tells the live service to show
+ * or hide the handles. GRANTING the two permissions is the centralized
+ * Configs > Permissions page's job — this controller never deep-links.
  */
 object OneHandController {
 
     fun canDrawOverlay(ctx: Context): Boolean = Settings.canDrawOverlays(ctx)
 
-    fun accessibilityEnabled(): Boolean = OneHandAccessibilityService.isEnabled
+    fun accessibilityEnabled(): Boolean = OneHandAccessibilityService.isConnected
 
-    /** True only once both prerequisites are satisfied. */
     fun ready(ctx: Context): Boolean = canDrawOverlay(ctx) && accessibilityEnabled()
 
-    fun enable(ctx: Context) { if (ready(ctx)) EdgeOverlayService.start(ctx) }
+    fun isOn(ctx: Context): Boolean = OneHandPrefs.isEnabled(ctx)
 
-    fun disable(ctx: Context) { EdgeOverlayService.stop(ctx) }
+    fun enable(ctx: Context) {
+        if (!ready(ctx)) return
+        OneHandPrefs.setEnabled(ctx, true)
+        OneHandAccessibilityService.instance?.showHandles()
+    }
+
+    fun disable(ctx: Context) {
+        OneHandPrefs.setEnabled(ctx, false)
+        OneHandAccessibilityService.instance?.hideHandles()
+    }
+
+    /** Re-read config after a per-swipe edit so a running overlay picks it up. */
+    fun refresh(ctx: Context) {
+        if (isOn(ctx)) OneHandAccessibilityService.instance?.showHandles()
+    }
 }
