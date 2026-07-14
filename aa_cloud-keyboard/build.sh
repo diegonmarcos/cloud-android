@@ -72,12 +72,11 @@ case "$CMD" in
     log "Pushing APK to GHCR via ORAS…"
     SHA="${GITHUB_SHA:-$(git -C "$SCRIPT_DIR" rev-parse HEAD)}"
     SHORT="${SHA:0:8}"
-    oras push "ghcr.io/diegonmarcos/cloud-keyboard:latest" \
-      --media-type "application/vnd.android.package-archive" \
-      "$DIST_DIR/Cloud-Keyboard.apk"
-    oras push "ghcr.io/diegonmarcos/cloud-keyboard:sha-${SHORT}" \
-      --media-type "application/vnd.android.package-archive" \
-      "$DIST_DIR/Cloud-Keyboard.apk"
+    # ORAS 1.x dropped --media-type; per-file media type is set via `file:type`.
+    reg="$(python3 -c "import json;d=json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr'];print(f\"{d['registry']}/{d['namespace']}/{d['image']}\")")"
+    mt="$(python3 -c "import json;print(json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr']['media_type'])")"
+    ( cd "$DIST_DIR" && oras push "${reg}:latest"          "Cloud-Keyboard.apk:${mt}" )
+    ( cd "$DIST_DIR" && oras push "${reg}:sha-${SHORT}"    "Cloud-Keyboard.apk:${mt}" )
     log "Pushed :latest + :sha-${SHORT}"
     ;;
   gh-release)
