@@ -3718,6 +3718,17 @@
     "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record — installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo — IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values — legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`). The install-source values are real installer package names — verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
     "phone_smart_folders": [
       {
+        "id": "cloud",
+        "title": "Cloud",
+        "_doc": "Our own constellation APKs. Every Cloud app is namespaced com.diegonmarcos.* (superapp, cloudbrowser/keyboard/nav/vault/wallet, comms.matrix/dialer) — a single pkg_prefix matches the whole fleet and nothing else.",
+        "rule": {
+          "type": "pkg_prefix",
+          "values": [
+            "com.diegonmarcos."
+          ]
+        }
+      },
+      {
         "id": "samsung",
         "title": "Samsung",
         "rule": {
