@@ -2221,7 +2221,7 @@
             "_doc": "One-Hand edge-gesture overlay (libs:onehand). OneHandFragment hosts the master toggle + the two special-permission deep-links (Draw over other apps, Accessibility). Data-driven engine config lives in build.json::onehand.",
             "id": "onehand",
             "label": "One-Hand",
-            "icon": "ic_settings"
+            "icon": "ic_onehand"
           },
           {
             "id": "perms",
