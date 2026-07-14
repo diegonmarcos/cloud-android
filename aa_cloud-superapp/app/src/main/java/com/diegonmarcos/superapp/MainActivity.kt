@@ -1365,19 +1365,9 @@ class MainActivity : AppCompatActivity(),
             // icon opens. Wiring it here means any data-driven entry
             // (tile target / drawer action) can route to it without code.
             actionType == "open_notification_center" -> openNotificationCenter()
-            // Configs → Keyboard → vendored HeliBoard (libs:keyboard) settings.
-            // Explicit component launch (class merged into our APK under our
-            // applicationId) so app/ keeps NO compile-time symbol dependency on
-            // the keyboard module. setClassName(packageName, fqcn).
-            actionType == "keyboard_settings" -> {
-                runCatching {
-                    startActivity(
-                        android.content.Intent().setClassName(
-                            this, "helium314.keyboard.settings.SettingsActivity"
-                        )
-                    )
-                }.onFailure { anchor.snack("Keyboard settings unavailable") }
-            }
+            // Configs → Keyboard now hands off to the standalone Cloud-Keyboard
+            // app via extapp:cloud-keyboard (ui.external_apps[cloud-keyboard]);
+            // the old in-APK keyboard_settings component launch is retired.
             actionType.contains("://") -> launchUri(actionType)
             else -> anchor.snack("action:$actionType")
         }

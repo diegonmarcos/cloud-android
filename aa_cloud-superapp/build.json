@@ -2197,11 +2197,11 @@
             "action": "action:import_configs"
           },
           {
-            "_doc": "Keyboard — opens the vendored HeliBoard (libs:keyboard) SettingsActivity, the self-contained keyboard's own config surface (layouts, themes, swipe/glide 'Load gesture typing library' loader, dictionaries). Launched by explicit component via MainActivity.dispatchHomeAction('keyboard_settings') so app/ keeps no compile-time symbol dep on the keyboard module. Placed after Import, before About per UI spec.",
+            "_doc": "Keyboard — hands off to the standalone Cloud-Keyboard app (ea_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard → MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed after Import, before About per UI spec.",
             "id": "keyboard",
             "label": "Keyboard",
             "icon": "ic_keyboard",
-            "action": "action:keyboard_settings"
+            "action": "extapp:cloud-keyboard"
           },
           {
             "_doc": "Update ALL constellation apps (not just self). Opens the Constellation page + runs Fleet.installAll; the shared update overlay shows per-install progress with a Cancel button. MainActivity.dispatchHomeAction('update_all').",
@@ -4820,6 +4820,15 @@
         "hub_package": "com.diegonmarcos.cloudnav",
         "install_package": "com.diegonmarcos.cloudnav",
         "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Cloud-Keyboard — the standalone IME app (ea_cloud-keyboard). The vendored HeliBoard (libs:keyboard) was extracted into this standalone APK, so Configs → Keyboard (action extapp:cloud-keyboard) opens its SettingsActivity if installed, else downloads + installs install_apk_url. Its SettingsActivity carries MAIN/LAUNCHER (libs/keyboard manifest), so getLaunchIntentForPackage resolves the forkless extapp:cloud-keyboard straight to hub_package. install_apk_url mirrors ea_cloud-keyboard/build.json::release.gh_release (asset Cloud-Keyboard.apk, published by ship-cloud-keyboard.yml). Signs with the shared constellation key.",
+        "id": "cloud-keyboard",
+        "label": "Cloud-Keyboard",
+        "hub_package": "com.diegonmarcos.cloudkeyboard",
+        "install_package": "com.diegonmarcos.cloudkeyboard",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
         "forks": {}
       },
       {
