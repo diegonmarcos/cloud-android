@@ -94,14 +94,31 @@ class OneHandFragment : Fragment() {
 
     private fun buildOptions(cfg: OneHandConfig): List<Option> = buildList {
         add(Option("None", null))
+        // Config / global actions.
         OneHandAction.entries
             .filter { it != OneHandAction.NONE && it.supported }
             .forEach { add(Option(prettify(it.name), GestureAction.Global(it))) }
         val pm = requireContext().packageManager
+        val seen = HashSet<String>()
+        // Curated favourites first (from build.json), with their nice labels.
         cfg.apps.forEach {
-            val icon = runCatching { pm.getApplicationIcon(it.pkg) }.getOrNull()
-            add(Option(it.label, GestureAction.OpenApp(it.pkg), icon))
+            if (seen.add(it.pkg)) {
+                val icon = runCatching { pm.getApplicationIcon(it.pkg) }.getOrNull()
+                add(Option("★ ${it.label}", GestureAction.OpenApp(it.pkg), icon))
+            }
         }
+        // Then EVERY installed launchable app, alphabetical.
+        val li = android.content.Intent(android.content.Intent.ACTION_MAIN)
+            .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+        pm.queryIntentActivities(li, 0)
+            .mapNotNull { ri -> ri.activityInfo?.packageName?.let { Triple(it, ri.loadLabel(pm).toString(), ri) } }
+            .filter { it.first !in seen }
+            .distinctBy { it.first }
+            .sortedBy { it.second.lowercase() }
+            .forEach { (pkg, label, ri) ->
+                seen.add(pkg)
+                add(Option(label, GestureAction.OpenApp(pkg), ri.loadIcon(pm)))
+            }
     }
 
     private fun optionAdapter(ctx: Context, options: List<Option>) =
