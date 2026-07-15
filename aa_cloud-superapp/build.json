@@ -292,7 +292,7 @@
     "_doc": "One-Hand edge-gesture config for libs:onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge → `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor — never a Kotlin change (Pillar: DATA-DRIVEN).",
     "defaults": {
       "length_pct": 100,
-      "length_dp": 0,
+      "length_dp": 180,
       "thickness_dp": 20,
       "transparency": 0,
       "swipe_threshold_dp": 24,
@@ -301,7 +301,7 @@
       "trigger": "long_press",
       "long_press_ms": 300,
       "_doc_gesture_inset": "In GESTURE-nav mode Samsung's back-swipe fires from the very edge, racing our press (flaky). We can't disable the system gesture, so we dodge it: the handle is inset edge_inset_gesture_dp INTO the safe zone (past the ~edge back-gesture strip) so a press on it never starts a back-swipe. In 3-button nav there's no edge gesture, so edge_inset_dp (0) is used and the handle hugs the edge. Detected at runtime via config_navBarInteractionMode.",
-      "_doc_geometry": "Full-height (length_pct 100), invisible (transparency 0) edge strip. Because trigger=long_press, quick taps/scrolls/back-swipes pass straight through (we only claim the gesture after the hold), so a full-height invisible zone is unobtrusive. NOTE: systemGestureExclusionRects is OS-capped at 200dp/edge, so only ~200dp of the strip is excluded from the system back-gesture; long-press works reliably within that band. length_dp>0 would force a fixed length under the cap."
+      "_doc_geometry": "BOUNDED band, not full-height. length_dp=180 (>0 overrides length_pct) keeps the touch zone a ~180dp band at position_pct down the edge. Two reasons it must be bounded: (1) our handle CONSUMES touches in its area (a touchable overlay can't pass them through), so a full-height strip creates a dead vertical band down the whole edge that blocks the app underneath (e.g. Bitwarden buttons near the edge stop responding). A short band frees the rest of the edge. (2) systemGestureExclusionRects is OS-capped at 200dp/edge, so ≤180dp is FULLY excluded → reliable. Invisible (transparency 0); it lives at a consistent thumb-zone position."
     },
     "handles": [
       {
