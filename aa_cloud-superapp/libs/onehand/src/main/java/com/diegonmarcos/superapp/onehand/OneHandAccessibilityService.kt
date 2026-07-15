@@ -180,9 +180,13 @@ class OneHandAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         )
-        // Inset from the very border so the OS edge strip (Samsung/Termux system
-        // gestures) stays free; our activation zone sits just inside it.
-        val inset = dp(h.edgeInsetDp)
+        // GUARANTEE no back-gesture conflict: in gesture-nav mode Samsung's back
+        // swipe fires only from the very edge strip, so we sit our handle just
+        // PAST that strip (the safe zone). In 3-button mode there's no edge
+        // gesture, so we hug the very edge (works perfectly there).
+        val gestureNav = isGestureNav()
+        val inset = if (gestureNav) dp(cfg?.edgeInsetGestureDp ?: 28) else dp(h.edgeInsetDp)
+        Log.i(TAG, "addHandle ${h.id} gestureNav=$gestureNav inset=$inset")
         when (h.edge) {
             OneHandConfig.Edge.BOTTOM -> {
                 lp.width = if (h.lengthDp > 0) dp(h.lengthDp) else dm.widthPixels * h.lengthPct / 100
@@ -303,6 +307,12 @@ class OneHandAccessibilityService : AccessibilityService() {
         is GestureAction.OpenApp ->
             cfg?.apps?.firstOrNull { it.pkg == action.pkg }?.label ?: action.pkg
     }
+
+    /** 0=3-button, 1=2-button, 2=gesture nav. Read from the framework resource. */
+    private fun isGestureNav(): Boolean = runCatching {
+        val id = resources.getIdentifier("config_navBarInteractionMode", "integer", "android")
+        id != 0 && resources.getInteger(id) == 2
+    }.getOrDefault(false)
 
     // Visible rounded accent tab so the (otherwise invisible) touch zone is
     // findable. transparency 0..100 → alpha; a small non-zero default keeps it

@@ -19,6 +19,7 @@ data class OneHandConfig(
     val swipeThresholdDp: Int,
     val trigger: Trigger,
     val longPressMs: Int,
+    val edgeInsetGestureDp: Int, // inset applied only when the device is in gesture-nav mode
     val radial: Radial,
 ) {
     enum class Edge { LEFT, RIGHT, BOTTOM }
@@ -90,7 +91,8 @@ data class OneHandConfig(
             )
             return OneHandConfig(
                 handles, apps, d.optInt("swipe_threshold_dp", 24),
-                trigger, d.optInt("long_press_ms", 300), radial,
+                trigger, d.optInt("long_press_ms", 300),
+                d.optInt("edge_inset_gesture_dp", 28), radial,
             )
         }
 

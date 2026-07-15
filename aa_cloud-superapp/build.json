@@ -297,8 +297,10 @@
       "transparency": 0,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
+      "edge_inset_gesture_dp": 32,
       "trigger": "long_press",
       "long_press_ms": 300,
+      "_doc_gesture_inset": "In GESTURE-nav mode Samsung's back-swipe fires from the very edge, racing our press (flaky). We can't disable the system gesture, so we dodge it: the handle is inset edge_inset_gesture_dp INTO the safe zone (past the ~edge back-gesture strip) so a press on it never starts a back-swipe. In 3-button nav there's no edge gesture, so edge_inset_dp (0) is used and the handle hugs the edge. Detected at runtime via config_navBarInteractionMode.",
       "_doc_geometry": "Full-height (length_pct 100), invisible (transparency 0) edge strip. Because trigger=long_press, quick taps/scrolls/back-swipes pass straight through (we only claim the gesture after the hold), so a full-height invisible zone is unobtrusive. NOTE: systemGestureExclusionRects is OS-capped at 200dp/edge, so only ~200dp of the strip is excluded from the system back-gesture; long-press works reliably within that band. length_dp>0 would force a fixed length under the cap."
     },
     "handles": [
@@ -336,7 +338,8 @@
     ],
     "_doc_radial": "Two-finger radial menu (libs:onehand, OBSERVE-ONLY via the accessibility service's onMotionEvent — needs Android 14+). Hold TWO fingers anywhere ~still for two_finger_hold_ms → a ring of icons opens at that point; release to one finger and move it to the icon (arrow follows), lift to fire. Because it only observes touches, the app underneath also sees the fingers (may pinch) — that's the cost of not intercepting. items[] are actions: `app:<pkg>` or a global action id (back|home|recents|notifications|quick_settings|...). radius_dp = ring radius; slop_dp = how far the 2-finger centroid may drift before the hold cancels.",
     "radial": {
-      "enabled": true,
+      "_doc_security": "enabled=false by DEFAULT on purpose: the radial menu works by OBSERVING ALL touches system-wide (FLAG_SEND_MOTION_EVENTS), which is a genuine privacy/security capability — it can see taps anywhere, including over a password manager. Turn it on ONLY as a conscious opt-in. While disabled, the service never requests motion-event observation at all.",
+      "enabled": false,
       "two_finger_hold_ms": 250,
       "slop_dp": 44,
       "radius_dp": 120,
