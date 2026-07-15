@@ -116,21 +116,40 @@ class OneHandAccessibilityService : AccessibilityService() {
 
     private fun onHandleTouch(h: OneHandConfig.Handle, e: MotionEvent): Boolean {
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; updatePreview(h, e) }
+            MotionEvent.ACTION_DOWN -> {
+                downX = e.rawX; downY = e.rawY
+                preview?.begin(buildOptions(h)); updatePreview(h, e)
+            }
             MotionEvent.ACTION_MOVE -> updatePreview(h, e)
             MotionEvent.ACTION_UP -> {
                 resolveKey(h, e.rawX - downX, e.rawY - downY, e.eventTime - e.downTime)
                     ?.let { key -> h.gestures[key]?.perform(this) }
-                preview?.clearPreview()
+                preview?.end()
             }
-            MotionEvent.ACTION_CANCEL -> preview?.clearPreview()
+            MotionEvent.ACTION_CANCEL -> preview?.end()
         }
         return true
     }
 
     private fun updatePreview(h: OneHandConfig.Handle, e: MotionEvent) {
-        val key = resolveKey(h, e.rawX - downX, e.rawY - downY, e.eventTime - e.downTime)
-        preview?.update(downX, downY, e.rawX, e.rawY, key?.let { labelFor(h, it) } ?: "")
+        val dir = SwipeClassifier.sector(h.edge, e.rawX - downX, e.rawY - downY)
+        preview?.update(downX, downY, e.rawX, e.rawY, dir)
+    }
+
+    /** Fan of the handle's 3 direction options for the preview, at canonical angles. */
+    private fun buildOptions(h: OneHandConfig.Handle): List<GesturePreviewView.Option> {
+        val dirs = if (h.edge == OneHandConfig.Edge.BOTTOM)
+            listOf("left", "up", "right") else listOf("up", "in", "down")
+        return dirs.map { d ->
+            val label = h.gestures["short_$d"]?.let { labelForAction(it) } ?: d
+            GesturePreviewView.Option(d, label, canonicalAngle(h.edge, d))
+        }
+    }
+
+    private fun canonicalAngle(edge: OneHandConfig.Edge, dir: String): Double = when (edge) {
+        OneHandConfig.Edge.RIGHT -> when (dir) { "up" -> -135.0; "down" -> 135.0; else -> 180.0 }
+        OneHandConfig.Edge.LEFT -> when (dir) { "up" -> -45.0; "down" -> 45.0; else -> 0.0 }
+        OneHandConfig.Edge.BOTTOM -> when (dir) { "left" -> -135.0; "right" -> -45.0; else -> -90.0 }
     }
 
     /** Unified key resolution used by BOTH preview and fire. */
@@ -144,15 +163,12 @@ class OneHandAccessibilityService : AccessibilityService() {
         return SwipeClassifier.classify(h.edge, dx, dy, dp(c.swipeThresholdDp), dp(c.longSwipeDp))
     }
 
-    private fun labelFor(h: OneHandConfig.Handle, key: String): String {
-        val action = h.gestures[key] ?: return ""
-        return when (action) {
-            is GestureAction.Global ->
-                action.action.name.lowercase().split('_')
-                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-            is GestureAction.OpenApp ->
-                cfg?.apps?.firstOrNull { it.pkg == action.pkg }?.label ?: action.pkg
-        }
+    private fun labelForAction(action: GestureAction): String = when (action) {
+        is GestureAction.Global ->
+            action.action.name.lowercase().split('_')
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+        is GestureAction.OpenApp ->
+            cfg?.apps?.firstOrNull { it.pkg == action.pkg }?.label ?: action.pkg
     }
 
     private fun handleColor(transparency: Int): Int =
