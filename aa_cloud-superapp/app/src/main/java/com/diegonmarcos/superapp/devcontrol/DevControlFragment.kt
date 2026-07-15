@@ -145,6 +145,64 @@ class DevControlFragment : Fragment() {
         }
     }
 
+    /** Live logcat viewer (own-process logs) with All | Errors filter + copy-all. */
+    private fun addLogcatSection(ctx: Context, column: LinearLayout) {
+        column.addView(macroHeader(ctx, "🔍  LOGCAT"))
+        section(ctx, column, "App logs (this process)") { box ->
+            val logView = TextView(ctx).apply {
+                typeface = android.graphics.Typeface.MONOSPACE
+                textSize = 10f
+                setTextIsSelectable(true)
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+            }
+            val logScroll = android.widget.ScrollView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(300))
+                addView(logView)
+            }
+            var errorsOnly = false
+            fun refresh() {
+                logView.text = "Loading…"
+                Thread {
+                    val out = readLogcat(errorsOnly)
+                    logView.post { logView.text = out }
+                }.start()
+            }
+            fun btn(label: String, onTap: () -> Unit) = android.widget.Button(ctx).apply {
+                text = label; setOnClickListener { onTap() }
+                layoutParams = LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val filters = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(btn("All") { errorsOnly = false; refresh() })
+                addView(btn("Errors only") { errorsOnly = true; refresh() })
+            }
+            val actions = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(btn("Refresh") { refresh() })
+                addView(btn("Copy all") {
+                    val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    cm.setPrimaryClip(
+                        android.content.ClipData.newPlainText("logcat", logView.text))
+                    android.widget.Toast.makeText(ctx, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+                })
+            }
+            box.addView(filters)
+            box.addView(actions)
+            box.addView(logScroll)
+            refresh()
+        }
+    }
+
+    private fun readLogcat(errorsOnly: Boolean): String = runCatching {
+        val cmd = if (errorsOnly) arrayOf("logcat", "-d", "-v", "time", "*:E")
+                  else arrayOf("logcat", "-d", "-v", "time")
+        Runtime.getRuntime().exec(cmd).inputStream.bufferedReader().readText()
+            .ifBlank { "(empty — Android only lets an app read its OWN logs; use the app, then Refresh)" }
+    }.getOrElse { "logcat read failed: ${it.message}" }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         infoBuf = StringBuilder()
@@ -161,6 +219,8 @@ class DevControlFragment : Fragment() {
         scroll.addView(column)
 
         column.addView(title(ctx, "About Cloud SuperApp"))
+
+        addLogcatSection(ctx, column)
 
         // ══ CLOUD macro section — who/what this device is in the cloud
         //    mesh: the owner profile + repos + consolidated config, and

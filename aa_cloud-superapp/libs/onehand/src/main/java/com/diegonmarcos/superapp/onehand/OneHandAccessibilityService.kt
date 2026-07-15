@@ -3,6 +3,7 @@ package com.diegonmarcos.superapp.onehand
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -34,6 +35,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        Log.i(TAG, "onServiceConnected: enabled=${OneHandPrefs.isEnabled(this)}")
         if (OneHandPrefs.isEnabled(this)) showHandles()
     }
 
@@ -47,6 +49,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     fun showHandles() {
         hideHandles()
         val c = OneHandConfig.effective(this).also { cfg = it }
+        Log.i(TAG, "showHandles: ${c.handles.size} handles, trigger=${c.trigger}, longPressMs=${c.longPressMs}")
         c.handles.forEach { addHandle(it) }
         addPreviewLayer() // on top (non-touchable → handle touches pass through)
     }
@@ -112,6 +115,7 @@ class OneHandAccessibilityService : AccessibilityService() {
         }
         wm.addView(view, lp)
         views.add(view)
+        Log.i(TAG, "addHandle ${h.id} edge=${h.edge} size=${lp.width}x${lp.height} x=${lp.x} y=${lp.y} inset=$inset")
         // The handle sits ON the edge, so the OS edge-gesture (Samsung/Android
         // back-swipe) would otherwise steal the touch before our long-press
         // fires. Exclude the handle rect from system gestures so OUR window gets
@@ -129,6 +133,7 @@ class OneHandAccessibilityService : AccessibilityService() {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = e.rawX; downY = e.rawY; activated = false
+                Log.i(TAG, "DOWN ${h.id} @${e.rawX.toInt()},${e.rawY.toInt()} trigger=${c.trigger}")
                 if (c.trigger == OneHandConfig.Trigger.TOUCH) activate(h)
                 else {
                     val r = Runnable {
@@ -142,23 +147,31 @@ class OneHandAccessibilityService : AccessibilityService() {
                 if (activated) updatePreview(h, e.rawX, e.rawY)
                 // Moved before the long-press fired → a scroll/quick swipe, not our
                 // gesture: cancel activation and let it pass as a normal swipe.
-                else if (hypot(e.rawX - downX, e.rawY - downY) > dp(16)) cancelPending(view)
+                else if (hypot(e.rawX - downX, e.rawY - downY) > dp(16)) {
+                    Log.i(TAG, "MOVE-cancel ${h.id} (moved before long-press)")
+                    cancelPending(view)
+                }
             MotionEvent.ACTION_UP -> {
                 cancelPending(view)
                 if (activated) {
-                    SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
-                        ?.let { key -> h.gestures[key]?.perform(this) }
+                    val key = SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
+                    Log.i(TAG, "UP ${h.id} fire key=$key action=${key?.let { h.gestures[it] }}")
+                    key?.let { h.gestures[it]?.perform(this) }
                     preview?.end()
-                }
+                } else Log.i(TAG, "UP ${h.id} (not activated — nothing fired)")
                 activated = false
             }
-            MotionEvent.ACTION_CANCEL -> { cancelPending(view); preview?.end(); activated = false }
+            MotionEvent.ACTION_CANCEL -> {
+                Log.i(TAG, "CANCEL ${h.id} activated=$activated (OS likely claimed the gesture)")
+                cancelPending(view); preview?.end(); activated = false
+            }
         }
         return true
     }
 
     private fun activate(h: OneHandConfig.Handle) {
         activated = true
+        Log.i(TAG, "activate ${h.id} — menu shown")
         preview?.begin(buildOptions(h))
         preview?.update(downX, downY, downX, downY, null)
     }
@@ -206,6 +219,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     ).toInt()
 
     companion object {
+        private const val TAG = "OneHand"
         @Volatile var instance: OneHandAccessibilityService? = null
             private set
         val isConnected: Boolean get() = instance != null
