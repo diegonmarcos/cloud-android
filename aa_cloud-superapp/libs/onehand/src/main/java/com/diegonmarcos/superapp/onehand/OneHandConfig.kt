@@ -45,8 +45,8 @@ data class OneHandConfig(
         /** The swipe slots the engine actually honors for an edge (UI iterates these). */
         fun slotsFor(edge: Edge): List<Slot> {
             val dirs = when (edge) {
-                Edge.BOTTOM -> listOf("up" to "up", "left" to "left", "right" to "right")
-                else -> listOf("in" to "inward", "up" to "up", "down" to "down")
+                Edge.BOTTOM -> listOf("up" to "up", "left" to "up-left", "right" to "up-right")
+                else -> listOf("in" to "inward", "up" to "inward-up", "down" to "inward-down")
             }
             val holdDir = if (edge == Edge.BOTTOM) "up" else "in"
             return buildList {

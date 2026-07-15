@@ -4,24 +4,29 @@ import android.accessibilityservice.AccessibilityService
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.util.TypedValue
-import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import kotlin.math.hypot
 
 /**
- * Hosts BOTH the edge handles (WindowManager overlay) AND the global-action
- * dispatch. Being a persistent system-bound service it needs NO foreground
- * notification — so there's no notification-center entry for the feature.
- * The overlay is (re)built from [OneHandConfig.effective] whenever it's shown,
- * so per-swipe edits apply on next enable.
+ * Hosts the edge handles (WindowManager overlay), the live gesture-preview arrow,
+ * AND the global-action dispatch. Being system-bound it needs no foreground
+ * service / notification. One Hand Operation+ mechanic: swipe INWARD, the tilt
+ * of the drag (diagonal) picks the direction; an arrow follows the finger and
+ * shows the action about to fire; release triggers it. Hold = press + dwell.
  */
 class OneHandAccessibilityService : AccessibilityService() {
 
     private var windowManager: WindowManager? = null
     private val views = mutableListOf<View>()
+    private var preview: GesturePreviewView? = null
+    private var cfg: OneHandConfig? = null
+
+    private var downX = 0f
+    private var downY = 0f
 
     override fun onServiceConnected() {
         instance = this
@@ -30,9 +35,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
-        hideHandles()
-        if (instance === this) instance = null
-        super.onDestroy()
+        hideHandles(); if (instance === this) instance = null; super.onDestroy()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* no-op */ }
@@ -40,22 +43,41 @@ class OneHandAccessibilityService : AccessibilityService() {
 
     fun showHandles() {
         hideHandles()
-        val cfg = OneHandConfig.effective(this)
-        cfg.handles.forEach { addHandle(it, cfg) }
+        val c = OneHandConfig.effective(this).also { cfg = it }
+        c.handles.forEach { addHandle(it) }
+        addPreviewLayer() // on top (non-touchable → handle touches pass through)
     }
 
     fun hideHandles() {
         views.forEach { runCatching { windowManager?.removeView(it) } }
         views.clear()
+        preview?.let { runCatching { windowManager?.removeView(it) } }
+        preview = null
+        cfg = null
     }
 
-    private fun addHandle(h: OneHandConfig.Handle, cfg: OneHandConfig) {
+    private fun addPreviewLayer() {
+        val wm = windowManager ?: return
+        val v = GesturePreviewView(this)
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        )
+        wm.addView(v, lp)
+        preview = v
+    }
+
+    private fun addHandle(h: OneHandConfig.Handle) {
         val wm = windowManager ?: return
         val dm = resources.displayMetrics
-        val gesture = GestureDetector(this, HandleListener(h, cfg))
         val view = View(this).apply {
             setBackgroundColor(handleColor(h.transparency))
-            setOnTouchListener { _, e -> gesture.onTouchEvent(e); true }
+            setOnTouchListener { _, e -> onHandleTouch(h, e) }
         }
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -84,32 +106,50 @@ class OneHandAccessibilityService : AccessibilityService() {
         views.add(view)
     }
 
+    private fun onHandleTouch(h: OneHandConfig.Handle, e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; updatePreview(h, e) }
+            MotionEvent.ACTION_MOVE -> updatePreview(h, e)
+            MotionEvent.ACTION_UP -> {
+                resolveKey(h, e.rawX - downX, e.rawY - downY, e.eventTime - e.downTime)
+                    ?.let { key -> h.gestures[key]?.perform(this) }
+                preview?.clearPreview()
+            }
+            MotionEvent.ACTION_CANCEL -> preview?.clearPreview()
+        }
+        return true
+    }
+
+    private fun updatePreview(h: OneHandConfig.Handle, e: MotionEvent) {
+        val key = resolveKey(h, e.rawX - downX, e.rawY - downY, e.eventTime - e.downTime)
+        preview?.update(downX, downY, e.rawX, e.rawY, key?.let { labelFor(h, it) } ?: "")
+    }
+
+    /** Unified key resolution used by BOTH preview and fire. */
+    private fun resolveKey(h: OneHandConfig.Handle, dx: Float, dy: Float, dwellMs: Long): String? {
+        val c = cfg ?: return null
+        if (hypot(dx, dy) < dp(c.swipeThresholdDp)) {
+            // Press + dwell in place → swipe-and-hold (straight slot).
+            return if (dwellMs >= c.holdMs)
+                (if (h.edge == OneHandConfig.Edge.BOTTOM) "hold_up" else "hold_in") else null
+        }
+        return SwipeClassifier.classify(h.edge, dx, dy, dp(c.swipeThresholdDp), dp(c.longSwipeDp))
+    }
+
+    private fun labelFor(h: OneHandConfig.Handle, key: String): String {
+        val action = h.gestures[key] ?: return ""
+        return when (action) {
+            is GestureAction.Global ->
+                action.action.name.lowercase().split('_')
+                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+            is GestureAction.OpenApp ->
+                cfg?.apps?.firstOrNull { it.pkg == action.pkg }?.label ?: action.pkg
+        }
+    }
+
     private fun handleColor(transparency: Int): Int =
         if (transparency <= 0) Color.TRANSPARENT
         else Color.argb(transparency * 255 / 100, 255, 0, 0)
-
-    private inner class HandleListener(val h: OneHandConfig.Handle, val cfg: OneHandConfig) :
-        GestureDetector.SimpleOnGestureListener() {
-
-        override fun onDown(e: MotionEvent) = true
-
-        override fun onFling(e1: MotionEvent?, e2: MotionEvent, vX: Float, vY: Float): Boolean {
-            if (e1 == null) return false
-            val key = SwipeClassifier.classify(
-                h.edge, e2.x - e1.x, e2.y - e1.y, vX, vY,
-                dp(cfg.swipeThresholdDp), dp(cfg.longSwipeDp), cfg.velocityThreshold,
-            ) ?: return false
-            h.gestures[key]?.perform(this@OneHandAccessibilityService)
-            return true
-        }
-
-        override fun onLongPress(e: MotionEvent) {
-            // ponytail: swipe-and-hold approximated by a stationary long-press →
-            // the handle's inward hold slot. Directional hold is the upgrade path.
-            val holdKey = if (h.edge == OneHandConfig.Edge.BOTTOM) "hold_up" else "hold_in"
-            h.gestures[holdKey]?.perform(this@OneHandAccessibilityService)
-        }
-    }
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
@@ -118,7 +158,6 @@ class OneHandAccessibilityService : AccessibilityService() {
     companion object {
         @Volatile var instance: OneHandAccessibilityService? = null
             private set
-
         val isConnected: Boolean get() = instance != null
     }
 }

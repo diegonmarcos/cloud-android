@@ -1,39 +1,50 @@
 package com.diegonmarcos.superapp.onehand
 
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.hypot
 
 /**
- * PURE gesture math (no Android deps → JVM-testable). Maps a fling to an
- * edge-relative gesture key (`short_in`, `long_up`, …) that indexes a handle's
- * gesture map. `dx`/`dy` are end-minus-start pixels. Returns null below
- * threshold or for an outward (off-screen) swipe. Hold is detected separately
- * (long-press), not here.
+ * PURE gesture math (no Android deps → JVM-testable). One Hand Operation+ style:
+ * you swipe INWARD from the edge and the TILT of that inward drag picks the
+ * direction (diagonal), not a parallel up/down swipe. `dx`/`dy` are end-minus-
+ * start pixels.
+ *
+ *  - [sector]: the edge-relative direction key (in|up|down for sides,
+ *    up|left|right for bottom), or null for an outward / too-shallow drag.
+ *  - [classify]: `<magnitude>_<sector>` where magnitude = short|long by distance.
  */
 object SwipeClassifier {
-    fun classify(
-        edge: OneHandConfig.Edge,
-        dx: Float, dy: Float,
-        velocityX: Float, velocityY: Float,
-        thresholdPx: Int, longSwipePx: Int, velocityThreshold: Int,
-    ): String? {
-        val horizontal = abs(dx) > abs(dy)
-        val dist = if (horizontal) abs(dx) else abs(dy)
-        val vel = if (horizontal) abs(velocityX) else abs(velocityY)
-        if (dist < thresholdPx || vel < velocityThreshold) return null
+    // Half-angle (deg) of the "straight inward" cone; beyond it → diagonal.
+    private const val STRAIGHT_DEG = 30.0
 
-        val dir = direction(edge, dx, dy, horizontal) ?: return null
-        val magnitude = if (dist >= longSwipePx) "long" else "short"
+    fun sector(edge: OneHandConfig.Edge, dx: Float, dy: Float): String? {
+        val (inward, lateral, straight, neg, pos) = when (edge) {
+            OneHandConfig.Edge.RIGHT -> Axes(-dx, dy, "in", "up", "down")
+            OneHandConfig.Edge.LEFT -> Axes(dx, dy, "in", "up", "down")
+            OneHandConfig.Edge.BOTTOM -> Axes(-dy, dx, "up", "left", "right")
+        }
+        if (inward <= 0f) return null // outward / along-edge only → no gesture
+        val angleDeg = Math.toDegrees(atan2(lateral.toDouble(), inward.toDouble()))
+        return when {
+            abs(angleDeg) <= STRAIGHT_DEG -> straight
+            angleDeg < 0 -> neg
+            else -> pos
+        }
+    }
+
+    fun classify(
+        edge: OneHandConfig.Edge, dx: Float, dy: Float,
+        thresholdPx: Int, longSwipePx: Int,
+    ): String? {
+        if (hypot(dx, dy) < thresholdPx) return null
+        val dir = sector(edge, dx, dy) ?: return null
+        val magnitude = if (hypot(dx, dy) >= longSwipePx) "long" else "short"
         return "${magnitude}_$dir"
     }
 
-    /** Screen direction → edge-relative logical direction; null = outward. */
-    private fun direction(edge: OneHandConfig.Edge, dx: Float, dy: Float, horizontal: Boolean): String? =
-        when (edge) {
-            OneHandConfig.Edge.RIGHT ->
-                if (horizontal) { if (dx < 0) "in" else null } else if (dy < 0) "up" else "down"
-            OneHandConfig.Edge.LEFT ->
-                if (horizontal) { if (dx > 0) "in" else null } else if (dy < 0) "up" else "down"
-            OneHandConfig.Edge.BOTTOM ->
-                if (!horizontal) { if (dy < 0) "up" else null } else if (dx < 0) "left" else "right"
-        }
+    private data class Axes(
+        val inward: Float, val lateral: Float,
+        val straight: String, val neg: String, val pos: String,
+    )
 }
