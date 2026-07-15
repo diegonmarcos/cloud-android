@@ -5,46 +5,35 @@ import kotlin.math.atan2
 import kotlin.math.hypot
 
 /**
- * PURE gesture math (no Android deps → JVM-testable). One Hand Operation+ style:
- * you swipe INWARD from the edge and the TILT of that inward drag picks the
- * direction (diagonal), not a parallel up/down swipe. `dx`/`dy` are end-minus-
- * start pixels.
- *
- *  - [sector]: the edge-relative direction key (in|up|down for sides,
- *    up|left|right for bottom), or null for an outward / too-shallow drag.
- *  - [classify]: `<magnitude>_<sector>` where magnitude = short|long by distance.
+ * PURE gesture math (no Android deps → JVM-testable). One Hand Operation+ model:
+ * the handle activates anywhere along the edge; you swipe INWARD and the TILT of
+ * that drag picks one of three sectors — top / center / down (center = straight
+ * inward). `dx`/`dy` are end-minus-start pixels. Bottom edge → left/center/right.
  */
 object SwipeClassifier {
-    // Half-angle (deg) of the "straight inward" cone; beyond it → diagonal.
-    private const val STRAIGHT_DEG = 30.0
+    private const val STRAIGHT_DEG = 30.0 // half-cone of "center"
 
+    /** Sector key, or null for an outward / too-shallow drag. */
     fun sector(edge: OneHandConfig.Edge, dx: Float, dy: Float): String? {
-        val (inward, lateral, straight, neg, pos) = when (edge) {
-            OneHandConfig.Edge.RIGHT -> Axes(-dx, dy, "in", "up", "down")
-            OneHandConfig.Edge.LEFT -> Axes(dx, dy, "in", "up", "down")
-            OneHandConfig.Edge.BOTTOM -> Axes(-dy, dx, "up", "left", "right")
+        val (inward, lateral, neg, pos) = when (edge) {
+            OneHandConfig.Edge.RIGHT -> Axes(-dx, dy, "top", "down")
+            OneHandConfig.Edge.LEFT -> Axes(dx, dy, "top", "down")
+            OneHandConfig.Edge.BOTTOM -> Axes(-dy, dx, "left", "right")
         }
-        if (inward <= 0f) return null // outward / along-edge only → no gesture
+        if (inward <= 0f) return null
         val angleDeg = Math.toDegrees(atan2(lateral.toDouble(), inward.toDouble()))
         return when {
-            abs(angleDeg) <= STRAIGHT_DEG -> straight
+            abs(angleDeg) <= STRAIGHT_DEG -> "center"
             angleDeg < 0 -> neg
             else -> pos
         }
     }
 
-    fun classify(
-        edge: OneHandConfig.Edge, dx: Float, dy: Float,
-        thresholdPx: Int, longSwipePx: Int,
-    ): String? {
+    /** Sector once past the activation threshold, else null. */
+    fun classify(edge: OneHandConfig.Edge, dx: Float, dy: Float, thresholdPx: Int): String? {
         if (hypot(dx, dy) < thresholdPx) return null
-        val dir = sector(edge, dx, dy) ?: return null
-        val magnitude = if (hypot(dx, dy) >= longSwipePx) "long" else "short"
-        return "${magnitude}_$dir"
+        return sector(edge, dx, dy)
     }
 
-    private data class Axes(
-        val inward: Float, val lateral: Float,
-        val straight: String, val neg: String, val pos: String,
-    )
+    private data class Axes(val inward: Float, val lateral: Float, val neg: String, val pos: String)
 }

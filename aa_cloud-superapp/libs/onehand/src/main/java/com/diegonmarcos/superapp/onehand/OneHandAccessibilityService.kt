@@ -9,7 +9,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import kotlin.math.hypot
 
 /**
  * Hosts the edge handles (WindowManager overlay), the live gesture-preview arrow,
@@ -87,18 +86,23 @@ class OneHandAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         )
+        // Inset from the very border so the OS edge strip (Samsung/Termux system
+        // gestures) stays free; our activation zone sits just inside it.
+        val inset = dp(h.edgeInsetDp)
         when (h.edge) {
             OneHandConfig.Edge.BOTTOM -> {
                 lp.width = dm.widthPixels * h.lengthPct / 100
                 lp.height = dp(h.thicknessDp)
                 lp.gravity = Gravity.BOTTOM or Gravity.START
                 lp.x = dm.widthPixels * h.positionPct / 100 - lp.width / 2
+                lp.y = inset
             }
             else -> {
                 lp.width = dp(h.thicknessDp)
                 lp.height = dm.heightPixels * h.lengthPct / 100
                 lp.gravity = (if (h.edge == OneHandConfig.Edge.LEFT) Gravity.START else Gravity.END) or
                     Gravity.TOP
+                lp.x = inset
                 lp.y = dm.heightPixels * h.positionPct / 100 - lp.height / 2
             }
         }
@@ -122,8 +126,11 @@ class OneHandAccessibilityService : AccessibilityService() {
             }
             MotionEvent.ACTION_MOVE -> updatePreview(h, e)
             MotionEvent.ACTION_UP -> {
-                resolveKey(h, e.rawX - downX, e.rawY - downY, e.eventTime - e.downTime)
-                    ?.let { key -> h.gestures[key]?.perform(this) }
+                val c = cfg
+                if (c != null) {
+                    SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
+                        ?.let { key -> h.gestures[key]?.perform(this) }
+                }
                 preview?.end()
             }
             MotionEvent.ACTION_CANCEL -> preview?.end()
@@ -136,31 +143,17 @@ class OneHandAccessibilityService : AccessibilityService() {
         preview?.update(downX, downY, e.rawX, e.rawY, dir)
     }
 
-    /** Fan of the handle's 3 direction options for the preview, at canonical angles. */
-    private fun buildOptions(h: OneHandConfig.Handle): List<GesturePreviewView.Option> {
-        val dirs = if (h.edge == OneHandConfig.Edge.BOTTOM)
-            listOf("left", "up", "right") else listOf("up", "in", "down")
-        return dirs.map { d ->
-            val label = h.gestures["short_$d"]?.let { labelForAction(it) } ?: d
-            GesturePreviewView.Option(d, label, canonicalAngle(h.edge, d))
+    /** Fan of the handle's 3 sector options for the preview, at canonical angles. */
+    private fun buildOptions(h: OneHandConfig.Handle): List<GesturePreviewView.Option> =
+        OneHandConfig.slotsFor(h.edge).map { slot ->
+            val label = h.gestures[slot.key]?.let { labelForAction(it) } ?: slot.label
+            GesturePreviewView.Option(slot.key, label, canonicalAngle(h.edge, slot.key))
         }
-    }
 
-    private fun canonicalAngle(edge: OneHandConfig.Edge, dir: String): Double = when (edge) {
-        OneHandConfig.Edge.RIGHT -> when (dir) { "up" -> -135.0; "down" -> 135.0; else -> 180.0 }
-        OneHandConfig.Edge.LEFT -> when (dir) { "up" -> -45.0; "down" -> 45.0; else -> 0.0 }
-        OneHandConfig.Edge.BOTTOM -> when (dir) { "left" -> -135.0; "right" -> -45.0; else -> -90.0 }
-    }
-
-    /** Unified key resolution used by BOTH preview and fire. */
-    private fun resolveKey(h: OneHandConfig.Handle, dx: Float, dy: Float, dwellMs: Long): String? {
-        val c = cfg ?: return null
-        if (hypot(dx, dy) < dp(c.swipeThresholdDp)) {
-            // Press + dwell in place → swipe-and-hold (straight slot).
-            return if (dwellMs >= c.holdMs)
-                (if (h.edge == OneHandConfig.Edge.BOTTOM) "hold_up" else "hold_in") else null
-        }
-        return SwipeClassifier.classify(h.edge, dx, dy, dp(c.swipeThresholdDp), dp(c.longSwipeDp))
+    private fun canonicalAngle(edge: OneHandConfig.Edge, key: String): Double = when (edge) {
+        OneHandConfig.Edge.RIGHT -> when (key) { "top" -> -135.0; "down" -> 135.0; else -> 180.0 }
+        OneHandConfig.Edge.LEFT -> when (key) { "top" -> -45.0; "down" -> 45.0; else -> 0.0 }
+        OneHandConfig.Edge.BOTTOM -> when (key) { "left" -> -135.0; "right" -> -45.0; else -> -90.0 }
     }
 
     private fun labelForAction(action: GestureAction): String = when (action) {

@@ -1,6 +1,8 @@
 package com.diegonmarcos.superapp.configs
 
+import android.content.Context
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,32 +22,30 @@ import com.diegonmarcos.superapp.onehand.OneHandController
 import com.diegonmarcos.superapp.onehand.OneHandPrefs
 
 /**
- * Configs > One-Hand. Master toggle + a per-swipe action editor: for every
- * handle and every swipe slot, a dropdown of actions (global + launch-app).
- * Grant the two permissions in the centralized Configs > Permissions page.
+ * Configs > One-Hand. Master toggle + a per-sector action editor laid out to
+ * MIRROR the phone: the left handle's Top/Center/Down live in the LEFT column,
+ * the right handle's in the RIGHT column. Grant the two permissions in the
+ * centralized Configs > Permissions page.
  */
 class OneHandFragment : Fragment() {
 
     private lateinit var status: TextView
     private lateinit var toggle: Switch
 
-    // Option = a picker row. null action = "None".
     private data class Option(val label: String, val action: GestureAction?)
 
     override fun onCreateView(inf: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext()
         val pad = (16 * resources.displayMetrics.density).toInt()
-        val col = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad, pad, pad)
+        val root = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad)
         }
 
         status = TextView(ctx)
-        col.addView(status)
+        root.addView(status)
 
         toggle = Switch(ctx).apply {
-            text = "One-Hand edge handles"
-            setPadding(0, pad, 0, pad)
+            text = "One-Hand edge handles"; setPadding(0, pad, 0, pad)
             setOnCheckedChangeListener { _, on ->
                 if (on) {
                     if (OneHandController.ready(ctx)) OneHandController.enable(ctx)
@@ -55,13 +55,28 @@ class OneHandFragment : Fragment() {
                 } else OneHandController.disable(ctx)
             }
         }
-        col.addView(toggle)
+        root.addView(toggle)
 
         val cfg = OneHandConfig.effective(ctx)
         val options = buildOptions(cfg)
-        cfg.handles.forEach { h -> addHandleEditor(col, ctx, h, options, pad) }
 
-        return ScrollView(ctx).apply { addView(col) }
+        // Two mirrored columns: left-edge handles on the left, right on the right.
+        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        val leftCol = column(ctx); val rightCol = column(ctx)
+        row.addView(leftCol); row.addView(rightCol)
+        root.addView(row)
+
+        cfg.handles.forEach { h ->
+            val target = if (h.edge == OneHandConfig.Edge.RIGHT) rightCol else leftCol
+            addHandleEditor(target, ctx, h, options, pad)
+        }
+
+        return ScrollView(ctx).apply { addView(root) }
+    }
+
+    private fun column(ctx: Context) = LinearLayout(ctx).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
     }
 
     private fun buildOptions(cfg: OneHandConfig): List<Option> = buildList {
@@ -73,25 +88,24 @@ class OneHandFragment : Fragment() {
     }
 
     private fun addHandleEditor(
-        col: LinearLayout, ctx: android.content.Context,
-        h: OneHandConfig.Handle, options: List<Option>, pad: Int,
+        col: LinearLayout, ctx: Context, h: OneHandConfig.Handle,
+        options: List<Option>, pad: Int,
     ) {
         col.addView(TextView(ctx).apply {
             text = "${h.edge.name.lowercase().replaceFirstChar { it.uppercase() }} handle"
-            setPadding(0, pad, 0, pad / 2)
-            textSize = 16f
+            gravity = Gravity.CENTER; setPadding(0, pad, 0, pad / 2); textSize = 16f
         })
         val labels = options.map { it.label }
         val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, labels)
-
         for (slot in OneHandConfig.slotsFor(h.edge)) {
-            col.addView(TextView(ctx).apply { text = slot.label; setPadding(0, pad / 2, 0, 0) })
+            col.addView(TextView(ctx).apply {
+                text = slot.label; gravity = Gravity.CENTER; setPadding(0, pad / 2, 0, 0)
+            })
             val current = h.gestures[slot.key]
             val sel = options.indexOfFirst { it.action?.serialize() == current?.serialize() }
                 .coerceAtLeast(0)
             col.addView(Spinner(ctx).apply {
-                this.adapter = adapter
-                setSelection(sel)
+                this.adapter = adapter; setSelection(sel)
                 onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                     override fun onNothingSelected(p: AdapterView<*>?) {}
                     override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
@@ -116,7 +130,5 @@ class OneHandFragment : Fragment() {
         toggle.isChecked = OneHandController.isOn(ctx)
     }
 
-    companion object {
-        fun newInstance() = OneHandFragment()
-    }
+    companion object { fun newInstance() = OneHandFragment() }
 }
