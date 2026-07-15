@@ -112,8 +112,16 @@ class OneHandAccessibilityService : AccessibilityService() {
         }
         wm.addView(view, lp)
         views.add(view)
-        // No systemGestureExclusionRects on purpose: the handle sits ON the edge
-        // and co-activates with the Samsung/Android/Termux edge gestures.
+        // The handle sits ON the edge, so the OS edge-gesture (Samsung/Android
+        // back-swipe) would otherwise steal the touch before our long-press
+        // fires. Exclude the handle rect from system gestures so OUR window gets
+        // the press. System gestures still work everywhere else along the edge.
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            view.post {
+                view.systemGestureExclusionRects =
+                    listOf(android.graphics.Rect(0, 0, view.width, view.height))
+            }
+        }
     }
 
     private fun onHandleTouch(h: OneHandConfig.Handle, view: View, e: MotionEvent): Boolean {
