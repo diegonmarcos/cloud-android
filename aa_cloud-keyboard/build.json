@@ -38,6 +38,11 @@
       }
     }
   },
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps — the SAME key that signs the superapp, so the in-app fleet updater never hits INSTALL_FAILED_UPDATE_INCOMPATIBLE. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts the passwords, and _enforce_signature re-signs the built APK with it. NO fallback: if the key is unavailable the build FAILS LOUD — it never signs with the ephemeral android debug keystore.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
   "release": {
     "artifact": {
       "debug": "Cloud-Keyboard.apk",
