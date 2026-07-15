@@ -116,14 +116,17 @@ class OneHandAccessibilityService : AccessibilityService() {
         wm.addView(view, lp)
         views.add(view)
         Log.i(TAG, "addHandle ${h.id} edge=${h.edge} size=${lp.width}x${lp.height} x=${lp.x} y=${lp.y} inset=$inset")
-        // The handle sits ON the edge, so the OS edge-gesture (Samsung/Android
-        // back-swipe) would otherwise steal the touch before our long-press
-        // fires. Exclude the handle rect from system gestures so OUR window gets
-        // the press. System gestures still work everywhere else along the edge.
+        // CRITICAL for the LEFT handle: our inward swipe there IS the system
+        // back-gesture direction, so without exclusion the OS steals it. The rect
+        // MUST be set from a real layout pass (view.post fires while width/height
+        // are still 0 → an EMPTY rect → no protection → the flaky, left-biased
+        // failure). Re-apply on every layout so it's always a valid, non-empty rect.
         if (android.os.Build.VERSION.SDK_INT >= 29) {
-            view.post {
-                view.systemGestureExclusionRects =
-                    listOf(android.graphics.Rect(0, 0, view.width, view.height))
+            view.addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+                val w = r - l; val hgt = b - t
+                if (w > 0 && hgt > 0) {
+                    v.systemGestureExclusionRects = listOf(android.graphics.Rect(0, 0, w, hgt))
+                }
             }
         }
     }
