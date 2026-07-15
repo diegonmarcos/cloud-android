@@ -79,7 +79,7 @@ class OneHandAccessibilityService : AccessibilityService() {
         val wm = windowManager ?: return
         val dm = resources.displayMetrics
         val view = View(this).apply {
-            setBackgroundColor(handleColor(h.transparency))
+            background = handleBackground(h.transparency)
             setOnTouchListener { v, e -> onHandleTouch(h, v, e) }
         }
         val lp = WindowManager.LayoutParams(
@@ -192,9 +192,14 @@ class OneHandAccessibilityService : AccessibilityService() {
             cfg?.apps?.firstOrNull { it.pkg == action.pkg }?.label ?: action.pkg
     }
 
-    private fun handleColor(transparency: Int): Int =
-        if (transparency <= 0) Color.TRANSPARENT
-        else Color.argb(transparency * 255 / 100, 255, 0, 0)
+    // Visible rounded accent tab so the (otherwise invisible) touch zone is
+    // findable. transparency 0..100 → alpha; a small non-zero default keeps it
+    // subtle. Fully transparent (0) is still allowed for an invisible handle.
+    private fun handleBackground(transparency: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(10).toFloat()
+            setColor(Color.argb((transparency.coerceIn(0, 100)) * 255 / 100, 77, 163, 255))
+        }
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,

@@ -294,7 +294,7 @@
       "length_pct": 40,
       "length_dp": 160,
       "thickness_dp": 20,
-      "transparency": 0,
+      "transparency": 45,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
       "trigger": "long_press",
