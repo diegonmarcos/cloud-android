@@ -46,7 +46,7 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
     override fun onDraw(canvas: Canvas) {
         if (!active) return
         val len = hypot(cx - sx, cy - sy)
-        if (len < 8f * d) { canvas.drawText(label, cx, cy - 24f * d, text); return }
+        if (len < 8f * d) { canvas.drawText(label, cx, cy - 56f * d, text); return }
         canvas.drawLine(sx, sy, cx, cy, line)
         // arrowhead
         val ang = atan2((cy - sy).toDouble(), (cx - sx).toDouble())
@@ -58,6 +58,13 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
                 cy + (head * sin(ang + off)).toFloat(), line,
             )
         }
-        if (label.isNotEmpty()) canvas.drawText(label, cx, cy - 24f * d, text)
+        // Label sits AHEAD of the fingertip along the drag direction, offset off
+        // the axis, so the finger never covers it.
+        if (label.isNotEmpty()) {
+            val ext = 64f * d
+            val lx = cx + (ext * cos(ang)).toFloat()
+            val ly = cy + (ext * sin(ang)).toFloat() - 12f * d
+            canvas.drawText(label, lx, ly, text)
+        }
     }
 }
