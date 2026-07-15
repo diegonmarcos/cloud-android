@@ -30,6 +30,7 @@ data class OneHandConfig(
         val edge: Edge,
         val positionPct: Int,
         val lengthPct: Int,
+        val lengthDp: Int,      // fixed handle length; >0 overrides lengthPct
         val thicknessDp: Int,
         val transparency: Int,
         val edgeInsetDp: Int,
@@ -100,6 +101,7 @@ data class OneHandConfig(
                 edge = edge,
                 positionPct = h.optInt("position_pct", 50),
                 lengthPct = h.optInt("length_pct", d.optInt("length_pct", 40)),
+                lengthDp = h.optInt("length_dp", d.optInt("length_dp", 0)),
                 thicknessDp = h.optInt("thickness_dp", d.optInt("thickness_dp", 20)),
                 transparency = h.optInt("transparency", d.optInt("transparency", 0)),
                 edgeInsetDp = h.optInt("edge_inset_dp", d.optInt("edge_inset_dp", 24)),

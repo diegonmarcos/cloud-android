@@ -95,7 +95,7 @@ class OneHandAccessibilityService : AccessibilityService() {
         val inset = dp(h.edgeInsetDp)
         when (h.edge) {
             OneHandConfig.Edge.BOTTOM -> {
-                lp.width = dm.widthPixels * h.lengthPct / 100
+                lp.width = if (h.lengthDp > 0) dp(h.lengthDp) else dm.widthPixels * h.lengthPct / 100
                 lp.height = dp(h.thicknessDp)
                 lp.gravity = Gravity.BOTTOM or Gravity.START
                 lp.x = dm.widthPixels * h.positionPct / 100 - lp.width / 2
@@ -103,7 +103,7 @@ class OneHandAccessibilityService : AccessibilityService() {
             }
             else -> {
                 lp.width = dp(h.thicknessDp)
-                lp.height = dm.heightPixels * h.lengthPct / 100
+                lp.height = if (h.lengthDp > 0) dp(h.lengthDp) else dm.heightPixels * h.lengthPct / 100
                 lp.gravity = (if (h.edge == OneHandConfig.Edge.LEFT) Gravity.START else Gravity.END) or
                     Gravity.TOP
                 lp.x = inset

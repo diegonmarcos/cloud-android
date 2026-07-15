@@ -292,12 +292,14 @@
     "_doc": "One-Hand edge-gesture config for libs:onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge → `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor — never a Kotlin change (Pillar: DATA-DRIVEN).",
     "defaults": {
       "length_pct": 40,
+      "length_dp": 160,
       "thickness_dp": 20,
       "transparency": 0,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
       "trigger": "long_press",
-      "long_press_ms": 300
+      "long_press_ms": 300,
+      "_doc_length_dp": "Handle length in dp (>0 overrides length_pct). Kept at 160 — UNDER the OS 200dp-per-edge systemGestureExclusionRects cap — so the WHOLE handle is excluded from system edge gestures. A taller handle leaves its upper part non-excluded, where the OS steals the held press (the long-press-never-fires bug)."
     },
     "handles": [
       {
