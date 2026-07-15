@@ -36,4 +36,13 @@ object OneHandPrefs {
     fun setEnabled(ctx: Context, on: Boolean) {
         prefs(ctx).edit().putBoolean("enabled", on).apply()
     }
+
+    fun trigger(ctx: Context, default: OneHandConfig.Trigger): OneHandConfig.Trigger {
+        val raw = prefs(ctx).getString("trigger", null) ?: return default
+        return runCatching { OneHandConfig.Trigger.valueOf(raw) }.getOrDefault(default)
+    }
+
+    fun setTrigger(ctx: Context, t: OneHandConfig.Trigger) {
+        prefs(ctx).edit().putString("trigger", t.name).apply()
+    }
 }

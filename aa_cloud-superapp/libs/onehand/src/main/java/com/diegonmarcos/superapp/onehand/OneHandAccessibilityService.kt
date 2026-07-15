@@ -8,7 +8,9 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.HapticFeedbackConstants
 import android.view.accessibility.AccessibilityEvent
+import kotlin.math.hypot
 
 /**
  * Hosts the edge handles (WindowManager overlay), the live gesture-preview arrow,
@@ -26,6 +28,8 @@ class OneHandAccessibilityService : AccessibilityService() {
 
     private var downX = 0f
     private var downY = 0f
+    private var activated = false
+    private var pending: Runnable? = null
 
     override fun onServiceConnected() {
         instance = this
@@ -76,7 +80,7 @@ class OneHandAccessibilityService : AccessibilityService() {
         val dm = resources.displayMetrics
         val view = View(this).apply {
             setBackgroundColor(handleColor(h.transparency))
-            setOnTouchListener { _, e -> onHandleTouch(h, e) }
+            setOnTouchListener { v, e -> onHandleTouch(h, v, e) }
         }
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -112,29 +116,51 @@ class OneHandAccessibilityService : AccessibilityService() {
         // and co-activates with the Samsung/Android/Termux edge gestures.
     }
 
-    private fun onHandleTouch(h: OneHandConfig.Handle, e: MotionEvent): Boolean {
+    private fun onHandleTouch(h: OneHandConfig.Handle, view: View, e: MotionEvent): Boolean {
+        val c = cfg ?: return true
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                downX = e.rawX; downY = e.rawY
-                preview?.begin(buildOptions(h)); updatePreview(h, e)
+                downX = e.rawX; downY = e.rawY; activated = false
+                if (c.trigger == OneHandConfig.Trigger.TOUCH) activate(h)
+                else {
+                    val r = Runnable {
+                        activate(h)
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    }
+                    pending = r; view.postDelayed(r, c.longPressMs.toLong())
+                }
             }
-            MotionEvent.ACTION_MOVE -> updatePreview(h, e)
+            MotionEvent.ACTION_MOVE ->
+                if (activated) updatePreview(h, e.rawX, e.rawY)
+                // Moved before the long-press fired → a scroll/quick swipe, not our
+                // gesture: cancel activation and let it pass as a normal swipe.
+                else if (hypot(e.rawX - downX, e.rawY - downY) > dp(16)) cancelPending(view)
             MotionEvent.ACTION_UP -> {
-                val c = cfg
-                if (c != null) {
+                cancelPending(view)
+                if (activated) {
                     SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
                         ?.let { key -> h.gestures[key]?.perform(this) }
+                    preview?.end()
                 }
-                preview?.end()
+                activated = false
             }
-            MotionEvent.ACTION_CANCEL -> preview?.end()
+            MotionEvent.ACTION_CANCEL -> { cancelPending(view); preview?.end(); activated = false }
         }
         return true
     }
 
-    private fun updatePreview(h: OneHandConfig.Handle, e: MotionEvent) {
-        val dir = SwipeClassifier.sector(h.edge, e.rawX - downX, e.rawY - downY)
-        preview?.update(downX, downY, e.rawX, e.rawY, dir)
+    private fun activate(h: OneHandConfig.Handle) {
+        activated = true
+        preview?.begin(buildOptions(h))
+        preview?.update(downX, downY, downX, downY, null)
+    }
+
+    private fun cancelPending(view: View) {
+        pending?.let { view.removeCallbacks(it) }; pending = null
+    }
+
+    private fun updatePreview(h: OneHandConfig.Handle, x: Float, y: Float) {
+        preview?.update(downX, downY, x, y, SwipeClassifier.sector(h.edge, x - downX, y - downY))
     }
 
     /** Fan of the handle's 3 sector options for the preview, at canonical angles. */

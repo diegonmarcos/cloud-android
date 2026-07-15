@@ -57,6 +57,16 @@ class OneHandFragment : Fragment() {
         }
         root.addView(toggle)
 
+        root.addView(Switch(ctx).apply {
+            text = "Summon menu on long-press (off = on touch)"
+            isChecked = OneHandConfig.effective(ctx).trigger == OneHandConfig.Trigger.LONG_PRESS
+            setOnCheckedChangeListener { _, on ->
+                OneHandPrefs.setTrigger(ctx,
+                    if (on) OneHandConfig.Trigger.LONG_PRESS else OneHandConfig.Trigger.TOUCH)
+                OneHandController.refresh(ctx)
+            }
+        })
+
         val cfg = OneHandConfig.effective(ctx)
         val options = buildOptions(cfg)
 

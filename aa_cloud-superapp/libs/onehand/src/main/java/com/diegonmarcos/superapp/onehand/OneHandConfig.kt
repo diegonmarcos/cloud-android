@@ -17,8 +17,13 @@ data class OneHandConfig(
     val handles: List<Handle>,
     val apps: List<AppOption>,
     val swipeThresholdDp: Int,
+    val trigger: Trigger,
+    val longPressMs: Int,
 ) {
     enum class Edge { LEFT, RIGHT, BOTTOM }
+
+    /** How the option menu is summoned: hold the handle, or on first touch. */
+    enum class Trigger { LONG_PRESS, TOUCH }
 
     data class Handle(
         val id: String,
@@ -58,12 +63,18 @@ data class OneHandConfig(
                     add(AppOption(a.optString("label"), a.optString("package")))
                 }
             }
-            return OneHandConfig(handles, apps, d.optInt("swipe_threshold_dp", 24))
+            val trigger = if (d.optString("trigger", "long_press").equals("touch", true))
+                Trigger.TOUCH else Trigger.LONG_PRESS
+            return OneHandConfig(
+                handles, apps, d.optInt("swipe_threshold_dp", 24),
+                trigger, d.optInt("long_press_ms", 300),
+            )
         }
 
-        /** Baked defaults with the user's per-swipe overrides ([OneHandPrefs]) applied. */
+        /** Baked defaults with the user's overrides ([OneHandPrefs]) applied. */
         fun effective(ctx: Context): OneHandConfig {
             val base = decode(BuildConfig.ONEHAND_CONFIG_B64)
+                .let { it.copy(trigger = OneHandPrefs.trigger(ctx, it.trigger)) }
             return base.copy(handles = base.handles.map { h ->
                 val merged = LinkedHashMap<String, GestureAction>()
                 for (slot in slotsFor(h.edge)) {
