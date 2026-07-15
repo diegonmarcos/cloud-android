@@ -108,14 +108,8 @@ class OneHandAccessibilityService : AccessibilityService() {
         }
         wm.addView(view, lp)
         views.add(view)
-        // Tell the OS not to treat swipes on the handle as system nav (Samsung /
-        // Android edge back-gesture), so ours doesn't conflict with the native one.
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            view.post {
-                view.systemGestureExclusionRects =
-                    listOf(android.graphics.Rect(0, 0, view.width, view.height))
-            }
-        }
+        // No systemGestureExclusionRects on purpose: the handle sits ON the edge
+        // and co-activates with the Samsung/Android/Termux edge gestures.
     }
 
     private fun onHandleTouch(h: OneHandConfig.Handle, e: MotionEvent): Boolean {

@@ -295,7 +295,7 @@
       "thickness_dp": 20,
       "transparency": 0,
       "swipe_threshold_dp": 24,
-      "edge_inset_dp": 24
+      "edge_inset_dp": 0
     },
     "handles": [
       {
