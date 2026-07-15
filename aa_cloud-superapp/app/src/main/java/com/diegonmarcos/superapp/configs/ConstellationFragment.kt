@@ -67,8 +67,15 @@ class ConstellationFragment : Fragment() {
     // ── header: Update-all / Check-all + auto-update toggle + grant ──────────
     private fun renderHeader(ctx: Context) {
         headerControls.removeAllViews()
+        // Row 1 — the two batch actions, kept apart so they read as distinct:
+        //   Update all → only apps ALREADY installed that have a newer image.
+        //   Install all → only apps not yet on the device.
         headerControls.addView(buttonRow(ctx,
             btn(ctx, "⬆  Update all", 0xFF7C3AED.toInt()) { updateAll(ctx) },
+            btn(ctx, "⬇  Install all", 0xFF2B6CB0.toInt()) { installMissing(ctx) },
+        ))
+        // Row 2 — refresh statuses (full width).
+        headerControls.addView(buttonRow(ctx,
             btn(ctx, "↻  Check all", 0xFF2A2A33.toInt()) { checkAll(ctx) },
         ))
         val autoOn = AutoUpdatePrefs.enabled(ctx)
@@ -184,11 +191,28 @@ class ConstellationFragment : Fragment() {
         }
     }
 
+    // "Update all" — only apps ALREADY installed that have a newer image.
     private fun updateAll(ctx: Context) {
-        Toast.makeText(ctx, "Updating all…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(ctx, "Updating installed apps…", Toast.LENGTH_SHORT).show()
+        thread(name = "fleet-update-all") {
+            val n = Fleet.installAll(ctx, apps, Fleet.Mode.UPDATES)
+            view?.post {
+                Toast.makeText(ctx, if (n == 0) "Everything up to date" else "$n update(s) queued",
+                    Toast.LENGTH_LONG).show()
+            }
+            checkAll(ctx)
+        }
+    }
+
+    // "Install all" — only apps not yet on the device.
+    private fun installMissing(ctx: Context) {
+        Toast.makeText(ctx, "Installing missing apps…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-install-all") {
-            val n = Fleet.installAll(ctx, apps)
-            view?.post { Toast.makeText(ctx, "$n app(s) queued", Toast.LENGTH_LONG).show() }
+            val n = Fleet.installAll(ctx, apps, Fleet.Mode.MISSING)
+            view?.post {
+                Toast.makeText(ctx, if (n == 0) "All apps already installed" else "$n install(s) queued",
+                    Toast.LENGTH_LONG).show()
+            }
             checkAll(ctx)
         }
     }

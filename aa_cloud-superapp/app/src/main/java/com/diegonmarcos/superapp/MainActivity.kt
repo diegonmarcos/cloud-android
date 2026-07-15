@@ -1346,7 +1346,8 @@ class MainActivity : AppCompatActivity(),
                 kotlin.concurrent.thread {
                     val fleet = com.diegonmarcos.superapp.updater.Fleet
                         .parse(BuildConfig.CONSTELLATION_FLEET_B64)
-                    com.diegonmarcos.superapp.updater.Fleet.installAll(applicationContext, fleet)
+                    com.diegonmarcos.superapp.updater.Fleet.installAll(
+                        applicationContext, fleet, com.diegonmarcos.superapp.updater.Fleet.Mode.UPDATES)
                 }
             }
             // Drawer "Home Apps" entry → open the same pull-up sheet the

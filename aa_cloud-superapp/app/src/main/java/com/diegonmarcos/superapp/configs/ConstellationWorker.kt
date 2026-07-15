@@ -45,12 +45,12 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         try {
             val apps = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
             // Auto-update ON ⇒ actually INSTALL available updates for the whole
-            // fleet (updatesOnly = don't auto-install apps the user never chose).
+            // fleet (Mode.UPDATES = don't auto-install apps the user never chose).
             // Silent when 'install unknown apps' is granted; otherwise each
             // install posts a tap-to-confirm notification (PackageInstallerReceiver).
             // Fleet.status catches its own per-app errors so one bad image can't
             // throw here (the old 'forever looping' bug); always return success.
-            val acted = Fleet.installAll(applicationContext, apps, updatesOnly = true)
+            val acted = Fleet.installAll(applicationContext, apps, Fleet.Mode.UPDATES)
             Log.i(TAG, "auto-update: acted on $acted app(s)")
             if (acted > 0) notifyUpdates(applicationContext, acted)
         } catch (t: Throwable) {

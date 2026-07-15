@@ -157,22 +157,26 @@ object Fleet {
         Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
     }
 
+    /** Which apps installAll acts on. UPDATES = only apps ALREADY installed
+     *  that have a newer image ("Update all" + background auto-update — never
+     *  touches apps the user hasn't installed). MISSING = only not-yet-installed
+     *  apps ("Install all"). ALL = both. */
+    enum class Mode { UPDATES, MISSING, ALL }
+
     /**
-     * Install/update fleet apps. [updatesOnly]=false (the "Update All" button)
-     * also installs Missing apps; [updatesOnly]=true (background auto-update)
-     * touches only apps with an update available — never auto-installs apps the
-     * user hasn't chosen. Sequential (PackageInstaller sessions mustn't collide);
-     * per-app failures don't abort the rest. Returns how many were acted on.
+     * Install/update fleet apps, filtered by [mode] (see [Mode]). Sequential
+     * (PackageInstaller sessions mustn't collide); per-app failures don't abort
+     * the rest. Returns how many were acted on.
      */
-    fun installAll(ctx: Context, apps: List<App>, updatesOnly: Boolean = false): Int {
+    fun installAll(ctx: Context, apps: List<App>, mode: Mode = Mode.ALL): Int {
         // Decide the work-list FIRST (status checks, no overlay yet) so the
         // batch header can show a correct "N/total" — otherwise the overlay's
         // bar just resets 0→100 per app with no context (scrambled-progress bug).
         val todo = apps.filter { app ->
             if (app.blocked) return@filter false
             when (status(ctx, app)) {
-                is State.UpdateAvailable -> true
-                State.Missing -> !updatesOnly
+                is State.UpdateAvailable -> mode != Mode.MISSING
+                State.Missing -> mode != Mode.UPDATES
                 else -> false
             }
         }
