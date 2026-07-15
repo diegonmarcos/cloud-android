@@ -19,7 +19,10 @@ import kotlin.math.sin
  */
 class GesturePreviewView(ctx: Context) : View(ctx) {
 
-    data class Option(val key: String, val label: String, val angleDeg: Double) {
+    data class Option(
+        val key: String, val label: String, val angleDeg: Double,
+        val icon: android.graphics.Bitmap? = null,
+    ) {
         var hi = 0f // 0..1 highlight, eased toward active
     }
 
@@ -78,13 +81,22 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
             val py = sy + (r * sin(a)).toFloat()
             val hi = o.hi
             fill.color = blend(Color.argb(160, 30, 30, 34), accent, hi)
-            val padH = (12f + 4f * hi) * d
-            val padV = (8f + 3f * hi) * d
-            val w = text.measureText(o.label) / 2f
-            val rect = RectF(px - w - padH, py - padV - 7f * d, px + w + padH, py + padV + 7f * d)
-            canvas.drawRoundRect(rect, 14f * d, 14f * d, fill)
-            text.color = blend(Color.LTGRAY, Color.WHITE, hi)
-            canvas.drawText(o.label, px, py + 5f * d, text)
+            if (o.icon != null) {
+                // App: draw the launcher icon in a rounded chip that grows when active.
+                val half = (18f + 5f * hi) * d
+                val chip = RectF(px - half, py - half, px + half, py + half)
+                canvas.drawRoundRect(chip, 14f * d, 14f * d, fill)
+                val ic = (14f + 4f * hi) * d
+                canvas.drawBitmap(o.icon, null, RectF(px - ic, py - ic, px + ic, py + ic), null)
+            } else {
+                val padH = (12f + 4f * hi) * d
+                val padV = (8f + 3f * hi) * d
+                val w = text.measureText(o.label) / 2f
+                val rect = RectF(px - w - padH, py - padV - 7f * d, px + w + padH, py + padV + 7f * d)
+                canvas.drawRoundRect(rect, 14f * d, 14f * d, fill)
+                text.color = blend(Color.LTGRAY, Color.WHITE, hi)
+                canvas.drawText(o.label, px, py + 5f * d, text)
+            }
         }
         // Arrow following the finger.
         val len = hypot(cx - sx, cy - sy)

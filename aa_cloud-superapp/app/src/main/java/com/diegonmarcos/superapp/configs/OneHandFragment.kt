@@ -32,7 +32,10 @@ class OneHandFragment : Fragment() {
     private lateinit var status: TextView
     private lateinit var toggle: Switch
 
-    private data class Option(val label: String, val action: GestureAction?)
+    private data class Option(
+        val label: String, val action: GestureAction?,
+        val icon: android.graphics.drawable.Drawable? = null,
+    )
 
     override fun onCreateView(inf: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext()
@@ -94,7 +97,35 @@ class OneHandFragment : Fragment() {
         OneHandAction.entries
             .filter { it != OneHandAction.NONE && it.supported }
             .forEach { add(Option(prettify(it.name), GestureAction.Global(it))) }
-        cfg.apps.forEach { add(Option("Open: ${it.label}", GestureAction.OpenApp(it.pkg))) }
+        val pm = requireContext().packageManager
+        cfg.apps.forEach {
+            val icon = runCatching { pm.getApplicationIcon(it.pkg) }.getOrNull()
+            add(Option(it.label, GestureAction.OpenApp(it.pkg), icon))
+        }
+    }
+
+    private fun optionAdapter(ctx: Context, options: List<Option>) =
+        object : ArrayAdapter<Option>(ctx, 0, options) {
+            override fun getView(pos: Int, cv: View?, parent: ViewGroup) = rowView(ctx, options[pos])
+            override fun getDropDownView(pos: Int, cv: View?, parent: ViewGroup) = rowView(ctx, options[pos])
+        }
+
+    /** One spinner row: app icon (if any) + label. */
+    private fun rowView(ctx: Context, o: Option): View {
+        val d = resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(10), dp(8), dp(10))
+            o.icon?.let {
+                addView(android.widget.ImageView(ctx).apply {
+                    setImageDrawable(it)
+                    layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(10) }
+                })
+            }
+            addView(TextView(ctx).apply { text = o.label })
+        }
     }
 
     private fun addHandleEditor(
@@ -105,8 +136,7 @@ class OneHandFragment : Fragment() {
             text = "${h.edge.name.lowercase().replaceFirstChar { it.uppercase() }} handle"
             gravity = Gravity.CENTER; setPadding(0, pad, 0, pad / 2); textSize = 16f
         })
-        val labels = options.map { it.label }
-        val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, labels)
+        val adapter = optionAdapter(ctx, options)
         for (slot in OneHandConfig.slotsFor(h.edge)) {
             col.addView(TextView(ctx).apply {
                 text = slot.label; gravity = Gravity.CENTER; setPadding(0, pad / 2, 0, 0)
