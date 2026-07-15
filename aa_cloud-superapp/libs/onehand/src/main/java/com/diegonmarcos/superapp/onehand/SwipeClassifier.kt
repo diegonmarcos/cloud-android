@@ -11,9 +11,14 @@ import kotlin.math.hypot
  * inward). `dx`/`dy` are end-minus-start pixels. Bottom edge → left/center/right.
  */
 object SwipeClassifier {
-    private const val STRAIGHT_DEG = 30.0 // half-cone of "center"
+    // Each sector is a BAND around its canonical angle; the gaps between bands
+    // (and the steep/outward zones) are dead zones — releasing there returns
+    // null, which cancels (closes the menu without firing).
+    private const val CENTER_HALF = 22.0   // center = |angle| ≤ 22
+    private const val DIAG_MIN = 32.0      // diagonal band = 32..68 (gap 22..32)
+    private const val DIAG_MAX = 68.0      // beyond 68 (near along-edge) = dead
 
-    /** Sector key, or null for an outward / too-shallow drag. */
+    /** Sector key, or null for a dead-zone / outward / too-shallow drag (= cancel). */
     fun sector(edge: OneHandConfig.Edge, dx: Float, dy: Float): String? {
         val (inward, lateral, neg, pos) = when (edge) {
             OneHandConfig.Edge.RIGHT -> Axes(-dx, dy, "top", "down")
@@ -22,10 +27,11 @@ object SwipeClassifier {
         }
         if (inward <= 0f) return null
         val angleDeg = Math.toDegrees(atan2(lateral.toDouble(), inward.toDouble()))
+        val a = abs(angleDeg)
         return when {
-            abs(angleDeg) <= STRAIGHT_DEG -> "center"
-            angleDeg < 0 -> neg
-            else -> pos
+            a <= CENTER_HALF -> "center"
+            a in DIAG_MIN..DIAG_MAX -> if (angleDeg < 0) neg else pos
+            else -> null // dead zone → cancel
         }
     }
 

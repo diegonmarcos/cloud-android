@@ -153,12 +153,26 @@ class DevControlFragment : Fragment() {
                 typeface = android.graphics.Typeface.MONOSPACE
                 textSize = 10f
                 setTextIsSelectable(true)
-                setPadding(dp(8), dp(8), dp(8), dp(8))
+                setHorizontallyScrolling(true) // long lines scroll instead of wrapping
+                setPadding(dp(10), dp(10), dp(10), dp(10))
             }
+            // Bordered, independently-scrollable frame nested in the page ScrollView.
             val logScroll = android.widget.ScrollView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(300))
-                addView(logView)
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(340)).apply {
+                    topMargin = dp(8); bottomMargin = dp(8)
+                }
+                isVerticalScrollBarEnabled = true
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = dp(10).toFloat()
+                    setStroke(dp(1), android.graphics.Color.parseColor("#4DA3FF"))
+                    setColor(android.graphics.Color.parseColor("#0D0D12"))
+                }
+                // Keep our own vertical scroll instead of the outer page stealing it.
+                setOnTouchListener { v, _ -> v.parent.requestDisallowInterceptTouchEvent(true); false }
+                // Long lines: let the log pane scroll horizontally too.
+                val h = android.widget.HorizontalScrollView(ctx).apply { addView(logView) }
+                addView(h)
             }
             var errorsOnly = false
             fun refresh() {

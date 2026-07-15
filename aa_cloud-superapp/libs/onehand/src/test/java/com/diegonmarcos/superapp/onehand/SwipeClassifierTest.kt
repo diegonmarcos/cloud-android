@@ -24,4 +24,8 @@ class SwipeClassifierTest {
     @Test fun bottomRightTilt() = assertEquals("right", c(B, 60f, -60f))
     @Test fun bottomDownNull() = assertNull(c(B, 0f, 60f))
     @Test fun belowThresholdNull() = assertNull(c(R, -10f, 0f))
+    // Dead zones (release here = cancel): seam between center & diagonal (~26°)…
+    @Test fun gapBetweenCenterAndTopIsNull() = assertNull(c(R, -60f, -30f))
+    // …and the steep near-along-edge zone (~76°).
+    @Test fun steepIsNull() = assertNull(c(R, -20f, -80f))
 }
