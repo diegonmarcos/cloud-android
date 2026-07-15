@@ -19,8 +19,18 @@ data class OneHandConfig(
     val swipeThresholdDp: Int,
     val trigger: Trigger,
     val longPressMs: Int,
+    val radial: Radial,
 ) {
     enum class Edge { LEFT, RIGHT, BOTTOM }
+
+    /** Two-finger radial menu (observe-only, needs Android 14+). */
+    data class Radial(
+        val enabled: Boolean,
+        val holdMs: Int,
+        val slopDp: Int,
+        val radiusDp: Int,
+        val items: List<GestureAction>,
+    )
 
     /** How the option menu is summoned: hold the handle, or on first touch. */
     enum class Trigger { LONG_PRESS, TOUCH }
@@ -66,9 +76,21 @@ data class OneHandConfig(
             }
             val trigger = if (d.optString("trigger", "long_press").equals("touch", true))
                 Trigger.TOUCH else Trigger.LONG_PRESS
+            val rj = json.optJSONObject("radial") ?: JSONObject()
+            val ritems = rj.optJSONArray("items")
+            val radial = Radial(
+                enabled = rj.optBoolean("enabled", false),
+                holdMs = rj.optInt("two_finger_hold_ms", 250),
+                slopDp = rj.optInt("slop_dp", 40),
+                radiusDp = rj.optInt("radius_dp", 120),
+                items = buildList {
+                    for (i in 0 until (ritems?.length() ?: 0))
+                        GestureAction.parse(ritems!!.optString(i))?.let { add(it) }
+                },
+            )
             return OneHandConfig(
                 handles, apps, d.optInt("swipe_threshold_dp", 24),
-                trigger, d.optInt("long_press_ms", 300),
+                trigger, d.optInt("long_press_ms", 300), radial,
             )
         }
 

@@ -1,7 +1,11 @@
 package com.diegonmarcos.superapp.onehand
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
+import android.view.InputDevice
 import android.graphics.PixelFormat
 import android.util.Log
 import android.util.TypedValue
@@ -35,8 +39,91 @@ class OneHandAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        Log.i(TAG, "onServiceConnected: enabled=${OneHandPrefs.isEnabled(this)}")
+        val c = OneHandConfig.effective(this)
+        Log.i(TAG, "onServiceConnected: enabled=${OneHandPrefs.isEnabled(this)} radial=${c.radial.enabled} sdk=${android.os.Build.VERSION.SDK_INT}")
+        // Observe-only global touch for the two-finger radial menu (Android 14+).
+        if (c.radial.enabled && android.os.Build.VERSION.SDK_INT >= 34) {
+            runCatching {
+                serviceInfo = serviceInfo.apply {
+                    flags = flags or AccessibilityServiceInfo.FLAG_SEND_MOTION_EVENTS
+                    setMotionEventSources(InputDevice.SOURCE_TOUCHSCREEN)
+                }
+                Log.i(TAG, "radial: FLAG_SEND_MOTION_EVENTS enabled")
+            }.onFailure { Log.i(TAG, "radial: motion-events setup failed: ${it.message}") }
+        }
         if (OneHandPrefs.isEnabled(this)) showHandles()
+    }
+
+    // ── Two-finger radial menu (observe-only via onMotionEvent) ──────────
+    private val handler = Handler(Looper.getMainLooper())
+    private var radialView: RadialMenuView? = null
+    private var radialOpen = false
+    private var radialPending: Runnable? = null
+    private var rcx = 0f; private var rcy = 0f
+    private var radialActive = -1
+
+    override fun onMotionEvent(e: android.view.MotionEvent) {
+        val c = cfg ?: OneHandConfig.effective(this).also { cfg = it }
+        if (!c.radial.enabled) return
+        val n = e.pointerCount
+        if (!radialOpen) {
+            if (n == 2) {
+                if (radialPending == null) {
+                    rcx = (e.getRawX(0) + e.getRawX(1)) / 2f
+                    rcy = (e.getRawY(0) + e.getRawY(1)) / 2f
+                    val r = Runnable { openRadial(c) }
+                    radialPending = r; handler.postDelayed(r, c.radial.holdMs.toLong())
+                } else {
+                    val mx = (e.getRawX(0) + e.getRawX(1)) / 2f
+                    val my = (e.getRawY(0) + e.getRawY(1)) / 2f
+                    if (hypot(mx - rcx, my - rcy) > dp(c.radial.slopDp)) cancelRadialPending()
+                }
+            } else cancelRadialPending()
+        } else {
+            radialActive = radialView?.move(e.getRawX(0), e.getRawY(0), dp(72).toFloat()) ?: -1
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_UP -> fireRadial(c)   // last finger lifted
+                android.view.MotionEvent.ACTION_CANCEL -> closeRadial()
+            }
+        }
+    }
+
+    private fun cancelRadialPending() {
+        radialPending?.let { handler.removeCallbacks(it) }; radialPending = null
+    }
+
+    private fun openRadial(c: OneHandConfig) {
+        radialPending = null
+        val wm = windowManager ?: return
+        val its = c.radial.items.map {
+            RadialMenuView.Item(labelForAction(it), (it as? GestureAction.OpenApp)?.let { a -> appIcon(a.pkg) })
+        }
+        val v = RadialMenuView(this)
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        )
+        runCatching { wm.addView(v, lp) }
+        radialView = v; radialOpen = true; radialActive = -1
+        v.open(rcx, rcy, dp(c.radial.radiusDp).toFloat(), its)
+        Log.i(TAG, "radial OPEN at ${rcx.toInt()},${rcy.toInt()} items=${its.size}")
+    }
+
+    private fun fireRadial(c: OneHandConfig) {
+        val idx = radialActive
+        Log.i(TAG, "radial FIRE idx=$idx")
+        c.radial.items.getOrNull(idx)?.perform(this)
+        closeRadial()
+    }
+
+    private fun closeRadial() {
+        radialView?.let { it.close(); runCatching { windowManager?.removeView(it) } }
+        radialView = null; radialOpen = false; radialActive = -1
+        cancelRadialPending()
     }
 
     override fun onDestroy() {
