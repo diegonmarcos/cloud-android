@@ -22,24 +22,14 @@ class App : Application(), WorkManagerConfiguration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        // Mirror helium314.keyboard.latin.App.onCreate's synchronous init.
-        // Crash takeout — persist uncaught-exception stacks to a local file
-        // (the app's OWN external dir: Android/data/com.diegonmarcos.cloudkeyboard/
-        // files/crash-<ts>.txt). No READ_LOGS/storage permission needed and it's
-        // visible in any file manager, so a crash can be pulled without adb/logcat.
-        // Chains to the previous handler so the system crash dialog still shows.
-        val prevCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { t, ex ->
-            runCatching {
-                val dir = getExternalFilesDir(null) ?: filesDir
-                java.io.PrintWriter(java.io.File(dir, "crash-${System.currentTimeMillis()}.txt")).use { pw ->
-                    pw.println("thread=${t.name}  time=${java.util.Date()}")
-                    ex.printStackTrace(pw)
-                }
-            }
-            prevCrashHandler?.uncaughtException(t, ex)
-        }
+        // Crash takeout — on any uncaught exception, drop the stack into a
+        // single, predictably-named SHARED file: Download/cloud-keyboard-log-error.log
+        // (MediaStore, no permission on Android 10+). Readable from Termux
+        // (~/storage/Download) or any file manager — no adb/logcat needed.
+        // Mirrors the superapp's cloud-superapp-log-error.log.
+        CrashTakeout.install(this, "cloud-keyboard-log-error.log")
 
+        // Mirror helium314.keyboard.latin.App.onCreate's synchronous init.
         runCatching { helium314.keyboard.latin.define.DebugFlags.init(this) }
         runCatching { helium314.keyboard.latin.utils.FoldableUtils.init(this) }
         runCatching { helium314.keyboard.latin.settings.Settings.init(this) }

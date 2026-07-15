@@ -61,6 +61,12 @@ object CrashLogger {
                 // permission needed on Android 10+ (scoped storage).
                 writeToPublicDownloads(context, "crash-$timestamp.txt", payload)
 
+                // (2b) ALSO a single, predictably-named latest-crash file at the
+                // ROOT of Downloads: Download/cloud-superapp-log-error.log. Always
+                // overwritten, so there's exactly one file to grab (no timestamp
+                // hunting) — matches the keyboard's cloud-keyboard-log-error.log.
+                writeLatestErrorLog(context, "cloud-superapp-log-error.log", payload)
+
                 // (3) Also dump a snapshot of the live Trace file alongside the
                 // crash — the last N log lines are usually what diagnose the
                 // failure mode (the crash file just has the throw site).
@@ -112,6 +118,41 @@ object CrashLogger {
             }
         } catch (t: Throwable) {
             Log.w(TAG, "MediaStore write failed", t)
+        }
+    }
+
+    /** Overwrite a single, predictably-named latest-crash file in the ROOT of
+     *  Downloads (Download/<fileName>) so it's trivial to find and pull from
+     *  Termux (~/storage/Download) or any file manager. Deletes any prior copy
+     *  first so there is always exactly one current file (no "(1)"/"(2)" dupes).
+     *  No permission needed on Android 10+ (scoped storage / own MediaStore rows). */
+    internal fun writeLatestErrorLog(context: Context, fileName: String, body: String) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val cr = context.contentResolver
+                // Our fixed name is unique, so match on DISPLAY_NAME alone.
+                runCatching {
+                    cr.delete(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                        "${MediaStore.Downloads.DISPLAY_NAME}=?",
+                        arrayOf(fileName),
+                    )
+                }
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return
+                cr.openOutputStream(uri)?.use { it.write(body.toByteArray()) }
+                Log.i(TAG, "wrote Download/$fileName via MediaStore ($uri)")
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                File(dir, fileName).writeText(body)
+                Log.i(TAG, "wrote legacy Download/$fileName")
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "latest error log write failed", t)
         }
     }
 }
