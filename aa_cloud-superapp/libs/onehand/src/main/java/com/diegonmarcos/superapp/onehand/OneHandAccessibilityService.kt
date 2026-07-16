@@ -44,15 +44,16 @@ class OneHandAccessibilityService : AccessibilityService() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val c = OneHandConfig.effective(this)
         Log.i(TAG, "onServiceConnected: enabled=${OneHandPrefs.isEnabled(this)} radial=${c.radial.enabled} sdk=${android.os.Build.VERSION.SDK_INT}")
-        // Observe-only global touch for the two-finger radial menu (Android 14+).
-        if (c.radial.enabled && android.os.Build.VERSION.SDK_INT >= 34) {
+        // Observe-only global touch (Android 14+): drives BOTH the edge handle
+        // (single-finger long-press, pass-through) and the two-finger radial.
+        if (observeMode) {
             runCatching {
                 serviceInfo = serviceInfo.apply {
                     flags = flags or AccessibilityServiceInfo.FLAG_SEND_MOTION_EVENTS
                     setMotionEventSources(InputDevice.SOURCE_TOUCHSCREEN)
                 }
-                Log.i(TAG, "radial: FLAG_SEND_MOTION_EVENTS enabled")
-            }.onFailure { Log.i(TAG, "radial: motion-events setup failed: ${it.message}") }
+                Log.i(TAG, "FLAG_SEND_MOTION_EVENTS enabled (observe-only handle + radial)")
+            }.onFailure { Log.i(TAG, "motion-events setup failed: ${it.message}") }
         }
         if (OneHandPrefs.isEnabled(this)) showHandles()
     }
@@ -65,9 +66,23 @@ class OneHandAccessibilityService : AccessibilityService() {
     private var rcx = 0f; private var rcy = 0f
     private var radialActive = -1
 
+    // ── Observe-only edge handle (API 34+): non-touchable window never holds a
+    //    touch; long-press detected purely from onMotionEvent, so short taps &
+    //    everything else pass straight to the app. ──
+    private val observeMode = android.os.Build.VERSION.SDK_INT >= 34
+    private val handleRects = mutableListOf<Pair<OneHandConfig.Handle, android.graphics.Rect>>()
+    private var activeHandle: OneHandConfig.Handle? = null
+    private var handlePending: Runnable? = null
+
     override fun onMotionEvent(e: android.view.MotionEvent) {
         val c = cfg ?: OneHandConfig.effective(this).also { cfg = it }
-        if (!c.radial.enabled) return
+        val n = e.pointerCount
+        // Two-finger radial takes precedence while active or a 2nd finger is down.
+        if (c.radial.enabled && (radialOpen || n >= 2)) { onRadialMotion(c, e); return }
+        onHandleMotion(c, e)
+    }
+
+    private fun onRadialMotion(c: OneHandConfig, e: android.view.MotionEvent) {
         val n = e.pointerCount
         if (!radialOpen) {
             if (n == 2) {
@@ -85,10 +100,50 @@ class OneHandAccessibilityService : AccessibilityService() {
         } else {
             radialActive = radialView?.move(e.getRawX(0), e.getRawY(0), dp(72).toFloat()) ?: -1
             when (e.actionMasked) {
-                android.view.MotionEvent.ACTION_UP -> fireRadial(c)   // last finger lifted
+                android.view.MotionEvent.ACTION_UP -> fireRadial(c)
                 android.view.MotionEvent.ACTION_CANCEL -> closeRadial()
             }
         }
+    }
+
+    /** Single-finger edge handle, OBSERVE-ONLY: we never consume, so short taps &
+     *  scrolls flow to the app; only a held press within a handle rect opens ours. */
+    private fun onHandleMotion(c: OneHandConfig, e: android.view.MotionEvent) {
+        if (!observeMode) return // <34 uses the touchable-window path (onHandleTouch)
+        val x = e.getRawX(0); val y = e.getRawY(0)
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                val hit = handleRects.firstOrNull { it.second.contains(x.toInt(), y.toInt()) }
+                if (hit == null) { activeHandle = null; return }
+                activeHandle = hit.first; downX = x; downY = y; activated = false
+                Log.i(TAG, "handle DOWN ${hit.first.id} @${x.toInt()},${y.toInt()} trigger=${c.trigger}")
+                if (c.trigger == OneHandConfig.Trigger.TOUCH) activate(hit.first)
+                else { val r = Runnable { activate(hit.first) }; handlePending = r; handler.postDelayed(r, c.longPressMs.toLong()) }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val ah = activeHandle ?: return
+                if (activated) updatePreview(ah, x, y)
+                else if (hypot(x - downX, y - downY) > dp(16)) cancelHandlePending()
+            }
+            MotionEvent.ACTION_UP -> {
+                val ah = activeHandle
+                cancelHandlePending()
+                if (activated && ah != null) {
+                    val key = SwipeClassifier.classify(ah.edge, x - downX, y - downY, dp(c.swipeThresholdDp))
+                    Log.i(TAG, "handle UP fire key=$key")
+                    key?.let { ah.gestures[it]?.perform(this) }
+                    preview?.end()
+                }
+                activated = false; activeHandle = null
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                cancelHandlePending(); if (activated) preview?.end(); activated = false; activeHandle = null
+            }
+        }
+    }
+
+    private fun cancelHandlePending() {
+        handlePending?.let { handler.removeCallbacks(it) }; handlePending = null
     }
 
     private fun cancelRadialPending() {
@@ -148,6 +203,8 @@ class OneHandAccessibilityService : AccessibilityService() {
     fun hideHandles() {
         views.forEach { runCatching { windowManager?.removeView(it) } }
         views.clear()
+        handleRects.clear()
+        cancelHandlePending(); activeHandle = null; activated = false
         preview?.let { runCatching { windowManager?.removeView(it) } }
         preview = null
         cfg = null
@@ -162,9 +219,13 @@ class OneHandAccessibilityService : AccessibilityService() {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         )
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
         // Window opacity < 0.8 so Android 12+ "block untrusted touches" does NOT
         // drop taps that pass through this full-screen overlay to the app below
         // (this is what was silently killing Bitwarden's touches).
@@ -178,16 +239,24 @@ class OneHandAccessibilityService : AccessibilityService() {
         val dm = resources.displayMetrics
         val view = View(this).apply {
             background = handleBackground(h.transparency)
-            setOnTouchListener { v, e -> onHandleTouch(h, v, e) }
+            // Observe-only (API 34+): the window is non-touchable, so DON'T attach a
+            // touch listener — detection happens in onMotionEvent, nothing is consumed.
+            if (!observeMode) setOnTouchListener { v, e -> onHandleTouch(h, v, e) }
         }
+        var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS // reach the physical edge, not the safe area
+        if (observeMode) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            flags,
             PixelFormat.TRANSLUCENT,
         )
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
         // GUARANTEE no back-gesture conflict: in gesture-nav mode Samsung's back
         // swipe fires only from the very edge strip, so we sit our handle just
         // PAST that strip (the safe zone). In 3-button mode there's no edge
@@ -216,6 +285,18 @@ class OneHandAccessibilityService : AccessibilityService() {
         wm.addView(view, lp)
         views.add(view)
         Log.i(TAG, "addHandle ${h.id} edge=${h.edge} size=${lp.width}x${lp.height} x=${lp.x} y=${lp.y} inset=$inset")
+        if (observeMode) {
+            val rect = when (h.edge) {
+                OneHandConfig.Edge.BOTTOM ->
+                    android.graphics.Rect(lp.x, dm.heightPixels - inset - lp.height, lp.x + lp.width, dm.heightPixels - inset)
+                OneHandConfig.Edge.LEFT ->
+                    android.graphics.Rect(inset, lp.y, inset + lp.width, lp.y + lp.height)
+                else ->
+                    android.graphics.Rect(dm.widthPixels - inset - lp.width, lp.y, dm.widthPixels - inset, lp.y + lp.height)
+            }
+            handleRects.add(h to rect)
+            Log.i(TAG, "handleRect ${h.id} = $rect (screen ${dm.widthPixels}x${dm.heightPixels})")
+        }
         // CRITICAL for the LEFT handle: our inward swipe there IS the system
         // back-gesture direction, so without exclusion the OS steals it. The rect
         // MUST be set from a real layout pass (view.post fires while width/height
