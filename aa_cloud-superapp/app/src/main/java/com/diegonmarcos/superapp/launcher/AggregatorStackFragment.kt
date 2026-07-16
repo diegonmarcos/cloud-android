@@ -2,7 +2,7 @@ package com.diegonmarcos.superapp.launcher
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.devcontrol.CrashLogger
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
 import com.diegonmarcos.superapp.notificationcenter.PhoneNotificationListenerService
 import com.diegonmarcos.superapp.rss.RssFeedFragment

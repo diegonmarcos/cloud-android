@@ -1,0 +1,26 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// App-agnostic on purpose: no build.json read, no app BuildConfig. Everything
+// app-specific arrives at runtime via DevControlConfig, so this whole module
+// can be symlinked verbatim into any constellation app.
+android {
+    namespace 'com.diegonmarcos.devcontrol'
+    compileSdk 36
+    defaultConfig {
+        minSdk 26
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+}

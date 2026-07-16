@@ -1,11 +1,10 @@
-package com.diegonmarcos.superapp.devcontrol
+package com.diegonmarcos.devcontrol
 
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import com.diegonmarcos.superapp.BuildConfig
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -70,10 +69,10 @@ object DiagnosticsPush {
      *  or a negative code on transport error. No-op (returns -2) when the sink
      *  URL is empty (feature disabled in build.json). */
     fun pushToCloud(body: String): Int {
-        val base = BuildConfig.LOG_SINK_URL
+        val base = DevControl.config.logSinkUrl
         if (base.isBlank()) return -2
         val url = if (base.contains("{stream}"))
-            base.replace("{stream}", BuildConfig.LOG_SINK_STREAM) else base
+            base.replace("{stream}", DevControl.config.logSinkStream) else base
         return runCatching {
             val c = URL(url).openConnection() as HttpURLConnection
             c.requestMethod = "POST"

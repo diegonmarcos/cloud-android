@@ -657,6 +657,9 @@ dependencies {
     implementation project(':libs:battery')
     // libs:onehand — One-Hand edge-gesture overlay engine (Configs/Onehand toggle).
     implementation project(':libs:onehand')
+    // libs:devcontrol — app-agnostic dev/diagnostics engine: crash + logcat file
+    // export, Trace, HTTP control API, reusable About UI. Config via DevControlConfig.
+    implementation project(':libs:devcontrol')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

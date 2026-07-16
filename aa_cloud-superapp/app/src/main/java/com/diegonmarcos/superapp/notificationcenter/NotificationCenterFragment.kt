@@ -1,5 +1,5 @@
 package com.diegonmarcos.superapp.notificationcenter
-import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.devcontrol.CrashLogger
 import com.diegonmarcos.superapp.App
 
 import com.diegonmarcos.superapp.R

@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.devcontrol
+package com.diegonmarcos.devcontrol
 
 import android.content.Context
 import java.util.UUID

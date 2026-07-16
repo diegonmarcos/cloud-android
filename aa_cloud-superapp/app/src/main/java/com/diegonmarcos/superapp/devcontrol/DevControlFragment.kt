@@ -1,7 +1,10 @@
 package com.diegonmarcos.superapp.devcontrol
-import com.diegonmarcos.superapp.system.Trace
+import com.diegonmarcos.devcontrol.Trace
+import com.diegonmarcos.devcontrol.AboutUi
+import com.diegonmarcos.devcontrol.DevControlPrefs
+import com.diegonmarcos.devcontrol.DevControlServer
 import com.diegonmarcos.superapp.system.ScreenLocker
-import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.devcontrol.CrashLogger
 import com.diegonmarcos.superapp.system.AppProcessUptime
 import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.App
@@ -57,7 +60,7 @@ class DevControlFragment : Fragment() {
      *  the "Copy All Infos" button at the bottom can dump the whole
      *  page to the clipboard as plain text. Reset at the start of
      *  every onCreateView so it stays in sync after a reattach. */
-    private var infoBuf = StringBuilder()
+    private lateinit var ui: AboutUi
 
     /** Rebuilds this fragment in place so every Permission row re-reads
      *  its current grant state. Cheaper than rendering a full diff. */
@@ -219,7 +222,7 @@ class DevControlFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        infoBuf = StringBuilder()
+        ui = AboutUi(ctx)
         val scroll = ScrollView(ctx).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1213,7 +1216,7 @@ class DevControlFragment : Fragment() {
             }
             for ((idx, t) in trees.withIndex()) {
                 val (label, cols, intoBuf) = t
-                if (intoBuf) infoBuf.append("\n```\n").append(cols.last().second).append("\n```\n")
+                if (intoBuf) ui.infoBuf.append("\n```\n").append(cols.last().second).append("\n```\n")
                 labels += label
                 val tsize = if (cols.size > 1) 7f else 9f
                 // One horizontal row of weighted columns. Single-column trees
@@ -1313,7 +1316,7 @@ class DevControlFragment : Fragment() {
         // so this captures whatever was actually drawn — no parallel
         // data collection to keep in sync.
         column.addView(actionButton(ctx, "Copy All Infos") {
-            val snapshot = infoBuf.toString()
+            val snapshot = ui.infoBuf.toString()
             copy(ctx, snapshot)
             Toast.makeText(ctx,
                 "Copied ${snapshot.length} chars (${snapshot.count { it == '\n' }} lines)",
@@ -1347,87 +1350,24 @@ class DevControlFragment : Fragment() {
         java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 350); true }
     }.getOrDefault(false)
 
-    private fun section(ctx: Context, host: LinearLayout, head: String, body: (LinearLayout) -> Unit) {
-        infoBuf.append("\n## ").append(head).append("\n")
-        host.addView(sectionHeader(ctx, head))
-        val grp = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, dp(8))
-        }
-        host.addView(grp)
-        body(grp)
-    }
+    // These six rendering builders now delegate to the reusable libs:devcontrol
+    // AboutUi so the whole About screen renders through one shared, symlinkable
+    // toolkit. The `ctx` params are kept so the ~hundreds of call sites compile
+    // unchanged; AboutUi carries its own ctx + copy-all buffer (ui.infoBuf).
+    private fun section(ctx: Context, host: LinearLayout, head: String, body: (LinearLayout) -> Unit) =
+        ui.section(host, head, body)
 
-    private fun row(ctx: Context, host: LinearLayout, key: String, value: String): TextView {
-        infoBuf.append("  ").append(key).append(": ").append(value).append("\n")
-        val row = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(4), 0, dp(4))
-        }
-        row.addView(TextView(ctx).apply {
-            text = key
-            setTextColor(0xCCFFFFFF.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            layoutParams = LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.WRAP_CONTENT)
-        })
-        // Capture the value TextView so callers that need to update it
-        // later (e.g. async Health Connect lookup) can rebind .text
-        // without rebuilding the row. Plain callers ignore the return.
-        val valueView = TextView(ctx).apply {
-            text = value
-            setTextColor(0xFFB794F4.toInt())
-            typeface = Typeface.MONOSPACE
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            setTextIsSelectable(true)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setOnLongClickListener {
-                copy(ctx, "$key: $value")
-                Toast.makeText(ctx, "Copied $key", Toast.LENGTH_SHORT).show(); true
-            }
-        }
-        row.addView(valueView)
-        host.addView(row)
-        return valueView
-    }
+    private fun row(ctx: Context, host: LinearLayout, key: String, value: String): TextView =
+        ui.row(host, key, value)
 
-    private fun title(ctx: Context, text: String) = TextView(ctx).apply {
-        infoBuf.append("# ").append(text).append("\n")
-        this.text = text
-        setTextColor(0xFFE9D8FD.toInt())
-        typeface = Typeface.DEFAULT_BOLD
-        setTextAppearance(android.R.style.TextAppearance_Material_Headline)
-        setPadding(0, 0, 0, dp(12))
-    }
+    private fun title(ctx: Context, text: String) = ui.title(text)
 
-    private fun sectionHeader(ctx: Context, text: String) = TextView(ctx).apply {
-        this.text = text
-        setTextColor(0xFF7C3AED.toInt())
-        typeface = Typeface.DEFAULT_BOLD
-        setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
-        setPadding(0, dp(14), 0, dp(4))
-    }
+    private fun sectionHeader(ctx: Context, text: String) = ui.sectionHeader(text)
 
-    private fun small(ctx: Context, text: String) = TextView(ctx).apply {
-        this.text = text
-        setTextColor(0x99FFFFFF.toInt())
-        setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-        setPadding(0, dp(4), 0, dp(4))
-    }
+    private fun small(ctx: Context, text: String) = ui.small(text)
 
-    private fun actionButton(ctx: Context, label: String, bg: Int = 0xFF7C3AED.toInt(), onClick: () -> Unit) = TextView(ctx).apply {
-        text = label
-        setTextColor(0xFFFFFFFF.toInt())
-        setBackgroundColor(bg)
-        gravity = android.view.Gravity.CENTER
-        setPadding(dp(12), dp(10), dp(12), dp(10))
-        val lp = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply { topMargin = dp(8) }
-        layoutParams = lp
-        isClickable = true; isFocusable = true
-        setOnClickListener { onClick() }
-    }
+    private fun actionButton(ctx: Context, label: String, bg: Int = 0xFF7C3AED.toInt(), onClick: () -> Unit) =
+        ui.actionButton(label, bg, onClick)
 
     /** Horizontal row of equal-width action buttons. Each button gets
      *  weight=1 so 5 buttons across share the row evenly. Multi-line

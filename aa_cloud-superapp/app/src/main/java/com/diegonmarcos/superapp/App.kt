@@ -1,6 +1,9 @@
 package com.diegonmarcos.superapp
-import com.diegonmarcos.superapp.system.Trace
-import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.devcontrol.CrashLogger
+import com.diegonmarcos.devcontrol.DevControl
+import com.diegonmarcos.devcontrol.DevControlConfig
+import com.diegonmarcos.devcontrol.AboutStack
+import com.diegonmarcos.devcontrol.Trace
 import com.diegonmarcos.superapp.system.AppProcessUptime
 import com.diegonmarcos.superapp.battery.PowerStateReceiver
 import com.diegonmarcos.superapp.battery.BatterySessionWorker
@@ -10,7 +13,6 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.work.Configuration as WorkManagerConfiguration
 import com.diegonmarcos.superapp.core.NotificationStore
-import com.diegonmarcos.superapp.devcontrol.DevControlServer
 import com.diegonmarcos.superapp.notificationcenter.KdeStatusService
 import com.google.android.material.color.DynamicColors
 
@@ -55,12 +57,53 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // Capture process-start time before anything else so About →
         // Battery & Usage can report the real uptime.
         AppProcessUptime.initOnce()
-        // DevControlServer FIRST so even if anything downstream
-        // crashes I can still curl /logcat / /trace / /crashes from
-        // this device's shell to debug.
-        runCatching { DevControlServer.start(this) }
-        runCatching { Trace.install(this) }
-        runCatching { CrashLogger.install(this) }
+        // libs:devcontrol — app-agnostic dev/diagnostics engine. Register the
+        // app-side endpoints provider (battery/phone/adb/sysfs/energy) + our
+        // config, then install() starts the loopback control server FIRST (so a
+        // downstream crash is still curl-debuggable) + Trace + CrashLogger +
+        // LogExport. Logs land in 0_logs/<appId>/<date>-{CRASH,LOGCAT}.log.
+        fun dec(s: String): String = runCatching {
+            String(android.util.Base64.decode(s, android.util.Base64.DEFAULT))
+        }.getOrDefault("")
+        DevControl.endpoints =
+            com.diegonmarcos.superapp.devcontrol.DevControlEndpointsProvider
+        runCatching {
+            DevControl.install(this, DevControlConfig(
+                appId          = BuildConfig.GHCR_IMAGE,
+                versionName    = BuildConfig.VERSION_NAME,
+                versionCode    = BuildConfig.VERSION_CODE,
+                gitSha         = BuildConfig.GIT_SHORT_SHA,
+                buildTimestamp = BuildConfig.BUILD_TIMESTAMP,
+                applicationId  = BuildConfig.APPLICATION_ID,
+                buildType      = BuildConfig.BUILD_TYPE,
+                logSinkUrl     = BuildConfig.LOG_SINK_URL,
+                logSinkStream  = BuildConfig.LOG_SINK_STREAM,
+                aboutStack     = AboutStack(
+                    languagesJson  = dec(BuildConfig.UI_STACK_LANGUAGES_JSON_B64).ifBlank { "{}" },
+                    frameworksJson = dec(BuildConfig.UI_STACK_FRAMEWORKS_JSON_B64).ifBlank { "[]" },
+                    buildAvgSecs   = BuildConfig.STACK_BUILD_AVG_SECS.toString().toLongOrNull() ?: 0L,
+                    buildLastSecs  = BuildConfig.STACK_BUILD_LAST_SECS.toString().toLongOrNull() ?: 0L,
+                    gradleConfigMs = BuildConfig.STACK_GRADLE_CONFIG_MS.toString().toLongOrNull() ?: 0L,
+                    folderTree     = dec(BuildConfig.UI_STACK_FOLDER_TREE_B64),
+                    sitemapTree    = dec(BuildConfig.UI_ASM_TREE_B64),
+                    astTree        = dec(BuildConfig.UI_AST_TREE_B64),
+                ),
+                onCrash        = { title, body ->
+                    NotificationStore.push(
+                        ctx      = this,
+                        source   = "Crash",
+                        severity = NotificationStore.Sev.ERROR,
+                        title    = title,
+                        body     = body,
+                    )
+                },
+            ))
+        }
+        // Best-effort adb auto-reconnect via mDNS (moved out of the lib server so
+        // it stays app-agnostic). Silent no-op if not paired / WD off.
+        Thread {
+            runCatching { com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.autoConnect(this) }
+        }.apply { isDaemon = true; name = "adb-autoconnect"; start() }
         runCatching { DynamicColors.applyToActivitiesIfAvailable(this) }
         runCatching { detectVersionBump() }
         // Persistent "Cloud SA - KDE" status notification, live-updated. Owned

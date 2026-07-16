@@ -1,5 +1,4 @@
-package com.diegonmarcos.superapp.system
-import com.diegonmarcos.superapp.BuildConfig
+package com.diegonmarcos.devcontrol
 
 import android.content.Context
 import android.util.Log
@@ -28,7 +27,7 @@ object Trace {
             val dir = File(context.getExternalFilesDir(null), "trace").apply { mkdirs() }
             traceFile = File(dir, "trace.log")
             openWriter(append = true)
-            d(TAG, "── verbose trace started at ${Date()}  vc:${BuildConfig.VERSION_CODE}")
+            d(TAG, "── verbose trace started at ${Date()}  vc:${DevControl.config.versionCode}")
         } catch (t: Throwable) {
             Log.e(TAG, "Trace.install failed", t)
         }

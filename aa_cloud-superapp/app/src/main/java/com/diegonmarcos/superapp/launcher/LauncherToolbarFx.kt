@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.system.Trace
+import com.diegonmarcos.devcontrol.Trace
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import java.util.Random
