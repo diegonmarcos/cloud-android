@@ -108,10 +108,10 @@
       "repo": "https://github.com/celzero/firestack.git",
       "ref": "n2",
       "license": "MPL-2.0",
-      "feeds_into": "libs:firestack",
+      "feeds_into": "libs:firewall",
       "primary_lang": "Go",
       "build": {
-        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firestack/<aar_out> and wrapped as the :libs:firestack gradle module. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
+        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
         "go_version": "1.26.4",
         "go_sha256_linux_amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
         "make_target": "intra",
@@ -127,7 +127,7 @@
           "x86_64": "android/amd64"
         }
       },
-      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing depends on :libs:firestack yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
+      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
     },
     "ops": {
       "tracker": null,
@@ -270,7 +270,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "No-root per-app outbound firewall. v2 = data-driven conditional per-app rules (FirewallRules/FirewallDecider/FirewallConditions, presets in assets/firewall_presets.json); interim drain-engine (FirewallVpnService). Phase 3 will consume the firestack netstack aar (flatDir libs/firestack/, `implementation(name:'firestack', ext:'aar')`) to run WG + per-app filtering + IN/OUT in one VpnService. Surfaced in About under Battery (info rows + 'Firewall Details' → FirewallDialog master switch + per-app preset picker)."
+      "comment": "No-root per-app outbound firewall. v2 = data-driven conditional per-app rules (FirewallRules/FirewallDecider/FirewallConditions, presets in assets/firewall_presets.json); interim drain-engine (FirewallVpnService). Phase 3 will consume the firestack netstack aar (flatDir libs/firewall/firestack/, `implementation(name:'firestack', ext:'aar')`) to run WG + per-app filtering + IN/OUT in one VpnService. Surfaced in About under Battery (info rows + 'Firewall Details' → FirewallDialog master switch + per-app preset picker)."
     },
     "libs:battery": {
       "type": "library",
@@ -296,11 +296,11 @@
       "thickness_dp": 18,
       "transparency": 0,
       "swipe_threshold_dp": 24,
-      "edge_inset_dp": 0,
-      "edge_inset_gesture_dp": 16,
+      "edge_inset_dp": 26,
+      "edge_inset_gesture_dp": 30,
       "trigger": "long_press",
       "long_press_ms": 300,
-      "_doc_gesture_inset": "In GESTURE-nav mode Samsung's back-swipe fires from the very edge, racing our press (flaky). We can't disable the system gesture, so we dodge it: the handle is inset edge_inset_gesture_dp INTO the safe zone (past the ~edge back-gesture strip) so a press on it never starts a back-swipe. In 3-button nav there's no edge gesture, so edge_inset_dp (0) is used and the handle hugs the edge. Detected at runtime via config_navBarInteractionMode.",
+      "_doc_gesture_inset": "The handle is inset from the very border for TWO reasons on Samsung: (1) CURVED-EDGE display — the border pixels are on the curve, where touch is unreliable (edge/palm rejection) + reserved by the system, so a handle AT the edge never activates. (2) GESTURE-nav back-swipe fires from the edge and races our press. Both are dodged by placing the handle on the FLAT glass past the curve. edge_inset_dp (26) applies always (covers the curve); edge_inset_gesture_dp (30) is used in gesture-nav (curve + a bit more to clear the back-gesture strip), detected via config_navBarInteractionMode. Flat-screen devices can lower edge_inset_dp toward 0.",
       "_doc_geometry": "BOUNDED band, not full-height. length_dp=180 (>0 overrides length_pct) keeps the touch zone a ~180dp band at position_pct down the edge. Two reasons it must be bounded: (1) our handle CONSUMES touches in its area (a touchable overlay can't pass them through), so a full-height strip creates a dead vertical band down the whole edge that blocks the app underneath (e.g. Bitwarden buttons near the edge stop responding). A short band frees the rest of the edge. (2) systemGestureExclusionRects is OS-capped at 200dp/edge, so ≤180dp is FULLY excluded → reliable. Invisible (transparency 0); it lives at a consistent thumb-zone position."
     },
     "handles": [
