@@ -164,8 +164,7 @@
         "libs:shizuku-adb-debug-tools",
         "libs:firewall",
         "libs:battery",
-        "libs:onehand",
-        "libs:devcontrol"
+        "libs:onehand"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -173,11 +172,6 @@
       "type": "library",
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
-    },
-    "libs:devcontrol": {
-      "type": "library",
-      "depends_on": [],
-      "comment": "Dev-control / diagnostics engine: crash + logcat file export (0_logs/<app>/<date>-{CRASH,LOGCAT}.log), verbose Trace, and (later) the loopback HTTP control API + reusable About/diagnostics UI. Deliberately app-agnostic — reads NO build.json / app BuildConfig; app supplies everything via DevControlConfig — so the whole module symlinks verbatim into every constellation app."
     },
     "libs:updater": {
       "type": "library",

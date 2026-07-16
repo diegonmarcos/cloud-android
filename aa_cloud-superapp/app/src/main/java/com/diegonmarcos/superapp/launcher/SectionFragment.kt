@@ -1,7 +1,7 @@
 package com.diegonmarcos.superapp.launcher
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.devcontrol.Trace
+import com.diegonmarcos.superapp.system.Trace
 
 import android.os.Bundle
 import android.view.LayoutInflater

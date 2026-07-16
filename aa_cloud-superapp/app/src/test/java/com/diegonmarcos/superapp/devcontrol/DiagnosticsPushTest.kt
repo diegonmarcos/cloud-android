@@ -1,6 +1,5 @@
 package com.diegonmarcos.superapp.devcontrol
 
-import com.diegonmarcos.devcontrol.DiagnosticsPush
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

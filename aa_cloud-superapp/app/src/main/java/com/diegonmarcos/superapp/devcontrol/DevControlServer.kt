@@ -1,0 +1,1009 @@
+package com.diegonmarcos.superapp.devcontrol
+import com.diegonmarcos.superapp.battery.EnergyStore
+import com.diegonmarcos.superapp.system.Trace
+import com.diegonmarcos.superapp.system.ShizukuUserService
+import com.diegonmarcos.superapp.system.CrashLogger
+import com.diegonmarcos.superapp.App
+import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.apps.PhoneSmartFolders
+import com.diegonmarcos.superapp.apps.PhoneFolders
+import com.diegonmarcos.superapp.apps.PhoneAppClassifier
+import com.diegonmarcos.superapp.battery.SysfsProc
+import com.diegonmarcos.superapp.battery.ShizukuEnergy
+import com.diegonmarcos.superapp.battery.PowerStateReceiver
+import com.diegonmarcos.superapp.battery.EnergyWatchdog
+import com.diegonmarcos.superapp.battery.EnergyLedger
+import com.diegonmarcos.superapp.battery.BatterySessionStats
+
+import android.content.Context
+import android.util.Log
+import com.diegonmarcos.superapp.BuildConfig
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.net.Socket
+import java.net.URLDecoder
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * Loopback HTTP/1.1 control surface for the app — same role Termux:API
+ * plays for the OS, but reachable AND functional from this device's
+ * shell (no signature gating because we bind to 127.0.0.1).
+ *
+ * Endpoints (Bearer token required unless marked NO-AUTH):
+ *
+ *   GET  /ping                    → pong                       [NO-AUTH]
+ *   GET  /info                    → {version, vc, port}        [NO-AUTH]
+ *   GET  /state                   → {section, mode, …}
+ *   POST /haptic?preset=X         → fire haptic preset
+ *                                    (gemini_stream, tick, start, end)
+ *   POST /goto?target=URI         → onTileClicked(target)
+ *                                    section: / page: / action: / http(s):
+ *                                    / intent: / app: / stub:
+ *   POST /action?type=X           → dispatchHomeAction(X)
+ *   POST /update                  → equivalent to action=check_updates
+ *   POST /restart                 → kill+relaunch the app process
+ *
+ * The server runs on a single accept-loop thread; each connection is
+ * handled inline (response is short — no need for a thread pool).
+ * Workload that touches UI is posted onto the main Looper via
+ * [DevControlBridge].
+ */
+object DevControlServer {
+
+    private const val TAG = "DevControl"
+    private val running = AtomicBoolean(false)
+    private var server: ServerSocket? = null
+    private var thread: Thread? = null
+
+    fun start(ctx: Context) {
+        val app = ctx.applicationContext
+        val prefs = DevControlPrefs(app)
+        if (!prefs.enabled) return
+        if (!running.compareAndSet(false, true)) return
+        val port = prefs.port
+        val token = prefs.token
+        thread = Thread({ runServer(app, port, token) }, "DevControl-$port").apply {
+            isDaemon = true
+            start()
+        }
+        // Best-effort: auto-reconnect the embedded adb channel via mDNS on
+        // app start, so a paired device with Wireless Debugging ON comes back
+        // online after every update/relaunch with NO manual connect port.
+        // Silent no-op if not paired / WD off. Off the main + server threads.
+        Thread {
+            runCatching { com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.autoConnect(app) }
+        }.apply { isDaemon = true; name = "adb-autoconnect"; start() }
+    }
+
+    fun stop() {
+        running.set(false)
+        runCatching { server?.close() }
+        server = null
+        thread?.interrupt()
+        thread = null
+    }
+
+    /** True if the accept loop is currently listening. */
+    fun isRunning(): Boolean = running.get()
+
+    /**
+     * Returns the socket's actual bind address (e.g. "127.0.0.1") so
+     * the About page can verify it really is loopback-only.
+     * Returns null if not running.
+     */
+    fun boundHost(): String? {
+        val addr = server?.inetAddress ?: return null
+        return addr.hostAddress
+    }
+
+    /** True iff the listener is bound to a loopback address (127.x.x.x
+     *  or ::1). False positives are impossible — boundHost is read from
+     *  the actual ServerSocket. */
+    fun isLoopbackOnly(): Boolean {
+        val addr = server?.inetAddress ?: return false
+        return addr.isLoopbackAddress
+    }
+
+    private fun runServer(ctx: Context, port: Int, token: String) {
+        try {
+            server = ServerSocket(port, 4, InetAddress.getByName("127.0.0.1"))
+            Log.i(TAG, "listening on 127.0.0.1:$port")
+            while (running.get()) {
+                val s = server?.accept() ?: break
+                runCatching { handle(ctx, s, token) }.onFailure { Log.w(TAG, "handle: $it") }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "server died: $t")
+        } finally {
+            runCatching { server?.close() }
+            running.set(false)
+        }
+    }
+
+    private fun handle(ctx: Context, socket: Socket, token: String) {
+        socket.use { s ->
+            val reader = BufferedReader(InputStreamReader(s.getInputStream()))
+            val writer = PrintWriter(s.getOutputStream(), false)
+
+            val first = reader.readLine() ?: return
+            val parts = first.split(" ")
+            if (parts.size < 3) { reply(writer, "400 Bad Request", "bad request\n"); return }
+            val method = parts[0]
+            val pathAndQuery = parts[1]
+            val path = pathAndQuery.substringBefore('?')
+            val query = parseQuery(pathAndQuery.substringAfter('?', ""))
+
+            val headers = mutableMapOf<String, String>()
+            while (true) {
+                val line = reader.readLine() ?: break
+                if (line.isEmpty()) break
+                val idx = line.indexOf(':')
+                if (idx > 0) {
+                    headers[line.substring(0, idx).trim().lowercase()] =
+                        line.substring(idx + 1).trim()
+                }
+            }
+
+            val auth = headers["authorization"]
+                ?.removePrefix("Bearer ")
+                ?.removePrefix("bearer ")
+                ?.trim().orEmpty()
+            val authed = auth == token
+
+            // Normalise both legacy flat paths AND the new /api/{group}/{op}
+            // layout to a single canonical op name. The op name is what
+            // the routing + the /api/docs catalog below both key on, so
+            // there's exactly ONE source of truth for which endpoints
+            // exist.
+            val op = canonicalOp(path)
+
+            // ENDPOINT CATALOG — declared once, used by both the
+            // routing switch AND /api/docs. Adding an endpoint = one
+            // entry here + one branch in the switch below. /api/docs
+            // updates automatically.
+            //
+            // auth = false for diagnostic endpoints that are SAFE to
+            // expose unauth'd because (a) they only emit data ABOUT
+            // this app, and (b) the server binds on 127.0.0.1 so
+            // anything reaching it already owns the device shell.
+
+            when (op) {
+                "docs" -> {
+                    reply(writer, "200 OK", endpointDocsJson(DevControlPrefs(ctx).port), "application/json")
+                    return
+                }
+                "system/ping" -> { reply(writer, "200 OK", "pong\n"); return }
+                "system/info" -> {
+                    val body = """{"version":"${BuildConfig.VERSION_NAME}","vc":${BuildConfig.VERSION_CODE},"sha":"${BuildConfig.GIT_SHORT_SHA}","port":${DevControlPrefs(ctx).port}}"""
+                    reply(writer, "200 OK", body, "application/json")
+                    return
+                }
+                "diagnostics/logcat" -> { reply(writer, "200 OK", readLogcat(query["n"]?.toIntOrNull() ?: 300)); return }
+                "diagnostics/trace"  -> { reply(writer, "200 OK", readTraceTail(ctx, query["n"]?.toIntOrNull() ?: 300)); return }
+                "diagnostics/crashes" -> { reply(writer, "200 OK", readCrashes(ctx)); return }
+                "diagnostics/bundle" -> { reply(writer, "200 OK", diagnosticRecord(ctx), "application/json"); return }
+                "diagnostics/download" -> {
+                    val name = "cloud-diag-${BuildConfig.APPLICATION_ID}-${BuildConfig.GIT_SHORT_SHA}.json"
+                    val saved = DiagnosticsPush.downloadBundle(ctx, name, diagnosticRecord(ctx))
+                    reply(writer, "200 OK", """{"downloaded":${saved != null},"file":"${jsonEscape(saved ?: "")}"}""", "application/json"); return
+                }
+                "diagnostics/push" -> {
+                    val code = DiagnosticsPush.pushToCloud(diagnosticRecord(ctx))
+                    reply(writer, "200 OK", """{"posted":${code in 200..299},"http":$code,"sink":"${jsonEscape(BuildConfig.LOG_SINK_URL)}"}""", "application/json"); return
+                }
+                "system/about" -> { reply(writer, "200 OK", aboutJson(), "application/json"); return }
+            }
+
+            if (!authed) { reply(writer, "401 Unauthorized", "unauthorized\n"); return }
+
+            // Authenticated endpoints
+            when (op) {
+                "state" -> {
+                    val snap = DevControlBridge.host()?.stateSnapshot() ?: emptyMap()
+                    val body = snap.entries.joinToString(",", "{", "}") {
+                        "\"${jsonEscape(it.key)}\":\"${jsonEscape(it.value)}\""
+                    }
+                    reply(writer, "200 OK", body, "application/json")
+                }
+                "haptic" -> {
+                    val preset = query["preset"] ?: "tick"
+                    DevControlBridge.runOnMain {
+                        DevControlBridge.host()?.firePresetHaptic(preset)
+                    }
+                    reply(writer, "200 OK", """{"ok":true,"preset":"${jsonEscape(preset)}"}""", "application/json")
+                }
+                "nav/goto" -> {
+                    val target = query["target"]
+                    if (target.isNullOrBlank()) {
+                        reply(writer, "400 Bad Request", "missing target\n")
+                    } else {
+                        DevControlBridge.runOnMain {
+                            DevControlBridge.host()?.onTileFromServer(target)
+                        }
+                        reply(writer, "200 OK", "ok\n")
+                    }
+                }
+                "nav/action" -> {
+                    val type = query["type"]
+                    if (type.isNullOrBlank()) {
+                        reply(writer, "400 Bad Request", "missing type\n")
+                    } else {
+                        DevControlBridge.runOnMain {
+                            DevControlBridge.host()?.onActionFromServer(type)
+                        }
+                        reply(writer, "200 OK", "ok\n")
+                    }
+                }
+                "system/update" -> {
+                    DevControlBridge.runOnMain {
+                        DevControlBridge.host()?.onActionFromServer("check_updates")
+                    }
+                    reply(writer, "200 OK", "update queued\n")
+                }
+                "system/restart" -> {
+                    reply(writer, "200 OK", "restarting…\n")
+                    writer.flush()
+                    DevControlBridge.runOnMain { DevControlBridge.restartApp(ctx) }
+                }
+                "phone/classify" -> { reply(writer, "200 OK", phoneClassifyJson(ctx), "application/json") }
+                "phone/new_apps" -> { reply(writer, "200 OK", phoneNewAppsJson(ctx), "application/json") }
+                "battery/state" -> { reply(writer, "200 OK", batteryStateJson(ctx), "application/json") }
+                "battery/reset_anchor" -> {
+                    com.diegonmarcos.superapp.battery.BatterySessionStats.resetAnchor(ctx)
+                    reply(writer, "200 OK", """{"ok":true,"message":"anchor cleared — next plug/unplug will re-mint via PowerStateReceiver"}""", "application/json")
+                }
+                "sysfs/diagnostic" -> { reply(writer, "200 OK", sysfsDiagnosticJson(), "application/json") }
+                "battery/properties" -> { reply(writer, "200 OK", batteryPropertiesJson(ctx), "application/json") }
+                "battery/snapshot" -> {
+                    // Capture + persist a charge/PD snapshot (native + dumpsys
+                    // via adb if connected). Best run at <30%, cool, plugged.
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.battery.ChargeSnapshot.capture(ctx).toString(),
+                        "application/json")
+                }
+                "battery/snapshots" -> {
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.battery.ChargeSnapshot.recent(ctx).toString(),
+                        "application/json")
+                }
+                "energy/self" -> { reply(writer, "200 OK", energySelfJson(), "application/json") }
+                "energy/attribution" -> { reply(writer, "200 OK", energyAttributionJson(ctx), "application/json") }
+                "energy/samples" -> { reply(writer, "200 OK", energySamplesJson(ctx), "application/json") }
+                "energy/shizuku" -> { reply(writer, "200 OK", energyShizukuJson(ctx), "application/json") }
+                "energy/reset" -> {
+                    com.diegonmarcos.superapp.battery.EnergyLedger.reset()
+                    runCatching { com.diegonmarcos.superapp.battery.EnergyStore(ctx).clear() }
+                    reply(writer, "200 OK", """{"ok":true,"message":"energy ledger + sample store cleared"}""", "application/json")
+                }
+                // ── libs:shizuku-adb-debug-tools — self-contained adb shell ──
+                "adb/status" -> { reply(writer, "200 OK", adbStatusJson(ctx), "application/json") }
+                "adb/netinfo" -> { reply(writer, "200 OK", adbNetInfoJson(ctx), "application/json") }
+                "adb/pair" -> {
+                    // Embedded adb client pairs with the local Wireless-Debugging
+                    // adbd. host = the IP shown in the pairing dialog (Android binds
+                    // the daemon to the Wi-Fi iface, not loopback — pass that IP,
+                    // e.g. 10.0.0.9; the device delivers it locally). port = the
+                    // PAIRING port, code = the 6-digit code.
+                    val host = query["host"] ?: "127.0.0.1"
+                    val port = query["port"]?.toIntOrNull()
+                    val code = query["code"]
+                    if (port == null || code.isNullOrBlank()) {
+                        reply(writer, "400 Bad Request", "need host=<ip>&port=<pairPort>&code=<6digits>\n")
+                    } else {
+                        val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.pair(ctx, host, port, code)
+                        reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
+                    }
+                }
+                "adb/autoconnect" -> {
+                    // mDNS auto-discovery of the local adbd connect service —
+                    // no manual connect port. Needs paired + Wireless Debugging ON.
+                    val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.autoConnect(ctx)
+                    reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
+                }
+                "adb/connect" -> {
+                    // host = IP from the main Wireless-debugging screen, port = the
+                    // CONNECT port (distinct from the pairing port). After a pair.
+                    val host = query["host"] ?: "127.0.0.1"
+                    val port = query["port"]?.toIntOrNull()
+                    if (port == null) {
+                        reply(writer, "400 Bad Request", "need host=<ip>&port=<connectPort>\n")
+                    } else {
+                        val (ok, msg) = com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel.connect(ctx, host, port)
+                        reply(writer, "200 OK", """{"ok":$ok,"message":"${jsonEscape(msg)}"}""", "application/json")
+                    }
+                }
+                "adb/server-command" -> {
+                    // The one-liner to run ONCE per boot (via adb / Wireless
+                    // Debugging) to start OUR shell-domain app_process server.
+                    val cmd = com.diegonmarcos.superapp.adbdebug.AdbShellBootstrap.serverCommand(ctx)
+                    val body = """{"command":"${jsonEscape(cmd)}","port":${com.diegonmarcos.superapp.adbdebug.AdbShellBootstrap.port()},"note":"Run once per boot. Grants the SHELL SELinux domain our server needs; after this the app is self-contained (no Shizuku app)."}"""
+                    reply(writer, "200 OK", body, "application/json")
+                }
+                "adb/diagnostics" -> {
+                    val bundle = query["bundle"] ?: "charger"
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.adbdebug.AdbDiagnostics.runBundle(ctx, bundle),
+                        "application/json")
+                }
+                "adb/exec" -> {
+                    val cmd = query["cmd"]
+                    if (cmd.isNullOrBlank()) {
+                        reply(writer, "400 Bad Request", "missing cmd\n")
+                    } else {
+                        val ch = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)
+                        val out = ch?.exec(ctx, cmd)
+                            ?: "ERR: no shell channel ready — ${com.diegonmarcos.superapp.adbdebug.LocalShellChannel.status(ctx)}\n"
+                        reply(writer, "200 OK", out)
+                    }
+                }
+                "adb/grant-dump" -> {
+                    // Self-grant DUMP through whichever shell channel is up
+                    // (the local server or Shizuku) so dumpsys also works
+                    // in-process. Signature|privileged|DEVELOPMENT perm, so
+                    // `pm grant` is allowed from the shell domain.
+                    val ch = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)
+                    val out = ch?.exec(ctx, "pm grant ${ctx.packageName} android.permission.DUMP")
+                    val held = ctx.checkSelfPermission("android.permission.DUMP") ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+                    val body = """{"channel":"${jsonEscape(ch?.name() ?: "none")}","ran":${out != null},"held":$held,"output":"${jsonEscape(out ?: "no shell channel ready")}"}"""
+                    reply(writer, "200 OK", body, "application/json")
+                }
+                "adb/sfc" -> {
+                    // Samsung Super Fast Charging verdict — runs the data-driven
+                    // `samsung-sfc` bundle through the shell ladder and parses
+                    // dumpsys battery into {tier, verdict, reasons[]}. No drained
+                    // battery needed: surfaces device watt-ceiling + SFC toggle +
+                    // peak-current-ever so "why isn't 100W fast" is answered now.
+                    reply(writer, "200 OK",
+                        com.diegonmarcos.superapp.adbdebug.SfcVerdict.run(ctx),
+                        "application/json")
+                }
+                else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
+            }
+        }
+    }
+
+    /** Map both `/ping` (legacy flat) and `/api/system/ping` (new) to
+     *  the canonical op name `system/ping`. The routing + the /api/docs
+     *  catalog both key on this canonical name. New endpoints SHOULD
+     *  be added under the v1/{group}/{op} form only; legacy aliases
+     *  are kept so existing curls in the user's Configs/About panel
+     *  don't break. */
+    private fun canonicalOp(path: String): String {
+        // Strip /api/ prefix if present.
+        val stripped = path.removePrefix("/api/").removePrefix("/")
+        // Legacy flat → canonical group/op mapping. Keep in sync with
+        // the docs catalog below.
+        return when (stripped) {
+            "ping"     -> "system/ping"
+            "info"     -> "system/info"
+            "about"    -> "system/about"
+            "logcat"   -> "diagnostics/logcat"
+            "trace"    -> "diagnostics/trace"
+            "crashes"  -> "diagnostics/crashes"
+            "goto"     -> "nav/goto"
+            "action"   -> "nav/action"
+            "update"   -> "system/update"
+            "restart"  -> "system/restart"
+            else       -> stripped
+        }
+    }
+
+    /** Returns the API docs as JSON — single source of truth lives
+     *  here, mirrors exactly what the routing switch handles. */
+    private fun endpointDocsJson(port: Int): String {
+        // Each entry: [op, methods, auth, description, paramsCSV]
+        val rows = listOf(
+            Spec("docs",                "GET",  false, "This endpoint — JSON catalog of every route, method, and auth requirement", ""),
+            Spec("system/ping",         "GET",  false, "Health probe — returns 'pong'", ""),
+            Spec("system/info",         "GET",  false, "App build info: version, vc, sha, port", ""),
+            Spec("system/about",        "GET",  false, "Full About-page data as JSON: app build, device, stack (languages/frameworks/build times), and the folder/sitemap/AST trees", ""),
+            Spec("system/update",       "POST", true,  "Trigger an in-app update check (libs:updater)", ""),
+            Spec("system/restart",      "POST", true,  "Restart the SuperApp process", ""),
+            Spec("diagnostics/logcat",  "GET",  false, "Recent logcat lines, threadtime format", "n=lines (default 300)"),
+            Spec("diagnostics/trace",   "GET",  false, "Tail of Trace.kt's trace.log", "n=lines (default 300)"),
+            Spec("diagnostics/crashes", "GET",  false, "All crash files concatenated, newest first", ""),
+            Spec("diagnostics/bundle",  "GET",  false, "Full debug bundle (logcat+trace+crashes+device) as one OpenObserve JSON record", ""),
+            Spec("diagnostics/download","GET",  false, "Write the debug bundle to public Downloads; returns the filename", ""),
+            Spec("diagnostics/push",    "GET",  false, "POST the debug bundle to the cloud log sink (OpenObserve via build.json::diagnostics.log_sink_url)", ""),
+            Spec("state",               "GET",  true,  "Snapshot of MainActivity's live state map (section, label, mode, …)", ""),
+            Spec("haptic",              "POST", true,  "Fire a named haptic preset on the device", "preset=name (default 'tick')"),
+            Spec("nav/goto",            "POST", true,  "Navigate to a tile target (section:X / page:X/Y / action:X / url)", "target=string"),
+            Spec("nav/action",          "POST", true,  "Fire one of MainActivity.onActionFromServer's verbs", "type=string"),
+            Spec("phone/classify",      "GET",  true,  "Every launchable installed app + the folder PhoneAppClassifier routes it to (debug surface for the Home Apps/Phone tab)", ""),
+            Spec("phone/new_apps",      "GET",  true,  "Just the apps that fell to the sink folder (_New Apps) — direct view of what's not yet covered by phone_folders.match_keywords", ""),
+            Spec("battery/state",       "GET",  true,  "Full BatterySessionStats.Snapshot — current pct, anchor source (disconnect_event / connect_event / first_read_fallback / (none)), elapsed since anchor, rate, ETA, raw + rescaled current_now, chargerSpec including sysfs liveInputW. The single source of truth for debugging 'why is the rate computing from the moment I opened the page' and similar regressions.", ""),
+            Spec("battery/reset_anchor","GET",  true,  "DELETE the persisted session anchor (both unplug/plug). Next read mints a fresh first_read_fallback; the next real plug/unplug cycle overwrites with an authoritative receiver-event anchor. Equivalent to a fresh install for the battery-session machinery.", ""),
+            Spec("sysfs/diagnostic",    "GET",  true,  "Per-path readability check for every kernel sysfs/proc file the app touches. Returns ✓ OK + preview when readable, ✗ does-not-exist / not-readable / read-failed otherwise. THIS is the answer to 'why isn't sysfs working even though no perm is needed' — hardened Androids block specific power_supply nodes via SELinux.", ""),
+            Spec("battery/properties",  "GET",  true,  "Full dump of every BatteryManager.BATTERY_PROPERTY_* getter + every sticky ACTION_BATTERY_CHANGED extra. This is the path AccuBattery and similar gauges use when sysfs is hardened (Samsung One UI 7+, Pixel A15+) — system-service surface that bypasses the SELinux block. Use it to identify which fields ARE exposed on the current device so we can wire them into BatterySessionStats.", ""),
+            Spec("battery/snapshot",    "GET",  true,  "Capture + persist ONE charging snapshot: native fields (level/current/voltage/temp/power) + (if embedded-adb is connected) dumpsys battery truth — Max charging current/voltage, Charging state, IC-auth, and the raw last ACTION_BATTERY_CHANGED line (charge_type/charger_type/hvc/mcc/mcv). Run at <30% cool while charging to capture whether fast-charge (mcv→9000) engages. Also available as a button in Battery Usage Details.", ""),
+            Spec("battery/snapshots",   "GET",  true,  "Newest-first history of stored charging snapshots (capped 50) from battery/snapshot — compare across SOC levels to see exactly when/if fast-charge negotiates.", ""),
+            Spec("energy/self",         "GET",  true,  "Intra-app energy ledger — which subsystem INSIDE Cloud SuperApp spent the most CPU-ms / wakeups / bytes since the window start (ui.galaxy, music.session, bg.battery_worker, bg.energy_sampler, …). Answers 'what in our own app drains battery'.", ""),
+            Spec("energy/attribution",  "GET",  true,  "Device-level Tier-1 watchdog attribution over stored samples: idle baseline mA, marginal mA per state (screen-on / audio / weak-cellular / high-cpu / bright-screen), per-foreground-app avg draw + energy proxy, and our own self cpu/net cost over the window.", ""),
+            Spec("energy/samples",      "GET",  true,  "Raw recent energy-watchdog samples (last 200): per-sample whole-device draw_ma + state vector (screen, brightness, foreground pkg, cpu load, signal, wifi, audio).", ""),
+            Spec("energy/reset",        "GET",  true,  "Clear the intra-app ledger + the watchdog sample store to start a fresh measurement window.", ""),
+            Spec("energy/shizuku",      "GET",  true,  "EXACT per-app mAh via Shizuku (Tier 2) — runs `dumpsys batterystats --charged` in shell context (uid 2000) through the bound ShizukuUserService and parses the per-uid 'Estimated power use (mAh)' section. Returns available/granted/status + the per-app list, or apps=null while binding / when Shizuku isn't running. Ground truth the Tier-1 correlation calibrates against.", ""),
+            Spec("adb/status",          "GET",  true,  "libs:shizuku-adb-debug-tools shell-channel ladder: per-channel ready/status for 'embedded-adb' (PRIMARY — our on-device adb client paired to localhost Wireless Debugging, the self-contained 'we ARE Shizuku' path), 'local-server' (our app_process server), and 'shizuku' (fallback); which is active, whether DUMP is held, and the data-driven bundle ids.", ""),
+            Spec("adb/pair",            "GET",  true,  "Embedded adb client: pair with the phone's OWN Wireless-Debugging adbd. host=the IP shown in the pairing dialog (Android binds the daemon to the Wi-Fi iface, not loopback — pass that IP e.g. 10.0.0.9; default 127.0.0.1). port=the PAIRING port, code=the 6-digit code. Self-contained bootstrap — no Shizuku app, no PC. Then call /api/adb/connect.", "host=<ip>&port=<pairPort>&code=<6digits>"),
+            Spec("adb/connect",         "GET",  true,  "Embedded adb client: connect to the local adbd after pairing. host=IP from the main Wireless-debugging screen (default 127.0.0.1), port=the CONNECT port (distinct from the pairing port). On success the 'embedded-adb' channel goes ready and diagnostics run with zero third-party deps.", "host=<ip>&port=<connectPort>"),
+            Spec("adb/autoconnect",     "GET",  true,  "Embedded adb client: auto-discover the local adbd via mDNS (_adb-tls-connect._tcp, advertised by Wireless Debugging) and connect — NO manual port. Needs the device already paired + Wireless Debugging ON. Also runs automatically on app start, so reconnect-after-update is hands-free.", ""),
+            Spec("adb/server-command",  "GET",  true,  "Returns the exact one-liner to run ONCE per boot (via adb / Wireless Debugging) to start OUR self-contained shell-domain app_process server (AdbShellServer). This is the only privilege bootstrap; after it the app needs no third-party Shizuku app. {command,port,note}.", ""),
+            Spec("adb/diagnostics",     "GET",  true,  "Run a DATA-DRIVEN diagnostic bundle (build.json::shizuku_diagnostics.bundles[]) through the shell-channel ladder (local-server first, Shizuku fallback) and return {bundle,label,channel,ok,results:[{id,cmd,out}]}. Bundles: charger (dumpsys battery+usb, power_supply nodes, typec, charge props), battery, usb, thermal, pd. THE endpoint that surfaces the USB-PD/PPS negotiation behind 'why is the charger at 3W not 35W' when SELinux blocks /sys/class/power_supply/*.", "bundle=charger|battery|usb|thermal|pd (default charger)"),
+            Spec("adb/exec",            "GET",  true,  "Generic 'adb shell' passthrough — runs `sh -c <cmd>` in shell context (uid 2000) through the active channel and returns raw stdout. Full adb-equivalent power; token-gated + loopback-only. Use for one-off commands not covered by a bundle.", "cmd=<shell command>"),
+            Spec("adb/grant-dump",      "GET",  true,  "Self-grant android.permission.DUMP via `pm grant` through the active shell channel, so dumpsys also works IN-PROCESS. DUMP is signature|privileged|DEVELOPMENT, so pm grant from the shell domain is allowed. Returns {channel,ran,held,output}.", ""),
+            Spec("adb/sfc",             "GET",  true,  "Samsung Super Fast Charging verdict — runs the data-driven `samsung-sfc` bundle (getprop model + dumpsys battery) through the shell-channel ladder and parses it into {tier,verdict,reasons[],device_max_watts,high_voltage_engaged,saved_max_current_ma,cable_suspect,sfc_setting_on}. Tiers: FAST_HV (negotiated) / SLOW_5V (charger-PPS or thermal suspect) / FULL_OR_TAPERING (full → healthy, not denied) / NOT_CHARGING. Answers 'why isn't my 100W cable fast-charging' WITHOUT a drained battery: surfaces the device watt-ceiling, whether the SFC toggle is on, and the peak current ever recorded. Parser is pure + JVM-tested against protocol fixtures (libs:shizuku-adb-debug-tools/SfcVerdict).", ""),
+        )
+        val sb = StringBuilder()
+        sb.append("""{"port":""").append(port).append(',')
+        sb.append(""""base":"http://127.0.0.1:""").append(port).append("\",")
+        sb.append(""""auth":"Bearer <token> in Authorization header (token visible in Configs/About → Dev control HTTP)",""")
+        sb.append(""""path_styles":["/api/{group}/{op} (preferred)","/{op} (legacy flat aliases — same handler)"],""")
+        sb.append(""""endpoints":[""")
+        rows.forEachIndexed { i, r ->
+            if (i > 0) sb.append(',')
+            sb.append('{')
+            sb.append(""""op":"""").append(jsonEscape(r.op)).append("\",")
+            sb.append(""""path":"/api/""").append(jsonEscape(r.op)).append("\",")
+            sb.append(""""method":"""").append(jsonEscape(r.method)).append("\",")
+            sb.append(""""auth":""").append(r.auth).append(',')
+            sb.append(""""description":"""").append(jsonEscape(r.description)).append("\",")
+            sb.append(""""params":"""").append(jsonEscape(r.params)).append('"')
+            sb.append('}')
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    private data class Spec(
+        val op: String,
+        val method: String,
+        val auth: Boolean,
+        val description: String,
+        val params: String,
+    )
+
+    /** Walk every launchable activity + report the folder
+     *  PhoneAppClassifier routes it to. Debug surface for the Home
+     *  Apps/Phone tab — directly answers "why is app X in folder Y?". */
+    /** Intra-app energy ledger — which subsystem inside Cloud SuperApp
+     *  spent the most CPU / wakeups / bytes since the window start. */
+    private fun energySelfJson(): String {
+        val (since, stats) = com.diegonmarcos.superapp.battery.EnergyLedger.snapshot()
+        val sorted = stats.entries.sortedByDescending { it.value.cpuNanos }
+        val sb = StringBuilder("""{"since_ms":""").append(since).append(',')
+        sb.append(""""tags":[""")
+        var first = true
+        for ((tag, s) in sorted) {
+            if (!first) sb.append(','); first = false
+            sb.append("""{"tag":"""").append(jsonEscape(tag)).append('"').append(',')
+            sb.append(""""cpu_ms":""").append(s.cpuNanos / 1_000_000L).append(',')
+            sb.append(""""calls":""").append(s.calls).append(',')
+            sb.append(""""wakeups":""").append(s.wakeups).append(',')
+            sb.append(""""bytes":""").append(s.bytes).append('}')
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    /** Shizuku exact per-app mAh from dumpsys batterystats (Tier 2). */
+    private fun energyShizukuJson(ctx: Context): String {
+        val se = com.diegonmarcos.superapp.battery.ShizukuEnergy
+        val sb = StringBuilder("{")
+        sb.append(""""available":""").append(se.isAvailable()).append(',')
+        sb.append(""""granted":""").append(se.isGranted()).append(',')
+        sb.append(""""status":"""").append(jsonEscape(se.status())).append('"').append(',')
+        val exact = runCatching { se.exact(ctx) }.getOrNull()
+        sb.append(""""apps":""")
+        if (exact == null) sb.append("null")
+        else {
+            sb.append('[')
+            var first = true
+            for (a in exact) {
+                if (!first) sb.append(','); first = false
+                sb.append("""{"pkg":"""").append(jsonEscape(a.pkg)).append('"').append(',')
+                sb.append(""""label":"""").append(jsonEscape(a.label)).append('"').append(',')
+                sb.append(""""uid":""").append(a.uid).append(',')
+                sb.append(""""mah":""").append("%.2f".format(a.mAh)).append('}')
+            }
+            sb.append(']')
+        }
+        sb.append('}')
+        return sb.toString()
+    }
+
+    /** Device-level state → draw attribution + per-foreground-app +
+     *  our own self cost, computed over the stored sample window. */
+    private fun energyAttributionJson(ctx: Context): String {
+        val m = com.diegonmarcos.superapp.battery.EnergyWatchdog.attribution(ctx)
+        return mapToJson(m)
+    }
+
+    /** Raw recent watchdog samples (last 200). */
+    private fun energySamplesJson(ctx: Context): String {
+        val rows = runCatching { com.diegonmarcos.superapp.battery.EnergyStore(ctx).recent(200) }
+            .getOrDefault(emptyList())
+        val sb = StringBuilder("[")
+        var first = true
+        for (s in rows) {
+            if (!first) sb.append(','); first = false
+            sb.append('{')
+            sb.append(""""ts":""").append(s.ts).append(',')
+            sb.append(""""draw_ma":""").append(s.drawMa).append(',')
+            sb.append(""""batt_pct":""").append(s.battPct).append(',')
+            sb.append(""""screen_on":""").append(s.screenOn).append(',')
+            sb.append(""""brightness":""").append(s.brightness).append(',')
+            sb.append(""""charging":""").append(s.charging).append(',')
+            sb.append(""""fg_pkg":"""").append(jsonEscape(s.fgPkg)).append('"').append(',')
+            sb.append(""""cpu_load":""").append(s.cpuLoadPct).append(',')
+            sb.append(""""mobile_dbm":""").append(s.mobileSignalDbm).append(',')
+            sb.append(""""wifi_rssi":""").append(s.wifiRssi).append(',')
+            sb.append(""""audio":""").append(s.audioActive).append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    /** Minimal recursive Map/List/primitive → JSON for the attribution
+     *  payload (it's already a clean Map<String,Any> tree). */
+    private fun mapToJson(v: Any?): String = when (v) {
+        null -> "null"
+        is String -> "\"${jsonEscape(v)}\""
+        is Boolean, is Int, is Long, is Double, is Float -> v.toString()
+        is Map<*, *> -> v.entries.joinToString(",", "{", "}") {
+            "\"${jsonEscape(it.key.toString())}\":${mapToJson(it.value)}"
+        }
+        is List<*> -> v.joinToString(",", "[", "]") { mapToJson(it) }
+        else -> "\"${jsonEscape(v.toString())}\""
+    }
+
+    private fun phoneClassifyJson(ctx: Context): String {
+        val folders = com.diegonmarcos.superapp.apps.PhoneFolders.loadFromBuildConfig()
+        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
+            as android.content.pm.LauncherApps
+        val me = android.os.Process.myUserHandle()
+        val pm = ctx.packageManager
+        val sb = StringBuilder("[")
+        var first = true
+        for (info in launcher.getActivityList(null, me)) {
+            val pkg = info.applicationInfo.packageName
+            val label = info.label.toString()
+            val folderId = com.diegonmarcos.superapp.apps.PhoneAppClassifier
+                .classify(pkg, label, folders)
+            // Install-source debug fields — exactly what
+            // PhoneSmartFolders.install_source_not reads, so we can see
+            // why a given app does/doesn't land in Alternative Sources.
+            var installing: String? = null
+            var initiating: String? = null
+            var isSystem = false
+            runCatching {
+                val ai = pm.getApplicationInfo(pkg, 0)
+                isSystem = (ai.flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or
+                    android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+            }
+            runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    val src = pm.getInstallSourceInfo(pkg)
+                    installing = src.installingPackageName
+                    initiating = src.initiatingPackageName
+                } else {
+                    @Suppress("DEPRECATION")
+                    installing = pm.getInstallerPackageName(pkg)
+                }
+            }
+            if (!first) sb.append(','); first = false
+            sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
+            sb.append(""""label":"""").append(jsonEscape(label)).append('"').append(',')
+            sb.append(""""folder":"""").append(jsonEscape(folderId)).append('"').append(',')
+            sb.append(""""installing":""")
+                .append(if (installing == null) "null" else "\"${jsonEscape(installing!!)}\"").append(',')
+            sb.append(""""initiating":""")
+                .append(if (initiating == null) "null" else "\"${jsonEscape(initiating!!)}\"").append(',')
+            sb.append(""""system":""").append(isSystem)
+            sb.append('}')
+        }
+        sb.append(']')
+        return sb.toString()
+    }
+
+    /** Only the apps that landed in the sink folder (new_apps by
+     *  default) — focused view for "what's still uncategorised?". */
+    private fun phoneNewAppsJson(ctx: Context): String {
+        val folders = com.diegonmarcos.superapp.apps.PhoneFolders.loadFromBuildConfig()
+        val sinkId = com.diegonmarcos.superapp.apps.PhoneFolders.sinkFolderId(folders)
+        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE)
+            as android.content.pm.LauncherApps
+        val me = android.os.Process.myUserHandle()
+        val sb = StringBuilder("""{"sink_folder_id":"""")
+        sb.append(jsonEscape(sinkId)).append('"').append(',')
+        sb.append(""""apps":[""")
+        var first = true
+        for (info in launcher.getActivityList(null, me)) {
+            val pkg = info.applicationInfo.packageName
+            val label = info.label.toString()
+            val folderId = com.diegonmarcos.superapp.apps.PhoneAppClassifier
+                .classify(pkg, label, folders)
+            if (folderId != sinkId) continue
+            if (!first) sb.append(','); first = false
+            sb.append("""{"pkg":"""").append(jsonEscape(pkg)).append('"').append(',')
+            sb.append(""""label":"""").append(jsonEscape(label)).append('"').append('}')
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    /** Full BatterySessionStats.Snapshot as JSON. The single source of
+     *  truth for debugging battery-rate / anchor regressions —
+     *  surfaces EVERY field of the Snapshot data class plus the
+     *  derived chargerSpec subobject (so callers can see whether
+     *  liveInputW came from sysfs or only from dumpsys). */
+    private fun batteryStateJson(ctx: Context): String {
+        val s = com.diegonmarcos.superapp.battery.BatterySessionStats.read(ctx)
+        val sb = StringBuilder("{")
+        sb.append(""""isCharging":""").append(s.isCharging).append(',')
+        sb.append(""""curPct":""").append(s.curPct).append(',')
+        sb.append(""""nowMs":""").append(s.nowMs).append(',')
+        // Discharge anchor block
+        sb.append(""""unplugTs":""").append(s.unplugTs).append(',')
+        sb.append(""""unplugPct":""").append(s.unplugPct).append(',')
+        sb.append(""""unplugAnchorSource":"""").append(jsonEscape(s.unplugAnchorSource)).append('"').append(',')
+        sb.append(""""elapsedMs":""").append(s.elapsedMs).append(',')
+        sb.append(""""consumedPct":""").append(s.consumedPct).append(',')
+        sb.append(""""ratePerMin":""").append(s.ratePerMin).append(',')
+        sb.append(""""etaMs":""").append(s.etaMs).append(',')
+        sb.append(""""etaDrainedAt":""").append(s.etaDrainedAt).append(',')
+        // Charge anchor block
+        sb.append(""""plugTs":""").append(s.plugTs).append(',')
+        sb.append(""""plugPct":""").append(s.plugPct).append(',')
+        sb.append(""""plugAnchorSource":"""").append(jsonEscape(s.plugAnchorSource)).append('"').append(',')
+        sb.append(""""chargeElapsedMs":""").append(s.chargeElapsedMs).append(',')
+        sb.append(""""gainedPct":""").append(s.gainedPct).append(',')
+        sb.append(""""chargeRatePerMin":""").append(s.chargeRatePerMin).append(',')
+        sb.append(""""etaFullMs":""").append(s.etaFullMs).append(',')
+        sb.append(""""etaFullAt":""").append(s.etaFullAt).append(',')
+        // Power readings (BatteryManager)
+        sb.append(""""voltageMv":""").append(s.voltageMv).append(',')
+        sb.append(""""currentRaw":""").append(s.currentRaw).append(',')
+        sb.append(""""currentUa":""").append(s.currentUa).append(',')
+        sb.append(""""rescaledMaToUa":""").append(s.rescaledMaToUa).append(',')
+        sb.append(""""powerW":""").append(s.powerW).append(',')
+        sb.append(""""powerWSource":"""").append(jsonEscape(s.powerWSource)).append('"').append(',')
+        // BatteryManager system-service surface (AccuBattery's trick)
+        sb.append(""""batteryTempC":""").append(s.batteryTempC).append(',')
+        sb.append(""""chargeCounterUah":""").append(s.chargeCounterUah).append(',')
+        sb.append(""""cycleCount":""").append(s.cycleCount).append(',')
+        sb.append(""""peakChargeCounterUah":""").append(s.peakChargeCounterUah).append(',')
+        sb.append(""""cumulativeChargedUah":""").append(s.cumulativeChargedUah).append(',')
+        // Charger spec subobject
+        sb.append(""""chargerSpec":{""")
+        sb.append(""""maxCurrentUa":""").append(s.chargerSpec.maxCurrentUa).append(',')
+        sb.append(""""maxVoltageUv":""").append(s.chargerSpec.maxVoltageUv).append(',')
+        sb.append(""""maxPowerW":""").append(s.chargerSpec.maxPowerW).append(',')
+        sb.append(""""liveInputW":""").append(s.chargerSpec.liveInputW).append(',')
+        sb.append(""""source":"""").append(jsonEscape(s.chargerSpec.source)).append('"').append(',')
+        sb.append(""""usbPowered":""").append(s.chargerSpec.usbPowered).append(',')
+        sb.append(""""acPowered":""").append(s.chargerSpec.acPowered).append(',')
+        sb.append(""""wirelessPowered":""").append(s.chargerSpec.wirelessPowered)
+        sb.append('}')
+        sb.append('}')
+        return sb.toString()
+    }
+
+    /** Full dump of every BatteryManager.BATTERY_PROPERTY_* getter +
+     *  every sticky ACTION_BATTERY_CHANGED extra. Path bypasses the
+     *  SELinux block on /sys/class/power_supply because BatteryManager
+     *  goes through the system_server service binder, not raw sysfs.
+     *  Used to identify what's actually exposed on a hardened Samsung
+     *  / Pixel so we can wire BatterySessionStats to the system-
+     *  service surface instead of the kernel files. */
+    private fun batteryPropertiesJson(ctx: Context): String {
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+        val sticky = ctx.registerReceiver(
+            null,
+            android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED),
+        )
+        val sb = StringBuilder("{")
+
+        // BatteryManager (system-service path, immune to sysfs blocking)
+        sb.append(""""batteryManager":{""")
+        var firstBm = true
+        fun appendIntProp(label: String, prop: Int) {
+            if (!firstBm) sb.append(','); firstBm = false
+            val v = runCatching { bm?.getIntProperty(prop) }.getOrNull()
+            sb.append('"').append(label).append("\":").append(v ?: "null")
+        }
+        fun appendLongProp(label: String, prop: Int) {
+            if (!firstBm) sb.append(','); firstBm = false
+            val v = runCatching { bm?.getLongProperty(prop) }.getOrNull()
+            sb.append('"').append(label).append("\":").append(v ?: "null")
+        }
+        appendIntProp("current_now_uA",          android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        appendIntProp("current_average_uA",      android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
+        appendIntProp("capacity_pct",            android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        appendIntProp("status",                  android.os.BatteryManager.BATTERY_PROPERTY_STATUS)
+        appendLongProp("charge_counter_uAh",     android.os.BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+        appendLongProp("energy_counter_nWh",     android.os.BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER)
+        if (!firstBm) sb.append(','); firstBm = false
+        sb.append(""""isCharging":""").append(bm?.isCharging ?: "null")
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            sb.append(',')
+            val t = runCatching { bm?.computeChargeTimeRemaining() }.getOrNull()
+            sb.append(""""compute_charge_time_remaining_ms":""").append(t ?: "null")
+        }
+        sb.append('}')
+
+        // Sticky ACTION_BATTERY_CHANGED extras (broadcast surface;
+        // some fields like cycle_count + charging_status are API 31+
+        // and only land in the extras bundle on devices that support
+        // them — we read by string key for forward-compat).
+        sb.append(""","stickyExtras":{""")
+        if (sticky == null) {
+            sb.append(""""_present":false""")
+        } else {
+            sb.append(""""_present":true""")
+            fun appendIntExtra(label: String, key: String, default: Int = Int.MIN_VALUE) {
+                sb.append(',').append('"').append(label).append("\":")
+                val v = sticky.getIntExtra(key, default)
+                sb.append(if (v == default) "null" else v)
+            }
+            fun appendBoolExtra(label: String, key: String) {
+                sb.append(',').append('"').append(label).append("\":")
+                sb.append(sticky.getBooleanExtra(key, false))
+            }
+            fun appendStringExtra(label: String, key: String) {
+                sb.append(',').append('"').append(label).append("\":")
+                val v = sticky.getStringExtra(key)
+                if (v == null) sb.append("null")
+                else sb.append('"').append(jsonEscape(v)).append('"')
+            }
+            appendIntExtra("level",        android.os.BatteryManager.EXTRA_LEVEL)
+            appendIntExtra("scale",        android.os.BatteryManager.EXTRA_SCALE)
+            appendIntExtra("status",       android.os.BatteryManager.EXTRA_STATUS)
+            appendIntExtra("plugged",      android.os.BatteryManager.EXTRA_PLUGGED)
+            appendIntExtra("health",       android.os.BatteryManager.EXTRA_HEALTH)
+            appendIntExtra("voltage_mV",   android.os.BatteryManager.EXTRA_VOLTAGE)
+            appendIntExtra("temperature_dC", android.os.BatteryManager.EXTRA_TEMPERATURE)
+            appendStringExtra("technology", android.os.BatteryManager.EXTRA_TECHNOLOGY)
+            appendBoolExtra("present",     android.os.BatteryManager.EXTRA_PRESENT)
+            // API 31+ extras read by canonical string key (constants
+            // not always resolvable at compileSdk < 31). If absent,
+            // getIntExtra returns the default (MIN_VALUE) which we
+            // surface as null.
+            appendIntExtra("cycle_count",     "android.os.extra.CYCLE_COUNT")
+            appendIntExtra("charging_status", "android.os.extra.CHARGING_STATUS")
+            appendIntExtra("max_charging_current_uA", "android.os.extra.MAX_CHARGING_CURRENT")
+            appendIntExtra("max_charging_voltage_uV", "android.os.extra.MAX_CHARGING_VOLTAGE")
+        }
+        sb.append('}')
+
+        sb.append('}')
+        return sb.toString()
+    }
+
+    /** Per-path readability snapshot of every kernel sysfs/proc file
+     *  the app touches. Sorted: failing paths first so the user sees
+     *  what's blocked on their device immediately, then OKs.
+     *  The frontline answer to "AccuBattery's trick isn't working
+     *  for me" — exposes whether the kernel actually allows the
+     *  read or whether SELinux is denying it. */
+    private fun sysfsDiagnosticJson(): String {
+        val all = com.diegonmarcos.superapp.battery.SysfsProc.sysfsReadDiagnostic()
+        val sorted = all.sortedBy { (_, status) -> if (status.startsWith("✗")) 0 else 1 }
+        val sb = StringBuilder("""{"paths":[""")
+        var first = true
+        for ((path, status) in sorted) {
+            if (!first) sb.append(','); first = false
+            sb.append('{')
+            sb.append(""""path":"""").append(jsonEscape(path)).append('"').append(',')
+            sb.append(""""status":"""").append(jsonEscape(status)).append('"')
+            sb.append('}')
+        }
+        sb.append("],")
+        val total = all.size
+        val ok = all.count { (_, status) -> status.startsWith("✓") }
+        sb.append(""""summary":{"total":""").append(total).append(',')
+        sb.append(""""ok":""").append(ok).append(',')
+        sb.append(""""blocked":""").append(total - ok).append('}')
+        sb.append('}')
+        return sb.toString()
+    }
+
+    /** Device network layout — every NIC + its IPs, plus each
+     *  ConnectivityManager Network with transports + link addresses +
+     *  routes. Answers "which interface owns 10.0.0.9 and what's the real
+     *  Wi-Fi IP" so the embedded-adb pairing targets the right address. */
+    private fun adbNetInfoJson(ctx: Context): String {
+        val sb = StringBuilder("{")
+        // ── java.net interfaces ──
+        sb.append(""""interfaces":[""")
+        runCatching {
+            val ifaces = java.net.NetworkInterface.getNetworkInterfaces()
+            var first = true
+            for (nif in java.util.Collections.list(ifaces)) {
+                val addrs = nif.inetAddresses
+                val list = java.util.Collections.list(addrs)
+                if (!first) sb.append(','); first = false
+                sb.append('{')
+                sb.append(""""name":"""").append(jsonEscape(nif.name)).append('"').append(',')
+                sb.append(""""up":""").append(runCatching { nif.isUp }.getOrDefault(false)).append(',')
+                sb.append(""""addrs":[""")
+                list.forEachIndexed { i, a ->
+                    if (i > 0) sb.append(',')
+                    sb.append('"').append(jsonEscape(a.hostAddress ?: "")).append('"')
+                }
+                sb.append("]}")
+            }
+        }
+        sb.append("],")
+        // ── ConnectivityManager networks ──
+        sb.append(""""networks":[""")
+        runCatching {
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            cm.allNetworks.forEachIndexed { i, n ->
+                if (i > 0) sb.append(',')
+                val caps = cm.getNetworkCapabilities(n)
+                val lp = cm.getLinkProperties(n)
+                sb.append('{')
+                sb.append(""""wifi":""").append(caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ?: false).append(',')
+                sb.append(""""cell":""").append(caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ?: false).append(',')
+                sb.append(""""vpn":""").append(caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) ?: false).append(',')
+                sb.append(""""iface":"""").append(jsonEscape(lp?.interfaceName ?: "")).append('"').append(',')
+                sb.append(""""addrs":[""")
+                lp?.linkAddresses?.forEachIndexed { j, la ->
+                    if (j > 0) sb.append(',')
+                    sb.append('"').append(jsonEscape(la.address.hostAddress ?: "")).append('"')
+                }
+                sb.append("]}")
+            }
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    /** Shell-channel ladder status (self-contained local-server first,
+     *  Shizuku fallback) + the data-driven bundle ids available via
+     *  /api/adb/diagnostics. */
+    private fun adbStatusJson(ctx: Context): String {
+        val channels = com.diegonmarcos.superapp.adbdebug.ShellChannels.all
+        val active = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)
+        val bundles = com.diegonmarcos.superapp.adbdebug.AdbDiagnostics.bundleIds()
+        val dumpHeld = ctx.checkSelfPermission("android.permission.DUMP") ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        val sb = StringBuilder("{")
+        sb.append(""""active":"""").append(jsonEscape(active?.name() ?: "none")).append('"').append(',')
+        sb.append(""""dump_in_process":""").append(dumpHeld).append(',')
+        sb.append(""""channels":[""")
+        channels.forEachIndexed { i, c ->
+            if (i > 0) sb.append(',')
+            sb.append('{')
+            sb.append(""""name":"""").append(jsonEscape(c.name())).append('"').append(',')
+            sb.append(""""ready":""").append(c.isReady(ctx)).append(',')
+            sb.append(""""status":"""").append(jsonEscape(c.status(ctx))).append('"')
+            sb.append('}')
+        }
+        sb.append("],")
+        sb.append(""""bundles":[""")
+        bundles.forEachIndexed { i, b ->
+            if (i > 0) sb.append(',')
+            sb.append('"').append(jsonEscape(b)).append('"')
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    private fun reply(
+        w: PrintWriter, status: String, body: String,
+        contentType: String = "text/plain",
+    ) {
+        val bytes = body.toByteArray(Charsets.UTF_8)
+        w.print("HTTP/1.1 $status\r\n")
+        w.print("Content-Type: $contentType; charset=utf-8\r\n")
+        w.print("Content-Length: ${bytes.size}\r\n")
+        w.print("Connection: close\r\n\r\n")
+        w.print(body)
+        w.flush()
+    }
+
+    private fun parseQuery(raw: String): Map<String, String> {
+        if (raw.isEmpty()) return emptyMap()
+        return raw.split('&').mapNotNull {
+            val eq = it.indexOf('=')
+            if (eq < 0) return@mapNotNull null
+            val k = URLDecoder.decode(it.substring(0, eq), "UTF-8")
+            val v = URLDecoder.decode(it.substring(eq + 1), "UTF-8")
+            k to v
+        }.toMap()
+    }
+
+    /** Full About-page data as JSON — app build, device, stack
+     *  (languages/frameworks/build times) and the folder/sitemap/AST trees.
+     *  Served by GET /api/system/about (auth-free, same nature as
+     *  system/info). All sourced from BuildConfig + Build → no UI needed,
+     *  reproducible per build. */
+    private fun aboutJson(): String {
+        fun dec(s: String) = runCatching {
+            String(android.util.Base64.decode(s, android.util.Base64.DEFAULT))
+        }.getOrDefault("")
+        val langs = dec(BuildConfig.UI_STACK_LANGUAGES_JSON_B64).ifBlank { "{}" }
+        val fws   = dec(BuildConfig.UI_STACK_FRAMEWORKS_JSON_B64).ifBlank { "[]" }
+        return buildString {
+            append("{")
+            append(""""app":{""")
+            append(""""applicationId":"${jsonEscape(BuildConfig.APPLICATION_ID)}",""")
+            append(""""versionName":"${jsonEscape(BuildConfig.VERSION_NAME)}",""")
+            append(""""versionCode":${BuildConfig.VERSION_CODE},""")
+            append(""""gitSha":"${jsonEscape(BuildConfig.GIT_SHORT_SHA)}",""")
+            append(""""buildTimestamp":"${jsonEscape(BuildConfig.BUILD_TIMESTAMP)}",""")
+            append(""""buildType":"${jsonEscape(BuildConfig.BUILD_TYPE)}"},""")
+            append(""""device":{""")
+            append(""""manufacturer":"${jsonEscape(android.os.Build.MANUFACTURER)}",""")
+            append(""""model":"${jsonEscape(android.os.Build.MODEL)}",""")
+            append(""""android":"${jsonEscape(android.os.Build.VERSION.RELEASE)}",""")
+            append(""""sdk":${android.os.Build.VERSION.SDK_INT}},""")
+            append(""""stack":{""")
+            append(""""languages":$langs,""")
+            append(""""frameworks":$fws,""")
+            append(""""buildAvgSecs":${BuildConfig.STACK_BUILD_AVG_SECS},""")
+            append(""""buildLastSecs":${BuildConfig.STACK_BUILD_LAST_SECS},""")
+            append(""""gradleConfigMs":${BuildConfig.STACK_GRADLE_CONFIG_MS}},""")
+            append(""""trees":{""")
+            append(""""folders":"${jsonEscape(dec(BuildConfig.UI_STACK_FOLDER_TREE_B64))}",""")
+            append(""""sitemap":"${jsonEscape(dec(BuildConfig.UI_ASM_TREE_B64))}",""")
+            append(""""ast":"${jsonEscape(dec(BuildConfig.UI_AST_TREE_B64))}"}""")
+            append("}")
+        }
+    }
+
+    private fun jsonEscape(s: String): String =
+        s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+
+    /** Combined debug bundle → the OpenObserve record (reuses the same
+     *  logcat/trace/crashes readers). Used by /diagnostics/{bundle,download,push}. */
+    private fun diagnosticRecord(ctx: android.content.Context): String {
+        val ts = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+            .format(java.util.Date())
+        return DiagnosticsPush.buildRecord(
+            appId = BuildConfig.APPLICATION_ID,
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE.toString(),
+            gitSha = BuildConfig.GIT_SHORT_SHA,
+            device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+            androidRelease = android.os.Build.VERSION.RELEASE,
+            sdkInt = android.os.Build.VERSION.SDK_INT,
+            tsIso = ts,
+            logcat = readLogcat(500),
+            trace = readTraceTail(ctx, 500),
+            crashes = readCrashes(ctx),
+        )
+    }
+
+    /** Runs `logcat -d -t N -v threadtime`. Works without any extra
+     *  permission because the app is reading ITS OWN logs (Android
+     *  filters logcat by uid for unprivileged processes since 4.1). */
+    private fun readLogcat(n: Int): String = runCatching {
+        val p = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", n.toString(), "-v", "threadtime"))
+        p.inputStream.bufferedReader().readText()
+    }.getOrElse { "logcat read failed: $it\n" }
+
+    /** Reads the tail of Trace.kt's trace.log file. */
+    private fun readTraceTail(ctx: android.content.Context, n: Int): String = runCatching {
+        val f = java.io.File(ctx.getExternalFilesDir(null), "trace/trace.log")
+        if (!f.exists()) return@runCatching "trace.log not present\n"
+        val all = f.readLines()
+        all.takeLast(n).joinToString("\n") + "\n"
+    }.getOrElse { "trace read failed: $it\n" }
+
+    /** Lists + concatenates every crash report from BOTH the private
+     *  external-files crash dir and (best-effort) the public Downloads
+     *  copies that CrashLogger writes via MediaStore. */
+    private fun readCrashes(ctx: android.content.Context): String = runCatching {
+        val dir = java.io.File(ctx.getExternalFilesDir(null), "crashes")
+        if (!dir.exists()) return@runCatching "no crashes directory yet\n"
+        val files = dir.listFiles()?.sortedByDescending { it.lastModified() } ?: emptyList()
+        if (files.isEmpty()) return@runCatching "no crash files\n"
+        files.joinToString("\n\n──────────────────────────\n\n") { "[${it.name}]\n" + it.readText() }
+    }.getOrElse { "crash read failed: $it\n" }
+}
