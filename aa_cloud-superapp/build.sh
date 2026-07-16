@@ -182,7 +182,7 @@ _resolve_media_keys() {
 _ensure_firestack() {
   local aarout outdir tracker
   aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
-  outdir="$SCRIPT_DIR/libs/firestack"
+  outdir="$SCRIPT_DIR/libs/firewall/firestack"
   [ -f "$outdir/$aarout" ] && return 0
   log "firestack: aar missing → building once (libs:firewall depends on it)"
   tracker="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
@@ -697,7 +697,7 @@ step_firestack() {
   target="$(_release_var '.upstreams.firestack.build.make_target')"
   aarbuilt="$(_release_var '.upstreams.firestack.build.aar_built')"
   aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
-  outdir="$SCRIPT_DIR/libs/firestack"
+  outdir="$SCRIPT_DIR/libs/firewall/firestack"
   cache="$SCRIPT_DIR/.cache"
   # Single-ABI gomobile target for the current SUPERAPP_VARIANT (data-driven) —
   # avoids gomobile's all-ABI default (~4× time → CI timeout).
@@ -746,7 +746,7 @@ step_firestack() {
     cp "$TRACKER/$AARBUILT" "$OUTDIR/$AAROUT"
   '
   _verify_firestack_aar "$outdir/$aarout"
-  log "firestack: → libs/firestack/$aarout ($(du -h "$outdir/$aarout" 2>/dev/null | cut -f1))"
+  log "firestack: → libs/firewall/firestack/$aarout ($(du -h "$outdir/$aarout" 2>/dev/null | cut -f1))"
 }
 
 # Tester (FIRE RULE #5): a valid gomobile aar is a zip carrying classes.jar +

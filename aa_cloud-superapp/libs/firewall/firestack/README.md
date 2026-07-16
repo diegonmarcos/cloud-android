@@ -1,4 +1,4 @@
-# libs/firestack — prebuilt netstack AAR (build output, not source)
+# libs/firewall/firestack — prebuilt netstack AAR (build output, not source)
 
 This directory holds **`firestack.aar`** — the gomobile-built
 [`celzero/firestack`](https://github.com/celzero/firestack) gVisor-netstack +
@@ -28,7 +28,7 @@ Data-driven from `build.json::upstreams.firestack.build`:
 
 ```gradle
 // settings.gradle → dependencyResolutionManagement.repositories:
-flatDir { dirs "${rootDir}/libs/firestack" }
+flatDir { dirs "${rootDir}/libs/firewall/firestack" }
 // libs/firewall/build.gradle:
 implementation(name: 'firestack', ext: 'aar')
 ```

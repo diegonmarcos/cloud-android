@@ -77,8 +77,9 @@ Direction selector).
 ## Phase-2 firestack aar build (wired, not yet consumed)
 
 `build.sh firestack` hermetically builds `celzero/firestack` (Go/gomobile) →
-`libs/firestack/firestack.aar` (flatDir in `settings.gradle`), data-driven from
-`build.json::upstreams.firestack`. Nothing depends on `:libs:firestack` until
+`libs/firewall/firestack/firestack.aar` (flatDir in `settings.gradle`, folded
+into this lib — not a loose top-level module), data-driven from
+`build.json::upstreams.firestack`. Nothing consumes the firestack aar until
 Phase 3, so a plain `build.sh build`/`test` does NOT trigger the Go build.
 
 ## Activating Phase 3 (on the build runner)

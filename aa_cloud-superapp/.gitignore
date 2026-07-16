@@ -12,9 +12,9 @@ captures/
 # firestack netstack build artifacts (`build.sh firestack`). The parent
 # unix/.gitignore force-includes libs/**, so the prebuilt aar + the pinned
 # Go download cache must be re-ignored here (more-specific child rule wins).
-libs/firestack/*.aar
-libs/firestack/*.jar
-libs/firestack/*.zip
+libs/firewall/firestack/*.aar
+libs/firewall/firestack/*.jar
+libs/firewall/firestack/*.zip
 .cache/golang/
 
 # ── Nix ───────────────────────────────────────────────────────
