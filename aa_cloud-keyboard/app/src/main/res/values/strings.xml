@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app label MUST be a string RESOURCE (not a manifest literal): HeliBoard's
+  WelcomeWizard reads `applicationInfo.labelRes` and calls stringResource(id).
+  With a literal android:label, labelRes == 0 → stringResource(0) throws
+  Resources$NotFoundException "String resource ID #0x0" and the settings screen
+  crashes on open (WelcomeWizard.kt:86). Referencing @string/app_name gives a
+  non-zero labelRes and fixes it.
+-->
+<resources>
+    <string name="app_name">Cloud Keyboard</string>
+</resources>
