@@ -13,7 +13,12 @@
     "_doc": "Keyboard libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle.",
     "app": {
       "type": "application",
-      "depends_on": ["libs:keyboard", "libs:media", "libs:translate", "libs:voice"],
+      "depends_on": [
+        "libs:keyboard",
+        "libs:media",
+        "libs:translate",
+        "libs:voice"
+      ],
       "comment": "Thin application shell. All IME components (LatinIME, SpellChecker, Settings, sticker panel, translate, voice) come from the shared keyboard libs via manifest merge."
     }
   },
@@ -21,23 +26,55 @@
     "_doc": "Same block as ea_cloud-superapp — shared vault secret. build.sh sops-decrypts vault_secrets → TENOR_API_KEY/GIPHY_API_KEY env vars → Gradle BuildConfig → MediaRuntime.configure().",
     "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
     "enabled": true,
-    "sticker": { "enabled": true },
+    "sticker": {
+      "enabled": true
+    },
     "gif": {
       "provider": "giphy",
       "limit": 30,
       "giphy": {
         "base_url": "https://api.giphy.com/v1/gifs",
         "categories": [
-          { "id": "trending",  "label": "Trending",   "query": ""         },
-          { "id": "reactions", "label": "Reactions",  "query": "reaction" },
-          { "id": "love",      "label": "Love",       "query": "love"     },
-          { "id": "happy",     "label": "Happy",      "query": "happy"    },
-          { "id": "sad",       "label": "Sad",        "query": "sad"      },
-          { "id": "celebrate", "label": "Celebrate",  "query": "celebrate"}
+          {
+            "id": "trending",
+            "label": "Trending",
+            "query": ""
+          },
+          {
+            "id": "reactions",
+            "label": "Reactions",
+            "query": "reaction"
+          },
+          {
+            "id": "love",
+            "label": "Love",
+            "query": "love"
+          },
+          {
+            "id": "happy",
+            "label": "Happy",
+            "query": "happy"
+          },
+          {
+            "id": "sad",
+            "label": "Sad",
+            "query": "sad"
+          },
+          {
+            "id": "celebrate",
+            "label": "Celebrate",
+            "query": "celebrate"
+          }
         ]
       }
     }
   },
+  "default_locales": [
+    "en_GB",
+    "es_ES",
+    "pt_BR",
+    "de_DE"
+  ],
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps — the SAME key that signs the superapp, so the in-app fleet updater never hits INSTALL_FAILED_UPDATE_INCOMPATIBLE. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts the passwords, and _enforce_signature re-signs the built APK with it. NO fallback: if the key is unavailable the build FAILS LOUD — it never signs with the ephemeral android debug keystore.",
     "vault_keystore": "A0_keys/providers/android/release.jks",
@@ -54,7 +91,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-keyboard",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "enabled": true,

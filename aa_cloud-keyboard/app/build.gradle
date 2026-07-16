@@ -8,6 +8,7 @@ plugins {
 def buildJson        = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
 def keyboardMediaB64 = groovy.json.JsonOutput.toJson(buildJson.keyboard_media ?: [:]).bytes.encodeBase64().toString()
 def giphyApiKey      = (System.getenv('GIPHY_API_KEY') ?: '').toString()
+def defaultLocales   = (buildJson.default_locales ?: []).join(',')
 
 android {
     namespace 'com.diegonmarcos.cloudkeyboard'
@@ -21,6 +22,7 @@ android {
         versionName '1.0'
         buildConfigField "String", "MEDIA_CONFIG_B64", "\"${keyboardMediaB64}\""
         buildConfigField "String", "GIPHY_API_KEY",   "\"${giphyApiKey}\""
+        buildConfigField "String", "DEFAULT_LOCALES", "\"${defaultLocales}\""
     }
 
     signingConfigs {

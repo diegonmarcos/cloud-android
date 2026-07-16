@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The app label MUST be a string RESOURCE (not a manifest literal): HeliBoard's
-  WelcomeWizard reads `applicationInfo.labelRes` and calls stringResource(id).
-  With a literal android:label, labelRes == 0 → stringResource(0) throws
-  Resources$NotFoundException "String resource ID #0x0" and the settings screen
-  crashes on open (WelcomeWizard.kt:86). Referencing @string/app_name gives a
-  non-zero labelRes and fixes it.
+  Standalone Cloud Keyboard brand overrides.
+
+  These app-res strings win the resource merge over the vendored libs:keyboard
+  (verbatim HeliBoard mirror), renaming the keyboard everywhere it shows without
+  editing the mirror. The superapp app (ea_cloud-superapp/app) has the identical
+  overrides; the standalone keyboard lost them when it was split out — this
+  restores the FULL rebrand: the name is "Cloud Keyboard (HeliBoard)".
+
+  - app_name: launcher label AND the label WelcomeWizard reads via
+    applicationInfo.labelRes. Must be a string RESOURCE — a manifest literal
+    gives labelRes==0 → stringResource(0) throws Resources$NotFoundException
+    ("String resource ID #0x0") and Settings crashes on open (WelcomeWizard.kt:86).
+  - english_ime_name (translatable=false): HeliBoard's IME display name. The lib
+    manifest labels the IME service + SettingsActivity with @string/english_ime_name,
+    so this is THE name shown in Settings → Languages → Keyboards and the keyboard
+    switcher. Lib default is "HeliBoard"; override it here.
+  - translate: labels the Translate toolbar key (libs:keyboard patch 0001);
+    HeliBoard looks the lowercased ToolbarKey name up against the app package.
 -->
 <resources>
-    <string name="app_name">Cloud Keyboard</string>
+    <string name="app_name">Cloud Keyboard (HeliBoard)</string>
+    <string name="english_ime_name" translatable="false">Cloud Keyboard (HeliBoard)</string>
+    <string name="translate">Translate</string>
 </resources>
