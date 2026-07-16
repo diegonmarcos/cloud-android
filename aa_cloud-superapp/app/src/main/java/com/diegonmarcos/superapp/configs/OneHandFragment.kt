@@ -70,6 +70,15 @@ class OneHandFragment : Fragment() {
             }
         })
 
+        root.addView(Switch(ctx).apply {
+            text = "Show handles (debug — bright red bars)"
+            isChecked = OneHandPrefs.debugVisible(ctx)
+            setOnCheckedChangeListener { _, on ->
+                OneHandPrefs.setDebugVisible(ctx, on)
+                OneHandController.refresh(ctx)  // rebuild handles with new visibility
+            }
+        })
+
         val cfg = OneHandConfig.effective(ctx)
         val options = buildOptions(cfg)
 

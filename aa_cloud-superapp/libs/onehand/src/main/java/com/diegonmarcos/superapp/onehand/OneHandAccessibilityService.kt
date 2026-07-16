@@ -326,7 +326,13 @@ class OneHandAccessibilityService : AccessibilityService() {
     private fun handleBackground(transparency: Int): android.graphics.drawable.GradientDrawable =
         android.graphics.drawable.GradientDrawable().apply {
             cornerRadius = dp(10).toFloat()
-            setColor(Color.argb((transparency.coerceIn(0, 100)) * 255 / 100, 77, 163, 255))
+            if (OneHandPrefs.debugVisible(this@OneHandAccessibilityService)) {
+                // Debug: bright bar + outline so placement/size is obvious on-device.
+                setColor(Color.argb(120, 255, 0, 0))
+                setStroke(dp(2), Color.argb(230, 255, 60, 60))
+            } else {
+                setColor(Color.argb((transparency.coerceIn(0, 100)) * 255 / 100, 77, 163, 255))
+            }
         }
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(

@@ -45,4 +45,12 @@ object OneHandPrefs {
     fun setTrigger(ctx: Context, t: OneHandConfig.Trigger) {
         prefs(ctx).edit().putString("trigger", t.name).apply()
     }
+
+    /** Debug: force the (normally invisible) handles to a bright visible bar so
+     *  their placement/size can be verified on-device without a rebuild. */
+    fun debugVisible(ctx: Context): Boolean = prefs(ctx).getBoolean("debug_visible", false)
+
+    fun setDebugVisible(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean("debug_visible", on).apply()
+    }
 }
