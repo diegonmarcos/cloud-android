@@ -164,7 +164,8 @@
         "libs:shizuku-adb-debug-tools",
         "libs:firewall",
         "libs:battery",
-        "libs:onehand"
+        "libs:onehand",
+        "libs:devcontrol"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -172,6 +173,11 @@
       "type": "library",
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
+    },
+    "libs:devcontrol": {
+      "type": "library",
+      "depends_on": [],
+      "comment": "Dev-control / diagnostics engine: crash + logcat file export (0_logs/<app>/<date>-{CRASH,LOGCAT}.log), verbose Trace, and (later) the loopback HTTP control API + reusable About/diagnostics UI. Deliberately app-agnostic — reads NO build.json / app BuildConfig; app supplies everything via DevControlConfig — so the whole module symlinks verbatim into every constellation app."
     },
     "libs:updater": {
       "type": "library",
@@ -293,11 +299,11 @@
     "defaults": {
       "length_pct": 100,
       "length_dp": 180,
-      "thickness_dp": 48,
+      "thickness_dp": 18,
       "transparency": 0,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
-      "edge_inset_gesture_dp": 32,
+      "edge_inset_gesture_dp": 16,
       "trigger": "long_press",
       "long_press_ms": 300,
       "_doc_gesture_inset": "In GESTURE-nav mode Samsung's back-swipe fires from the very edge, racing our press (flaky). We can't disable the system gesture, so we dodge it: the handle is inset edge_inset_gesture_dp INTO the safe zone (past the ~edge back-gesture strip) so a press on it never starts a back-swipe. In 3-button nav there's no edge gesture, so edge_inset_dp (0) is used and the handle hugs the edge. Detected at runtime via config_navBarInteractionMode.",
