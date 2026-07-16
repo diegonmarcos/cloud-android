@@ -107,6 +107,7 @@ class OneHandAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         )
+        lp.alpha = OVERLAY_ALPHA
         runCatching { wm.addView(v, lp) }
         radialView = v; radialOpen = true; radialActive = -1
         v.open(rcx, rcy, dp(c.radial.radiusDp).toFloat(), its)
@@ -161,6 +162,10 @@ class OneHandAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         )
+        // Window opacity < 0.8 so Android 12+ "block untrusted touches" does NOT
+        // drop taps that pass through this full-screen overlay to the app below
+        // (this is what was silently killing Bitwarden's touches).
+        lp.alpha = OVERLAY_ALPHA
         wm.addView(v, lp)
         preview = v
     }
@@ -204,6 +209,7 @@ class OneHandAccessibilityService : AccessibilityService() {
                 lp.y = dm.heightPixels * h.positionPct / 100 - lp.height / 2
             }
         }
+        lp.alpha = OVERLAY_ALPHA // < 0.8 → doesn't block the app's touches (untrusted-touch rule)
         wm.addView(view, lp)
         views.add(view)
         Log.i(TAG, "addHandle ${h.id} edge=${h.edge} size=${lp.width}x${lp.height} x=${lp.x} y=${lp.y} inset=$inset")
@@ -329,6 +335,9 @@ class OneHandAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "OneHand"
+        // Keep our overlay windows under the 0.8 opacity threshold of Android 12+
+        // "block untrusted touches", so taps still reach the app underneath.
+        private const val OVERLAY_ALPHA = 0.6f
         @Volatile var instance: OneHandAccessibilityService? = null
             private set
         val isConnected: Boolean get() = instance != null

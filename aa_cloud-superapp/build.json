@@ -293,7 +293,7 @@
     "defaults": {
       "length_pct": 100,
       "length_dp": 180,
-      "thickness_dp": 20,
+      "thickness_dp": 48,
       "transparency": 0,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
