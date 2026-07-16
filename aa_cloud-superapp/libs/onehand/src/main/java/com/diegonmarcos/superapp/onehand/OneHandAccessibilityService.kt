@@ -2,6 +2,8 @@ package com.diegonmarcos.superapp.onehand
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
@@ -35,6 +37,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     private var downY = 0f
     private var activated = false
     private var pending: Runnable? = null
+    private var replaying = false // guard: ignore our own injected tap
 
     override fun onServiceConnected() {
         instance = this
@@ -229,6 +232,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     }
 
     private fun onHandleTouch(h: OneHandConfig.Handle, view: View, e: MotionEvent): Boolean {
+        if (replaying) return false // our own injected tap — let it fall through
         val c = cfg ?: return true
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -258,7 +262,16 @@ class OneHandAccessibilityService : AccessibilityService() {
                     Log.i(TAG, "UP ${h.id} fire key=$key action=${key?.let { h.gestures[it] }}")
                     key?.let { h.gestures[it]?.perform(this) }
                     preview?.end()
-                } else Log.i(TAG, "UP ${h.id} (not activated — nothing fired)")
+                } else {
+                    // Short tap that did NOT open our menu → forward it to the app
+                    // underneath (the handle window would otherwise swallow it).
+                    val dwell = e.eventTime - e.downTime
+                    val moved = hypot(e.rawX - downX, e.rawY - downY)
+                    if (dwell < c.longPressMs && moved < dp(16)) {
+                        Log.i(TAG, "UP ${h.id} short tap → replay to app @${downX.toInt()},${downY.toInt()}")
+                        replayTap(view, downX, downY)
+                    } else Log.i(TAG, "UP ${h.id} (not activated — nothing fired)")
+                }
                 activated = false
             }
             MotionEvent.ACTION_CANCEL -> {
@@ -278,6 +291,31 @@ class OneHandAccessibilityService : AccessibilityService() {
 
     private fun cancelPending(view: View) {
         pending?.let { view.removeCallbacks(it) }; pending = null
+    }
+
+    /** Forward a short tap to the app underneath: make our handle non-touchable,
+     *  inject a tap at the same point (goes to the app, not us), then restore. */
+    private fun replayTap(view: View, x: Float, y: Float) {
+        val lp = view.layoutParams as? WindowManager.LayoutParams ?: return
+        replaying = true
+        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        runCatching { windowManager?.updateViewLayout(view, lp) }
+        val restore = {
+            replaying = false
+            lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            runCatching { windowManager?.updateViewLayout(view, lp) }
+        }
+        val path = Path().apply { moveTo(x, y) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
+            .build()
+        val dispatched = runCatching {
+            dispatchGesture(gesture, object : GestureResultCallback() {
+                override fun onCompleted(d: GestureDescription?) { restore() }
+                override fun onCancelled(d: GestureDescription?) { restore() }
+            }, null)
+        }.getOrDefault(false)
+        if (!dispatched) { Log.i(TAG, "replayTap: dispatchGesture failed"); restore() }
     }
 
     private fun updatePreview(h: OneHandConfig.Handle, x: Float, y: Float) {
