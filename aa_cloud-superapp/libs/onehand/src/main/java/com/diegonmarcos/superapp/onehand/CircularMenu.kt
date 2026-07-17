@@ -203,6 +203,13 @@ object CircularMenu {
         private fun slotPos(lv: Level, s: Slot): Pair<Float, Float> =
             (lv.cx + s.r * cos(s.a)).toFloat() to (lv.cy + s.r * sin(s.a)).toFloat()
         private fun outerR(lv: Level): Float = layout(lv).maxOf { it.r }
+        // Icon radius = half the neighbour spacing (so circles just touch at most),
+        // capped at the full nodeR. Shrinks only when the arc is too packed.
+        private fun nodeRadiusFor(lv: Level, slots: List<Slot>): Float {
+            if (slots.size < 2) return nodeR
+            val (x0, y0) = slotPos(lv, slots[0]); val (x1, y1) = slotPos(lv, slots[1])
+            return (hypot(x1 - x0, y1 - y0) / 2f - dp(3)).coerceIn(dp(12), nodeR)
+        }
 
         private var fx = cx; private var fy = cy
         private var active = -1               // highlighted item in the top level
@@ -263,13 +270,19 @@ object CircularMenu {
                 val t = (slots.minOf { it.r } - nodeR) / len
                 c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
-            // the current level's items — slots[i] ↔ items[i]
+            // Radius is already at the screen-limited max; when the visible arc still
+            // can't fit full-size icons at this count, shrink them to the neighbour
+            // spacing so they never overlap (few-item levels keep full size).
+            val nr = nodeRadiusFor(lv, slots)
             slots.forEachIndexed { i, s ->
                 val (nx, ny) = slotPos(lv, s)
-                c.drawCircle(nx, ny, nodeR, if (i == active) hot else disc)
+                c.drawCircle(nx, ny, nr, if (i == active) hot else disc)
                 val nd = lv.items[i]
-                icon(nd.iconName)?.let { c.drawBitmap(it, nx - it.width / 2f, ny - it.height / 2f, null) }
-                c.drawText(nd.label, nx, ny + nodeR + dp(13), label)
+                icon(nd.iconName)?.let {
+                    val h = nr * 1.05f
+                    c.drawBitmap(it, null, RectF(nx - h, ny - h, nx + h, ny + h), null)
+                }
+                if (nr >= dp(19)) c.drawText(nd.label, nx, ny + nr + dp(13), label)
             }
         }
     }
