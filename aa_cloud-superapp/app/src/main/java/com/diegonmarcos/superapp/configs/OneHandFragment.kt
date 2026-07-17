@@ -60,13 +60,21 @@ class OneHandFragment : Fragment() {
         }
         root.addView(toggle)
 
-        root.addView(Switch(ctx).apply {
-            text = "Summon menu on long-press (off = on touch)"
-            isChecked = OneHandConfig.effective(ctx).trigger == OneHandConfig.Trigger.LONG_PRESS
-            setOnCheckedChangeListener { _, on ->
-                OneHandPrefs.setTrigger(ctx,
-                    if (on) OneHandConfig.Trigger.LONG_PRESS else OneHandConfig.Trigger.TOUCH)
-                OneHandController.refresh(ctx)
+        // How the menu is summoned. Swipe (Samsung edge-panel style) is the default:
+        // touch the edge handle + drag inward. A plain tap passes through to the app.
+        root.addView(android.widget.TextView(ctx).apply { text = "Activation" })
+        val triggers = listOf(
+            OneHandConfig.Trigger.SWIPE to "Hold & swipe in (Samsung edge style)",
+            OneHandConfig.Trigger.LONG_PRESS to "Long-press the handle",
+            OneHandConfig.Trigger.TOUCH to "Touch the handle",
+        )
+        root.addView(android.widget.RadioGroup(ctx).apply {
+            val current = OneHandConfig.effective(ctx).trigger
+            triggers.forEach { (t, label) ->
+                addView(android.widget.RadioButton(ctx).apply {
+                    text = label; id = View.generateViewId(); isChecked = t == current
+                    setOnClickListener { OneHandPrefs.setTrigger(ctx, t); OneHandController.refresh(ctx) }
+                })
             }
         })
 

@@ -137,54 +137,57 @@ object CircularMenu {
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
 
-        // Upward HALF-MOON: nodes spread across the top semicircle (180°=left →
-        // 270°=straight up → 360°=right) since the star sits near the bottom and
-        // there's no room below. i=0 is leftmost, i=n-1 rightmost.
-        private val n = cfg.nodes.size
+        // RECENTERING CASCADE. Each Level = a ring of items around a center. Level 0
+        // is centred on the star. Dragging PAST a node (r > commitR) makes that node
+        // the new center with its children fanning up around it — the arrow origin
+        // moves onto it. Pull the finger back into a center's dead-zone to pop up a
+        // level and pick a different node. i=0 leftmost → i=n-1 rightmost.
+        private data class Level(val cx: Float, val cy: Float, val items: List<Node>)
+        private val stack = ArrayList<Level>().apply {
+            add(Level(cx, cy, cfg.nodes))   // Node already carries label/icon/target/section
+        }
+        private val kidCache = HashMap<String, List<Node>>()
+        private fun childrenOf(it: Node): List<Node> {
+            val sec = it.section ?: return emptyList()
+            return kidCache.getOrPut(it.target) {
+                runCatching { host.pagesFor(sec) }.getOrDefault(emptyList())
+                    .map { l -> Node(l.label, l.iconName, l.target, null) } // leaves = terminal
+            }
+        }
+
+        // Upward half-moon: 180°(left) → 270°(up) → 360°(right).
         private fun arcAngle(i: Int, count: Int): Double =
             if (count <= 1) Math.toRadians(270.0) else Math.toRadians(180.0 + 180.0 * i / (count - 1))
-        private fun nodeAngle(i: Int) = arcAngle(i, n)
-        private fun nodePos(i: Int): Pair<Float, Float> {
-            val a = nodeAngle(i); return (cx + ring * cos(a)).toFloat() to (cy + ring * sin(a)).toFloat()
+        private fun itemPos(lv: Level, i: Int): Pair<Float, Float> {
+            val a = arcAngle(i, lv.items.size)
+            return (lv.cx + ring * cos(a)).toFloat() to (lv.cy + ring * sin(a)).toFloat()
         }
 
+        private val commitR = ring + dp(44)   // drag past this into a node → descend
         private var fx = cx; private var fy = cy
-        private var active = -1                       // highlighted node index
-        private var leaves: List<Leaf> = emptyList()
-        private var activeLeaf = -1
+        private var active = -1               // highlighted item in the top level
 
-        private fun recomputeSelection() {
-            val dx = fx - cx; val dy = fy - cy
-            if (hypot(dx, dy) < dead) { active = -1; leaves = emptyList(); activeLeaf = -1; return }
+        private fun recompute() {
+            val lv = stack.last()
+            val dx = fx - lv.cx; val dy = fy - lv.cy; val r = hypot(dx, dy)
+            if (r < dead) {                   // finger in the center dead-zone
+                if (stack.size > 1) stack.removeAt(stack.size - 1) // pop up a level
+                active = -1; return
+            }
             val fa = atan2(dy, dx).toDouble()
-            // nearest node by angular distance
             var best = 0; var bestD = Double.MAX_VALUE
-            for (i in 0 until n) {
-                var d = Math.abs(angDiff(fa, nodeAngle(i))); if (d < bestD) { bestD = d; best = i }
+            for (i in lv.items.indices) {
+                val d = Math.abs(angDiff(fa, arcAngle(i, lv.items.size))); if (d < bestD) { bestD = d; best = i }
             }
-            if (best != active) {
-                active = best
-                val sec = cfg.nodes[best].section
-                leaves = if (sec != null) runCatching { host.pagesFor(sec) }.getOrDefault(emptyList()) else emptyList()
-            }
-            // pick a leaf if finger is past the ring and near one
-            activeLeaf = -1
-            if (leaves.isNotEmpty() && hypot(dx, dy) > ring + dp(20)) {
-                var bl = -1; var blD = leafR * 1.6f
-                leaves.forEachIndexed { i, _ ->
-                    val (lx, ly) = leafPos(i)
-                    val d = hypot(fx - lx, fy - ly); if (d < blD) { blD = d; bl = i }
+            active = best
+            val sel = lv.items[best]
+            if (r > commitR && sel.section != null) {           // drag past node → enter it
+                val kids = childrenOf(sel)
+                if (kids.isNotEmpty()) {
+                    val (nx, ny) = itemPos(lv, best)
+                    stack.add(Level(nx, ny, kids)); active = -1  // node becomes new center
                 }
-                activeLeaf = bl
             }
-        }
-
-        // The active node's children form their OWN upward half-moon, CENTRED (not
-        // hung off the node) and further up the screen (subRing > ring) — that's
-        // the "second level goes up, centred" cascade.
-        private fun leafPos(leafIdx: Int): Pair<Float, Float> {
-            val a = arcAngle(leafIdx, leaves.size)
-            return (cx + subRing * cos(a)).toFloat() to (cy + subRing * sin(a)).toFloat()
         }
 
         private fun angDiff(a: Double, b: Double): Double {
@@ -194,15 +197,12 @@ object CircularMenu {
         override fun feed(x: Float, y: Float, action: Int) {
             when (action) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    fx = x; fy = y; recomputeSelection(); invalidate()
+                    fx = x; fy = y; recompute(); invalidate()
                 }
                 MotionEvent.ACTION_UP -> {
-                    val node = active; val leaf = activeLeaf
+                    val lv = stack.last(); val sel = active
                     dismiss(this)
-                    if (node >= 0) {
-                        if (leaf >= 0 && leaf < leaves.size) host.navigate(leaves[leaf].target)
-                        else if (cfg.nodes[node].section == null || leaves.isEmpty()) host.navigate(cfg.nodes[node].target)
-                    }
+                    if (sel in lv.items.indices) host.navigate(lv.items[sel].target)
                 }
                 MotionEvent.ACTION_CANCEL -> dismiss(this)
             }
@@ -213,22 +213,18 @@ object CircularMenu {
 
         override fun onDraw(c: Canvas) {
             c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrim)
-            // arrow from centre toward finger (clamped to the ring)
-            val dx = fx - cx; val dy = fy - cy; val len = hypot(dx, dy)
+            val lv = stack.last()
+            // breadcrumb: a faint disc at each ancestor center (that's where "back" is)
+            for (i in 0 until stack.size - 1) c.drawCircle(stack[i].cx, stack[i].cy, dp(8), disc)
+            // arrow from the current center toward the finger (clamped to the ring)
+            val dx = fx - lv.cx; val dy = fy - lv.cy; val len = hypot(dx, dy)
             if (len > dead) {
                 val t = (ring - nodeR) / len
-                c.drawLine(cx, cy, cx + dx * t, cy + dy * t, arrow)
+                c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
-            // fan-out leaves of the active node (drawn under nodes)
-            if (active >= 0) leaves.forEachIndexed { i, lf ->
-                val (lx, ly) = leafPos(i)
-                c.drawCircle(lx, ly, leafR, if (i == activeLeaf) hot else disc)
-                icon(lf.iconName)?.let { c.drawBitmap(it, lx - it.width / 2f, ly - it.height / 2f, null) }
-                c.drawText(lf.label, lx, ly + leafR + dp(13), label)
-            }
-            // top-level nodes
-            cfg.nodes.forEachIndexed { i, nd ->
-                val (nx, ny) = nodePos(i)
+            // the current level's items
+            lv.items.forEachIndexed { i, nd ->
+                val (nx, ny) = itemPos(lv, i)
                 c.drawCircle(nx, ny, nodeR, if (i == active) hot else disc)
                 icon(nd.iconName)?.let { c.drawBitmap(it, nx - it.width / 2f, ny - it.height / 2f, null) }
                 c.drawText(nd.label, nx, ny + nodeR + dp(13), label)

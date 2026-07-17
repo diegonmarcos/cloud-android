@@ -33,8 +33,9 @@ data class OneHandConfig(
         val items: List<GestureAction>,
     )
 
-    /** How the option menu is summoned: hold the handle, or on first touch. */
-    enum class Trigger { LONG_PRESS, TOUCH }
+    /** How the menu is summoned: SWIPE = touch the handle + drag inward (Samsung
+     *  edge-panel style, taps pass through); LONG_PRESS = hold; TOUCH = on down. */
+    enum class Trigger { SWIPE, LONG_PRESS, TOUCH }
 
     data class Handle(
         val id: String,
@@ -75,8 +76,11 @@ data class OneHandConfig(
                     add(AppOption(a.optString("label"), a.optString("package")))
                 }
             }
-            val trigger = if (d.optString("trigger", "long_press").equals("touch", true))
-                Trigger.TOUCH else Trigger.LONG_PRESS
+            val trigger = when (d.optString("trigger", "swipe").lowercase()) {
+                "touch" -> Trigger.TOUCH
+                "long_press" -> Trigger.LONG_PRESS
+                else -> Trigger.SWIPE
+            }
             val rj = json.optJSONObject("radial") ?: JSONObject()
             val ritems = rj.optJSONArray("items")
             val radial = Radial(

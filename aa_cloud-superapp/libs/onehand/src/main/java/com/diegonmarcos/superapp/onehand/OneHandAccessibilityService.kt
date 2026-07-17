@@ -129,7 +129,10 @@ class OneHandAccessibilityService : AccessibilityService() {
         val c = OneHandConfig.effective(this).also { cfg = it }
         Log.i(TAG, "showHandles: ${c.handles.size} handles, trigger=${c.trigger}, longPressMs=${c.longPressMs}")
         c.handles.forEach { addHandle(it) }
-        addPreviewLayer() // on top (non-touchable → handle touches pass through)
+        // NO persistent full-screen layer here: a MATCH_PARENT overlay (even
+        // FLAG_NOT_TOUCHABLE) covering the whole screen makes One UI's untrusted-
+        // touch policy drop taps to the app below (this is what killed Bitwarden).
+        // The preview veil is created lazily in activate() and torn down on end.
     }
 
     /** Enable the handles for [ms] then auto-disable — safe way to test without
@@ -264,30 +267,42 @@ class OneHandAccessibilityService : AccessibilityService() {
             MotionEvent.ACTION_DOWN -> {
                 downX = e.rawX; downY = e.rawY; activated = false
                 Log.i(TAG, "DOWN ${h.id} @${e.rawX.toInt()},${e.rawY.toInt()} trigger=${c.trigger}")
-                if (c.trigger == OneHandConfig.Trigger.TOUCH) activate(h)
-                else {
-                    val r = Runnable {
-                        activate(h)
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                when (c.trigger) {
+                    OneHandConfig.Trigger.TOUCH -> activate(h)
+                    OneHandConfig.Trigger.LONG_PRESS -> {
+                        val r = Runnable {
+                            activate(h); view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        }
+                        pending = r; view.postDelayed(r, c.longPressMs.toLong())
                     }
-                    pending = r; view.postDelayed(r, c.longPressMs.toLong())
+                    OneHandConfig.Trigger.SWIPE -> { /* wait for an inward drag in MOVE */ }
                 }
             }
-            MotionEvent.ACTION_MOVE ->
+            MotionEvent.ACTION_MOVE -> {
+                val dx = e.rawX - downX; val dy = e.rawY - downY
                 if (activated) updatePreview(h, e.rawX, e.rawY)
-                // Moved before the long-press fired → a scroll/quick swipe, not our
-                // gesture: cancel activation and let it pass as a normal swipe.
-                else if (hypot(e.rawX - downX, e.rawY - downY) > dp(16)) {
-                    Log.i(TAG, "MOVE-cancel ${h.id} (moved before long-press)")
-                    cancelPending(view)
+                else when (c.trigger) {
+                    // Samsung edge-panel style: an INWARD drag past the threshold opens
+                    // the menu; a plain tap never activates → passes through (replayTap).
+                    OneHandConfig.Trigger.SWIPE ->
+                        if (SwipeClassifier.sector(h.edge, dx, dy) != null &&
+                            hypot(dx, dy) > dp(c.swipeThresholdDp)) {
+                            activate(h); view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            updatePreview(h, e.rawX, e.rawY)
+                        }
+                    // Long-press: a move before the timer = a scroll → cancel, pass through.
+                    OneHandConfig.Trigger.LONG_PRESS ->
+                        if (hypot(dx, dy) > dp(16)) { Log.i(TAG, "MOVE-cancel ${h.id}"); cancelPending(view) }
+                    OneHandConfig.Trigger.TOUCH -> {}
                 }
+            }
             MotionEvent.ACTION_UP -> {
                 cancelPending(view)
                 if (activated) {
                     val key = SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
                     Log.i(TAG, "UP ${h.id} fire key=$key action=${key?.let { h.gestures[it] }}")
                     key?.let { h.gestures[it]?.perform(this) }
-                    preview?.end()
+                    endPreview()
                 } else {
                     // Short tap that did NOT open our menu → forward it to the app
                     // underneath (the handle window would otherwise swallow it).
@@ -302,7 +317,7 @@ class OneHandAccessibilityService : AccessibilityService() {
             }
             MotionEvent.ACTION_CANCEL -> {
                 Log.i(TAG, "CANCEL ${h.id} activated=$activated (OS likely claimed the gesture)")
-                cancelPending(view); preview?.end(); activated = false
+                cancelPending(view); endPreview(); activated = false
             }
         }
         return true
@@ -311,8 +326,16 @@ class OneHandAccessibilityService : AccessibilityService() {
     private fun activate(h: OneHandConfig.Handle) {
         activated = true
         Log.i(TAG, "activate ${h.id} — menu shown")
+        if (preview == null) addPreviewLayer() // veil exists ONLY during the gesture
         preview?.begin(buildOptions(h))
         preview?.update(downX, downY, downX, downY, null)
+    }
+
+    /** Tear down the mid-gesture veil so no full-screen overlay lingers over the
+     *  app (a persistent one makes One UI drop the app's touches). */
+    private fun endPreview() {
+        preview?.let { runCatching { it.end() }; runCatching { windowManager?.removeView(it) } }
+        preview = null
     }
 
     private fun cancelPending(view: View) {

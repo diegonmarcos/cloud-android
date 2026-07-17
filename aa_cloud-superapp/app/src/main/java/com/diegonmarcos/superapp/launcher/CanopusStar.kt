@@ -61,8 +61,21 @@ class CanopusStar(private val activity: AppCompatActivity) {
         val pad = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, c.starTapPadDp.toFloat(), activity.resources.displayMetrics).toInt()
         star.setPadding(pad, pad, pad, pad)
-        // Anchor near the BOTTOM (data-driven) so the half-moon menu opens upward.
-        star.post { star.translationY = star.rootView.height * c.starBottomPct }
+        // Anchor just ABOVE the bottom nav island (never overlapping it) so the
+        // half-moon menu opens upward. Falls back to the data-driven bottom_pct if
+        // the nav isn't laid out yet.
+        star.post {
+            val island = activity.findViewById<View?>(R.id.bottom_nav_island)
+            if (island != null && island.height > 0) {
+                val s = IntArray(2); star.getLocationInWindow(s)
+                val n = IntArray(2); island.getLocationInWindow(n)
+                val gap = TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 12f, activity.resources.displayMetrics)
+                star.translationY = (n[1] - gap - (s[1] + star.height)).toFloat()
+            } else {
+                star.translationY = star.rootView.height * c.starBottomPct
+            }
+        }
         // Forward the whole press→drag→release gesture to the menu so it's one
         // continuous motion (the overlay never sees the gesture that began here).
         star.setOnTouchListener { _, e ->

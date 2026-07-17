@@ -308,12 +308,12 @@
     "defaults": {
       "length_pct": 100,
       "length_dp": 220,
-      "thickness_dp": 16,
+      "thickness_dp": 32,
       "transparency": 0,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
       "edge_inset_gesture_dp": 0,
-      "trigger": "long_press",
+      "trigger": "swipe",
       "long_press_ms": 300,
       "_doc_gesture_inset": "The handle is inset from the very border for TWO reasons on Samsung: (1) CURVED-EDGE display — the border pixels are on the curve, where touch is unreliable (edge/palm rejection) + reserved by the system, so a handle AT the edge never activates. (2) GESTURE-nav back-swipe fires from the edge and races our press. Both are dodged by placing the handle on the FLAT glass past the curve. edge_inset_dp (26) applies always (covers the curve); edge_inset_gesture_dp (30) is used in gesture-nav (curve + a bit more to clear the back-gesture strip), detected via config_navBarInteractionMode. Flat-screen devices can lower edge_inset_dp toward 0.",
       "_doc_geometry": "BOUNDED band, not full-height. length_dp=180 (>0 overrides length_pct) keeps the touch zone a ~180dp band at position_pct down the edge. Two reasons it must be bounded: (1) our handle CONSUMES touches in its area (a touchable overlay can't pass them through), so a full-height strip creates a dead vertical band down the whole edge that blocks the app underneath (e.g. Bitwarden buttons near the edge stop responding). A short band frees the rest of the edge. (2) systemGestureExclusionRects is OS-capped at 200dp/edge, so ≤180dp is FULLY excluded → reliable. Invisible (transparency 0); it lives at a consistent thumb-zone position."
