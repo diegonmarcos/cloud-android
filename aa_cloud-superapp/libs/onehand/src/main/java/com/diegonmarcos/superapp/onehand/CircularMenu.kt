@@ -155,21 +155,44 @@ object CircularMenu {
             }
         }
 
-        // Upward half-moon: 180°(left) → 270°(up) → 360°(right).
-        private fun arcAngle(i: Int, count: Int): Double =
-            if (count <= 1) Math.toRadians(270.0) else Math.toRadians(180.0 + 180.0 * i / (count - 1))
-        // Grow the ring so icons never overlap: on a semicircle adjacent spacing is
-        // π·R/(count-1), which must stay ≥ one icon + gap. Levels with many children
-        // (e.g. Configs) get a bigger radius; small levels keep the base radius.
-        private val minGap = nodeR * 2 + dp(14)
-        private fun ringFor(count: Int): Float =
-            if (count <= 1) ring else maxOf(ring, (minGap * (count - 1) / Math.PI).toFloat())
-        private fun itemPos(lv: Level, i: Int): Pair<Float, Float> {
-            val a = arcAngle(i, lv.items.size); val r = ringFor(lv.items.size)
-            return (lv.cx + r * cos(a)).toFloat() to (lv.cy + r * sin(a)).toFloat()
-        }
+        // LAYOUT. Items sit on an upward half-moon (180°=left → 270°=up → 360°=right)
+        // around the level's center. The radius is clamped to what fits ON SCREEN;
+        // when a level has more children than fit on one arc at readable spacing
+        // (e.g. Configs' 12), the overflow wraps onto a second, larger concentric
+        // ring — nothing is ever pushed off-screen. slots[i] maps 1:1 to items[i].
+        private val minGap = nodeR * 2 + dp(12)   // min center-to-center between icons
+        private val rowStep = nodeR * 2 + dp(10)  // radial gap between concentric rings
 
-        private fun commitR(count: Int) = ringFor(count) + dp(44) // drag past → descend
+        private data class Slot(val r: Float, val a: Double)
+        private fun maxRadius(lv: Level): Float {
+            val m = nodeR + dp(10)
+            val w = if (width > 0) width.toFloat() else lv.cx * 2
+            return maxOf(dp(48), minOf(lv.cx, w - lv.cx, lv.cy) - m)
+        }
+        private fun layout(lv: Level): List<Slot> {
+            val n = lv.items.size
+            val maxR = maxRadius(lv)
+            if (n <= 1) return listOf(Slot(minOf(ring, maxR), Math.toRadians(270.0)))
+            val slots = ArrayList<Slot>(n)
+            var placed = 0; var j = 0
+            while (placed < n) {
+                val r = minOf(ring + j * rowStep, maxR)
+                val capacity = maxOf(2, (Math.PI * r / minGap).toInt() + 1)
+                // the last ring we can afford (hit the screen bound) takes all the rest
+                val take = if (r >= maxR) n - placed else minOf(capacity, n - placed)
+                for (k in 0 until take) {
+                    val a = if (take <= 1) Math.toRadians(270.0)
+                            else Math.toRadians(180.0 + 180.0 * k / (take - 1))
+                    slots.add(Slot(r, a))
+                }
+                placed += take; j++
+            }
+            return slots
+        }
+        private fun slotPos(lv: Level, s: Slot): Pair<Float, Float> =
+            (lv.cx + s.r * cos(s.a)).toFloat() to (lv.cy + s.r * sin(s.a)).toFloat()
+        private fun outerR(lv: Level): Float = layout(lv).maxOf { it.r }
+
         private var fx = cx; private var fy = cy
         private var active = -1               // highlighted item in the top level
 
@@ -180,24 +203,24 @@ object CircularMenu {
                 if (stack.size > 1) stack.removeAt(stack.size - 1) // pop up a level
                 active = -1; return
             }
-            val fa = atan2(dy, dx).toDouble()
-            var best = 0; var bestD = Double.MAX_VALUE
-            for (i in lv.items.indices) {
-                val d = Math.abs(angDiff(fa, arcAngle(i, lv.items.size))); if (d < bestD) { bestD = d; best = i }
+            val slots = layout(lv)
+            // nearest item by straight-line distance — correct across concentric rings
+            var best = 0; var bestD = Float.MAX_VALUE
+            slots.forEachIndexed { i, s ->
+                val (px, py) = slotPos(lv, s)
+                val d = hypot(fx - px, fy - py); if (d < bestD) { bestD = d; best = i }
             }
             active = best
             val sel = lv.items[best]
-            if (r > commitR(lv.items.size) && sel.section != null) {   // drag past node → enter it
+            // descend: drag past the outermost ring into a node with children. Leaf
+            // levels carry no sections, so packed rings never trigger this.
+            if (r > outerR(lv) + dp(44) && sel.section != null) {
                 val kids = childrenOf(sel)
                 if (kids.isNotEmpty()) {
-                    val (nx, ny) = itemPos(lv, best)
+                    val (nx, ny) = slotPos(lv, slots[best])
                     stack.add(Level(nx, ny, kids)); active = -1  // node becomes new center
                 }
             }
-        }
-
-        private fun angDiff(a: Double, b: Double): Double {
-            var d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d
         }
 
         override fun feed(x: Float, y: Float, action: Int) {
@@ -222,16 +245,18 @@ object CircularMenu {
             val lv = stack.last()
             // breadcrumb: a faint disc at each ancestor center (that's where "back" is)
             for (i in 0 until stack.size - 1) c.drawCircle(stack[i].cx, stack[i].cy, dp(8), disc)
-            // arrow from the current center toward the finger (clamped to the ring)
+            val slots = layout(lv)
+            // arrow from the current center toward the finger (clamped to inner ring)
             val dx = fx - lv.cx; val dy = fy - lv.cy; val len = hypot(dx, dy)
             if (len > dead) {
-                val t = (ringFor(lv.items.size) - nodeR) / len
+                val t = (slots.minOf { it.r } - nodeR) / len
                 c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
-            // the current level's items
-            lv.items.forEachIndexed { i, nd ->
-                val (nx, ny) = itemPos(lv, i)
+            // the current level's items — slots[i] ↔ items[i]
+            slots.forEachIndexed { i, s ->
+                val (nx, ny) = slotPos(lv, s)
                 c.drawCircle(nx, ny, nodeR, if (i == active) hot else disc)
+                val nd = lv.items[i]
                 icon(nd.iconName)?.let { c.drawBitmap(it, nx - it.width / 2f, ny - it.height / 2f, null) }
                 c.drawText(nd.label, nx, ny + nodeR + dp(13), label)
             }
