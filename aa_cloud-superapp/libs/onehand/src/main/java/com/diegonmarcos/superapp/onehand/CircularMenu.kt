@@ -160,31 +160,24 @@ object CircularMenu {
         // when a level has more children than fit on one arc at readable spacing
         // (e.g. Configs' 12), the overflow wraps onto a second, larger concentric
         // ring — nothing is ever pushed off-screen. slots[i] maps 1:1 to items[i].
-        private val minGap = nodeR * 2 + dp(12)   // min center-to-center between icons
-        private val rowStep = nodeR * 2 + dp(10)  // radial gap between concentric rings
+        private val minGap = nodeR * 2 + dp(12)   // ideal center-to-center between icons
 
         private data class Slot(val r: Float, val a: Double)
-        // Fixed concentric radii (base ring, then +rowStep per ring). Each ring on
-        // the semicircle holds ⌊π·R/minGap⌋+1 icons; overflow spills to the next,
-        // larger ring. NO dependency on runtime view size/center — a screen-coord
-        // clamp previously collapsed level 0 to a tiny arc.
+        // SINGLE upward arc. The radius grows with item count so spacing stays ≥
+        // minGap, but is capped to half the SCREEN width (via displayMetrics — never
+        // view coords, which collapsed level 0 to a tiny arc) so the extreme icons
+        // stay on-screen. Many items just pack a bit tighter on one bigger ring.
+        private fun radiusFor(n: Int): Float {
+            if (n <= 1) return ring
+            val ideal = (minGap * (n - 1) / Math.PI).toFloat()
+            val maxR = dm.widthPixels / 2f - nodeR - dp(8)
+            return maxOf(ring, minOf(ideal, maxR))
+        }
         private fun layout(lv: Level): List<Slot> {
             val n = lv.items.size
-            if (n <= 1) return listOf(Slot(ring, Math.toRadians(270.0)))
-            val slots = ArrayList<Slot>(n)
-            var placed = 0; var j = 0
-            while (placed < n) {
-                val r = ring + j * rowStep
-                val capacity = maxOf(2, (Math.PI * r / minGap).toInt() + 1)
-                val take = minOf(capacity, n - placed)
-                for (k in 0 until take) {
-                    val a = if (take <= 1) Math.toRadians(270.0)
-                            else Math.toRadians(180.0 + 180.0 * k / (take - 1))
-                    slots.add(Slot(r, a))
-                }
-                placed += take; j++
-            }
-            return slots
+            val r = radiusFor(n)
+            if (n <= 1) return listOf(Slot(r, Math.toRadians(270.0)))
+            return List(n) { i -> Slot(r, Math.toRadians(180.0 + 180.0 * i / (n - 1))) }
         }
         private fun slotPos(lv: Level, s: Slot): Pair<Float, Float> =
             (lv.cx + s.r * cos(s.a)).toFloat() to (lv.cy + s.r * sin(s.a)).toFloat()

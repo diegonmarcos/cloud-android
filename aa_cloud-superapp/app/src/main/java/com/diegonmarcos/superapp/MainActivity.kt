@@ -542,7 +542,9 @@ class MainActivity : AppCompatActivity(),
         if (suppressBottomNavReentry) return true
         val id = sectionIdForNavId(item.itemId) ?: return false
         fireGeminiPattern()
-        if (id == "home") goHome() else goSection(id, Sections.byId(id)?.label ?: id)
+        // "Home" fully resets to the home root (pop pages, close drawer) — same as
+        // the system HOME button — not just a section switch.
+        if (id == "home") resetToHome() else goSection(id, Sections.byId(id)?.label ?: id)
         return true
     }
 
