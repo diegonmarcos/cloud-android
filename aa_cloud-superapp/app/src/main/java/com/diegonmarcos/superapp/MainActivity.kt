@@ -1595,7 +1595,21 @@ class MainActivity : AppCompatActivity(),
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        handleShortcutIntent(intent)
+        // Pressing the system HOME button while we're the default launcher
+        // re-delivers our launcher intent here (ACTION_MAIN + CATEGORY_HOME, no
+        // shortcut_action). Other apps get sent to us; inside us it must reset to
+        // the home page too — otherwise HOME is a no-op on non-home pages.
+        if (intent.hasCategory(android.content.Intent.CATEGORY_HOME)) resetToHome()
+        else handleShortcutIntent(intent)
+    }
+
+    /** Return to a clean Home root: close the drawer, drop any pushed pages and
+     *  overlays, and select the home section. Mirrors what a fresh launch shows. */
+    private fun resetToHome() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawer(GravityCompat.START)
+        supportFragmentManager.popBackStackImmediate(null,
+            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        goHome()
     }
 
     private fun handleShortcutIntent(intent: android.content.Intent?) {
