@@ -158,12 +158,18 @@ object CircularMenu {
         // Upward half-moon: 180°(left) → 270°(up) → 360°(right).
         private fun arcAngle(i: Int, count: Int): Double =
             if (count <= 1) Math.toRadians(270.0) else Math.toRadians(180.0 + 180.0 * i / (count - 1))
+        // Grow the ring so icons never overlap: on a semicircle adjacent spacing is
+        // π·R/(count-1), which must stay ≥ one icon + gap. Levels with many children
+        // (e.g. Configs) get a bigger radius; small levels keep the base radius.
+        private val minGap = nodeR * 2 + dp(14)
+        private fun ringFor(count: Int): Float =
+            if (count <= 1) ring else maxOf(ring, (minGap * (count - 1) / Math.PI).toFloat())
         private fun itemPos(lv: Level, i: Int): Pair<Float, Float> {
-            val a = arcAngle(i, lv.items.size)
-            return (lv.cx + ring * cos(a)).toFloat() to (lv.cy + ring * sin(a)).toFloat()
+            val a = arcAngle(i, lv.items.size); val r = ringFor(lv.items.size)
+            return (lv.cx + r * cos(a)).toFloat() to (lv.cy + r * sin(a)).toFloat()
         }
 
-        private val commitR = ring + dp(44)   // drag past this into a node → descend
+        private fun commitR(count: Int) = ringFor(count) + dp(44) // drag past → descend
         private var fx = cx; private var fy = cy
         private var active = -1               // highlighted item in the top level
 
@@ -181,7 +187,7 @@ object CircularMenu {
             }
             active = best
             val sel = lv.items[best]
-            if (r > commitR && sel.section != null) {           // drag past node → enter it
+            if (r > commitR(lv.items.size) && sel.section != null) {   // drag past node → enter it
                 val kids = childrenOf(sel)
                 if (kids.isNotEmpty()) {
                     val (nx, ny) = itemPos(lv, best)
@@ -219,7 +225,7 @@ object CircularMenu {
             // arrow from the current center toward the finger (clamped to the ring)
             val dx = fx - lv.cx; val dy = fy - lv.cy; val len = hypot(dx, dy)
             if (len > dead) {
-                val t = (ring - nodeR) / len
+                val t = (ringFor(lv.items.size) - nodeR) / len
                 c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
             // the current level's items
