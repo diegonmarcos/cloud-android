@@ -191,14 +191,30 @@ object CircularMenu {
         // capped where the full upper half still fits (min of half-width and the
         // height above the center). The radius grows with count up to that cap; the
         // visible span [lo,hi] is measured so icons never fall off the edges.
+        private fun isRoot(lv: Level) = stack.isNotEmpty() && stack[0] === lv
         private fun layout(lv: Level): List<Slot> {
             val n = lv.items.size
             if (n <= 1) return listOf(Slot(ring, Math.toRadians(270.0)))
-            val rCap = maxOf(ring, minOf(dm.widthPixels / 2f - margin, lv.cy - margin))
-            val ideal = (minGap * (n - 1) / Math.PI).toFloat()   // full-semicircle spacing
+            if (isRoot(lv)) {
+                // Level 0: upward half-moon from the bottom star. Radius grows with
+                // count up to where the semicircle still fits (half-width / height
+                // above center); icons spread across the on-screen span.
+                val rCap = maxOf(ring, minOf(dm.widthPixels / 2f - margin, lv.cy - margin))
+                val ideal = (minGap * (n - 1) / Math.PI).toFloat()
+                val r = maxOf(ring, minOf(ideal, rCap))
+                val lo = edge(lv.cx, lv.cy, r, -1); val hi = edge(lv.cx, lv.cy, r, +1)
+                return List(n) { i -> Slot(r, lo + (hi - lo) * i / (n - 1)) }
+            }
+            // Deeper levels re-center ON the node — often near the top with no upward
+            // room. So they open as a FULL circle around the node: 2× the arc length
+            // for the same radius, so crowded levels (Configs' 12) get a much bigger
+            // radius AND full-size icons. Radius clamps to the nearest screen edge so
+            // the whole circle stays visible.
+            val edgeDist = minOf(lv.cx, dm.widthPixels - lv.cx, lv.cy, dm.heightPixels - lv.cy) - margin
+            val rCap = maxOf(ring, edgeDist)
+            val ideal = (n * minGap / (2 * Math.PI)).toFloat()   // full-circle spacing
             val r = maxOf(ring, minOf(ideal, rCap))
-            val lo = edge(lv.cx, lv.cy, r, -1); val hi = edge(lv.cx, lv.cy, r, +1)
-            return List(n) { i -> Slot(r, lo + (hi - lo) * i / (n - 1)) }
+            return List(n) { i -> Slot(r, 2 * Math.PI * i / n - Math.PI / 2) } // start at top
         }
         private fun slotPos(lv: Level, s: Slot): Pair<Float, Float> =
             (lv.cx + s.r * cos(s.a)).toFloat() to (lv.cy + s.r * sin(s.a)).toFloat()
@@ -279,7 +295,8 @@ object CircularMenu {
                 c.drawCircle(nx, ny, nr, if (i == active) hot else disc)
                 val nd = lv.items[i]
                 icon(nd.iconName)?.let {
-                    val h = nr * 1.05f
+                    // native icon size (iconPx), scaled down only when the node shrank
+                    val h = iconPx / 2f * (nr / nodeR)
                     c.drawBitmap(it, null, RectF(nx - h, ny - h, nx + h, ny + h), null)
                 }
                 if (nr >= dp(19)) c.drawText(nd.label, nx, ny + nr + dp(13), label)
