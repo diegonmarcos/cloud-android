@@ -132,9 +132,10 @@ class MainActivity : AppCompatActivity(),
     // the Sirius Star's visibility (shown only on `home`). findViewById is
     // null-safe so the very first assignment (before setContentView) no-ops.
     override var currentSection: String = ""
-        set(value) { field = value; siriusStar.update(value) }
+        set(value) { field = value; siriusStar.update(value); canopusStar.update(value) }
     override var currentLabel:   String = ""
     private val siriusStar by lazy { SiriusStar(this) }
+    private val canopusStar by lazy { com.diegonmarcos.superapp.launcher.CanopusStar(this) }
 
     /** Re-entrancy guards: both drawerTabs.selectTab() AND
      *  bottomNav.selectedItemId fire their selection listeners. When the
@@ -204,6 +205,7 @@ class MainActivity : AppCompatActivity(),
             modePrefs = ModePrefs(this)
             currentLabel = getString(R.string.section_home)
             siriusStar.setup(); siriusStar.update(currentSection)
+            canopusStar.setup(); canopusStar.update(currentSection)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)

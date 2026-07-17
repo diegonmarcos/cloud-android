@@ -89,6 +89,28 @@
             android:elevation="16dp"
             android:visibility="gone" />
 
+        <!-- Canopus star — the 2nd-brightest. Sits UNDER the cube (translationY
+             set in code), a touch bigger than Sirius. Tapping it opens the
+             libs:onehand circular-menu. Glyph/size data-driven from
+             build.json::onehand.circular_menu.star. VISIBLE only on `home`. -->
+        <TextView
+            android:id="@+id/canopus_star"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="✦"
+            android:textSize="20sp"
+            android:textColor="#F2F7FF"
+            android:shadowColor="#9CC2FF"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="8"
+            android:contentDescription="Canopus Star — open circular menu"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="16dp"
+            android:visibility="gone" />
+
         <!-- Launcher status strip — visible ONLY when the SuperApp is
              the default Android launcher AND the active LauncherTheme
              is Cloud. Drawn at the very top edge (where the system
