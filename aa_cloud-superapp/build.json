@@ -307,12 +307,12 @@
     },
     "defaults": {
       "length_pct": 100,
-      "length_dp": 200,
-      "thickness_dp": 64,
+      "length_dp": 220,
+      "thickness_dp": 16,
       "transparency": 0,
       "swipe_threshold_dp": 24,
       "edge_inset_dp": 0,
-      "edge_inset_gesture_dp": 8,
+      "edge_inset_gesture_dp": 0,
       "trigger": "long_press",
       "long_press_ms": 300,
       "_doc_gesture_inset": "The handle is inset from the very border for TWO reasons on Samsung: (1) CURVED-EDGE display — the border pixels are on the curve, where touch is unreliable (edge/palm rejection) + reserved by the system, so a handle AT the edge never activates. (2) GESTURE-nav back-swipe fires from the edge and races our press. Both are dodged by placing the handle on the FLAT glass past the curve. edge_inset_dp (26) applies always (covers the curve); edge_inset_gesture_dp (30) is used in gesture-nav (curve + a bit more to clear the back-gesture strip), detected via config_navBarInteractionMode. Flat-screen devices can lower edge_inset_dp toward 0.",
@@ -4950,10 +4950,13 @@
     "_doc_launcher_settings": "Configs → Launcher → Others. Data-driven toggles + sliders persisted via LauncherSettingsPrefs, read by each subsystem at runtime. toggles[].id maps to a pref key; default = first-run value. Sliders carry min/max/default. brightness.default -1 = leave system brightness untouched. Adding a toggle = one entry here + one subsystem read.",
     "launcher_settings": {
       "toggles": [
-        { "id": "pets_anim",      "label": "Animal animations", "subtitle": "Animate the status-bar pets.",          "default": true },
-        { "id": "cube_anim",      "label": "Cube animation",    "subtitle": "3D home cube motion.",                  "default": true },
-        { "id": "island_anim",    "label": "Island animation",  "subtitle": "Home-screen island wave motion.",       "default": true },
-        { "id": "stars_anim",     "label": "Stars animation",   "subtitle": "Galaxy backdrop stars + comets.",       "default": true },
+        { "id": "pets_anim",      "label": "Animal animations", "subtitle": "Animate the status-bar pets.",          "default": true,  "battery": true },
+        { "id": "cube_anim",      "label": "Cube animation",    "subtitle": "3D home cube motion.",                  "default": true,  "battery": true },
+        { "id": "island_anim",    "label": "Island animation",  "subtitle": "Home-screen island wave motion.",       "default": true,  "battery": true },
+        { "id": "stars_anim",     "label": "Stars animation",   "subtitle": "Galaxy backdrop stars + comets.",       "default": true,  "battery": true },
+        { "id": "status_live",    "label": "Live system stats", "subtitle": "Refresh RAM/CPU/storage every 10s (off = frozen numbers, leaner).", "default": true, "battery": true },
+        { "id": "star_twinkle",   "label": "Star twinkle",      "subtitle": "Pulse the home Sirius star (off = static).", "default": true, "battery": true },
+        { "id": "fleet_check",    "label": "Constellation update check", "subtitle": "Periodic GHCR check for sibling-app updates (off = manual only, saves network).", "default": true, "battery": true },
         { "id": "haptics",        "label": "Vibration on tap",  "subtitle": "Haptic feedback on every tap.",         "default": true },
         { "id": "eye_protection", "label": "Eye protection",    "subtitle": "Warm amber overlay to cut blue light.", "default": false }
       ],
