@@ -161,23 +161,44 @@ object CircularMenu {
         // (e.g. Configs' 12), the overflow wraps onto a second, larger concentric
         // ring — nothing is ever pushed off-screen. slots[i] maps 1:1 to items[i].
         private val minGap = nodeR * 2 + dp(12)   // ideal center-to-center between icons
+        private val margin = nodeR + dp(8)        // keep whole icon inside the screen
 
         private data class Slot(val r: Float, val a: Double)
-        // SINGLE upward arc. The radius grows with item count so spacing stays ≥
-        // minGap, but is capped to half the SCREEN width (via displayMetrics — never
-        // view coords, which collapsed level 0 to a tiny arc) so the extreme icons
-        // stay on-screen. Many items just pack a bit tighter on one bigger ring.
-        private fun radiusFor(n: Int): Float {
-            if (n <= 1) return ring
-            val ideal = (minGap * (n - 1) / Math.PI).toFloat()
-            val maxR = dm.widthPixels / 2f - nodeR - dp(8)
-            return maxOf(ring, minOf(ideal, maxR))
+
+        private fun onScreen(cx: Float, cy: Float, r: Float, ang: Double): Boolean {
+            val x = cx + r * cos(ang); val y = cy + r * sin(ang)
+            return x >= margin && x <= dm.widthPixels - margin &&
+                   y >= margin && y <= dm.heightPixels - margin
         }
+        // From straight-up (270°) walk toward 180° (dir=-1) or 360° (dir=+1) until
+        // the arc leaves the screen; return that boundary angle. The on-screen arc
+        // is contiguous around 270° because we cap the radius so the top stays visible.
+        private fun edge(cx: Float, cy: Float, r: Float, dir: Int): Double {
+            val stop = Math.toRadians(if (dir < 0) 180.0 else 360.0)
+            val stepA = Math.toRadians(1.5) * dir
+            var a = Math.toRadians(270.0)
+            while (if (dir < 0) a > stop else a < stop) {
+                val next = a + stepA
+                if (!onScreen(cx, cy, r, next)) break
+                a = next
+            }
+            return a
+        }
+
+        // A bigger circle bulges further up into the screen, giving MORE on-screen
+        // arc to spread icons over — but only until the semicircle just fits; past
+        // that the sides clip it and the visible arc SHRINKS. So the useful radius is
+        // capped where the full upper half still fits (min of half-width and the
+        // height above the center). The radius grows with count up to that cap; the
+        // visible span [lo,hi] is measured so icons never fall off the edges.
         private fun layout(lv: Level): List<Slot> {
             val n = lv.items.size
-            val r = radiusFor(n)
-            if (n <= 1) return listOf(Slot(r, Math.toRadians(270.0)))
-            return List(n) { i -> Slot(r, Math.toRadians(180.0 + 180.0 * i / (n - 1))) }
+            if (n <= 1) return listOf(Slot(ring, Math.toRadians(270.0)))
+            val rCap = maxOf(ring, minOf(dm.widthPixels / 2f - margin, lv.cy - margin))
+            val ideal = (minGap * (n - 1) / Math.PI).toFloat()   // full-semicircle spacing
+            val r = maxOf(ring, minOf(ideal, rCap))
+            val lo = edge(lv.cx, lv.cy, r, -1); val hi = edge(lv.cx, lv.cy, r, +1)
+            return List(n) { i -> Slot(r, lo + (hi - lo) * i / (n - 1)) }
         }
         private fun slotPos(lv: Level, s: Slot): Pair<Float, Float> =
             (lv.cx + s.r * cos(s.a)).toFloat() to (lv.cy + s.r * sin(s.a)).toFloat()
