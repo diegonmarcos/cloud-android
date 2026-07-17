@@ -79,6 +79,17 @@ class OneHandFragment : Fragment() {
             }
         })
 
+        root.addView(android.widget.Button(ctx).apply {
+            text = "Activate 30s (test)"
+            setOnClickListener {
+                val ok = OneHandController.testActivate(ctx, 30_000L)
+                Toast.makeText(ctx,
+                    if (ok) "One-Hand ON for 30s, then auto-off"
+                    else "Grant Display-over-apps + Accessibility first (Configs › Permissions)",
+                    Toast.LENGTH_LONG).show()
+            }
+        })
+
         val cfg = OneHandConfig.effective(ctx)
         val options = buildOptions(cfg)
 

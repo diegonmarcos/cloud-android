@@ -42,19 +42,11 @@ class OneHandAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val c = OneHandConfig.effective(this)
-        Log.i(TAG, "onServiceConnected: enabled=${OneHandPrefs.isEnabled(this)} radial=${c.radial.enabled} sdk=${android.os.Build.VERSION.SDK_INT}")
-        // Observe-only global touch (Android 14+): drives BOTH the edge handle
-        // (single-finger long-press, pass-through) and the two-finger radial.
-        if (observeMode) {
-            runCatching {
-                serviceInfo = serviceInfo.apply {
-                    flags = flags or AccessibilityServiceInfo.FLAG_SEND_MOTION_EVENTS
-                    setMotionEventSources(InputDevice.SOURCE_TOUCHSCREEN)
-                }
-                Log.i(TAG, "FLAG_SEND_MOTION_EVENTS enabled (observe-only handle + radial)")
-            }.onFailure { Log.i(TAG, "motion-events setup failed: ${it.message}") }
-        }
+        Log.i(TAG, "onServiceConnected: enabled=${OneHandPrefs.isEnabled(this)} sdk=${android.os.Build.VERSION.SDK_INT}")
+        // NEVER request global motion events (FLAG_SEND_MOTION_EVENTS): on some
+        // devices that INTERCEPTS the whole touchscreen and freezes all input.
+        // We only ever add a small touchable handle window, and only when the
+        // user has explicitly enabled the feature (default OFF → not auto-active).
         if (OneHandPrefs.isEnabled(this)) showHandles()
     }
 
@@ -69,78 +61,18 @@ class OneHandAccessibilityService : AccessibilityService() {
     // ── Observe-only edge handle (API 34+): non-touchable window never holds a
     //    touch; long-press detected purely from onMotionEvent, so short taps &
     //    everything else pass straight to the app. ──
-    private val observeMode = android.os.Build.VERSION.SDK_INT >= 34
+    // HARD-DISABLED: observe-only relied on FLAG_SEND_MOTION_EVENTS which
+    // intercepted the whole touchscreen and froze all input on real devices.
+    // Never re-enable without a per-app allowlisted, verified-safe path.
+    private val observeMode = false
     private val handleRects = mutableListOf<Pair<OneHandConfig.Handle, android.graphics.Rect>>()
     private var activeHandle: OneHandConfig.Handle? = null
     private var handlePending: Runnable? = null
 
-    override fun onMotionEvent(e: android.view.MotionEvent) {
-        val c = cfg ?: OneHandConfig.effective(this).also { cfg = it }
-        val n = e.pointerCount
-        // Two-finger radial takes precedence while active or a 2nd finger is down.
-        if (c.radial.enabled && (radialOpen || n >= 2)) { onRadialMotion(c, e); return }
-        onHandleMotion(c, e)
-    }
-
-    private fun onRadialMotion(c: OneHandConfig, e: android.view.MotionEvent) {
-        val n = e.pointerCount
-        if (!radialOpen) {
-            if (n == 2) {
-                if (radialPending == null) {
-                    rcx = (e.getRawX(0) + e.getRawX(1)) / 2f
-                    rcy = (e.getRawY(0) + e.getRawY(1)) / 2f
-                    val r = Runnable { openRadial(c) }
-                    radialPending = r; handler.postDelayed(r, c.radial.holdMs.toLong())
-                } else {
-                    val mx = (e.getRawX(0) + e.getRawX(1)) / 2f
-                    val my = (e.getRawY(0) + e.getRawY(1)) / 2f
-                    if (hypot(mx - rcx, my - rcy) > dp(c.radial.slopDp)) cancelRadialPending()
-                }
-            } else cancelRadialPending()
-        } else {
-            radialActive = radialView?.move(e.getRawX(0), e.getRawY(0), dp(72).toFloat()) ?: -1
-            when (e.actionMasked) {
-                android.view.MotionEvent.ACTION_UP -> fireRadial(c)
-                android.view.MotionEvent.ACTION_CANCEL -> closeRadial()
-            }
-        }
-    }
-
-    /** Single-finger edge handle, OBSERVE-ONLY: we never consume, so short taps &
-     *  scrolls flow to the app; only a held press within a handle rect opens ours. */
-    private fun onHandleMotion(c: OneHandConfig, e: android.view.MotionEvent) {
-        if (!observeMode) return // <34 uses the touchable-window path (onHandleTouch)
-        val x = e.getRawX(0); val y = e.getRawY(0)
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                val hit = handleRects.firstOrNull { it.second.contains(x.toInt(), y.toInt()) }
-                if (hit == null) { activeHandle = null; return }
-                activeHandle = hit.first; downX = x; downY = y; activated = false
-                Log.i(TAG, "handle DOWN ${hit.first.id} @${x.toInt()},${y.toInt()} trigger=${c.trigger}")
-                if (c.trigger == OneHandConfig.Trigger.TOUCH) activate(hit.first)
-                else { val r = Runnable { activate(hit.first) }; handlePending = r; handler.postDelayed(r, c.longPressMs.toLong()) }
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val ah = activeHandle ?: return
-                if (activated) updatePreview(ah, x, y)
-                else if (hypot(x - downX, y - downY) > dp(16)) cancelHandlePending()
-            }
-            MotionEvent.ACTION_UP -> {
-                val ah = activeHandle
-                cancelHandlePending()
-                if (activated && ah != null) {
-                    val key = SwipeClassifier.classify(ah.edge, x - downX, y - downY, dp(c.swipeThresholdDp))
-                    Log.i(TAG, "handle UP fire key=$key")
-                    key?.let { ah.gestures[it]?.perform(this) }
-                    preview?.end()
-                }
-                activated = false; activeHandle = null
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                cancelHandlePending(); if (activated) preview?.end(); activated = false; activeHandle = null
-            }
-        }
-    }
+    // NOTE: onMotionEvent()/observe-only DELETED on purpose — that path required
+    // FLAG_SEND_MOTION_EVENTS which intercepted the whole touchscreen and froze
+    // input. The handle is a plain touchable window (only its own band); short
+    // taps are forwarded to the app via replayTap. No global touch handling.
 
     private fun cancelHandlePending() {
         handlePending?.let { handler.removeCallbacks(it) }; handlePending = null
@@ -198,6 +130,19 @@ class OneHandAccessibilityService : AccessibilityService() {
         Log.i(TAG, "showHandles: ${c.handles.size} handles, trigger=${c.trigger}, longPressMs=${c.longPressMs}")
         c.handles.forEach { addHandle(it) }
         addPreviewLayer() // on top (non-touchable → handle touches pass through)
+    }
+
+    /** Enable the handles for [ms] then auto-disable — safe way to test without
+     *  leaving it on. Persists disabled so it never auto-activates after a crash. */
+    fun testActivate(ms: Long) {
+        OneHandPrefs.setEnabled(this, true)
+        showHandles()
+        handler.postDelayed({
+            OneHandPrefs.setEnabled(this, false)
+            hideHandles()
+            Log.i(TAG, "testActivate: auto-disabled after ${ms}ms")
+        }, ms)
+        Log.i(TAG, "testActivate: on for ${ms}ms")
     }
 
     fun hideHandles() {
@@ -381,22 +326,29 @@ class OneHandAccessibilityService : AccessibilityService() {
         replaying = true
         lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         runCatching { windowManager?.updateViewLayout(view, lp) }
+        var restored = false
         val restore = {
-            replaying = false
-            lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-            runCatching { windowManager?.updateViewLayout(view, lp) }
+            if (!restored) {
+                restored = true; replaying = false
+                lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                runCatching { windowManager?.updateViewLayout(view, lp) }
+            }
         }
-        val path = Path().apply { moveTo(x, y) }
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
-            .build()
-        val dispatched = runCatching {
-            dispatchGesture(gesture, object : GestureResultCallback() {
-                override fun onCompleted(d: GestureDescription?) { restore() }
-                override fun onCancelled(d: GestureDescription?) { restore() }
-            }, null)
-        }.getOrDefault(false)
-        if (!dispatched) { Log.i(TAG, "replayTap: dispatchGesture failed"); restore() }
+        // Dispatch AFTER the FLAG_NOT_TOUCHABLE change lands (next frame), so the
+        // injected tap reaches the app under the handle — not the handle itself.
+        view.post {
+            val path = Path().apply { moveTo(x, y) }
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 50)).build()
+            val ok = runCatching {
+                dispatchGesture(gesture, object : GestureResultCallback() {
+                    override fun onCompleted(d: GestureDescription?) { restore() }
+                    override fun onCancelled(d: GestureDescription?) { restore() }
+                }, null)
+            }.getOrDefault(false)
+            if (!ok) { Log.i(TAG, "replayTap: dispatchGesture failed"); restore() }
+        }
+        handler.postDelayed({ restore() }, 500) // safety net so we never stay non-touchable
     }
 
     private fun updatePreview(h: OneHandConfig.Handle, x: Float, y: Float) {

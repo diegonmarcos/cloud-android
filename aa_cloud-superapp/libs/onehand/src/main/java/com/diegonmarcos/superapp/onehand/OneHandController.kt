@@ -35,4 +35,11 @@ object OneHandController {
     fun refresh(ctx: Context) {
         if (isOn(ctx)) OneHandAccessibilityService.instance?.showHandles()
     }
+
+    /** Turn the handles on for [ms] then auto-off — the safe way to test. */
+    fun testActivate(ctx: Context, ms: Long = 30_000L): Boolean {
+        if (!ready(ctx)) return false
+        OneHandAccessibilityService.instance?.testActivate(ms)
+        return true
+    }
 }
