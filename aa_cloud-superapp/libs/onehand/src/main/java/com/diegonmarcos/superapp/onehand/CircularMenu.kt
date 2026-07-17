@@ -160,7 +160,11 @@ object CircularMenu {
         // when a level has more children than fit on one arc at readable spacing
         // (e.g. Configs' 12), the overflow wraps onto a second, larger concentric
         // ring — nothing is ever pushed off-screen. slots[i] maps 1:1 to items[i].
-        private val minGap = nodeR * 2 + dp(12)   // ideal center-to-center between icons
+        // Target center-to-center spacing that drives the radius. Must be COMFORTABLY
+        // bigger than an icon (2·nodeR) or `ideal` computes smaller than the base ring
+        // and max(ring, …) freezes the radius at the base — the radius then never grows
+        // with item count (the bug that made every "bigger radius" attempt a no-op).
+        private val minGap = nodeR * 2 + dp(40)   // 2·26 + 40 = 92dp
         private val margin = nodeR + dp(8)        // keep whole icon inside the screen
 
         private data class Slot(val r: Float, val a: Double)
