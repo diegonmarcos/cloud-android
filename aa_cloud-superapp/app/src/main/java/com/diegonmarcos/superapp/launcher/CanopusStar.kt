@@ -57,8 +57,12 @@ class CanopusStar(private val activity: AppCompatActivity) {
         if (!c.enabled) { star.visibility = View.GONE; return }
         star.text = c.starGlyph
         star.setTextSize(TypedValue.COMPLEX_UNIT_SP, c.starSizeSp.toFloat())
-        // Sit under the cube: nudge below dead-centre once measured.
-        star.post { star.translationY = star.rootView.height * 0.20f }
+        // Bigger tap target (data-driven padding) so the star is easy to hit.
+        val pad = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, c.starTapPadDp.toFloat(), activity.resources.displayMetrics).toInt()
+        star.setPadding(pad, pad, pad, pad)
+        // Anchor near the BOTTOM (data-driven) so the half-moon menu opens upward.
+        star.post { star.translationY = star.rootView.height * c.starBottomPct }
         // Forward the whole press→drag→release gesture to the menu so it's one
         // continuous motion (the overlay never sees the gesture that began here).
         star.setOnTouchListener { _, e ->

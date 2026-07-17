@@ -39,6 +39,11 @@ object CircularMenu {
         val showOnSection: String,
         val radiusDp: Int,
         val subRadiusDp: Int,
+        /** Star vertical anchor as a fraction of screen height BELOW centre
+         *  (0.5 ≈ near the bottom). Menu opens as an upward half-moon from here. */
+        val starBottomPct: Float,
+        /** Extra touch padding (dp) around the star so it's easy to hit. */
+        val starTapPadDp: Int,
         val nodes: List<Node>,
     )
 
@@ -75,11 +80,13 @@ object CircularMenu {
             showOnSection = star.optString("show_on_section", "home"),
             radiusDp = cm.optInt("radius_dp", 120),
             subRadiusDp = cm.optInt("sub_radius_dp", 104),
+            starBottomPct = star.optDouble("bottom_pct", 0.38).toFloat(),
+            starTapPadDp = star.optInt("tap_pad_dp", 22),
             nodes = nodes,
         )
     }.getOrDefault(DISABLED)
 
-    private val DISABLED = Config(false, "✦", 18, "home", 120, 104, emptyList())
+    private val DISABLED = Config(false, "✦", 18, "home", 120, 104, 0.38f, 22, emptyList())
 
     /** Drives an open menu from an EXTERNAL touch stream — the star forwards its
      *  own gesture so press → drag → release is one continuous motion (the
@@ -130,9 +137,13 @@ object CircularMenu {
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
 
-        // top-level node angles (start at top, clockwise)
+        // Upward HALF-MOON: nodes spread across the top semicircle (180°=left →
+        // 270°=straight up → 360°=right) since the star sits near the bottom and
+        // there's no room below. i=0 is leftmost, i=n-1 rightmost.
         private val n = cfg.nodes.size
-        private fun nodeAngle(i: Int) = Math.toRadians((-90.0 + i * 360.0 / n))
+        private fun arcAngle(i: Int, count: Int): Double =
+            if (count <= 1) Math.toRadians(270.0) else Math.toRadians(180.0 + 180.0 * i / (count - 1))
+        private fun nodeAngle(i: Int) = arcAngle(i, n)
         private fun nodePos(i: Int): Pair<Float, Float> {
             val a = nodeAngle(i); return (cx + ring * cos(a)).toFloat() to (cy + ring * sin(a)).toFloat()
         }
@@ -161,18 +172,18 @@ object CircularMenu {
             if (leaves.isNotEmpty() && hypot(dx, dy) > ring + dp(20)) {
                 var bl = -1; var blD = leafR * 1.6f
                 leaves.forEachIndexed { i, _ ->
-                    val (lx, ly) = leafPos(best, i)
+                    val (lx, ly) = leafPos(i)
                     val d = hypot(fx - lx, fy - ly); if (d < blD) { blD = d; bl = i }
                 }
                 activeLeaf = bl
             }
         }
 
-        private fun leafPos(nodeIdx: Int, leafIdx: Int): Pair<Float, Float> {
-            val base = nodeAngle(nodeIdx)
-            val spread = Math.toRadians(46.0)
-            val k = leaves.size
-            val a = if (k == 1) base else base - spread / 2 + spread * leafIdx / (k - 1)
+        // The active node's children form their OWN upward half-moon, CENTRED (not
+        // hung off the node) and further up the screen (subRing > ring) — that's
+        // the "second level goes up, centred" cascade.
+        private fun leafPos(leafIdx: Int): Pair<Float, Float> {
+            val a = arcAngle(leafIdx, leaves.size)
             return (cx + subRing * cos(a)).toFloat() to (cy + subRing * sin(a)).toFloat()
         }
 
@@ -210,7 +221,7 @@ object CircularMenu {
             }
             // fan-out leaves of the active node (drawn under nodes)
             if (active >= 0) leaves.forEachIndexed { i, lf ->
-                val (lx, ly) = leafPos(active, i)
+                val (lx, ly) = leafPos(i)
                 c.drawCircle(lx, ly, leafR, if (i == activeLeaf) hot else disc)
                 icon(lf.iconName)?.let { c.drawBitmap(it, lx - it.width / 2f, ly - it.height / 2f, null) }
                 c.drawText(lf.label, lx, ly + leafR + dp(13), label)

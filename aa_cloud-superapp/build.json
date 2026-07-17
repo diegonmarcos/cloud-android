@@ -293,9 +293,9 @@
     "circular_menu": {
       "_doc": "Canopus-star radial pie — the libs:onehand 'circular-menu', sibling to the edge-menu. Tapping the Canopus home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and that section's pages fan out further in the same direction; releasing on a leaf navigates. The app injects navigate(target) + iconBitmap(name) + pagesFor(section) so the lib stays app-agnostic and sub-nodes always mirror the live sections (no page targets duplicated here). Star + nodes are data-driven — remap with a one-line edit, never Kotlin.",
       "enabled": true,
-      "star": { "glyph": "✦", "size_sp": 20, "show_on_section": "home" },
-      "radius_dp": 120,
-      "sub_radius_dp": 104,
+      "star": { "glyph": "✦", "size_sp": 20, "show_on_section": "home", "bottom_pct": 0.4, "tap_pad_dp": 24 },
+      "radius_dp": 130,
+      "sub_radius_dp": 120,
       "nodes": [
         { "label": "Home Apps", "icon": "ic_home_apps",  "target": "action:open_home_apps", "section": null },
         { "label": "Comms",     "icon": "ic_chat",        "target": "section:communication", "section": "communication" },
