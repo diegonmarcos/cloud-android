@@ -164,22 +164,19 @@ object CircularMenu {
         private val rowStep = nodeR * 2 + dp(10)  // radial gap between concentric rings
 
         private data class Slot(val r: Float, val a: Double)
-        private fun maxRadius(lv: Level): Float {
-            val m = nodeR + dp(10)
-            val w = if (width > 0) width.toFloat() else lv.cx * 2
-            return maxOf(dp(48), minOf(lv.cx, w - lv.cx, lv.cy) - m)
-        }
+        // Fixed concentric radii (base ring, then +rowStep per ring). Each ring on
+        // the semicircle holds ⌊π·R/minGap⌋+1 icons; overflow spills to the next,
+        // larger ring. NO dependency on runtime view size/center — a screen-coord
+        // clamp previously collapsed level 0 to a tiny arc.
         private fun layout(lv: Level): List<Slot> {
             val n = lv.items.size
-            val maxR = maxRadius(lv)
-            if (n <= 1) return listOf(Slot(minOf(ring, maxR), Math.toRadians(270.0)))
+            if (n <= 1) return listOf(Slot(ring, Math.toRadians(270.0)))
             val slots = ArrayList<Slot>(n)
             var placed = 0; var j = 0
             while (placed < n) {
-                val r = minOf(ring + j * rowStep, maxR)
+                val r = ring + j * rowStep
                 val capacity = maxOf(2, (Math.PI * r / minGap).toInt() + 1)
-                // the last ring we can afford (hit the screen bound) takes all the rest
-                val take = if (r >= maxR) n - placed else minOf(capacity, n - placed)
+                val take = minOf(capacity, n - placed)
                 for (k in 0 until take) {
                     val a = if (take <= 1) Math.toRadians(270.0)
                             else Math.toRadians(180.0 + 180.0 * k / (take - 1))
