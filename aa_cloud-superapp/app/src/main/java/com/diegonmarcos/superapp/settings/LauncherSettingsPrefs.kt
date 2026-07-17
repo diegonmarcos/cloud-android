@@ -43,7 +43,7 @@ class LauncherSettingsPrefs(context: Context) {
         set(v) { sp.edit().putInt("screensaver_timeout", v).apply() }
 
     // ── Data-driven metadata (for the picker UI + defaults) ──────────────
-    data class Item(val id: String, val label: String, val subtitle: String, val default: Boolean)
+    data class Item(val id: String, val label: String, val subtitle: String, val default: Boolean, val battery: Boolean = false)
     data class Slider(val label: String, val subtitle: String, val min: Int, val max: Int, val default: Int)
 
     object Config {
@@ -69,7 +69,8 @@ class LauncherSettingsPrefs(context: Context) {
             val arr = settings.optJSONArray("toggles") ?: JSONArray()
             (0 until arr.length()).map {
                 val o = arr.getJSONObject(it)
-                Item(o.optString("id"), o.optString("label"), o.optString("subtitle"), o.optBoolean("default", false))
+                Item(o.optString("id"), o.optString("label"), o.optString("subtitle"),
+                    o.optBoolean("default", false), o.optBoolean("battery", false))
             }
         }
         fun toggleDefault(id: String): Boolean = toggles.firstOrNull { it.id == id }?.default ?: true

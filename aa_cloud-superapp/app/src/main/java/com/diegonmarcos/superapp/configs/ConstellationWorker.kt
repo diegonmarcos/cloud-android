@@ -93,7 +93,12 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
 
         /** Schedule the periodic fleet check. Idempotent. Call from App.onCreate. */
         fun start(context: Context) {
-            if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)) {
+            // Battery-hungry: a periodic GHCR network check. Gated by the
+            // "Constellation update check" toggle (Configs → Launcher → Battery
+            // Hunger Ones) in addition to the auto-update master switch. Off →
+            // cancel the periodic work (manual checks still work).
+            if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)
+                || !com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("fleet_check")) {
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME); return
             }
             val constraints = Constraints.Builder().apply {

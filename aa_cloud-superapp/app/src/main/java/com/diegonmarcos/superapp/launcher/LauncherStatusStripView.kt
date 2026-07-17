@@ -109,7 +109,10 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val metricsTicker = object : Runnable {
         override fun run() {
             refreshMetrics()
-            mainHandler.postDelayed(this, 10_000)
+            // Reschedule only while live system stats are ON (Configs → Launcher →
+            // "Live system stats"). OFF = frozen numbers, no 10s wakeup → leaner.
+            if (com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("status_live"))
+                mainHandler.postDelayed(this, 10_000)
         }
     }
 
@@ -375,10 +378,11 @@ class LauncherStatusStripView @JvmOverloads constructor(
     private val timeReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             refreshTime()
-            // Piggy-back metrics on the once-a-minute tick — cheap
-            // compared to the per-10s Handler poll and keeps RAM /
-            // storage from drifting if the Handler is delayed.
-            refreshMetrics()
+            // Piggy-back metrics on the once-a-minute tick (cheap vs the 10s
+            // poll) — but ONLY while live stats are on, so "Live system stats"
+            // OFF truly freezes RAM/CPU/storage. The clock keeps ticking.
+            if (com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("status_live"))
+                refreshMetrics()
         }
     }
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -433,8 +437,11 @@ class LauncherStatusStripView @JvmOverloads constructor(
         }
         refreshTime()
         refreshNetworkFromConnectivity()
-        refreshMetrics()
-        mainHandler.post(metricsTicker)
+        refreshMetrics()   // one render → static numbers even when live stats are off
+        // Start the 10s RAM/CPU/storage refresh loop only when enabled. Off keeps
+        // the frozen values on screen (UI stays intact) but skips the polling.
+        if (com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("status_live"))
+            mainHandler.post(metricsTicker)
     }
 
     override fun onDetachedFromWindow() {

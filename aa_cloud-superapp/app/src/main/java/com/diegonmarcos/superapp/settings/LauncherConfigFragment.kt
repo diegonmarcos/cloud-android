@@ -135,11 +135,45 @@ class LauncherConfigFragment : Fragment() {
         root.addView(sliderRow(ctx, st.label, st.subtitle, st.min, st.max,
             settingsPrefs.screensaverTimeout) { v -> settingsPrefs.screensaverTimeout = v })
 
+        // Split the toggles data-drivenly: the ones flagged battery:true in
+        // build.json are the actual power drains (continuous animations + the
+        // 10s live-stats poll) → grouped under "Battery Hunger Ones" with a
+        // master switch; the rest stay under "Others". Add a dragger = one
+        // `"battery": true` in build.json, no code change.
+        val allToggles = LauncherSettingsPrefs.Config.toggles
+        val batteryOnes = allToggles.filter { it.battery }
+        val otherOnes   = allToggles.filter { !it.battery }
+
+        // ── Battery Hunger Ones ────────────────────────────────────
+        if (batteryOnes.isNotEmpty()) {
+            root.addView(spacer(ctx, dp(ctx, 24)))
+            root.addView(sectionHeader(ctx, "Battery Hunger Ones",
+                "Continuous animations + live system stats — the effects that cost battery. Off = leaner."))
+            val allOn = batteryOnes.all { settingsPrefs.toggle(it.id) }
+            root.addView(toggleRow(ctx, "All battery-hungry effects",
+                "One switch to flip every effect below on or off.", allOn) { on ->
+                batteryOnes.forEach { settingsPrefs.setToggle(it.id, on) }
+                (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                com.diegonmarcos.superapp.configs.ConstellationWorker.start(requireContext()) // re-apply fleet_check
+                rerender() // reflect the child switches
+            })
+            root.addView(spacer(ctx, dp(ctx, 8)))
+            for (t in batteryOnes) {
+                root.addView(toggleRow(ctx, t.label, t.subtitle, settingsPrefs.toggle(t.id)) { on ->
+                    settingsPrefs.setToggle(t.id, on)
+                    (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                    com.diegonmarcos.superapp.configs.ConstellationWorker.start(requireContext()) // re-apply fleet_check
+                    rerender() // keep the master switch in sync
+                })
+                root.addView(spacer(ctx, dp(ctx, 8)))
+            }
+        }
+
         // ── Others section ─────────────────────────────────────────
         root.addView(spacer(ctx, dp(ctx, 24)))
         root.addView(sectionHeader(ctx, "Others",
-            "Animations, haptics, brightness and eye protection."))
-        for (t in LauncherSettingsPrefs.Config.toggles) {
+            "Haptics, brightness and eye protection."))
+        for (t in otherOnes) {
             root.addView(toggleRow(ctx, t.label, t.subtitle, settingsPrefs.toggle(t.id)) { on ->
                 settingsPrefs.setToggle(t.id, on)
                 // Eye protection = the ANDROID SYSTEM night-light (blue-light

@@ -40,7 +40,10 @@ class SiriusStar(private val activity: AppCompatActivity) {
         val star = activity.findViewById<TextView?>(R.id.sirius_star) ?: return
         if (BuildConfig.SIRIUS_STAR_ENABLED && currentSection == "home") {
             star.visibility = View.VISIBLE
-            if (pulse == null) {
+            // Twinkle only when the battery-hungry "Star twinkle" toggle is on
+            // (Configs → Launcher → Battery Hunger Ones). Off = static star.
+            val twinkle = com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(activity).toggle("star_twinkle")
+            if (twinkle && pulse == null) {
                 val sx = ObjectAnimator.ofFloat(star, "scaleX", 1f, 1.05f)
                 val sy = ObjectAnimator.ofFloat(star, "scaleY", 1f, 1.05f)
                 val al = ObjectAnimator.ofFloat(star, "alpha", 0.7f, 1f)
@@ -50,6 +53,9 @@ class SiriusStar(private val activity: AppCompatActivity) {
                     a.repeatMode = ObjectAnimator.REVERSE
                 }
                 pulse = AnimatorSet().apply { playTogether(sx, sy, al); start() }
+            } else if (!twinkle) {
+                pulse?.cancel(); pulse = null
+                star.scaleX = 1f; star.scaleY = 1f; star.alpha = 1f
             }
         } else {
             star.visibility = View.GONE
