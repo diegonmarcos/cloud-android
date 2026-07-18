@@ -10,7 +10,6 @@ import android.graphics.Typeface
 import android.util.DisplayMetrics
 import android.view.View
 import kotlin.math.PI
-import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -101,20 +100,15 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
             OneHandConfig.Edge.RIGHT  -> PI          // pointing left
             OneHandConfig.Edge.BOTTOM -> -PI / 2    // pointing up
         }
-        // RIGHT edge: slot "top" (idx 0, frac -0.5) must appear UP in screen-y coords.
-        // l1Centre=PI (left), frac negative → angle < PI → sin > 0 = DOWN. Negate spread to invert.
-        val l1Spread = if (edge == OneHandConfig.Edge.RIGHT) -PI / 4 else PI / 4
+        val l1Spread = PI / 4  // ±45° total, so 3 items at -45°, 0°, +45°
         val l1Cx = startX; val l1Cy = startY
 
         // ── L2 geometry: arc centre far below screen → near-horizontal line ──
-        // Target: centre item at y≈sh*0.55, outer items at x = sw*[0.12..0.88].
-        val targetL2Y = sh * 0.55f
+        val r2 = sh * 2.5f
         val l2CentreX = sw * 0.5f
-        val l2CentreY = sh * 7.0f                                       // well below display
-        val r2 = l2CentreY - targetL2Y                                   // radius → centre item hits targetL2Y
-        val l2BaseAngle = -PI / 2                                        // pointing up from below
-        // Half-angle so outer items land at sw/2 ± sw*0.38
-        val l2Spread = asin((sw * 0.38f / r2).coerceIn(-1f, 1f).toDouble())
+        val l2CentreY = sh + r2             // far below — arc is near-horizontal at screen level
+        val l2BaseAngle = -PI / 2           // pointing straight up from below
+        val l2Spread = PI / 6               // ±30° → items span most of screen width
 
         // ── interpolate per-item positions ──
         val t = progress.toDouble()
