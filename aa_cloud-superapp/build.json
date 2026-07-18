@@ -164,7 +164,8 @@
         "libs:shizuku-adb-debug-tools",
         "libs:firewall",
         "libs:battery",
-        "libs:onehand"
+        "libs:onehand",
+        "libs:zoomies"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -285,7 +286,12 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "One-Hand edge-gesture overlay (Samsung One Hand Operation+ style). A foreground EdgeOverlayService draws a thin near-invisible handle on the configured screen edge (WindowManager TYPE_APPLICATION_OVERLAY) and turns swipes into global actions (Back/Home/Recents/Notifications/QuickSettings) performed by OneHandAccessibilityService. Two user-granted special perms (SYSTEM_ALERT_WINDOW + Accessibility) \u2014 OneHandController does the deep-linking + start/stop; app/ (Configs/Onehand) is just the toggle. Fully data-driven from build.json::onehand (edge, handle size, gesture\u2192action map baked to BuildConfig.ONEHAND_CONFIG_B64). PURE SwipeClassifier is JVM-tested."
+      "comment": "One-Hand edge-gesture overlay (Samsung One Hand Operation+ style). A foreground EdgeOverlayService draws a thin near-invisible handle on the configured screen edge (WindowManager TYPE_APPLICATION_OVERLAY) and turns swipes into global actions (Back/Home/Recents/Notifications/QuickSettings) performed by OneHandAccessibilityService. Two user-granted special perms (SYSTEM_ALERT_WINDOW + Accessibility) — OneHandController does the deep-linking + start/stop; app/ (Configs/Onehand) is just the toggle. Fully data-driven from build.json::onehand (edge, handle size, gesture→action map baked to BuildConfig.ONEHAND_CONFIG_B64). PURE SwipeClassifier is JVM-tested."
+    },
+    "libs:zoomies": {
+      "type": "library",
+      "depends_on": [],
+      "comment": "Zoomies pets — the animated status-bar companion. PetStrengthView (an AppCompatImageView) plays a per-tool animal whose gait (idle→walk→walk_fast→run) tracks the tool's strength, decoded from the vendored zoomies GIFs at assets/zoomies/<animal>/<variant>_<gait>.gif (CC BY-ND, used unmodified). Pure view module: no build.json config, no inter-lib deps — only androidx.appcompat. Consumed by app/launcher (LauncherStatusStripView instantiates one PetStrengthView per tool)."
     }
   },
   "onehand": {
