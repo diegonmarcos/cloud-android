@@ -10,6 +10,7 @@ import android.graphics.Typeface
 import android.util.DisplayMetrics
 import android.view.View
 import kotlin.math.PI
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -104,11 +105,15 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
         val l1Cx = startX; val l1Cy = startY
 
         // ── L2 geometry: arc centre far below screen → near-horizontal line ──
-        val r2 = sh * 2.5f
+        // Items target row: 60% down the screen (visible, lower-middle area)
+        // Centre is placed at (targetY + r2) so the arc's peak lands exactly at targetY.
+        // Spread is computed so outermost items sit at ±44% of screen width from centre.
+        val r2 = sh * 3f
+        val l2TargetY = sh * 0.60f
         val l2CentreX = sw * 0.5f
-        val l2CentreY = sh + r2             // far below — arc is near-horizontal at screen level
-        val l2BaseAngle = -PI / 2           // pointing straight up from below
-        val l2Spread = PI / 6               // ±30° → items span most of screen width
+        val l2CentreY = l2TargetY + r2
+        val l2BaseAngle = -PI / 2
+        val l2Spread = asin((sw * 0.44).toDouble() / r2)   // half-angle; total span ≈ 88% sw
 
         // ── interpolate per-item positions ──
         val t = progress.toDouble()
