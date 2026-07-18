@@ -286,7 +286,7 @@ class OneHandAccessibilityService : AccessibilityService() {
             val action = h.gestures[slot.key]
             val label = action?.let { labelForAction(it) } ?: slot.label
             val icon = (action as? GestureAction.OpenApp)?.let { appIcon(it.pkg) }
-            GesturePreviewView.Option(slot.key, label, canonicalAngle(h.edge, slot.key), icon)
+            GesturePreviewView.Option(slot.key, label, icon)
         }
 
     private fun appIcon(pkg: String): android.graphics.Bitmap? = runCatching {
@@ -295,12 +295,6 @@ class OneHandAccessibilityService : AccessibilityService() {
         val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
         d.setBounds(0, 0, size, size); d.draw(android.graphics.Canvas(bmp)); bmp
     }.getOrNull()
-
-    private fun canonicalAngle(edge: OneHandConfig.Edge, key: String): Double = when (edge) {
-        OneHandConfig.Edge.RIGHT -> when (key) { "top" -> -135.0; "down" -> 135.0; else -> 180.0 }
-        OneHandConfig.Edge.LEFT -> when (key) { "top" -> -45.0; "down" -> 45.0; else -> 0.0 }
-        OneHandConfig.Edge.BOTTOM -> when (key) { "left" -> -135.0; "right" -> -45.0; else -> -90.0 }
-    }
 
     private fun labelForAction(action: GestureAction): String = when (action) {
         is GestureAction.Global ->
