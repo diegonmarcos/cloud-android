@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.DisplayMetrics
 import android.view.View
@@ -46,12 +45,6 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
     private val dp = dm.density
 
     // ── paints ─────────────────────────────────────────────────────────────────
-    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(220, 30, 30, 50)
-    }
-    private val pillSelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(255, 60, 120, 255)
-    }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD; textSize = 13 * dp
@@ -101,7 +94,6 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
         val l1Cx = startX; val l1Cy = startY
 
         // Edge menu: items stay at L1 arc. No L2 morphing (L2 levels belong to the Canopus circle).
-        val pillW = 90 * dp; val pillH = 36 * dp
         val iconSz = 22 * dp
 
         for ((idx, opt) in opts.withIndex()) {
@@ -111,16 +103,13 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
             val iy = (l1Cy + r1 * sin(a1)).toFloat()
 
             val selected = opt.key == selKey
-            val rect = RectF(ix - pillW / 2, iy - pillH / 2, ix + pillW / 2, iy + pillH / 2)
-            canvas.drawRoundRect(rect, pillH / 2, pillH / 2, if (selected) pillSelPaint else pillPaint)
-
-            val topY = iy - pillH / 2
             if (opt.icon != null) {
-                val iconRect = RectF(ix - iconSz / 2, topY + (pillH - iconSz) / 2,
-                                     ix + iconSz / 2, topY + (pillH + iconSz) / 2)
+                val iconRect = RectF(ix - iconSz / 2, iy - iconSz / 2,
+                                     ix + iconSz / 2, iy + iconSz / 2)
                 canvas.drawBitmap(opt.icon, null, iconRect, null)
             } else {
                 textPaint.textSize = 13 * dp
+                textPaint.alpha = if (selected) 255 else 200
                 canvas.drawText(opt.label, ix, iy + textPaint.textSize * 0.38f, textPaint)
             }
         }
