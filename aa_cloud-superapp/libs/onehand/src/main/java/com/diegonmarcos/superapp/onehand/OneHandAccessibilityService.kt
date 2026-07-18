@@ -2,12 +2,9 @@ package com.diegonmarcos.superapp.onehand
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.accessibilityservice.GestureDescription
-import android.graphics.Path
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
-import android.view.InputDevice
 import android.graphics.PixelFormat
 import android.util.Log
 import android.util.TypedValue
@@ -36,8 +33,6 @@ class OneHandAccessibilityService : AccessibilityService() {
     private var downX = 0f
     private var downY = 0f
     private var activated = false
-    private var pending: Runnable? = null
-    private var replaying = false // guard: ignore our own injected tap
 
     override fun onServiceConnected() {
         instance = this
@@ -58,25 +53,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     private var rcx = 0f; private var rcy = 0f
     private var radialActive = -1
 
-    // ── Observe-only edge handle (API 34+): non-touchable window never holds a
-    //    touch; long-press detected purely from onMotionEvent, so short taps &
-    //    everything else pass straight to the app. ──
-    // HARD-DISABLED: observe-only relied on FLAG_SEND_MOTION_EVENTS which
-    // intercepted the whole touchscreen and froze all input on real devices.
-    // Never re-enable without a per-app allowlisted, verified-safe path.
-    private val observeMode = false
-    private val handleRects = mutableListOf<Pair<OneHandConfig.Handle, android.graphics.Rect>>()
-    private var activeHandle: OneHandConfig.Handle? = null
-    private var handlePending: Runnable? = null
-
-    // NOTE: onMotionEvent()/observe-only DELETED on purpose — that path required
-    // FLAG_SEND_MOTION_EVENTS which intercepted the whole touchscreen and froze
-    // input. The handle is a plain touchable window (only its own band); short
-    // taps are forwarded to the app via replayTap. No global touch handling.
-
-    private fun cancelHandlePending() {
-        handlePending?.let { handler.removeCallbacks(it) }; handlePending = null
-    }
+    // Observe-only DISABLED: FLAG_SEND_MOTION_EVENTS froze all input on real devices.
 
     private fun cancelRadialPending() {
         radialPending?.let { handler.removeCallbacks(it) }; radialPending = null
@@ -151,8 +128,7 @@ class OneHandAccessibilityService : AccessibilityService() {
     fun hideHandles() {
         views.forEach { runCatching { windowManager?.removeView(it) } }
         views.clear()
-        handleRects.clear()
-        cancelHandlePending(); activeHandle = null; activated = false
+        activated = false
         preview?.let { runCatching { windowManager?.removeView(it) } }
         preview = null
         cfg = null
@@ -187,14 +163,11 @@ class OneHandAccessibilityService : AccessibilityService() {
         val dm = resources.displayMetrics
         val view = View(this).apply {
             background = handleBackground(h.transparency)
-            // Observe-only (API 34+): the window is non-touchable, so DON'T attach a
-            // touch listener — detection happens in onMotionEvent, nothing is consumed.
-            if (!observeMode) setOnTouchListener { v, e -> onHandleTouch(h, v, e) }
+            setOnTouchListener { v, e -> onHandleTouch(h, v, e) }
         }
         var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS // reach the physical edge, not the safe area
-        if (observeMode) flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -233,18 +206,6 @@ class OneHandAccessibilityService : AccessibilityService() {
         wm.addView(view, lp)
         views.add(view)
         Log.i(TAG, "addHandle ${h.id} edge=${h.edge} size=${lp.width}x${lp.height} x=${lp.x} y=${lp.y} inset=$inset")
-        if (observeMode) {
-            val rect = when (h.edge) {
-                OneHandConfig.Edge.BOTTOM ->
-                    android.graphics.Rect(lp.x, dm.heightPixels - inset - lp.height, lp.x + lp.width, dm.heightPixels - inset)
-                OneHandConfig.Edge.LEFT ->
-                    android.graphics.Rect(inset, lp.y, inset + lp.width, lp.y + lp.height)
-                else ->
-                    android.graphics.Rect(dm.widthPixels - inset - lp.width, lp.y, dm.widthPixels - inset, lp.y + lp.height)
-            }
-            handleRects.add(h to rect)
-            Log.i(TAG, "handleRect ${h.id} = $rect (screen ${dm.widthPixels}x${dm.heightPixels})")
-        }
         // CRITICAL for the LEFT handle: our inward swipe there IS the system
         // back-gesture direction, so without exclusion the OS steals it. The rect
         // MUST be set from a real layout pass (view.post fires while width/height
@@ -261,64 +222,36 @@ class OneHandAccessibilityService : AccessibilityService() {
     }
 
     private fun onHandleTouch(h: OneHandConfig.Handle, view: View, e: MotionEvent): Boolean {
-        if (replaying) return false // our own injected tap — let it fall through
         val c = cfg ?: return true
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = e.rawX; downY = e.rawY; activated = false
-                Log.i(TAG, "DOWN ${h.id} @${e.rawX.toInt()},${e.rawY.toInt()} trigger=${c.trigger}")
-                when (c.trigger) {
-                    OneHandConfig.Trigger.TOUCH -> activate(h)
-                    OneHandConfig.Trigger.LONG_PRESS -> {
-                        val r = Runnable {
-                            activate(h); view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        }
-                        pending = r; view.postDelayed(r, c.longPressMs.toLong())
-                    }
-                    OneHandConfig.Trigger.SWIPE -> { /* wait for an inward drag in MOVE */ }
-                }
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = e.rawX - downX; val dy = e.rawY - downY
-                if (activated) updatePreview(h, e.rawX, e.rawY)
-                else when (c.trigger) {
-                    // Samsung edge-panel style: an INWARD drag past the threshold opens
-                    // the menu; a plain tap never activates → passes through (replayTap).
-                    OneHandConfig.Trigger.SWIPE ->
-                        if (SwipeClassifier.sector(h.edge, dx, dy) != null &&
-                            hypot(dx, dy) > dp(c.swipeThresholdDp)) {
-                            activate(h); view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                            updatePreview(h, e.rawX, e.rawY)
-                        }
-                    // Long-press: a move before the timer = a scroll → cancel, pass through.
-                    OneHandConfig.Trigger.LONG_PRESS ->
-                        if (hypot(dx, dy) > dp(16)) { Log.i(TAG, "MOVE-cancel ${h.id}"); cancelPending(view) }
-                    OneHandConfig.Trigger.TOUCH -> {}
+                if (activated) {
+                    updatePreview(h, e.rawX, e.rawY)
+                } else if (SwipeClassifier.sector(h.edge, dx, dy) != null &&
+                           hypot(dx, dy) > dp(c.swipeThresholdDp)) {
+                    // Samsung edge-panel style: inward drag past threshold → open menu.
+                    // Taps (no inward drag) are naturally not consumed and pass through.
+                    activate(h)
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    updatePreview(h, e.rawX, e.rawY)
                 }
             }
             MotionEvent.ACTION_UP -> {
-                cancelPending(view)
                 if (activated) {
                     val key = SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
-                    Log.i(TAG, "UP ${h.id} fire key=$key action=${key?.let { h.gestures[it] }}")
                     key?.let { h.gestures[it]?.perform(this) }
                     endPreview()
-                } else {
-                    // Short tap that did NOT open our menu → forward it to the app
-                    // underneath (the handle window would otherwise swallow it).
-                    val dwell = e.eventTime - e.downTime
-                    val moved = hypot(e.rawX - downX, e.rawY - downY)
-                    if (dwell < c.longPressMs && moved < dp(16)) {
-                        Log.i(TAG, "UP ${h.id} short tap → replay to app @${downX.toInt()},${downY.toInt()}")
-                        replayTap(view, downX, downY)
-                    } else Log.i(TAG, "UP ${h.id} (not activated — nothing fired)")
                 }
+                // Tap without inward drag: Samsung-style — the handle simply doesn't
+                // react. The window is in its own small rect; short taps just don't
+                // trigger anything rather than needing complex replay.
                 activated = false
             }
-            MotionEvent.ACTION_CANCEL -> {
-                Log.i(TAG, "CANCEL ${h.id} activated=$activated (OS likely claimed the gesture)")
-                cancelPending(view); endPreview(); activated = false
-            }
+            MotionEvent.ACTION_CANCEL -> { endPreview(); activated = false }
         }
         return true
     }
@@ -327,8 +260,8 @@ class OneHandAccessibilityService : AccessibilityService() {
         activated = true
         Log.i(TAG, "activate ${h.id} — menu shown")
         if (preview == null) addPreviewLayer() // veil exists ONLY during the gesture
-        preview?.begin(buildOptions(h))
-        preview?.update(downX, downY, downX, downY, null)
+        preview?.begin(buildOptions(h), h.edge)
+        preview?.update(downX, downY, downX, downY, null, 0f)
     }
 
     /** Tear down the mid-gesture veil so no full-screen overlay lingers over the
@@ -338,44 +271,13 @@ class OneHandAccessibilityService : AccessibilityService() {
         preview = null
     }
 
-    private fun cancelPending(view: View) {
-        pending?.let { view.removeCallbacks(it) }; pending = null
-    }
-
-    /** Forward a short tap to the app underneath: make our handle non-touchable,
-     *  inject a tap at the same point (goes to the app, not us), then restore. */
-    private fun replayTap(view: View, x: Float, y: Float) {
-        val lp = view.layoutParams as? WindowManager.LayoutParams ?: return
-        replaying = true
-        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        runCatching { windowManager?.updateViewLayout(view, lp) }
-        var restored = false
-        val restore = {
-            if (!restored) {
-                restored = true; replaying = false
-                lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                runCatching { windowManager?.updateViewLayout(view, lp) }
-            }
-        }
-        // Dispatch AFTER the FLAG_NOT_TOUCHABLE change lands (next frame), so the
-        // injected tap reaches the app under the handle — not the handle itself.
-        view.post {
-            val path = Path().apply { moveTo(x, y) }
-            val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(path, 0, 50)).build()
-            val ok = runCatching {
-                dispatchGesture(gesture, object : GestureResultCallback() {
-                    override fun onCompleted(d: GestureDescription?) { restore() }
-                    override fun onCancelled(d: GestureDescription?) { restore() }
-                }, null)
-            }.getOrDefault(false)
-            if (!ok) { Log.i(TAG, "replayTap: dispatchGesture failed"); restore() }
-        }
-        handler.postDelayed({ restore() }, 500) // safety net so we never stay non-touchable
-    }
-
     private fun updatePreview(h: OneHandConfig.Handle, x: Float, y: Float) {
-        preview?.update(downX, downY, x, y, SwipeClassifier.sector(h.edge, x - downX, y - downY))
+        val dx = x - downX; val dy = y - downY
+        val dist = hypot(dx, dy)
+        // progress 0→1 over the second threshold distance so L1→L2 morphs smoothly
+        val c = cfg ?: return
+        val progress = ((dist - dp(c.swipeThresholdDp)) / dp(80)).coerceIn(0f, 1f)
+        preview?.update(downX, downY, x, y, SwipeClassifier.sector(h.edge, dx, dy), progress)
     }
 
     /** Fan of the handle's 3 sector options for the preview, at canonical angles. */

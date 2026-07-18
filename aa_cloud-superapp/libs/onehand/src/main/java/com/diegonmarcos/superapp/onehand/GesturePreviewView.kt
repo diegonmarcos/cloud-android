@@ -1,125 +1,162 @@
 package com.diegonmarcos.superapp.onehand
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
+import android.util.DisplayMetrics
 import android.view.View
-import kotlin.math.atan2
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * Animated gesture preview (One Hand Operation+ style). On touch-down it fans out
- * the handle's direction options as pills; the arrow follows the finger and the
- * active option (top / middle / bottom) is highlighted, the highlight easing
- * smoothly as you tilt between sectors. Purely visual; fed by the a11y service.
+ * Two-level morphing arc menu drawn over the edge handle swipe.
+ *
+ * L1 (progress=0): tight arc centred on the swipe origin (the handle), radius ~130dp.
+ *   Items fan out inward — for a left handle they go right, for a right handle left.
+ *
+ * L2 (progress=1): arc whose centre is far below the screen (~3× screen height).
+ *   The resulting arc is nearly a straight horizontal line distributing items
+ *   left→right across the full screen width.
+ *
+ * The positions, radius, and item sizes all interpolate smoothly between L1 and L2
+ * as the finger is dragged further inward.
  */
 class GesturePreviewView(ctx: Context) : View(ctx) {
 
-    data class Option(
-        val key: String, val label: String, val angleDeg: Double,
-        val icon: android.graphics.Bitmap? = null,
-    ) {
-        var hi = 0f // 0..1 highlight, eased toward active
-    }
+    data class Option(val key: String, val label: String, val icon: Bitmap?)
 
-    private val d = resources.displayMetrics.density
-    private var active = false
-    private var sx = 0f; private var sy = 0f
-    private var cx = 0f; private var cy = 0f
-    private var activeKey: String? = null
-    private var options: List<Option> = emptyList()
-    private var lastFrameNs = 0L
+    // ── state ──────────────────────────────────────────────────────────────────
+    private var active  = false
+    private var opts    = listOf<Option>()
+    private var edge    = OneHandConfig.Edge.RIGHT
+    private var startX  = 0f; private var startY  = 0f
+    private var curX    = 0f; private var curY    = 0f
+    private var selKey  : String? = null
+    private var progress = 0f   // 0=L1 tight arc, 1=L2 near-horizontal
 
-    private val accent = Color.parseColor("#4DA3FF")
-    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeWidth = 7f * d
-        setShadowLayer(5f * d, 0f, 0f, Color.BLACK)
+    // ── display ────────────────────────────────────────────────────────────────
+    private val dm = DisplayMetrics().also {
+        @Suppress("DEPRECATION")
+        (ctx.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager)
+            .defaultDisplay.getMetrics(it)
     }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 15f * d; textAlign = Paint.Align.CENTER; isFakeBoldText = true
-        setShadowLayer(4f * d, 0f, 0f, Color.BLACK)
-    }
-    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
+    private val dp = dm.density
 
-    init { setLayerType(LAYER_TYPE_SOFTWARE, null) }
+    // ── paints ─────────────────────────────────────────────────────────────────
+    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 30, 30, 50)
+    }
+    private val pillSelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(255, 60, 120, 255)
+    }
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE; textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD; textSize = 13 * dp
+        setShadowLayer(4 * dp, 0f, 2 * dp, Color.argb(160, 0, 0, 0))
+    }
+    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(180, 255, 255, 255); strokeWidth = 3 * dp
+        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    }
 
     private val frame = object : Runnable {
-        override fun run() {
-            val now = System.nanoTime()
-            val dt = if (lastFrameNs == 0L) 0.016f else (now - lastFrameNs) / 1e9f
-            lastFrameNs = now
-            val k = (dt * 14f).coerceIn(0f, 1f) // exponential ease
-            options.forEach { o -> o.hi += ((if (o.key == activeKey) 1f else 0f) - o.hi) * k }
-            invalidate()
-            if (active) postOnAnimation(this)
-        }
+        override fun run() { if (active) { invalidate(); postDelayed(this, 16) } }
     }
 
-    fun begin(opts: List<Option>) {
-        options = opts; active = true; activeKey = null; lastFrameNs = 0L
-        removeCallbacks(frame); postOnAnimation(frame)
+    // ── public API ─────────────────────────────────────────────────────────────
+
+    fun begin(opts: List<Option>, edge: OneHandConfig.Edge) {
+        this.opts = opts; this.edge = edge; active = true; selKey = null; progress = 0f
+        postDelayed(frame, 0)
     }
 
-    fun update(startX: Float, startY: Float, curX: Float, curY: Float, key: String?) {
-        sx = startX; sy = startY; cx = curX; cy = curY; activeKey = key
+    fun update(startX: Float, startY: Float, curX: Float, curY: Float, key: String?, progress: Float) {
+        this.startX = startX; this.startY = startY
+        this.curX   = curX;   this.curY   = curY
+        this.selKey = key;    this.progress = progress
     }
 
     fun end() { active = false; removeCallbacks(frame); invalidate() }
 
+    // ── drawing ────────────────────────────────────────────────────────────────
+
     override fun onDraw(canvas: Canvas) {
-        if (!active) return
-        val r = 104f * d
-        // Option pills fanned around the swipe origin.
-        for (o in options) {
-            val a = Math.toRadians(o.angleDeg)
-            val px = sx + (r * cos(a)).toFloat()
-            val py = sy + (r * sin(a)).toFloat()
-            val hi = o.hi
-            fill.color = blend(Color.argb(160, 30, 30, 34), accent, hi)
-            if (o.icon != null) {
-                // App: draw the launcher icon in a rounded chip that grows when active.
-                val half = (18f + 5f * hi) * d
-                val chip = RectF(px - half, py - half, px + half, py + half)
-                canvas.drawRoundRect(chip, 14f * d, 14f * d, fill)
-                val ic = (14f + 4f * hi) * d
-                canvas.drawBitmap(o.icon, null, RectF(px - ic, py - ic, px + ic, py + ic), null)
+        if (!active || opts.isEmpty()) return
+
+        val sw = width.toFloat(); val sh = height.toFloat()
+        val n  = opts.size
+
+        // ── L1 geometry: tight arc centred at swipe start ──
+        val r1 = 130 * dp
+        // Fan angles (radians). For LEFT handle items fan right (0°), for RIGHT left (180°).
+        val l1Centre = when (edge) {
+            OneHandConfig.Edge.LEFT   -> 0.0        // pointing right
+            OneHandConfig.Edge.RIGHT  -> PI          // pointing left
+            OneHandConfig.Edge.BOTTOM -> -PI / 2    // pointing up
+        }
+        val l1Spread = PI / 4  // ±45° total, so 3 items at -45°, 0°, +45°
+        val l1Cx = startX; val l1Cy = startY
+
+        // ── L2 geometry: arc centre far below screen → near-horizontal line ──
+        val r2 = sh * 2.5f
+        val l2CentreX = sw * 0.5f
+        val l2CentreY = sh + r2             // far below — arc is near-horizontal at screen level
+        val l2BaseAngle = -PI / 2           // pointing straight up from below
+        val l2Spread = PI / 6               // ±30° → items span most of screen width
+
+        // ── interpolate per-item positions ──
+        val t = progress.toDouble()
+
+        val pillW = lerp(90 * dp, 100 * dp, t); val pillH = lerp(36 * dp, 44 * dp, t)
+        val iconSz = lerp(22 * dp, 28 * dp, t)
+
+        for ((idx, opt) in opts.withIndex()) {
+            // angle within the fan/arc
+            val frac = if (n <= 1) 0.0 else (idx.toDouble() / (n - 1)) - 0.5  // -0.5..+0.5
+            val a1 = l1Centre + frac * l1Spread * 2
+            val a2 = l2BaseAngle + frac * l2Spread * 2
+
+            // L1 item centre
+            val x1 = (l1Cx + r1 * cos(a1)).toFloat()
+            val y1 = (l1Cy + r1 * sin(a1)).toFloat()
+
+            // L2 item centre
+            val x2 = (l2CentreX + r2 * cos(a2)).toFloat()
+            val y2 = (l2CentreY + r2 * sin(a2)).toFloat()
+
+            // Interpolated position
+            val ix = lerp(x1, x2, t); val iy = lerp(y1, y2, t)
+
+            val selected = opt.key == selKey
+            val rect = RectF(ix - pillW / 2, iy - pillH / 2, ix + pillW / 2, iy + pillH / 2)
+            canvas.drawRoundRect(rect, pillH / 2, pillH / 2, if (selected) pillSelPaint else pillPaint)
+
+            val topY = iy - pillH / 2
+            if (opt.icon != null) {
+                val iconRect = RectF(ix - iconSz / 2, topY + (pillH - iconSz) / 2,
+                                     ix + iconSz / 2, topY + (pillH + iconSz) / 2)
+                canvas.drawBitmap(opt.icon, null, iconRect, null)
             } else {
-                val padH = (12f + 4f * hi) * d
-                val padV = (8f + 3f * hi) * d
-                val w = text.measureText(o.label) / 2f
-                val rect = RectF(px - w - padH, py - padV - 7f * d, px + w + padH, py + padV + 7f * d)
-                canvas.drawRoundRect(rect, 14f * d, 14f * d, fill)
-                text.color = blend(Color.LTGRAY, Color.WHITE, hi)
-                canvas.drawText(o.label, px, py + 5f * d, text)
+                textPaint.textSize = lerp(13 * dp, 14 * dp, t)
+                canvas.drawText(opt.label, ix, iy + textPaint.textSize * 0.38f, textPaint)
             }
         }
-        // Arrow following the finger.
-        val len = hypot(cx - sx, cy - sy)
-        if (len >= 8f * d) {
-            line.color = accent
-            canvas.drawLine(sx, sy, cx, cy, line)
-            val ang = atan2((cy - sy).toDouble(), (cx - sx).toDouble())
-            val head = 20f * d
-            for (off in listOf(Math.toRadians(150.0), Math.toRadians(-150.0))) {
-                canvas.drawLine(cx, cy,
-                    cx + (head * cos(ang + off)).toFloat(),
-                    cy + (head * sin(ang + off)).toFloat(), line)
-            }
-            canvas.drawCircle(cx, cy, 6f * d, dot)
+
+        // ── follow-finger arrow (fades out as L2 opens) ──────────────────────
+        if (progress < 0.8f) {
+            val alpha = ((1f - progress / 0.8f) * 180).toInt()
+            arrowPaint.alpha = alpha
+            canvas.drawLine(startX, startY, curX, curY, arrowPaint)
         }
     }
 
-    private fun blend(from: Int, to: Int, t: Float): Int {
-        val f = t.coerceIn(0f, 1f)
-        fun c(a: Int, b: Int) = (a + (b - a) * f).toInt()
-        return Color.argb(
-            c(Color.alpha(from), Color.alpha(to)), c(Color.red(from), Color.red(to)),
-            c(Color.green(from), Color.green(to)), c(Color.blue(from), Color.blue(to)),
-        )
-    }
+    // ── helpers ────────────────────────────────────────────────────────────────
+    private fun lerp(a: Float, b: Float, t: Double) = (a + (b - a) * t).toFloat()
+    private fun lerp(a: Double, b: Double, t: Double) = a + (b - a) * t
 }
