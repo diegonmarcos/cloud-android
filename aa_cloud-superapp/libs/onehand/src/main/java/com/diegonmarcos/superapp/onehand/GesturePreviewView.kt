@@ -105,7 +105,9 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
 
         for ((idx, opt) in opts.withIndex()) {
             val frac = if (n <= 1) 0.0 else (idx.toDouble() / (n - 1)) - 0.5  // -0.5..+0.5
-            val a1 = l1Centre + frac * l1Spread * 2
+            // RIGHT edge: sin(PI+θ) = -sin(θ), so negate frac to keep top→up, down→down
+            val orientedFrac = if (edge == OneHandConfig.Edge.RIGHT) -frac else frac
+            val a1 = l1Centre + orientedFrac * l1Spread * 2
             val ix = (l1Cx + r1 * cos(a1)).toFloat()
             val iy = (l1Cy + r1 * sin(a1)).toFloat()
 
