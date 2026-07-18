@@ -150,10 +150,10 @@ class OneHandAccessibilityService : AccessibilityService() {
         if (android.os.Build.VERSION.SDK_INT >= 30) {
             lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
-        // Window opacity < 0.8 so Android 12+ "block untrusted touches" does NOT
-        // drop taps that pass through this full-screen overlay to the app below
-        // (this is what was silently killing Bitwarden's touches).
-        lp.alpha = OVERLAY_ALPHA
+        // FLAG_NOT_TOUCHABLE: this overlay never intercepts touches so the
+        // untrusted-touch opacity rule does NOT apply here. Keep fully opaque so
+        // menu items are drawn at full colour (0.6 made them look washed-out).
+        lp.alpha = 1.0f
         wm.addView(v, lp)
         preview = v
     }
