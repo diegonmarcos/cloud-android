@@ -55,6 +55,12 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
         color = Color.argb(180, 255, 255, 255); strokeWidth = 3 * dp
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
     }
+    private val selCirclePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(80, 60, 120, 255); style = Paint.Style.FILL
+    }
+    private val selCircleStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 100, 160, 255); style = Paint.Style.STROKE; strokeWidth = 2 * dp
+    }
 
     private val frame = object : Runnable {
         override fun run() { if (active) { invalidate(); postDelayed(this, 16) } }
@@ -104,6 +110,11 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
             val iy = (l1Cy + r1 * sin(a1)).toFloat()
 
             val selected = opt.key == selKey
+            val circleR = iconSz * 0.8f
+            if (selected) {
+                canvas.drawCircle(ix, iy, circleR, selCirclePaint)
+                canvas.drawCircle(ix, iy, circleR, selCircleStroke)
+            }
             if (opt.icon != null) {
                 val iconRect = RectF(ix - iconSz / 2, iy - iconSz / 2,
                                      ix + iconSz / 2, iy + iconSz / 2)
@@ -115,10 +126,19 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
             }
         }
 
-        // ── follow-finger arrow (always draw; fades out past swipeDist=1) ──
+        // ── follow-finger arrow with arrowhead (fades out past swipeDist=1) ──
         val arrowAlpha = ((1f - (swipeDist - 1f).coerceAtLeast(0f)) * 180).toInt().coerceIn(0, 180)
         arrowPaint.alpha = arrowAlpha
         canvas.drawLine(startX, startY, curX, curY, arrowPaint)
+        // arrowhead: two lines angled 140° from the shaft direction
+        val dx = curX - startX; val dy = curY - startY
+        val len = Math.hypot(dx.toDouble(), dy.toDouble()).toFloat().coerceAtLeast(1f)
+        val ux = dx / len; val uy = dy / len
+        val headLen = 18 * dp
+        val angle = Math.toRadians(140.0)
+        val cos = Math.cos(angle).toFloat(); val sin = Math.sin(angle).toFloat()
+        canvas.drawLine(curX, curY, curX + headLen * (ux * cos - uy * sin), curY + headLen * (ux * sin + uy * cos), arrowPaint)
+        canvas.drawLine(curX, curY, curX + headLen * (ux * cos + uy * sin), curY + headLen * (-(ux * sin) + uy * cos), arrowPaint)
     }
 
 }
