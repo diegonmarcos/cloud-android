@@ -10,23 +10,19 @@ import android.graphics.Typeface
 import android.util.DisplayMetrics
 import android.view.View
 import kotlin.math.PI
-import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * Two-level morphing arc menu drawn over the edge handle swipe.
+ * EDGE-MENU overlay — NOT the Canopus arc circle menu.
  *
- * L1 (progress=0): tight arc centred on the swipe origin (the handle), radius ~130dp.
- *   Items fan out inward — for a left handle they go right, for a right handle left.
+ * Draws the three action items in a fixed arc centred on the swipe origin
+ * (the handle position). Items fan inward: right-handle fans left, left-handle
+ * fans right, bottom-handle fans up.
  *
- * L2 (progress=1): arc whose centre is far below the screen (~3× screen height).
- *   The resulting arc is nearly a straight horizontal line distributing items
- *   left→right across the full screen width.
- *
- * The positions, radius, and item sizes all interpolate smoothly between L1 and L2
- * as the finger is dragged further inward.
+ * Multi-level / sub-arc behaviour belongs to the Canopus circle (RadialMenuView).
+ * This view has no L2 / morphing / transition logic.
  */
 class GesturePreviewView(ctx: Context) : View(ctx) {
 
@@ -39,7 +35,7 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
     private var startX  = 0f; private var startY  = 0f
     private var curX    = 0f; private var curY    = 0f
     private var selKey  : String? = null
-    private var progress = 0f   // 0=L1 tight arc, 1=L2 near-horizontal
+    private var swipeDist = 0f  // normalised distance from threshold — used for arrow fade
 
     // ── display ────────────────────────────────────────────────────────────────
     private val dm = DisplayMetrics().also {
@@ -73,14 +69,14 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
     // ── public API ─────────────────────────────────────────────────────────────
 
     fun begin(opts: List<Option>, edge: OneHandConfig.Edge) {
-        this.opts = opts; this.edge = edge; active = true; selKey = null; progress = 0f
+        this.opts = opts; this.edge = edge; active = true; selKey = null; swipeDist = 0f
         postDelayed(frame, 0)
     }
 
     fun update(startX: Float, startY: Float, curX: Float, curY: Float, key: String?, progress: Float) {
         this.startX = startX; this.startY = startY
         this.curX   = curX;   this.curY   = curY
-        this.selKey = key;    this.progress = progress
+        this.selKey = key;    this.swipeDist = progress
     }
 
     fun end() { active = false; removeCallbacks(frame); invalidate() }
@@ -104,38 +100,15 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
         val l1Spread = PI / 4  // ±45° total, so 3 items at -45°, 0°, +45°
         val l1Cx = startX; val l1Cy = startY
 
-        // ── L2 geometry: arc centre far below screen → near-horizontal line ──
-        // L2: target centre item at y≈sh*0.55; outer items at x=sw*[0.12..0.88] on screen.
-        // Arc centre at 7×sh below → nearly flat arc. Radius and half-angle derived from targets.
-        val targetL2Y = sh * 0.55f
-        val l2CentreX = sw * 0.5f
-        val l2CentreY = sh * 7.0f
-        val r2 = l2CentreY - targetL2Y
-        val l2BaseAngle = -PI / 2
-        val l2Spread = asin((sw * 0.38f / r2).coerceIn(-1f, 1f).toDouble())
-
-        // ── interpolate per-item positions ──
-        val t = progress.toDouble()
-
-        val pillW = lerp(90 * dp, 100 * dp, t); val pillH = lerp(36 * dp, 44 * dp, t)
-        val iconSz = lerp(22 * dp, 28 * dp, t)
+        // Edge menu: items stay at L1 arc. No L2 morphing (L2 levels belong to the Canopus circle).
+        val pillW = 90 * dp; val pillH = 36 * dp
+        val iconSz = 22 * dp
 
         for ((idx, opt) in opts.withIndex()) {
-            // angle within the fan/arc
             val frac = if (n <= 1) 0.0 else (idx.toDouble() / (n - 1)) - 0.5  // -0.5..+0.5
             val a1 = l1Centre + frac * l1Spread * 2
-            val a2 = l2BaseAngle + frac * l2Spread * 2
-
-            // L1 item centre
-            val x1 = (l1Cx + r1 * cos(a1)).toFloat()
-            val y1 = (l1Cy + r1 * sin(a1)).toFloat()
-
-            // L2 item centre
-            val x2 = (l2CentreX + r2 * cos(a2)).toFloat()
-            val y2 = (l2CentreY + r2 * sin(a2)).toFloat()
-
-            // Interpolated position
-            val ix = lerp(x1, x2, t); val iy = lerp(y1, y2, t)
+            val ix = (l1Cx + r1 * cos(a1)).toFloat()
+            val iy = (l1Cy + r1 * sin(a1)).toFloat()
 
             val selected = opt.key == selKey
             val rect = RectF(ix - pillW / 2, iy - pillH / 2, ix + pillW / 2, iy + pillH / 2)
@@ -147,20 +120,17 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
                                      ix + iconSz / 2, topY + (pillH + iconSz) / 2)
                 canvas.drawBitmap(opt.icon, null, iconRect, null)
             } else {
-                textPaint.textSize = lerp(13 * dp, 14 * dp, t)
+                textPaint.textSize = 13 * dp
                 canvas.drawText(opt.label, ix, iy + textPaint.textSize * 0.38f, textPaint)
             }
         }
 
-        // ── follow-finger arrow (fades out as L2 opens) ──────────────────────
-        if (progress < 0.8f) {
-            val alpha = ((1f - progress / 0.8f) * 180).toInt()
+        // ── follow-finger arrow (fades out as swipe extends) ────────────────
+        if (swipeDist < 0.8f) {
+            val alpha = ((1f - swipeDist / 0.8f) * 180).toInt()
             arrowPaint.alpha = alpha
             canvas.drawLine(startX, startY, curX, curY, arrowPaint)
         }
     }
 
-    // ── helpers ────────────────────────────────────────────────────────────────
-    private fun lerp(a: Float, b: Float, t: Double) = (a + (b - a) * t).toFloat()
-    private fun lerp(a: Double, b: Double, t: Double) = a + (b - a) * t
 }
