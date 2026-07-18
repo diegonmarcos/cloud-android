@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.DisplayMetrics
 import android.view.View
@@ -114,12 +115,10 @@ class GesturePreviewView(ctx: Context) : View(ctx) {
             }
         }
 
-        // ── follow-finger arrow (fades out as swipe extends) ────────────────
-        if (swipeDist < 0.8f) {
-            val alpha = ((1f - swipeDist / 0.8f) * 180).toInt()
-            arrowPaint.alpha = alpha
-            canvas.drawLine(startX, startY, curX, curY, arrowPaint)
-        }
+        // ── follow-finger arrow (always draw; fades out past swipeDist=1) ──
+        val arrowAlpha = ((1f - (swipeDist - 1f).coerceAtLeast(0f)) * 180).toInt().coerceIn(0, 180)
+        arrowPaint.alpha = arrowAlpha
+        canvas.drawLine(startX, startY, curX, curY, arrowPaint)
     }
 
 }
