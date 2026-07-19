@@ -89,7 +89,11 @@ object SystemInfoPopup {
         SysfsProc.cpuLoad()?.let { c ->
             container.addView(label(ctx, "CPU load  (1m · 5m · 15m)"))
             container.addView(valueSmall(ctx,
-                "%.2f · %.2f · %.2f".format(c.loadAvg1m, c.loadAvg5m, c.loadAvg15m)))
+                "${" %.2f".format(c.loadAvg1m).trim()} (${"%.1f".format(c.loadAvg1m / c.cores)}x) · ${"%.2f".format(c.loadAvg5m)} · ${"%.2f".format(c.loadAvg15m)}"))
+            container.addView(spacer(ctx, (4 * d).toInt()))
+            container.addView(label(ctx, "CPU usage"))
+            container.addView(valueSmall(ctx,
+                "${(c.busyFraction * 100).toInt()}% (${c.cores}c)"))
             container.addView(spacer(ctx, (4 * d).toInt()))
             container.addView(label(ctx, "CPU busy / idle  (Σ ${c.cores} cores)"))
             container.addView(valueSmall(ctx,
@@ -99,6 +103,26 @@ object SystemInfoPopup {
                     c.busyFraction * 100.0,
                 )))
             container.addView(spacer(ctx, (4 * d).toInt()))
+        }
+
+        // PSI — /proc/pressure/{cpu,io,memory}. Available on Android
+        // kernels with CONFIG_PSI. Silently omitted when unreadable.
+        run {
+            val cpu = readPsi("cpu")
+            val io  = readPsi("io")
+            val mem = readPsi("memory")
+            if (cpu != null || io != null || mem != null) {
+                container.addView(label(ctx, "PSI  (some 10s/1min · full 10s/1min)"))
+                val f2 = { v: Float -> "%.2f".format(v) }
+                fun psiRow(name: String, p: Map<String, Float>?): String {
+                    if (p == null) return "$name  —"
+                    return "%-4s  some ${f2(p["some10"] ?: 0f)}/${f2(p["some60"] ?: 0f)}  full ${f2(p["full10"] ?: 0f)}/${f2(p["full60"] ?: 0f)}".format(name)
+                }
+                container.addView(valueSmall(ctx, psiRow("CPU", cpu)))
+                container.addView(valueSmall(ctx, psiRow("IO", io)))
+                container.addView(valueSmall(ctx, psiRow("MEM", mem)))
+                container.addView(spacer(ctx, (4 * d).toInt()))
+            }
         }
 
         container.addView(label(ctx, "Uptime"))
@@ -191,6 +215,32 @@ object SystemInfoPopup {
         b >= 1024L          -> "%.1f kB".format(b / 1024.0)
         else                -> "$b B"
     }
+
+    /**
+     * Read /proc/pressure/<resource> and return a map with keys
+     * some10, some60, full10, full60 (all as Float percentages).
+     * CPU has no "full" line — those entries default to 0f.
+     * Returns null if the file is absent or unreadable.
+     */
+    private fun readPsi(resource: String): Map<String, Float>? = runCatching {
+        val file = java.io.File("/proc/pressure/$resource")
+        if (!file.canRead()) return@runCatching null
+        val result = mutableMapOf(
+            "some10" to 0f, "some60" to 0f, "full10" to 0f, "full60" to 0f
+        )
+        for (line in file.readLines()) {
+            val prefix = when {
+                line.startsWith("some") -> "some"
+                line.startsWith("full") -> "full"
+                else -> continue
+            }
+            val avg10 = Regex("avg10=([0-9.]+)").find(line)?.groupValues?.get(1)?.toFloatOrNull()
+            val avg60 = Regex("avg60=([0-9.]+)").find(line)?.groupValues?.get(1)?.toFloatOrNull()
+            if (avg10 != null) result["${prefix}10"] = avg10
+            if (avg60 != null) result["${prefix}60"] = avg60
+        }
+        result
+    }.getOrNull()
 
     private fun label(ctx: Context, t: String) = TextView(ctx).apply {
         text = t
