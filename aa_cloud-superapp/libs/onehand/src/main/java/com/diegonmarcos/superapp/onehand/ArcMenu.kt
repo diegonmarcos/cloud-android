@@ -58,12 +58,13 @@ object ArcMenu {
 
     /** Attach a full-screen arc-menu to [decor]; returns a [Session] to forward
      *  the star's in-flight gesture. Self-removes on ACTION_UP / ACTION_CANCEL. */
-    fun open(decor: ViewGroup, host: Host): Session? {
+    /** [cx]/[cy]: star's position in decor coordinates — the arc fans upward from there. */
+    fun open(decor: ViewGroup, cx: Float, cy: Float, host: Host): Session? {
         val cfg   = config()
         if (!cfg.enabled) return null
         val items = host.itemsFor(cfg.section)
         if (items.isEmpty()) return null
-        val v = ArcView(decor.context, cfg.radiusDp, items, host) { decor.removeView(it) }
+        val v = ArcView(decor.context, cfg.radiusDp, cx, cy, items, host) { decor.removeView(it) }
         decor.addView(v, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT))
@@ -74,6 +75,8 @@ object ArcMenu {
     private class ArcView(
         ctx: Context,
         radiusDp: Int,
+        private val cx: Float,   // star's X in decor coords
+        private val cy: Float,   // star's Y in decor coords
         private val items: List<Item>,
         private val host: Host,
         private val dismiss: (View) -> Unit,
@@ -98,29 +101,22 @@ object ArcMenu {
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
 
-        // Arc centre: bottom-centre of screen. Computed in onSizeChanged.
-        private var cx = 0f; private var cy = 0f
-        // Slot (x, y) per item — upper semicircle rising from bottom-centre.
-        private var slots = listOf<Pair<Float, Float>>()
-
-        private var fx = 0f; private var fy = 0f
-        private var active = -1
-
-        override fun onSizeChanged(w: Int, h: Int, oldW: Int, oldH: Int) {
-            cx = w / 2f
-            cy = h.toFloat() + nodeR  // centre just below the screen edge so edge items stay visible
+        // Slots computed once: upper semicircle fanning upward from the star centre.
+        private val slots: List<Pair<Float, Float>> = run {
             val n = items.size
-            slots = List(n) { i ->
+            List(n) { i ->
                 val frac = if (n <= 1) 0.5 else i.toDouble() / (n - 1)
-                // Sweep PI (left) → PI/2 (top) → 0 (right); negate sin for screen Y
+                // Sweep PI (left) → PI/2 (up) → 0 (right); negate sin for screen Y (Y↓)
                 val ang = Math.PI * (1.0 - frac)
                 Pair(
                     (cx + ring * cos(ang)).toFloat(),
                     (cy - ring * sin(ang)).toFloat(),
                 )
             }
-            fx = cx; fy = cy
         }
+
+        private var fx = cx; private var fy = cy
+        private var active = -1
 
         override fun feed(x: Float, y: Float, action: Int) {
             when (action) {

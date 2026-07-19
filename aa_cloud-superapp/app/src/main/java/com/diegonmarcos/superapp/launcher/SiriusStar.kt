@@ -56,10 +56,13 @@ class SiriusStar(private val activity: AppCompatActivity) {
         val c = cfg
         if (!c.enabled) { star.visibility = View.GONE; return }
         star.text = c.starGlyph
-        star.setTextSize(TypedValue.COMPLEX_UNIT_SP, c.starSizeSp.toFloat())
+        // Sirius is slightly bigger than Canopus (which uses starSizeSp directly)
+        star.setTextSize(TypedValue.COMPLEX_UNIT_SP, c.starSizeSp.toFloat() + 4f)
         val pad = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, c.starTapPadDp.toFloat(), activity.resources.displayMetrics).toInt()
         star.setPadding(pad, pad, pad, pad)
+        // Golden glow to distinguish Sirius from Canopus
+        star.setShadowLayer(18f, 0f, 0f, android.graphics.Color.argb(200, 255, 220, 80))
         // Forward press→drag→release as one continuous gesture to the circular-menu.
         star.setOnTouchListener { _, e ->
             val decor = activity.findViewById<ViewGroup>(android.R.id.content)

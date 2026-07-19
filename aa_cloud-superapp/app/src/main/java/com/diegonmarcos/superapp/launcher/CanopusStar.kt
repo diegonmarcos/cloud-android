@@ -84,7 +84,7 @@ class CanopusStar(private val activity: AppCompatActivity) {
             val y = s[1] - d[1] + e.y
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    session = ArcMenu.open(decor, host)
+                    session = ArcMenu.open(decor, x, y, host)
                     session?.feed(x, y, MotionEvent.ACTION_DOWN)
                 }
                 MotionEvent.ACTION_MOVE -> session?.feed(x, y, MotionEvent.ACTION_MOVE)
