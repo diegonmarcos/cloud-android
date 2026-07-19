@@ -1,6 +1,6 @@
 {
   "name": "cloud-superapp",
-  "description": "Diego's Cloud SuperApp \u2014 modularized monolith Android app. Single APK, gradle multi-module: app/ (launcher shell) + libs/{core,mail,cal,feed,net,ops,vault,chat}/ (independent feature modules). FairEmail-derived mail with JMAP, CalDAV/Radicale calendar, RSS, WireGuard tunnel, cloud ops dashboard, vault. Build via Nix devShell (gradle + AGP + Android SDK), one APK out.",
+  "description": "Diego's Cloud SuperApp — modularized monolith Android app. Single APK, gradle multi-module: app/ (launcher shell) + libs/{core,mail,cal,feed,net,ops,vault,chat}/ (independent feature modules). FairEmail-derived mail with JMAP, CalDAV/Radicale calendar, RSS, WireGuard tunnel, cloud ops dashboard, vault. Build via Nix devShell (gradle + AGP + Android SDK), one APK out.",
   "category": "android",
   "build": {
     "type": "gradle",
@@ -13,24 +13,24 @@
     "target_sdk": 34,
     "version_code": 1,
     "version_name": "0.1.1-dev",
-    "_doc_abi_filters": "Native-library ABIs shipped in the APK. Defaults to arm64-v8a only because MapLibre Native (added in Push 2) ships ~15-18MB of .so per ABI; shipping all 4 default ABIs (arm64-v8a + armeabi-v7a + x86 + x86_64) inflates the APK from ~22MB to ~82MB. Every Samsung Galaxy from S8 (2017) onward + every modern Pixel is arm64, so this is safe for the user's device. To support 32-bit devices or x86 emulators, add 'armeabi-v7a' / 'x86_64' to this list and rebuild \u2014 no Kotlin / gradle edits needed.",
+    "_doc_abi_filters": "Native-library ABIs shipped in the APK. Defaults to arm64-v8a only because MapLibre Native (added in Push 2) ships ~15-18MB of .so per ABI; shipping all 4 default ABIs (arm64-v8a + armeabi-v7a + x86 + x86_64) inflates the APK from ~22MB to ~82MB. Every Samsung Galaxy from S8 (2017) onward + every modern Pixel is arm64, so this is safe for the user's device. To support 32-bit devices or x86 emulators, add 'armeabi-v7a' / 'x86_64' to this list and rebuild — no Kotlin / gradle edits needed.",
     "abi_filters": [
       "arm64-v8a"
     ]
   },
   "signing": {
-    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key \u2014 it never generates or substitutes a random/legacy key.",
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key — it never generates or substitutes a random/legacy key.",
     "vault_keystore": "A0_keys/providers/android/release.jks",
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
   "diagnostics": {
-    "_doc": "On-device DevControlServer diagnostics \u2192 cloud sink + local download. Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by app/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store, openobserve on oci-apps) ingest, reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK (the collector relays to openobserve server-side). '{stream}' in the url is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (the 'Download logs' action still works fully); set it to the confirmed collector ingest path to enable one-tap 'Send logs to cloud'. Data-driven: change here, every app rebuild picks it up \u2014 never hardcode in Kotlin.",
+    "_doc": "On-device DevControlServer diagnostics → cloud sink + local download. Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by app/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store, openobserve on oci-apps) ingest, reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK (the collector relays to openobserve server-side). '{stream}' in the url is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (the 'Download logs' action still works fully); set it to the confirmed collector ingest path to enable one-tap 'Send logs to cloud'. Data-driven: change here, every app rebuild picks it up — never hardcode in Kotlin.",
     "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-superapp",
     "enabled": true
   },
   "emulator": {
-    "_doc": "build.sh emulator boots an arm64 AVD for FULL-FIDELITY testing of the arm64-v8a APK \u2014 the emulator emulates arm64 wholesale (TCG/software on this x86_64 host: slow but faithful), so NO libhoudini translation is involved (unlike the Waydroid path). The emulator binary + system image come from the Nix devShell (flake.nix composeAndroidPackages includeEmulator/includeSystemImages). system_image ABI+API MUST match flake.nix abiVersions/systemImageTypes/platformVersions. avd_name is created idempotently by build.sh from system_image; boot_args are passed verbatim to `emulator`.",
+    "_doc": "build.sh emulator boots an arm64 AVD for FULL-FIDELITY testing of the arm64-v8a APK — the emulator emulates arm64 wholesale (TCG/software on this x86_64 host: slow but faithful), so NO libhoudini translation is involved (unlike the Waydroid path). The emulator binary + system image come from the Nix devShell (flake.nix composeAndroidPackages includeEmulator/includeSystemImages). system_image ABI+API MUST match flake.nix abiVersions/systemImageTypes/platformVersions. avd_name is created idempotently by build.sh from system_image; boot_args are passed verbatim to `emulator`.",
     "avd_name": "superapp-arm64",
     "system_image": "system-images;android-34;google_apis;arm64-v8a",
     "device": "pixel_6",
@@ -41,9 +41,9 @@
     ]
   },
   "toolchain": {
-    "_doc": "Pinned for reproducibility \u2014 all derived in flake.nix. Bump here, rebuild devShell.",
-    "_doc_sdk_bump": "compile_sdk bumped 34\u219235 to satisfy androidx.health.connect:connect-client:1.1.0-alpha10's AAR metadata constraint (it requires consumers to compile against Android 35+ for the new HC permission definitions wired to API 35 constants). AGP 8.5.2 maxes at compileSdk 34, so AGP bumped 8.5.2\u21928.7.3 (first stable AGP supporting compileSdk 35). Gradle 8.7\u21928.10.2 follows AGP 8.7's Gradle 8.9+ requirement. target_sdk stays at 34 \u2014 opting into Android 15 runtime behaviour is a separate concern from compiling against its APIs.",
-    "_doc_heliboard_bump": "compile_sdk bumped 35\u219236 + the whole toolchain re-pinned to vendor HeliBoard main as libs:keyboard (self-contained keyboard provider). HeliBoard main pins AGP 8.13.2 / Kotlin 2.3.20 / Gradle 8.14 / compileSdk 36 (Android 16) / NDK 28.0.13004108, and uses the standalone Kotlin 2.0 Compose-compiler plugin (org.jetbrains.kotlin.plugin.compose) \u2014 so app + libs:wallet dropped composeOptions.kotlinCompilerExtensionVersion in favour of that plugin. nixpkgs channel bumped 24.11\u219225.05 because 24.11's androidenv/kotlin/gradle predate API 36 / Kotlin 2.3 / Gradle 8.14. target_sdk unchanged. See libs/keyboard/README.md.",
+    "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
+    "_doc_sdk_bump": "compile_sdk bumped 34→35 to satisfy androidx.health.connect:connect-client:1.1.0-alpha10's AAR metadata constraint (it requires consumers to compile against Android 35+ for the new HC permission definitions wired to API 35 constants). AGP 8.5.2 maxes at compileSdk 34, so AGP bumped 8.5.2→8.7.3 (first stable AGP supporting compileSdk 35). Gradle 8.7→8.10.2 follows AGP 8.7's Gradle 8.9+ requirement. target_sdk stays at 34 — opting into Android 15 runtime behaviour is a separate concern from compiling against its APIs.",
+    "_doc_heliboard_bump": "compile_sdk bumped 35→36 + the whole toolchain re-pinned to vendor HeliBoard main as libs:keyboard (self-contained keyboard provider). HeliBoard main pins AGP 8.13.2 / Kotlin 2.3.20 / Gradle 8.14 / compileSdk 36 (Android 16) / NDK 28.0.13004108, and uses the standalone Kotlin 2.0 Compose-compiler plugin (org.jetbrains.kotlin.plugin.compose) — so app + libs:wallet dropped composeOptions.kotlinCompilerExtensionVersion in favour of that plugin. nixpkgs channel bumped 24.11→25.05 because 24.11's androidenv/kotlin/gradle predate API 36 / Kotlin 2.3 / Gradle 8.14. target_sdk unchanged. See libs/keyboard/README.md.",
     "agp": "8.13.2",
     "gradle": "8.14",
     "kotlin": "2.3.20",
@@ -51,7 +51,7 @@
     "jdk": "17"
   },
   "upstreams": {
-    "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 1_workflows/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ \u2014 NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
+    "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 1_workflows/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
     "mail": {
       "tracker": "ea_mail-fairmail",
       "repo": "https://github.com/M66B/FairEmail.git",
@@ -90,18 +90,18 @@
     "kde-connect": {
       "tracker": "ea_net-kdeconnect",
       "repo": "https://github.com/KDE/kdeconnect-android.git",
-      "license": "GPL-2.0 (UPSTREAM REFERENCE ONLY \u2014 we do NOT vendor it)",
+      "license": "GPL-2.0 (UPSTREAM REFERENCE ONLY — we do NOT vendor it)",
       "feeds_into": "libs:kde-connect",
       "primary_lang": "Kotlin",
-      "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED. libs/kde-connect is an ORIGINAL implementation of the KDE Connect LAN protocol written by us (NetworkPacket framing, mutual-TLS handshake with a self-signed device cert, protocol-v8 encrypted identity re-exchange, cert-pinned pairing, plugin registry: ping/clipboard/findmyphone/notification). The KDE repo above is consulted ONLY for the documented interop FACTS (port 1716; the TCP-dialer is the TLS server; pairing = trust-the-cert) \u2014 those are functional protocol requirements, not copyrightable expression. NONE of KDE's GPL-2.0 source is copied/vendored, so the app keeps its own license. Connects over wg0 by explicit wg_ip (auto-discovery can't cross WireGuard). Next: a foreground service hosting an inbound TCP server (1716-1764) so peers can also initiate, plus battery/share/mpris plugins."
+      "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED. libs/kde-connect is an ORIGINAL implementation of the KDE Connect LAN protocol written by us (NetworkPacket framing, mutual-TLS handshake with a self-signed device cert, protocol-v8 encrypted identity re-exchange, cert-pinned pairing, plugin registry: ping/clipboard/findmyphone/notification). The KDE repo above is consulted ONLY for the documented interop FACTS (port 1716; the TCP-dialer is the TLS server; pairing = trust-the-cert) — those are functional protocol requirements, not copyrightable expression. NONE of KDE's GPL-2.0 source is copied/vendored, so the app keeps its own license. Connects over wg0 by explicit wg_ip (auto-discovery can't cross WireGuard). Next: a foreground service hosting an inbound TCP server (1716-1764) so peers can also initiate, plus battery/share/mpris plugins."
     },
     "firewall": {
       "tracker": "ea_net-rethinkdns",
       "repo": "https://github.com/celzero/rethink-app.git",
-      "license": "Apache-2.0 (UPSTREAM REFERENCE ONLY \u2014 not vendored in v1)",
+      "license": "Apache-2.0 (UPSTREAM REFERENCE ONLY — not vendored in v1)",
       "feeds_into": "libs:firewall",
       "primary_lang": "Kotlin",
-      "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) \u2014 zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
+      "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) — zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
     },
     "firestack": {
       "tracker": "ea_net-firestack",
@@ -111,14 +111,14 @@
       "feeds_into": "libs:firewall",
       "primary_lang": "Go",
       "build": {
-        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> \u2014 a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice \u2014 the one non-hermetic edge, tracked upstream.",
+        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
         "go_version": "1.26.4",
         "go_sha256_linux_amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
         "make_target": "intra",
         "aar_built": "build/intra/tun2socks.aar",
         "aar_out": "firestack.aar",
         "java_pkg": "com.celzero.firestack",
-        "_doc_abi": "gomobile bind defaults to ALL android ABIs (arm,arm64,x86,x86_64) \u2014 ~4\u00d7 build time, blows the 30-min CI job. build.sh restricts it to the ONE ABI the SUPERAPP_VARIANT ships by overriding firestack's Makefile ANDROID23 var with a single -target. These flags MIRROR firestack Makefile's ANDROID23 (`-androidapi 23 -target=android -tags='android' -work`) minus the ABI; keep in sync on firestack bumps.",
+        "_doc_abi": "gomobile bind defaults to ALL android ABIs (arm,arm64,x86,x86_64) — ~4× build time, blows the 30-min CI job. build.sh restricts it to the ONE ABI the SUPERAPP_VARIANT ships by overriding firestack's Makefile ANDROID23 var with a single -target. These flags MIRROR firestack Makefile's ANDROID23 (`-androidapi 23 -target=android -tags='android' -work`) minus the ABI; keep in sync on firestack bumps.",
         "android_api": "23",
         "gomobile_tags": "android",
         "gomobile_targets": {
@@ -127,21 +127,21 @@
           "x86_64": "android/amd64"
         }
       },
-      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) \u2014 the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy \u2014 resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
+      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
     },
     "ops": {
       "tracker": null,
       "repo": null,
       "license": null,
       "feeds_into": "libs:ops",
-      "_doc_no_upstream": "ops is a thin c3-api dashboard \u2014 no FOSS upstream to fork. Will be original code."
+      "_doc_no_upstream": "ops is a thin c3-api dashboard — no FOSS upstream to fork. Will be original code."
     },
     "core": {
       "tracker": null,
       "repo": null,
       "license": null,
       "feeds_into": "libs:core",
-      "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) \u2014 original code."
+      "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) — original code."
     }
   },
   "modules": {
@@ -179,21 +179,21 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, prompts user via PackageInstaller. All knobs in release.auto_update \u2014 no hardcoded URLs."
+      "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, prompts user via PackageInstaller. All knobs in release.auto_update — no hardcoded URLs."
     },
     "libs:mail": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Mail \u2014 FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ea_mail-fairmail/."
+      "comment": "Mail — FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ea_mail-fairmail/."
     },
     "libs:cal": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Calendar/contacts \u2014 CalDAV/CardDAV against Radicale (cal.diegonmarcos.com)."
+      "comment": "Calendar/contacts — CalDAV/CardDAV against Radicale (cal.diegonmarcos.com)."
     },
     "libs:feed": {
       "type": "library",
@@ -214,7 +214,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Cloud ops dashboard \u2014 c3-api, health checks, dagu trigger, container control."
+      "comment": "Cloud ops dashboard — c3-api, health checks, dagu trigger, container control."
     },
     "libs:vault": {
       "type": "library",
@@ -228,14 +228,14 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Chat / messaging. Likely integrates with mattermost-bots (chat.diegonmarcos.com) \u2014 could fork Mattermost-Mobile / SimpleX / Conversations later."
+      "comment": "Chat / messaging. Likely integrates with mattermost-bots (chat.diegonmarcos.com) — could fork Mattermost-Mobile / SimpleX / Conversations later."
     },
     "libs:health": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "MyHealth \u2014 native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device \u2014 single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface \u2014 pages declared in build.json::ui.sections[id=health]."
+      "comment": "MyHealth — native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device — single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface — pages declared in build.json::ui.sections[id=health]."
     },
     "_libs_browser_tombstone": "libs:browser MOVED to ea_cloud-browser (constellation APK). Removed from app.depends_on and from this module list 2026-07. The Tools tile target is now extapp:cloud-browser. launchUri http/https now sends ACTION_VIEW to com.diegonmarcos.cloudbrowser instead of instantiating BrowserHostFragment.",
     "libs:fin": {
@@ -243,35 +243,35 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "MyFin \u2014 personal finance dashboard. Beta renders from build.json::ui.myfin_mock (accounts, monthly stats, top expense categories, recent transactions, net worth) \u2014 all data-driven so the user can iterate the layout by editing JSON without rebuilding Kotlin. Real aggregator (Plaid / GoCardless / SaltEdge / manual OFX import) lands in a follow-up. MyFinDashboardFragment is the only surface for now; pages: dashboard."
+      "comment": "MyFin — personal finance dashboard. Beta renders from build.json::ui.myfin_mock (accounts, monthly stats, top expense categories, recent transactions, net worth) — all data-driven so the user can iterate the layout by editing JSON without rebuilding Kotlin. Real aggregator (Plaid / GoCardless / SaltEdge / manual OFX import) lands in a follow-up. MyFinDashboardFragment is the only surface for now; pages: dashboard."
     },
     "libs:apptabs": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "App Tabs \u2014 last-6 opened SuperApp entries (sections, pages, external apps) rendered as a 2-col GRID. Sister module to libs:browser; same card-grid UX, different content (sealed Entry: SectionEntry | PageEntry | ExternalAppEntry). AppTabPrefs is SharedPreferences-backed ('app_tabs' file, strict LRU cap=6). Producers call AppTabPrefs.recordSection / recordPage / recordExternalApp on every successful navigation; the GRID re-renders on onResume so flipping back to Tabs always shows the freshest LRU. AppTabsHost is the callback interface MainActivity implements to handle card-tap re-navigation without libs:apptabs reaching back into app/."
+      "comment": "App Tabs — last-6 opened SuperApp entries (sections, pages, external apps) rendered as a 2-col GRID. Sister module to libs:browser; same card-grid UX, different content (sealed Entry: SectionEntry | PageEntry | ExternalAppEntry). AppTabPrefs is SharedPreferences-backed ('app_tabs' file, strict LRU cap=6). Producers call AppTabPrefs.recordSection / recordPage / recordExternalApp on every successful navigation; the GRID re-renders on onResume so flipping back to Tabs always shows the freshest LRU. AppTabsHost is the callback interface MainActivity implements to handle card-tap re-navigation without libs:apptabs reaching back into app/."
     },
     "libs:kde-connect": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "KDE Connect (Configs > KDE page). FULLY SELF-CONTAINED, CLEAN-ROOM \u2014 our own implementation of the KDE Connect LAN protocol, no org.kde.kdeconnect_tp dependency and NO KDE GPL source vendored. Pipeline: dial <wg_ip>:1716 over wg0 \u2192 write identity (plaintext) \u2192 mutual-TLS handshake AS the TLS server (BouncyCastle self-signed device cert; the dialer is the TLS server per the protocol) \u2192 re-exchange identity encrypted (v8) \u2192 cert-pinned pairing (KdeTrustStore) \u2192 NetworkPacket plugins (ping/clipboard/findmyphone/notification). Data-driven from ui.kde_connect (self_name + devices[].wg_ip); nothing hardcodes an IP. BouncyCastle (bcpkix/bcprov jdk15to18) is the only added dep, for cert generation. Next phase: foreground service + inbound TCP server so peers can initiate too."
+      "comment": "KDE Connect (Configs > KDE page). FULLY SELF-CONTAINED, CLEAN-ROOM — our own implementation of the KDE Connect LAN protocol, no org.kde.kdeconnect_tp dependency and NO KDE GPL source vendored. Pipeline: dial <wg_ip>:1716 over wg0 → write identity (plaintext) → mutual-TLS handshake AS the TLS server (BouncyCastle self-signed device cert; the dialer is the TLS server per the protocol) → re-exchange identity encrypted (v8) → cert-pinned pairing (KdeTrustStore) → NetworkPacket plugins (ping/clipboard/findmyphone/notification). Data-driven from ui.kde_connect (self_name + devices[].wg_ip); nothing hardcodes an IP. BouncyCastle (bcpkix/bcprov jdk15to18) is the only added dep, for cert generation. Next phase: foreground service + inbound TCP server so peers can initiate too."
     },
     "libs:shizuku-adb-debug-tools": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Shizuku ADB debug tools \u2014 makes the SuperApp a SELF-CONTAINED 'adb shell' surface. A Shizuku UserService (IShellService.aidl + ShellUserService) runs in SHELL context (uid 2000) when Shizuku is running + granted, so it executes arbitrary `dumpsys` / `getprop` / `cat /sys/...` that the app's own uid + the SELinux-hardened proc/sys path can't reach (One UI 7+/Pixel A15+ block /sys/class/power_supply/*). ShizukuAdb is the binder facade (bindBlocking + exec + grantDump self-grant of android.permission.DUMP via `pm grant`). AdbDiagnostics runs DATA-DRIVEN command bundles declared in build.json::shizuku_diagnostics.bundles[] (charger/usb/battery/thermal/pd) and returns them as JSON. Exposed over the loopback DevControlServer at /api/adb/* (token-gated). This is the path that finally surfaces the USB-PD/PPS negotiation needed to debug 'why is the charger at 3W not 35W'."
+      "comment": "Shizuku ADB debug tools — makes the SuperApp a SELF-CONTAINED 'adb shell' surface. A Shizuku UserService (IShellService.aidl + ShellUserService) runs in SHELL context (uid 2000) when Shizuku is running + granted, so it executes arbitrary `dumpsys` / `getprop` / `cat /sys/...` that the app's own uid + the SELinux-hardened proc/sys path can't reach (One UI 7+/Pixel A15+ block /sys/class/power_supply/*). ShizukuAdb is the binder facade (bindBlocking + exec + grantDump self-grant of android.permission.DUMP via `pm grant`). AdbDiagnostics runs DATA-DRIVEN command bundles declared in build.json::shizuku_diagnostics.bundles[] (charger/usb/battery/thermal/pd) and returns them as JSON. Exposed over the loopback DevControlServer at /api/adb/* (token-gated). This is the path that finally surfaces the USB-PD/PPS negotiation needed to debug 'why is the charger at 3W not 35W'."
     },
     "libs:firewall": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "No-root per-app outbound firewall. v2 = data-driven conditional per-app rules (FirewallRules/FirewallDecider/FirewallConditions, presets in assets/firewall_presets.json); interim drain-engine (FirewallVpnService). Phase 3 will consume the firestack netstack aar (flatDir libs/firewall/firestack/, `implementation(name:'firestack', ext:'aar')`) to run WG + per-app filtering + IN/OUT in one VpnService. Surfaced in About under Battery (info rows + 'Firewall Details' \u2192 FirewallDialog master switch + per-app preset picker)."
+      "comment": "No-root per-app outbound firewall. v2 = data-driven conditional per-app rules (FirewallRules/FirewallDecider/FirewallConditions, presets in assets/firewall_presets.json); interim drain-engine (FirewallVpnService). Phase 3 will consume the firestack netstack aar (flatDir libs/firewall/firestack/, `implementation(name:'firestack', ext:'aar')`) to run WG + per-app filtering + IN/OUT in one VpnService. Surfaced in About under Battery (info rows + 'Firewall Details' → FirewallDialog master switch + per-app preset picker)."
     },
     "libs:battery": {
       "type": "library",
@@ -279,7 +279,7 @@
         "libs:core",
         "libs:shizuku-adb-debug-tools"
       ],
-      "comment": "Battery/energy engine + its dialogs, extracted from app so it sits as a sibling of libs:firewall. Tier-1 (no-root): BatteryManager/sysfs correlation. Tier-2 (privileged): ShizukuEnergy reads `dumpsys batterystats` via the Shizuku user-service (IUserService/ShizukuUserService) now consolidated into libs:shizuku-adb-debug-tools \u2014 hence the lib\u2192lib dep (not lib\u2192app). Consumed by app/devcontrol (the About UI)."
+      "comment": "Battery/energy engine + its dialogs, extracted from app so it sits as a sibling of libs:firewall. Tier-1 (no-root): BatteryManager/sysfs correlation. Tier-2 (privileged): ShizukuEnergy reads `dumpsys batterystats` via the Shizuku user-service (IUserService/ShizukuUserService) now consolidated into libs:shizuku-adb-debug-tools — hence the lib→lib dep (not lib→app). Consumed by app/devcontrol (the About UI)."
     },
     "libs:onehand": {
       "type": "library",
@@ -295,12 +295,12 @@
     }
   },
   "onehand": {
-    "_doc": "One-Hand edge-gesture config for libs:onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge \u2192 `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor \u2014 never a Kotlin change (Pillar: DATA-DRIVEN).",
+    "_doc": "One-Hand edge-gesture config for libs:onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge → `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor — never a Kotlin change (Pillar: DATA-DRIVEN).",
     "circular_menu": {
-      "_doc": "Canopus-star radial pie \u2014 the libs:onehand 'circular-menu', sibling to the edge-menu. Tapping the Canopus home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and that section's pages fan out further in the same direction; releasing on a leaf navigates. The app injects navigate(target) + iconBitmap(name) + pagesFor(section) so the lib stays app-agnostic and sub-nodes always mirror the live sections (no page targets duplicated here). Star + nodes are data-driven \u2014 remap with a one-line edit, never Kotlin.",
+      "_doc": "Canopus-star radial pie — the libs:onehand 'circular-menu', sibling to the edge-menu. Tapping the Canopus home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and that section's pages fan out further in the same direction; releasing on a leaf navigates. The app injects navigate(target) + iconBitmap(name) + pagesFor(section) so the lib stays app-agnostic and sub-nodes always mirror the live sections (no page targets duplicated here). Star + nodes are data-driven — remap with a one-line edit, never Kotlin.",
       "enabled": true,
       "star": {
-        "glyph": "\u2726",
+        "glyph": "✦",
         "size_sp": 20,
         "show_on_section": "home",
         "bottom_pct": 0.4,
@@ -357,8 +357,8 @@
       "edge_inset_gesture_dp": 0,
       "trigger": "swipe",
       "long_press_ms": 300,
-      "_doc_gesture_inset": "The handle is inset from the very border for TWO reasons on Samsung: (1) CURVED-EDGE display \u2014 the border pixels are on the curve, where touch is unreliable (edge/palm rejection) + reserved by the system, so a handle AT the edge never activates. (2) GESTURE-nav back-swipe fires from the edge and races our press. Both are dodged by placing the handle on the FLAT glass past the curve. edge_inset_dp (26) applies always (covers the curve); edge_inset_gesture_dp (30) is used in gesture-nav (curve + a bit more to clear the back-gesture strip), detected via config_navBarInteractionMode. Flat-screen devices can lower edge_inset_dp toward 0.",
-      "_doc_geometry": "BOUNDED band, not full-height. length_dp=180 (>0 overrides length_pct) keeps the touch zone a ~180dp band at position_pct down the edge. Two reasons it must be bounded: (1) our handle CONSUMES touches in its area (a touchable overlay can't pass them through), so a full-height strip creates a dead vertical band down the whole edge that blocks the app underneath (e.g. Bitwarden buttons near the edge stop responding). A short band frees the rest of the edge. (2) systemGestureExclusionRects is OS-capped at 200dp/edge, so \u2264180dp is FULLY excluded \u2192 reliable. Invisible (transparency 0); it lives at a consistent thumb-zone position."
+      "_doc_gesture_inset": "The handle is inset from the very border for TWO reasons on Samsung: (1) CURVED-EDGE display — the border pixels are on the curve, where touch is unreliable (edge/palm rejection) + reserved by the system, so a handle AT the edge never activates. (2) GESTURE-nav back-swipe fires from the edge and races our press. Both are dodged by placing the handle on the FLAT glass past the curve. edge_inset_dp (26) applies always (covers the curve); edge_inset_gesture_dp (30) is used in gesture-nav (curve + a bit more to clear the back-gesture strip), detected via config_navBarInteractionMode. Flat-screen devices can lower edge_inset_dp toward 0.",
+      "_doc_geometry": "BOUNDED band, not full-height. length_dp=180 (>0 overrides length_pct) keeps the touch zone a ~180dp band at position_pct down the edge. Two reasons it must be bounded: (1) our handle CONSUMES touches in its area (a touchable overlay can't pass them through), so a full-height strip creates a dead vertical band down the whole edge that blocks the app underneath (e.g. Bitwarden buttons near the edge stop responding). A short band frees the rest of the edge. (2) systemGestureExclusionRects is OS-capped at 200dp/edge, so ≤180dp is FULLY excluded → reliable. Invisible (transparency 0); it lives at a consistent thumb-zone position."
     },
     "handles": [
       {
@@ -382,7 +382,7 @@
         }
       }
     ],
-    "_doc_apps": "App vocabulary offered in the per-swipe action picker (OneHandFragment). Each entry launches its package via getLaunchIntentForPackage; a package the phone doesn't have is silently skipped at fire time. Add an app = one entry \u2014 no Kotlin change.",
+    "_doc_apps": "App vocabulary offered in the per-swipe action picker (OneHandFragment). Each entry launches its package via getLaunchIntentForPackage; a package the phone doesn't have is silently skipped at fire time. Add an app = one entry — no Kotlin change.",
     "apps": [
       {
         "label": "Gemini",
@@ -421,9 +421,9 @@
         "package": "com.x8bit.bitwarden"
       }
     ],
-    "_doc_radial": "Two-finger radial menu (libs:onehand, OBSERVE-ONLY via the accessibility service's onMotionEvent \u2014 needs Android 14+). Hold TWO fingers anywhere ~still for two_finger_hold_ms \u2192 a ring of icons opens at that point; release to one finger and move it to the icon (arrow follows), lift to fire. Because it only observes touches, the app underneath also sees the fingers (may pinch) \u2014 that's the cost of not intercepting. items[] are actions: `app:<pkg>` or a global action id (back|home|recents|notifications|quick_settings|...). radius_dp = ring radius; slop_dp = how far the 2-finger centroid may drift before the hold cancels.",
+    "_doc_radial": "Two-finger radial menu (libs:onehand, OBSERVE-ONLY via the accessibility service's onMotionEvent — needs Android 14+). Hold TWO fingers anywhere ~still for two_finger_hold_ms → a ring of icons opens at that point; release to one finger and move it to the icon (arrow follows), lift to fire. Because it only observes touches, the app underneath also sees the fingers (may pinch) — that's the cost of not intercepting. items[] are actions: `app:<pkg>` or a global action id (back|home|recents|notifications|quick_settings|...). radius_dp = ring radius; slop_dp = how far the 2-finger centroid may drift before the hold cancels.",
     "radial": {
-      "_doc_security": "enabled=false by DEFAULT on purpose: the radial menu works by OBSERVING ALL touches system-wide (FLAG_SEND_MOTION_EVENTS), which is a genuine privacy/security capability \u2014 it can see taps anywhere, including over a password manager. Turn it on ONLY as a conscious opt-in. While disabled, the service never requests motion-event observation at all.",
+      "_doc_security": "enabled=false by DEFAULT on purpose: the radial menu works by OBSERVING ALL touches system-wide (FLAG_SEND_MOTION_EVENTS), which is a genuine privacy/security capability — it can see taps anywhere, including over a password manager. Turn it on ONLY as a conscious opt-in. While disabled, the service never requests motion-event observation at all.",
       "enabled": false,
       "two_finger_hold_ms": 250,
       "slop_dp": 44,
@@ -438,10 +438,15 @@
         "recents",
         "notifications"
       ]
+    },
+    "arc_menu": {
+      "enabled": true,
+      "section": "config",
+      "radius_dp": 140
     }
   },
   "shizuku_diagnostics": {
-    "_doc": "Data-driven catalog of shell-domain diagnostic bundles run by libs:shizuku-adb-debug-tools. Two execution channels share this catalog (ladder, first ready wins): (1) local_server \u2014 OUR OWN app_process server (AdbShellServer) started once per boot via the adb one-liner from /api/adb/server-command; it runs in the SHELL SELinux domain (uid 2000) so dumpsys/usb/sysfs that untrusted_app is denied all work. NO third-party app. (2) Shizuku UserService \u2014 optional fallback when its app happens to be running. The lib's build.gradle base64-encodes bundles[] into BuildConfig.ADB_DIAG_BUNDLES_B64; AdbDiagnostics decodes + runs the chosen bundle, returning {bundle,label,channel,ok,results:[{id,cmd,out}]}. Adding a diagnostic = one entry here, no Kotlin edit (Pillar: DATA-DRIVEN). READ-ONLY diagnostics only \u2014 never a write/mutation.",
+    "_doc": "Data-driven catalog of shell-domain diagnostic bundles run by libs:shizuku-adb-debug-tools. Two execution channels share this catalog (ladder, first ready wins): (1) local_server — OUR OWN app_process server (AdbShellServer) started once per boot via the adb one-liner from /api/adb/server-command; it runs in the SHELL SELinux domain (uid 2000) so dumpsys/usb/sysfs that untrusted_app is denied all work. NO third-party app. (2) Shizuku UserService — optional fallback when its app happens to be running. The lib's build.gradle base64-encodes bundles[] into BuildConfig.ADB_DIAG_BUNDLES_B64; AdbDiagnostics decodes + runs the chosen bundle, returning {bundle,label,channel,ok,results:[{id,cmd,out}]}. Adding a diagnostic = one entry here, no Kotlin edit (Pillar: DATA-DRIVEN). READ-ONLY diagnostics only — never a write/mutation.",
     "local_server": {
       "_doc": "OUR app_process shell-domain server. Started by `adb shell CLASSPATH=<apk> app_process /system/bin <class> <token> <port>` (the /api/adb/server-command one-liner, run once per boot via wireless debugging). Loopback + per-boot random token. This is the self-contained replacement for the Shizuku app.",
       "port": 38099,
@@ -547,7 +552,7 @@
       }
     ],
     "samsung_sfc": {
-      "_doc": "Data-driven inputs for the SfcVerdict parser (libs:shizuku-adb-debug-tools/SfcVerdict.kt), baked into BuildConfig.SFC_CONFIG_B64 by this module's build.gradle. The parser is PURE / JVM-testable and reads NO hardcoded device data \u2014 the model->max-watts ceiling map lives here so a new Galaxy model is a one-line JSON edit, never a Kotlin change. `device_caps` is keyed by model-number PREFIX (parser matches the longest startsWith of `ro.product.model`); value = the device's MAXIMUM wired watts (a higher-rated cable/charger cannot exceed it). `high_voltage_mv_threshold` = the dumpsys mcv / Max-charging-voltage (mV) at/above which a high-voltage fast-charge contract is considered engaged (9V = 9000). `full_level_pct` = SOC at/above which fast charge tapers, so a 'not negotiating' verdict is expected, not a fault.",
+      "_doc": "Data-driven inputs for the SfcVerdict parser (libs:shizuku-adb-debug-tools/SfcVerdict.kt), baked into BuildConfig.SFC_CONFIG_B64 by this module's build.gradle. The parser is PURE / JVM-testable and reads NO hardcoded device data — the model->max-watts ceiling map lives here so a new Galaxy model is a one-line JSON edit, never a Kotlin change. `device_caps` is keyed by model-number PREFIX (parser matches the longest startsWith of `ro.product.model`); value = the device's MAXIMUM wired watts (a higher-rated cable/charger cannot exceed it). `high_voltage_mv_threshold` = the dumpsys mcv / Max-charging-voltage (mV) at/above which a high-voltage fast-charge contract is considered engaged (9V = 9000). `full_level_pct` = SOC at/above which fast charge tapers, so a 'not negotiating' verdict is expected, not a fault.",
       "high_voltage_mv_threshold": 9000,
       "full_level_pct": 95,
       "default_max_watts": null,
@@ -571,7 +576,7 @@
     }
   },
   "status_pets": {
-    "_doc": "Status-bar Line 0 animated pets (vendored from github.com/KartikLabhshetwar/zoomies, sprites CC BY-ND 4.0 \u2014 used UNMODIFIED + credited). Each Line-1 tool gets a FIXED animal above it; the tool's strength maps to a gait level 0..3 = idle/walk/walk_fast/run (the animal stays, the gait speeds up). Fully data-driven: sync-zoomies vendors exactly the animal/variant GIFs referenced here; app/build.gradle bakes this block to BuildConfig.STATUS_PETS_B64; LauncherStatusStripView renders + drives it.",
+    "_doc": "Status-bar Line 0 animated pets (vendored from github.com/KartikLabhshetwar/zoomies, sprites CC BY-ND 4.0 — used UNMODIFIED + credited). Each Line-1 tool gets a FIXED animal above it; the tool's strength maps to a gait level 0..3 = idle/walk/walk_fast/run (the animal stays, the gait speeds up). Fully data-driven: sync-zoomies vendors exactly the animal/variant GIFs referenced here; app/build.gradle bakes this block to BuildConfig.STATUS_PETS_B64; LauncherStatusStripView renders + drives it.",
     "enabled": true,
     "px": 22,
     "gaits": [
@@ -694,7 +699,7 @@
     }
   },
   "keyboard_dicts": {
-    "_doc": "Bundled keyboard dictionaries \u2192 libs/keyboard/src/main/assets/dicts/ (HeliBoard's DictionaryInfoUtils.ASSETS_DICTIONARY_FOLDER). HeliBoard's verbatim mirror already ships main_<locale>.dict for these locales (word suggestions); sync-keyboard-dicts ADDS the matching emoji_<locale>.dict (emoji search) from codeberg.org/Helium314/aosp-dictionaries (GPL-3.0) so each supported language has FULL features. Additive copy (no --delete) so it composes with the HeliBoard mirror; run AFTER sync-heliboard (which rsync --delete's the mirror and would drop these). Locales/types data-driven \u2014 add a locale or a type (with its repo dir) = one entry. NOTE: `locales` = which dicts are BUNDLED (broad, for any language the user adds); `default_languages` = which keyboard subtypes are ENABLED on first run (App.initVendoredKeyboard via SubtypeSettings.addEnabledSubtype) \u2014 distinct lists.",
+    "_doc": "Bundled keyboard dictionaries → libs/keyboard/src/main/assets/dicts/ (HeliBoard's DictionaryInfoUtils.ASSETS_DICTIONARY_FOLDER). HeliBoard's verbatim mirror already ships main_<locale>.dict for these locales (word suggestions); sync-keyboard-dicts ADDS the matching emoji_<locale>.dict (emoji search) from codeberg.org/Helium314/aosp-dictionaries (GPL-3.0) so each supported language has FULL features. Additive copy (no --delete) so it composes with the HeliBoard mirror; run AFTER sync-heliboard (which rsync --delete's the mirror and would drop these). Locales/types data-driven — add a locale or a type (with its repo dir) = one entry. NOTE: `locales` = which dicts are BUNDLED (broad, for any language the user adds); `default_languages` = which keyboard subtypes are ENABLED on first run (App.initVendoredKeyboard via SubtypeSettings.addEnabledSubtype) — distinct lists.",
     "default_languages": [
       "en",
       "de",
@@ -727,7 +732,7 @@
     ]
   },
   "keyboard_media": {
-    "_doc": "Data-driven config for the keyboard Sticker/GIF panel (libs:media, hosted in the emoji surface by patch 0007). Non-secret ONLY \u2014 GIF provider API keys are secrets: build.sh sops-decrypts .keyboard_media.vault_secrets from the vault and exports TENOR_API_KEY/GIPHY_API_KEY into the gradle build (app/build.gradle \u2192 BuildConfig \u2192 MediaRuntime.configure). Whole block is shipped to the APK as base64 (BuildConfig.MEDIA_CONFIG_B64). Switch the GIF backend by changing gif.provider (tenor|giphy) \u2014 both are pre-configured so you flip without touching code. Row-2 GIF categories = gif.<provider>.categories; a category query \"\" means the provider's trending/featured feed. Stickers have no categories here \u2014 one row-2 tab per installed WhatsApp-compatible pack is discovered at runtime.",
+    "_doc": "Data-driven config for the keyboard Sticker/GIF panel (libs:media, hosted in the emoji surface by patch 0007). Non-secret ONLY — GIF provider API keys are secrets: build.sh sops-decrypts .keyboard_media.vault_secrets from the vault and exports TENOR_API_KEY/GIPHY_API_KEY into the gradle build (app/build.gradle → BuildConfig → MediaRuntime.configure). Whole block is shipped to the APK as base64 (BuildConfig.MEDIA_CONFIG_B64). Switch the GIF backend by changing gif.provider (tenor|giphy) — both are pre-configured so you flip without touching code. Row-2 GIF categories = gif.<provider>.categories; a category query \"\" means the provider's trending/featured feed. Stickers have no categories here — one row-2 tab per installed WhatsApp-compatible pack is discovered at runtime.",
     "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
     "enabled": true,
     "sticker": {
@@ -809,7 +814,7 @@
     }
   },
   "keyboard_brand_rename": {
-    "_doc": "Brand-rebrand the vendored keyboard's USER-FACING display strings only. step_brand_rename (run at the end of sync-heliboard, also callable standalone) rewrites the `token` -> `replacement` inside ONLY the curated `string_keys` across every libs/keyboard values*/strings.xml, using awk + an idempotency guard (skips lines already carrying the replacement). Deliberately NARROW: it never touches package identifiers (helium314.keyboard.* \u2014 the manifest resolves the IME service by that namespace), nor upstream attribution/credit/license/URL text (legally the upstream's credit). english_ime_name is handled separately as an app/ resource override. Add a brand label = one entry in string_keys.",
+    "_doc": "Brand-rebrand the vendored keyboard's USER-FACING display strings only. step_brand_rename (run at the end of sync-heliboard, also callable standalone) rewrites the `token` -> `replacement` inside ONLY the curated `string_keys` across every libs/keyboard values*/strings.xml, using awk + an idempotency guard (skips lines already carrying the replacement). Deliberately NARROW: it never touches package identifiers (helium314.keyboard.* — the manifest resolves the IME service by that namespace), nor upstream attribution/credit/license/URL text (legally the upstream's credit). english_ime_name is handled separately as an app/ resource override. Add a brand label = one entry in string_keys.",
     "token": "HeliBoard",
     "replacement": "Cloud Keyboard (HeliBoard)",
     "string_keys": [
@@ -819,7 +824,7 @@
     ]
   },
   "ui": {
-    "_doc_permissions": "Data-driven master list for Configs/About \u2192 Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms \u2014 Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment \u2014 they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
+    "_doc_permissions": "Data-driven master list for Configs/About → Permissions. `runtime` = standard runtime-grantable Android perms (Android 6+ dangerous perms — Camera/Mic/Location/Contacts/etc.). DevControlFragment reads this list, renders one row per entry with live grant state, and bulk-requests the union via ActivityResultContracts.RequestMultiplePermissions. Special-access perms (battery whitelist, default launcher, usage stats), Health Connect perms, and System auto-granted perms are computed AT RUNTIME inside DevControlFragment — they don't need a JSON list because they're either single-flag toggles or PackageManager-introspected sets.",
     "permissions": {
       "runtime": [
         {
@@ -875,7 +880,7 @@
           "perm": "android.permission.READ_PHONE_STATE"
         }
       ],
-      "_doc_roles": "Single-holder RoleManager roles surfaced as Special-access rows on Configs/About \u2192 Permissions. These are NOT held by the SuperApp (it's a launcher with no dialer / call-screening service) \u2014 the holder is the Cloud-Comms phone fork (or Fossify Phone in the interim). The SuperApp cannot grant another app a role programmatically (createRequestRoleIntent only ever targets the calling app), so each row (a) reads the LIVE holder via RoleManager.getRoleHolders / TelecomManager.getDefaultDialerPackage and shows \u2713 when the holder is one of `expected_holders`, and (b) the 'Set Default Apps' button deep-links to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS so the user picks Cloud-Comms there. `role` is the literal android.app.role.* constant passed straight to RoleManager. When our own fork ships, add its package to the relevant expected_holders[] \u2014 zero code change.",
+      "_doc_roles": "Single-holder RoleManager roles surfaced as Special-access rows on Configs/About → Permissions. These are NOT held by the SuperApp (it's a launcher with no dialer / call-screening service) — the holder is the Cloud-Comms phone fork (or Fossify Phone in the interim). The SuperApp cannot grant another app a role programmatically (createRequestRoleIntent only ever targets the calling app), so each row (a) reads the LIVE holder via RoleManager.getRoleHolders / TelecomManager.getDefaultDialerPackage and shows ✓ when the holder is one of `expected_holders`, and (b) the 'Set Default Apps' button deep-links to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS so the user picks Cloud-Comms there. `role` is the literal android.app.role.* constant passed straight to RoleManager. When our own fork ships, add its package to the relevant expected_holders[] — zero code change.",
       "roles": [
         {
           "label": "Default phone app",
@@ -895,10 +900,10 @@
         }
       ]
     },
-    "_doc": "Navigation taxonomy \u2014 data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
-    "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal \u2192 IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
-    "_doc_home_index": "The `home` section is the master index \u2014 its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
-    "_doc_aggregator_sections": "Aggregator sections are pure NAV \u2014 their `tiles` deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each aggregator can declare tiles_shared (same in both modes), tiles_apps (front-end mode), and tiles_admin (back-end mode). The Apps/Admin global toggle (ModePrefs in MainActivity) picks which set renders. The bottom nav hosts exactly these 5 aggregators today: Communication \u00b7 Infos \u00b7 HOME \u00b7 Suite \u00b7 Tools.",
+    "_doc": "Navigation taxonomy — data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
+    "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
+    "_doc_home_index": "The `home` section is the master index — its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
+    "_doc_aggregator_sections": "Aggregator sections are pure NAV — their `tiles` deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each aggregator can declare tiles_shared (same in both modes), tiles_apps (front-end mode), and tiles_admin (back-end mode). The Apps/Admin global toggle (ModePrefs in MainActivity) picks which set renders. The bottom nav hosts exactly these 5 aggregators today: Communication · Infos · HOME · Suite · Tools.",
     "sections": [
       {
         "id": "communication",
@@ -909,7 +914,7 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "_doc_long_press": "Long-press the Inboxes bottom-nav item \u2014 same mechanism as Infos/Labs. `mode:<apps|admin>` (MainActivity.onTileClicked) applies the ModePrefs mode then re-opens this section.",
+        "_doc_long_press": "Long-press the Inboxes bottom-nav item — same mechanism as Infos/Labs. `mode:<apps|admin>` (MainActivity.onTileClicked) applies the ModePrefs mode then re-opens this section.",
         "long_press": [
           {
             "id": "apps",
@@ -924,7 +929,7 @@
             "target": "mode:admin:communication"
           }
         ],
-        "_doc_modes": "Split from the old single-mode tiles_shared/stack_shared into tiles_apps/stack_apps (today's Inboxes content, unchanged) + tiles_admin (new). Both tilesApps/tilesAdmin non-empty now qualifies Inboxes for TabbedSectionFragment (LauncherNavController.goSection), same as Infos/Labs \u2014 real in-page Apps|Admin tab buttons, not just the long_press fan menu.",
+        "_doc_modes": "Split from the old single-mode tiles_shared/stack_shared into tiles_apps/stack_apps (today's Inboxes content, unchanged) + tiles_admin (new). Both tilesApps/tilesAdmin non-empty now qualifies Inboxes for TabbedSectionFragment (LauncherNavController.goSection), same as Infos/Labs — real in-page Apps|Admin tab buttons, not just the long_press fan menu.",
         "tiles_admin": [
           {
             "id": "pmboards",
@@ -956,20 +961,20 @@
         "stack_apps": [
           {
             "kind": "mail_accounts",
-            "title": "Mail \u00b7 accounts"
+            "title": "Mail · accounts"
           },
           {
             "kind": "chat_matrix",
-            "title": "Chat \u00b7 Matrix"
+            "title": "Chat · Matrix"
           },
           {
             "kind": "chat_mattermost",
-            "title": "Chat \u00b7 Mattermost"
+            "title": "Chat · Mattermost"
           },
           {
             "kind": "stats",
             "title": "Messenger (Element)",
-            "subtitle": "Matrix \u00b7 Element",
+            "subtitle": "Matrix · Element",
             "rows": [
               {
                 "label": "Rooms",
@@ -1015,7 +1020,7 @@
         ]
       },
       {
-        "_doc_icons": "Per-mode icons: in Apps mode shows the everyday logs glyph; in Admin mode swaps to the C3-workflows glyph so the ops view reads as the workflows dashboard. Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode) \u2014 single source of truth.",
+        "_doc_icons": "Per-mode icons: in Apps mode shows the everyday logs glyph; in Admin mode swaps to the C3-workflows glyph so the ops view reads as the workflows dashboard. Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode) — single source of truth.",
         "id": "infos",
         "label": "Infos",
         "icon": "ic_p_logs",
@@ -1071,7 +1076,7 @@
             "icon": "ic_p_c3_workflows",
             "target": "page:c3/dagu",
             "dagu_default_server": "https://workflows.diegonmarcos.com",
-            "_doc": "Native DaguFragment \u2014 REST API GET /api/v1/dags listing with per-DAG last-run status (success / error / running / unknown). Mirrors GitHub Actions workflow-list style: 1 row per DAG, coloured dot + relative timestamp. Auth via Authelia bearer token pasted into the login form on first open (same pattern as Mattermost section). Default server URL baked into BuildConfig via this dagu_default_server field so login form pre-fills correctly."
+            "_doc": "Native DaguFragment — REST API GET /api/v1/dags listing with per-DAG last-run status (success / error / running / unknown). Mirrors GitHub Actions workflow-list style: 1 row per DAG, coloured dot + relative timestamp. Auth via Authelia bearer token pasted into the login form on first open (same pattern as Mattermost section). Default server URL baked into BuildConfig via this dagu_default_server field so login form pre-fills correctly."
           },
           {
             "id": "rss-c3",
@@ -1101,16 +1106,16 @@
           {
             "kind": "phone_notifications",
             "title": "Phone Notifications",
-            "subtitle": "Live system notifications (last 50, dedupe by key \u2014 requires Notification Access)"
+            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)"
           },
           {
             "kind": "c3_public",
-            "title": "C3 Health \u00b7 Public",
+            "title": "C3 Health · Public",
             "subtitle": "Services reachable via Caddy edge"
           },
           {
             "kind": "c3_private",
-            "title": "C3 Health \u00b7 Private",
+            "title": "C3 Health · Private",
             "subtitle": "Internal compose-network containers"
           },
           {
@@ -1120,17 +1125,17 @@
           },
           {
             "kind": "drive_connections",
-            "title": "Drive \u00b7 Connections",
+            "title": "Drive · Connections",
             "subtitle": "Storage backends declared in build.json"
           },
           {
             "kind": "rss",
-            "title": "RSS \u00b7 ntfy channels"
+            "title": "RSS · ntfy channels"
           },
           {
             "_doc": "Live GHA workflow runs across the watched repos. Fetches api.github.com/repos/{owner}/{repo}/actions/runs unauthenticated (60 req/h limit shared across panels, 60s cache).",
             "kind": "gha_runs",
-            "title": "GHA \u00b7 Workflow runs",
+            "title": "GHA · Workflow runs",
             "subtitle": "Latest 3 runs per repo",
             "repos": [
               {
@@ -1151,9 +1156,9 @@
             ]
           },
           {
-            "_doc": "Recent commits from the watched repos \u2014 separate from GHA so workflows news and code news don't conflate. Same cache.",
+            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache.",
             "kind": "repos",
-            "title": "Repos \u00b7 Commits",
+            "title": "Repos · Commits",
             "subtitle": "Latest 3 commits per repo",
             "repos": [
               {
@@ -1175,23 +1180,23 @@
           },
           {
             "kind": "open_link",
-            "title": "Dagu \u00b7 Workflow runs",
+            "title": "Dagu · Workflow runs",
             "url": "page:c3/dagu",
             "icon": "ic_p_c3_workflows",
-            "_doc": "Was the bare URL \u2014 opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked \u2192 SectionPages \u2192 OpsPages.fragmentForDagu() to render the native list view instead."
+            "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead."
           }
         ],
         "stack_apps": [
           {
             "kind": "calendar_month",
             "title": "Calendar",
-            "subtitle": "Month view \u00b7 CalDAV sync pending"
+            "subtitle": "Month view · CalDAV sync pending"
           },
           {
-            "_doc": "Tasks panel with an Agenda \u00b7 Day \u00b7 ToDo tab strip \u2014 single card hosting all three views the user wants in Apps mode. Tab switch is in-process (no fragment swap); each view is a self-contained placeholder until CalDAV / Tasks integration lands.",
+            "_doc": "Tasks panel with an Agenda · Day · ToDo tab strip — single card hosting all three views the user wants in Apps mode. Tab switch is in-process (no fragment swap); each view is a self-contained placeholder until CalDAV / Tasks integration lands.",
             "kind": "tasks",
             "title": "Tasks",
-            "subtitle": "Agenda \u00b7 Day \u00b7 ToDo"
+            "subtitle": "Agenda · Day · ToDo"
           },
           {
             "kind": "news_feeds",
@@ -1205,15 +1210,15 @@
             "rows": [
               {
                 "label": "Net worth",
-                "value": "\u20ac42,310"
+                "value": "€42,310"
               },
               {
                 "label": "This month",
-                "value": "+\u20ac1,240"
+                "value": "+€1,240"
               },
               {
                 "label": "Spending",
-                "value": "\u20ac2,180"
+                "value": "€2,180"
               },
               {
                 "label": "Holdings",
@@ -1276,7 +1281,7 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "_doc_tiles_shared": "Home-Apps Suite index \u2014 ONE icon per Suite category (mirrors the Labs master index). homeGroups renders tiles_shared in preference to tile_groups, so the Home-Apps Suite strip shows these 5 category icons instead of flattening every app. The grouped apps still live on the bottom-nav Suite SECTION page (SuiteCloudPhoneTabsFragment, driven by tile_groups). All five open the full Suite section (target section:suite) per the user's choice; switch a target to page:suite/<cat> later to drill per-category.",
+        "_doc_tiles_shared": "Home-Apps Suite index — ONE icon per Suite category (mirrors the Labs master index). homeGroups renders tiles_shared in preference to tile_groups, so the Home-Apps Suite strip shows these 5 category icons instead of flattening every app. The grouped apps still live on the bottom-nav Suite SECTION page (SuiteCloudPhoneTabsFragment, driven by tile_groups). All five open the full Suite section (target section:suite) per the user's choice; switch a target to page:suite/<cat> later to drill per-category.",
         "tiles_shared": [
           {
             "id": "suite-ai",
@@ -1309,7 +1314,7 @@
             "target": "section:suite"
           }
         ],
-        "_doc_footers": "Centered 'More' affordance rendered below the LAST group on each Suite surface. section_footer \u2192 Suite/Cloud (GroupedTilesFragment, below 'Tools Dashboards'); phone_footer \u2192 Suite/Phone (SuitePhoneAppsFragment, below 'Configs'). Each is a tile {id,label,icon,target} dispatched through the same onTileClicked grammar as any tile. Targets jump to the full Home Apps drawer: action:open_home_apps lands on the Cloud tab; action:open_home_apps_phone lands on the Phone tab.",
+        "_doc_footers": "Centered 'More' affordance rendered below the LAST group on each Suite surface. section_footer → Suite/Cloud (GroupedTilesFragment, below 'Tools Dashboards'); phone_footer → Suite/Phone (SuitePhoneAppsFragment, below 'Configs'). Each is a tile {id,label,icon,target} dispatched through the same onTileClicked grammar as any tile. Targets jump to the full Home Apps drawer: action:open_home_apps lands on the Cloud tab; action:open_home_apps_phone lands on the Phone tab.",
         "section_footer": {
           "id": "more-cloud",
           "label": "More",
@@ -1343,7 +1348,7 @@
             "target": "action:open_home_apps_phone"
           }
         ],
-        "_doc_phone_app_groups": "Curated phone apps surfaced in Suite/Phone, grouped under the same titled sections used by Suite/Cloud (AI \u00b7 Data Primary \u00b7 Data Apps \u00b7 Tools Primary \u00b7 Tools Dashboards \u00b7 Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden \u2014 editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
+        "_doc_phone_app_groups": "Curated phone apps surfaced in Suite/Phone, grouped under the same titled sections used by Suite/Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
         "phone_app_groups": [
           {
             "title": "AI",
@@ -1352,7 +1357,7 @@
               "com.google.android.apps.bard",
               "com.termux.nix"
             ],
-            "_doc_folders": "Nested folders inside a phone_app_group \u2014 render as One-UI-style folder tiles in the same grid as plain packages (2\u00d72 mini-icon preview, tap \u2192 modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
+            "_doc_folders": "Nested folders inside a phone_app_group — render as One-UI-style folder tiles in the same grid as plain packages (2×2 mini-icon preview, tap → modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
             "folders": [
               {
                 "label": "Files Editor (IDE)",
@@ -1428,7 +1433,7 @@
             ]
           }
         ],
-        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema, read by three surfaces: (1) bottom-nav Suite SECTION page \u2192 GroupedTilesFragment renders one titled row per group; (2) Home Apps Suite card \u2192 flattens all groups into a single horizontal scroll strip (home_groups entry has no group_explode); (3) aggregatorTilesFor flat fallback if anything else asks. Single source of truth \u2014 edit here, all surfaces update.",
+        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema, read by three surfaces: (1) bottom-nav Suite SECTION page → GroupedTilesFragment renders one titled row per group; (2) Home Apps Suite card → flattens all groups into a single horizontal scroll strip (home_groups entry has no group_explode); (3) aggregatorTilesFor flat fallback if anything else asks. Single source of truth — edit here, all surfaces update.",
         "tile_groups": [
           {
             "title": "AI",
@@ -1473,14 +1478,14 @@
                 "label": "Messenger (Element)",
                 "icon": "ic_p_chat_matrix",
                 "target": "extapp:cloud-comms/matrix",
-                "_doc": "Routes to the Cloud-Comms constellation (matrix fork \u2192 hub \u2192 install Cloud-Comms-Hub.apk), same extapp mechanism as the Comms bottom-nav section and the Suite/AI IDE tile. Replaces the old app://im.vector.app launcher."
+                "_doc": "Routes to the Cloud-Comms constellation (matrix fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as the Comms bottom-nav section and the Suite/AI IDE tile. Replaces the old app://im.vector.app launcher."
               },
               {
                 "id": "dialer",
                 "label": "Dialer",
                 "icon": "ic_p_dialer",
                 "target": "extapp:cloud-comms/dialer",
-                "_doc": "Routes to the Cloud-Comms constellation (Fossify Phone fork \u2192 hub \u2192 install Cloud-Comms-Hub.apk), same extapp mechanism as Mail / Mattermost / Matrix above."
+                "_doc": "Routes to the Cloud-Comms constellation (Fossify Phone fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as Mail / Mattermost / Matrix above."
               }
             ]
           },
@@ -1529,35 +1534,35 @@
             "title": "Tools Primary",
             "tiles": [
               {
-                "_doc": "Cloud-Browser \u2014 the dedicated WebView browser app (ea_cloud-browser). libs:browser (BrowserHostFragment + BrowserTabPrefs) was MOVED out of the SuperApp into Cloud-Browser, so this tile no longer routes to an in-app section. target=extapp:cloud-browser \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudbrowser if installed, else downloads + installs ui.external_apps[id=cloud-browser].install_apk_url. Browser also handles http/https VIEW intents so other apps can open links in it. icon ic_world (globe) stays \u2014 visually distinct from the App Tabs tile (ic_mode_apps).",
+                "_doc": "Cloud-Browser — the dedicated WebView browser app (ea_cloud-browser). libs:browser (BrowserHostFragment + BrowserTabPrefs) was MOVED out of the SuperApp into Cloud-Browser, so this tile no longer routes to an in-app section. target=extapp:cloud-browser → MainActivity.launchExternalApp opens com.diegonmarcos.cloudbrowser if installed, else downloads + installs ui.external_apps[id=cloud-browser].install_apk_url. Browser also handles http/https VIEW intents so other apps can open links in it. icon ic_world (globe) stays — visually distinct from the App Tabs tile (ic_mode_apps).",
                 "id": "browser",
                 "label": "Browser",
                 "icon": "ic_world",
                 "target": "extapp:cloud-browser"
               },
               {
-                "_doc": "App Tabs \u2014 surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs\u2192Browser rename). target=page:apptabs/grid so a tap goes STRAIGHT to AppTabsFragment; without this the section's single 'grid' page would still get wrapped in a page-menu intermediate.",
+                "_doc": "App Tabs — surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs→Browser rename). target=page:apptabs/grid so a tap goes STRAIGHT to AppTabsFragment; without this the section's single 'grid' page would still get wrapped in a page-menu intermediate.",
                 "id": "apptabs",
                 "label": "Tabs",
                 "icon": "ic_mode_apps",
                 "target": "page:apptabs/grid"
               },
               {
-                "_doc": "Cloud-Wallet \u2014 the dedicated cards/passes/tickets app (ea_cloud-wallet). libs:wallet (Compose deck) was MOVED out of the SuperApp into Cloud-Wallet, so this tile no longer routes to an in-app section. target=extapp:cloud-wallet \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudwallet if installed, else downloads + installs ui.external_apps[id=cloud-wallet].install_apk_url. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
+                "_doc": "Cloud-Wallet — the dedicated cards/passes/tickets app (ea_cloud-wallet). libs:wallet (Compose deck) was MOVED out of the SuperApp into Cloud-Wallet, so this tile no longer routes to an in-app section. target=extapp:cloud-wallet → MainActivity.launchExternalApp opens com.diegonmarcos.cloudwallet if installed, else downloads + installs ui.external_apps[id=cloud-wallet].install_apk_url. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
                 "id": "wallet",
                 "label": "Wallet",
                 "icon": "ic_wallet",
                 "target": "extapp:cloud-wallet"
               },
               {
-                "_doc": "Navigation \u2014 hands off to the dedicated Cloud-Nav app (ea_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
+                "_doc": "Navigation — hands off to the dedicated Cloud-Nav app (ea_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav → MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
                 "id": "maps",
                 "label": "Navigation",
                 "icon": "ic_nav",
                 "target": "extapp:cloud-nav"
               },
               {
-                "_doc": "Cloud-Vault \u2014 the dedicated Vaultwarden client app (ea_cloud-vault). libs:vault (KeePassDX stub) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). target=extapp:cloud-vault \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudvault if installed, else downloads + installs ui.external_apps[id=cloud-vault].install_apk_url.",
+                "_doc": "Cloud-Vault — the dedicated Vaultwarden client app (ea_cloud-vault). libs:vault (KeePassDX stub) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). target=extapp:cloud-vault → MainActivity.launchExternalApp opens com.diegonmarcos.cloudvault if installed, else downloads + installs ui.external_apps[id=cloud-vault].install_apk_url.",
                 "id": "vault",
                 "label": "Vault",
                 "icon": "ic_vault",
@@ -1569,14 +1574,14 @@
             "title": "Tools Dashboards",
             "tiles": [
               {
-                "_doc": "PM Boards \u2014 the aa-sui_paca project-management tool (Kanban boards). Opens the cloud service over the browser/WebView. Leftmost tile of Tools Dashboards. NOTE: paca is not deployed yet (blocked on the WG mesh) \u2014 the route 404s until aa-sui_paca ships.",
+                "_doc": "PM Boards — the aa-sui_paca project-management tool (Kanban boards). Opens the cloud service over the browser/WebView. Leftmost tile of Tools Dashboards. NOTE: paca is not deployed yet (blocked on the WG mesh) — the route 404s until aa-sui_paca ships.",
                 "id": "pmboards",
                 "label": "PM Boards",
                 "icon": "ic_pm_boards",
                 "target": "https://paca.diegonmarcos.com"
               },
               {
-                "_doc": "Native MyFin section \u2014 beta dashboard rendered from ui.myfin_mock. Was an external GitHub Pages link until libs:fin landed; tile now routes through SectionPages dispatch \u2192 MyFinDashboardFragment.",
+                "_doc": "Native MyFin section — beta dashboard rendered from ui.myfin_mock. Was an external GitHub Pages link until libs:fin landed; tile now routes through SectionPages dispatch → MyFinDashboardFragment.",
                 "id": "myfin",
                 "label": "MyFin",
                 "icon": "ic_fin",
@@ -1600,9 +1605,9 @@
       },
       {
         "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
-        "_doc_label": "Bottom-nav button displays 'Labs'. Section id stays 'tools' so deep-link grammar (page:tools/* / section:tools) and historical wiring don't break \u2014 this is a pure display rename.",
-        "_doc_tiles_shared": "Master Lab index \u2014 6 icon tiles, one per Lab. Read by the Home Apps Labs card (single flat strip via tiles_from_section) AND by aggregatorTilesFor as the canonical Labs roster. Each tile's target opens the Lab's stack page (page:tools/<lab-id>) \u2014 placeholder content until per-Lab stack is populated. Bottom-nav Labs still renders the linktree stack (stack_apps wins) so this list is the Home Apps face only.",
-        "_doc_pages": "Per-Lab stack pages. Initially empty content (PageContentFragment fallback renders a stub) \u2014 wire each one to its dedicated content fragment as Labs come online.",
+        "_doc_label": "Bottom-nav button displays 'Labs'. Section id stays 'tools' so deep-link grammar (page:tools/* / section:tools) and historical wiring don't break — this is a pure display rename.",
+        "_doc_tiles_shared": "Master Lab index — 6 icon tiles, one per Lab. Read by the Home Apps Labs card (single flat strip via tiles_from_section) AND by aggregatorTilesFor as the canonical Labs roster. Each tile's target opens the Lab's stack page (page:tools/<lab-id>) — placeholder content until per-Lab stack is populated. Bottom-nav Labs still renders the linktree stack (stack_apps wins) so this list is the Home Apps face only.",
+        "_doc_pages": "Per-Lab stack pages. Initially empty content (PageContentFragment fallback renders a stub) — wire each one to its dedicated content fragment as Labs come online.",
         "id": "tools",
         "label": "Labs",
         "icon": "ic_p_sol_tools",
@@ -1778,32 +1783,32 @@
           },
           {
             "id": "drive-conn",
-            "label": "Drive \u00b7 Connections",
+            "label": "Drive · Connections",
             "icon": "ic_p_sol_cloud",
             "target": "page:drive/connections"
           }
         ],
-        "_doc_stack_apps": "Labs/Apps tab \u2014 themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
+        "_doc_stack_apps": "Labs/Apps tab — themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
         "stack_apps": [
           {
             "kind": "link_grid",
             "title": "Data & ML",
-            "subtitle": "Datasets \u00b7 ML pipelines \u00b7 model registry"
+            "subtitle": "Datasets · ML pipelines · model registry"
           },
           {
             "kind": "link_grid",
             "title": "Engineering",
-            "subtitle": "Build systems \u00b7 ops tooling \u00b7 infra notes"
+            "subtitle": "Build systems · ops tooling · infra notes"
           },
           {
             "kind": "link_grid",
             "title": "Quant & Markets",
-            "subtitle": "Market data \u00b7 strategies \u00b7 backtests"
+            "subtitle": "Market data · strategies · backtests"
           },
           {
             "kind": "link_grid",
             "title": "Aero & Space",
-            "subtitle": "Mission tracking \u00b7 orbital data \u00b7 launches"
+            "subtitle": "Mission tracking · orbital data · launches"
           },
           {
             "kind": "link_grid",
@@ -1813,7 +1818,7 @@
         ],
         "stack_admin": [
           {
-            "_doc": "Cloud dashboard \u2014 section_title dividers + 3 collapsible cloud_dashboard CARDS. 'Containers' heading \u2192 Infra Apps + User Apps (every container exactly once). 'Stack' heading \u2192 the Stack card (free cross-cut lists: Providers/VMs \u00b7 DBs \u00b7 MCP & API). Grouping + inventory DATA-DRIVEN from data/cloud_services.json (BuildConfig.CLOUD_SERVICES_B64), generated by data/gen_cloud_services.py from cloud/a_solutions. renderCloudDashboard draws an icon grid (ui.tile_columns/line) with a STATUS LIGHT under each icon (TCP-ping over WireGuard) + opens the URL in the in-app browser on tap. `group`/`groups` selects which cloud_services.json group(s) a card renders.",
+            "_doc": "Cloud dashboard — section_title dividers + 3 collapsible cloud_dashboard CARDS. 'Containers' heading → Infra Apps + User Apps (every container exactly once). 'Stack' heading → the Stack card (free cross-cut lists: Providers/VMs · DBs · MCP & API). Grouping + inventory DATA-DRIVEN from data/cloud_services.json (BuildConfig.CLOUD_SERVICES_B64), generated by data/gen_cloud_services.py from cloud/a_solutions. renderCloudDashboard draws an icon grid (ui.tile_columns/line) with a STATUS LIGHT under each icon (TCP-ping over WireGuard) + opens the URL in the in-app browser on tap. `group`/`groups` selects which cloud_services.json group(s) a card renders.",
             "kind": "section_title",
             "title": "Containers"
           },
@@ -1873,7 +1878,7 @@
             "label": "Accounts",
             "icon": "ic_p_accounts",
             "upstream": "FragmentAccounts",
-            "_doc": "Hosts the JMAP login form (server/email/password) \u2014 Slice A landing surface. Moved here from the section index per the data-driven nav contract: the section's bottom-nav tap shows a TileGrid; account config is a sub-page, not the index."
+            "_doc": "Hosts the JMAP login form (server/email/password) — Slice A landing surface. Moved here from the section index per the data-driven nav contract: the section's bottom-nav tap shows a TileGrid; account config is a sub-page, not the index."
           },
           {
             "id": "identities",
@@ -1966,7 +1971,7 @@
             "id": "more",
             "label": "More",
             "icon": "ic_p_more",
-            "_doc": "Overflow menu \u2014 rarely-used / diagnostic pages.",
+            "_doc": "Overflow menu — rarely-used / diagnostic pages.",
             "menu": [
               {
                 "id": "order",
@@ -2023,7 +2028,7 @@
           "All feeds",
           "+ Subscribe"
         ],
-        "_doc": "RSS / ntfy lives in the drawer only now \u2014 Drive took its bottom-nav slot.",
+        "_doc": "RSS / ntfy lives in the drawer only now — Drive took its bottom-nav slot.",
         "pages": [
           {
             "id": "all",
@@ -2071,7 +2076,7 @@
         "supports_accounts": false,
         "bottom_nav": true,
         "is_master_index": true,
-        "_doc": "Master index \u2014 content is a TileGrid of every other section. Sits at the center of the bottom nav. No own drawer page (the [Home] drawer tab already covers it)."
+        "_doc": "Master index — content is a TileGrid of every other section. Sits at the center of the bottom nav. No own drawer page (the [Home] drawer tab already covers it)."
       },
       {
         "id": "cal",
@@ -2144,7 +2149,7 @@
           "Shared",
           "Trash"
         ],
-        "_doc": "Unified file storage hub \u2014 fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, borg/bup backup snapshots PLUS external cloud connections (S3 / Google Drive / Workspace / rclone remotes). Replaces RSS in the bottom-nav.",
+        "_doc": "Unified file storage hub — fronts filebrowser, photoprism, hedgedoc uploads, etherpad pads, borg/bup backup snapshots PLUS external cloud connections (S3 / Google Drive / Workspace / rclone remotes). Replaces RSS in the bottom-nav.",
         "pages": [
           {
             "id": "files",
@@ -2203,7 +2208,7 @@
         ]
       },
       {
-        "_doc": "Vault \u2014 MIGRATED to Cloud-Vault (ea_cloud-vault, com.diegonmarcos.cloudvault). libs:vault (KeePassDX stub, never shipped) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). The home tile target is now extapp:cloud-vault. Section entry kept as a tombstone; module removed + bottom_nav:false means it is not shown in drawer or bottom nav.",
+        "_doc": "Vault — MIGRATED to Cloud-Vault (ea_cloud-vault, com.diegonmarcos.cloudvault). libs:vault (KeePassDX stub, never shipped) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). The home tile target is now extapp:cloud-vault. Section entry kept as a tombstone; module removed + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "vault",
         "label": "Vault",
         "icon": "ic_vault",
@@ -2266,7 +2271,7 @@
           "All servers",
           "+ Add server"
         ],
-        "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now. Mattermost = chat.diegonmarcos.com (mattermost-bots service); Matrix-Bridges = bridge bots (telegram/whatsapp/signal/IRC \u2194 matrix).",
+        "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now. Mattermost = chat.diegonmarcos.com (mattermost-bots service); Matrix-Bridges = bridge bots (telegram/whatsapp/signal/IRC ↔ matrix).",
         "pages": [
           {
             "id": "mattermost",
@@ -2281,7 +2286,7 @@
             "label": "Matrix-Bridges",
             "icon": "ic_p_chat_matrix",
             "upstream": "ChatMatrix",
-            "_doc": "Bridge bots \u2014 Telegram / WhatsApp / Signal / IRC \u2194 Matrix"
+            "_doc": "Bridge bots — Telegram / WhatsApp / Signal / IRC ↔ Matrix"
           },
           {
             "id": "dms",
@@ -2322,13 +2327,13 @@
         "module": "libs:net",
         "supports_accounts": false,
         "bottom_nav": false,
-        "_doc_parent": "WireGuard is its own (non-bottom-nav) section but is surfaced from the Configs Home-Apps row (home_groups Configs \u2192 section:wg). parent=config makes the toolbar/system Back at the WG root return to the Configs section instead of Home \u2014 consumed by MainActivity.navigateUpToParent (data-driven, sections[*].parent).",
+        "_doc_parent": "WireGuard is its own (non-bottom-nav) section but is surfaced from the Configs Home-Apps row (home_groups Configs → section:wg). parent=config makes the toolbar/system Back at the WG root return to the Configs section instead of Home — consumed by MainActivity.navigateUpToParent (data-driven, sections[*].parent).",
         "parent": "config",
         "single_page": true,
         "drawer_default_children": [
           "WireGuard"
         ],
-        "_doc_merge": "SINGLE-PAGE section. Everything \u2014 tunnel config, Generate/Import/Export buttons, Connect status (live colour dot) AND the full wg-mesh topology table (data/mesh.json via the shared MeshView) \u2014 lives on ONE page rendered by WireGuardFragment. No page grid: a section with exactly one non-action page opens that page directly (LauncherNavController.goSection single-page rule). The old Mesh/Logs/+Import/Settings sub-pages were folded in; Import is now a button on the page. Back returns to Configs (parent=config).",
+        "_doc_merge": "SINGLE-PAGE section. Everything — tunnel config, Generate/Import/Export buttons, Connect status (live colour dot) AND the full wg-mesh topology table (data/mesh.json via the shared MeshView) — lives on ONE page rendered by WireGuardFragment. No page grid: a section with exactly one non-action page opens that page directly (LauncherNavController.goSection single-page rule). The old Mesh/Logs/+Import/Settings sub-pages were folded in; Import is now a button on the page. Back returns to Configs (parent=config).",
         "pages": [
           {
             "id": "config",
@@ -2351,7 +2356,7 @@
           "Cloud",
           "Other"
         ],
-        "_doc": "Front-end app launcher \u2014 categories mirror ~/git/front/ top-level folders (a-Companies/Individual/Portals = Professional; b-* = Personal; c-* = Tools; d-Cloud; e-Others = Other). Sits next to C3 (cloud ops) under the Home master index.",
+        "_doc": "Front-end app launcher — categories mirror ~/git/front/ top-level folders (a-Companies/Individual/Portals = Professional; b-* = Personal; c-* = Tools; d-Cloud; e-Others = Other). Sits next to C3 (cloud ops) under the Home master index.",
         "pages": [
           {
             "id": "professional",
@@ -2427,7 +2432,7 @@
         ]
       },
       {
-        "_doc": "App Tabs \u2014 LRU shelf of the last 6 SuperApp things the user touched. Mix of section-level entries, page drill-downs, and external apps launched from the Phone tab. Single page 'grid' so the tile target page:apptabs/grid lands on AppTabsFragment.",
+        "_doc": "App Tabs — LRU shelf of the last 6 SuperApp things the user touched. Mix of section-level entries, page drill-downs, and external apps launched from the Phone tab. Single page 'grid' so the tile target page:apptabs/grid lands on AppTabsFragment.",
         "id": "apptabs",
         "label": "Tabs",
         "icon": "ic_mode_apps",
@@ -2442,7 +2447,7 @@
         ]
       },
       {
-        "_doc_rename": "Renamed Tabs \u2192 Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename. Section icon = ic_world (globe) to visually distinguish from the App Tabs section which keeps ic_mode_apps.",
+        "_doc_rename": "Renamed Tabs → Browser (and the underlying libs:browser module) so the 'Tabs' name space is free for the App Tabs feature (last-6 opened pages/apps). All section ids, deep-links, package names, and class names migrated; SharedPreferences file name 'tabs' kept so users' existing open-browser-tabs list survives the rename. Section icon = ic_world (globe) to visually distinguish from the App Tabs section which keeps ic_mode_apps.",
         "id": "browser",
         "label": "Browser",
         "icon": "ic_world",
@@ -2463,7 +2468,7 @@
         ]
       },
       {
-        "_doc": "MyFin \u2014 personal finance dashboard (beta). Reads from build.json::ui.myfin_mock until a real aggregator lands. MyFinDashboardFragment in libs:fin reads UI_MYFIN_MOCK_B64 from BuildConfig (data-driven \u2014 edit JSON, rebuild, see new numbers).",
+        "_doc": "MyFin — personal finance dashboard (beta). Reads from build.json::ui.myfin_mock until a real aggregator lands. MyFinDashboardFragment in libs:fin reads UI_MYFIN_MOCK_B64 from BuildConfig (data-driven — edit JSON, rebuild, see new numbers).",
         "id": "myfin",
         "label": "MyFin",
         "icon": "ic_fin",
@@ -2478,7 +2483,7 @@
         ]
       },
       {
-        "_doc": "Wallet \u2014 MIGRATED to Cloud-Wallet (ea_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Suite/Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
+        "_doc": "Wallet — MIGRATED to Cloud-Wallet (ea_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Suite/Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "wallet",
         "label": "Wallet",
         "icon": "ic_wallet",
@@ -2493,9 +2498,9 @@
         ]
       },
       {
-        "_doc": "MyHealth \u2014 native Health Connect dashboard. Reads the aggregated record set Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura all sync into via androidx.health.connect:connect-client (one SDK = union of every source on-device). LOCAL-ONLY: HealthStore (libs:core, SharedPreferences) caches rollups, write-rate stats, source-app breakdowns, and last-sync timestamps. ZERO network calls \u2014 no OAuth, no webhooks, no cloud ingester.",
-        "_doc_pages": "Three first-class pages: Summary (per-metric drill-in with 7d + 30d average tables), Timeline (date-picker \u2192 that day's per-metric values), Configs (Sources / Permissions / Stats / Raw / About sub-tabs + per-metric source toggles). Per-metric drill-down lives INSIDE each top-level page as Compose state \u2014 the section's drawer menu shows 3 entries, not 15.",
-        "_doc_metrics": "Data-driven metric taxonomy \u2014 read by SummaryPage / TimelinePage / ConfigsPage to render the per-metric tiles + drill-downs. Each metric maps to one-or-more Health Connect record types via `records` (matched at runtime by class simple-name) + the perm subset via `perm_keys`. Add a metric = one entry here + tile icon. Removing a metric here removes it from all 3 top-level pages.",
+        "_doc": "MyHealth — native Health Connect dashboard. Reads the aggregated record set Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura all sync into via androidx.health.connect:connect-client (one SDK = union of every source on-device). LOCAL-ONLY: HealthStore (libs:core, SharedPreferences) caches rollups, write-rate stats, source-app breakdowns, and last-sync timestamps. ZERO network calls — no OAuth, no webhooks, no cloud ingester.",
+        "_doc_pages": "Three first-class pages: Summary (per-metric drill-in with 7d + 30d average tables), Timeline (date-picker → that day's per-metric values), Configs (Sources / Permissions / Stats / Raw / About sub-tabs + per-metric source toggles). Per-metric drill-down lives INSIDE each top-level page as Compose state — the section's drawer menu shows 3 entries, not 15.",
+        "_doc_metrics": "Data-driven metric taxonomy — read by SummaryPage / TimelinePage / ConfigsPage to render the per-metric tiles + drill-downs. Each metric maps to one-or-more Health Connect record types via `records` (matched at runtime by class simple-name) + the perm subset via `perm_keys`. Add a metric = one entry here + tile icon. Removing a metric here removes it from all 3 top-level pages.",
         "id": "health",
         "label": "MyHealth",
         "icon": "ic_heart",
@@ -2518,7 +2523,7 @@
             "icon": "ic_settings"
           }
         ],
-        "_doc_taxonomy": "Metric grouping mirrors Health Connect's own UI categories (verified against es-ES locale: Actividad / Constantes vitales / Medidas corporales / Nutrici\u00f3n / Seguimiento del ciclo / Sue\u00f1o) so the per-metric counts in MyHealth match exactly what the HC permission screen shows. Vo2Max sits under Activity (not Heart) per HC; Exercise stays under Activity (no separate Workouts category in HC). Total perms across all metrics = 34, matching HC's count when every category is granted.",
+        "_doc_taxonomy": "Metric grouping mirrors Health Connect's own UI categories (verified against es-ES locale: Actividad / Constantes vitales / Medidas corporales / Nutrición / Seguimiento del ciclo / Sueño) so the per-metric counts in MyHealth match exactly what the HC permission screen shows. Vo2Max sits under Activity (not Heart) per HC; Exercise stays under Activity (no separate Workouts category in HC). Total perms across all metrics = 34, matching HC's count when every category is granted.",
         "metrics": [
           {
             "id": "activity",
@@ -2650,7 +2655,7 @@
         "icon": "ic_settings",
         "module": null,
         "bottom_nav": false,
-        "_doc_pages_order": "Order here is the single source of truth \u2014 drives both the Configs section page-grid AND (via home_groups tiles_from_section: 'config') the Home Apps Configs row. WireGuard appears in the row via an explicit `tiles` entry on the home_groups row with insert_after_id, since WG lives in its own section.",
+        "_doc_pages_order": "Order here is the single source of truth — drives both the Configs section page-grid AND (via home_groups tiles_from_section: 'config') the Home Apps Configs row. WireGuard appears in the row via an explicit `tiles` entry on the home_groups row with insert_after_id, since WG lives in its own section.",
         "pages": [
           {
             "id": "profile",
@@ -2686,7 +2691,7 @@
             "action": "action:import_configs"
           },
           {
-            "_doc": "Keyboard \u2014 hands off to the standalone Cloud-Keyboard app (ea_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard \u2192 MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed after Import, before About per UI spec.",
+            "_doc": "Keyboard — hands off to the standalone Cloud-Keyboard app (ea_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard → MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed after Import, before About per UI spec.",
             "id": "keyboard",
             "label": "Keyboard",
             "icon": "ic_keyboard",
@@ -2700,7 +2705,7 @@
             "action": "action:update_all"
           },
           {
-            "_doc": "Constellation AppStore \u2014 superapp is the fleet manager: install/update/uninstall/open every constellation APK, full per-app data (installed version+sha, remote GHCR digest, status). Fleet list is data-driven from data/constellation-fleet.json (auto-scanned from each app's build.json by data/regen.sh) \u2192 BuildConfig.CONSTELLATION_FLEET_B64. Opens ConstellationFragment via MainActivity.dispatchHomeAction.",
+            "_doc": "Constellation AppStore — superapp is the fleet manager: install/update/uninstall/open every constellation APK, full per-app data (installed version+sha, remote GHCR digest, status). Fleet list is data-driven from data/constellation-fleet.json (auto-scanned from each app's build.json by data/regen.sh) → BuildConfig.CONSTELLATION_FLEET_B64. Opens ConstellationFragment via MainActivity.dispatchHomeAction.",
             "id": "constellation",
             "label": "Constellation",
             "icon": "ic_refresh",
@@ -2725,12 +2730,12 @@
         ]
       }
     ],
-    "_doc_launcher_themes": "Themes the user can pick in Configs \u2192 Launcher. The chosen theme drives MainActivity's home-pane chrome ONLY when the SuperApp is set as the Android Home / Launcher replacement. id maps to LauncherTheme enum; `default: true` marks the first-run choice. The `features` map on each theme is the DECLARATIVE contract Kotlin (Push B) will read to enable/disable chrome elements + background services. Adding a feature toggle = adding a key here; nothing in code needs to know the toggle name ahead of time. Cloud Theme = existing UI (Home3D + bottom nav + dynamic island). Cloud Minimalist Black = terminal aesthetic. Cloud Power Saving = battery-first; mirrors Samsung / Apple / Pixel power-save behaviour (no chrome, no animations, background paused) but keeps WireGuard tunnel ON so network connectivity stays alive \u2014 the SuperApp can't fall back to a stock Samsung power-saving picker because Samsung's classifier filters out home-launchers entirely (verified: even Samsung's app-search excludes us). Owning the mode is the only path.",
+    "_doc_launcher_themes": "Themes the user can pick in Configs → Launcher. The chosen theme drives MainActivity's home-pane chrome ONLY when the SuperApp is set as the Android Home / Launcher replacement. id maps to LauncherTheme enum; `default: true` marks the first-run choice. The `features` map on each theme is the DECLARATIVE contract Kotlin (Push B) will read to enable/disable chrome elements + background services. Adding a feature toggle = adding a key here; nothing in code needs to know the toggle name ahead of time. Cloud Theme = existing UI (Home3D + bottom nav + dynamic island). Cloud Minimalist Black = terminal aesthetic. Cloud Power Saving = battery-first; mirrors Samsung / Apple / Pixel power-save behaviour (no chrome, no animations, background paused) but keeps WireGuard tunnel ON so network connectivity stays alive — the SuperApp can't fall back to a stock Samsung power-saving picker because Samsung's classifier filters out home-launchers entirely (verified: even Samsung's app-search excludes us). Owning the mode is the only path.",
     "launcher_themes": [
       {
         "id": "cloud",
         "label": "Cloud Theme",
-        "subtitle": "The default rich SuperApp UI \u2014 bottom nav, dynamic island, 3D home. Top status strip trimmed to Time \u00b7 Battery only.",
+        "subtitle": "The default rich SuperApp UI — bottom nav, dynamic island, 3D home. Top status strip trimmed to Time · Battery only.",
         "default": true,
         "features": {
           "home_3d": true,
@@ -2747,7 +2752,7 @@
       {
         "id": "cloud_minimalist_black",
         "label": "Cloud Minimalist Black",
-        "subtitle": "Terminal aesthetic \u2014 pure black background, monospace green app list, no chrome. One-screen scroll.",
+        "subtitle": "Terminal aesthetic — pure black background, monospace green app list, no chrome. One-screen scroll.",
         "features": {
           "home_3d": false,
           "bottom_nav": false,
@@ -2763,7 +2768,7 @@
       {
         "id": "cloud_power_saving",
         "label": "Cloud Power Saving",
-        "subtitle": "Battery-first launcher \u2014 dim OLED-black UI, no animations, no dynamic island, no 3D home. Background services paused EXCEPT WireGuard (network connectivity stays on). Mirrors Samsung / Apple / Pixel power-saving behaviour.",
+        "subtitle": "Battery-first launcher — dim OLED-black UI, no animations, no dynamic island, no 3D home. Background services paused EXCEPT WireGuard (network connectivity stays on). Mirrors Samsung / Apple / Pixel power-saving behaviour.",
         "features": {
           "home_3d": false,
           "bottom_nav": false,
@@ -2777,12 +2782,12 @@
         }
       }
     ],
-    "_doc_launcher_profiles": "Profiles the user can pick in Configs \u2192 Launcher \u2192 Profiles. The chosen profile is persisted via LauncherProfilePrefs. Unlike themes (which control UI/chrome/features), profiles control APP ISOLATION + DATA SAFETY \u2014 which apps the user can reach and which subsystems get neutered (e.g. Guest disables WireGuard so the guest can't see private infra). The `behavior` map is the declarative contract Push C reads. Personal = full access (passthrough). Work = same as Personal for now; tag-based filtering wires in once apps carry app_tags. Guest = hands-off lockdown.",
+    "_doc_launcher_profiles": "Profiles the user can pick in Configs → Launcher → Profiles. The chosen profile is persisted via LauncherProfilePrefs. Unlike themes (which control UI/chrome/features), profiles control APP ISOLATION + DATA SAFETY — which apps the user can reach and which subsystems get neutered (e.g. Guest disables WireGuard so the guest can't see private infra). The `behavior` map is the declarative contract Push C reads. Personal = full access (passthrough). Work = same as Personal for now; tag-based filtering wires in once apps carry app_tags. Guest = hands-off lockdown.",
     "launcher_profiles": [
       {
         "id": "personal",
         "label": "Personal",
-        "subtitle": "Your default everyday profile \u2014 every installed app and folder visible.",
+        "subtitle": "Your default everyday profile — every installed app and folder visible.",
         "default": true,
         "behavior": {
           "app_filter": "all",
@@ -2793,7 +2798,7 @@
       {
         "id": "work",
         "label": "Work",
-        "subtitle": "Same as Personal for now \u2014 tag-based hide rules ship once each app/tile carries an app_tags list (e.g. work / personal / finance).",
+        "subtitle": "Same as Personal for now — tag-based hide rules ship once each app/tile carries an app_tags list (e.g. work / personal / finance).",
         "behavior": {
           "app_filter": "all",
           "wireguard": "on",
@@ -2803,7 +2808,7 @@
       {
         "id": "guest",
         "label": "Guest",
-        "subtitle": "Locked down \u2014 only the system browser is reachable. WireGuard tunnel disabled so the guest can't see your private mesh. No SuperApp sections, no chat, no mail, no vault.",
+        "subtitle": "Locked down — only the system browser is reachable. WireGuard tunnel disabled so the guest can't see your private mesh. No SuperApp sections, no chat, no mail, no vault.",
         "behavior": {
           "app_filter": "whitelist",
           "whitelist": [
@@ -2816,7 +2821,7 @@
         }
       }
     ],
-    "_doc_myfin_mock": "MyFin beta dashboard data \u2014 fully editable here, baked into libs:fin's BuildConfig at gradle config time so MyFinDashboardFragment reads it via BuildConfig.UI_MYFIN_MOCK_B64. Currency strings are display-only (the fragment just prints what's here); flip to a real aggregator by swapping the loader, not by replacing this block. Numbers are illustrative.",
+    "_doc_myfin_mock": "MyFin beta dashboard data — fully editable here, baked into libs:fin's BuildConfig at gradle config time so MyFinDashboardFragment reads it via BuildConfig.UI_MYFIN_MOCK_B64. Currency strings are display-only (the fragment just prints what's here); flip to a real aggregator by swapping the loader, not by replacing this block. Numbers are illustrative.",
     "myfin_mock": {
       "currency": "EUR",
       "net_worth": 124850.42,
@@ -2906,7 +2911,7 @@
         },
         {
           "date": "2026-06-07",
-          "payee": "Salary \u2014 LEAFY GmbH",
+          "payee": "Salary — LEAFY GmbH",
           "amount": 5400.0,
           "category": "Income"
         },
@@ -2924,22 +2929,22 @@
         },
         {
           "date": "2026-06-06",
-          "payee": "DEGIRO \u2014 VWCE buy",
+          "payee": "DEGIRO — VWCE buy",
           "amount": -800.0,
           "category": "Investment"
         },
         {
           "date": "2026-06-05",
-          "payee": "Berlin Rent \u2014 June",
+          "payee": "Berlin Rent — June",
           "amount": -1450.0,
           "category": "Rent"
         }
       ]
     },
-    "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed \u2014 does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
+    "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed — does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
     "dynamic_island_action": "app:com.termux.nix",
     "_doc_home_apps_tabs": "Tabs at the top of the Home Apps swipe-up sheet (AppDrawerSheetFragment). Cloud = the existing HomeGroupedFragment (cloud-service tile grid derived from home_groups). Phone = PhoneAppsFragment (Android-launcher folder grid of installed apps grouped by phone_folders). Order = display order.",
-    "_doc_app_tabs": "App Tabs (libs:apptabs) \u2014 the last-N opened SuperApp entries (sections, pages incl. sub-pages, external apps) as an LRU grid. `cap` = how many to keep; MainActivity sets AppTabPrefs.cap from BuildConfig.UI_APP_TABS_CAP at startup.",
+    "_doc_app_tabs": "App Tabs (libs:apptabs) — the last-N opened SuperApp entries (sections, pages incl. sub-pages, external apps) as an LRU grid. `cap` = how many to keep; MainActivity sets AppTabPrefs.cap from BuildConfig.UI_APP_TABS_CAP at startup.",
     "app_tabs": {
       "cap": 10
     },
@@ -2953,7 +2958,7 @@
         "label": "Phone"
       }
     ],
-    "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen \u2014 same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here \u2014 no Kotlin edit.",
+    "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen — same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here — no Kotlin edit.",
     "search_scopes": [
       {
         "id": "cloud-apps",
@@ -2976,7 +2981,7 @@
         "kind": "phone_configs"
       }
     ],
-    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list \u2014 the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's sub-pages (mode tabs + Cloud/Phone tabs + the Home-Apps overlay). Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement \u2014 `mode` (apps|admin, for Tabbed sections Infos/Labs), `tab` (cloud|phone, for Suite's SuiteCloudPhoneTabsFragment), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body tab). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here \u2014 no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
+    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list — the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's sub-pages (mode tabs + Cloud/Phone tabs + the Home-Apps overlay). Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement — `mode` (apps|admin, for Tabbed sections Infos/Labs), `tab` (cloud|phone, for Suite's SuiteCloudPhoneTabsFragment), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body tab). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here — no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
     "swipe_walk": [
       {
         "id": "comms",
@@ -2987,49 +2992,49 @@
         "id": "infos-apps",
         "section": "infos",
         "mode": "apps",
-        "label": "Infos \u00b7 Apps"
+        "label": "Infos · Apps"
       },
       {
         "id": "infos-admin",
         "section": "infos",
         "mode": "admin",
-        "label": "Infos \u00b7 Admin"
+        "label": "Infos · Admin"
       },
       {
         "id": "home-apps-cloud",
         "section": "home",
         "sheet": "cloud",
-        "label": "Home Apps \u00b7 Cloud"
+        "label": "Home Apps · Cloud"
       },
       {
         "id": "home-apps-phone",
         "section": "home",
         "sheet": "phone",
-        "label": "Home Apps \u00b7 Phone"
+        "label": "Home Apps · Phone"
       },
       {
         "id": "suite-cloud",
         "section": "suite",
         "tab": "cloud",
-        "label": "Suite \u00b7 Cloud"
+        "label": "Suite · Cloud"
       },
       {
         "id": "suite-phone",
         "section": "suite",
         "tab": "phone",
-        "label": "Suite \u00b7 Phone"
+        "label": "Suite · Phone"
       },
       {
         "id": "labs-apps",
         "section": "tools",
         "mode": "apps",
-        "label": "Labs \u00b7 Apps"
+        "label": "Labs · Apps"
       },
       {
         "id": "labs-admin",
         "section": "tools",
         "mode": "admin",
-        "label": "Labs \u00b7 Admin"
+        "label": "Labs · Admin"
       },
       {
         "id": "configs",
@@ -3039,7 +3044,7 @@
     ],
     "_doc_phone_grid_columns": "Column count for the Phone tab's folder grid. Mirrors tile_columns (6) so the two tabs share the same density rhythm.",
     "phone_grid_columns": 6,
-    "_doc_phone_folders": "Folder taxonomy for the Phone tab \u2014 categorised by function (main purpose of the app), not by manufacturer. The `label` keeps the user's prefix sort markers verbatim (_#, _, -, .#, .a, .b, >) so the order reads identically to native One UI. `order` is the lexicographic sort key (two-digit blocks let new folders slot between existing ones). `match_keywords` are case-insensitive matches against the app's `packageName` and `label`. Five syntaxes (PhoneAppClassifier.matches): (1) `pkg:com.foo.bar` = exact packageName; (2) `pkg^com.foo.` = packageName.startsWith; (3) `lbl:Exact Label` = label exact; (4) `lbl~substring` = label contains (min 3 chars); (5) plain string = legacy substring on `pkg + label` (REQUIRES min length 4 to suppress catastrophic false-positives like `bb` matching `bbva` AND every package containing the letters `bb` anywhere). First matching folder wins, first matching keyword inside a folder wins. PREFER `pkg:` for known installed apps \u2014 it's the only form that can't false-match. TWO distinct sinks, different roles: (a) `_New Apps` (id=new_apps, order=98, empty keywords) is the AUTOMATIC sink \u2014 anything our keyword list doesn't know yet lands here, signal to the user that a new app needs triage / a new keyword / a new folder; (b) `_Misc` (id=misc, order=99) is the MANUAL sink \u2014 give it specific keywords to deliberately push hand-picked apps there. New Apps shrinks as keywords improve; Misc only grows when the user adds something to it on purpose. Manufacturer (Google / Samsung / non-Play-Store) is metadata for Smart Folders (see phone_smart_folders below) \u2014 NOT a primary grouping criterion.",
+    "_doc_phone_folders": "Folder taxonomy for the Phone tab — categorised by function (main purpose of the app), not by manufacturer. The `label` keeps the user's prefix sort markers verbatim (_#, _, -, .#, .a, .b, >) so the order reads identically to native One UI. `order` is the lexicographic sort key (two-digit blocks let new folders slot between existing ones). `match_keywords` are case-insensitive matches against the app's `packageName` and `label`. Five syntaxes (PhoneAppClassifier.matches): (1) `pkg:com.foo.bar` = exact packageName; (2) `pkg^com.foo.` = packageName.startsWith; (3) `lbl:Exact Label` = label exact; (4) `lbl~substring` = label contains (min 3 chars); (5) plain string = legacy substring on `pkg + label` (REQUIRES min length 4 to suppress catastrophic false-positives like `bb` matching `bbva` AND every package containing the letters `bb` anywhere). First matching folder wins, first matching keyword inside a folder wins. PREFER `pkg:` for known installed apps — it's the only form that can't false-match. TWO distinct sinks, different roles: (a) `_New Apps` (id=new_apps, order=98, empty keywords) is the AUTOMATIC sink — anything our keyword list doesn't know yet lands here, signal to the user that a new app needs triage / a new keyword / a new folder; (b) `_Misc` (id=misc, order=99) is the MANUAL sink — give it specific keywords to deliberately push hand-picked apps there. New Apps shrinks as keywords improve; Misc only grows when the user adds something to it on purpose. Manufacturer (Google / Samsung / non-Play-Store) is metadata for Smart Folders (see phone_smart_folders below) — NOT a primary grouping criterion.",
     "phone_folders": [
       {
         "id": "sys_top",
@@ -4233,12 +4238,12 @@
         "prefix": ">"
       }
     ],
-    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab \u2014 dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record \u2014 installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo \u2014 IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values \u2014 legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`). The install-source values are real installer package names \u2014 verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
+    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record — installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo — IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values — legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`). The install-source values are real installer package names — verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
     "phone_smart_folders": [
       {
         "id": "cloud",
         "title": "Cloud",
-        "_doc": "Our own constellation APKs. Every Cloud app is namespaced com.diegonmarcos.* (superapp, cloudbrowser/keyboard/nav/vault/wallet, comms.matrix/dialer) \u2014 a single pkg_prefix matches the whole fleet and nothing else.",
+        "_doc": "Our own constellation APKs. Every Cloud app is namespaced com.diegonmarcos.* (superapp, cloudbrowser/keyboard/nav/vault/wallet, comms.matrix/dialer) — a single pkg_prefix matches the whole fleet and nothing else.",
         "rule": {
           "type": "pkg_prefix",
           "values": [
@@ -4270,7 +4275,7 @@
       },
       {
         "id": "fdroid",
-        "title": "F-Droid \u00b7 Sideload",
+        "title": "F-Droid · Sideload",
         "_doc": "F-Droid installs PLUS raw-APK sideloads (com.google.android.packageinstaller = installed by hand, owned by no store). These get no automatic Play/Samsung updates.",
         "rule": {
           "type": "install_source_in",
@@ -4293,7 +4298,7 @@
       {
         "id": "new_apps",
         "title": "New Apps",
-        "_doc": "Newest installs by firstInstallTime, capped at `limit`. `recently_installed` is a ranking rule (sort + take), not a per-app filter \u2014 PhoneSmartFolders.select handles it; no `values` needed.",
+        "_doc": "Newest installs by firstInstallTime, capped at `limit`. `recently_installed` is a ranking rule (sort + take), not a per-app filter — PhoneSmartFolders.select handles it; no `values` needed.",
         "rule": {
           "type": "recently_installed",
           "limit": 12
@@ -4302,7 +4307,7 @@
     ],
     "default_section": "home",
     "default_mode": "apps",
-    "_doc_profile_default": "Seeds the drawer-header identity row + the Configs/Profile form + the Virtual Business Card. User-editable at runtime via ProfileFragment (persisted in ProfilePrefs SharedPreferences); these values are only the FIRST-RUN defaults. Photo URIs (picture, banner) are NOT seeded \u2014 they're picked by the user via the gallery picker in Configs \u2192 Profile.",
+    "_doc_profile_default": "Seeds the drawer-header identity row + the Configs/Profile form + the Virtual Business Card. User-editable at runtime via ProfileFragment (persisted in ProfilePrefs SharedPreferences); these values are only the FIRST-RUN defaults. Photo URIs (picture, banner) are NOT seeded — they're picked by the user via the gallery picker in Configs → Profile.",
     "profile_default": {
       "name": "Diego Coelho Marcos",
       "email": "me@diegonmarcos.com",
@@ -4310,8 +4315,8 @@
       "company": "LEAFY",
       "location": "Berlin/DE",
       "website": "linktree.diegonmarcos.com",
-      "titles": "| Product Engineering  \ud83d\udcbe | Venture Capital n' Portfolio Management \ud83c\udfa9 | Civil Structural Engineer B.Sc. \ud83c\udfd7\ufe0f | Brazilian/Spanish @BERlin.de \ud83c\udfdb\ufe0f |",
-      "_doc_repos": "Repo URLs + the consolidated cloud-data config reference, surfaced read-only in Configs/About \u2192 Profile. Data-driven (no Kotlin hardcoding) \u2014 baked via UI_PROFILE_REPOS_B64 / UI_CONSOLIDATED_CONFIG.",
+      "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
+      "_doc_repos": "Repo URLs + the consolidated cloud-data config reference, surfaced read-only in Configs/About → Profile. Data-driven (no Kotlin hardcoding) — baked via UI_PROFILE_REPOS_B64 / UI_CONSOLIDATED_CONFIG.",
       "repos": [
         {
           "label": "unix",
@@ -4330,9 +4335,9 @@
           "url": "https://github.com/diegonmarcos/vault"
         }
       ],
-      "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json \u2192 baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
+      "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
     },
-    "_doc_wireguard_default": "Seeds the Configs/WireGuard form on first run. The phone is a single-tunnel mesh spoke (Android allows one active WG profile) carrying TWO peers / two meshes \u2014 gcp-proxy wg0 (10.0.0.0/24) and oci-analytics wg-public (10.1.0.0/24), mirrored from vault/.../wireguard/termux-public/config. The network-popup Mesh section probes each peer's hub (.1 of its allowed_ips) as a separate light. peer.public_key IS seeded \u2014 WireGuard PUBLIC keys are non-secret (the hubs' public identity, already in the public cloud repo). interface_private_key + peer.preshared_key are NOT seeded (the private key is the credential \u2014 Pillar 7): generate via the in-app Generate Keypair button, or import the merged .conf / paste manually. All values are FIRST-RUN defaults, user-editable at runtime via WireGuardFragment (Add/Remove Peer; persisted in WireGuardPrefs).",
+    "_doc_wireguard_default": "Seeds the Configs/WireGuard form on first run. The phone is a single-tunnel mesh spoke (Android allows one active WG profile) carrying TWO peers / two meshes — gcp-proxy wg0 (10.0.0.0/24) and oci-analytics wg-public (10.1.0.0/24), mirrored from vault/.../wireguard/termux-public/config. The network-popup Mesh section probes each peer's hub (.1 of its allowed_ips) as a separate light. peer.public_key IS seeded — WireGuard PUBLIC keys are non-secret (the hubs' public identity, already in the public cloud repo). interface_private_key + peer.preshared_key are NOT seeded (the private key is the credential — Pillar 7): generate via the in-app Generate Keypair button, or import the merged .conf / paste manually. All values are FIRST-RUN defaults, user-editable at runtime via WireGuardFragment (Add/Remove Peer; persisted in WireGuardPrefs).",
     "wireguard_default": {
       "tunnel_name": "wg-mesh",
       "interface_address": "10.0.0.9/24, 10.1.0.9/24",
@@ -4360,10 +4365,10 @@
         }
       ]
     },
-    "_doc_modes": "Global UI mode toggle (Apps \u2194 Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences \u2014 not encrypted, it's just a view-pref).",
-    "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). A URL-shaped action_type is launched via launchUri. Extend by adding entries here \u2014 never hardcoded in Kotlin.",
+    "_doc_modes": "Global UI mode toggle (Apps ↔ Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences — not encrypted, it's just a view-pref).",
+    "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). A URL-shaped action_type is launched via launchUri. Extend by adding entries here — never hardcoded in Kotlin.",
     "home_actions": [],
-    "_doc_home_drawer_prepend": "Drawer menu entries prepended ABOVE the first section. Same {label, icon, action_type} shape as home_actions; dispatched through MainActivity.dispatchHomeAction. Use for quick-access items that aren't tied to a single section \u2014 e.g. opening the swipe-up Home Apps sheet from the drawer too.",
+    "_doc_home_drawer_prepend": "Drawer menu entries prepended ABOVE the first section. Same {label, icon, action_type} shape as home_actions; dispatched through MainActivity.dispatchHomeAction. Use for quick-access items that aren't tied to a single section — e.g. opening the swipe-up Home Apps sheet from the drawer too.",
     "home_drawer_prepend": [
       {
         "label": "Home Apps",
@@ -4374,25 +4379,25 @@
     "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",
     "import_schema": {
       "wg": {
-        "wg0_private_key": "AAAA\u2026  (base64 32B)",
-        "wg_public_private_key": "BBBB\u2026  (base64 32B)"
+        "wg0_private_key": "AAAA…  (base64 32B)",
+        "wg_public_private_key": "BBBB…  (base64 32B)"
       },
       "mail": {
         "jmap_url": "https://jmap.diegonmarcos.com",
         "imap_url": "imaps://imap.diegonmarcos.com:993",
         "smtps_url": "smtps://smtp.diegonmarcos.com:465",
         "username": "me@diegonmarcos.com",
-        "password": "\u2026sops-decrypted upstream\u2026"
+        "password": "…sops-decrypted upstream…"
       },
       "ssh": {
-        "vault_repo_key": "-----BEGIN OPENSSH PRIVATE KEY-----\\n\u2026\\n-----END OPENSSH PRIVATE KEY-----"
+        "vault_repo_key": "-----BEGIN OPENSSH PRIVATE KEY-----\\n…\\n-----END OPENSSH PRIVATE KEY-----"
       },
       "auth": {
-        "authelia_token": "ey\u2026"
+        "authelia_token": "ey…"
       }
     },
-    "_doc_data_snapshots": "C3/Health (public + private services) and C3/Mesh (wg-mesh/v1 snapshot) are NO LONGER hardcoded here \u2014 they live in ea_cloud-superapp/data/ as derived snapshots (regenerated via data/regen.sh from cloud-data's _cloud-data-consolidated.json + cloud/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json). app/build.gradle reads those files at bake time and exposes them via BuildConfig.",
-    "_doc_drive_connections": "Listing rendered by Drive \u00b7 Connections \u2014 each external/internal storage backend reachable from the stack. Status today is the declared baseline (planned: live overlay from the cargo-ndk Rust binary).",
+    "_doc_data_snapshots": "C3/Health (public + private services) and C3/Mesh (wg-mesh/v1 snapshot) are NO LONGER hardcoded here — they live in ea_cloud-superapp/data/ as derived snapshots (regenerated via data/regen.sh from cloud-data's _cloud-data-consolidated.json + cloud/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json). app/build.gradle reads those files at bake time and exposes them via BuildConfig.",
+    "_doc_drive_connections": "Listing rendered by Drive · Connections — each external/internal storage backend reachable from the stack. Status today is the declared baseline (planned: live overlay from the cargo-ndk Rust binary).",
     "drive_connections": [
       {
         "name": "MinIO",
@@ -4439,7 +4444,7 @@
         "kind": "borg",
         "endpoint": "borg-server:2224",
         "auth": "ssh-key",
-        "vm": "\u2014",
+        "vm": "—",
         "status": "ok",
         "scope": "private",
         "notes": "Daily encrypted snapshots"
@@ -4449,7 +4454,7 @@
         "kind": "bup",
         "endpoint": "bup-server:2223",
         "auth": "ssh-key",
-        "vm": "\u2014",
+        "vm": "—",
         "status": "ok",
         "scope": "private",
         "notes": "Dedup-backed redundant snapshots"
@@ -4515,7 +4520,7 @@
         "notes": "MIME attachments inside JMAP store"
       }
     ],
-    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections \u2014 call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Both Suite and Labs entries FLATTEN their referenced section's tiles into a single horizontal-scroll strip \u2014 Suite pulls sections[suite].tile_groups (all 18 tiles), Labs pulls sections[tools].tiles_shared (6 Lab icons, each opening page:tools/<lab-id>). Single source of truth \u2014 change this to reshape the Home page, nothing else.",
+    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Both Suite and Labs entries FLATTEN their referenced section's tiles into a single horizontal-scroll strip — Suite pulls sections[suite].tile_groups (all 18 tiles), Labs pulls sections[tools].tiles_shared (6 Lab icons, each opening page:tools/<lab-id>). Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {
         "title": "Home",
@@ -4548,21 +4553,21 @@
         ]
       },
       {
-        "_doc": "Home Apps Suite \u2014 FLATTENED card. tiles_from_section pulls sections[suite].tile_groups and flattens them in declaration order into a single horizontal-scroll strip (group_explode is OFF / absent). The grouped layout still lives on the bottom-nav Suite SECTION page via GroupedTilesFragment, so the sub-titles aren't lost \u2014 they're just absent from Home Apps. scroll=horizontal so all 18 tiles ride one strip; per-tile smooth scroll, not snap-per-page.",
+        "_doc": "Home Apps Suite — FLATTENED card. tiles_from_section pulls sections[suite].tile_groups and flattens them in declaration order into a single horizontal-scroll strip (group_explode is OFF / absent). The grouped layout still lives on the bottom-nav Suite SECTION page via GroupedTilesFragment, so the sub-titles aren't lost — they're just absent from Home Apps. scroll=horizontal so all 18 tiles ride one strip; per-tile smooth scroll, not snap-per-page.",
         "title": "Suite",
         "scroll": "horizontal",
         "tiles_from_section": "suite",
         "tiles": []
       },
       {
-        "_doc": "Home Apps Labs \u2014 ONE card containing 6 icon tiles (master Lab index). tiles_from_section flattens sections[tools].tiles_shared into this card (no group_explode). Each icon \u2192 page:tools/<lab-id> opens that Lab's stack page (placeholder content for now). scroll=horizontal so the 6 icons ride a single strip and stay reachable without wrapping into multiple rows.",
+        "_doc": "Home Apps Labs — ONE card containing 6 icon tiles (master Lab index). tiles_from_section flattens sections[tools].tiles_shared into this card (no group_explode). Each icon → page:tools/<lab-id> opens that Lab's stack page (placeholder content for now). scroll=horizontal so the 6 icons ride a single strip and stay reachable without wrapping into multiple rows.",
         "title": "Labs",
         "scroll": "horizontal",
         "tiles_from_section": "tools",
         "tiles": []
       },
       {
-        "_doc": "Configs Home-Apps group \u2014 DATA-DRIVEN. tiles_from_section='config' pulls every page from sections[config].pages in array order \u2014 that array is the single source of truth, NEVER re-listed here (an enumerated copy drifts and lies). WireGuard is now a real config page (sections[config].pages id=wg, action=section:wg) so it flows in here automatically \u2014 no explicit `tiles` shortcut needed.",
+        "_doc": "Configs Home-Apps group — DATA-DRIVEN. tiles_from_section='config' pulls every page from sections[config].pages in array order — that array is the single source of truth, NEVER re-listed here (an enumerated copy drifts and lies). WireGuard is now a real config page (sections[config].pages id=wg, action=section:wg) so it flows in here automatically — no explicit `tiles` shortcut needed.",
         "title": "Configs",
         "scroll": "horizontal",
         "tiles_from_section": "config",
@@ -4574,7 +4579,7 @@
       "feed/all": [
         {
           "title": "Hacker News",
-          "subtitle": "Top stories \u2022 Y Combinator"
+          "subtitle": "Top stories • Y Combinator"
         },
         {
           "title": "Lobste.rs",
@@ -4590,7 +4595,7 @@
         },
         {
           "title": "/r/selfhosted",
-          "subtitle": "Reddit \u2022 self-hosting"
+          "subtitle": "Reddit • self-hosting"
         },
         {
           "title": "ntfy: alerts",
@@ -4620,25 +4625,25 @@
       "feed/unread": [
         {
           "title": "Rust 1.89 released",
-          "subtitle": "Hacker News \u2022 2h"
+          "subtitle": "Hacker News • 2h"
         },
         {
           "title": "WireGuard kernel debate",
-          "subtitle": "Lobste.rs \u2022 5h"
+          "subtitle": "Lobste.rs • 5h"
         },
         {
           "title": "ZFS 2.3 on Linux",
-          "subtitle": "Phoronix \u2022 8h"
+          "subtitle": "Phoronix • 8h"
         }
       ],
       "feed/saved": [
         {
           "title": "Building Stalwart from source",
-          "subtitle": "blog \u2022 saved 3d ago"
+          "subtitle": "blog • saved 3d ago"
         },
         {
           "title": "JMAP push channel design",
-          "subtitle": "RFC 8620 \u2022 saved 1w ago"
+          "subtitle": "RFC 8620 • saved 1w ago"
         }
       ],
       "feed/subscriptions": [
@@ -4678,19 +4683,19 @@
       "cal/day": [
         {
           "title": "Standup",
-          "subtitle": "09:00 \u2014 09:15"
+          "subtitle": "09:00 — 09:15"
         },
         {
           "title": "Deep work",
-          "subtitle": "10:00 \u2014 12:00"
+          "subtitle": "10:00 — 12:00"
         },
         {
           "title": "Lunch",
-          "subtitle": "13:00 \u2014 14:00"
+          "subtitle": "13:00 — 14:00"
         },
         {
           "title": "Review PRs",
-          "subtitle": "16:00 \u2014 17:00"
+          "subtitle": "16:00 — 17:00"
         }
       ],
       "cal/week": [
@@ -4727,15 +4732,15 @@
       ],
       "cal/agenda": [
         {
-          "title": "Today \u2014 Standup",
+          "title": "Today — Standup",
           "subtitle": "09:00"
         },
         {
-          "title": "Tomorrow \u2014 Tech review",
+          "title": "Tomorrow — Tech review",
           "subtitle": "14:00"
         },
         {
-          "title": "Fri \u2014 Tickets sync",
+          "title": "Fri — Tickets sync",
           "subtitle": "11:30"
         }
       ],
@@ -4790,15 +4795,15 @@
       "vault/totp": [
         {
           "title": "GitHub",
-          "subtitle": "623 891 \u2022 18s"
+          "subtitle": "623 891 • 18s"
         },
         {
           "title": "Vaultwarden",
-          "subtitle": "412 056 \u2022 21s"
+          "subtitle": "412 056 • 21s"
         },
         {
           "title": "Authelia",
-          "subtitle": "778 230 \u2022 09s"
+          "subtitle": "778 230 • 09s"
         }
       ],
       "vault/generator": [
@@ -4848,11 +4853,11 @@
       "chat/mattermost": [
         {
           "title": "chat.diegonmarcos.com",
-          "subtitle": "Self-hosted Mattermost \u2022 mattermost-bots service"
+          "subtitle": "Self-hosted Mattermost • mattermost-bots service"
         },
         {
           "title": "#general",
-          "subtitle": "Top channel \u2022 2 unread"
+          "subtitle": "Top channel • 2 unread"
         },
         {
           "title": "#alerts",
@@ -4892,7 +4897,7 @@
         },
         {
           "title": "Bob",
-          "subtitle": "\ud83d\udc4d"
+          "subtitle": "👍"
         }
       ],
       "chat/channels": [
@@ -4930,19 +4935,19 @@
       "wg/tunnels": [
         {
           "title": "gcp-proxy",
-          "subtitle": "10.0.0.1 \u2022 GCP e2-micro Free \u2022 WireGuard hub"
+          "subtitle": "10.0.0.1 • GCP e2-micro Free • WireGuard hub"
         },
         {
           "title": "oci-mail",
-          "subtitle": "10.0.0.3 \u2022 Oracle E2 Free \u2022 Stalwart / Maddy / mail-puller"
+          "subtitle": "10.0.0.3 • Oracle E2 Free • Stalwart / Maddy / mail-puller"
         },
         {
           "title": "oci-analytics",
-          "subtitle": "10.0.0.4 \u2022 Oracle E2 Free \u2022 caddy public edge + dagu"
+          "subtitle": "10.0.0.4 • Oracle E2 Free • caddy public edge + dagu"
         },
         {
           "title": "oci-apps",
-          "subtitle": "10.0.0.6 \u2022 Oracle A1.Flex 4-OCPU/24GB \u2022 20+ services"
+          "subtitle": "10.0.0.6 • Oracle A1.Flex 4-OCPU/24GB • 20+ services"
         },
         {
           "title": "Mesh: hub-and-spoke",
@@ -4950,17 +4955,17 @@
         },
         {
           "title": "Public edge",
-          "subtitle": "oci-analytics \u2014 only public ingress (Phase-4)"
+          "subtitle": "oci-analytics — only public ingress (Phase-4)"
         },
         {
           "title": "Handshake check",
-          "subtitle": "All peers OK \u2022 last 30s"
+          "subtitle": "All peers OK • last 30s"
         }
       ],
       "wg/status": [
         {
           "title": "Mesh handshake",
-          "subtitle": "OK \u2022 all 4 peers alive"
+          "subtitle": "OK • all 4 peers alive"
         },
         {
           "title": "Latency oci-mail",
@@ -5000,7 +5005,7 @@
       "solutions/professional": [
         {
           "title": "cv_pdf",
-          "subtitle": "R\u00e9sum\u00e9 PDF generator"
+          "subtitle": "Résumé PDF generator"
         },
         {
           "title": "cv_web",
@@ -5102,7 +5107,7 @@
       "c3/reports": [
         {
           "title": "Cost summary",
-          "subtitle": "Oracle Free + GCP Free \u2022 $0/mo"
+          "subtitle": "Oracle Free + GCP Free • $0/mo"
         },
         {
           "title": "Health rollup",
@@ -5116,31 +5121,31 @@
       "c3/stack": [
         {
           "title": "caddy",
-          "subtitle": "proxy.diegonmarcos.com \u2022 oci-analytics"
+          "subtitle": "proxy.diegonmarcos.com • oci-analytics"
         },
         {
           "title": "authelia",
-          "subtitle": "auth.diegonmarcos.com \u2022 gcp-proxy"
+          "subtitle": "auth.diegonmarcos.com • gcp-proxy"
         },
         {
           "title": "stalwart",
-          "subtitle": "mail-stalwart.diegonmarcos.com \u2022 oci-mail"
+          "subtitle": "mail-stalwart.diegonmarcos.com • oci-mail"
         },
         {
           "title": "vaultwarden",
-          "subtitle": "vault.diegonmarcos.com \u2022 oci-apps"
+          "subtitle": "vault.diegonmarcos.com • oci-apps"
         },
         {
           "title": "gitea",
-          "subtitle": "git.diegonmarcos.com \u2022 oci-apps"
+          "subtitle": "git.diegonmarcos.com • oci-apps"
         },
         {
           "title": "dagu",
-          "subtitle": "workflows.diegonmarcos.com \u2022 oci-analytics"
+          "subtitle": "workflows.diegonmarcos.com • oci-analytics"
         },
         {
           "title": "ntfy",
-          "subtitle": "rss.diegonmarcos.com \u2022 oci-apps"
+          "subtitle": "rss.diegonmarcos.com • oci-apps"
         }
       ],
       "c3/health": [
@@ -5158,15 +5163,15 @@
         },
         {
           "title": "c3-public-api",
-          "subtitle": "Rust \u2022 oci-analytics \u2022 api.diegonmarcos.com/c3-api"
+          "subtitle": "Rust • oci-analytics • api.diegonmarcos.com/c3-api"
         },
         {
           "title": "c3-infra-api",
-          "subtitle": "Rust \u2022 oci-apps \u2022 api.diegonmarcos.com/c3-infra-api"
+          "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-infra-api"
         },
         {
           "title": "c3-services-api",
-          "subtitle": "Rust \u2022 oci-apps \u2022 api.diegonmarcos.com/c3-services-api"
+          "subtitle": "Rust • oci-apps • api.diegonmarcos.com/c3-services-api"
         },
         {
           "title": "Drift report",
@@ -5180,11 +5185,11 @@
       "c3/workflows": [
         {
           "title": "Daily backup",
-          "subtitle": "02:00 UTC \u2022 last OK 2026-05-29"
+          "subtitle": "02:00 UTC • last OK 2026-05-29"
         },
         {
           "title": "Cert renewal",
-          "subtitle": "Weekly \u2022 via Caddy"
+          "subtitle": "Weekly • via Caddy"
         },
         {
           "title": "Mail puller",
@@ -5194,19 +5199,19 @@
       "c3/vms": [
         {
           "title": "oci-mail",
-          "subtitle": "130.110.251.193 \u2022 Oracle E2 Free"
+          "subtitle": "130.110.251.193 • Oracle E2 Free"
         },
         {
           "title": "oci-analytics",
-          "subtitle": "129.151.228.66 \u2022 Oracle E2 Free"
+          "subtitle": "129.151.228.66 • Oracle E2 Free"
         },
         {
           "title": "oci-apps",
-          "subtitle": "82.70.229.129 \u2022 Oracle A1.Flex 4-OCPU"
+          "subtitle": "82.70.229.129 • Oracle A1.Flex 4-OCPU"
         },
         {
           "title": "gcp-proxy",
-          "subtitle": "35.226.147.64 \u2022 GCP e2-micro Free"
+          "subtitle": "35.226.147.64 • GCP e2-micro Free"
         }
       ],
       "c3/logs": [
@@ -5216,7 +5221,7 @@
         },
         {
           "title": "stalwart smtp",
-          "subtitle": "SMTP IN \u2713"
+          "subtitle": "SMTP IN ✓"
         },
         {
           "title": "wireguard handshake",
@@ -5240,7 +5245,7 @@
       "mail/identities": [
         {
           "title": "me@diegonmarcos.com",
-          "subtitle": "Primary \u2022 Stalwart"
+          "subtitle": "Primary • Stalwart"
         },
         {
           "title": "diego@diegonmarcos.com",
@@ -5249,18 +5254,18 @@
       ],
       "mail/rules": [
         {
-          "title": "GitHub notifications \u2192 label",
+          "title": "GitHub notifications → label",
           "subtitle": "Apply label 'github'"
         },
         {
-          "title": "Newsletters \u2192 Archive",
+          "title": "Newsletters → Archive",
           "subtitle": "Auto-archive"
         }
       ],
       "mail/answers": [
         {
           "title": "Out of office",
-          "subtitle": "Away until\u2026"
+          "subtitle": "Away until…"
         },
         {
           "title": "Acknowledged",
@@ -5278,7 +5283,7 @@
         }
       ]
     },
-    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>/<fork_key>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the per-fork package, then the hub package, then \u2014 if neither is installed \u2014 hands install_apk_url + install_package to libs:updater (PackageInstaller prompt). Fully data-driven: package ids + the GitHub-release APK URL live ONLY here, never in Kotlin. Cloud-Comms = the constellation hub (com.diegonmarcos.comms) + 3 fork APKs; appIds mirror ea_cloud-comms/build.json::forks[*].app_id, the install URL mirrors its release.gh_release (rolling `latest` asset Cloud-Comms-Hub.apk).",
+    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>/<fork_key>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the per-fork package, then the hub package, then — if neither is installed — hands install_apk_url + install_package to libs:updater (PackageInstaller prompt). Fully data-driven: package ids + the GitHub-release APK URL live ONLY here, never in Kotlin. Cloud-Comms = the constellation hub (com.diegonmarcos.comms) + 3 fork APKs; appIds mirror ea_cloud-comms/build.json::forks[*].app_id, the install URL mirrors its release.gh_release (rolling `latest` asset Cloud-Comms-Hub.apk).",
     "external_apps": [
       {
         "id": "cloud-comms",
@@ -5305,7 +5310,7 @@
         }
       },
       {
-        "_doc": "Cloud-Nav \u2014 the dedicated maps/navigation/tracker app (ea_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Suite/Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors ea_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
+        "_doc": "Cloud-Nav — the dedicated maps/navigation/tracker app (ea_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Suite/Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors ea_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
         "id": "cloud-nav",
         "label": "Cloud-Nav",
         "hub_package": "com.diegonmarcos.cloudnav",
@@ -5314,7 +5319,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Keyboard \u2014 the standalone IME app (ea_cloud-keyboard). The vendored HeliBoard (libs:keyboard) was extracted into this standalone APK, so Configs \u2192 Keyboard (action extapp:cloud-keyboard) opens its SettingsActivity if installed, else downloads + installs install_apk_url. Its SettingsActivity carries MAIN/LAUNCHER (libs/keyboard manifest), so getLaunchIntentForPackage resolves the forkless extapp:cloud-keyboard straight to hub_package. install_apk_url mirrors ea_cloud-keyboard/build.json::release.gh_release (asset Cloud-Keyboard.apk, published by ship-cloud-keyboard.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Keyboard — the standalone IME app (ea_cloud-keyboard). The vendored HeliBoard (libs:keyboard) was extracted into this standalone APK, so Configs → Keyboard (action extapp:cloud-keyboard) opens its SettingsActivity if installed, else downloads + installs install_apk_url. Its SettingsActivity carries MAIN/LAUNCHER (libs/keyboard manifest), so getLaunchIntentForPackage resolves the forkless extapp:cloud-keyboard straight to hub_package. install_apk_url mirrors ea_cloud-keyboard/build.json::release.gh_release (asset Cloud-Keyboard.apk, published by ship-cloud-keyboard.yml). Signs with the shared constellation key.",
         "id": "cloud-keyboard",
         "label": "Cloud-Keyboard",
         "hub_package": "com.diegonmarcos.cloudkeyboard",
@@ -5323,7 +5328,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Wallet \u2014 standalone cards/passes/tickets app (ea_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Suite/Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors ea_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
+        "_doc": "Cloud-Wallet — standalone cards/passes/tickets app (ea_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Suite/Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors ea_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
         "id": "cloud-wallet",
         "label": "Cloud-Wallet",
         "hub_package": "com.diegonmarcos.cloudwallet",
@@ -5332,7 +5337,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Browser \u2014 standalone WebView browser app (ea_cloud-browser). libs:browser (BrowserHostFragment + multi-tab BrowserTabPrefs) was MOVED out of the SuperApp into this standalone APK; the Tools 'Browser' tile (target extapp:cloud-browser) opens it if installed, else downloads + installs install_apk_url. Also handles http/https VIEW intents (declared in its manifest) so any app can open links in it. install_apk_url mirrors ea_cloud-browser/build.json::release.gh_release (asset Cloud-Browser.apk, published by ship-cloud-browser.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Browser — standalone WebView browser app (ea_cloud-browser). libs:browser (BrowserHostFragment + multi-tab BrowserTabPrefs) was MOVED out of the SuperApp into this standalone APK; the Tools 'Browser' tile (target extapp:cloud-browser) opens it if installed, else downloads + installs install_apk_url. Also handles http/https VIEW intents (declared in its manifest) so any app can open links in it. install_apk_url mirrors ea_cloud-browser/build.json::release.gh_release (asset Cloud-Browser.apk, published by ship-cloud-browser.yml). Signs with the shared constellation key.",
         "id": "cloud-browser",
         "label": "Cloud-Browser",
         "hub_package": "com.diegonmarcos.cloudbrowser",
@@ -5341,7 +5346,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Vault \u2014 standalone Vaultwarden client app (ea_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Suite/Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors ea_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Vault — standalone Vaultwarden client app (ea_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Suite/Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors ea_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
         "id": "cloud-vault",
         "label": "Cloud-Vault",
         "hub_package": "com.diegonmarcos.cloudvault",
@@ -5350,20 +5355,20 @@
         "forks": {}
       }
     ],
-    "_doc_sirius_star": "The Sirius Star \u2014 a single bright sparkle centred on the home screen (theme-agnostic overlay in activity_main.xml, gated to the `home` section by MainActivity). Tapping it force-opens the FloatingNav menu (FloatingNavService.showMenu). `enabled` toggles it; `glyph` is the character rendered (default \u2726). Declarative on/off without touching layout/code.",
+    "_doc_sirius_star": "The Sirius Star — a single bright sparkle centred on the home screen (theme-agnostic overlay in activity_main.xml, gated to the `home` section by MainActivity). Tapping it force-opens the FloatingNav menu (FloatingNavService.showMenu). `enabled` toggles it; `glyph` is the character rendered (default ✦). Declarative on/off without touching layout/code.",
     "sirius_star": {
       "enabled": true,
-      "glyph": "\u2726",
-      "size_sp": 13
+      "glyph": "✦",
+      "size_sp": 20
     },
-    "_doc_screensaver": "The Screensaver (ScreensaverService) \u2014 a full-screen OPAQUE BLACK overlay (SYSTEM_ALERT_WINDOW), NOT an Activity and NOT a lock: the app underneath stays resumed, so a playing video/audio keeps going, just hidden. Shows the time + date at the top and an Unlock button at the bottom (the only actionable). Triggered by the floating-nav `screensaver` action. `time_format`/`date_format` are java.text.SimpleDateFormat patterns; `unlock_label` is the dismiss button text.",
+    "_doc_screensaver": "The Screensaver (ScreensaverService) — a full-screen OPAQUE BLACK overlay (SYSTEM_ALERT_WINDOW), NOT an Activity and NOT a lock: the app underneath stays resumed, so a playing video/audio keeps going, just hidden. Shows the time + date at the top and an Unlock button at the bottom (the only actionable). Triggered by the floating-nav `screensaver` action. `time_format`/`date_format` are java.text.SimpleDateFormat patterns; `unlock_label` is the dismiss button text.",
     "screensaver": {
       "enabled": true,
       "time_format": "HH:mm",
       "date_format": "EEEE, d MMM",
       "unlock_label": "Unlock"
     },
-    "_doc_screensavers": "Configs \u2192 Launcher \u2192 Screensaver picker. LauncherSettingsPrefs persists the choice; ScreensaverService renders the chosen mode (clock formats from ui.screensaver). 'black_clock' = the classic OPAQUE BLACK clock+date+unlock. 'neon_lights' = animated neon scene behind the same clock. default:true = first-run choice.",
+    "_doc_screensavers": "Configs → Launcher → Screensaver picker. LauncherSettingsPrefs persists the choice; ScreensaverService renders the chosen mode (clock formats from ui.screensaver). 'black_clock' = the classic OPAQUE BLACK clock+date+unlock. 'neon_lights' = animated neon scene behind the same clock. default:true = first-run choice.",
     "screensavers": [
       {
         "id": "black_clock",
@@ -5377,7 +5382,7 @@
         "subtitle": "Animated neon grid glowing behind the clock."
       }
     ],
-    "_doc_launcher_settings": "Configs \u2192 Launcher \u2192 Others. Data-driven toggles + sliders persisted via LauncherSettingsPrefs, read by each subsystem at runtime. toggles[].id maps to a pref key; default = first-run value. Sliders carry min/max/default. brightness.default -1 = leave system brightness untouched. Adding a toggle = one entry here + one subsystem read.",
+    "_doc_launcher_settings": "Configs → Launcher → Others. Data-driven toggles + sliders persisted via LauncherSettingsPrefs, read by each subsystem at runtime. toggles[].id maps to a pref key; default = first-run value. Sliders carry min/max/default. brightness.default -1 = leave system brightness untouched. Adding a toggle = one entry here + one subsystem read.",
     "launcher_settings": {
       "toggles": [
         {
@@ -5444,7 +5449,7 @@
       ],
       "brightness": {
         "label": "Screen brightness",
-        "subtitle": "Device-wide \u2014 needs Modify system settings.",
+        "subtitle": "Device-wide — needs Modify system settings.",
         "min": 0,
         "max": 255,
         "default": -1
@@ -5457,7 +5462,7 @@
         "default": 10
       }
     },
-    "_doc_notification_infos": "'Cloud SuperApp - Notification Center Infos' \u2014 a WhatsApp-style grouped notification (InfosNotifier). Collapsed = a summary listing the groups; expanding the bundle reveals one child notification per group, each itself expandable to show that group's messages. Data-driven sample for now (point it at a real feed later). Each group: title + messages[].",
+    "_doc_notification_infos": "'Cloud SuperApp - Notification Center Infos' — a WhatsApp-style grouped notification (InfosNotifier). Collapsed = a summary listing the groups; expanding the bundle reveals one child notification per group, each itself expandable to show that group's messages. Data-driven sample for now (point it at a real feed later). Each group: title + messages[].",
     "notification_infos": {
       "enabled": true,
       "groups": [
@@ -5473,7 +5478,7 @@
           "title": "Cloud SA - Alerts/Cloud",
           "messages": [
             "oci-apps: all services healthy",
-            "backup: restic \u2192 OCI done 03:00"
+            "backup: restic → OCI done 03:00"
           ]
         },
         {
@@ -5490,11 +5495,11 @@
         }
       ]
     },
-    "_doc_floating_nav": "Floating Top Nav Bar \u2014 a SYSTEM_ALERT_WINDOW overlay (FloatingNavService) shown whenever the user has left Cloud-SuperApp. Collapsed = a small transparent circle, top-centre; tapped = expands to a top rectangle bar of links. The bar is CONTEXT-AWARE: FloatingNavService polls the foreground package (UsageStatsManager, poll_ms) and picks the first context whose `match_prefixes` matches (prefix = pkg == p || pkg startsWith p + '.'); the `default` context (empty match_prefixes) is the fallback. Each context shows `home_label` (the \u2732 primary, brings `home_package` to front \u2014 'self' = Cloud-SuperApp) then its `links` (label \u2192 package; tap launches getLaunchIntentForPackage, or installs via `install_app` external_apps id when absent). When the foreground IS Cloud-SuperApp the overlay hides entirely (we're already home). Packages mirror ui.external_apps forks + ui.permissions.roles (Fossy = the comms dialer fork). Add a context / link = edit here; nothing in Kotlin hardcodes a package.",
+    "_doc_floating_nav": "Floating Top Nav Bar — a SYSTEM_ALERT_WINDOW overlay (FloatingNavService) shown whenever the user has left Cloud-SuperApp. Collapsed = a small transparent circle, top-centre; tapped = expands to a top rectangle bar of links. The bar is CONTEXT-AWARE: FloatingNavService polls the foreground package (UsageStatsManager, poll_ms) and picks the first context whose `match_prefixes` matches (prefix = pkg == p || pkg startsWith p + '.'); the `default` context (empty match_prefixes) is the fallback. Each context shows `home_label` (the ✲ primary, brings `home_package` to front — 'self' = Cloud-SuperApp) then its `links` (label → package; tap launches getLaunchIntentForPackage, or installs via `install_app` external_apps id when absent). When the foreground IS Cloud-SuperApp the overlay hides entirely (we're already home). Packages mirror ui.external_apps forks + ui.permissions.roles (Fossy = the comms dialer fork). Add a context / link = edit here; nothing in Kotlin hardcodes a package.",
     "floating_nav": {
       "enabled": true,
       "poll_ms": 1000,
-      "_doc_layout": "The expanded menu renders the SAME 3-line box wherever it is triggered (single engine: FloatingNavService.showBar). Line 1 = `root` (the constellation apex, BIGGEST font) = Cloud SuperApp. Line 2 = `parents` (the sibling hubs Cloud IDE \u00b7 Cloud Comms \u00b7 Cloud Nav, medium font), constant everywhere, centred; the hub matching the current foreground app is bold. Line 3 = the `children` of the context matched from the foreground package (Cloud-IDE \u2192 Acode\u00b7Amaze; Cloud-Comms \u2192 Mail\u00b7Chat\u00b7Messenger\u00b7Dialer; Cloud-Nav \u2192 none; otherwise the `default` context = Cloud-SuperApp's first-level pages), SMALLEST font. Font size strictly decreases per line (root > parents > children). Layout: `top_offset_dp` = distance from the top edge (renders below the centred island cluster); `width_pct` = box width as % of screen width. Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Bolding of the current hub is data-driven from each context's `match_prefixes` \u2014 nothing in Kotlin hardcodes a label or package. Add a hub / child = edit here.",
+      "_doc_layout": "The expanded menu renders the SAME 3-line box wherever it is triggered (single engine: FloatingNavService.showBar). Line 1 = `root` (the constellation apex, BIGGEST font) = Cloud SuperApp. Line 2 = `parents` (the sibling hubs Cloud IDE · Cloud Comms · Cloud Nav, medium font), constant everywhere, centred; the hub matching the current foreground app is bold. Line 3 = the `children` of the context matched from the foreground package (Cloud-IDE → Acode·Amaze; Cloud-Comms → Mail·Chat·Messenger·Dialer; Cloud-Nav → none; otherwise the `default` context = Cloud-SuperApp's first-level pages), SMALLEST font. Font size strictly decreases per line (root > parents > children). Layout: `top_offset_dp` = distance from the top edge (renders below the centred island cluster); `width_pct` = box width as % of screen width. Every item has a `target`: `self` brings Cloud-SuperApp home; `app:<pkg>` launches that package (installing the `install_app` companion APK if absent); `section:<id>` / `action:<id>` / `page:<...>` bring Cloud-SuperApp forward and dispatch via its shortcut_action handler (onTileClicked). Bolding of the current hub is data-driven from each context's `match_prefixes` — nothing in Kotlin hardcodes a label or package. Add a hub / child = edit here.",
       "top_offset_dp": 150,
       "width_pct": 90,
       "root": {
@@ -5518,7 +5523,7 @@
           "install_app": "cloud-nav"
         }
       ],
-      "_doc_actions": "Global utility actions, identical in every context. The COMPACT menu shows the first `compact_action_count` (3); the EXPANDED view shows ALL of them (up to 5) plus a now-playing album-art card. Targets: `torch` toggles the flashlight (CameraManager.setTorchMode, no camera perm); `calc` opens the device calculator (Intent CATEGORY_APP_CALCULATOR); `screensaver` starts ScreensaverService (full-black cover overlay \u2014 see ui.screensaver); `lock` locks the screen (ScreenLocker); `action:<id>` routes through Cloud-SuperApp. Add/replace/reorder = edit here.",
+      "_doc_actions": "Global utility actions, identical in every context. The COMPACT menu shows the first `compact_action_count` (3); the EXPANDED view shows ALL of them (up to 5) plus a now-playing album-art card. Targets: `torch` toggles the flashlight (CameraManager.setTorchMode, no camera perm); `calc` opens the device calculator (Intent CATEGORY_APP_CALCULATOR); `screensaver` starts ScreensaverService (full-black cover overlay — see ui.screensaver); `lock` locks the screen (ScreenLocker); `action:<id>` routes through Cloud-SuperApp. Add/replace/reorder = edit here.",
       "compact_action_count": 3,
       "actions": [
         {
@@ -5614,7 +5619,7 @@
           ]
         },
         {
-          "_doc": "Cloud-Nav is a single forkless app, so it has NO child apps \u2014 `children` is empty and line 3 is omitted when it is foreground. This context exists only so the Cloud Nav hub on line 2 bolds (match via match_prefixes) when com.diegonmarcos.cloudnav is in the foreground.",
+          "_doc": "Cloud-Nav is a single forkless app, so it has NO child apps — `children` is empty and line 3 is omitted when it is foreground. This context exists only so the Cloud Nav hub on line 2 bolds (match via match_prefixes) when com.diegonmarcos.cloudnav is in the foreground.",
           "id": "nav",
           "match_prefixes": [
             "com.diegonmarcos.cloudnav"
@@ -5623,7 +5628,7 @@
         }
       ]
     },
-    "_doc_kde_connect": "KDE Connect config consumed by libs:kde-connect (Configs > KDE page). FULLY SELF-CONTAINED, ORIGINAL (clean-room) implementation of the KDE Connect LAN protocol \u2014 NO dependency on org.kde.kdeconnect_tp, NOT its GPL source. Auto-discovery (UDP broadcast / mDNS) does NOT cross WireGuard, so the client connects by explicit wg_ip instead: it dials <wg_ip>:discovery_port (1716) over wg0, writes its identity, runs the KDE Connect mutual-TLS handshake AS THE TLS SERVER (the protocol rule: the side that dials the TCP becomes the TLS server), re-exchanges identity encrypted (protocol v8), then pumps NetworkPackets through the plugin registry (ping/clipboard/findmyphone/notification). Pairing = remembering the peer's certificate; reconnects are cert-pinned. `self_name` is our advertised device name; `package` is retained only for the legacy 'open official app' affordance, never required. `devices[]` = the wg_ip targets we can reach (Surface Pro = mesh node 'laptop' = 10.0.0.5). Add a target = append a device with its wg_ip; nothing in Kotlin hardcodes an IP. The phone running the app advertises itself via self_name (this device = Samsung Galaxy S21 @ wg 10.0.0.9).",
+    "_doc_kde_connect": "KDE Connect config consumed by libs:kde-connect (Configs > KDE page). FULLY SELF-CONTAINED, ORIGINAL (clean-room) implementation of the KDE Connect LAN protocol — NO dependency on org.kde.kdeconnect_tp, NOT its GPL source. Auto-discovery (UDP broadcast / mDNS) does NOT cross WireGuard, so the client connects by explicit wg_ip instead: it dials <wg_ip>:discovery_port (1716) over wg0, writes its identity, runs the KDE Connect mutual-TLS handshake AS THE TLS SERVER (the protocol rule: the side that dials the TCP becomes the TLS server), re-exchanges identity encrypted (protocol v8), then pumps NetworkPackets through the plugin registry (ping/clipboard/findmyphone/notification). Pairing = remembering the peer's certificate; reconnects are cert-pinned. `self_name` is our advertised device name; `package` is retained only for the legacy 'open official app' affordance, never required. `devices[]` = the wg_ip targets we can reach (Surface Pro = mesh node 'laptop' = 10.0.0.5). Add a target = append a device with its wg_ip; nothing in Kotlin hardcodes an IP. The phone running the app advertises itself via self_name (this device = Samsung Galaxy S21 @ wg 10.0.0.9).",
     "kde_connect": {
       "package": "org.kde.kdeconnect_tp",
       "self_name": "Samsung Galaxy S21",
@@ -5639,7 +5644,7 @@
           "primary": true
         }
       ],
-      "_doc_plugins": "Full KDE Connect plugin catalog, shown on the KDE page. `status`=active means the `packet` IS advertised in our identity capabilities (so the desktop shows the plugin for this device) and the per-plugin toggle controls it. Two flavours of active: (a) HANDLED \u2014 a real KdePluginRegistry plugin processes the packet (ping, clipboard, findmyphone, notification, battery, share, mpris, systemvolume, runcommand, contacts, connectivity_report, lockdevice, telephony, + the request-side aliases); (b) ADVERTISED-ONLY STUB \u2014 listed + advertised for visibility/testing but with NO Kotlin handler yet, so inbound packets are ignored until a handler lands (sms, mousepad, presenter, sftp, photo, remotekeyboard, bigscreen, virtualmonitor, screenconnector, presenter_remote, sftp_browse, sms_request). The KDE page colours handled (lavender) vs advertised-only (amber). `dir` from the phone's view: in=we receive, out=we send, both. Promote a stub to handled = add a plugin in KdePluginRegistry with its id.",
+      "_doc_plugins": "Full KDE Connect plugin catalog, shown on the KDE page. `status`=active means the `packet` IS advertised in our identity capabilities (so the desktop shows the plugin for this device) and the per-plugin toggle controls it. Two flavours of active: (a) HANDLED — a real KdePluginRegistry plugin processes the packet (ping, clipboard, findmyphone, notification, battery, share, mpris, systemvolume, runcommand, contacts, connectivity_report, lockdevice, telephony, + the request-side aliases); (b) ADVERTISED-ONLY STUB — listed + advertised for visibility/testing but with NO Kotlin handler yet, so inbound packets are ignored until a handler lands (sms, mousepad, presenter, sftp, photo, remotekeyboard, bigscreen, virtualmonitor, screenconnector, presenter_remote, sftp_browse, sms_request). The KDE page colours handled (lavender) vs advertised-only (amber). `dir` from the phone's view: in=we receive, out=we send, both. Promote a stub to handled = add a plugin in KdePluginRegistry with its id.",
       "plugins": [
         {
           "id": "ping",
@@ -5840,7 +5845,7 @@
           "status": "active"
         }
       ],
-      "_doc_commands": "RunCommandPlugin command list \u2014 the desktop can trigger these on the phone (kdeconnect.runcommand). `type`: app=launch package `value`; url=open `value` in the browser. Data-driven; add a row, the desktop sees it. No permission needed.",
+      "_doc_commands": "RunCommandPlugin command list — the desktop can trigger these on the phone (kdeconnect.runcommand). `type`: app=launch package `value`; url=open `value` in the browser. Data-driven; add a row, the desktop sees it. No permission needed.",
       "commands": [
         {
           "key": "open-superapp",
@@ -5865,14 +5870,14 @@
     "news_feeds": [
       {
         "id": "bbc-world",
-        "name": "BBC News \u00b7 World",
+        "name": "BBC News · World",
         "category": "World",
         "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
         "site_url": "https://www.bbc.com/news/world"
       },
       {
         "id": "guardian-world",
-        "name": "Guardian \u00b7 World",
+        "name": "Guardian · World",
         "category": "World",
         "url": "https://www.theguardian.com/world/rss",
         "site_url": "https://www.theguardian.com/international"
@@ -5942,7 +5947,7 @@
       },
       {
         "id": "marketwatch",
-        "name": "MarketWatch \u00b7 Top",
+        "name": "MarketWatch · Top",
         "category": "Finance",
         "url": "https://feeds.marketwatch.com/marketwatch/topstories",
         "site_url": "https://www.marketwatch.com"
@@ -5956,7 +5961,7 @@
       },
       {
         "id": "espn-top",
-        "name": "ESPN \u00b7 Top",
+        "name": "ESPN · Top",
         "category": "Sport",
         "url": "https://www.espn.com/espn/rss/news",
         "site_url": "https://www.espn.com"
@@ -5972,7 +5977,7 @@
       },
       {
         "id": "imap-example",
-        "label": "Add IMAP account\u2026",
+        "label": "Add IMAP account…",
         "kind": "imaps",
         "server": "imap.example.com",
         "user": "",
@@ -5989,13 +5994,13 @@
     "note": "APK produced in dist/. Side-loadable via adb or shared via Filebrowser."
   },
   "release": {
-    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-superapp.yml) invokes those engine commands \u2014 no hardcoded registry/tag strings in the workflow.",
+    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_workflows/src/cicd/ship-cloud-superapp.yml) invokes those engine commands — no hardcoded registry/tag strings in the workflow.",
     "artifact": {
-      "_doc": "Path under dist/ to publish. The `debug` key is the daily-driver build (no ProGuard, real stacktraces, debug keystore) \u2014 it is THE app for this stack, not a side-by-side dev variant. The `release` key exists for when a true Play-Store-style release lifecycle lands; the GHA workflow picks debug for main pushes.",
+      "_doc": "Path under dist/ to publish. The `debug` key is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — it is THE app for this stack, not a side-by-side dev variant. The `release` key exists for when a true Play-Store-style release lifecycle lands; the GHA workflow picks debug for main pushes.",
       "debug": "Cloud-SuperApp.apk",
       "release": "Cloud-SuperApp-release.apk"
     },
-    "_doc_variants": "Per-ABI build variants. The CI workflow runs one job per variant (matrix); the engine reads SUPERAPP_VARIANT to override the ABI filter (\u2192 gradle env SUPERAPP_ABIS), the dist artifact name, the GHCR tag suffix, and the GitHub-release asset name. `arm64` is the DEFAULT \u2014 when SUPERAPP_VARIANT is unset the engine behaves exactly as before (arm64-v8a, Cloud-SuperApp.apk, ghcr :latest). `x86_64` adds a parallel artifact for Waydroid / desktop emulators, published to the SAME rolling `latest` GitHub release under a distinct filename, and to GHCR under tag suffix `-x86_64`. `supported_abis` drives the updater's ABI\u2192tag map (AUTO_UPDATE_TAG_MAP, baked in libs/updater): a device resolves its update tag by the first Build.SUPPORTED_ABIS entry that matches \u2014 native ABIs precede libhoudini-translated ones, so an x86_64 Waydroid correctly pulls `latest-x86_64`. `update_tag` MUST equal `latest` + `ghcr_tag_suffix` so the updater and the publisher agree. Add an ABI = append a variant here; no Kotlin/gradle/workflow edits beyond the matrix list.",
+    "_doc_variants": "Per-ABI build variants. The CI workflow runs one job per variant (matrix); the engine reads SUPERAPP_VARIANT to override the ABI filter (→ gradle env SUPERAPP_ABIS), the dist artifact name, the GHCR tag suffix, and the GitHub-release asset name. `arm64` is the DEFAULT — when SUPERAPP_VARIANT is unset the engine behaves exactly as before (arm64-v8a, Cloud-SuperApp.apk, ghcr :latest). `x86_64` adds a parallel artifact for Waydroid / desktop emulators, published to the SAME rolling `latest` GitHub release under a distinct filename, and to GHCR under tag suffix `-x86_64`. `supported_abis` drives the updater's ABI→tag map (AUTO_UPDATE_TAG_MAP, baked in libs/updater): a device resolves its update tag by the first Build.SUPPORTED_ABIS entry that matches — native ABIs precede libhoudini-translated ones, so an x86_64 Waydroid correctly pulls `latest-x86_64`. `update_tag` MUST equal `latest` + `ghcr_tag_suffix` so the updater and the publisher agree. Add an ABI = append a variant here; no Kotlin/gradle/workflow edits beyond the matrix list.",
     "variants": [
       {
         "id": "arm64",
@@ -6027,7 +6032,7 @@
       }
     ],
     "ghcr": {
-      "_doc": "ORAS push as an OCI artifact (not a container \u2014 APK is a blob). One :latest tag plus per-commit sha + per-version tags. Image renamed from `superapp` to `cloud-superapp` \u2014 old package becomes orphan.",
+      "_doc": "ORAS push as an OCI artifact (not a container — APK is a blob). One :latest tag plus per-commit sha + per-version tags. Image renamed from `superapp` to `cloud-superapp` — old package becomes orphan.",
       "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
@@ -6050,21 +6055,21 @@
       "generate_release_notes": false
     },
     "phone_install": {
-      "_doc": "Targets for build.sh phone-install. Pulls APK from GHCR via curl+OCI HTTP API (no oras dep \u2014 works on aarch64 Termux without a Nix shell) and copies to a target dir an Android file manager can see. Override target_dir per environment via PHONE_TARGET env var; default suits Termux/nix-on-droid where ~/storage symlinks to /storage/emulated/0/.",
+      "_doc": "Targets for build.sh phone-install. Pulls APK from GHCR via curl+OCI HTTP API (no oras dep — works on aarch64 Termux without a Nix shell) and copies to a target dir an Android file manager can see. Override target_dir per environment via PHONE_TARGET env var; default suits Termux/nix-on-droid where ~/storage symlinks to /storage/emulated/0/.",
       "default_tag": "latest",
       "target_dir": "~/storage/Download",
       "asset_name": "Cloud-SuperApp.apk"
     },
     "auto_update": {
-      "_doc": "In-app updater config \u2014 read at gradle eval time into BuildConfig, then used by libs:updater at runtime. Same registry/namespace/image as release.ghcr (the engine asserts consistency at build time).",
+      "_doc": "In-app updater config — read at gradle eval time into BuildConfig, then used by libs:updater at runtime. Same registry/namespace/image as release.ghcr (the engine asserts consistency at build time).",
       "enabled": true,
       "tag": "latest",
       "interval_hours": 6,
       "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
-      "_doc_unmetered": "true \u2192 automatic auto-download+install only on unmetered (Wi-Fi). On a metered network (mobile data) an automatic run does NOT download; it shows the 'Update available \u2014 Update now / Later' prompt so the user consents before spending data. Manual 'Check for updates' and the prompt's 'Update now' force a download on any network.",
+      "_doc_unmetered": "true → automatic auto-download+install only on unmetered (Wi-Fi). On a metered network (mobile data) an automatic run does NOT download; it shows the 'Update available — Update now / Later' prompt so the user consents before spending data. Manual 'Check for updates' and the prompt's 'Update now' force a download on any network.",
       "require_unmetered_network": true,
       "require_charging": false,
-      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About \u2192 Permissions, user-overridable via AutoUpdatePrefs). 'silent' \u2192 installer commits with USER_ACTION_NOT_REQUIRED (no install prompt) once the one-time 'Install unknown apps' grant is given; without the grant Android transparently falls back to a prompt. 'prompt' \u2192 always USER_ACTION_REQUIRED.",
+      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions, user-overridable via AutoUpdatePrefs). 'silent' → installer commits with USER_ACTION_NOT_REQUIRED (no install prompt) once the one-time 'Install unknown apps' grant is given; without the grant Android transparently falls back to a prompt. 'prompt' → always USER_ACTION_REQUIRED.",
       "install_mode": "silent"
     }
   }

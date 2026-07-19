@@ -2,46 +2,93 @@ package com.diegonmarcos.superapp.launcher
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.diegonmarcos.superapp.BuildConfig
+import androidx.core.content.ContextCompat
+import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.floatingnav.FloatingNavService
+import com.diegonmarcos.superapp.onehand.CircularMenu
 
 /**
- * Home-screen Sirius star, extracted from MainActivity. Glyph + size are
- * data-driven (build.json::ui.sirius_star → BuildConfig.SIRIUS_STAR_*). The star
- * is shown + gently twinkling only on the `home` section; tapping it force-opens
- * the FloatingNav menu (toast if the overlay permission is absent).
+ * Home-screen Sirius star — triggers the libs:onehand circular-menu on touch.
+ *
+ * Same size as Canopus: both read build.json::onehand.circular_menu.star.size_sp.
+ * Shown only on the `home` section (same show_on_section as Canopus).
+ *
+ * Distinct from Canopus star which opens the bottom arc-menu (Configs children).
  */
 class SiriusStar(private val activity: AppCompatActivity) {
 
     private var pulse: AnimatorSet? = null
+    private var session: CircularMenu.Session? = null
+    private val cfg get() = CircularMenu.config()
+
+    private val host = object : CircularMenu.Host {
+        override fun navigate(target: String) {
+            (activity as? MainActivity)?.onTileClicked(target)
+        }
+
+        override fun iconBitmap(name: String, sizePx: Int): Bitmap? {
+            if (name.isBlank() || sizePx <= 0) return null
+            val resId = Sections.iconResFor(activity, name)
+            if (resId == 0) return null
+            val d = ContextCompat.getDrawable(activity, resId) ?: return null
+            val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            d.setBounds(0, 0, sizePx, sizePx); d.draw(Canvas(bmp))
+            return bmp
+        }
+
+        override fun pagesFor(section: String): List<CircularMenu.Leaf> =
+            SectionPages.pagesFor(section).map {
+                CircularMenu.Leaf(it.label, "", "page:$section/${it.id}")
+            }
+    }
 
     /** Wire glyph/size/tap once. Call [update] afterwards for the initial state. */
     fun setup() {
         val star = activity.findViewById<TextView?>(R.id.sirius_star) ?: return
-        if (!BuildConfig.SIRIUS_STAR_ENABLED) { star.visibility = View.GONE; return }
-        star.text = BuildConfig.SIRIUS_STAR_GLYPH
-        star.setTextSize(TypedValue.COMPLEX_UNIT_SP, BuildConfig.SIRIUS_STAR_SIZE_SP)
-        star.setOnClickListener {
-            if (!FloatingNavService.showMenu(activity)) {
-                Toast.makeText(activity,
-                    "Grant 'Display over other apps' to open the nav menu", Toast.LENGTH_SHORT).show()
+        val c = cfg
+        if (!c.enabled) { star.visibility = View.GONE; return }
+        star.text = c.starGlyph
+        star.setTextSize(TypedValue.COMPLEX_UNIT_SP, c.starSizeSp.toFloat())
+        val pad = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, c.starTapPadDp.toFloat(), activity.resources.displayMetrics).toInt()
+        star.setPadding(pad, pad, pad, pad)
+        // Forward press→drag→release as one continuous gesture to the circular-menu.
+        star.setOnTouchListener { _, e ->
+            val decor = activity.findViewById<ViewGroup>(android.R.id.content)
+                ?: return@setOnTouchListener false
+            val s = IntArray(2); star.getLocationInWindow(s)
+            val d = IntArray(2); decor.getLocationInWindow(d)
+            val x = s[0] - d[0] + e.x
+            val y = s[1] - d[1] + e.y
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    session = CircularMenu.open(decor, x, y, host)
+                    session?.feed(x, y, MotionEvent.ACTION_DOWN)
+                }
+                MotionEvent.ACTION_MOVE -> session?.feed(x, y, MotionEvent.ACTION_MOVE)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    session?.feed(x, y, e.actionMasked); session = null
+                    star.performClick()
+                }
             }
+            true
         }
     }
 
-    /** Show + twinkle the star only on the `home` section. */
+    /** Show + twinkle the star only on the configured section. */
     fun update(currentSection: String) {
         val star = activity.findViewById<TextView?>(R.id.sirius_star) ?: return
-        if (BuildConfig.SIRIUS_STAR_ENABLED && currentSection == "home") {
+        val c = cfg
+        if (c.enabled && currentSection == c.showOnSection) {
             star.visibility = View.VISIBLE
-            // Twinkle only when the battery-hungry "Star twinkle" toggle is on
-            // (Configs → Launcher → Battery Hunger Ones). Off = static star.
             val twinkle = com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(activity).toggle("star_twinkle")
             if (twinkle && pulse == null) {
                 val sx = ObjectAnimator.ofFloat(star, "scaleX", 1f, 1.05f)

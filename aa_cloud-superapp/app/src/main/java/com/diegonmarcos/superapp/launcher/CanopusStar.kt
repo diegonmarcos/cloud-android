@@ -11,25 +11,26 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.onehand.ArcMenu
 import com.diegonmarcos.superapp.onehand.CircularMenu
 
 /**
- * Home-screen Canopus star (the 2nd-brightest, under the cube, a touch bigger
- * than Sirius). Glyph/size are data-driven from build.json::onehand.circular_menu
- * (via libs:onehand CircularMenu.config). Tapping it opens the libs:onehand
- * "circular-menu" — a two-level radial pie — centred on the star. Shown only on
- * the configured section (default `home`), mirroring SiriusStar.
+ * Home-screen Canopus star — triggers the libs:onehand arc-menu on touch.
  *
- * This class is the app-side bridge: it supplies the CircularMenu.Host so the
- * app-agnostic lib can navigate (onTileClicked), resolve icons (iconResFor), and
- * fan out a section's live pages (SectionPages) without the lib touching R/app.
+ * The arc-menu opens at the bottom of the screen showing the children of the
+ * section in build.json::onehand.arc_menu.section (default "config").
+ *
+ * Size/glyph/position read from build.json::onehand.circular_menu.star — same
+ * config block as Sirius so both stars are always the same size.
+ *
+ * Distinct from Sirius star which opens the full multi-level circular-menu.
  */
 class CanopusStar(private val activity: AppCompatActivity) {
 
-    private val cfg get() = CircularMenu.config()
-    private var session: CircularMenu.Session? = null
+    private val cfg get() = CircularMenu.config()   // size/glyph same as Sirius
+    private var session: ArcMenu.Session? = null
 
-    private val host = object : CircularMenu.Host {
+    private val host = object : ArcMenu.Host {
         override fun navigate(target: String) {
             (activity as? MainActivity)?.onTileClicked(target)
         }
@@ -44,9 +45,9 @@ class CanopusStar(private val activity: AppCompatActivity) {
             return bmp
         }
 
-        override fun pagesFor(section: String): List<CircularMenu.Leaf> =
+        override fun itemsFor(section: String): List<ArcMenu.Item> =
             SectionPages.pagesFor(section).map {
-                CircularMenu.Leaf(it.label, "", "page:$section/${it.id}")
+                ArcMenu.Item(it.label, "", "page:$section/${it.id}")
             }
     }
 
@@ -57,13 +58,10 @@ class CanopusStar(private val activity: AppCompatActivity) {
         if (!c.enabled) { star.visibility = View.GONE; return }
         star.text = c.starGlyph
         star.setTextSize(TypedValue.COMPLEX_UNIT_SP, c.starSizeSp.toFloat())
-        // Bigger tap target (data-driven padding) so the star is easy to hit.
         val pad = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, c.starTapPadDp.toFloat(), activity.resources.displayMetrics).toInt()
         star.setPadding(pad, pad, pad, pad)
-        // Anchor just ABOVE the bottom nav island (never overlapping it) so the
-        // half-moon menu opens upward. Falls back to the data-driven bottom_pct if
-        // the nav isn't laid out yet.
+        // Anchor just above the bottom nav island so the arc opens upward.
         star.post {
             val island = activity.findViewById<View?>(R.id.bottom_nav_island)
             if (island != null && island.height > 0) {
@@ -76,8 +74,7 @@ class CanopusStar(private val activity: AppCompatActivity) {
                 star.translationY = star.rootView.height * c.starBottomPct
             }
         }
-        // Forward the whole press→drag→release gesture to the menu so it's one
-        // continuous motion (the overlay never sees the gesture that began here).
+        // Forward press→drag→release to the arc-menu.
         star.setOnTouchListener { _, e ->
             val decor = activity.findViewById<ViewGroup>(android.R.id.content)
                 ?: return@setOnTouchListener false
@@ -87,7 +84,7 @@ class CanopusStar(private val activity: AppCompatActivity) {
             val y = s[1] - d[1] + e.y
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    session = CircularMenu.open(decor, x, y, host)
+                    session = ArcMenu.open(decor, host)
                     session?.feed(x, y, MotionEvent.ACTION_DOWN)
                 }
                 MotionEvent.ACTION_MOVE -> session?.feed(x, y, MotionEvent.ACTION_MOVE)
@@ -100,7 +97,7 @@ class CanopusStar(private val activity: AppCompatActivity) {
         }
     }
 
-    /** Show only on the configured section (default `home`). */
+    /** Show only on the `home` section (same as circular-menu's show_on_section). */
     fun update(currentSection: String) {
         val star = activity.findViewById<TextView?>(R.id.canopus_star) ?: return
         val c = cfg
