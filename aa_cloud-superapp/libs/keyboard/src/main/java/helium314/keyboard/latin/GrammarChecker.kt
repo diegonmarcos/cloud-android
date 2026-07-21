@@ -20,6 +20,7 @@ object GrammarChecker {
     private val TRAILING_WORD = Regex("""(\w+)$""")
     private val SENTENCE_END = Regex("""[.!?]\s*$""")
 
+    @JvmStatic
     fun checkAndFix(context: Context, connection: RichInputConnection) {
         val before = connection.getTextBeforeCursor(LOOKBACK, 0)?.toString() ?: return
         val trimmed = before.trimEnd()
