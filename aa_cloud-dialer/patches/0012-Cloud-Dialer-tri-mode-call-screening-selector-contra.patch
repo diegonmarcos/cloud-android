@@ -1,0 +1,227 @@
+From e4cd99747c9de822ceadef9030d8d04e4a749db4 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 15:16:16 +0300
+Subject: [PATCH 12/12] Cloud-Dialer: tri-mode call-screening selector
+ (contract: build.json call_screening)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Settings ▸ Call screening ▸ 'Screening mode': contacts_only /
+  block_known_spam / allow_all — replaces the single spam switch. Mode values
+  mirror build.json::forks.dialer.call_screening.modes.
+- Config.callScreeningMode is DERIVED over blockUnknownNumbers +
+  blockKnownSpam (no third pref) so commons' blocked-numbers toggles stay in
+  sync bidirectionally.
+- App.onCreate seeds blockUnknownNumbers=true once (key-absence check) so the
+  FIRST-RUN default == contacts_only per the owner contract; the user's later
+  choice always wins.
+---
+ app/src/main/kotlin/org/fossify/phone/App.kt  | 10 +++++
+ .../phone/activities/SettingsActivity.kt      | 38 ++++++++++++++-----
+ .../org/fossify/phone/helpers/Config.kt       | 17 +++++++++
+ .../org/fossify/phone/helpers/Constants.kt    |  6 +++
+ app/src/main/res/layout/activity_settings.xml | 22 +++++++----
+ app/src/main/res/values/strings.xml           |  7 +++-
+ 6 files changed, 82 insertions(+), 18 deletions(-)
+
+diff --git a/app/src/main/kotlin/org/fossify/phone/App.kt b/app/src/main/kotlin/org/fossify/phone/App.kt
+index 8a2e2b3d..19f4233e 100644
+--- a/app/src/main/kotlin/org/fossify/phone/App.kt
++++ b/app/src/main/kotlin/org/fossify/phone/App.kt
+@@ -2,6 +2,8 @@ package org.fossify.phone
+ 
+ import org.fossify.commons.FossifyApp
+ import org.fossify.commons.extensions.baseConfig
++import org.fossify.commons.extensions.getSharedPrefs
++import org.fossify.commons.helpers.BLOCK_UNKNOWN_NUMBERS
+ import org.fossify.commons.helpers.SIDELOADING_FALSE
+ 
+ /**
+@@ -19,5 +21,13 @@ class App : FossifyApp() {
+     override fun onCreate() {
+         super.onCreate()
+         baseConfig.appSideloadingStatus = SIDELOADING_FALSE
++
++        // First-run screening default = contacts_only, per the owner contract in
++        // build.json::forks.dialer.call_screening.default_mode: unknown numbers
++        // are silently rejected until the user picks another mode in Settings.
++        // Seed-once (key-absence check) so the user's later choice always wins.
++        if (!getSharedPrefs().contains(BLOCK_UNKNOWN_NUMBERS)) {
++            baseConfig.blockUnknownNumbers = true
++        }
+     }
+ }
+diff --git a/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
+index 52426bee..5cf64031 100644
+--- a/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
++++ b/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
+@@ -46,6 +46,9 @@ import org.fossify.phone.extensions.config
+ import org.fossify.phone.extensions.launchAccountsConfiguration
+ import org.fossify.phone.helpers.CALL_PROVIDER_CELLULAR
+ import org.fossify.phone.helpers.RecentsHelper
++import org.fossify.phone.helpers.SCREENING_ALLOW_ALL
++import org.fossify.phone.helpers.SCREENING_BLOCK_KNOWN_SPAM
++import org.fossify.phone.helpers.SCREENING_CONTACTS_ONLY
+ import org.fossify.phone.helpers.isPackageInstalled
+ import org.fossify.phone.helpers.loadCallProviders
+ import org.fossify.phone.models.RecentCall
+@@ -122,7 +125,7 @@ class SettingsActivity : SimpleActivity() {
+         setupCallsExport()
+         setupCallsImport()
+         setupDefaultCallProvider()
+-        setupBlockKnownSpam()
++        setupScreeningMode()
+         setupCheckForUpdates()
+         updateTextColors(binding.settingsHolder)
+ 
+@@ -247,18 +250,35 @@ class SettingsActivity : SimpleActivity() {
+             ?: getString(R.string.always_ask)
+     }
+ 
+-    // Cloud Dialer: toggle the self-contained offline spam filter (patch 0007).
+-    // Mirrors Fossify's other MyMaterialSwitch settings; wired to config.blockKnownSpam.
+-    private fun setupBlockKnownSpam() {
+-        binding.apply {
+-            settingsBlockKnownSpam.isChecked = config.blockKnownSpam
+-            settingsBlockKnownSpamHolder.setOnClickListener {
+-                settingsBlockKnownSpam.toggle()
+-                config.blockKnownSpam = settingsBlockKnownSpam.isChecked
++    // Cloud Dialer: tri-mode call screening selector, values from
++    // build.json::forks.dialer.call_screening.modes (contract). Backed by the
++    // derived Config.callScreeningMode over blockUnknownNumbers + blockKnownSpam,
++    // so commons' own blocked-numbers toggles stay consistent.
++    private fun setupScreeningMode() {
++        binding.settingsScreeningMode.text = getScreeningModeText()
++        binding.settingsScreeningModeHolder.setOnClickListener {
++            val items = arrayListOf(
++                RadioItem(0, getString(R.string.screening_contacts_only), SCREENING_CONTACTS_ONLY),
++                RadioItem(1, getString(R.string.screening_block_known_spam), SCREENING_BLOCK_KNOWN_SPAM),
++                RadioItem(2, getString(R.string.screening_allow_all), SCREENING_ALLOW_ALL),
++            )
++
++            val checkedId = items.firstOrNull { it.value == config.callScreeningMode }?.id ?: 0
++            RadioGroupDialog(this@SettingsActivity, items, checkedId) {
++                config.callScreeningMode = it as String
++                binding.settingsScreeningMode.text = getScreeningModeText()
+             }
+         }
+     }
+ 
++    private fun getScreeningModeText(): String = getString(
++        when (config.callScreeningMode) {
++            SCREENING_CONTACTS_ONLY -> R.string.screening_contacts_only
++            SCREENING_BLOCK_KNOWN_SPAM -> R.string.screening_block_known_spam
++            else -> R.string.screening_allow_all
++        }
++    )
++
+     // Cloud Dialer: manual "Check for updates" entry point for the self-contained
+     // GHCR/WorkManager updater. The label shows the running version; tapping runs
+     // a one-shot check (Updater.checkNow) that installs a newer GHCR build.
+diff --git a/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt b/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt
+index 92bc1b90..f57f5544 100644
+--- a/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt
++++ b/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt
+@@ -144,6 +144,23 @@ class Config(context: Context) : BaseConfig(context) {
+         get() = prefs.getBoolean(BLOCK_KNOWN_SPAM, true)
+         set(blockKnownSpam) = prefs.edit().putBoolean(BLOCK_KNOWN_SPAM, blockKnownSpam).apply()
+ 
++    // Cloud Dialer: single tri-mode view over the two screening prefs, per
++    // build.json::forks.dialer.call_screening.modes. DERIVED — no third pref,
++    // so commons' own blocked-numbers toggles stay in sync automatically.
++    //   contacts_only    → blockUnknownNumbers=true  (non-contacts silently rejected)
++    //   block_known_spam → blockUnknownNumbers=false, blockKnownSpam=true
++    //   allow_all        → both false
++    var callScreeningMode: String
++        get() = when {
++            blockUnknownNumbers -> SCREENING_CONTACTS_ONLY
++            blockKnownSpam -> SCREENING_BLOCK_KNOWN_SPAM
++            else -> SCREENING_ALLOW_ALL
++        }
++        set(mode) {
++            blockUnknownNumbers = mode == SCREENING_CONTACTS_ONLY
++            blockKnownSpam = mode != SCREENING_ALLOW_ALL
++        }
++
+     // Cloud Dialer: how outgoing calls are placed. "" = always show the provider
+     // chooser; CALL_PROVIDER_CELLULAR = always plain cellular; any other value =
+     // a provider id from assets/call_providers.json (fail-open to the chooser
+diff --git a/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt b/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt
+index e6a80704..ab3c507b 100644
+--- a/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt
++++ b/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt
+@@ -24,6 +24,12 @@ const val DEFAULT_CALL_PROVIDER = "default_call_provider"
+ // Cloud Dialer: reserved defaultCallProvider value meaning "always plain cellular"
+ // ("" = always ask; any other value = a provider id from assets/call_providers.json).
+ const val CALL_PROVIDER_CELLULAR = "cellular"
++
++// Cloud Dialer: call-screening modes. Values mirror
++// build.json::forks.dialer.call_screening.modes — keep in sync (contract).
++const val SCREENING_CONTACTS_ONLY = "contacts_only"
++const val SCREENING_ALLOW_ALL = "allow_all"
++const val SCREENING_BLOCK_KNOWN_SPAM = "block_known_spam"
+ const val ALWAYS_SHOW_FULLSCREEN = "always_show_fullscreen"
+ 
+ const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY
+diff --git a/app/src/main/res/layout/activity_settings.xml b/app/src/main/res/layout/activity_settings.xml
+index 7c3b6b13..6ab1f355 100644
+--- a/app/src/main/res/layout/activity_settings.xml
++++ b/app/src/main/res/layout/activity_settings.xml
+@@ -525,20 +525,28 @@
+                 style="@style/SettingsSectionLabelStyle"
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+-                android:text="@string/spam" />
++                android:text="@string/call_screening" />
+ 
+             <RelativeLayout
+-                android:id="@+id/settings_block_known_spam_holder"
+-                style="@style/SettingsHolderSwitchStyle"
++                android:id="@+id/settings_screening_mode_holder"
++                style="@style/SettingsHolderTextViewStyle"
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content">
+ 
+-                <org.fossify.commons.views.MyMaterialSwitch
+-                    android:id="@+id/settings_block_known_spam"
+-                    style="@style/SettingsSwitchStyle"
++                <org.fossify.commons.views.MyTextView
++                    android:id="@+id/settings_screening_mode_label"
++                    style="@style/SettingsTextLabelStyle"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="@string/screening_mode" />
++
++                <org.fossify.commons.views.MyTextView
++                    android:id="@+id/settings_screening_mode"
++                    style="@style/SettingsTextValueStyle"
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:text="@string/block_known_spam" />
++                    android:layout_below="@+id/settings_screening_mode_label"
++                    tools:text="@string/screening_contacts_only" />
+ 
+             </RelativeLayout>
+ 
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 2561ef58..4abcba5f 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -93,8 +93,11 @@
+     <string name="updates">Updates</string>
+     <string name="check_for_updates">Check for updates</string>
+     <string name="checking_for_updates">Checking for updates…</string>
+-    <string name="spam">Spam</string>
+-    <string name="block_known_spam">Block known spam calls</string>
++    <string name="call_screening">Call screening</string>
++    <string name="screening_mode">Screening mode</string>
++    <string name="screening_contacts_only">Contacts only — silently reject unknown numbers</string>
++    <string name="screening_block_known_spam">Block known spam numbers only</string>
++    <string name="screening_allow_all">Allow all calls</string>
+     <string name="calling_accounts">Calling accounts</string>
+ 
+     <!-- FAQ -->
+-- 
+2.44.2
+

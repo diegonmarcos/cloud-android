@@ -1,0 +1,101 @@
+From 1e472e8bb2513dd8427f2a12f4afc8f721fd4073 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Thu, 9 Jul 2026 08:59:54 +0300
+Subject: [PATCH] comms: SUPER RSS READER auto-provisions on first run (default
+ base URL)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The 142-channel tree never appeared on its own: WorkerFeedSync.ensureChannelTree
+bailed when comms_cloud_base_url was unset, and that pref was ONLY set by manually
+opening Configs → 'Cloud feeds…' and typing our own infra URL. Adding a raw RSS
+account (what a user naturally tries) provisioned nothing → empty mailbox.
+
+Fix — data-driven default + auto-subscribe:
+- COMMS_RSS_BASE (https://rss.diegonmarcos.com/feed, the wg0-only rss-gateway
+  root, feed_auth=none) baked into BuildConfig via build.json::gradle_props +
+  app/build.gradle buildConfigField.
+- ensureChannelTree defaults to BuildConfig.COMMS_RSS_BASE instead of null, so
+  every sync auto-provisions the tree from <base>/channels.json. User override
+  (Cloud Feeds dialog) still wins.
+- ApplicationEx fires WorkerFeedSync.oneShot on startup — init() only schedules
+  a 6h-delayed periodic, so the tree now fills immediately on first launch.
+- FragmentDialogCloudFeeds prefill reads BuildConfig, not a hardcoded URL.
+
+Backend already live: rss-gateway serves /feed/channels.json (142 channels:
+22 declared + 89 logs + 31 apps) on wg0. Tester: test-rss-autoprovision.sh 10/10.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ app/build.gradle                                           | 4 ++++
+ app/src/main/java/eu/faircode/email/ApplicationEx.java     | 5 +++++
+ .../java/eu/faircode/email/FragmentDialogCloudFeeds.java   | 2 +-
+ app/src/main/java/eu/faircode/email/WorkerFeedSync.java    | 7 ++++++-
+ 4 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/app/build.gradle b/app/build.gradle
+index 2e16906605..836fec6460 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -47,6 +47,10 @@ android {
+         buildConfigField "String", "COMMS_GH_REPO",            "\"${project.findProperty('COMMS_GH_REPO') ?: 'unix'}\""
+         buildConfigField "String", "COMMS_RELEASE_ASSET_NAME", "\"${project.findProperty('COMMS_RELEASE_ASSET_NAME') ?: 'cloud-comms-mail.apk'}\""
+         buildConfigField "String", "COMMS_BUILD_TIMESTAMP",    "\"${project.findProperty('COMMS_BUILD_TIMESTAMP') ?: 'dev'}\""
++        // comms: SUPER RSS READER default base — the wg0-only rss-gateway feed
++        // root. Used by WorkerFeedSync.ensureChannelTree to auto-provision the
++        // channel tree on first run. Data-driven via build.json::gradle_props.
++        buildConfigField "String", "COMMS_RSS_BASE",           "\"${project.findProperty('COMMS_RSS_BASE') ?: 'https://rss.diegonmarcos.com/feed'}\""
+ 
+         javaCompileOptions {
+             annotationProcessorOptions {
+diff --git a/app/src/main/java/eu/faircode/email/ApplicationEx.java b/app/src/main/java/eu/faircode/email/ApplicationEx.java
+index adf1c25bce..23cc7d134f 100644
+--- a/app/src/main/java/eu/faircode/email/ApplicationEx.java
++++ b/app/src/main/java/eu/faircode/email/ApplicationEx.java
+@@ -360,6 +360,11 @@ public class ApplicationEx extends Application
+                 CommsUpdateWorker.init(this); // comms: self-updater (GHCR)
+                 WorkerCleanup.init(this);
+                 WorkerFeedSync.init(this);
++                // comms: init() only schedules the 6h periodic (6h initial
++                // delay) — fire a one-shot now so the SUPER RSS READER channel
++                // tree provisions from BuildConfig.COMMS_RSS_BASE immediately on
++                // first launch instead of waiting 6h. KEEP-policy → idempotent.
++                WorkerFeedSync.oneShot(this);
+                 WorkerDailyRules.init(this);
+                 WorkerSync.init(this);
+             } catch (Throwable ex) {
+diff --git a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+index 4cb4884509..9f87de94a2 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
++++ b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+@@ -77,7 +77,7 @@ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+ 
+         // Pre-fill from stored preferences
+         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+-        String savedBase  = prefs.getString(PREF_BASE,  "https://rss.diegonmarcos.com/feed");
++        String savedBase  = prefs.getString(PREF_BASE,  BuildConfig.COMMS_RSS_BASE);
+         String savedToken = prefs.getString(PREF_TOKEN, "");
+         etBaseUrl.setText(savedBase);
+         etToken.setText(savedToken);
+diff --git a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+index f7792d1fdf..4cc82ca382 100644
+--- a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
++++ b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+@@ -125,7 +125,12 @@ public class WorkerFeedSync extends Worker {
+     // folder tree. base pref = ".../feed" (same as the profiles flow); each
+     // channel.feed is origin-relative ("/feed/c/<topic>.atom").
+     private static void ensureChannelTree(Context context, DB db, SharedPreferences prefs) throws Throwable {
+-        String base = prefs.getString("comms_cloud_base_url", null);
++        // Default to the baked infra endpoint (BuildConfig.COMMS_RSS_BASE =
++        // https://rss.diegonmarcos.com/feed) so the SUPER RSS READER tree
++        // auto-provisions on first run WITHOUT the user opening Cloud Feeds and
++        // typing our own URL. wg0-only + feed_auth=none → no token needed. A
++        // user override (set via the Cloud Feeds dialog) still wins.
++        String base = prefs.getString("comms_cloud_base_url", BuildConfig.COMMS_RSS_BASE);
+         if (TextUtils.isEmpty(base))
+             return;
+         String url = base.endsWith("/") ? base + "channels.json" : base + "/channels.json";
+-- 
+2.44.2
+

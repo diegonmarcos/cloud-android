@@ -1,0 +1,388 @@
+From d7fb44da07fb1d3598a12b97cfb47d018655d809 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 15:13:55 +0300
+Subject: [PATCH 11/12] Cloud-Dialer: bottom-sheet provider chooser (real app
+ icons) + Default-call-provider setting
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+UI overhaul of the per-call provider chooser:
+- New CallProviderChooserSheet (BaseBottomSheetDialogFragment): one row per way
+  to reach the number — Cellular + each available provider — with the provider
+  app's actual launcher icon; replaces the bare RadioGroupDialog. Commons'
+  SimpleListItem sheet is resource-id-only, hence the small custom sheet.
+- New Settings ▸ Calling ▸ 'Default call provider': Always ask (default) /
+  Cellular / any installed provider from assets/call_providers.json. A set
+  default skips the chooser; fails open back to the sheet when the default
+  can't reach the dialed number. Pref: Config.defaultCallProvider.
+---
+ .../phone/activities/SettingsActivity.kt      | 36 ++++++++++
+ .../phone/dialogs/CallProviderChooserSheet.kt | 67 +++++++++++++++++++
+ .../phone/extensions/CallProviderExt.kt       | 54 +++++++++++----
+ .../org/fossify/phone/helpers/Config.kt       |  8 +++
+ .../org/fossify/phone/helpers/Constants.kt    |  5 ++
+ app/src/main/res/layout/activity_settings.xml | 34 ++++++++++
+ .../main/res/layout/item_call_provider.xml    | 27 ++++++++
+ app/src/main/res/values/strings.xml           |  4 ++
+ 8 files changed, 223 insertions(+), 12 deletions(-)
+ create mode 100644 app/src/main/kotlin/org/fossify/phone/dialogs/CallProviderChooserSheet.kt
+ create mode 100644 app/src/main/res/layout/item_call_provider.xml
+
+diff --git a/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
+index c332d17d..52426bee 100644
+--- a/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
++++ b/app/src/main/kotlin/org/fossify/phone/activities/SettingsActivity.kt
+@@ -44,7 +44,10 @@ import org.fossify.phone.dialogs.ManageVisibleTabsDialog
+ import org.fossify.phone.extensions.canLaunchAccountsConfiguration
+ import org.fossify.phone.extensions.config
+ import org.fossify.phone.extensions.launchAccountsConfiguration
++import org.fossify.phone.helpers.CALL_PROVIDER_CELLULAR
+ import org.fossify.phone.helpers.RecentsHelper
++import org.fossify.phone.helpers.isPackageInstalled
++import org.fossify.phone.helpers.loadCallProviders
+ import org.fossify.phone.models.RecentCall
+ import java.util.Locale
+ import kotlin.system.exitProcess
+@@ -118,6 +121,7 @@ class SettingsActivity : SimpleActivity() {
+         setupAlwaysShowFullscreen()
+         setupCallsExport()
+         setupCallsImport()
++        setupDefaultCallProvider()
+         setupBlockKnownSpam()
+         setupCheckForUpdates()
+         updateTextColors(binding.settingsHolder)
+@@ -130,6 +134,7 @@ class SettingsActivity : SimpleActivity() {
+                 settingsCallsLabel,
+                 settingsDialpadSectionLabel,
+                 settingsMigrationSectionLabel,
++                settingsCallingSectionLabel,
+                 settingsSpamSectionLabel,
+                 settingsUpdatesSectionLabel
+             ).forEach {
+@@ -211,6 +216,37 @@ class SettingsActivity : SimpleActivity() {
+         }
+     }
+ 
++    // Cloud Dialer: "Default call provider" — how outgoing calls are placed.
++    // "" = always show the provider chooser sheet; cellular = never ask;
++    // otherwise a provider id from assets/call_providers.json (only installed
++    // providers are offered). Value semantics live in Config.defaultCallProvider.
++    private fun setupDefaultCallProvider() {
++        binding.settingsDefaultCallProvider.text = getDefaultCallProviderText()
++        binding.settingsDefaultCallProviderHolder.setOnClickListener {
++            val providers = loadCallProviders(this).filter { isPackageInstalled(this, it.packageName) }
++            val items = arrayListOf(
++                RadioItem(0, getString(R.string.always_ask), ""),
++                RadioItem(1, getString(R.string.call_via_cellular), CALL_PROVIDER_CELLULAR),
++            )
++            providers.forEachIndexed { index, provider ->
++                items.add(RadioItem(index + 2, provider.label, provider.id))
++            }
++
++            val checkedId = items.firstOrNull { it.value == config.defaultCallProvider }?.id ?: 0
++            RadioGroupDialog(this@SettingsActivity, items, checkedId) {
++                config.defaultCallProvider = it as String
++                binding.settingsDefaultCallProvider.text = getDefaultCallProviderText()
++            }
++        }
++    }
++
++    private fun getDefaultCallProviderText(): String = when (val default = config.defaultCallProvider) {
++        "" -> getString(R.string.always_ask)
++        CALL_PROVIDER_CELLULAR -> getString(R.string.call_via_cellular)
++        else -> loadCallProviders(this).firstOrNull { it.id == default }?.label
++            ?: getString(R.string.always_ask)
++    }
++
+     // Cloud Dialer: toggle the self-contained offline spam filter (patch 0007).
+     // Mirrors Fossify's other MyMaterialSwitch settings; wired to config.blockKnownSpam.
+     private fun setupBlockKnownSpam() {
+diff --git a/app/src/main/kotlin/org/fossify/phone/dialogs/CallProviderChooserSheet.kt b/app/src/main/kotlin/org/fossify/phone/dialogs/CallProviderChooserSheet.kt
+new file mode 100644
+index 00000000..b5419cba
+--- /dev/null
++++ b/app/src/main/kotlin/org/fossify/phone/dialogs/CallProviderChooserSheet.kt
+@@ -0,0 +1,67 @@
++package org.fossify.phone.dialogs
++
++import android.graphics.drawable.Drawable
++import android.os.Bundle
++import android.view.ViewGroup
++import android.widget.LinearLayout
++import androidx.fragment.app.FragmentManager
++import org.fossify.commons.extensions.getProperTextColor
++import org.fossify.commons.fragments.BaseBottomSheetDialogFragment
++import org.fossify.phone.R
++import org.fossify.phone.databinding.ItemCallProviderBinding
++
++/**
++ * Cloud Dialer: bottom-sheet call-provider chooser — one row per way to reach
++ * the dialed number (cellular + every available VoIP/deep-link provider from
++ * assets/call_providers.json), each with the provider app's real launcher icon.
++ *
++ * Exists because commons' SimpleListItem sheet only supports resource-id text
++ * and icons, while provider labels/icons are runtime values. Rows are passed
++ * as a property (not fragment arguments): on system re-creation the lambdas
++ * are gone, so the sheet dismisses itself — the same trade-off upstream's
++ * DynamicBottomSheetChooserDialog.onItemClick already makes.
++ */
++class CallProviderChooserSheet : BaseBottomSheetDialogFragment() {
++
++    class Row(val icon: Drawable?, val label: String, val onTap: () -> Unit)
++
++    var rows: List<Row> = emptyList()
++
++    override fun setupContentView(parent: ViewGroup) {
++        if (rows.isEmpty()) {
++            dismissAllowingStateLoss()
++            return
++        }
++
++        val list = LinearLayout(requireContext()).apply {
++            orientation = LinearLayout.VERTICAL
++        }
++        val textColor = requireContext().getProperTextColor()
++        rows.forEach { row ->
++            val item = ItemCallProviderBinding.inflate(layoutInflater, list, false)
++            item.callProviderIcon.setImageDrawable(row.icon)
++            item.callProviderLabel.text = row.label
++            item.callProviderLabel.setTextColor(textColor)
++            item.root.setOnClickListener {
++                row.onTap()
++                dismissAllowingStateLoss()
++            }
++            list.addView(item.root)
++        }
++        parent.addView(list)
++    }
++
++    companion object {
++        private const val TAG = "CallProviderChooserSheet"
++
++        fun show(fragmentManager: FragmentManager, rows: List<Row>) {
++            CallProviderChooserSheet().apply {
++                arguments = Bundle().apply {
++                    putInt(BOTTOM_SHEET_TITLE, R.string.call_using)
++                }
++                this.rows = rows
++                show(fragmentManager, TAG)
++            }
++        }
++    }
++}
+diff --git a/app/src/main/kotlin/org/fossify/phone/extensions/CallProviderExt.kt b/app/src/main/kotlin/org/fossify/phone/extensions/CallProviderExt.kt
+index 4567654e..4be016d3 100644
+--- a/app/src/main/kotlin/org/fossify/phone/extensions/CallProviderExt.kt
++++ b/app/src/main/kotlin/org/fossify/phone/extensions/CallProviderExt.kt
+@@ -4,11 +4,13 @@ import android.content.ActivityNotFoundException
+ import android.content.Intent
+ import android.net.Uri
+ import android.provider.ContactsContract
+-import org.fossify.commons.dialogs.RadioGroupDialog
++import org.fossify.commons.extensions.getColoredDrawableWithColor
++import org.fossify.commons.extensions.getProperTextColor
+ import org.fossify.commons.extensions.toast
+-import org.fossify.commons.models.RadioItem
+ import org.fossify.phone.R
+ import org.fossify.phone.activities.SimpleActivity
++import org.fossify.phone.dialogs.CallProviderChooserSheet
++import org.fossify.phone.helpers.CALL_PROVIDER_CELLULAR
+ import org.fossify.phone.helpers.OptionKind
+ import org.fossify.phone.helpers.ProviderOption
+ import org.fossify.phone.helpers.availableOptions
+@@ -20,6 +22,8 @@ import org.fossify.phone.helpers.queryVoipDataIds
+ /**
+  * Entry point for every call: offer "Cellular / Call with WhatsApp / Open in Telegram / …".
+  * Falls straight through to a normal cellular call when no provider can handle the number.
++ * A configured default provider (Settings ▸ Calling) skips the chooser; fail-open back to
++ * the chooser when the default can't reach this number.
+  */
+ fun SimpleActivity.startCallWithProviderChooser(number: String, name: String) {
+     val providers = loadCallProviders(this)
+@@ -32,20 +36,46 @@ fun SimpleActivity.startCallWithProviderChooser(number: String, name: String) {
+         return
+     }
+ 
+-    // index 0 = cellular; indices 1.. map to options
+-    val items = ArrayList<RadioItem>()
+-    items.add(RadioItem(0, getString(R.string.call_via_cellular)))
+-    options.forEachIndexed { i, opt ->
+-        val template = if (opt.kind == OptionKind.VOIP) R.string.call_with else R.string.open_in
+-        items.add(RadioItem(i + 1, getString(template, opt.provider.label)))
++    when (val default = config.defaultCallProvider) {
++        "" -> showProviderChooserSheet(options, number, name)
++        CALL_PROVIDER_CELLULAR -> startCallWithConfirmationCheck(number, name)
++        else -> {
++            val option = options.firstOrNull { it.provider.id == default }
++            if (option != null) {
++                launchProviderCall(option, number)
++            } else {
++                showProviderChooserSheet(options, number, name)
++            }
++        }
+     }
++}
+ 
+-    RadioGroupDialog(this, items, 0) { selected ->
+-        when (val idx = selected as Int) {
+-            0 -> startCallWithConfirmationCheck(number, name)
+-            else -> launchProviderCall(options[idx - 1], number)
++private fun SimpleActivity.showProviderChooserSheet(
++    options: List<ProviderOption>,
++    number: String,
++    name: String,
++) {
++    val rows = ArrayList<CallProviderChooserSheet.Row>(options.size + 1)
++    val cellularIcon = resources.getColoredDrawableWithColor(R.drawable.ic_phone_vector, getProperTextColor())
++    rows.add(
++        CallProviderChooserSheet.Row(cellularIcon, getString(R.string.call_via_cellular)) {
++            startCallWithConfirmationCheck(number, name)
+         }
++    )
++    options.forEach { option ->
++        val icon = try {
++            packageManager.getApplicationIcon(option.provider.packageName)
++        } catch (e: Exception) {
++            null
++        }
++        val template = if (option.kind == OptionKind.VOIP) R.string.call_with else R.string.open_in
++        rows.add(
++            CallProviderChooserSheet.Row(icon, getString(template, option.provider.label)) {
++                launchProviderCall(option, number)
++            }
++        )
+     }
++    CallProviderChooserSheet.show(supportFragmentManager, rows)
+ }
+ 
+ private fun SimpleActivity.launchProviderCall(option: ProviderOption, number: String) {
+diff --git a/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt b/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt
+index 051fcf77..92bc1b90 100644
+--- a/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt
++++ b/app/src/main/kotlin/org/fossify/phone/helpers/Config.kt
+@@ -143,4 +143,12 @@ class Config(context: Context) : BaseConfig(context) {
+     var blockKnownSpam: Boolean
+         get() = prefs.getBoolean(BLOCK_KNOWN_SPAM, true)
+         set(blockKnownSpam) = prefs.edit().putBoolean(BLOCK_KNOWN_SPAM, blockKnownSpam).apply()
++
++    // Cloud Dialer: how outgoing calls are placed. "" = always show the provider
++    // chooser; CALL_PROVIDER_CELLULAR = always plain cellular; any other value =
++    // a provider id from assets/call_providers.json (fail-open to the chooser
++    // when that provider can't reach the dialed number).
++    var defaultCallProvider: String
++        get() = prefs.getString(DEFAULT_CALL_PROVIDER, "")!!
++        set(defaultCallProvider) = prefs.edit().putString(DEFAULT_CALL_PROVIDER, defaultCallProvider).apply()
+ }
+diff --git a/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt b/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt
+index 95b9d050..e6a80704 100644
+--- a/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt
++++ b/app/src/main/kotlin/org/fossify/phone/helpers/Constants.kt
+@@ -19,6 +19,11 @@ const val DIALPAD_VIBRATION = "dialpad_vibration"
+ const val DIALPAD_BEEPS = "dialpad_beeps"
+ const val HIDE_DIALPAD_NUMBERS = "hide_dialpad_numbers"
+ const val BLOCK_KNOWN_SPAM = "block_known_spam"
++const val DEFAULT_CALL_PROVIDER = "default_call_provider"
++
++// Cloud Dialer: reserved defaultCallProvider value meaning "always plain cellular"
++// ("" = always ask; any other value = a provider id from assets/call_providers.json).
++const val CALL_PROVIDER_CELLULAR = "cellular"
+ const val ALWAYS_SHOW_FULLSCREEN = "always_show_fullscreen"
+ 
+ const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY
+diff --git a/app/src/main/res/layout/activity_settings.xml b/app/src/main/res/layout/activity_settings.xml
+index bbbc1c04..7c3b6b13 100644
+--- a/app/src/main/res/layout/activity_settings.xml
++++ b/app/src/main/res/layout/activity_settings.xml
+@@ -482,6 +482,40 @@
+ 
+             </RelativeLayout>
+ 
++            <include
++                android:id="@+id/settings_calling_divider"
++                layout="@layout/divider" />
++
++            <TextView
++                android:id="@+id/settings_calling_section_label"
++                style="@style/SettingsSectionLabelStyle"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:text="@string/calling" />
++
++            <RelativeLayout
++                android:id="@+id/settings_default_call_provider_holder"
++                style="@style/SettingsHolderTextViewStyle"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content">
++
++                <org.fossify.commons.views.MyTextView
++                    android:id="@+id/settings_default_call_provider_label"
++                    style="@style/SettingsTextLabelStyle"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="@string/default_call_provider" />
++
++                <org.fossify.commons.views.MyTextView
++                    android:id="@+id/settings_default_call_provider"
++                    style="@style/SettingsTextValueStyle"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_below="@+id/settings_default_call_provider_label"
++                    tools:text="@string/always_ask" />
++
++            </RelativeLayout>
++
+             <include
+                 android:id="@+id/settings_spam_divider"
+                 layout="@layout/divider" />
+diff --git a/app/src/main/res/layout/item_call_provider.xml b/app/src/main/res/layout/item_call_provider.xml
+new file mode 100644
+index 00000000..c5faeb2f
+--- /dev/null
++++ b/app/src/main/res/layout/item_call_provider.xml
+@@ -0,0 +1,27 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@+id/call_provider_row"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:background="?attr/selectableItemBackground"
++    android:gravity="center_vertical"
++    android:orientation="horizontal"
++    android:paddingStart="24dp"
++    android:paddingEnd="24dp"
++    android:paddingTop="12dp"
++    android:paddingBottom="12dp">
++
++    <ImageView
++        android:id="@+id/call_provider_icon"
++        android:layout_width="40dp"
++        android:layout_height="40dp"
++        android:importantForAccessibility="no" />
++
++    <org.fossify.commons.views.MyTextView
++        android:id="@+id/call_provider_label"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginStart="16dp"
++        android:textSize="16sp" />
++
++</LinearLayout>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 3b37ae27..2561ef58 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -5,6 +5,10 @@
+     <string name="call_with">Call with %s</string>
+     <string name="open_in">Open in %s</string>
+     <string name="call_provider_unavailable">%s isn\'t available</string>
++    <string name="call_using">Call using</string>
++    <string name="calling">Calling</string>
++    <string name="default_call_provider">Default call provider</string>
++    <string name="always_ask">Always ask</string>
+     <string name="default_phone_app_prompt">Please make this app the default Phone app</string>
+     <string name="allow_displaying_over_other_apps">Please allow displaying over other apps for reliable behaviour</string>
+ 
+-- 
+2.44.2
+

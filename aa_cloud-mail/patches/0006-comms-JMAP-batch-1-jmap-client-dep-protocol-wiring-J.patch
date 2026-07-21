@@ -1,0 +1,144 @@
+From 1e458a6ce9535158878e1d7c46c6d0d2105dede1 Mon Sep 17 00:00:00 2001
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Date: Tue, 23 Jun 2026 15:57:22 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20batch=201=20=E2=80=94=20jmap-cl?=
+ =?UTF-8?q?ient=20dep=20+=20protocol=20wiring=20+=20JmapService=20connecti?=
+ =?UTF-8?q?on=20helper?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ app/build.gradle                              |  7 ++
+ .../java/eu/faircode/email/EntityAccount.java |  2 +
+ .../java/eu/faircode/email/JmapService.java   | 85 +++++++++++++++++++
+ 3 files changed, 94 insertions(+)
+ create mode 100644 app/src/main/java/eu/faircode/email/JmapService.java
+
+diff --git a/app/build.gradle b/app/build.gradle
+index 333b943c6d..89e6f16ca5 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -520,6 +520,7 @@ dependencies {
+     //implementation fileTree(dir: 'libs', include: ['*.jar'])
+ 
+     def desugar_version = "2.0.4"
++    def jmap_version = "0.8.10" // comms: rs.ltt.jmap jmap-client (native JMAP transport)
+     def startup_version = "1.2.0"
+     def annotation_version_experimental = "1.6.0"
+     def core_version = "1.19.0"
+@@ -872,4 +873,10 @@ dependencies {
+ 
+     // https://developer.android.com/jetpack/androidx/releases/heifwriter
+     implementation "androidx.heifwriter:heifwriter:$heifwriter_version"
++
++    // https://github.com/iNPUTmice/jmap (Apache-2.0) — comms: native JMAP transport
++    // jmap-client requires jackson-databind at runtime; biweekly/ez-vcard only
++    // pull jackson-core (databind is excluded there), so add a concrete databind.
++    implementation "com.fasterxml.jackson.core:jackson-databind:2.17.2"
++    implementation "rs.ltt.jmap:jmap-client:$jmap_version"
+ }
+diff --git a/app/src/main/java/eu/faircode/email/EntityAccount.java b/app/src/main/java/eu/faircode/email/EntityAccount.java
+index c722a710e4..e789a9e97f 100644
+--- a/app/src/main/java/eu/faircode/email/EntityAccount.java
++++ b/app/src/main/java/eu/faircode/email/EntityAccount.java
+@@ -260,6 +260,8 @@ public class EntityAccount extends EntityOrder implements Serializable {
+                     return "imap" + (encryption == EmailService.ENCRYPTION_SSL ? "s" : "");
+             case TYPE_POP:
+                 return "pop3" + (encryption == EmailService.ENCRYPTION_SSL ? "s" : "");
++            case TYPE_JMAP:
++                return "jmap";
+             default:
+                 throw new IllegalArgumentException("Unknown protocol=" + protocol);
+         }
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+new file mode 100644
+index 0000000000..05d16ce83d
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -0,0 +1,85 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++import android.content.Context;
++
++import javax.mail.MessagingException;
++
++import okhttp3.HttpUrl;
++import rs.ltt.jmap.client.JmapClient;
++import rs.ltt.jmap.client.session.Session;
++
++// comms: thin JMAP connection helper wrapping rs.ltt.jmap.client.JmapClient.
++// Batch 1 — connection + session validation only. NOT yet wired into
++// EmailService.connect(); sync/ops/send/UI land in later batches.
++public class JmapService {
++    private final Context context;
++    private final String host;
++    private final int port;
++    private final String user;
++
++    private JmapClient client;
++
++    JmapService(Context context, EntityAccount account) {
++        this.context = context.getApplicationContext();
++        this.host = account.host;
++        this.port = (account.port == null ? 443 : account.port);
++        this.user = account.user;
++    }
++
++    // Open a JMAP client for the account and validate it by resolving the
++    // session resource. Blocks until the session future completes; any failure
++    // is surfaced as a javax.mail.MessagingException so callers can treat JMAP
++    // connection errors uniformly with the IMAP/POP paths.
++    void connect(String password) throws MessagingException {
++        // Standard JMAP autodiscovery endpoint (RFC 8620 §2.2).
++        String sessionResourceUrl = "https://" + host + ":" + port + "/.well-known/jmap";
++        try {
++            HttpUrl sessionResource = HttpUrl.get(sessionResourceUrl);
++            client = new JmapClient(user, password, sessionResource);
++            // Resolve the session to confirm credentials + reachability.
++            Session session = client.getSession().get();
++            if (session == null)
++                throw new MessagingException("JMAP session unavailable: " + sessionResourceUrl);
++            // TODO(batch2): inspect session capabilities / primary accounts here.
++        } catch (MessagingException ex) {
++            close();
++            throw ex;
++        } catch (Throwable ex) {
++            close();
++            throw new MessagingException("JMAP connect failed: " + sessionResourceUrl, ex);
++        }
++    }
++
++    JmapClient getClient() {
++        return client;
++    }
++
++    void close() {
++        try {
++            if (client != null)
++                client.close();
++        } catch (Throwable ignored) {
++        } finally {
++            client = null;
++        }
++    }
++}

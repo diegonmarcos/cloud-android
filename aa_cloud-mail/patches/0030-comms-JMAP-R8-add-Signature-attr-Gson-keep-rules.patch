@@ -1,0 +1,55 @@
+From 27aace249faba54dce4d0036af7323fc1ae4dac3 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Sat, 4 Jul 2026 09:28:31 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20R8=20=E2=80=94=20add=20Signatur?=
+ =?UTF-8?q?e=20attr=20+=20TypeToken=20keep=20(fixes=20NoClassDefFoundError?=
+ =?UTF-8?q?:=20Services)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+R8 strips generic type signatures unless -keepattributes Signature is
+declared. Without it, Gson 2.10+ cannot resolve the TypeToken type
+parameter in lttrs's Services.<clinit>, throwing:
+  RuntimeException: Missing type parameter
+  → ExceptionInInitializerError
+  → NoClassDefFoundError: rs.ltt.jmap.client.Services
+
+Fix: append Signature to the existing keepattributes line, and add the
+standard Gson TypeToken keep rules so R8 cannot shrink TypeToken away.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+---
+ app/proguard-rules.pro | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/app/proguard-rules.pro b/app/proguard-rules.pro
+index 923933d9e7..bb532e4b6c 100644
+--- a/app/proguard-rules.pro
++++ b/app/proguard-rules.pro
+@@ -14,7 +14,7 @@
+ 
+ # Uncomment this to preserve the line number information for
+ # debugging stack traces.
+--keepattributes SourceFile,LineNumberTable
++-keepattributes SourceFile,LineNumberTable,Signature
+ 
+ # If you after the line number information, uncomment this to
+ # hide the original source file name.
+@@ -173,6 +173,12 @@
+ -dontwarn lombok.**
+ -keep class rs.ltt.jmap.** { *; }
+ -keepclassmembers class rs.ltt.jmap.** { *; }
++# Gson 2.10+ throws RuntimeException("Missing type parameter") when R8 strips
++# generic signatures from TypeToken anonymous subclasses. -keepattributes Signature
++# (added globally above) preserves them; these rules prevent TypeToken itself from
++# being shrunk away.
++-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
++-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+ # joda-time (pulled transitively by the JMAP deps) references joda-convert's
+ # compile-only @FromString/@ToString annotations — not present at runtime.
+ -dontwarn org.joda.convert.**
+\ No newline at end of file
+-- 
+2.44.2
+

@@ -1,0 +1,93 @@
+From 90743cef7de237b3909ad4321bc05150bee5de3a Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Sat, 4 Jul 2026 12:47:21 +0300
+Subject: [PATCH] comms: auto-seed GitHub releases Atom feed in RSS inbox on
+ first launch
+
+---
+ .../eu/faircode/email/CommsUpdateWorker.java  | 48 +++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+index 683ca83784..e8c58f9ea9 100644
+--- a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
++++ b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+@@ -54,6 +54,7 @@ import java.io.InputStream;
+ import java.net.HttpURLConnection;
+ import java.net.URL;
+ import java.security.MessageDigest;
++import java.util.List;
+ import java.util.concurrent.TimeUnit;
+ 
+ public class CommsUpdateWorker extends Worker {
+@@ -62,6 +63,10 @@ public class CommsUpdateWorker extends Worker {
+     private static final String WORK_NAME = "CommsUpdateWorker";
+     private static final String WORK_NAME_NOW = "CommsUpdateWorkerNow";
+     private static final int NOTIFICATION_ID = 99001;
++    // comms: GitHub releases Atom — all ea_* apps publish releases here on CI
++    private static final String RELEASES_FEED_URL =
++            "https://github.com/diegonmarcos/unix/releases.atom";
++    private static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
+ 
+     public CommsUpdateWorker(@NonNull Context context, @NonNull WorkerParameters params) {
+         super(context, params);
+@@ -210,6 +215,48 @@ public class CommsUpdateWorker extends Worker {
+ 
+     // ── lifecycle ────────────────────────────────────────────────────────
+ 
++    // comms: auto-subscribe to the GitHub releases Atom feed so all ea_* app
++    // release entries appear in the RSS inbox without any manual setup.
++    // Idempotent — skips if the feed already exists.
++    static void seedReleaseFeed(final Context ctx) {
++        new Thread(new Runnable() {
++            @Override
++            public void run() {
++                try {
++                    DB db = DB.getInstance(ctx);
++                    EntityAccount rss = db.account().getAccountByUUID(RSS_ACCOUNT_UUID);
++                    if (rss == null) {
++                        rss = new EntityAccount();
++                        rss.uuid = RSS_ACCOUNT_UUID;
++                        rss.protocol = EntityAccount.TYPE_RSS;
++                        rss.name = "Feeds";
++                        rss.synchronize = true;
++                        rss.ondemand = false;
++                        rss.poll_interval = EntityAccount.DEFAULT_POLL_INTERVAL;
++                        rss.partial_fetch = true;
++                        rss.id = db.account().insertAccount(rss);
++                    }
++                    List<EntityFolder> existing = db.folder().getFolders(rss.id, false, false);
++                    if (existing != null)
++                        for (EntityFolder f : existing)
++                            if (RELEASES_FEED_URL.equals(f.feed_url)) return;
++                    EntityFolder folder = new EntityFolder();
++                    folder.account = rss.id;
++                    folder.name = "Cloud Apps — Releases";
++                    folder.type = EntityFolder.USER;
++                    folder.feed_url = RELEASES_FEED_URL;
++                    folder.synchronize = true;
++                    folder.sync_days = EntityFolder.DEFAULT_SYNC;
++                    folder.keep_days = EntityFolder.DEFAULT_KEEP;
++                    db.folder().insertFolder(folder);
++                    Log.i(TAG + " releases feed seeded");
++                } catch (Throwable ex) {
++                    Log.w(TAG + " seedReleaseFeed " + ex);
++                }
++            }
++        }, "CommsReleaseFeedSeeder").start();
++    }
++
+     static void init(Context context) {
+         try {
+             PeriodicWorkRequest request =
+@@ -223,6 +270,7 @@ public class CommsUpdateWorker extends Worker {
+         } catch (Throwable ex) {
+             Log.w(ex);
+         }
++        seedReleaseFeed(context); // comms: ensure releases atom is in RSS inbox
+     }
+ 
+     // ponytail: checkNow kept for completeness but no longer called by the About button
+-- 
+2.44.2
+

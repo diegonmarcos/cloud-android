@@ -1,0 +1,259 @@
+From 6c42313c2616c970a3e3a7c961b788164e216d0b Mon Sep 17 00:00:00 2001
+From: engine <engine@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 09:18:57 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20batch=205=20=E2=80=94=20send=20?=
+ =?UTF-8?q?via=20EmailSubmission=20(upload=20->=20import=20->=20submit)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Wires JMAP outbound send, reusing FairEmail's fully-built RFC822 MIME:
+ - JmapService.sendMime: JmapClient.upload(bytes, message/rfc822) -> blobId ->
+   Email/import into the Sent mailbox (seen) -> EmailSubmission/set with the
+   identity whose email matches From (Identity/get). Preserves attachments +
+   exact MIME (vs a structured Email/set create).
+ - JmapSync.onSend: opens a JMAP connection, writes imessage to bytes, submits.
+ - ServiceSend.onSend: new 'else if (protocol==TYPE_JMAP)' branch mirroring the
+   MicrosoftGraph branch, so all pre/post-send bookkeeping runs unchanged.
+
+Known-minor: Email/import also lands the message in server Sent, which the sync
+pass later fetches (separate from the local sent copy) — dedup by uidl keeps
+them distinct; de-dup of the local copy is a follow-up.
+
+All rs.ltt.jmap APIs grounded from codeberg source (Uploadable, EmailImport,
+ImportEmailMethodCall, SetEmailSubmissionMethodCall, GetIdentityMethodCall).
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../java/eu/faircode/email/JmapService.java   | 109 ++++++++++++++++++
+ .../main/java/eu/faircode/email/JmapSync.java |  34 ++++--
+ .../java/eu/faircode/email/ServiceSend.java   |   7 ++
+ 3 files changed, 140 insertions(+), 10 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+index 626015f7e5..2f5d7db0b8 100644
+--- a/app/src/main/java/eu/faircode/email/JmapService.java
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -24,6 +24,11 @@ import android.text.TextUtils;
+ 
+ import androidx.annotation.NonNull;
+ 
++import com.google.common.net.MediaType;
++
++import java.io.ByteArrayInputStream;
++import java.io.InputStream;
++import java.time.Instant;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.List;
+@@ -34,8 +39,13 @@ import javax.mail.MessagingException;
+ import okhttp3.HttpUrl;
+ import rs.ltt.jmap.client.JmapClient;
+ import rs.ltt.jmap.client.JmapRequest;
++import rs.ltt.jmap.client.blob.Upload;
++import rs.ltt.jmap.client.blob.Uploadable;
+ import rs.ltt.jmap.client.session.Session;
+ import rs.ltt.jmap.common.entity.Email;
++import rs.ltt.jmap.common.entity.EmailImport;
++import rs.ltt.jmap.common.entity.EmailSubmission;
++import rs.ltt.jmap.common.entity.Identity;
+ import rs.ltt.jmap.common.entity.Keyword;
+ import rs.ltt.jmap.common.entity.Mailbox;
+ import rs.ltt.jmap.common.entity.Role;
+@@ -43,10 +53,15 @@ import rs.ltt.jmap.common.entity.capability.MailAccountCapability;
+ import rs.ltt.jmap.common.entity.filter.EmailFilterCondition;
+ import rs.ltt.jmap.common.method.MethodResponses;
+ import rs.ltt.jmap.common.method.call.email.GetEmailMethodCall;
++import rs.ltt.jmap.common.method.call.email.ImportEmailMethodCall;
+ import rs.ltt.jmap.common.method.call.email.QueryEmailMethodCall;
+ import rs.ltt.jmap.common.method.call.email.SetEmailMethodCall;
++import rs.ltt.jmap.common.method.call.identity.GetIdentityMethodCall;
+ import rs.ltt.jmap.common.method.call.mailbox.GetMailboxMethodCall;
++import rs.ltt.jmap.common.method.call.submission.SetEmailSubmissionMethodCall;
+ import rs.ltt.jmap.common.method.response.email.GetEmailMethodResponse;
++import rs.ltt.jmap.common.method.response.email.ImportEmailMethodResponse;
++import rs.ltt.jmap.common.method.response.identity.GetIdentityMethodResponse;
+ import rs.ltt.jmap.common.method.response.mailbox.GetMailboxMethodResponse;
+ 
+ // comms: JMAP connection + data-plane helper wrapping rs.ltt.jmap.client.JmapClient.
+@@ -308,6 +323,100 @@ public class JmapService {
+         }
+     }
+ 
++    // ── Send (batch 5) ─────────────────────────────────────────────────────
++    // JMAP send reuses FairEmail's fully-built RFC822 MIME: upload the bytes as
++    // a blob → Email/import into Sent (seen) → EmailSubmission/set with the
++    // identity whose email matches the From. This preserves attachments + exact
++    // MIME (unlike a structured Email/set create).
++    void sendMime(byte[] rfc822, String fromEmail) throws MessagingException {
++        requireAccount();
++        try {
++            String identityId = resolveIdentityId(fromEmail);
++            if (identityId == null)
++                throw new MessagingException("JMAP: no identity for " + fromEmail);
++
++            // 1) upload the raw message as a blob
++            final byte[] bytes = rfc822;
++            Uploadable uploadable = new Uploadable() {
++                @Override
++                public InputStream getInputStream() {
++                    return new ByteArrayInputStream(bytes);
++                }
++
++                @Override
++                public MediaType getMediaType() {
++                    return MediaType.parse("message/rfc822");
++                }
++
++                @Override
++                public long getContentLength() {
++                    return bytes.length;
++                }
++            };
++            Upload upload = client.upload(accountId, uploadable, null).get();
++            String blobId = upload.getBlobId();
++
++            // 2) import the blob into the Sent mailbox, marked seen
++            Mailbox sentBox = findMailbox(Role.SENT);
++            Map<String, Boolean> mailboxIds = new HashMap<>();
++            mailboxIds.put(sentBox != null ? sentBox.getId() : anyMailboxId(), Boolean.TRUE);
++            Map<String, Boolean> keywords = new HashMap<>();
++            keywords.put(Keyword.SEEN, Boolean.TRUE);
++
++            EmailImport ei = EmailImport.builder()
++                    .blobId(blobId)
++                    .mailboxIds(mailboxIds)
++                    .keywords(keywords)
++                    .receivedAt(Instant.now())
++                    .build();
++            Map<String, EmailImport> imports = new HashMap<>();
++            imports.put("i0", ei);
++            MethodResponses ir = client.call(ImportEmailMethodCall.builder()
++                    .accountId(accountId).emails(imports).build()).get();
++            Map<String, Email> created = ir.getMain(ImportEmailMethodResponse.class).getCreated();
++            if (created == null || created.get("i0") == null)
++                throw new MessagingException("JMAP import produced no email");
++            String emailId = created.get("i0").getId();
++
++            // 3) submit the imported email through the identity
++            Map<String, EmailSubmission> submit = new HashMap<>();
++            submit.put("s0", EmailSubmission.builder()
++                    .emailId(emailId).identityId(identityId).build());
++            client.call(SetEmailSubmissionMethodCall.builder()
++                    .accountId(accountId).create(submit).build()).get();
++        } catch (Exception ex) {
++            throw wrap("EmailSubmission/set", ex);
++        }
++    }
++
++    private String resolveIdentityId(String email) throws Exception {
++        MethodResponses r = client.call(
++                GetIdentityMethodCall.builder().accountId(accountId).build()).get();
++        Identity[] ids = r.getMain(GetIdentityMethodResponse.class).getList();
++        if (ids == null)
++            return null;
++        String first = null;
++        for (Identity id : ids) {
++            if (first == null)
++                first = id.getId();
++            if (email != null && email.equalsIgnoreCase(id.getEmail()))
++                return id.getId();
++        }
++        return first; // fall back to the primary identity
++    }
++
++    private Mailbox findMailbox(Role role) throws MessagingException {
++        for (Mailbox mb : fetchMailboxes())
++            if (role == mb.getRole())
++                return mb;
++        return null;
++    }
++
++    private String anyMailboxId() throws MessagingException {
++        Mailbox[] all = fetchMailboxes();
++        return (all.length == 0 ? null : all[0].getId());
++    }
++
+     // ── plumbing ─────────────────────────────────────────────────────────────
+ 
+     JmapClient getClient() {
+diff --git a/app/src/main/java/eu/faircode/email/JmapSync.java b/app/src/main/java/eu/faircode/email/JmapSync.java
+index b6473b1290..e59b384fcf 100644
+--- a/app/src/main/java/eu/faircode/email/JmapSync.java
++++ b/app/src/main/java/eu/faircode/email/JmapSync.java
+@@ -22,6 +22,7 @@ package eu.faircode.email;
+ import android.content.Context;
+ import android.text.TextUtils;
+ 
++import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.time.Instant;
+ import java.time.OffsetDateTime;
+@@ -36,6 +37,7 @@ import java.util.Set;
+ 
+ import javax.mail.Address;
+ import javax.mail.internet.InternetAddress;
++import javax.mail.internet.MimeMessage;
+ 
+ import rs.ltt.jmap.common.entity.Email;
+ import rs.ltt.jmap.common.entity.EmailAddress;
+@@ -274,16 +276,28 @@ public class JmapSync {
+     }
+ 
+     // ── Send (batch 5) ────────────────────────────────────────────────────────
+-    // RUNNER-VERIFY: JMAP send = upload the built MIME as a blob, Email/set
+-    // create into Drafts/Sent referencing that blob, then EmailSubmission/set.
+-    // The blob-upload + SetEmailSubmissionMethodCall FQN weren't confirmable
+-    // from source (submission file 404'd), so this is the one path to finish
+-    // against the built classpath. A fields-only create (no attachments) is the
+-    // minimal correct submission; wire it in JmapService.submit(...) and call
+-    // it here once the submission API is confirmed on the runner.
+-    static void onSend(Context context, EntityMessage message, JmapService jmap) throws Exception {
+-        throw new UnsupportedOperationException(
+-                "JMAP send pending submission-API confirmation on the runner (batch 5)");
++    // Called from ServiceSend.onSend's JMAP branch (mirrors the MicrosoftGraph
++    // branch). Opens a JMAP connection and submits the already-built RFC822 MIME
++    // via upload → Email/import (Sent) → EmailSubmission/set. FairEmail's own
++    // pre/post-send bookkeeping (sent-folder copy, outbox delete, mark replied)
++    // runs unchanged around this call.
++    static void onSend(Context context, EntityAccount account, EntityMessage message,
++                       EntityIdentity ident, MimeMessage imessage) throws Exception {
++        EmailService iservice = new EmailService(context, account, EmailService.PURPOSE_USE, false);
++        try {
++            iservice.connect(account);
++            JmapService jmap = iservice.getJmapService();
++            if (jmap == null)
++                throw new IllegalStateException("JMAP not connected for send");
++            ByteArrayOutputStream bos = new ByteArrayOutputStream();
++            imessage.writeTo(bos);
++            jmap.sendMime(bos.toByteArray(), ident.email);
++        } finally {
++            try {
++                iservice.close();
++            } catch (Throwable ignored) {
++            }
++        }
+     }
+ 
+     // ── helpers ───────────────────────────────────────────────────────────────
+diff --git a/app/src/main/java/eu/faircode/email/ServiceSend.java b/app/src/main/java/eu/faircode/email/ServiceSend.java
+index 8e72a88908..4e3d48bcc1 100644
+--- a/app/src/main/java/eu/faircode/email/ServiceSend.java
++++ b/app/src/main/java/eu/faircode/email/ServiceSend.java
+@@ -807,6 +807,13 @@ public class ServiceSend extends ServiceBase implements SharedPreferences.OnShar
+             start = new Date().getTime();
+             MicrosoftGraph.send(ServiceSend.this, ident, imessage);
+             end = new Date().getTime();
++        } else if (account != null && account.protocol == EntityAccount.TYPE_JMAP) {
++            // comms: JMAP send via EmailSubmission (batch 5) — mirrors the Graph
++            // branch (upload MIME → Email/import Sent → EmailSubmission/set). The
++            // pre/post-send bookkeeping around this block runs unchanged.
++            start = new Date().getTime();
++            JmapSync.onSend(ServiceSend.this, account, message, ident, imessage);
++            end = new Date().getTime();
+         } else {
+             if (account != null)
+                 try (EmailService iaccount = new EmailService(this, account, EmailService.PURPOSE_USE, debug)) {
+-- 
+2.44.2
+

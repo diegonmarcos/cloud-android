@@ -1,0 +1,45 @@
+From 6e8ab4de2501185d91b1e29044dfe8b72a66de06 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 15:05:03 +0300
+Subject: [PATCH 09/12] Cloud-Dialer: updater declares PACKAGE_SOURCE_STORE
+ (fix ECM 'restricted setting' role denial)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Root cause of losing the default-Phone-app eligibility: the in-app updater's
+PackageInstaller session never called setPackageSource(), so Android 14/15
+Enhanced Confirmation Mode classified each self-update as an untrusted sideload
+and marked the app RESTRICTED — Settings then denied granting ROLE_DIALER /
+ROLE_CALL_SCREENING ('Se ha denegado el acceso… permiso restringido').
+
+The GHCR fleet updater is the constellation's own app store → declare
+PACKAGE_SOURCE_STORE (API 33+ guarded). Already-restricted installs still need
+the one-time manual unblock: App info → ⋮ → Allow restricted settings.
+---
+ .../kotlin/org/fossify/phone/updater/UpdateInstaller.kt  | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/app/src/main/kotlin/org/fossify/phone/updater/UpdateInstaller.kt b/app/src/main/kotlin/org/fossify/phone/updater/UpdateInstaller.kt
+index 756c2d80..fcdb1143 100644
+--- a/app/src/main/kotlin/org/fossify/phone/updater/UpdateInstaller.kt
++++ b/app/src/main/kotlin/org/fossify/phone/updater/UpdateInstaller.kt
+@@ -24,6 +24,15 @@ internal class UpdateInstaller(private val context: Context) {
+             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+             }
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
++                // Without an explicit package source, Android 14/15 Enhanced
++                // Confirmation Mode treats the install as untrusted-sideload and
++                // RESTRICTS the installed app: Settings then refuses to grant it
++                // protected roles (default Phone app / call screening) with the
++                // "restricted setting" denial. Our GHCR fleet updater IS the
++                // constellation's app store, so declare PACKAGE_SOURCE_STORE.
++                setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
++            }
+         }
+         val sessionId = installer.createSession(params)
+         installer.openSession(sessionId).use { session ->
+-- 
+2.44.2
+

@@ -1,0 +1,115 @@
+From db3f56f21ca86f7511b6aecbfec01bd0db84b735 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Wed, 1 Jul 2026 11:01:55 +0200
+Subject: [PATCH] =?UTF-8?q?comms(mail):=20JMAP=20config=20=E2=80=94=20drop?=
+ =?UTF-8?q?=20redundant=20outbound=20'identity'=20second=20panel?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+JMAP is a single endpoint (one host+credentials sends AND receives), so the
+IMAP-style separate outbound identity/SMTP screen is meaningless. The matching
+identity is already auto-created by CommsAccounts.createJmapAccount from the same
+account, so:
+ - onExecuted no longer navigates to FragmentIdentity — setup finishes on save
+ - the 'create identity' checkbox stays hidden
+ - minimal input: username defaults to the email when blank (host/port prefilled)
+User now needs only email + password for a JMAP account.
+---
+ .../faircode/email/FragmentJmapAccount.java   | 65 +++++++++----------
+ 1 file changed, 30 insertions(+), 35 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java b/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java
+index 4e3a1e602c..5681f47ae2 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java
++++ b/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java
+@@ -636,8 +636,11 @@ public class FragmentJmapAccount extends FragmentBase {
+ 
+         grpFolders.setVisibility(View.VISIBLE);
+         btnSave.setVisibility(View.VISIBLE);
+-        cbIdentity.setVisibility(View.VISIBLE);
+-        cbIdentity.setChecked(id < 0); // pre-check "create identity" for new accounts
++        // comms: JMAP is a single endpoint (one host+credentials sends AND receives),
++        // so there is NO separate outbound identity to configure — CommsAccounts
++        // .createJmapAccount auto-creates the matching identity from the same account.
++        // Keep the "create identity" control hidden (no redundant second panel).
++        cbIdentity.setVisibility(View.GONE);
+     }
+ 
+     // ── Save ──────────────────────────────────────────────────────────────
+@@ -646,21 +649,24 @@ public class FragmentJmapAccount extends FragmentBase {
+         grpError.setVisibility(View.GONE);
+ 
+         String host = etHost.getText().toString().trim();
+-        String user = etUser.getText().toString().trim();
+-        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(user)) {
+-            ToastEx.makeText(getContext(), R.string.title_comms_jmap_host_user_required,
+-                    Toast.LENGTH_SHORT).show();
+-            return;
+-        }
+-
+-        CharSequence pwSeq = etPassword.getText();
+-        String password = (pwSeq != null) ? pwSeq.toString() : "";
+-        int port = parsePort(etPort.getText().toString(), 443);
+-        int encryption = getEncryption();
+-        boolean insecure = cbInsecure.isChecked();
+-
+-        String name = etName.getText().toString().trim();
+         String email = etEmail.getText().toString().trim();
++        // comms: minimal input — username defaults to the email when left blank, so the
++        // user typically only fills in email + password (host/port are prefilled defaults).
++        String user = etUser.getText().toString().trim();
++        if (TextUtils.isEmpty(user)) user = email;
++        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(user)) {
++            ToastEx.makeText(getContext(), R.string.title_comms_jmap_host_user_required,
++                    Toast.LENGTH_SHORT).show();
++            return;
++        }
++
++        CharSequence pwSeq = etPassword.getText();
++        String password = (pwSeq != null) ? pwSeq.toString() : "";
++        int port = parsePort(etPort.getText().toString(), 443);
++        int encryption = getEncryption();
++        boolean insecure = cbInsecure.isChecked();
++
++        String name = etName.getText().toString().trim();
+         String category = etCategory.getText().toString().trim();
+ 
+         // Collect folder selections
+@@ -834,25 +840,14 @@ public class FragmentJmapAccount extends FragmentBase {
+ 
+             @Override
+             protected void onExecuted(Bundle args, Long resultId) {
+-                boolean createIdentity = args.getBoolean("identity");
+-                if (createIdentity && resultId != null && resultId >= 0) {
+-                    Bundle iargs = new Bundle();
+-                    iargs.putLong("account", resultId);
+-                    iargs.putBoolean("noselect", false);
+-                    FragmentIdentity fragment = new FragmentIdentity();
+-                    fragment.setArguments(iargs);
+-                    getParentFragmentManager().beginTransaction()
+-                            .setCustomAnimations(R.anim.enter_from_right, R.anim.leave_to_left)
+-                            .replace(R.id.content_frame, fragment)
+-                            .addToBackStack("identity")
+-                            .commit();
+-                } else {
+-                    int msgId = args.getLong("id", -1) >= 0
+-                            ? R.string.title_comms_jmap_updated
+-                            : R.string.title_comms_jmap_added;
+-                    ToastEx.makeText(getContext(), msgId, Toast.LENGTH_LONG).show();
+-                    finish();
+-                }
++                // comms: JMAP is one endpoint — the outbound identity is auto-created
++                // by CommsAccounts.createJmapAccount from the same host+credentials.
++                // No IMAP-style second "identity / outbound" panel: setup is done here.
++                int msgId = args.getLong("id", -1) >= 0
++                        ? R.string.title_comms_jmap_updated
++                        : R.string.title_comms_jmap_added;
++                ToastEx.makeText(getContext(), msgId, Toast.LENGTH_LONG).show();
++                finish();
+             }
+ 
+             @Override
+-- 
+2.50.1
+

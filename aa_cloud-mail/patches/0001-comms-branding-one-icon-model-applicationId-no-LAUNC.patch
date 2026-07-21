@@ -1,0 +1,70 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Fri, 12 Jun 2026 13:35:10 +0200
+Subject: [PATCH] comms: branding + one-icon model (applicationId, no LAUNCHER,
+ OPEN action)
+
+Cloud-Comms mail fork, patch 1 of the series (see ea_cloud-comms/forks/README.md):
+- applicationId eu.faircode.email -> com.diegonmarcos.comms.mail (namespace and
+  resources untouched; ${applicationId}/${namespace} placeholders follow).
+- ActivityMain loses the LAUNCHER category (one-icon model: the Cloud-Comms hub
+  is the only home-screen icon) and gains the constellation OPEN intent-filter
+  (com.diegonmarcos.comms.action.OPEN) the hub/SuperApp use to launch it.
+TODO follow-up patches: provisioning (imap/smtps SNI :443 defaults), exporter
+(contract tables + signature gate on OPEN), constellation top bar.
+---
+ app/build.gradle                 |  7 ++++++-
+ app/src/main/AndroidManifest.xml | 15 ++++++++++++++-
+ 2 files changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/app/build.gradle b/app/build.gradle
+index 40836d226d..333b943c6d 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -24,7 +24,12 @@ android {
+     // https://apilevels.com/
+     // https://developer.android.com/studio/releases#api-level-support
+     defaultConfig {
+-        applicationId "eu.faircode.email"
++        // Cloud-Comms fork: own applicationId so the fork installs alongside any
++        // stock FairEmail and joins the constellation (the hub opens it via the
++        // com.diegonmarcos.comms.action.OPEN intent). namespace stays
++        // eu.faircode.email — resources/R untouched; the ${applicationId} and
++        // ${namespace} manifest placeholders follow this id automatically.
++        applicationId "com.diegonmarcos.comms.mail"
+         compileSdk = 37
+         minSdkVersion 23
+         targetSdkVersion 37
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index d2139a6aa6..897829a3ab 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -171,14 +171,27 @@
+                 android:name="android.app.shortcuts"
+                 android:resource="@xml/shortcuts" />
+ 
++            <!-- Cloud-Comms fork (one-icon model): NO LAUNCHER category — the
++                 Cloud-Comms hub is the only home-screen icon; it opens this app
++                 via the constellation OPEN action below (contract::launch_action).
++                 MAIN/APP_EMAIL kept so the system still resolves it as the
++                 device's email app where applicable. -->
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+ 
+                 <category android:name="android.intent.category.DEFAULT" />
+-                <category android:name="android.intent.category.LAUNCHER" />
+                 <category android:name="android.intent.category.APP_EMAIL" />
+             </intent-filter>
+ 
++            <!-- Constellation open action — how the hub / Cloud-SuperApp launch
++                 this icon-less fork: Intent("com.diegonmarcos.comms.action.OPEN")
++                 .setPackage(applicationId). Optional THREAD_ID extra deep-links
++                 a conversation (wired with the exporter patch). -->
++            <intent-filter>
++                <action android:name="com.diegonmarcos.comms.action.OPEN" />
++                <category android:name="android.intent.category.DEFAULT" />
++            </intent-filter>
++
+             <intent-filter>
+                 <action android:name="${applicationId}.REFRESH" />
+                 <category android:name="android.intent.category.DEFAULT" />

@@ -1,0 +1,261 @@
+From 8829fc190129271aa229a70e8c7efd8296b1a5b2 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Fri, 26 Jun 2026 10:42:52 +0200
+Subject: [PATCH] =?UTF-8?q?comms:=20About=20tab=20in=20Configs=20(Fragment?=
+ =?UTF-8?q?Options)=20=E2=80=94=20version=20+=20check-for-updates?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ .../eu/faircode/email/FragmentOptions.java    | 17 ++--
+ .../email/FragmentOptionsCommsAbout.java      | 63 ++++++++++++++
+ .../layout/fragment_options_comms_about.xml   | 87 +++++++++++++++++++
+ app/src/main/res/values/strings_comms.xml     |  6 ++
+ 4 files changed, 168 insertions(+), 5 deletions(-)
+ create mode 100644 app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+ create mode 100644 app/src/main/res/layout/fragment_options_comms_about.xml
+
+diff --git a/app/src/main/java/eu/faircode/email/FragmentOptions.java b/app/src/main/java/eu/faircode/email/FragmentOptions.java
+index c44029174a..4b6a89e46d 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentOptions.java
++++ b/app/src/main/java/eu/faircode/email/FragmentOptions.java
+@@ -87,7 +87,8 @@ public class FragmentOptions extends FragmentBase {
+             R.layout.fragment_options_notifications,
+             R.layout.fragment_options_integrations,
+             R.layout.fragment_options_misc,
+-            R.layout.fragment_options_backup
++            R.layout.fragment_options_backup,
++            R.layout.fragment_options_comms_about // comms: Cloud Mail About tab
+     };
+ 
+     static final int[] PAGE_TITLES = {
+@@ -102,7 +103,8 @@ public class FragmentOptions extends FragmentBase {
+             R.string.title_advanced_section_notifications,
+             R.string.title_advanced_caption_integrations,
+             R.string.title_advanced_section_misc,
+-            R.string.title_advanced_section_backup
++            R.string.title_advanced_section_backup,
++            R.string.title_comms_about // comms: Cloud Mail About tab
+     };
+ 
+     static final int[] PAGE_ICONS = {
+@@ -117,7 +119,8 @@ public class FragmentOptions extends FragmentBase {
+             R.drawable.twotone_notifications_24,
+             R.drawable.twotone_extension_24,
+             R.drawable.twotone_more_24,
+-            R.drawable.twotone_save_alt_24
++            R.drawable.twotone_save_alt_24,
++            R.drawable.twotone_info_24 // comms: Cloud Mail About tab
+     };
+ 
+     static final List<String> TAB_LABELS = Collections.unmodifiableList(Arrays.asList(
+@@ -132,7 +135,8 @@ public class FragmentOptions extends FragmentBase {
+             "notifications",
+             "integrations",
+             "misc",
+-            "backup"
++            "backup",
++            "comms_about" // comms: Cloud Mail About tab
+     ));
+ 
+     static String[] OPTIONS_RESTART = new String[]{
+@@ -214,7 +218,8 @@ public class FragmentOptions extends FragmentBase {
+             @Override
+             public void onPageSelected(int position) {
+                 if (position > 0 && position < PAGE_TITLES.length &&
+-                        PAGE_TITLES[position] != R.string.title_advanced_section_backup) {
++                        PAGE_TITLES[position] != R.string.title_advanced_section_backup &&
++                        PAGE_TITLES[position] != R.string.title_comms_about) { // comms: About tab is not advanced settings
+                     final Context context = getContext();
+                     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+                     boolean setup_advanced = prefs.getBoolean("setup_advanced", false);
+@@ -565,6 +570,8 @@ public class FragmentOptions extends FragmentBase {
+                     return new FragmentOptionsMisc();
+                 case 11:
+                     return new FragmentOptionsBackup();
++                case 12: // comms: Cloud Mail About tab
++                    return new FragmentOptionsCommsAbout();
+                 default:
+                     throw new IllegalArgumentException();
+             }
+diff --git a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+new file mode 100644
+index 0000000000..a16b925195
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+@@ -0,0 +1,63 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++// comms (my-features): Cloud Mail branded About tab inside FragmentOptions.
++// NEW FILE: no upstream class modified. Logic hook: FragmentOptions.java
++// PagerAdapter case 12 + 4 array entries.
++
++import android.content.Context;
++import android.os.Bundle;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.Button;
++import android.widget.TextView;
++
++import androidx.annotation.NonNull;
++import androidx.annotation.Nullable;
++
++public class FragmentOptionsCommsAbout extends FragmentBase {
++
++    @Override
++    @Nullable
++    public View onCreateView(@NonNull LayoutInflater inflater,
++                             @Nullable ViewGroup container,
++                             @Nullable Bundle savedInstanceState) {
++        return inflater.inflate(R.layout.fragment_options_comms_about, container, false);
++    }
++
++    @Override
++    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
++        super.onViewCreated(view, savedInstanceState);
++        Context ctx = requireContext();
++
++        TextView tvVersion = view.findViewById(R.id.comms_tv_version);
++        tvVersion.setText(BuildConfig.VERSION_NAME);
++
++        Button btnCheck = view.findViewById(R.id.comms_btn_check_update);
++        btnCheck.setOnClickListener(v -> {
++            CommsUpdateWorker.checkNow(ctx);
++            ToastEx.makeText(ctx,
++                    ctx.getString(R.string.title_comms_checking_update),
++                    android.widget.Toast.LENGTH_SHORT).show();
++        });
++    }
++}
+diff --git a/app/src/main/res/layout/fragment_options_comms_about.xml b/app/src/main/res/layout/fragment_options_comms_about.xml
+new file mode 100644
+index 0000000000..1f32ce35b2
+--- /dev/null
++++ b/app/src/main/res/layout/fragment_options_comms_about.xml
+@@ -0,0 +1,87 @@
++<?xml version="1.0" encoding="utf-8"?>
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    android:id="@+id/scroll"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:paddingStart="6dp"
++    android:paddingTop="12dp"
++    android:paddingEnd="6dp"
++    android:paddingBottom="0dp"
++    android:scrollbarStyle="outsideOverlay">
++
++    <androidx.constraintlayout.widget.ConstraintLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:paddingBottom="24dp">
++
++        <!-- App name -->
++        <TextView
++            android:id="@+id/comms_tv_app_name"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="8dp"
++            android:text="@string/title_comms_app_name"
++            android:textAppearance="@style/TextAppearance.AppCompat.Large"
++            android:textStyle="bold"
++            android:textColor="?android:attr/textColorPrimary"
++            app:layout_constraintEnd_toEndOf="parent"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toTopOf="parent" />
++
++        <!-- Version -->
++        <TextView
++            android:id="@+id/comms_tv_version"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="4dp"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small"
++            android:textColor="?android:attr/textColorSecondary"
++            app:layout_constraintEnd_toEndOf="parent"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/comms_tv_app_name" />
++
++        <!-- Update channel label -->
++        <TextView
++            android:id="@+id/comms_tv_channel_label"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="16dp"
++            android:text="@string/title_comms_update_channel"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small"
++            android:textStyle="italic"
++            android:textColor="?android:attr/textColorSecondary"
++            app:layout_constraintEnd_toEndOf="parent"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/comms_tv_version" />
++
++        <TextView
++            android:id="@+id/comms_tv_channel"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="2dp"
++            android:text="ghcr.io/diegonmarcos/cloud-comms-mail:latest"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small"
++            android:fontFamily="monospace"
++            android:textColor="?android:attr/textColorPrimary"
++            app:layout_constraintEnd_toEndOf="parent"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/comms_tv_channel_label" />
++
++        <!-- Check for updates button -->
++        <Button
++            android:id="@+id/comms_btn_check_update"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="24dp"
++            android:text="@string/title_comms_check_for_updates"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/comms_tv_channel" />
++
++    </androidx.constraintlayout.widget.ConstraintLayout>
++</ScrollView>
+diff --git a/app/src/main/res/values/strings_comms.xml b/app/src/main/res/values/strings_comms.xml
+index f8eafb0b57..9981e20576 100644
+--- a/app/src/main/res/values/strings_comms.xml
++++ b/app/src/main/res/values/strings_comms.xml
+@@ -18,4 +18,10 @@
+ 
+     <string name="title_comms_update_available" translatable="false">Cloud Mail update available</string>
+     <string name="title_comms_update_tap" translatable="false">Tap to open settings and install</string>
++
++    <string name="title_comms_about" translatable="false">About</string>
++    <string name="title_comms_app_name" translatable="false">Cloud Mail</string>
++    <string name="title_comms_update_channel" translatable="false">Update channel</string>
++    <string name="title_comms_check_for_updates" translatable="false">Check for updates</string>
++    <string name="title_comms_checking_update" translatable="false">Checking for updates…</string>
+ </resources>
+-- 
+2.50.1
+

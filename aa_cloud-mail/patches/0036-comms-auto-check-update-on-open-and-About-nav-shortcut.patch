@@ -1,0 +1,51 @@
+From fbaef7ca78111130cd2203a8f9bfb7a62baa65a6 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Sat, 4 Jul 2026 11:54:27 +0300
+Subject: [PATCH] comms: auto-check GHCR on open + Check-for-updates toast in
+ About nav item
+
+---
+ .../main/java/eu/faircode/email/ActivityView.java   | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/app/src/main/java/eu/faircode/email/ActivityView.java b/app/src/main/java/eu/faircode/email/ActivityView.java
+index c0ed889d5f..a78ffec148 100644
+--- a/app/src/main/java/eu/faircode/email/ActivityView.java
++++ b/app/src/main/java/eu/faircode/email/ActivityView.java
+@@ -174,6 +174,9 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
+     static final int PI_WIDGET = 7;
+     static final int PI_POWER = 8;
+ 
++    // comms: throttle GHCR auto-check to once per process (cold start) or 1h (warm resume)
++    private static volatile long commsLastCheckMs = 0;
++
+     static final String ACTION_VIEW_FOLDERS = BuildConfig.APPLICATION_ID + ".VIEW_FOLDERS";
+     static final String ACTION_VIEW_MESSAGES = BuildConfig.APPLICATION_ID + ".VIEW_MESSAGES";
+     static final String ACTION_SEARCH_ADDRESS = BuildConfig.APPLICATION_ID + ".SEARCH_ADDRESS";
+@@ -1063,6 +1066,10 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
+                     checkUpdate(true);
+                     checkAnnouncements(true);
+                 }
++                // comms: also trigger GHCR update check (shown as notification if update found)
++                commsLastCheckMs = 0; // reset throttle so next auto-check fires immediately
++                CommsUpdateWorker.checkNow(ActivityView.this);
++                ToastEx.makeText(ActivityView.this, R.string.title_comms_checking_update, Toast.LENGTH_SHORT).show();
+                 return !play;
+             }
+         }).setSeparated().setSubtitle(BuildConfig.VERSION_NAME));
+@@ -1245,6 +1252,12 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
+ 
+         checkUpdate(false);
+         checkAnnouncements(false);
++        // comms: auto-check GHCR on every cold start; throttle to 1h on warm resume
++        long now = System.currentTimeMillis();
++        if (now - commsLastCheckMs > 3_600_000L) {
++            commsLastCheckMs = now;
++            CommsUpdateWorker.checkNow(this);
++        }
+         if (initialized || !"inbox".equals(startup))
+             checkIntent();
+     }
+-- 
+2.44.2
+

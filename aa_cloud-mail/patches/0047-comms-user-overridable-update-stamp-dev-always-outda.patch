@@ -1,0 +1,218 @@
+From 336d18068544c7f15daa4768ce916cd9f3fa7742 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Wed, 8 Jul 2026 15:36:07 +0300
+Subject: [PATCH] comms: user-overridable update stamp; dev = always outdated
+
+- installedStamp(ctx): pref comms_build_stamp_override wins over baked
+  BuildConfig.COMMS_BUILD_TIMESTAMP
+- isOutdated(): "dev" now means ALWAYS outdated (pre-0047 guard made
+  dev-baked installs permanently update-blind)
+- About: 'Update channel override' button + dialog; version line shows
+  the effective stamp and flags an active override
+---
+ .../eu/faircode/email/CommsUpdateWorker.java  | 33 +++++++++--
+ .../email/FragmentOptionsCommsAbout.java      | 56 +++++++++++++++++--
+ .../layout/fragment_options_comms_about.xml   | 10 ++++
+ app/src/main/res/values/strings_comms.xml     |  2 +
+ 4 files changed, 91 insertions(+), 10 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+index 3249e5217f..f04131ddfa 100644
+--- a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
++++ b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+@@ -38,8 +38,10 @@ import android.app.NotificationManager;
+ import android.app.PendingIntent;
+ import android.content.Context;
+ import android.content.Intent;
++import android.text.TextUtils;
+ 
+ import androidx.annotation.NonNull;
++import androidx.preference.PreferenceManager;
+ import androidx.core.app.NotificationCompat;
+ import androidx.work.Constraints;
+ import androidx.work.ExistingPeriodicWorkPolicy;
+@@ -75,10 +77,35 @@ public class CommsUpdateWorker extends Worker {
+             "https://github.com/diegonmarcos/unix/releases.atom";
+     private static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
+ 
++    // comms: user-overridable installed stamp (About → Update channel override)
++    static final String PREF_STAMP_OVERRIDE = "comms_build_stamp_override";
++
+     public CommsUpdateWorker(@NonNull Context context, @NonNull WorkerParameters params) {
+         super(context, params);
+     }
+ 
++    /**
++     * Effective installed build stamp: the user's override pref wins over the
++     * CI-baked BuildConfig value. Lets the user re-point a bad baked stamp
++     * without reinstalling — set "dev" (or any old stamp) to force an update,
++     * a future stamp to freeze, empty to use the baked stamp again.
++     */
++    static String installedStamp(Context ctx) {
++        String override = PreferenceManager.getDefaultSharedPreferences(ctx)
++                .getString(PREF_STAMP_OVERRIDE, "");
++        return TextUtils.isEmpty(override) ? BuildConfig.COMMS_BUILD_TIMESTAMP : override;
++    }
++
++    /**
++     * "dev" = ALWAYS outdated: a dev-stamped build must be able to pull the
++     * newest release. The pre-0047 guard inverted this ("dev" → up to date),
++     * which left every dev-baked install permanently update-blind.
++     * Otherwise YYYYMMDD.HHMMSS stamps compare lexicographically in time order.
++     */
++    static boolean isOutdated(String installed, String remote) {
++        return "dev".equals(installed) || remote.compareTo(installed) > 0;
++    }
++
+     /** Metadata returned by the GitHub Releases API for the latest release. */
+     static class ReleaseMeta {
+         final String buildStamp;   // YYYYMMDD.HHMMSS from the tag — same string CI bakes into COMMS_BUILD_TIMESTAMP
+@@ -96,10 +123,8 @@ public class CommsUpdateWorker extends Worker {
+         try {
+             Log.i(TAG + " checking GitHub Releases for update");
+             ReleaseMeta rel = fetchLatestRelease();
+-            // YYYYMMDD.HHMMSS sorts lexicographically in time order.
+-            // BuildConfig.COMMS_BUILD_TIMESTAMP == "dev" when built locally — skip.
+-            String installed = BuildConfig.COMMS_BUILD_TIMESTAMP;
+-            if ("dev".equals(installed) || rel.buildStamp.compareTo(installed) <= 0) {
++            String installed = installedStamp(ctx);
++            if (!isOutdated(installed, rel.buildStamp)) {
+                 Log.i(TAG + " up to date (installed=" + installed
+                         + " remote=" + rel.buildStamp + ")");
+                 return Result.success();
+diff --git a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+index 004dfa2212..ba15f17edb 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
++++ b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+@@ -27,18 +27,22 @@ package eu.faircode.email;
+ 
+ import android.content.Context;
+ import android.content.Intent;
++import android.content.SharedPreferences;
+ import android.net.Uri;
+ import android.os.Bundle;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.Button;
++import android.widget.EditText;
+ import android.widget.TextView;
+ import android.widget.Toast;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
++import androidx.appcompat.app.AlertDialog;
+ import androidx.core.content.FileProvider;
++import androidx.preference.PreferenceManager;
+ 
+ import java.io.File;
+ 
+@@ -57,8 +61,7 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
+         super.onViewCreated(view, savedInstanceState);
+ 
+         TextView tvVersion = view.findViewById(R.id.comms_tv_version);
+-        tvVersion.setText(BuildConfig.VERSION_NAME
+-                + " · build " + BuildConfig.COMMS_BUILD_TIMESTAMP);
++        tvVersion.setText(versionText(view.getContext()));
+ 
+         // comms: channel label derived from the SAME BuildConfig coords the
+         // updater queries — the layout used to hardcode the retired GHCR
+@@ -69,6 +72,47 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
+ 
+         Button btnCheck = view.findViewById(R.id.comms_btn_check_update);
+         btnCheck.setOnClickListener(v -> checkAndInstall(btnCheck));
++
++        Button btnOverride = view.findViewById(R.id.comms_btn_stamp_override);
++        btnOverride.setOnClickListener(v -> editStampOverride(tvVersion));
++    }
++
++    // comms: version line shows the EFFECTIVE stamp the updater compares with;
++    // when a user override is active, the baked stamp is shown alongside.
++    private String versionText(Context ctx) {
++        String effective = CommsUpdateWorker.installedStamp(ctx);
++        String baked = BuildConfig.COMMS_BUILD_TIMESTAMP;
++        String text = BuildConfig.VERSION_NAME + " · build " + effective;
++        if (!effective.equals(baked))
++            text += " (override; baked " + baked + ")";
++        return text;
++    }
++
++    // comms: user-editable update-channel stamp override. A bad baked stamp
++    // (e.g. "dev" from pre-0045 CI) must never dead-end the updater again —
++    // the user can re-point it to anything without reinstalling.
++    private void editStampOverride(TextView tvVersion) {
++        final Context ctx = getContext();
++        if (ctx == null)
++            return;
++        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
++        final EditText input = new EditText(ctx);
++        input.setHint(BuildConfig.COMMS_BUILD_TIMESTAMP);
++        input.setText(prefs.getString(CommsUpdateWorker.PREF_STAMP_OVERRIDE, ""));
++        new AlertDialog.Builder(ctx)
++                .setTitle(R.string.title_comms_stamp_override)
++                .setMessage(R.string.title_comms_stamp_override_hint)
++                .setView(input)
++                .setPositiveButton(android.R.string.ok, (d, w) -> {
++                    String value = input.getText().toString().trim();
++                    if (value.isEmpty())
++                        prefs.edit().remove(CommsUpdateWorker.PREF_STAMP_OVERRIDE).apply();
++                    else
++                        prefs.edit().putString(CommsUpdateWorker.PREF_STAMP_OVERRIDE, value).apply();
++                    tvVersion.setText(versionText(ctx));
++                })
++                .setNegativeButton(android.R.string.cancel, null)
++                .show();
+     }
+ 
+     private void checkAndInstall(Button btn) {
+@@ -80,10 +124,10 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
+             @Override
+             protected File onExecute(Context ctx, Bundle args) throws Throwable {
+                 CommsUpdateWorker.ReleaseMeta rel = CommsUpdateWorker.fetchLatestRelease();
+-                // Same comparison as CommsUpdateWorker.doWork: tag build stamps
+-                // (YYYYMMDD.HHMMSS) sort lexicographically; "dev" = local build.
+-                String installed = BuildConfig.COMMS_BUILD_TIMESTAMP;
+-                if ("dev".equals(installed) || rel.buildStamp.compareTo(installed) <= 0)
++                // Same comparison as CommsUpdateWorker.doWork: effective stamp
++                // (pref override wins over baked), "dev" = always outdated.
++                String installed = CommsUpdateWorker.installedStamp(ctx);
++                if (!CommsUpdateWorker.isOutdated(installed, rel.buildStamp))
+                     return null; // null = up to date
+ 
+                 File dest = new File(ctx.getCacheDir(), "updates/cloud-mail-update.apk");
+diff --git a/app/src/main/res/layout/fragment_options_comms_about.xml b/app/src/main/res/layout/fragment_options_comms_about.xml
+index 568b0e87a7..ad18c1aa88 100644
+--- a/app/src/main/res/layout/fragment_options_comms_about.xml
++++ b/app/src/main/res/layout/fragment_options_comms_about.xml
+@@ -82,5 +82,15 @@
+             app:layout_constraintStart_toStartOf="parent"
+             app:layout_constraintTop_toBottomOf="@id/comms_tv_channel" />
+ 
++        <!-- Update-stamp override (rescue for bad baked stamps, e.g. "dev") -->
++        <Button
++            android:id="@+id/comms_btn_stamp_override"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="12dp"
++            android:text="@string/title_comms_stamp_override"
++            app:layout_constraintStart_toEndOf="@id/comms_btn_check_update"
++            app:layout_constraintTop_toTopOf="@id/comms_btn_check_update" />
++
+     </androidx.constraintlayout.widget.ConstraintLayout>
+ </ScrollView>
+diff --git a/app/src/main/res/values/strings_comms.xml b/app/src/main/res/values/strings_comms.xml
+index c1d3730bb8..2a142b64ce 100644
+--- a/app/src/main/res/values/strings_comms.xml
++++ b/app/src/main/res/values/strings_comms.xml
+@@ -32,6 +32,8 @@
+     <string name="title_comms_check_for_updates" translatable="false">Check for updates</string>
+     <string name="title_comms_checking_update" translatable="false">Checking for updates…</string>
+     <string name="title_comms_up_to_date" translatable="false">Cloud Mail is up to date</string>
++    <string name="title_comms_stamp_override" translatable="false">Update channel override</string>
++    <string name="title_comms_stamp_override_hint" translatable="false">Build stamp (YYYYMMDD.HHMMSS) used for update checks. Empty = use the baked stamp. Enter "dev" or an old stamp to force-update to the newest release.</string>
+     <string name="title_comms_jmap_connect_success" translatable="false">JMAP connection successful</string>
+ 
+     <!-- Cloud Feeds (rss-gateway profile subscriptions) -->
+-- 
+2.44.2
+

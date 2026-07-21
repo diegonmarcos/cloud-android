@@ -1,0 +1,439 @@
+From 828595ba33d54bb72cc0c78a76b1ffc7552378c3 Mon Sep 17 00:00:00 2001
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Date: Thu, 25 Jun 2026 11:35:39 +0200
+Subject: [PATCH 09/10] =?UTF-8?q?comms:=20JMAP=20account=20config=20UI=20?=
+ =?UTF-8?q?=E2=80=94=20setup-menu=20entry=20+=20dialog=20window?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds an interactive 'JMAP account' entry to the setup popup (next to Import
+Configs) opening a small window that collects display name / email / user /
+password / host / port (prefilled jmap.diegonmarcos.com:443) and writes the
+account via the new CommsAccounts.createJmapAccount helper.
+
+New files (merge-friendly): CommsAccounts.java, FragmentDialogJmap.java,
+res/layout/dialog_jmap.xml, res/values/strings_comms.xml.
+Upstream touch-points kept minimal: 2 hooks in FragmentSetup, 3 in ActivitySetup.
+---
+ .../java/eu/faircode/email/ActivitySetup.java |   4 +
+ .../java/eu/faircode/email/CommsAccounts.java | 129 ++++++++++++++++++
+ .../eu/faircode/email/FragmentDialogJmap.java | 104 ++++++++++++++
+ .../java/eu/faircode/email/FragmentSetup.java |   8 ++
+ app/src/main/res/layout/dialog_jmap.xml       |  76 +++++++++++
+ app/src/main/res/values/strings_comms.xml     |  18 +++
+ 6 files changed, 339 insertions(+)
+ create mode 100644 app/src/main/java/eu/faircode/email/CommsAccounts.java
+ create mode 100644 app/src/main/java/eu/faircode/email/FragmentDialogJmap.java
+ create mode 100644 app/src/main/res/layout/dialog_jmap.xml
+ create mode 100644 app/src/main/res/values/strings_comms.xml
+
+diff --git a/app/src/main/java/eu/faircode/email/ActivitySetup.java b/app/src/main/java/eu/faircode/email/ActivitySetup.java
+index e4f6e0ec7a..2527b75523 100644
+--- a/app/src/main/java/eu/faircode/email/ActivitySetup.java
++++ b/app/src/main/java/eu/faircode/email/ActivitySetup.java
+@@ -119,6 +119,7 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
+     static final String ACTION_SETUP_REORDER = BuildConfig.APPLICATION_ID + ".SETUP_REORDER";
+     static final String ACTION_SETUP_MORE = BuildConfig.APPLICATION_ID + ".SETUP_MORE";
+     static final String ACTION_IMPORT_CONFIGS = BuildConfig.APPLICATION_ID + ".ACTION_IMPORT_CONFIGS"; // comms
++    static final String ACTION_ADD_JMAP = BuildConfig.APPLICATION_ID + ".ACTION_ADD_JMAP"; // comms
+ 
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+@@ -345,6 +346,7 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
+         iff.addAction(ACTION_SETUP_REORDER);
+         iff.addAction(ACTION_SETUP_MORE);
+         iff.addAction(ACTION_IMPORT_CONFIGS); // comms
++        iff.addAction(ACTION_ADD_JMAP); // comms
+         lbm.registerReceiver(receiver, iff);
+     }
+ 
+@@ -869,6 +871,8 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
+                     onSetupMore(intent);
+                 else if (ACTION_IMPORT_CONFIGS.equals(action))
+                     onImportConfigs(intent); // comms
++                else if (ACTION_ADD_JMAP.equals(action)) // comms
++                    new FragmentDialogJmap().show(getSupportFragmentManager(), "comms:jmap");
+             }
+         }
+     };
+diff --git a/app/src/main/java/eu/faircode/email/CommsAccounts.java b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+new file mode 100644
+index 0000000000..414b99f6be
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+@@ -0,0 +1,129 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++import android.text.TextUtils;
++
++import java.util.List;
++import java.util.UUID;
++
++// comms (my-features): single source of truth for JMAP-account and RSS-feed DB writes.
++// Reused by ImportConfigs (the JSON provisioner) AND the interactive config windows
++// (FragmentDialogJmap / FragmentDialogRss). Lives in its own file so the write-path
++// stays out of upstream FairEmail classes — keeps future upstream merges painless.
++public class CommsAccounts {
++    static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
++
++    // Create a JMAP account + matching send identity. uuid==null → generate one.
++    // password may be "" (JSON import defers it; the interactive window fills it).
++    // Returns the new account id, or -1 if uuid already exists.
++    static long createJmapAccount(DB db, String uuid,
++                                  String displayName, String email, String user, String password,
++                                  String host, int port, int encryption, boolean primary) {
++        if (TextUtils.isEmpty(uuid))
++            uuid = UUID.randomUUID().toString();
++        if (db.account().getAccountByUUID(uuid) != null)
++            return -1;
++        if (password == null)
++            password = "";
++
++        EntityAccount account = new EntityAccount();
++        account.uuid = uuid;
++        account.protocol = EntityAccount.TYPE_JMAP;
++        account.host = host;
++        account.encryption = encryption;
++        account.port = port;
++        account.auth_type = ServiceAuthenticator.AUTH_TYPE_PASSWORD;
++        account.user = user;
++        account.password = password;
++        account.name = TextUtils.isEmpty(displayName) ? null : displayName;
++        account.synchronize = true;
++        account.primary = primary && account.synchronize;
++        account.poll_interval = EntityAccount.DEFAULT_POLL_INTERVAL;
++        account.created = System.currentTimeMillis();
++        account.id = db.account().insertAccount(account);
++
++        EntityIdentity identity = new EntityIdentity();
++        identity.name = TextUtils.isEmpty(displayName) ? user : displayName;
++        identity.email = TextUtils.isEmpty(email) ? user : email;
++        identity.account = account.id;
++        identity.host = host;
++        identity.encryption = encryption;
++        identity.port = port;
++        identity.auth_type = ServiceAuthenticator.AUTH_TYPE_PASSWORD;
++        identity.user = user;
++        identity.password = password;
++        identity.synchronize = true;
++        identity.primary = account.primary;
++        db.identity().insertIdentity(identity);
++
++        return account.id;
++    }
++
++    // Synthetic local "Feeds" account that owns every RSS folder. Created on first use.
++    static EntityAccount ensureRssAccount(DB db) {
++        EntityAccount rss = db.account().getAccountByUUID(RSS_ACCOUNT_UUID);
++        if (rss != null)
++            return rss;
++
++        rss = new EntityAccount();
++        rss.uuid = RSS_ACCOUNT_UUID;
++        rss.protocol = EntityAccount.TYPE_RSS;
++        rss.host = ""; // synthetic local account: host is @NonNull, so empty (not null)
++        rss.encryption = EmailService.ENCRYPTION_NONE;
++        rss.port = 0;
++        rss.auth_type = ServiceAuthenticator.AUTH_TYPE_PASSWORD;
++        rss.user = "";
++        rss.password = "";
++        rss.name = "Feeds";
++        rss.synchronize = false;
++        rss.primary = false;
++        rss.poll_interval = EntityAccount.DEFAULT_POLL_INTERVAL;
++        rss.created = System.currentTimeMillis();
++        rss.id = db.account().insertAccount(rss);
++        return rss;
++    }
++
++    // Create an RSS/Atom feed folder under the synthetic Feeds account.
++    // title may be empty → the url is used as the folder name.
++    // Returns the new folder id, or -1 if a feed with this url already exists.
++    static long createRssFeed(DB db, String url, String title) {
++        EntityAccount rss = ensureRssAccount(db);
++
++        List<EntityFolder> existing = db.folder().getFolders(rss.id, false, false);
++        if (existing != null)
++            for (EntityFolder f : existing)
++                if (url.equals(f.feed_url))
++                    return -1;
++
++        EntityFolder folder = new EntityFolder();
++        folder.account = rss.id;
++        folder.name = TextUtils.isEmpty(title) ? url : title;
++        folder.type = EntityFolder.USER;
++        folder.feed_url = url;
++        folder.local = true;
++        folder.synchronize = false;
++        folder.subscribed = true;
++        folder.selectable = true;
++        folder.sync_days = EntityFolder.DEFAULT_SYNC;
++        folder.keep_days = EntityFolder.DEFAULT_KEEP;
++        return db.folder().insertFolder(folder);
++    }
++}
+diff --git a/app/src/main/java/eu/faircode/email/FragmentDialogJmap.java b/app/src/main/java/eu/faircode/email/FragmentDialogJmap.java
+new file mode 100644
+index 0000000000..7b7863882b
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/FragmentDialogJmap.java
+@@ -0,0 +1,104 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++import android.app.Dialog;
++import android.content.Context;
++import android.os.Bundle;
++import android.text.TextUtils;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.widget.EditText;
++import android.widget.Toast;
++
++import androidx.annotation.NonNull;
++import androidx.annotation.Nullable;
++import androidx.appcompat.app.AlertDialog;
++
++// comms (my-features): interactive "JMAP account" config window. Collects the same
++// fields the JSON provisioner writes, then delegates to CommsAccounts.createJmapAccount
++// (with the password filled). Host/port prefill the cloud defaults (jmap.diegonmarcos.com:443).
++public class FragmentDialogJmap extends FragmentDialogBase {
++    @NonNull
++    @Override
++    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
++        final Context context = getContext();
++        final View dview = LayoutInflater.from(context).inflate(R.layout.dialog_jmap, null);
++        final EditText etName = dview.findViewById(R.id.etName);
++        final EditText etEmail = dview.findViewById(R.id.etEmail);
++        final EditText etUser = dview.findViewById(R.id.etUser);
++        final EditText etPassword = dview.findViewById(R.id.etPassword);
++        final EditText etHost = dview.findViewById(R.id.etHost);
++        final EditText etPort = dview.findViewById(R.id.etPort);
++
++        return new AlertDialog.Builder(context)
++                .setView(dview)
++                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
++                    Bundle args = new Bundle();
++                    args.putString("name", etName.getText().toString().trim());
++                    args.putString("email", etEmail.getText().toString().trim());
++                    args.putString("user", etUser.getText().toString().trim());
++                    args.putString("password", etPassword.getText().toString());
++                    args.putString("host", etHost.getText().toString().trim());
++                    args.putString("port", etPort.getText().toString().trim());
++
++                    new SimpleTask<Void>() {
++                        @Override
++                        protected Void onExecute(Context context, Bundle args) throws Throwable {
++                            String host = args.getString("host");
++                            String user = args.getString("user");
++                            String sport = args.getString("port");
++                            if (TextUtils.isEmpty(host) || TextUtils.isEmpty(user))
++                                throw new IllegalArgumentException("JMAP host and username are required");
++                            int port = TextUtils.isEmpty(sport) ? 443 : Integer.parseInt(sport);
++
++                            DB db = DB.getInstance(context);
++                            try {
++                                db.beginTransaction();
++                                long id = CommsAccounts.createJmapAccount(db, null,
++                                        args.getString("name"), args.getString("email"),
++                                        user, args.getString("password"),
++                                        host, port, EmailService.ENCRYPTION_SSL, false);
++                                if (id < 0)
++                                    throw new IllegalArgumentException("JMAP account already exists");
++                                db.setTransactionSuccessful();
++                            } finally {
++                                db.endTransaction();
++                            }
++
++                            ServiceSynchronize.eval(context, "jmap account added");
++                            return null;
++                        }
++
++                        @Override
++                        protected void onExecuted(Bundle args, Void data) {
++                            ToastEx.makeText(context, R.string.title_comms_jmap_added, Toast.LENGTH_LONG).show();
++                        }
++
++                        @Override
++                        protected void onException(Bundle args, Throwable ex) {
++                            Log.unexpectedError(getParentFragmentManager(), ex);
++                        }
++                    }.execute(FragmentDialogJmap.this, args, "comms:jmap-create");
++                })
++                .setNegativeButton(android.R.string.cancel, null)
++                .create();
++    }
++}
+diff --git a/app/src/main/java/eu/faircode/email/FragmentSetup.java b/app/src/main/java/eu/faircode/email/FragmentSetup.java
+index b9d6d1b1c0..25d6fc3974 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentSetup.java
++++ b/app/src/main/java/eu/faircode/email/FragmentSetup.java
+@@ -371,6 +371,11 @@ public class FragmentSetup extends FragmentBase implements SharedPreferences.OnS
+                 importConfigs.setSpan(new RelativeSizeSpan(HtmlHelper.FONT_SMALL), 0, importConfigs.length(), 0);
+                 menu.add(Menu.FIRST, R.string.title_import_configs, order++, importConfigs);
+ 
++                // comms (my-features): interactive JMAP account config window
++                SpannableString jmap = new SpannableString(getString(R.string.title_comms_jmap));
++                jmap.setSpan(new RelativeSizeSpan(HtmlHelper.FONT_SMALL), 0, jmap.length(), 0);
++                menu.add(Menu.FIRST, R.string.title_comms_jmap, order++, jmap);
++
+                 popupMenu.insertIcons(context);
+ 
+                 MenuCompat.setGroupDividerEnabled(menu, true);
+@@ -424,6 +429,9 @@ public class FragmentSetup extends FragmentBase implements SharedPreferences.OnS
+                         } else if (itemId == R.string.title_import_configs) {
+                             lbm.sendBroadcast(new Intent(ActivitySetup.ACTION_IMPORT_CONFIGS)); // comms
+                             return true;
++                        } else if (itemId == R.string.title_comms_jmap) {
++                            lbm.sendBroadcast(new Intent(ActivitySetup.ACTION_ADD_JMAP)); // comms
++                            return true;
+                         } else if (itemId == R.string.menu_faq) {
+                             Helper.view(getContext(), Helper.getSupportUri(getContext(), "Providers:support"), false);
+                             return true;
+diff --git a/app/src/main/res/layout/dialog_jmap.xml b/app/src/main/res/layout/dialog_jmap.xml
+new file mode 100644
+index 0000000000..2a4c805f63
+--- /dev/null
++++ b/app/src/main/res/layout/dialog_jmap.xml
+@@ -0,0 +1,76 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- comms (my-features): JMAP account config window -->
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="24dp">
++
++        <TextView
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:text="@string/title_comms_jmap"
++            android:textAppearance="@style/TextAppearance.AppCompat.Large" />
++
++        <eu.faircode.email.EditTextPlain
++            android:id="@+id/etName"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:hint="@string/hint_comms_display_name"
++            android:inputType="textPersonName|textCapWords"
++            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
++
++        <eu.faircode.email.EditTextPlain
++            android:id="@+id/etEmail"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:hint="@string/hint_comms_email"
++            android:inputType="textEmailAddress"
++            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
++
++        <eu.faircode.email.EditTextPlain
++            android:id="@+id/etUser"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:hint="@string/hint_comms_user"
++            android:inputType="textEmailAddress"
++            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
++
++        <eu.faircode.email.EditTextPlain
++            android:id="@+id/etPassword"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:hint="@string/hint_comms_password"
++            android:inputType="textPassword"
++            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
++
++        <eu.faircode.email.EditTextPlain
++            android:id="@+id/etHost"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:hint="@string/hint_comms_host"
++            android:inputType="textUri"
++            android:text="jmap.diegonmarcos.com"
++            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
++
++        <eu.faircode.email.EditTextPlain
++            android:id="@+id/etPort"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:hint="@string/hint_comms_port"
++            android:imeOptions="actionDone"
++            android:inputType="number"
++            android:text="443"
++            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
++    </LinearLayout>
++</ScrollView>
+diff --git a/app/src/main/res/values/strings_comms.xml b/app/src/main/res/values/strings_comms.xml
+new file mode 100644
+index 0000000000..fdfad6ba37
+--- /dev/null
++++ b/app/src/main/res/values/strings_comms.xml
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- comms (my-features): config-UI strings in their own file so upstream strings.xml
++     stays untouched → painless merges. translatable=false: cloud-internal labels. -->
++<resources>
++    <string name="title_comms_jmap" translatable="false">JMAP account</string>
++    <string name="title_comms_rss" translatable="false">RSS feed</string>
++    <string name="title_comms_jmap_added" translatable="false">JMAP account added</string>
++    <string name="title_comms_rss_added" translatable="false">RSS feed added</string>
++
++    <string name="hint_comms_display_name" translatable="false">Display name (optional)</string>
++    <string name="hint_comms_email" translatable="false">Email address</string>
++    <string name="hint_comms_user" translatable="false">Username</string>
++    <string name="hint_comms_password" translatable="false">Password</string>
++    <string name="hint_comms_host" translatable="false">JMAP host</string>
++    <string name="hint_comms_port" translatable="false">Port</string>
++    <string name="hint_comms_feed_url" translatable="false">Feed URL (RSS/Atom)</string>
++    <string name="hint_comms_feed_title" translatable="false">Feed title (optional)</string>
++</resources>
+-- 
+2.50.1
+

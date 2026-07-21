@@ -1,0 +1,68 @@
+From 3a4ab2b0a94c4771613df6b26b4963e0b70ff528 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Wed, 8 Jul 2026 12:51:42 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20fix=20releases-feed=20seeding=20?=
+ =?UTF-8?q?=E2=80=94=20hand-rolled=20Feeds=20account=20violated=20NonNull?=
+ =?UTF-8?q?=20columns?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+seedReleaseFeed built its own EntityAccount missing host/user/password/
+port/encryption/auth_type (all @NonNull) → Room insert threw, catch
+swallowed it, feed never seeded on fresh installs. Delegate to
+CommsAccounts.createRssFeed (the single owner of Feeds-account writes,
+already idempotent).
+---
+ .../eu/faircode/email/CommsUpdateWorker.java  | 35 +++++--------------
+ 1 file changed, 8 insertions(+), 27 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+index 37cb80e9bd..563e62a0b9 100644
+--- a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
++++ b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+@@ -214,33 +214,14 @@ public class CommsUpdateWorker extends Worker {
+             @Override
+             public void run() {
+                 try {
+-                    DB db = DB.getInstance(ctx);
+-                    EntityAccount rss = db.account().getAccountByUUID(RSS_ACCOUNT_UUID);
+-                    if (rss == null) {
+-                        rss = new EntityAccount();
+-                        rss.uuid = RSS_ACCOUNT_UUID;
+-                        rss.protocol = EntityAccount.TYPE_RSS;
+-                        rss.name = "Feeds";
+-                        rss.synchronize = true;
+-                        rss.ondemand = false;
+-                        rss.poll_interval = EntityAccount.DEFAULT_POLL_INTERVAL;
+-                        rss.partial_fetch = true;
+-                        rss.id = db.account().insertAccount(rss);
+-                    }
+-                    List<EntityFolder> existing = db.folder().getFolders(rss.id, false, false);
+-                    if (existing != null)
+-                        for (EntityFolder f : existing)
+-                            if (RELEASES_FEED_URL.equals(f.feed_url)) return;
+-                    EntityFolder folder = new EntityFolder();
+-                    folder.account = rss.id;
+-                    folder.name = "Cloud Apps — Releases";
+-                    folder.type = EntityFolder.USER;
+-                    folder.feed_url = RELEASES_FEED_URL;
+-                    folder.synchronize = true;
+-                    folder.sync_days = EntityFolder.DEFAULT_SYNC;
+-                    folder.keep_days = EntityFolder.DEFAULT_KEEP;
+-                    db.folder().insertFolder(folder);
+-                    Log.i(TAG + " releases feed seeded");
++                    // CommsAccounts owns the Feeds account + feed-folder writes.
++                    // The previous hand-rolled EntityAccount here violated the
++                    // @NonNull host/user/password/port columns → the insert threw
++                    // and the catch below swallowed it, so the feed never seeded
++                    // on installs where the Feeds account didn't already exist.
++                    long id = CommsAccounts.createRssFeed(
++                            DB.getInstance(ctx), RELEASES_FEED_URL, "Cloud Apps — Releases");
++                    Log.i(TAG + " releases feed " + (id < 0 ? "already present" : "seeded id=" + id));
+                 } catch (Throwable ex) {
+                     Log.w(TAG + " seedReleaseFeed " + ex);
+                 }
+-- 
+2.44.2
+

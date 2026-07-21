@@ -1,0 +1,59 @@
+From dc8029db103eee550a43a7771f2e6f4a2e7df5a0 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Thu, 9 Jul 2026 14:14:58 +0300
+Subject: [PATCH] comms: add JMAP + RSS + Cloud Feeds to the Accounts '+' FAB
+ menu
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The Accounts screen '+' FAB offered only IMAP + POP3 — our own account types
+(JMAP, single RSS feed, Cloud Feeds channel group/tree) were only in
+FragmentSetup's quick-setup menu, not here. Add all three to the FAB, routing
+to the existing ACTION_ADD_JMAP / ACTION_ADD_RSS / ACTION_ADD_CLOUD_FEEDS
+broadcasts (parity with FragmentSetup).
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../eu/faircode/email/FragmentAccounts.java    | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/app/src/main/java/eu/faircode/email/FragmentAccounts.java b/app/src/main/java/eu/faircode/email/FragmentAccounts.java
+index 5a138ec0e9..6c78338b98 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentAccounts.java
++++ b/app/src/main/java/eu/faircode/email/FragmentAccounts.java
+@@ -240,6 +240,12 @@ public class FragmentAccounts extends FragmentBase {
+ 
+                 popupMenu.getMenu().add(Menu.NONE, R.string.title_imap, 1, R.string.title_imap);
+                 popupMenu.getMenu().add(Menu.NONE, R.string.title_pop3, 2, R.string.title_pop3);
++                // comms: the "+" FAB offered only POP/IMAP — add our own account
++                // types (parity with FragmentSetup's quick menu): JMAP, a single
++                // RSS feed, and the Cloud Feeds channel group/tree.
++                popupMenu.getMenu().add(Menu.NONE, R.string.title_comms_jmap, 3, R.string.title_comms_jmap);
++                popupMenu.getMenu().add(Menu.NONE, R.string.title_comms_rss, 4, R.string.title_comms_rss);
++                popupMenu.getMenu().add(Menu.NONE, R.string.title_comms_cloud_feeds, 5, R.string.title_comms_cloud_feeds);
+ 
+                 popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                     @Override
+@@ -251,6 +257,18 @@ public class FragmentAccounts extends FragmentBase {
+                         } else if (itemId == R.string.title_pop3) {
+                             onCreate(false);
+                             return true;
++                        } else if (itemId == R.string.title_comms_jmap) { // comms
++                            LocalBroadcastManager.getInstance(getContext())
++                                    .sendBroadcast(new Intent(ActivitySetup.ACTION_ADD_JMAP));
++                            return true;
++                        } else if (itemId == R.string.title_comms_rss) { // comms
++                            LocalBroadcastManager.getInstance(getContext())
++                                    .sendBroadcast(new Intent(ActivitySetup.ACTION_ADD_RSS));
++                            return true;
++                        } else if (itemId == R.string.title_comms_cloud_feeds) { // comms
++                            LocalBroadcastManager.getInstance(getContext())
++                                    .sendBroadcast(new Intent(ActivitySetup.ACTION_ADD_CLOUD_FEEDS));
++                            return true;
+                         }
+                         return false;
+                     }
+-- 
+2.44.2
+

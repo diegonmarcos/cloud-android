@@ -1,0 +1,403 @@
+From 0a24537e76ddd418951f858538e17e09bf1b373c Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Wed, 8 Jul 2026 20:20:32 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20silent=20auto-update=20=E2=80=94=20Pac?=
+ =?UTF-8?q?kageInstaller=20installer=20+=20About=20toggle/grant?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Replaces the ACTION_VIEW + FileProvider install hand-off (which ALWAYS shows
+the system installer dialog) with a PackageInstaller session (CommsInstaller):
+when the Auto-update toggle is ON (default) and 'install unknown apps' is
+granted, the session commits USER_ACTION_NOT_REQUIRED and the update installs
+with no user tap. Without the grant Android emits STATUS_PENDING_USER_ACTION
+which CommsInstallReceiver turns back into the normal prompt; toggle OFF forces
+the prompt on purpose.
+
+- CommsUpdateWorker.doWork(): background path now notifies AND (when ON)
+  downloads + installs silently, instead of notify-only.
+- FragmentOptionsCommsAbout: manual 'Check for updates' installs via the same
+  path; adds an Auto-update toggle button + 'Install unknown apps' grant button
+  (ACTION_MANAGE_UNKNOWN_APP_SOURCES) with live granted/denied labels.
+- Manifest: registers CommsInstallReceiver (exported=false).
+- Mirrors the Kotlin constellation apps (AutoUpdatePrefs + UpdateInstaller).
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ app/src/main/AndroidManifest.xml              |   6 +
+ .../faircode/email/CommsInstallReceiver.java  |  55 +++++++++
+ .../eu/faircode/email/CommsInstaller.java     | 109 ++++++++++++++++++
+ .../eu/faircode/email/CommsUpdateWorker.java  |   9 ++
+ .../email/FragmentOptionsCommsAbout.java      |  58 ++++++++--
+ .../layout/fragment_options_comms_about.xml   |  32 +++++
+ app/src/main/res/values/strings_comms.xml     |   5 +
+ 7 files changed, 267 insertions(+), 7 deletions(-)
+ create mode 100644 app/src/main/java/eu/faircode/email/CommsInstallReceiver.java
+ create mode 100644 app/src/main/java/eu/faircode/email/CommsInstaller.java
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 218d4cc187..68c2621dfd 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -723,6 +723,12 @@
+                 tools:node="remove" />
+         </provider>
+ 
++        <!-- comms: PackageInstaller status callback for the silent self-updater
++             (CommsInstaller). Not exported — only our own PendingIntent targets it. -->
++        <receiver
++            android:name=".CommsInstallReceiver"
++            android:exported="false" />
++
+         <receiver
+             android:name=".Widget"
+             android:exported="true"
+diff --git a/app/src/main/java/eu/faircode/email/CommsInstallReceiver.java b/app/src/main/java/eu/faircode/email/CommsInstallReceiver.java
+new file mode 100644
+index 0000000000..6de7edac54
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/CommsInstallReceiver.java
+@@ -0,0 +1,55 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++// comms: PackageInstaller status callback for CommsInstaller. On a silent
++// session where the "install unknown apps" grant is missing, Android returns
++// STATUS_PENDING_USER_ACTION with a confirmation Intent — we launch it so the
++// user still gets the (fallback) prompt instead of a silent no-op. Success /
++// failure are logged. Registered exported=false in the manifest.
++
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageInstaller;
++
++public class CommsInstallReceiver extends BroadcastReceiver {
++    private static final String TAG = "CommsInstall";
++
++    @Override
++    public void onReceive(Context ctx, Intent intent) {
++        int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Integer.MIN_VALUE);
++        String message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
++        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
++            // Grant absent (or OFF) → Android needs the user to confirm.
++            Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
++            if (confirm != null) {
++                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
++                try {
++                    ctx.startActivity(confirm);
++                } catch (Throwable ex) {
++                    Log.w(TAG + " confirm launch " + ex);
++                }
++            }
++        } else {
++            Log.i(TAG + " status=" + status + (message == null ? "" : " msg=" + message));
++        }
++    }
++}
+diff --git a/app/src/main/java/eu/faircode/email/CommsInstaller.java b/app/src/main/java/eu/faircode/email/CommsInstaller.java
+new file mode 100644
+index 0000000000..720a6ea044
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/CommsInstaller.java
+@@ -0,0 +1,109 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++// comms: silent self-update installer. Replaces the old ACTION_VIEW +
++// FileProvider hand-off (which ALWAYS shows the system installer dialog) with a
++// PackageInstaller session. When the Auto-update toggle is ON (default) and the
++// user has granted "Install unknown apps", the session commits with
++// USER_ACTION_NOT_REQUIRED → the update installs with no tap. Without the grant
++// Android transparently falls back to a prompt (routed via CommsInstallReceiver),
++// so nothing breaks; the toggle OFF forces the prompt on purpose. Mirrors the
++// Kotlin constellation apps' AutoUpdatePrefs + UpdateInstaller.
++
++import android.app.PendingIntent;
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageInstaller;
++import android.os.Build;
++
++import androidx.preference.PreferenceManager;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.InputStream;
++import java.io.OutputStream;
++
++public class CommsInstaller {
++    private static final String TAG = "CommsInstall";
++
++    // comms: runtime Auto-update toggle. Default ON — declared in
++    // build.json::forks.mail...install_mode="silent". User-overridable in
++    // Configs → About → Cloud Mail.
++    static final String PREF_AUTO_SILENT = "comms_auto_update_silent";
++
++    static boolean autoSilent(Context ctx) {
++        return PreferenceManager.getDefaultSharedPreferences(ctx)
++                .getBoolean(PREF_AUTO_SILENT, true);
++    }
++
++    static void setAutoSilent(Context ctx, boolean on) {
++        PreferenceManager.getDefaultSharedPreferences(ctx)
++                .edit().putBoolean(PREF_AUTO_SILENT, on).apply();
++    }
++
++    /** Whether the OS will let us install without a prompt — the "install
++     *  unknown apps" special access. USER_ACTION_NOT_REQUIRED silently degrades
++     *  to a prompt without it, so this drives the About grant-row status. */
++    static boolean canInstallSilently(Context ctx) {
++        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O
++                || ctx.getPackageManager().canRequestPackageInstalls();
++    }
++
++    /**
++     * Install [apk] via PackageInstaller. When [silent] the session asks for
++     * USER_ACTION_NOT_REQUIRED (no dialog) — Android honours it only once the
++     * "install unknown apps" grant is held, else it emits STATUS_PENDING_USER_
++     * ACTION which CommsInstallReceiver turns back into the normal prompt.
++     */
++    static void install(Context ctx, File apk, boolean silent) throws Exception {
++        PackageInstaller installer = ctx.getPackageManager().getPackageInstaller();
++        PackageInstaller.SessionParams params =
++                new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
++        params.setAppPackageName(ctx.getPackageName());
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
++            params.setRequireUserAction(silent
++                    ? PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
++                    : PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
++            // Android 14/15 ECM restricts apps installed without a package
++            // source — our updater IS Cloud Mail's app store.
++            params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE);
++
++        int sessionId = installer.createSession(params);
++        try (PackageInstaller.Session session = installer.openSession(sessionId)) {
++            try (InputStream in = new FileInputStream(apk);
++                 OutputStream out = session.openWrite("base.apk", 0, apk.length())) {
++                byte[] buf = new byte[65536];
++                int n;
++                while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
++                session.fsync(out);
++            }
++            int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
++                piFlags |= PendingIntent.FLAG_MUTABLE;
++            PendingIntent pending = PendingIntent.getBroadcast(ctx, sessionId,
++                    new Intent(ctx, CommsInstallReceiver.class).setPackage(ctx.getPackageName()),
++                    piFlags);
++            session.commit(pending.getIntentSender());
++        }
++        Log.i(TAG + " committed session " + sessionId + " silent=" + silent);
++    }
++}
+diff --git a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+index f04131ddfa..43085727c4 100644
+--- a/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
++++ b/app/src/main/java/eu/faircode/email/CommsUpdateWorker.java
+@@ -131,7 +131,16 @@ public class CommsUpdateWorker extends Worker {
+             }
+             Log.i(TAG + " update available: remote=" + rel.buildStamp
+                     + " > installed=" + installed);
++            // comms: always surface the notification (the "message"), then —
++            // when Auto-update is ON (default) — download + install silently
++            // in the background with no user tap. OFF leaves it at the
++            // notification so the user installs manually from About.
+             notifyUpdate(ctx);
++            if (CommsInstaller.autoSilent(ctx)) {
++                File apk = new File(ctx.getCacheDir(), "updates/cloud-mail-update.apk");
++                downloadApk(rel.downloadUrl, apk);
++                CommsInstaller.install(ctx, apk, true);
++            }
+             return Result.success();
+         } catch (Throwable ex) {
+             Log.w(ex);
+diff --git a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+index ba15f17edb..e71240d135 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
++++ b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+@@ -30,6 +30,7 @@ import android.content.Intent;
+ import android.content.SharedPreferences;
+ import android.net.Uri;
+ import android.os.Bundle;
++import android.provider.Settings;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -41,7 +42,6 @@ import android.widget.Toast;
+ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
+ import androidx.appcompat.app.AlertDialog;
+-import androidx.core.content.FileProvider;
+ import androidx.preference.PreferenceManager;
+ 
+ import java.io.File;
+@@ -75,6 +75,47 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
+ 
+         Button btnOverride = view.findViewById(R.id.comms_btn_stamp_override);
+         btnOverride.setOnClickListener(v -> editStampOverride(tvVersion));
++
++        // comms: Auto-update (silent) toggle + "Install unknown apps" grant.
++        // ON (default) → CommsInstaller commits with USER_ACTION_NOT_REQUIRED;
++        // the grant is what makes that actually skip the install prompt.
++        Button btnAuto = view.findViewById(R.id.comms_btn_auto_update);
++        Button btnGrant = view.findViewById(R.id.comms_btn_grant_install);
++        refreshUpdateButtons(view.getContext(), btnAuto, btnGrant);
++        btnAuto.setOnClickListener(v -> {
++            Context ctx = v.getContext();
++            CommsInstaller.setAutoSilent(ctx, !CommsInstaller.autoSilent(ctx));
++            refreshUpdateButtons(ctx, btnAuto, btnGrant);
++        });
++        btnGrant.setOnClickListener(v -> openUnknownAppSources(v.getContext()));
++    }
++
++    private void refreshUpdateButtons(Context ctx, Button btnAuto, Button btnGrant) {
++        btnAuto.setText(getString(CommsInstaller.autoSilent(ctx)
++                ? R.string.title_comms_auto_update_on
++                : R.string.title_comms_auto_update_off));
++        btnGrant.setText(getString(CommsInstaller.canInstallSilently(ctx)
++                ? R.string.title_comms_install_granted
++                : R.string.title_comms_install_grant));
++    }
++
++    /** Open Settings → "Install unknown apps" scoped to Cloud Mail so the user
++     *  grants REQUEST_INSTALL_PACKAGES. Falls back to the global list, then app
++     *  details. */
++    private void openUnknownAppSources(Context ctx) {
++        Uri self = Uri.fromParts("package", ctx.getPackageName(), null);
++        Intent scoped = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, self);
++        if (scoped.resolveActivity(ctx.getPackageManager()) != null) {
++            startActivity(scoped.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
++            return;
++        }
++        Intent list = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
++        if (list.resolveActivity(ctx.getPackageManager()) != null) {
++            startActivity(list.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
++            return;
++        }
++        startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, self)
++                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+     }
+ 
+     // comms: version line shows the EFFECTIVE stamp the updater compares with;
+@@ -145,12 +186,15 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
+                             getString(R.string.title_comms_up_to_date), Toast.LENGTH_LONG).show();
+                     return;
+                 }
+-                Uri uri = FileProvider.getUriForFile(ctx, ctx.getPackageName(), apk);
+-                Intent install = new Intent(Intent.ACTION_VIEW)
+-                        .setDataAndType(uri, "application/vnd.android.package-archive")
+-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+-                                | Intent.FLAG_ACTIVITY_NEW_TASK);
+-                ctx.startActivity(install);
++                // comms: install via PackageInstaller — silent (no tap) when the
++                // Auto-update toggle is ON and "install unknown apps" is granted;
++                // otherwise Android shows the confirm prompt (CommsInstallReceiver).
++                try {
++                    CommsInstaller.install(ctx, apk, CommsInstaller.autoSilent(ctx));
++                } catch (Throwable ex) {
++                    Log.w(ex);
++                    ToastEx.makeText(ctx, ex.toString(), Toast.LENGTH_LONG).show();
++                }
+             }
+ 
+             @Override
+diff --git a/app/src/main/res/layout/fragment_options_comms_about.xml b/app/src/main/res/layout/fragment_options_comms_about.xml
+index ad18c1aa88..2cc7a0734e 100644
+--- a/app/src/main/res/layout/fragment_options_comms_about.xml
++++ b/app/src/main/res/layout/fragment_options_comms_about.xml
+@@ -92,5 +92,37 @@
+             app:layout_constraintStart_toEndOf="@id/comms_btn_check_update"
+             app:layout_constraintTop_toTopOf="@id/comms_btn_check_update" />
+ 
++        <!-- comms: Auto-update (silent) — hint + toggle + install-grant -->
++        <TextView
++            android:id="@+id/comms_tv_auto_hint"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="20dp"
++            android:text="@string/title_comms_auto_update_hint"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small"
++            android:textStyle="italic"
++            android:textColor="?android:attr/textColorSecondary"
++            app:layout_constraintEnd_toEndOf="parent"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/comms_btn_check_update" />
++
++        <Button
++            android:id="@+id/comms_btn_auto_update"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="3dp"
++            android:layout_marginTop="4dp"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/comms_tv_auto_hint" />
++
++        <Button
++            android:id="@+id/comms_btn_grant_install"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="12dp"
++            app:layout_constraintStart_toEndOf="@id/comms_btn_auto_update"
++            app:layout_constraintTop_toTopOf="@id/comms_btn_auto_update" />
++
+     </androidx.constraintlayout.widget.ConstraintLayout>
+ </ScrollView>
+diff --git a/app/src/main/res/values/strings_comms.xml b/app/src/main/res/values/strings_comms.xml
+index 2a142b64ce..97dffda9a9 100644
+--- a/app/src/main/res/values/strings_comms.xml
++++ b/app/src/main/res/values/strings_comms.xml
+@@ -33,6 +33,11 @@
+     <string name="title_comms_checking_update" translatable="false">Checking for updates…</string>
+     <string name="title_comms_up_to_date" translatable="false">Cloud Mail is up to date</string>
+     <string name="title_comms_stamp_override" translatable="false">Update channel override</string>
++    <string name="title_comms_auto_update_hint" translatable="false">Auto-update — silent self-update (default ON). Grant "Install unknown apps" to skip the install prompt:</string>
++    <string name="title_comms_auto_update_on" translatable="false">Auto-update: ON</string>
++    <string name="title_comms_auto_update_off" translatable="false">Auto-update: OFF</string>
++    <string name="title_comms_install_grant" translatable="false">Grant: Install unknown apps</string>
++    <string name="title_comms_install_granted" translatable="false">✓ Install unknown apps</string>
+     <string name="title_comms_stamp_override_hint" translatable="false">Build stamp (YYYYMMDD.HHMMSS) used for update checks. Empty = use the baked stamp. Enter "dev" or an old stamp to force-update to the newest release.</string>
+     <string name="title_comms_jmap_connect_success" translatable="false">JMAP connection successful</string>
+ 
+-- 
+2.44.2
+

@@ -1,0 +1,103 @@
+From ee78f1ecaa92fde0cab7eeb496515f9ebe048b85 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 15:06:28 +0300
+Subject: [PATCH 10/12] Cloud-Dialer: expand provider roster (+Viber, WhatsApp
+ Business, Messenger, Threema, LINE) + fix package visibility
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- assets/call_providers.json: 4 → 9 services. New VoIP-row entries are fail-open
+  by design (availableOptions omits a mimetype the contacts DB never carries),
+  so best-effort mimetypes can't misfire — documented via _doc key
+  (parser ignores unknown keys).
+- Manifest <queries>: LATENT BUG FIX — provider packages were never declared,
+  so on Android 11+ isPackageInstalled() was always false and deep-link
+  options (and setPackage'd VoIP intents) silently never surfaced. All 9
+  provider packages now visible; keep in sync with the asset.
+---
+ app/src/main/AndroidManifest.xml        | 14 ++++++++++
+ app/src/main/assets/call_providers.json | 36 +++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+)
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index b976e0d2..e8114540 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -33,6 +33,20 @@
+         <package android:name="org.fossify.contacts.debug" />
+         <package android:name="org.fossify.contacts" />
+ 
++        <!-- Cloud Dialer: package visibility (Android 11+) for every provider in
++             assets/call_providers.json — without these, isPackageInstalled() is
++             always false and provider options silently never surface. Keep in
++             sync with the asset. -->
++        <package android:name="com.whatsapp" />
++        <package android:name="com.whatsapp.w4b" />
++        <package android:name="org.telegram.messenger" />
++        <package android:name="org.thoughtcrime.securesms" />
++        <package android:name="com.google.android.apps.tachyon" />
++        <package android:name="com.viber.voip" />
++        <package android:name="com.facebook.orca" />
++        <package android:name="ch.threema.app" />
++        <package android:name="jp.naver.line.android" />
++
+         <!-- Required for loading contact accounts -->
+         <intent>
+             <action android:name="android.accounts.AccountAuthenticator" />
+diff --git a/app/src/main/assets/call_providers.json b/app/src/main/assets/call_providers.json
+index 76e021d9..a923e270 100644
+--- a/app/src/main/assets/call_providers.json
++++ b/app/src/main/assets/call_providers.json
+@@ -6,6 +6,13 @@
+     "voipMimetype": "vnd.android.cursor.item/vnd.com.whatsapp.voip.call",
+     "deepLink": "https://wa.me/{number}"
+   },
++  {
++    "id": "whatsapp_business",
++    "label": "WhatsApp Business",
++    "packageName": "com.whatsapp.w4b",
++    "voipMimetype": "vnd.android.cursor.item/vnd.com.whatsapp.w4b.voip.call",
++    "deepLink": "https://wa.me/{number}"
++  },
+   {
+     "id": "telegram",
+     "label": "Telegram",
+@@ -26,5 +33,34 @@
+     "packageName": "com.google.android.apps.tachyon",
+     "voipMimetype": "vnd.android.cursor.item/com.google.android.apps.tachyon.phone.audio",
+     "deepLink": null
++  },
++  {
++    "id": "viber",
++    "label": "Viber",
++    "packageName": "com.viber.voip",
++    "voipMimetype": "vnd.android.cursor.item/vnd.com.viber.voip.viber_number_call",
++    "deepLink": null
++  },
++  {
++    "_doc": "VoIP mimetypes are fail-open: a mimetype that never appears in the contacts DB simply never surfaces as an option (availableOptions omits it). The messenger/threema/line rows below are best-effort mimetypes from contact-data dumps, not vendor docs — harmless if wrong, promoted the day a contact row matches.",
++    "id": "messenger",
++    "label": "Messenger",
++    "packageName": "com.facebook.orca",
++    "voipMimetype": "vnd.android.cursor.item/com.facebook.messenger.audiocall",
++    "deepLink": null
++  },
++  {
++    "id": "threema",
++    "label": "Threema",
++    "packageName": "ch.threema.app",
++    "voipMimetype": "vnd.android.cursor.item/vnd.ch.threema.app.call",
++    "deepLink": null
++  },
++  {
++    "id": "line",
++    "label": "LINE",
++    "packageName": "jp.naver.line.android",
++    "voipMimetype": "vnd.android.cursor.item/vnd.jp.naver.line.android.call",
++    "deepLink": null
+   }
+ ]
+-- 
+2.44.2
+
