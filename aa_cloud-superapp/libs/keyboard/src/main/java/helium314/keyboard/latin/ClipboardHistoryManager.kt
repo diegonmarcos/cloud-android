@@ -2,17 +2,20 @@
 
 package helium314.keyboard.latin
 
+import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
+import android.os.IBinder
 import android.provider.OpenableColumns
 import android.text.InputType
 import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isGone
@@ -32,6 +35,7 @@ import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.InputTypeUtils
 import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.ToolbarKey
+import helium314.keyboard.latin.utils.getPlatformDialogThemeContext
 import helium314.keyboard.latin.utils.prefs
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -39,12 +43,20 @@ import kotlinx.coroutines.launch
 
 class ClipboardHistoryManager(
         private val latinIME: LatinIME
-) : ClipboardManager.OnPrimaryClipChangedListener {
+) : ClipboardManager.OnPrimaryClipChangedListener, ClipboardDao.Listener {
+
+    fun interface HistoryChangeListener {
+        fun onHistoryChanged()
+    }
 
     private lateinit var clipboardManager: ClipboardManager
     private var clipboardSuggestionView: View? = null
     private var clipboardDao: ClipboardDao? = null
     private var tempPrimaryClip = false
+
+    // null = default (unpinned) page; otherwise the pin list currently shown
+    private var currentList: String? = null
+    private var historyChangeListener: HistoryChangeListener? = null
 
     fun onCreate() {
         clipboardManager = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -127,8 +139,48 @@ class ClipboardHistoryManager(
         }
     }
 
-    fun toggleClipPinned(id: Long) {
-        clipboardDao?.togglePinned(id)
+    // entries for the page currently shown (default unpinned page, or one pin list)
+    private fun filteredEntries() = clipboardDao?.getForList(currentList) ?: emptyList()
+
+    fun getCurrentList() = currentList
+
+    fun setCurrentList(listName: String?) {
+        currentList = listName
+    }
+
+    fun getListNames(): List<String> = clipboardDao?.getListNames() ?: emptyList()
+
+    /** Long-press on an unpinned clip: ask which list to pin it into (existing, or a freshly-numbered new one). */
+    fun showPinListPicker(id: Long, windowToken: IBinder) {
+        val existingLists = getListNames()
+        val items = (existingLists + latinIME.getString(R.string.clipboard_pin_new_list)).toTypedArray()
+        val dialog = AlertDialog.Builder(getPlatformDialogThemeContext(latinIME))
+            .setTitle(R.string.clipboard_pin_choose_list)
+            .setItems(items) { di, i ->
+                di.dismiss()
+                val listName = existingLists.getOrNull(i) ?: clipboardDao?.nextListName() ?: return@setItems
+                pinToList(id, listName)
+            }
+            .create()
+        dialog.window?.apply {
+            attributes = attributes.apply {
+                token = windowToken
+                type = WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG
+            }
+            addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+        }
+        dialog.show()
+    }
+
+    fun pinToList(id: Long, listName: String) {
+        clipboardDao?.pinToList(id, listName)
+        historyChangeListener?.onHistoryChanged()
+    }
+
+    /** Long-press on an already-pinned clip (only reachable from within its own pin list tab): unpin directly. */
+    fun unpin(id: Long) {
+        clipboardDao?.unpin(id)
+        historyChangeListener?.onHistoryChanged()
     }
 
     fun clearHistory() {
@@ -137,11 +189,11 @@ class ClipboardHistoryManager(
         removeClipboardSuggestion()
     }
 
-    fun canRemove(index: Int) = clipboardDao?.isPinned(index) == false
+    fun canRemove(index: Int) = filteredEntries().getOrNull(index)?.isPinned == false
 
     fun removeEntry(index: Int) {
-        if (canRemove(index))
-            clipboardDao?.deleteClipAt(index)
+        val entry = filteredEntries().getOrNull(index) ?: return
+        if (!entry.isPinned) clipboardDao?.deleteClip(entry.id)
     }
 
     fun sortHistoryEntries() {
@@ -152,15 +204,21 @@ class ClipboardHistoryManager(
     // when history is about to be shown
     fun prepareClipboardHistory() = clipboardDao?.clearOldClips(true)
 
-    fun getHistorySize() = clipboardDao?.count() ?: 0
+    fun getHistorySize() = filteredEntries().size
 
-    fun getHistoryEntry(position: Int) = clipboardDao?.getAt(position)
+    fun getHistoryEntry(position: Int) = filteredEntries().getOrNull(position)
 
     fun getHistoryEntryContent(id: Long) = clipboardDao?.get(id)
 
-    fun setHistoryChangeListener(listener: ClipboardDao.Listener?) {
-        clipboardDao?.listener = listener
+    fun setHistoryChangeListener(listener: HistoryChangeListener?) {
+        historyChangeListener = listener
+        // dao.listener != null also means "history view is visible" (blocks retention cleanup), see clearOldClips
+        clipboardDao?.listener = if (listener != null) this else null
     }
+
+    override fun onClipInserted(position: Int) = historyChangeListener?.onHistoryChanged() ?: Unit
+    override fun onClipsRemoved(position: Int, count: Int) = historyChangeListener?.onHistoryChanged() ?: Unit
+    override fun onClipMoved(oldPosition: Int, newPosition: Int) = historyChangeListener?.onHistoryChanged() ?: Unit
 
     private fun isClipSensitive(inputType: Int): Boolean {
         ClipboardManagerCompat.getClipSensitivity(clipboardManager.primaryClip?.description)?.let { return it }

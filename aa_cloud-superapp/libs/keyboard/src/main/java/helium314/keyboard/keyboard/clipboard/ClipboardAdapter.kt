@@ -103,7 +103,12 @@ class ClipboardAdapter(
         }
 
         override fun onLongClick(view: View): Boolean {
-            clipboardHistoryManager?.toggleClipPinned(view.tag as Long)
+            val manager = clipboardHistoryManager ?: return true
+            val id = view.tag as Long
+            if (manager.getCurrentList() != null)
+                manager.unpin(id) // already viewing this clip's pin list -> unpin directly
+            else
+                manager.showPinListPicker(id, view.windowToken)
             return true
         }
     }

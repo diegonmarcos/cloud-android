@@ -20,18 +20,16 @@ import java.io.File
 class ClipboardHistoryEntry(
     val id: Long,
     var timeStamp: Long,
-    var isPinned: Boolean,
+    var listName: String?,
     val text: String?,
     val filename: String?,
     val mimeTypes: List<String>?
 ) : Comparable<ClipboardHistoryEntry> {
-    // for display order
-    override fun compareTo(other: ClipboardHistoryEntry): Int {
-        val result = other.isPinned.compareTo(isPinned)
-        if (result == 0) return other.timeStamp.compareTo(timeStamp)
-        if (Settings.getValues()?.mClipboardHistoryPinnedFirst == false) return -result
-        return result
-    }
+    // null = default (unpinned) page; non-null = the pin list this clip belongs to
+    val isPinned: Boolean get() = listName != null
+
+    // every displayed page is filtered to a single list already, so plain recency ordering is enough
+    override fun compareTo(other: ClipboardHistoryEntry): Int = other.timeStamp.compareTo(timeStamp)
 
     fun getContentInfo(context: Context): InputContentInfoCompat =
         InputContentInfoCompat(getContentUri(context)!!, ClipDescription(text, mimeTypes?.toTypedArray()), null)

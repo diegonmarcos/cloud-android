@@ -38,18 +38,18 @@ class ClipboardDao private constructor(private val db: Database) {
     private val cache = mutableListOf<ClipboardHistoryEntry>().apply {
         db.readableDatabase.query(
             TABLE,
-            arrayOf(COLUMN_ID, COLUMN_TIMESTAMP, COLUMN_PINNED, COLUMN_TEXT, COLUMN_FILE, COLUMN_MIME_TYPE),
+            arrayOf(COLUMN_ID, COLUMN_TIMESTAMP, COLUMN_LIST_NAME, COLUMN_TEXT, COLUMN_FILE, COLUMN_MIME_TYPE),
             null,
             null,
             null,
             null,
-            "$COLUMN_PINNED, $COLUMN_TIMESTAMP DESC" // was only relevant in the initial approach of using a cursor instead of a cache
+            "$COLUMN_TIMESTAMP DESC"
         ).use {
             while (it.moveToNext()) {
                 add(ClipboardHistoryEntry(
                     it.getLong(0),
                     it.getLong(1),
-                    it.getInt(2) != 0,
+                    it.getStringOrNull(2),
                     it.getStringOrNull(3),
                     it.getStringOrNull(4),
                     it.getStringOrNull(5)?.split('§')?.filter { it.isNotEmpty() },
@@ -68,7 +68,7 @@ class ClipboardDao private constructor(private val db: Database) {
             updateTimestampAt(existingIndex, timestamp)
             return@synchronized
         }
-        insertNewEntry(timestamp, pinned, text, null, null, null)
+        insertNewEntry(timestamp, if (pinned) DEFAULT_PIN_LIST else null, text, null, null, null)
     }
 
     fun addClipUri(timestamp: Long, pinned: Boolean, uri: Uri, description: ClipDescription, context: Context) = synchronized(this) {
@@ -93,7 +93,7 @@ class ClipboardDao private constructor(private val db: Database) {
         tempFile.renameTo(file)
         // we could try getting a thumbnail using context.contentResolver.loadThumbnail(uri, Size(a, b), null)
         // but currently we don't cache them anyway, so no use for that
-        insertNewEntry(timestamp, pinned, description.label?.toString(), file.name, description.getMimeTypes(), context)
+        insertNewEntry(timestamp, if (pinned) DEFAULT_PIN_LIST else null, description.label?.toString(), file.name, description.getMimeTypes(), context)
     }
 
     // keep pinned and the first non-pinned, others can be deleted
@@ -117,17 +117,18 @@ class ClipboardDao private constructor(private val db: Database) {
     }
 
     /** only public for restoring backups */
-    fun insertNewEntry(timestamp: Long, pinned: Boolean, text: String?, filename: String?, mimeTypes: List<String>?, context: Context?) {
+    fun insertNewEntry(timestamp: Long, listName: String?, text: String?, filename: String?, mimeTypes: List<String>?, context: Context?) {
         val cv = ContentValues(5)
         cv.put(COLUMN_TIMESTAMP, timestamp)
-        cv.put(COLUMN_PINNED, pinned)
+        cv.put(COLUMN_PINNED, listName != null) // kept in sync for older-version backup compatibility, unused otherwise
+        cv.put(COLUMN_LIST_NAME, listName)
         cv.put(COLUMN_TEXT, text)
         cv.put(COLUMN_FILE, filename)
         // § should be a safe separator, not allowed in mime types: https://datatracker.ietf.org/doc/html/rfc6838#section-4.2
         cv.put(COLUMN_MIME_TYPE, mimeTypes?.joinToString("§"))
         val rowId = db.writableDatabase.insert(TABLE, null, cv)
 
-        val entry = ClipboardHistoryEntry(rowId, timestamp, pinned, text, filename, mimeTypes)
+        val entry = ClipboardHistoryEntry(rowId, timestamp, listName, text, filename, mimeTypes)
         if (filename != null && context != null)
             deleteIfSizeExceeded(context.prefs())
         cache.add(entry)
@@ -145,39 +146,50 @@ class ClipboardDao private constructor(private val db: Database) {
         db.writableDatabase.update(TABLE, cv, "$COLUMN_ID = ${entry.id}", null)
     }
 
-    fun isPinned(index: Int) = cache[index].isPinned
-
     fun getAt(index: Int) = cache[index]
 
     fun get(id: Long) = cache.first { it.id == id }
 
     fun getAll(): List<ClipboardHistoryEntry> = cache
 
+    /** Entries belonging to [listName] (null = the default, unpinned page), newest first. */
+    fun getForList(listName: String?): List<ClipboardHistoryEntry> = cache.filter { it.listName == listName }
+
+    /** Distinct pin list names currently in use, e.g. ["Pins-1", "Pins-2"]. */
+    fun getListNames(): List<String> = cache.mapNotNull { it.listName }.distinct().sorted()
+
+    /** Next free auto-generated list name, e.g. "Pins-3" if Pins-1/Pins-2 exist. */
+    fun nextListName(): String {
+        val usedNumbers = cache.mapNotNull { it.listName?.removePrefix(DEFAULT_PIN_LIST_PREFIX)?.toIntOrNull() }
+        return "$DEFAULT_PIN_LIST_PREFIX${(usedNumbers.maxOrNull() ?: 0) + 1}"
+    }
+
     fun count() = cache.size
 
     fun sort() = cache.sort()
 
-    fun togglePinned(id: Long) = synchronized(this) {
+    fun pinToList(id: Long, listName: String) = synchronized(this) {
         val entry = cache.first { it.id == id }
-        entry.isPinned = !entry.isPinned
-        entry.timeStamp = System.currentTimeMillis()
-        if (listener != null) {
-            val oldPos = cache.indexOf(entry)
-            cache.sort()
-            val newPos = cache.indexOf(entry)
-            listener?.onClipMoved(oldPos, newPos)
-        } else {
-            cache.sort()
-        }
+        entry.listName = listName
         val cv = ContentValues(2)
-        cv.put(COLUMN_PINNED, entry.isPinned)
-        cv.put(COLUMN_TIMESTAMP, entry.timeStamp)
+        cv.put(COLUMN_PINNED, true)
+        cv.put(COLUMN_LIST_NAME, listName)
         db.writableDatabase.update(TABLE, cv, "$COLUMN_ID = ${entry.id}", null)
     }
 
-    // RecyclerView initiates this, so we don't call listener (or we'll get an IndexOutOfRangeException from RecyclerView)
-    fun deleteClipAt(index: Int) {
-        delete(listOf(cache[index]))
+    fun unpin(id: Long) = synchronized(this) {
+        val entry = cache.first { it.id == id }
+        entry.listName = null
+        val cv = ContentValues(2)
+        cv.put(COLUMN_PINNED, false)
+        cv.putNull(COLUMN_LIST_NAME)
+        db.writableDatabase.update(TABLE, cv, "$COLUMN_ID = ${entry.id}", null)
+    }
+
+    // caller already updates its own (filtered) adapter, so we don't call listener here
+    // (matches the id, since the filtered position doesn't match the raw cache position)
+    fun deleteClip(id: Long) {
+        delete(listOf(cache.first { it.id == id }))
     }
 
     private fun delete(entries: List<ClipboardHistoryEntry>) = synchronized(this) {
@@ -253,10 +265,13 @@ class ClipboardDao private constructor(private val db: Database) {
         // ID is generated and returned on insert, see https://sqlite.org/rowidtable.html
         private const val COLUMN_ID = "ID"
         private const val COLUMN_TIMESTAMP = "TIMESTAMP"
-        private const val COLUMN_PINNED = "PINNED"
+        private const val COLUMN_PINNED = "PINNED" // legacy boolean, kept in schema (NOT NULL) but no longer read; superseded by COLUMN_LIST_NAME
         private const val COLUMN_TEXT = "TEXT" // we could enforce unique text, but that's only necessary if we can drop the cache (later)
         private const val COLUMN_FILE = "FILE" // path relative to files dir
         private const val COLUMN_MIME_TYPE = "MIME_TYPE" // for files, actually a list of mime types according to clipboard description
+        private const val COLUMN_LIST_NAME = "LIST_NAME" // null = default (unpinned) page; otherwise the pin list this clip belongs to
+        const val DEFAULT_PIN_LIST_PREFIX = "Pins-"
+        const val DEFAULT_PIN_LIST = "Pins-1"
         const val CREATE_TABLE = """
             CREATE TABLE $TABLE (
                 $COLUMN_ID INTEGER PRIMARY KEY,
@@ -268,6 +283,9 @@ class ClipboardDao private constructor(private val db: Database) {
 
         const val ADD_FILE_COLUMN = "ALTER TABLE $TABLE ADD COLUMN $COLUMN_FILE TEXT"
         const val ADD_MIME_TYPE_COLUMN = "ALTER TABLE $TABLE ADD COLUMN $COLUMN_MIME_TYPE TEXT"
+        const val ADD_LIST_NAME_COLUMN = "ALTER TABLE $TABLE ADD COLUMN $COLUMN_LIST_NAME TEXT"
+        // old boolean pin -> first pin list, so upgrading users don't lose their pins
+        const val MIGRATE_PINNED_TO_LIST_NAME = "UPDATE $TABLE SET $COLUMN_LIST_NAME = '$DEFAULT_PIN_LIST' WHERE $COLUMN_PINNED = 1"
 
         private var instance: ClipboardDao? = null
         lateinit var clipFilesDir: File

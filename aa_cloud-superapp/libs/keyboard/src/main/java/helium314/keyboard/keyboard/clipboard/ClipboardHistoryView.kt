@@ -29,7 +29,6 @@ import helium314.keyboard.latin.ClipboardHistoryManager
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.common.Constants
-import helium314.keyboard.latin.database.ClipboardDao
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.ResourceUtils
 import helium314.keyboard.latin.utils.ToolbarKey
@@ -46,7 +45,7 @@ class ClipboardHistoryView @JvmOverloads constructor(
         attrs: AttributeSet?,
         defStyle: Int = R.attr.clipboardHistoryViewStyle
 ) : LinearLayout(context, attrs, defStyle), View.OnClickListener,
-    ClipboardDao.Listener, OnKeyEventListener,
+    ClipboardHistoryManager.HistoryChangeListener, OnKeyEventListener,
     View.OnLongClickListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private val clipboardLayoutParams = ClipboardLayoutParams(context)
@@ -55,6 +54,7 @@ class ClipboardHistoryView @JvmOverloads constructor(
 
     private lateinit var clipboardRecyclerView: ClipboardHistoryRecyclerView
     private lateinit var placeholderView: TextView
+    private lateinit var clipboardTabs: LinearLayout
     private val toolbarKeys = mutableListOf<ImageButton>()
     private lateinit var clipboardAdapter: ClipboardAdapter
 
@@ -95,6 +95,7 @@ class ClipboardHistoryView @JvmOverloads constructor(
             pinnedIconResId = pinIconId
         }
         placeholderView = findViewById(R.id.clipboard_empty_view)
+        clipboardTabs = findViewById(R.id.clipboard_tabs)
         clipboardRecyclerView = findViewById<ClipboardHistoryRecyclerView>(R.id.clipboard_list).apply {
             // SuperApp: clipboard card scale. The orientation/size-qualified
             // integer resource gives the base column count; the user's card-scale
@@ -158,11 +159,13 @@ class ClipboardHistoryView @JvmOverloads constructor(
             keyboardActionListener: KeyboardActionListener
     ) {
         clipboardHistoryManager = historyManager
+        historyManager.setCurrentList(null) // always reopen on the default (unpinned) page
         initialize()
         setupToolbarKeys()
         historyManager.prepareClipboardHistory()
         historyManager.setHistoryChangeListener(this)
         clipboardAdapter.clipboardHistoryManager = historyManager
+        refreshTabs()
 
         val params = KeyDrawParams()
         params.updateParams(clipboardLayoutParams.bottomRowKeyboardHeight, keyVisualAttr)
@@ -250,19 +253,34 @@ class ClipboardHistoryView @JvmOverloads constructor(
             keyboardActionListener.onCodeInput(KeyCode.ALPHA, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false)
     }
 
-    override fun onClipInserted(position: Int) {
-        clipboardAdapter.notifyItemInserted(position)
-        clipboardRecyclerView.smoothScrollToPosition(position)
+    // coarse refresh: a pin/unpin or new-clip event can change which page an entry belongs to,
+    // so we just recompute the tabs and rebind the (small) clip list rather than track fine-grained positions
+    override fun onHistoryChanged() {
+        refreshTabs()
+        clipboardAdapter.notifyDataSetChanged()
     }
 
-    override fun onClipsRemoved(position: Int, count: Int) {
-        clipboardAdapter.notifyItemRangeRemoved(position, count)
-    }
-
-    override fun onClipMoved(oldPosition: Int, newPosition: Int) {
-        clipboardAdapter.notifyItemMoved(oldPosition, newPosition)
-        clipboardAdapter.notifyItemChanged(newPosition)
-        if (newPosition < oldPosition) clipboardRecyclerView.smoothScrollToPosition(newPosition)
+    private fun refreshTabs() {
+        if (!this::clipboardTabs.isInitialized || !this::clipboardHistoryManager.isInitialized) return
+        val colors = Settings.getValues().mColors
+        val current = clipboardHistoryManager.getCurrentList()
+        val tabPadding = (8 * resources.displayMetrics.density).toInt()
+        clipboardTabs.removeAllViews()
+        (listOf<String?>(null) + clipboardHistoryManager.getListNames()).forEach { listName ->
+            val tab = TextView(context).apply {
+                text = listName ?: context.getString(R.string.clipboard)
+                setPadding(tabPadding, tabPadding / 2, tabPadding, tabPadding / 2)
+                alpha = if (listName == current) 1f else 0.5f
+                setTextColor(colors.get(ColorType.KEY_TEXT))
+                KeyboardTypeface.applyToTextView(this)
+                setOnClickListener {
+                    clipboardHistoryManager.setCurrentList(listName)
+                    refreshTabs()
+                    clipboardAdapter.notifyDataSetChanged()
+                }
+            }
+            clipboardTabs.addView(tab)
+        }
     }
 
     override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {

@@ -210,6 +210,10 @@
     <string name="clipboard_history_files">Add images and other files to clipboard history</string>
     <!-- Preferences item for selecting maximum combined size of clipboard history files -->
     <string name="clipboard_history_max_file_size">Clipboard size limit</string>
+    <!-- Title of the dialog asking which pin list a long-pressed clip should go to -->
+    <string name="clipboard_pin_choose_list">Pin to list</string>
+    <!-- Option in the pin list dialog to create a new pin list -->
+    <string name="clipboard_pin_new_list">+ New list</string>
     <!-- Description, used for non-image clipboard files -->
     <string name="item_description">Description: %s</string>
     <!-- Type, used for non-image clipboard files -->
