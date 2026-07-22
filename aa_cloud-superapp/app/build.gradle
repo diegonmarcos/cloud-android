@@ -130,6 +130,13 @@ def uiPhoneSmartFoldersB64  = uiPhoneSmartFoldersJson.bytes.encodeBase64().toStr
 def uiSuitePhoneGroupsList = buildJson.ui.sections.find { it.id == "suite" }?.phone_app_groups ?: []
 def uiSuitePhoneGroupsJson = groovy.json.JsonOutput.toJson(uiSuitePhoneGroupsList)
 def uiSuitePhoneGroupsB64  = uiSuitePhoneGroupsJson.bytes.encodeBase64().toString()
+// Suite/Phone "Active Apps" section — recently-used apps rendered below
+// the last curated group. Scalar knobs from
+// build.json::sections[id=suite].active_apps.
+def suiteActiveApps    = buildJson.ui.sections.find { it.id == "suite" }?.active_apps ?: [:]
+def activeAppsEnabled  = (suiteActiveApps.enabled != false)
+def activeAppsTitle    = (suiteActiveApps.title ?: 'Active Apps').toString()
+def activeAppsLimit    = ((suiteActiveApps.limit ?: 8) as Number).intValue()
 // Dynamic-island tap target. Format: "app:<pkg>" | "notifications" |
 // "shortcut:<id>". Parsed at runtime by MainActivity. Default lives in
 // build.json::ui.dynamic_island_action.
@@ -503,6 +510,9 @@ android {
         buildConfigField "String", "UI_PHONE_SECTIONS_B64",   "\"${uiPhoneSectionsB64}\""
         buildConfigField "String", "UI_PHONE_SMART_FOLDERS_B64", "\"${uiPhoneSmartFoldersB64}\""
         buildConfigField "String", "UI_SUITE_PHONE_GROUPS_B64", "\"${uiSuitePhoneGroupsB64}\""
+        buildConfigField "boolean","UI_SUITE_ACTIVE_APPS_ENABLED", "${activeAppsEnabled}"
+        buildConfigField "String", "UI_SUITE_ACTIVE_APPS_TITLE",   "\"${activeAppsTitle}\""
+        buildConfigField "int",    "UI_SUITE_ACTIVE_APPS_LIMIT",   "${activeAppsLimit}"
         buildConfigField "int",    "UI_PHONE_GRID_COLUMNS",   "${phoneGridColumns}"
         buildConfigField "String", "UI_DYNAMIC_ISLAND_ACTION","\"${dynamicIslandAction}\""
         buildConfigField "String", "MESH_JSON_B64",         "\"${meshB64}\""
@@ -655,6 +665,9 @@ dependencies {
     // libs:battery — battery/energy engine + dialogs (extracted from app).
     // Depends on libs:shizuku-adb-debug-tools (Tier-2 privileged read).
     implementation project(':libs:battery')
+    // libs:datamanager — per-app usage + network DATA providers (feeds the
+    // Phone smart folders + Suite/Phone Active Apps). Sibling of libs:battery.
+    implementation project(':libs:datamanager')
     // libs:onehand — One-Hand edge-gesture overlay engine (Configs/Onehand toggle).
     implementation project(':libs:onehand')
 

@@ -1,5 +1,8 @@
 package com.diegonmarcos.superapp.apps
 import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.superapp.battery.EnergyWatchdog
+import com.diegonmarcos.superapp.datamanager.AppNetworkProvider
+import com.diegonmarcos.superapp.datamanager.AppUsageProvider
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -19,6 +22,23 @@ import org.json.JSONArray
  * Rule types:
  *   • pkg_prefix          — any pkg startsWith one of values
  *   • pkg_eq              — any pkg equals one of values
+ *   • recent_used         — RANKING. Packages by most-recent use
+ *                           (UsageStatsManager.lastTimeUsed), capped at
+ *                           `limit`. Needs usage-access.
+ *   • active_since        — RANKING. Packages used within the last
+ *                           `window_h` hours, most-recent first (optional
+ *                           `limit`). Needs usage-access.
+ *   • most_opened         — RANKING. Packages by launch count
+ *                           (MOVE_TO_FOREGROUND events, 7d), capped at
+ *                           `limit`. Needs usage-access.
+ *   • top_network         — RANKING. Packages by total bytes rx+tx
+ *                           (NetworkStatsManager, 7d), capped at `limit`.
+ *                           Needs usage-access.
+ *   • top_battery         — RANKING. Packages by estimated mAh
+ *                           (libs:battery EnergyWatchdog.perAppEstimate),
+ *                           capped at `limit`. Needs usage-access.
+ *   All five ranking rules degrade to an empty folder (hidden) when the
+ *   usage-access grant is missing — see the providers' runCatching.
  *   • install_source_not  — PackageManager.getInstallSourceInfo
  *                           .installingPackageName not in values.
  *                           CONSERVATIVE: requires a CONCRETE non-Play
@@ -36,7 +56,12 @@ import org.json.JSONArray
  */
 object PhoneSmartFolders {
 
-    data class Rule(val type: String, val values: List<String>, val limit: Int = 0) {
+    data class Rule(
+        val type: String,
+        val values: List<String>,
+        val limit: Int = 0,
+        val windowH: Int = 0,
+    ) {
         fun matches(ctx: Context, app: PhoneApp): Boolean = when (type) {
             "pkg_prefix" -> values.any { app.packageName.startsWith(it) }
             "pkg_eq"     -> values.any { app.packageName == it }
@@ -87,14 +112,39 @@ object PhoneSmartFolders {
 
     data class SmartFolder(val id: String, val title: String, val rule: Rule) {
         /** The apps this smart folder shows, from the master [apps] list.
-         *  Predicate rules filter; `recently_installed` ranks by install time
-         *  (newest first) and caps at `limit`. */
-        fun select(ctx: Context, apps: List<PhoneApp>): List<PhoneApp> = when (rule.type) {
-            "recently_installed" -> apps
-                .filter { it.firstInstallTime > 0L }
-                .sortedByDescending { it.firstInstallTime }
-                .take(if (rule.limit > 0) rule.limit else 12)
-            else -> apps.filter { rule.matches(ctx, it) }
+         *  Predicate rules filter; the ranking rules (recently_installed +
+         *  the usage/network/battery ones) order a provider's ranked
+         *  package list against `apps` and cap at `limit`. */
+        fun select(ctx: Context, apps: List<PhoneApp>): List<PhoneApp> {
+            val cap = if (rule.limit > 0) rule.limit else 7
+            return when (rule.type) {
+                "recently_installed" -> apps
+                    .filter { it.firstInstallTime > 0L }
+                    .sortedByDescending { it.firstInstallTime }
+                    .take(if (rule.limit > 0) rule.limit else 12)
+                "recent_used" -> rankToApps(AppUsageProvider.recentUsed(ctx), apps).take(cap)
+                "active_since" -> {
+                    val ranked = rankToApps(
+                        AppUsageProvider.activeSince(ctx, if (rule.windowH > 0) rule.windowH else 48),
+                        apps,
+                    )
+                    if (rule.limit > 0) ranked.take(rule.limit) else ranked
+                }
+                "most_opened" -> rankToApps(AppUsageProvider.mostOpened(ctx), apps).take(cap)
+                "top_network" -> rankToApps(AppNetworkProvider.topByBytes(ctx), apps).take(cap)
+                "top_battery" -> rankToApps(
+                    EnergyWatchdog.perAppEstimate(ctx).map { it.pkg }, apps).take(cap)
+                else -> apps.filter { rule.matches(ctx, it) }
+            }
+        }
+
+        /** Map a provider's ranked package list onto the launchable master
+         *  [apps], preserving rank order and dropping packages not in the
+         *  set (uninstalled, non-launchable, profile-filtered, or our own). */
+        private fun rankToApps(ranked: List<String>, apps: List<PhoneApp>): List<PhoneApp> {
+            if (ranked.isEmpty()) return emptyList()
+            val byPkg = apps.associateBy { it.packageName }
+            return ranked.mapNotNull { byPkg[it] }
         }
     }
 
@@ -118,11 +168,17 @@ object PhoneSmartFolders {
                 }
             }
             val limit = ruleObj.optInt("limit", 0)
-            // Predicate rules need values; ranking rules (recently_installed)
-            // need a positive limit instead.
-            val valid = if (type == "recently_installed") limit > 0 else values.isNotEmpty()
+            val windowH = ruleObj.optInt("window_h", 0)
+            // Predicate rules need `values`; limit-ranked rules need a
+            // positive `limit`; active_since needs a positive `window_h`.
+            val valid = when (type) {
+                "recently_installed", "recent_used",
+                "most_opened", "top_network", "top_battery" -> limit > 0
+                "active_since" -> windowH > 0
+                else -> values.isNotEmpty()
+            }
             if (!valid) continue
-            out.add(SmartFolder(id, title, Rule(type, values, limit)))
+            out.add(SmartFolder(id, title, Rule(type, values, limit, windowH)))
         }
         out
     }.getOrDefault(emptyList())

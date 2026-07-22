@@ -7,6 +7,7 @@ import com.diegonmarcos.superapp.launcher.GroupedTilesFragment
 import com.diegonmarcos.superapp.launcher.AppLongPressMenu
 import com.diegonmarcos.superapp.App
 import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.datamanager.AppUsageProvider
 
 import android.app.Dialog
 import android.content.Context
@@ -17,6 +18,7 @@ import android.os.Process
 import android.util.Base64
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -61,12 +63,25 @@ class SuitePhoneAppsFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        val scroll = ScrollView(ctx).apply {
+        // "More" footer tile (build.json::sections[id=suite].phone_footer) —
+        // reused for BOTH the tap-target footer below AND the pull-past-the-
+        // -bottom gesture wired into the custom scroll view.
+        val footer = Sections.byId("suite")?.phoneFooter
+        val scroll = EdgePullScrollView(ctx).apply {
             isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_ALWAYS
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
+            // Drag up past the end → auto-tap "More" (open Home Apps · Phone),
+            // the same target as the footer tile.
+            footer?.let { f ->
+                onPullPastBottom = {
+                    Haptics.tap(this)
+                    (activity as? TileGridFragment.TileClickListener)?.onTileClicked(f.target)
+                }
+            }
         }
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -139,10 +154,44 @@ class SuitePhoneAppsFragment : Fragment() {
                 setPadding(0, dp(ctx, 8), 0, dp(ctx, 8))
             })
         }
+        // ── Active Apps — the most-recently-used apps, rendered below the
+        //    last curated group (Configs) and above the More footer.
+        //    Data-driven: build.json::sections[id=suite].active_apps →
+        //    UsageStatsManager recency via libs:datamanager. Hidden when the
+        //    usage-access grant is missing (recentUsed → empty) or nothing
+        //    launchable matches. Own package filtered out (it's always hot).
+        if (BuildConfig.UI_SUITE_ACTIVE_APPS_ENABLED) {
+            val recent = AppUsageProvider.recentUsed(ctx)
+                .asSequence()
+                .filter { it != ctx.packageName }
+                .mapNotNull { resolve(it) }
+                .take(BuildConfig.UI_SUITE_ACTIVE_APPS_LIMIT.coerceAtLeast(1))
+                .toList()
+            if (recent.isNotEmpty()) {
+                root.addView(subhead(ctx, BuildConfig.UI_SUITE_ACTIVE_APPS_TITLE))
+                for (rowChunk in recent.chunked(columns)) {
+                    val row = LinearLayout(ctx).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        )
+                    }
+                    for (a in rowChunk) row.addView(makeAppTile(ctx, a.pkg, a.label, a.icon))
+                    repeat(columns - rowChunk.size) {
+                        row.addView(View(ctx).apply {
+                            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+                        })
+                    }
+                    root.addView(row)
+                }
+            }
+        }
+
         // Centered "More" affordance below the last group (data-driven via
         // build.json::sections[id=suite].phone_footer) — routes to the full
         // Home Apps drawer (Phone tab) through the activity's TileClickListener.
-        Sections.byId("suite")?.phoneFooter?.let { root.addView(moreFooter(ctx, it)) }
+        footer?.let { root.addView(moreFooter(ctx, it)) }
         return scroll
     }
 
@@ -458,4 +507,48 @@ class SuitePhoneAppsFragment : Fragment() {
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
     companion object { fun newInstance() = SuitePhoneAppsFragment() }
+}
+
+/**
+ * ScrollView that fires [onPullPastBottom] once when the user drags UP past
+ * the bottom edge by more than a threshold — the Suite/Phone "kick the end
+ * of the page to auto-open More" gesture. Accumulated overshoot (not a
+ * single delta) debounces accidental flings; resets on finger-up so each
+ * fresh pull can re-trigger. overScrollMode = ALWAYS (set by the caller) so
+ * it fires even when the content is shorter than the viewport.
+ */
+private class EdgePullScrollView(ctx: Context) : ScrollView(ctx) {
+    var onPullPastBottom: (() -> Unit)? = null
+    private val triggerPx = 140f * ctx.resources.displayMetrics.density
+    private var overshoot = 0f
+    private var fired = false
+
+    override fun overScrollBy(
+        deltaX: Int, deltaY: Int, scrollX: Int, scrollY: Int,
+        scrollRangeX: Int, scrollRangeY: Int,
+        maxOverScrollX: Int, maxOverScrollY: Int, isTouchEvent: Boolean,
+    ): Boolean {
+        // Dragging content up (deltaY > 0) while already at/below the bottom
+        // edge = pulling past the end. Accumulate and fire once past trigger.
+        if (isTouchEvent && deltaY > 0 && scrollY >= scrollRangeY) {
+            overshoot += deltaY
+            if (!fired && overshoot >= triggerPx) {
+                fired = true
+                onPullPastBottom?.invoke()
+            }
+        }
+        return super.overScrollBy(
+            deltaX, deltaY, scrollX, scrollY,
+            scrollRangeX, scrollRangeY, maxOverScrollX, maxOverScrollY, isTouchEvent,
+        )
+    }
+
+    override fun onTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                overshoot = 0f; fired = false
+            }
+        }
+        return super.onTouchEvent(ev)
+    }
 }

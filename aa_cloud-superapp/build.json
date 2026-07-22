@@ -164,6 +164,7 @@
         "libs:shizuku-adb-debug-tools",
         "libs:firewall",
         "libs:battery",
+        "libs:datamanager",
         "libs:onehand",
         "libs:zoomies"
       ],
@@ -279,7 +280,14 @@
         "libs:core",
         "libs:shizuku-adb-debug-tools"
       ],
-      "comment": "Battery/energy engine + its dialogs, extracted from app so it sits as a sibling of libs:firewall. Tier-1 (no-root): BatteryManager/sysfs correlation. Tier-2 (privileged): ShizukuEnergy reads `dumpsys batterystats` via the Shizuku user-service (IUserService/ShizukuUserService) now consolidated into libs:shizuku-adb-debug-tools — hence the lib→lib dep (not lib→app). Consumed by app/devcontrol (the About UI)."
+      "comment": "Battery/energy engine + its dialogs, extracted from app so it sits as a sibling of libs:firewall. Tier-1 (no-root): BatteryManager/sysfs correlation. Tier-2 (privileged): ShizukuEnergy reads `dumpsys batterystats` via the Shizuku user-service (IUserService/ShizukuUserService) now consolidated into libs:shizuku-adb-debug-tools — hence the lib→lib dep (not lib→app). Consumed by app/devcontrol (the About UI). Also the 'battery-manager' for per-app energy ranking (EnergyWatchdog.perAppEstimate) feeding the Phone 'Top Battery' smart folder."
+    },
+    "libs:datamanager": {
+      "type": "library",
+      "depends_on": [
+        "libs:core"
+      ],
+      "comment": "The 'data-manager' — pure per-app DATA providers, no UI. AppUsageProvider (UsageStatsManager: recency / active-window / launch-count) + AppNetworkProvider (NetworkStatsManager: per-app bytes), both gated on the PACKAGE_USAGE_STATS special-access already granted for the Battery & Usage screen. Sibling to libs:battery (the 'battery-manager', per-app energy). Providers return ranked package-name lists; app/apps maps them onto the launchable-app set for the Phone smart folders (Recent / Active 48h / Most Opened / Most Network) and the Suite/Phone 'Active Apps' section. Every query runCatching→empty so a missing grant just hides the folder."
     },
     "libs:onehand": {
       "type": "library",
@@ -1326,6 +1334,12 @@
           "label": "More",
           "icon": "ic_p_more",
           "target": "action:open_home_apps_phone"
+        },
+        "_doc_active_apps": "Suite/Phone-only 'Active Apps' section rendered BELOW the last curated group (Configs) and ABOVE the More footer. Lists the `limit` most-recently-used apps (libs:datamanager AppUsageProvider.recentUsed → same UsageStatsManager data as the Phone 'Recent 7' smart folder). Empty (section hidden) when usage-access is not granted. Baked to scalar BuildConfig fields UI_SUITE_ACTIVE_APPS_{ENABLED,TITLE,LIMIT}.",
+        "active_apps": {
+          "enabled": true,
+          "title": "Active Apps",
+          "limit": 8
         },
         "_doc_long_press": "Long-press the Suite bottom-nav item. `tab:<cloud|phone>` (MainActivity.onTileClicked) re-opens Suite on that SuiteCloudPhoneTabsFragment tab; More mirrors phone_footer's target (the Phone tab's own More subpage).",
         "long_press": [
@@ -4238,7 +4252,7 @@
         "prefix": ">"
       }
     ],
-    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record — installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo — IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values — legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`). The install-source values are real installer package names — verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
+    "_doc_phone_smart_folders": "Smart Folders rendered at the BOTTOM of the Home Apps/Phone tab — dynamic filters over the same LauncherApps.getActivityList enumeration the page uses. Apps still belong to their topical folder above; Smart Folders are an orthogonal cross-cut view by manufacturer / install-source. Rule types: pkg_prefix (any pkg starts-with one of values); pkg_eq (any pkg equals one of values); install_source_in (the app's install-source-of-record — installingPackageName OR initiatingPackageName from PackageManager.getInstallSourceInfo — IS one of values; use this to bucket apps by the store/installer that owns their updates); install_source_not (install source NOT in values — legacy catch-all for 'anything outside the official stores'); recently_installed (ranking rule: newest firstInstallTime first, capped at `limit`); recent_used (ranking: most-recently-used first via UsageStatsManager.lastTimeUsed, capped at `limit`); active_since (ranking: apps used within the last `window_h` hours, most-recent first, optional `limit`); most_opened (ranking: launch count via MOVE_TO_FOREGROUND events over 7d, capped at `limit`); top_network (ranking: total bytes rx+tx via NetworkStatsManager over 7d, capped at `limit`); top_battery (ranking: estimated mAh via libs:battery EnergyWatchdog.perAppEstimate, capped at `limit`). The five usage/network/battery ranking rules read through libs:datamanager (usage+network) / libs:battery (energy) and ALL need the PACKAGE_USAGE_STATS usage-access grant — without it each degrades to an empty (hidden) folder. The install-source values are real installer package names — verified on-device via /api/phone/classify (which dumps installing/initiating/system per app): com.android.vending=Google Play, com.sec.android.app.samsungapps=Galaxy Store, com.uptodown=Uptodown, org.fdroid.fdroid=F-Droid, com.google.android.packageinstaller=manual sideload (raw APK, no store), com.epicgames.portal=Epic, com.facebook.system=Meta's own installer.",
     "phone_smart_folders": [
       {
         "id": "cloud",
@@ -4302,6 +4316,52 @@
         "rule": {
           "type": "recently_installed",
           "limit": 12
+        }
+      },
+      {
+        "id": "recent7",
+        "title": "Recent 7",
+        "_doc": "The 7 most-recently-used apps (UsageStatsManager.lastTimeUsed, 30d lookback). Ranking rule via libs:datamanager AppUsageProvider.recentUsed. Needs usage-access — empty (hidden) without it.",
+        "rule": {
+          "type": "recent_used",
+          "limit": 7
+        }
+      },
+      {
+        "id": "recent48h",
+        "title": "Recent 48h",
+        "_doc": "Apps used within the last 48 hours, most-recent first. Ranking rule via AppUsageProvider.activeSince(window_h). `limit` optional (0 = show all in-window). Needs usage-access.",
+        "rule": {
+          "type": "active_since",
+          "window_h": 48,
+          "limit": 0
+        }
+      },
+      {
+        "id": "top_opened",
+        "title": "Top 7 Opened",
+        "_doc": "The 7 most-opened apps by launch count (MOVE_TO_FOREGROUND events, 7d) via AppUsageProvider.mostOpened. Needs usage-access.",
+        "rule": {
+          "type": "most_opened",
+          "limit": 7
+        }
+      },
+      {
+        "id": "top_network",
+        "title": "Top 7 Network",
+        "_doc": "The 7 heaviest network apps by total bytes rx+tx (NetworkStatsManager, WiFi+mobile, 7d) via AppNetworkProvider.topByBytes. Needs usage-access.",
+        "rule": {
+          "type": "top_network",
+          "limit": 7
+        }
+      },
+      {
+        "id": "top_battery",
+        "title": "Top 7 Battery",
+        "_doc": "The 7 heaviest apps by estimated energy (mAh) via libs:battery EnergyWatchdog.perAppEstimate (AccuBattery-style: foreground-time × avg discharge mA). Needs usage-access.",
+        "rule": {
+          "type": "top_battery",
+          "limit": 7
         }
       }
     ],
