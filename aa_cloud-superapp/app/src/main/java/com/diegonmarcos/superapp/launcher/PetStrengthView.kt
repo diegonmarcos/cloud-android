@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.launcher
+package com.diegonmarcos.superapp.zoomies
 
 import android.content.Context
 import android.graphics.BitmapFactory

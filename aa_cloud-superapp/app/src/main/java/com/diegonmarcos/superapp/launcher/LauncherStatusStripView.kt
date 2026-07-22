@@ -8,6 +8,7 @@ import com.diegonmarcos.superapp.cloud.CalendarAgendaPopup
 import com.diegonmarcos.superapp.battery.BatteryIconView
 import com.diegonmarcos.superapp.battery.BatteryEstimatePopup
 import com.diegonmarcos.superapp.network.NetworkInfoPopup
+import com.diegonmarcos.superapp.zoomies.PetStrengthView
 
 import android.app.ActivityManager
 import android.content.BroadcastReceiver

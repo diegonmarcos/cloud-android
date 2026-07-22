@@ -5,7 +5,10 @@ import com.diegonmarcos.cloudnav.maps.MapStyles
 import com.diegonmarcos.cloudnav.maps.MapsDemo
 import com.diegonmarcos.cloudnav.maps.MapsProviderClient
 import com.diegonmarcos.cloudnav.maps.MapsRouting
+import com.diegonmarcos.cloudnav.maps.VectorStyleLoader
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -725,5 +728,33 @@ class NavConfigTest {
         // every island/category carries a non-blank id + label (no silent nulls)
         NavConfig.islands.forEach { assertTrue(it.id.isNotBlank() && it.label.isNotBlank()) }
         NavConfig.placeCategories.forEach { assertTrue(it.id.isNotBlank() && it.label.isNotBlank()) }
+    }
+
+    // ── 3D maps ──────────────────────────────────────────────────────────
+    // The plain vector-style path (VectorStyleLoader.localize) must never drop
+    // fill-extrusion (building) layers — that's what makes tilted vector maps
+    // show real 3D buildings. Only the satellite-hybrid path (buildHybrid)
+    // intentionally strips them, since imagery already shows buildings.
+    @Test fun geo_vector_style_localize_preserves_building_layers() {
+        val sample = JSONObject().apply {
+            put("layers", org.json.JSONArray().apply {
+                put(JSONObject().put("id", "building").put("type", "fill-extrusion").put("source", "openmaptiles"))
+                put(
+                    JSONObject().put("id", "place-city").put("type", "symbol")
+                        .put("layout", JSONObject().put("text-field", "{name}"))
+                )
+            })
+        }
+        val out = JSONObject(VectorStyleLoader.localize(sample.toString(), "name:en"))
+        val types = (0 until out.getJSONArray("layers").length())
+            .map { out.getJSONArray("layers").getJSONObject(it).optString("type") }
+        assertTrue("fill-extrusion" in types)
+    }
+
+    @Test fun geo_vector_families_have_building_geometry_raster_does_not() {
+        assertTrue(MapStyles.get("light").vectorStyleUrl == null)
+        val vectorKeys = MapStyles.order.filter { MapStyles.get(it).vectorStyleUrl != null && !MapStyles.get(it).hybrid }
+        assertTrue("expected at least one non-hybrid vector style", vectorKeys.isNotEmpty())
+        vectorKeys.forEach { assertFalse(MapStyles.get(it).hybrid) }
     }
 }

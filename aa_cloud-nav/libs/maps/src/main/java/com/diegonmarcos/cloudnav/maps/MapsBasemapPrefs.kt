@@ -23,6 +23,13 @@ class MapsBasemapPrefs(ctx: Context) {
         get() = sp.getString(KEY_FAMILY, null)?.let { it == "vector" } ?: (MapStyles.defaultFamily == "vector")
         set(value) { sp.edit().putString(KEY_FAMILY, if (value) "vector" else "raster").apply() }
 
+    /** User's manual "tilt to see 3D buildings" toggle (Map fragment's 3D FAB).
+     *  Independent of nav3d cockpit tilt — that one is transient (on while
+     *  driving), this one persists across sessions like the style choice. */
+    var is3d: Boolean
+        get() = sp.getBoolean(KEY_3D, false)
+        set(value) { sp.edit().putBoolean(KEY_3D, value).apply() }
+
     /** Resolve a screen's own raw style key ("light"/"dark"/"satellite"/…)
      *  against the user's basemap choice: an explicit pin wins outright,
      *  otherwise [MapStyles.resolve] applies the family preference.
@@ -37,5 +44,6 @@ class MapsBasemapPrefs(ctx: Context) {
     private companion object {
         const val KEY_EXPLICIT = "explicit_style_key"
         const val KEY_FAMILY = "family"
+        const val KEY_3D = "is_3d"
     }
 }

@@ -183,7 +183,12 @@ class MapsMapFragment : Fragment() {
     private var modeTilt: Double? = null
     private var modeFollowBearing: Boolean = true
     private val effZoom: Double get() = modeZoom ?: if (nav3d) NAV_ZOOM else 16.0
-    private val effTilt: Double get() = modeTilt ?: if (nav3d) NAV_TILT else 0.0
+    private val effTilt: Double get() = modeTilt ?: if (nav3d) NAV_TILT else if (manual3d) TILT_3D else 0.0
+
+    // User-toggled 3D buildings tilt (independent of nav3d cockpit mode).
+    // Persisted so it survives style switches / process death. Applied lazily
+    // — the pref read needs a Context, unavailable until onCreateView.
+    private var manual3d: Boolean = false
 
     private val locPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -201,7 +206,9 @@ class MapsMapFragment : Fragment() {
         // maps this screen's raster pick to its vector/hybrid equivalent
         // (dark → vector_dark by default).
         val rawStyle = arguments?.getString(ARG_STYLE) ?: "dark"
-        styleKey = MapsBasemapPrefs(ctx).resolve(rawStyle)
+        val basemapPrefs = MapsBasemapPrefs(ctx)
+        styleKey = basemapPrefs.resolve(rawStyle)
+        manual3d = basemapPrefs.is3d
 
         val root = FrameLayout(ctx).apply { layoutParams = ViewGroup.LayoutParams(MATCH, MATCH) }
 
@@ -260,6 +267,22 @@ class MapsMapFragment : Fragment() {
                     .apply { val m = dp(16); setMargins(m, m, m, m + dp(200)) }
                 setOnClickListener { showStyleMenu() }
             }
+            // 3D buildings toggle (top of the stack, above the style switcher).
+            val threeDFab = FloatingActionButton(ctx).apply {
+                setImageResource(R.drawable.ic_3d_cube)
+                contentDescription = "Toggle 3D buildings"
+                size = FloatingActionButton.SIZE_MINI
+                alpha = if (styleHasBuildings()) 1f else 0.4f
+                layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(260)) }
+                setOnClickListener {
+                    if (!styleHasBuildings()) {
+                        Toast.makeText(ctx, "Switch to a vector style to see 3D buildings", Toast.LENGTH_SHORT).show()
+                    }
+                    toggle3d()
+                    alpha = if (is3dOn()) 1f else 0.5f
+                }
+            }
             // Reset-to-north (between switcher and locate-me).
             val northFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_compass_north)
@@ -281,6 +304,7 @@ class MapsMapFragment : Fragment() {
             root.addView(locFab)
             root.addView(northFab)
             root.addView(switchFab)
+            root.addView(threeDFab)
         }
         return root
     }
@@ -325,6 +349,31 @@ class MapsMapFragment : Fragment() {
     fun resetNorth() {
         map?.animateCamera(CameraUpdateFactory.bearingTo(0.0))
     }
+
+    /** True when the current style is vector (not raster, not the satellite
+     *  hybrid) — the only kind that carries real building geometry to extrude. */
+    fun styleHasBuildings(): Boolean {
+        val s = MapStyles.get(styleKey)
+        return s.vectorStyleUrl != null && !s.hybrid
+    }
+
+    /** Flip the manual "3D buildings" tilt on/off, animating the camera to the
+     *  new [effTilt] while preserving target/zoom/bearing. Persisted so it
+     *  survives style switches and process death; independent of nav3d's
+     *  transient cockpit tilt (never touches [modeTilt]). */
+    fun toggle3d() {
+        manual3d = !manual3d
+        context?.let { MapsBasemapPrefs(it).is3d = manual3d }
+        val cur = map?.cameraPosition ?: return
+        map?.animateCamera(
+            CameraUpdateFactory.newCameraPosition(
+                CameraPosition.Builder(cur).tilt(effTilt).build()
+            )
+        )
+    }
+
+    /** Current manual-3D toggle state — the 3D FAB reflects this on rebuild. */
+    fun is3dOn(): Boolean = manual3d
 
     /**
      * Test/diagnostic probe (MAIN THREAD only): first = feature count in the
@@ -742,6 +791,7 @@ class MapsMapFragment : Fragment() {
 
         private const val NAV_TILT = 55.0
         private const val NAV_ZOOM = 18.0
+        private const val TILT_3D = 60.0
 
         fun newInstance(
             nav3d: Boolean = false,
