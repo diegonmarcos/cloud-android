@@ -836,6 +836,51 @@ class NavConfigTest {
         assertEquals("the original is preserved", "building-3d", extrusions[0].optString("id"))
     }
 
+    // ── geo: intent (Cloud Nav as a maps app) ────────────────────────────
+    // The manifest declares a geo: VIEW handler; GeoUri turns the URI into a
+    // Places target. This parser is the whole contract — if it's wrong the OS
+    // hands us a location we mishandle.
+    @Test fun geo_uri_parses_bare_coordinate() {
+        val t = GeoUri.parse("geo:37.422,-122.084")
+        assertTrue(t is GeoTarget.Point)
+        t as GeoTarget.Point
+        assertEquals(37.422, t.lat, 1e-6)
+        assertEquals(-122.084, t.lon, 1e-6)
+        assertEquals(null, t.label)
+        assertEquals(null, t.zoom)
+    }
+
+    @Test fun geo_uri_parses_coordinate_with_zoom() {
+        val t = GeoUri.parse("geo:48.8584,2.2945?z=15") as GeoTarget.Point
+        assertEquals(48.8584, t.lat, 1e-6)
+        assertEquals(15.0, t.zoom!!, 1e-9)
+    }
+
+    @Test fun geo_uri_q_labelled_coordinate_is_a_point() {
+        val t = GeoUri.parse("geo:0,0?q=48.8584,2.2945(Eiffel Tower)") as GeoTarget.Point
+        assertEquals(48.8584, t.lat, 1e-6)
+        assertEquals(2.2945, t.lon, 1e-6)
+        assertEquals("Eiffel Tower", t.label)
+    }
+
+    @Test fun geo_uri_q_free_text_is_a_search_query() {
+        val t = GeoUri.parse("geo:0,0?q=1600+Amphitheatre+Parkway") as GeoTarget.Query
+        assertEquals("1600 Amphitheatre Parkway", t.text)   // '+' decoded to space
+    }
+
+    @Test fun geo_uri_real_coords_with_text_q_pins_and_labels() {
+        val t = GeoUri.parse("geo:40.7128,-74.0060?q=Downtown") as GeoTarget.Point
+        assertEquals(40.7128, t.lat, 1e-6)
+        assertEquals("Downtown", t.label)
+    }
+
+    @Test fun geo_uri_rejects_junk_and_null_island() {
+        assertEquals(null, GeoUri.parse(null))
+        assertEquals(null, GeoUri.parse("https://example.com"))
+        assertEquals(null, GeoUri.parse("geo:0,0"))            // null-island, no query → nothing
+        assertEquals(null, GeoUri.parse("geo:not,coords"))
+    }
+
     @Test fun geo_vector_families_have_building_geometry_raster_does_not() {
         assertTrue(MapStyles.get("light").vectorStyleUrl == null)
         val vectorKeys = MapStyles.order.filter { MapStyles.get(it).vectorStyleUrl != null && !MapStyles.get(it).hybrid }

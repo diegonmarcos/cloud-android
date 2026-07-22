@@ -55,6 +55,10 @@ class PlacesFragment : Fragment() {
         // Tap a pin → open its rich detail card.
         mapFragment.onPinClick = { id -> currentHits.getOrNull(id.toIntOrNull() ?: -1)?.let { openDetail(it) } }
 
+        // Handed a geo: location by another app (Cloud Nav as a maps app): once
+        // the map is ready, drop+centre on the point, or run the address search.
+        applyGeoArgs()
+
         // Top overlay: simple search + radius-scope islands + category islands.
         val top = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         val searchCard = SearchUi.searchCard(ctx, "Search places, addresses, cities…") { q -> search(q) }
@@ -141,6 +145,26 @@ class PlacesFragment : Fragment() {
         }
         sheet.layoutParams = CoordinatorLayout.LayoutParams(MATCH, MATCH).apply { behavior = sheetBehavior }
         return sheet
+    }
+
+    /** Act on a geo: hand-off carried in [getArguments]. A point drops a pin
+     *  and centres on it; a query runs the forward search. Deferred to
+     *  onMapReady so the camera/pin plumbing exists. */
+    private fun applyGeoArgs() {
+        val args = arguments ?: return
+        if (args.getBoolean(ARG_HAS_POINT, false)) {
+            val lat = args.getDouble(ARG_LAT)
+            val lon = args.getDouble(ARG_LON)
+            val label = args.getString(ARG_LABEL) ?: "Dropped pin"
+            val zoom = if (args.containsKey(ARG_ZOOM)) args.getDouble(ARG_ZOOM) else 16.0
+            mapFragment.onMapReady = {
+                mapFragment.setPins(listOf(MapsMapFragment.Pin(lat, lon, MapsMapFragment.COLOR_RESULT, title = label, id = "0")))
+                mapFragment.recenter(lat, lon, zoom)
+            }
+        } else {
+            val q = args.getString(ARG_QUERY)
+            if (!q.isNullOrBlank()) mapFragment.onMapReady = { search(q) }
+        }
     }
 
     /** Free-text universal search → red pins + results list. Bounded by the
@@ -233,8 +257,32 @@ class PlacesFragment : Fragment() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
-        const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+    companion object {
+        private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+        private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
+
+        private const val ARG_HAS_POINT = "geo_has_point"
+        private const val ARG_LAT = "geo_lat"
+        private const val ARG_LON = "geo_lon"
+        private const val ARG_LABEL = "geo_label"
+        private const val ARG_ZOOM = "geo_zoom"
+        private const val ARG_QUERY = "geo_query"
+
+        /** Build a Places screen primed to act on an incoming geo: location — a
+         *  point drops+centres a pin; a query runs the forward search. */
+        fun forGeo(t: com.diegonmarcos.cloudnav.GeoTarget): PlacesFragment = when (t) {
+            is com.diegonmarcos.cloudnav.GeoTarget.Point -> PlacesFragment().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_HAS_POINT, true)
+                    putDouble(ARG_LAT, t.lat)
+                    putDouble(ARG_LON, t.lon)
+                    t.label?.let { putString(ARG_LABEL, it) }
+                    t.zoom?.let { putDouble(ARG_ZOOM, it) }
+                }
+            }
+            is com.diegonmarcos.cloudnav.GeoTarget.Query -> PlacesFragment().apply {
+                arguments = Bundle().apply { putString(ARG_QUERY, t.text) }
+            }
+        }
     }
 }

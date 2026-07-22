@@ -1,5 +1,6 @@
 package com.diegonmarcos.cloudnav
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -31,6 +32,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var content: View
     private lateinit var bottomNav: BottomNavigationView
     private var currentTab: String = ""
+    /** A geo: location handed in by another app, consumed by the Places tab on
+     *  its next creation (see [fragmentForTab]). */
+    private var pendingGeo: GeoTarget? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,11 +52,30 @@ class MainActivity : AppCompatActivity() {
         Updater.start(this)
 
         if (savedInstanceState == null) {
-            switchTo(NavConfig.defaultTab)
+            // A geo: launch (Cloud Nav declared as a maps app) opens straight on
+            // the Places map at the requested location; otherwise the default tab.
+            val geo = geoTargetOf(intent)
+            if (geo != null) { pendingGeo = geo; switchTo(TAB_PLACES) }
+            else switchTo(NavConfig.defaultTab)
         } else {
             currentTab = savedInstanceState.getString(KEY_TAB, NavConfig.defaultTab)
             syncBottomNav(currentTab)
         }
+    }
+
+    /** A geo: intent arriving while the app is already running (singleTop) —
+     *  re-route to the Places map at the new location. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val geo = geoTargetOf(intent) ?: return
+        pendingGeo = geo
+        switchTo(TAB_PLACES)
+    }
+
+    private fun geoTargetOf(intent: Intent?): GeoTarget? {
+        if (intent?.action != Intent.ACTION_VIEW) return null
+        return GeoUri.parse(intent.data?.toString())
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -94,7 +117,9 @@ class MainActivity : AppCompatActivity() {
     private fun fragmentForTab(id: String): Fragment = when (id) {
         "routes"     -> RoutesFragment()
         "navigation" -> NavigationFragment()
-        "places"     -> PlacesFragment()
+        // Consume a pending geo: location once, so a hand-off from another app
+        // lands on the map at that point / runs that search.
+        "places"     -> pendingGeo?.let { g -> pendingGeo = null; PlacesFragment.forGeo(g) } ?: PlacesFragment()
         "timeline"   -> MapsTimelineTabsFragment()
         "configs"    -> ConfigsFragment()
         else         -> RoutesFragment()
@@ -105,5 +130,8 @@ class MainActivity : AppCompatActivity() {
         if (idx >= 0 && bottomNav.selectedItemId != idx) bottomNav.selectedItemId = idx
     }
 
-    private companion object { const val KEY_TAB = "cloud_nav_tab" }
+    private companion object {
+        const val KEY_TAB = "cloud_nav_tab"
+        const val TAB_PLACES = "places"
+    }
 }
