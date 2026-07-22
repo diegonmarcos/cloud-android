@@ -5343,14 +5343,14 @@
         }
       ]
     },
-    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the app's package (hub_package); if not installed it snacks '<label> not installed' (install via Configs ▸ Constellation, which pulls the APK from GHCR). Fully data-driven: package ids live ONLY here, never in Kotlin. The ex-Cloud-Comms forks are now STANDALONE constellation apps (ea_cloud-{dialer,chat,mail,matrix}, each its own ship-cloud-<id>.yml CI); the cloud-comms hub is decommissioned (archived). They keep their com.diegonmarcos.comms.<fork> package ids. install_apk_url is blank on purpose: fork-apps publish --latest=false tagged GHCR releases (no stable /latest/download), so install goes through the Constellation AppStore (Fleet → GHCR), not a direct APK URL. forkless (forks:{}), so extapp:<id> resolves straight to hub_package.",
+    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the app's package (hub_package); if not installed it snacks '<label> not installed' (install via Configs ▸ Constellation, which pulls the APK from GHCR). Fully data-driven: package ids live ONLY here, never in Kotlin. The ex-Cloud-Comms forks are now STANDALONE constellation apps (ea_cloud-{dialer,chat,mail,matrix}, each its own ship-cloud-<id>.yml CI); the cloud-comms hub is decommissioned (archived). They keep their com.diegonmarcos.comms.<fork> package ids. install_apk_url points at the shared rolling 'latest' GitHub release asset cloud-comms-<fork>.apk (uploaded by build.sh gh-release-fork per each fork's build.json::release.gh_release), mirroring how the other standalone apps use /releases/latest/download/. forkless (forks:{}), so extapp:<id> resolves straight to hub_package.",
     "external_apps": [
       {
         "id": "cloud-dialer",
         "label": "Cloud Dialer (Fossify)",
         "hub_package": "com.diegonmarcos.comms.dialer",
         "install_package": "com.diegonmarcos.comms.dialer",
-        "install_apk_url": "",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-dialer.apk",
         "forks": {}
       },
       {
@@ -5358,7 +5358,7 @@
         "label": "Cloud Chat (Mattermost)",
         "hub_package": "com.diegonmarcos.comms.chat",
         "install_package": "com.diegonmarcos.comms.chat",
-        "install_apk_url": "",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-chat.apk",
         "forks": {}
       },
       {
@@ -5366,7 +5366,7 @@
         "label": "Cloud Mail (Fairmail)",
         "hub_package": "com.diegonmarcos.comms.mail",
         "install_package": "com.diegonmarcos.comms.mail",
-        "install_apk_url": "",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-mail.apk",
         "forks": {}
       },
       {
@@ -5374,7 +5374,7 @@
         "label": "Messenger (Element)",
         "hub_package": "com.diegonmarcos.comms.matrix",
         "install_package": "com.diegonmarcos.comms.matrix",
-        "install_apk_url": "",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-matrix.apk",
         "forks": {}
       },
       {
