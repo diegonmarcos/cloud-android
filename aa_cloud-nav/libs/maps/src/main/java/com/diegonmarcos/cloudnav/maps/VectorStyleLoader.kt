@@ -67,6 +67,7 @@ object VectorStyleLoader {
         var buildingFillIdx = -1
         var buildingSource: String? = null
         var buildingColor = "#c8ccd4"
+        var buildingMinzoom = 13  // floor when the fill declares none
         for (i in 0 until layers.length()) {
             val l = layers.getJSONObject(i)
             if (l.optString("type") == "fill-extrusion") return  // already 3D — leave it
@@ -77,6 +78,10 @@ object VectorStyleLoader {
                 buildingSource = l.optString("source").ifBlank { null }
                 (l.optJSONObject("paint")?.opt("fill-color") as? String)
                     ?.takeIf { it.isNotBlank() }?.let { buildingColor = it }
+                // Match the 2D fill's own zoom floor so the 3D buildings appear
+                // at the SAME zoom the flat footprints do (positron/dark = 12),
+                // instead of only when zoomed way in.
+                buildingMinzoom = l.optInt("minzoom", buildingMinzoom)
             }
         }
         val src = buildingSource ?: return  // no building geometry to extrude
@@ -85,7 +90,7 @@ object VectorStyleLoader {
             .put("type", "fill-extrusion")
             .put("source", src)
             .put("source-layer", "building")
-            .put("minzoom", 14)
+            .put("minzoom", buildingMinzoom)
             .put(
                 "paint",
                 JSONObject()

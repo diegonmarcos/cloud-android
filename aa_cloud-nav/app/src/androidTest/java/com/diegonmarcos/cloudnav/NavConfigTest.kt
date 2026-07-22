@@ -745,6 +745,7 @@ class NavConfigTest {
             put(
                 JSONObject().put("id", "building").put("type", "fill")
                     .put("source", "openmaptiles").put("source-layer", "building")
+                    .put("minzoom", 12)   // positron/dark declare 12 on the 2D fill
                     .put("paint", JSONObject().put("fill-color", "rgb(234, 234, 229)"))
             )
             put(
@@ -760,6 +761,7 @@ class NavConfigTest {
         extrusion!!
         assertEquals("extrudes the same source", "openmaptiles", extrusion.optString("source"))
         assertEquals("extrudes the building source-layer", "building", extrusion.optString("source-layer"))
+        assertEquals("inherits the 2D fill's zoom floor (3D shows when flat does)", 12, extrusion.optInt("minzoom"))
         val paint = extrusion.getJSONObject("paint")
         assertEquals("reuses the 2D fill colour (matches light/dark)", "rgb(234, 234, 229)", paint.getString("fill-extrusion-color"))
         assertTrue("height driven by render_height", paint.get("fill-extrusion-height").toString().contains("render_height"))
