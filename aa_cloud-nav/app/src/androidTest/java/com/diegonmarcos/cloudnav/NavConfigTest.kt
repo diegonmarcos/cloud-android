@@ -636,17 +636,23 @@ class NavConfigTest {
         assertEquals(328.084, com.diegonmarcos.cloudnav.cockpit.CockpitGauges.metersTo("ft", 100.0), 1e-3)
     }
 
-    @Test fun basemap_pref_defaults_to_auto_vector_and_family_is_toggleable() {
+    @Test fun basemap_default_style_wins_over_screen_and_family() {
         val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
         // Isolate from any state a previous test run left behind.
         ctx.getSharedPreferences("maps_basemap_prefs", android.content.Context.MODE_PRIVATE).edit().clear().commit()
         val prefs = com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx)
-        assertEquals("vector", com.diegonmarcos.cloudnav.maps.MapStyles.defaultFamily)
-        assertTrue("first-run: no pin, family follows build.json (vector)", prefs.explicitStyleKey == null && prefs.preferVectorFamily)
-        // Auto resolves each screen's own raster pick through its vector equivalent.
-        assertEquals("vector_dark", prefs.resolve("dark"))
+        // build.json pins one default style for EVERY screen (liberty), and 3D on.
+        assertEquals("vector_liberty", com.diegonmarcos.cloudnav.maps.MapStyles.defaultStyle)
+        assertTrue("3D defaults on", com.diegonmarcos.cloudnav.maps.MapStyles.default3d)
+        // Unpinned: every screen's own raw pick resolves to the default style…
+        assertEquals("vector_liberty", prefs.resolve("dark"))
+        assertEquals("vector_liberty", prefs.resolve("satellite"))
+        assertEquals("vector_liberty", prefs.resolve("light"))
+        // …and the family toggle is overridden by default_style while it's set.
         prefs.preferVectorFamily = false
-        assertEquals("dark", com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx).resolve("dark"))
+        assertEquals("vector_liberty", com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx).resolve("dark"))
+        // is3d first-run reflects build.json default_3d.
+        assertTrue(com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx).is3d)
         prefs.preferVectorFamily = true  // restore, so this test is order-independent
     }
 
@@ -673,8 +679,31 @@ class NavConfigTest {
         val prefs = com.diegonmarcos.cloudnav.maps.MapsBasemapPrefs(ctx)
         prefs.explicitStyleKey = "vector_en"   // stale key from a removed build
         prefs.preferVectorFamily = true
-        assertEquals("stale pin ignored → family resolution", "vector_dark", prefs.resolve("dark"))
+        // Stale pin ignored → falls through to the data-driven default_style.
+        assertEquals("stale pin ignored → default style", "vector_liberty", prefs.resolve("dark"))
         prefs.explicitStyleKey = null; ctx.getSharedPreferences("maps_basemap_prefs", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+    }
+
+    // ── scale bar ─────────────────────────────────────────────────────────
+    // The fading bottom-right scale bar picks a round 1/2/5×10ⁿ distance that
+    // fits its max width, and labels it in m/km. Pure — the view's only real
+    // logic — so it tests without a Context.
+    @Test fun map_scale_bar_picks_round_distance_and_labels_it() {
+        val sb = com.diegonmarcos.cloudnav.maps.MapsScaleBarView
+        // 1 m/px, 100px cap → exactly 100 m.
+        var (m, px) = sb.niceScale(1.0, 100.0)
+        assertEquals(100.0, m, 1e-9); assertTrue(px <= 100.0); assertEquals("100 m", sb.label(m))
+        // 10 m/px → 1000 m = "1 km".
+        val (m2, _) = sb.niceScale(10.0, 100.0)
+        assertEquals(1000.0, m2, 1e-9); assertEquals("1 km", sb.label(m2))
+        // 3 m/px → maxMeters 300 → picks 200 (largest 1/2/5×10ⁿ ≤ 300).
+        val (m3, px3) = sb.niceScale(3.0, 100.0)
+        assertEquals(200.0, m3, 1e-9); assertTrue("bar never exceeds the cap", px3 <= 100.0)
+        // 0.5 m/px → 50 m.
+        val (m4, _) = sb.niceScale(0.5, 100.0)
+        assertEquals(50.0, m4, 1e-9); assertEquals("50 m", sb.label(m4))
+        // bad input never crashes.
+        assertEquals(0.0, sb.niceScale(0.0, 100.0).first, 1e-9)
     }
 
     @Test fun polyline6_decodes() {

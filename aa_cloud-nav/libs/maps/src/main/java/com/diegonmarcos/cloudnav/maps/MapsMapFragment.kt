@@ -178,6 +178,10 @@ class MapsMapFragment : Fragment() {
     private val textureMode: Boolean get() = arguments?.getBoolean(ARG_TEXTURE, false) ?: false
     private var autoLocateDone = false
 
+    // Fading scale bar (bottom-right): shows while the zoom changes, fades on idle.
+    private var scaleBar: MapsScaleBarView? = null
+    private var lastScaleZoom = Double.NaN
+
     // Cockpit-mode camera overrides (null → fall back to nav3d defaults). Set via [applyNavMode].
     private var modeZoom: Double? = null
     private var modeTilt: Double? = null
@@ -248,14 +252,21 @@ class MapsMapFragment : Fragment() {
             // Custom-overlay support (Explored draws its own dots on top): notify
             // on every camera change so the overlay re-projects, and expose the
             // projection. Bypasses the GeoJSON/CircleLayer pin path entirely.
-            m.addOnCameraMoveListener { onCameraChanged?.invoke() }
-            m.addOnCameraIdleListener { onCameraChanged?.invoke() }
+            m.addOnCameraMoveListener { onCameraChanged?.invoke(); onScaleCameraChange(m, moving = true) }
+            m.addOnCameraIdleListener { onCameraChanged?.invoke(); onScaleCameraChange(m, moving = false) }
             m.addOnMapLongClickListener { latLng ->
                 val cb = onMapLongClick ?: return@addOnMapLongClickListener false
                 cb(latLng.latitude, latLng.longitude); true
             }
         }
         root.addView(mv)
+
+        // Fading scale bar — bottom-right, below the FAB column; on every map.
+        scaleBar = MapsScaleBarView(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                .apply { val m = dp(16); setMargins(m, m, m, m) }
+        }
+        root.addView(scaleBar)
 
         if (showFab) {
             // Map-style switcher (top of the stack).
@@ -376,6 +387,20 @@ class MapsMapFragment : Fragment() {
 
     /** Current manual-3D toggle state — the 3D FAB reflects this on rebuild. */
     fun is3dOn(): Boolean = manual3d
+
+    /** Keep the scale bar current; reveal it on a zoom change, fade it on idle. */
+    private fun onScaleCameraChange(m: MapLibreMap, moving: Boolean) {
+        val sb = scaleBar ?: return
+        val cam = m.cameraPosition
+        val lat = cam.target?.latitude ?: return
+        sb.update(m.projection.getMetersPerPixelAtLatitude(lat))
+        if (moving) {
+            val zoomChanged = lastScaleZoom.isNaN() || kotlin.math.abs(cam.zoom - lastScaleZoom) > 0.01
+            if (zoomChanged) { sb.showNow(); lastScaleZoom = cam.zoom }
+        } else {
+            sb.scheduleHide()
+        }
+    }
 
     /**
      * Test/diagnostic probe (MAIN THREAD only): first = feature count in the
@@ -759,7 +784,7 @@ class MapsMapFragment : Fragment() {
     override fun onStop()    { mapView?.onStop();   super.onStop() }
     override fun onLowMemory(){ super.onLowMemory(); mapView?.onLowMemory() }
     override fun onDestroyView() {
-        mapView?.onDestroy(); mapView = null; map = null; styleReady = false
+        mapView?.onDestroy(); mapView = null; map = null; styleReady = false; scaleBar = null
         super.onDestroyView()
     }
     override fun onSaveInstanceState(outState: Bundle) {

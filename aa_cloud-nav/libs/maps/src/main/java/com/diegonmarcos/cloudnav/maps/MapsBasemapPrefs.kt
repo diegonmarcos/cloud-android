@@ -27,7 +27,7 @@ class MapsBasemapPrefs(ctx: Context) {
      *  Independent of nav3d cockpit tilt — that one is transient (on while
      *  driving), this one persists across sessions like the style choice. */
     var is3d: Boolean
-        get() = sp.getBoolean(KEY_3D, false)
+        get() = sp.getBoolean(KEY_3D, MapStyles.default3d)
         set(value) { sp.edit().putBoolean(KEY_3D, value).apply() }
 
     /** Resolve a screen's own raw style key ("light"/"dark"/"satellite"/…)
@@ -38,7 +38,12 @@ class MapsBasemapPrefs(ctx: Context) {
      *  — it would otherwise resolve to a phantom default style forever. */
     fun resolve(rawKey: String): String {
         val pinned = explicitStyleKey?.takeIf { it in MapStyles.order }
-        return pinned ?: MapStyles.resolve(rawKey, preferVectorFamily)
+        if (pinned != null) return pinned
+        // A build.json default_style makes one style the resolved default for
+        // every screen (overriding its raw pick); else fall back to the
+        // per-screen raw key resolved through the family preference.
+        MapStyles.defaultStyle?.takeIf { it in MapStyles.order }?.let { return it }
+        return MapStyles.resolve(rawKey, preferVectorFamily)
     }
 
     private companion object {

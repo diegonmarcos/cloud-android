@@ -59,6 +59,14 @@ object MapStyles {
      *  Configs > APIs. */
     val defaultFamily: String by lazy { root.optString("default_family", "vector") }
 
+    /** When set (build.json::ui.map_styles.default_style), the resolved default
+     *  for EVERY screen — overriding each screen's own raw style pick — unless
+     *  the user pinned another. Null → fall back to per-screen + family. */
+    val defaultStyle: String? by lazy { root.optString("default_style", "").ifBlank { null } }
+
+    /** First-run value for the manual 3D-buildings tilt (build.json::ui.map_styles.default_3d). */
+    val default3d: Boolean by lazy { root.optBoolean("default_3d", false) }
+
     /** Real-elevation hillshade config (build.json::ui.map_styles.hillshade) —
      *  a raster-DEM source + hillshade layer [VectorStyleLoader] adds to every
      *  vector style. Null when unconfigured (feature off). Not a selectable
