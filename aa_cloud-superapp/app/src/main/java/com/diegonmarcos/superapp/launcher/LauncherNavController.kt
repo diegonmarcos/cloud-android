@@ -124,6 +124,18 @@ class LauncherNavController(private val host: NavHost) {
     }
 
     fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) {
+        // Establish the section grid as the back-stack BASE *first*, so Back from
+        // this child returns to its parent section (e.g. Configs), not wherever it
+        // was launched from (Home, the Home-Apps sheet, the Canopus arc menu).
+        // This MUST run before the action dispatch below: an action-page (e.g.
+        // Configs ▸ Constellation → action:constellation) otherwise rendered
+        // straight over Home — "in the home-screen" — because the early return
+        // skipped the base, leaving currentSection="home" so Back went Home and
+        // the page never landed in its own section. No-op when already in the
+        // section — preserves any existing in-section back stack.
+        if (host.currentSection != sectionId) {
+            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
+        }
         // Pages that declare an `action` dispatch it instead of opening a fragment.
         val pageAction = Sections.byId(sectionId)?.pages
             ?.firstOrNull { it.id == pageId }?.action.orEmpty()
@@ -131,13 +143,6 @@ class LauncherNavController(private val host: NavHost) {
         if (sectionId != "apptabs") runCatching {
             val pageEntry = Sections.byId(sectionId)?.pages?.firstOrNull { it.id == pageId }
             host.recordPage(sectionId, pageId, pageEntry?.label ?: pageId, pageEntry?.iconName ?: "")
-        }
-        // Establish the section grid as the back-stack BASE so Back from this
-        // child returns to its parent section (e.g. Configs), not wherever it
-        // was launched from (Home, the Home-Apps sheet). No-op when already in
-        // the section — preserves any existing in-section back stack.
-        if (host.currentSection != sectionId) {
-            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
         }
         val frag = when (sectionId) {
             "mail" -> MailPages.fragmentFor(pageId, args)
