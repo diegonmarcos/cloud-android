@@ -6,11 +6,10 @@ plugins {
 // ── Data-driven config bake ─────────────────────────────────────────────
 // Everything the hub needs at runtime is read from the repo's source-of-truth
 // JSON at config time and baked into BuildConfig — no parallel hardcoded list
-// in Kotlin (FIRE rule 4). Bump a value in build.json / contract / data, get a
+// in Kotlin (FIRE rule 4). Bump a value in build.json / data, get a
 // rebuilt BuildConfig on the next gradle run.
 def repoRoot   = rootDir                       // ea_cloud-ide/
 def buildJson  = new groovy.json.JsonSlurper().parse(file("$repoRoot/build.json"))
-def contract   = new groovy.json.JsonSlurper().parse(file("$repoRoot/contract/ide-ipc-v1.json"))
 def endpoints  = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/ide-endpoints.json"))
 
 def runNumber  = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
@@ -27,22 +26,6 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
     format(new java.util.Date())
 }
 
-// IPC contract constants — single source of truth = contract/ide-ipc-v1.json.
-def ipcAuthority  = contract.authority
-def ipcPermission = contract.permission
-def ipcVersion    = (contract.version as Number).intValue()
-
-// Navigation: one-icon model (open_fork_action) + the wrapper-chrome parent
-// chain. Both hub and (future) forks render their consistency top bar + launch
-// each other from this — data-driven, never hardcoded.
-def nav = contract.navigation
-def navParentsB64 = groovy.json.JsonOutput.toJson(nav.parent_chain).bytes.encodeBase64().toString()
-
-// Fork registry (app ids + tracker dirs + blocked state) baked as base64-JSON
-// so the switcher UI renders its tiles from build.json::forks, not a hardcoded
-// list. Base64 sidesteps Java-string-literal escaping.
-def forksJson = groovy.json.JsonOutput.toJson(buildJson.forks.findAll { k, v -> !k.startsWith('_') })
-def forksB64  = forksJson.bytes.encodeBase64().toString()
 // Endpoints baked for the workspace root + 'open in app' deep-link fallbacks.
 def endpointsB64 = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64().toString()
 
@@ -118,28 +101,15 @@ android {
         versionCode codeFinal
         versionName "${buildJson.android.version_name} (sha-${shortSha})"
 
-        buildConfigField "int",    "IPC_VERSION",      "${ipcVersion}"
-        buildConfigField "String", "IPC_AUTHORITY",    "\"${ipcAuthority}\""
-        buildConfigField "String", "IPC_PERMISSION",   "\"${ipcPermission}\""
-        buildConfigField "String", "FORKS_JSON_B64",   "\"${forksB64}\""
         buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
         buildConfigField "String", "LOG_SINK_URL",     "\"${logSinkUrl}\""
         buildConfigField "String", "LOG_SINK_STREAM",  "\"${logSinkStream}\""
 
-        // UI defaults (build.json::ui). Floating wrapper bar off by default —
-        // Cloud-SuperApp owns the system bar; Configs toggle re-enables it.
-        buildConfigField "boolean", "OVERLAY_NAVBAR_DEFAULT", "${buildJson.ui.overlay_nav_bar_default}"
-
         // ABI map (build.json::release.abis) — the ABI-aware updater picks the
         // GHCR tag matching the device's ABI (default abi → no suffix).
         buildConfigField "String", "ABIS_JSON_B64", "\"${groovy.json.JsonOutput.toJson(buildJson.release.abis.findAll { k, v -> !k.startsWith('_') }).bytes.encodeBase64().toString()}\""
         buildConfigField "String", "BUILD_TIMESTAMP",  "\"${buildTimestamp}\""
-
-        // Navigation (one-icon + wrapper chrome) — data-driven from contract.
-        buildConfigField "String", "OPEN_FORK_ACTION",    "\"${nav.open_fork_action}\""
-        buildConfigField "String", "ICON_MODEL",          "\"${nav.icon_model}\""
-        buildConfigField "String", "NAV_PARENTS_JSON_B64","\"${navParentsB64}\""
 
         // GHCR + auto-update (com.diegonmarcos.ide.update) — data-driven.
         buildConfigField "String",  "GHCR_REGISTRY",   "\"${ghcr.registry}\""
@@ -160,16 +130,11 @@ android {
         buildConfigField "long",   "STACK_BUILD_LAST_SECS",     "${buildLastSecs}L"
         buildConfigField "int",    "STACK_BUILD_SAMPLE",        "${buildSampleSize}"
 
-        // Resolve the IPC permission name into the manifest placeholder so the
-        // <permission>/<provider>/<service> declarations stay data-driven too.
-        manifestPlaceholders = [ ipcPermission: ipcPermission, ipcAuthority: ipcAuthority ]
-
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
     buildFeatures {
         buildConfig = true
-        aidl = true
     }
 
     // Stable signing — the WHOLE constellation (this hub + 3 forks + cloud-comms

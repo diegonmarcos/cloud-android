@@ -2,10 +2,11 @@
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║ Cloud-IDE — Universal Build Dispatcher                            ║
 # ║                                                                  ║
-# ║ Constellation of forked developer APKs + a thin hub APK. The hub  ║
-# ║ is an in-tree gradle module; the three forks are pinned-upstream  ║
-# ║ + patch-series, materialized into gitignored tracker clones.      ║
-# ║ All toolchain comes from flake.nix — never assume host has it.    ║
+# ║ Single-WebView-app: a thin hub APK whose WebView loads the        ║
+# ║ my-konsole frontend (bundled from the sibling da_my-konsole repo   ║
+# ║ at build time — see step_bundle_frontend). Hub is an in-tree      ║
+# ║ gradle module. All toolchain comes from flake.nix — never assume  ║
+# ║ host has it.                                                     ║
 # ║                                                                  ║
 # ║ Commands:                                                        ║
 # ║   build            gradle :hub:assembleDebug → dist/<artifact>    ║
@@ -17,9 +18,7 @@
 # ║   clean            gradle clean + rm -rf dist/                    ║
 # ║   shell            enter Nix devShell                            ║
 # ║   ship             build + side-load hub via adb                 ║
-# ║   verify-contract  validate contract/ide-ipc-v1.json vs schema    ║
-# ║   materialize-fork <key>  clone upstream@pin → tracker + patches  ║
-# ║   build-fork <key>        gradle/cordova build in a materialized fork ║
+# ║   bundle-frontend  copy da_my-konsole/frontend → hub assets       ║
 # ║   oras-push / oras-pull / phone-install   GHCR distribution (hub) ║
 # ║   gh-release       attach hub APK to a GitHub Release (rolling)   ║
 # ║                                                                  ║
@@ -53,81 +52,56 @@ prefer_host() {
 
 _json() { prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"; }
 
-# ── bundle-forks ───────────────────────────────────────────────────────
-# SELF-CONTAINED wrapper bundle: for every fork in build.json::forks that has
-# an `embedded` block, download the REAL upstream release APK (pinned URL),
-# verify its pinned sha256 (HARD FAIL on mismatch — supply-chain gate), and
-# place it at hub/src/main/assets/forks/<key>.apk so the single Cloud-IDE APK
-# physically carries Acode + Amaze inside it. Cached: a file already matching
-# the pin is not re-downloaded. Mirrors ea_cloud-comms' bundle-forks, with the
-# source swapped from GHCR to the pinned upstream release (until our patched
-# forks publish). Called automatically by build/release.
 # Resolve an ABI (explicit arg, or build.json::release.abis default) into
-# "abi|rust_target|artifact_suffix". Single source of truth = build.json.
+# "abi|artifact_suffix". Single source of truth = build.json. (The rust_target
+# leg used to live here too — that was Amaze-native-fork-only plumbing for
+# build-fork's -PcloudIdeRustTargets; the hub is pure-JVM so it's gone with
+# the forks.)
 _abi_fields() {
   local abi="${1:-}"
   [ -n "$abi" ] || abi="$(prefer_host jq -r '[.release.abis | to_entries[] | select((.key|startswith("_")|not) and (.value|type=="object") and (.value.default==true)) | .key][0] // "arm64-v8a"' "$SCRIPT_DIR/build.json")"
-  local rt def
-  rt="$(_json ".release.abis[\"$abi\"].rust_target")"
+  local entry def
+  entry="$(_json ".release.abis[\"$abi\"]")"
+  [ -n "$entry" ] && [ "$entry" != "null" ] || { errlog "unknown abi '$abi' — not in build.json::release.abis"; return 1; }
   def="$(_json ".release.abis[\"$abi\"].default")"
-  [ -n "$rt" ] || { errlog "unknown abi '$abi' — not in build.json::release.abis"; return 1; }
   local suffix=""; [ "$def" = "true" ] || suffix="-$abi"
-  echo "${abi}|${rt}|${suffix}"
+  echo "${abi}|${suffix}"
 }
 
-step_bundle_forks() {
-  local abi_in="${1:-}"
-  local assets="$SCRIPT_DIR/hub/src/main/assets/forks"
-  mkdir -p "$assets"
-  local key src url sha out have
-  while IFS= read -r key; do
-    [ -z "$key" ] && continue
-    # Source mode (data-driven): "build" = OUR patched fork APK (build-fork);
-    # "url" = pinned upstream release (fallback). Default = url when a pinned
-    # url+sha exist. A fork with neither is simply absent from the bundle.
-    src="$(_json ".forks.${key}.embedded.source")"
-    url="$(_json ".forks.${key}.embedded.url")"
-    sha="$(_json ".forks.${key}.embedded.sha256")"
-    out="$assets/${key}.apk"
-    [ -n "$src" ] || { [ -n "$url" ] && [ -n "$sha" ] && src="url" || continue; }
+# ── bundle-frontend ────────────────────────────────────────────────────
+# ponytail: this couples the hub build to the sibling da_my-konsole/frontend
+# tree living in the SAME monorepo checkout — both check out together in CI,
+# so a relative path (build.json::frontend_source) is enough; no submodule,
+# no fetch, no version pin needed.
+# Copies the my-konsole frontend (index.html/js/css/vendor) into the hub's
+# WebView asset root so `file:///android_asset/frontend/index.html` resolves.
+# Ensures xterm is vendored first (da_my-konsole/build.sh vendor) since that
+# tree is gitignored/build-time-populated, not committed.
+step_bundle_frontend() {
+  local frontend_src; frontend_src="$(_json '.frontend_source')"
+  [ -n "$frontend_src" ] || { errlog "bundle-frontend: build.json::frontend_source is empty"; exit 1; }
+  local src_dir; src_dir="$(cd "$SCRIPT_DIR/$frontend_src" 2>/dev/null && pwd)" \
+    || { errlog "bundle-frontend: frontend_source resolves to a missing dir: $SCRIPT_DIR/$frontend_src"; exit 1; }
 
-    if [ "$src" = "build" ]; then
-      # Build our patched fork → embed dist/cloud-ide-<key>.apk. If the build
-      # toolchain isn't available here (e.g. CI without rust/ndk) fall back to
-      # the pinned upstream url so the hub still builds — LOUDLY logged, never
-      # silent. (CI ships our patched APK via the GHCR route once fork-ship lands.)
-      if ( step_build_fork build-fork "$key" "$abi_in" ) >/dev/null 2>&1; then  # subshell: contain any exit→ url fallback works (CI: fork not materialized / no rust)
-        cp "$SCRIPT_DIR/dist/cloud-ide-${key}.apk" "$out"
-        _enforce_signature "$out"
-        log "bundle-forks: ✓ $key embedded OUR patched APK ($(wc -c <"$out") B, $(sha256sum "$out" | cut -d' ' -f1 | cut -c1-12)…)"
-        continue
-      elif [ -n "$url" ] && [ -n "$sha" ]; then
-        errlog "bundle-forks: $key build-fork failed/unavailable — FALLING BACK to pinned upstream url"
-        src="url"
-      else
-        errlog "bundle-forks: $key source=build failed and no url fallback — refusing"; exit 1
-      fi
-    fi
-
-    # url source (or fallback): pinned upstream release, sha256-verified.
-    if [ -f "$out" ] && [ "$(sha256sum "$out" | cut -d' ' -f1)" = "$sha" ]; then
-      log "bundle-forks: $key already bundled + verified — skip"; continue
-    fi
-    rm -f "$out"
-    log "bundle-forks: fetching $key ← $url"
-    curl -fsSL --retry 3 -o "$out" "$url"
-    have="$(sha256sum "$out" | cut -d' ' -f1)"
-    if [ "$have" != "$sha" ]; then
-      rm -f "$out"
-      errlog "bundle-forks: sha256 MISMATCH for $key (got $have, pinned $sha) — refusing to bundle"; exit 1
-    fi
-    _enforce_signature "$out"
-    log "bundle-forks: ✓ $key embedded upstream ($(wc -c <"$out") B, sha verified)"
-  done < <(prefer_host jq -r '.forks | to_entries[] | select(.key|startswith("_")|not) | .key' "$SCRIPT_DIR/build.json")
+  # Vendor step is idempotent + only needed once; skip it when vendor/ already
+  # has assets (e.g. a prior run, or a CI cache) rather than re-running it.
   shopt -s nullglob
-  local apks=("$assets"/*.apk)
+  local vendored=("$src_dir"/vendor/*.js)
   shopt -u nullglob
-  log "bundle-forks: ${#apks[@]} app(s) self-contained in the hub bundle"
+  if [ "${#vendored[@]}" -eq 0 ]; then
+    log "bundle-frontend: vendor/ empty — running da_my-konsole/build.sh vendor"
+    if ! ( cd "$src_dir/.." && ./build.sh vendor ); then
+      log "bundle-frontend: vendor step failed/unavailable — continuing (vendor/ may already be populated some other way)"
+    fi
+  else
+    log "bundle-frontend: vendor/ already populated (${#vendored[@]} file(s)) — skip"
+  fi
+
+  local dest="$SCRIPT_DIR/hub/src/main/assets/frontend"
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  cp -r "$src_dir"/. "$dest"/
+  log "bundle-frontend: ✓ $src_dir → $dest"
 }
 
 # ── signing-key resolver (build.json::signing → vault → env) ──────────
@@ -213,10 +187,10 @@ _enforce_signature() {
 step_build() {
   local abifields abi suffix
   abifields="$(_abi_fields "${2:-}")" || exit 1
-  abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f3)"
-  step_bundle_forks "$abi"
+  abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f2)"
+  step_bundle_frontend
   _resolve_signing
-  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, debug APK, abi $abi)"
+  log "Build: cloud-ide hub (WebView + my-konsole frontend, debug APK, abi $abi)"
   in_nix gradle :hub:assembleDebug
   mkdir -p "$DIST_DIR"
   local base out; base="$(_json '.release.artifact.debug')"
@@ -229,10 +203,10 @@ step_build() {
 step_release() {
   local abifields abi suffix
   abifields="$(_abi_fields "${2:-}")" || exit 1
-  abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f3)"
-  step_bundle_forks "$abi"
+  abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f2)"
+  step_bundle_frontend
   _resolve_signing
-  log "Build: cloud-ide wrapper (hub + embedded Acode/Amaze, release APK, abi $abi)"
+  log "Build: cloud-ide hub (WebView + my-konsole frontend, release APK, abi $abi)"
   in_nix gradle :hub:assembleRelease
   mkdir -p "$DIST_DIR"
   local base out; base="$(_json '.release.artifact.release')"
@@ -259,178 +233,6 @@ step_ship() {
   step_build
   log "Ship: side-loading hub via adb"
   in_nix adb install -r "$DIST_DIR/$(_json '.release.artifact.debug')"
-}
-
-# ── verify-contract ────────────────────────────────────────────────────
-# Validate the IPC contract against its JSON Schema, and assert build.json::ipc
-# stays consistent with it. This is the Phase-0 tester gate — no scaffold is
-# "done" until the contract validates (FIRE rule 5).
-step_verify_contract() {
-  local contract="$SCRIPT_DIR/contract/ide-ipc-v1.json"
-  local schema="$SCRIPT_DIR/contract/ide-ipc-v1.schema.json"
-  [ -f "$contract" ] || { errlog "missing $contract"; exit 1; }
-  [ -f "$schema" ]   || { errlog "missing $schema"; exit 1; }
-
-  log "verify-contract: schema validation"
-  if command -v check-jsonschema >/dev/null 2>&1; then
-    check-jsonschema --schemafile "$schema" "$contract"
-  else
-    in_nix check-jsonschema --schemafile "$schema" "$contract"
-  fi
-
-  log "verify-contract: build.json::ipc ↔ contract cross-check"
-  local c_auth c_perm c_ver c_svc c_ofa b_auth b_perm b_ver b_svc b_ofa
-  c_auth="$(prefer_host jq -r '.authority' "$contract")"
-  c_perm="$(prefer_host jq -r '.permission' "$contract")"
-  c_ver="$(prefer_host jq -r '.version' "$contract")"
-  c_svc="$(prefer_host jq -r '.aidl.service_interface' "$contract")"
-  c_ofa="$(prefer_host jq -r '.navigation.open_fork_action' "$contract")"
-  b_auth="$(_json '.ipc.authority')"; b_perm="$(_json '.ipc.permission')"
-  b_ver="$(_json '.ipc.version')";    b_svc="$(_json '.ipc.aidl_service')"
-  b_ofa="$(_json '.ipc.open_fork_action')"
-  local ok=1
-  [ "$c_auth" = "$b_auth" ] || { errlog "authority mismatch: contract=$c_auth build.json=$b_auth"; ok=0; }
-  [ "$c_perm" = "$b_perm" ] || { errlog "permission mismatch: contract=$c_perm build.json=$b_perm"; ok=0; }
-  [ "$c_ver"  = "$b_ver"  ] || { errlog "version mismatch: contract=$c_ver build.json=$b_ver"; ok=0; }
-  [ "$c_svc"  = "$b_svc"  ] || { errlog "aidl_service mismatch: contract=$c_svc build.json=$b_svc"; ok=0; }
-  [ "$c_ofa"  = "$b_ofa"  ] || { errlog "open_fork_action mismatch: contract=$c_ofa build.json=$b_ofa"; ok=0; }
-  [ "$ok" = "1" ] || exit 1
-  log "verify-contract: ✓ contract valid + consistent with build.json (v$c_ver)"
-}
-
-# ── materialize-fork <key> ─────────────────────────────────────────────
-# Declaratively reconstruct a fork: clone the upstream at the pinned tag into
-# its (gitignored) tracker dir, then apply the committed patch series. Same
-# input → same working tree. NEVER produces a long-lived divergent clone.
-step_materialize_fork() {
-  local key="${2:-}"
-  [ -n "$key" ] || { errlog "usage: build.sh materialize-fork <files|utils|editor>"; exit 1; }
-
-  local repo tracker tag blocked
-  repo="$(_json ".forks.${key}.upstream_repo")"
-  tracker="$(_json ".forks.${key}.tracker_dir")"
-  tag="$(_json ".forks.${key}.pinned_tag")"
-  blocked="$(_json ".forks.${key}.blocked_on")"
-  [ -n "$repo" ] && [ -n "$tracker" ] || { errlog "unknown fork '$key' in build.json::forks"; exit 1; }
-
-  if [ -n "$blocked" ] && [ "$blocked" != "null" ]; then
-    errlog "fork '$key' is BLOCKED on: $blocked — resolve the blocker before materializing."
-    exit 1
-  fi
-  if [ -z "$tag" ]; then
-    errlog "fork '$key' has no pinned_tag in build.json::forks.${key}.pinned_tag."
-    errlog "  Pin an upstream release tag (see $repo releases) before materializing."
-    exit 1
-  fi
-
-  local dest="$SCRIPT_DIR/../$tracker"
-  local patch_dir="$SCRIPT_DIR/forks/${key}/patches"
-
-  if [ ! -d "$dest/.git" ]; then
-    log "materialize-fork[$key]: cloning $repo → $tracker (tag $tag)"
-    prefer_host git clone --filter=blob:none "$repo" "$dest"
-  fi
-  log "materialize-fork[$key]: reset to pinned tag $tag"
-  prefer_host git -C "$dest" fetch --tags origin
-  prefer_host git -C "$dest" reset --hard "$tag"
-  prefer_host git -C "$dest" clean -fdx
-
-  # Apply the committed patch series in lexical order. Empty series = a pure
-  # upstream checkout (valid during early scaffolding).
-  shopt -s nullglob
-  local patches=("$patch_dir"/*.patch)
-  shopt -u nullglob
-  if [ "${#patches[@]}" -eq 0 ]; then
-    log "materialize-fork[$key]: no patches yet — left at clean upstream $tag"
-  else
-    log "materialize-fork[$key]: applying ${#patches[@]} patch(es)"
-    local p
-    for p in "${patches[@]}"; do
-      log "  git am $(basename "$p")"
-      prefer_host git -C "$dest" am "$p"
-    done
-  fi
-  log "materialize-fork[$key]: ✓ $tracker ready (build with: ./build.sh build-fork $key)"
-}
-
-# ── build-fork <key> ───────────────────────────────────────────────────
-# Build a materialized fork's APK with the fork's OWN build system — its
-# checked-in gradle wrapper (pinned gradle version) and the task declared in
-# build.json::forks.<key>.build.task (flavors differ per fork). The devShell
-# supplies JDK + ANDROID_HOME; the wrapper supplies gradle. Output resolved
-# from build.json::forks.<key>.build.apk_glob → dist/cloud-ide-<key>.apk.
-step_build_fork() {
-  local key="${2:-}"
-  [ -n "$key" ] || { errlog "usage: build.sh build-fork <files|utils|editor> [abi]"; exit 1; }
-  # ABI → rust cargo target (data-driven). Passed to the fork's gradle as
-  # -PcloudIdeRustTargets so the patched native module builds for this ABI only.
-  local abifields abi rust_target gprops=()
-  abifields="$(_abi_fields "${3:-}")" || exit 1
-  abi="${abifields%%|*}"; rust_target="$(echo "$abifields" | cut -d'|' -f2)"
-  [ -n "$rust_target" ] && gprops+=("-PcloudIdeRustTargets=$rust_target")
-  local tracker dest task glob
-  tracker="$(_json ".forks.${key}.tracker_dir")"
-  task="$(_json ".forks.${key}.build.task")"; task="${task:-assembleRelease}"
-  glob="$(_json ".forks.${key}.build.apk_glob")"
-  dest="$SCRIPT_DIR/../$tracker"
-  [ -d "$dest/.git" ] || { errlog "fork '$key' not materialized — run: ./build.sh materialize-fork $key"; exit 1; }
-
-  # Provision the fork's signing keystore BEFORE gradle config (the patch's
-  # signing config references it at evaluation time). The fork APKs MUST sign
-  # with the ONE shared constellation key like every other app — so instead of
-  # generating a random per-fork key, we IMPORT the resolved vault keypair into
-  # the keystore file the fork's gradle expects (storepass/keypass 'android',
-  # alias from build.json). The APK signature is the keypair, not the alias or
-  # store password, so every fork APK signs with the SAME constellation cert.
-  # NO random keytool -genkeypair, EVER. _resolve_signing fails loud (exit 1)
-  # if the shared key is unavailable — no random/legacy fallback.
-  local ks alias kspath
-  ks="$(_json ".forks.${key}.build.keystore")"
-  alias="$(_json ".forks.${key}.build.keystore_alias")"; alias="${alias:-idekey}"
-  if [ -n "$ks" ]; then
-    kspath="$dest/$ks"
-    _resolve_signing
-    log "build-fork[$key]: importing ONE shared constellation key → $ks (alias $alias)"
-    rm -f "$kspath"
-    mkdir -p "$(dirname "$kspath")"
-    in_nix keytool -importkeystore -noprompt \
-      -srckeystore "$ANDROID_KEYSTORE_FILE" -srcstoretype PKCS12 \
-      -srcstorepass "$ANDROID_KEYSTORE_PASSWORD" -srcalias "$ANDROID_KEY_ALIAS" \
-      -srckeypass "${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}" \
-      -destkeystore "$kspath" -deststoretype PKCS12 \
-      -deststorepass android -destkeypass android -destalias "$alias"
-  fi
-
-  # ABI-switch clean: rust-android-gradle leaves prior-ABI .so in
-  # build/rustJniLibs and AGP's mergeNativeLibs is cached, so switching ABI
-  # without a clean packages a STALE ABI. Track the last-built target in a
-  # marker (gitignored tracker file); clean when it changes → each per-ABI APK
-  # contains exactly its own ABI.
-  local marker="$dest/.cloud-ide-built-target"
-  if [ ! -f "$marker" ] || [ "$(cat "$marker" 2>/dev/null)" != "$rust_target" ]; then
-    log "build-fork[$key]: ABI is $rust_target (was $(cat "$marker" 2>/dev/null || echo none)) — gradle clean for a pure single-ABI APK"
-    if [ -x "$dest/gradlew" ]; then ( cd "$dest" && in_nix ./gradlew --no-daemon clean ); else ( cd "$dest" && in_nix gradle clean ); fi
-    rm -f "$marker"
-  fi
-
-  log "build-fork[$key]: $tracker → $task (abi $abi, rust $rust_target)"
-  if [ -x "$dest/gradlew" ]; then
-    ( cd "$dest" && in_nix ./gradlew --no-daemon "$task" "${gprops[@]}" )
-  else
-    ( cd "$dest" && in_nix gradle "$task" "${gprops[@]}" )
-  fi
-  echo "$rust_target" > "$marker"
-  mkdir -p "$DIST_DIR"
-  local apk=""
-  if [ -n "$glob" ]; then
-    shopt -s nullglob; local hits=("$dest"/$glob); shopt -u nullglob
-    [ "${#hits[@]}" -ge 1 ] && apk="${hits[0]}"
-  fi
-  [ -n "$apk" ] || apk="$(prefer_host find "$dest" -path '*/outputs/apk/*release*.apk' -print -quit 2>/dev/null || true)"
-  [ -n "$apk" ] || { errlog "build-fork[$key]: no APK produced (glob: ${glob:-<default>})"; exit 1; }
-  cp "$apk" "$DIST_DIR/cloud-ide-${key}.apk"
-  _enforce_signature "$DIST_DIR/cloud-ide-${key}.apk"
-  log "→ $DIST_DIR/cloud-ide-${key}.apk ($(wc -c <"$DIST_DIR/cloud-ide-${key}.apk") B)"
 }
 
 # ── GHCR distribution (hub APK) ─────────────────────────────────────────
@@ -460,7 +262,7 @@ step_oras_push() {
   base_release="$(_json '.release.artifact.release')"
   while IFS= read -r abi; do
     [ -z "$abi" ] && continue
-    suffix="$(_abi_fields "$abi" | cut -d'|' -f3)"
+    suffix="$(_abi_fields "$abi" | cut -d'|' -f2)"
     # Prefer the release artifact, else the debug one, for this abi.
     if   [ -f "$DIST_DIR/${base_release%.apk}${suffix}.apk" ]; then art="$DIST_DIR/${base_release%.apk}${suffix}.apk"
     elif [ -f "$DIST_DIR/${base_debug%.apk}${suffix}.apk" ];   then art="$DIST_DIR/${base_debug%.apk}${suffix}.apk"
@@ -576,10 +378,7 @@ case "$CMD" in
   clean)            step_clean ;;
   shell)            step_shell ;;
   ship)             step_ship ;;
-  verify-contract)  step_verify_contract ;;
-  bundle-forks)     step_bundle_forks "${2:-}" ;;
-  materialize-fork) step_materialize_fork "$@" ;;
-  build-fork)       step_build_fork "$@" ;;
+  bundle-frontend)  step_bundle_frontend ;;
   oras-push)        step_oras_push ;;
   oras-pull)        step_oras_pull "$@" ;;
   phone-install)    step_phone_install "$@" ;;

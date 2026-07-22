@@ -29,12 +29,11 @@ import java.util.Date
  * sizeStr), same monospace-value style, long-press-to-copy on every row, and
  * "Copy All Infos" at the tail.
  *
- * Sections: About · Updater/GHCR · APK · Storage · IPC contract · Wrapper
- * bundle (the two self-contained apps) · Stack (languages LOC + frameworks +
- * build metrics — scanned at build time, never hardcoded) · Device · Memory ·
- * System load · Permissions · Updates (live progress). Every fact comes from
- * BuildConfig (baked from build.json/contract/data) or runtime PackageManager /
- * ActivityManager / proc — no hardcoded facts.
+ * Sections: About · Updater/GHCR · APK · Storage · Stack (languages LOC +
+ * frameworks + build metrics — scanned at build time, never hardcoded) ·
+ * Device · Memory · System load · Permissions · Updates (live progress).
+ * Every fact comes from BuildConfig (baked from build.json/data) or runtime
+ * PackageManager / ActivityManager / proc — no hardcoded facts.
  */
 class AboutActivity : AppCompatActivity() {
 
@@ -139,45 +138,6 @@ class AboutActivity : AppCompatActivity() {
             row(ctx, it, "Total",      sizeStr(totalBytes))
         }
 
-        // ── IPC contract ───────────────────────────────────────────────
-        section(ctx, column, "IPC contract") {
-            row(ctx, it, "Contract",    "v${BuildConfig.IPC_VERSION}")
-            row(ctx, it, "Authority",   BuildConfig.IPC_AUTHORITY)
-            row(ctx, it, "Permission",  BuildConfig.IPC_PERMISSION)
-            row(ctx, it, "Open action", BuildConfig.OPEN_FORK_ACTION)
-            row(ctx, it, "Icon model",  BuildConfig.ICON_MODEL)
-            it.addView(small(ctx, "Signature-gated — all constellation APKs share one signing key."))
-        }
-
-        // ── Wrapper bundle — the two self-contained apps ───────────────
-        section(ctx, column, "Wrapper bundle") {
-            it.addView(small(ctx, "The REAL upstream APKs ride INSIDE this APK (assets/forks/, sha256-pinned at build)."))
-            row(ctx, it, "Cloud-IDE (hub)", "v${BuildConfig.VERSION_NAME}")
-            row(ctx, it, "  image", "${BuildConfig.GHCR_NAMESPACE}/${BuildConfig.GHCR_IMAGE}")
-            val forksJson = runCatching {
-                JSONObject(String(Base64.decode(BuildConfig.FORKS_JSON_B64, Base64.DEFAULT)))
-            }.getOrDefault(JSONObject())
-            for (f in ForkRegistry.homeForks) {
-                val installedVer = runCatching {
-                    @Suppress("DEPRECATION")
-                    packageManager.getPackageInfo(f.launchPackage, 0).versionName
-                }.getOrNull()
-                val state = when {
-                    installedVer != null -> "v$installedVer · installed"
-                    BundledForkInstaller.isBundled(ctx, f) -> "bundled · tap tile to install"
-                    else -> "not bundled in this build"
-                }
-                row(ctx, it, f.displayName, state)
-                forksJson.optJSONObject(f.domain)?.let { fj ->
-                    val pin = fj.optString("pinned_tag").ifBlank { "—" }
-                    row(ctx, it, "  license/runtime",
-                        "${fj.optString("license").ifBlank { "—" }} · ${fj.optString("runtime").ifBlank { "—" }} · pin $pin")
-                }
-                row(ctx, it, "  bundled?", if (BundledForkInstaller.isBundled(ctx, f)) "yes" else "no")
-                row(ctx, it, "  app id", f.launchPackage)
-            }
-        }
-
         // ── Stack ──────────────────────────────────────────────────────
         section(ctx, column, "Stack") {
             it.addView(small(ctx, "What's actually inside this APK — scanned by the build, never a hardcoded list."))
@@ -265,19 +225,9 @@ class AboutActivity : AppCompatActivity() {
                 "Network state"      to "android.permission.ACCESS_NETWORK_STATE",
                 "Install packages"   to "android.permission.REQUEST_INSTALL_PACKAGES",
                 "Post notifications" to "android.permission.POST_NOTIFICATIONS",
-                "IPC (signature)"    to BuildConfig.IPC_PERMISSION,
             )
             for ((label, perm) in perms) {
                 row(ctx, it, label, permissionState(perm))
-            }
-            // Display-over-other-apps (the wrapper bar) — special check, not
-            // a runtime permission.
-            row(ctx, it, "Overlay (nav bar)",
-                if (NavOverlayService.hasPermission(ctx)) "✓ Granted" else "✗ Denied")
-            if (!NavOverlayService.hasPermission(ctx)) {
-                it.addView(actionButton(ctx, "Grant overlay (persistent nav bar)") {
-                    NavOverlayService.requestPermission(ctx)
-                })
             }
             if (android.os.Build.VERSION.SDK_INT >= 33) {
                 it.addView(actionButton(ctx, "Request notifications") {

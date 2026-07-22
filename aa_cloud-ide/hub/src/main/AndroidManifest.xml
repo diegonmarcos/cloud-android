@@ -16,42 +16,13 @@
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Wrapper bar overlay over the embedded apps (NavOverlayService). -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-
-    <!-- Discover which apps are installed (ForkRegistry.isInstalled +
-         getLaunchIntentForPackage) — scoped <queries>, no QUERY_ALL_PACKAGES.
-         First block: the REAL ids of the embedded self-contained apps
-         (build.json::forks.<k>.embedded.package). Second block: our future
-         patched-fork ids. parent_chain (SuperApp) for the nav chips. -->
-    <queries>
-        <package android:name="com.foxdebug.acode" />
-        <package android:name="com.amaze.filemanager" />
-        <package android:name="com.diegonmarcos.superapp" />
-        <package android:name="com.diegonmarcos.ide.editor" />
-        <package android:name="com.diegonmarcos.ide.files" />
-        <package android:name="com.diegonmarcos.ide.utils" />
-    </queries>
-
-    <!-- ── The IPC gate ──────────────────────────────────────────────────
-         Custom permission, protectionLevel=signature: only apps signed with
-         the SAME key (the forks + Cloud-SuperApp + cloud-comms) can hold it, so
-         only they can query the provider or bind the service. The name is
-         injected from build.json/contract via the ${ipcPermission} manifest
-         placeholder so it stays data-driven (one source of truth). -->
-    <permission
-        android:name="${ipcPermission}"
-        android:protectionLevel="signature" />
-    <!-- The hub also HOLDS the permission so it can query the per-fork
-         exporter providers (which require the same permission). -->
-    <uses-permission android:name="${ipcPermission}" />
-
     <application
         android:name=".App"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.CloudIde"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false">
 
         <activity
@@ -64,21 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Unified read surface. Exported but gated by the signature
-             permission — SuperApp (same key) can query; anything else can't. -->
-        <provider
-            android:name=".IdeProvider"
-            android:authorities="${ipcAuthority}"
-            android:exported="true"
-            android:permission="${ipcPermission}" />
-
-        <!-- Action + push broker (AIDL). Same signature gate. -->
-        <service
-            android:name=".IdeService"
-            android:exported="true"
-            android:permission="${ipcPermission}"
-            tools:ignore="ExportedService" />
-
         <!-- Configs (Update + About). About = full SuperApp-architecture page
              (AboutActivity). Update = UpdateOverlay DialogFragment. -->
         <activity android:name=".ConfigsActivity" android:exported="false" />
@@ -87,11 +43,6 @@
         <!-- In-app updater + bundled-app PackageInstaller status callback. -->
         <receiver
             android:name=".update.PackageInstallerReceiver"
-            android:exported="false" />
-
-        <!-- The wrapper-chrome overlay bar drawn over the embedded apps. -->
-        <service
-            android:name=".NavOverlayService"
             android:exported="false" />
 
     </application>
