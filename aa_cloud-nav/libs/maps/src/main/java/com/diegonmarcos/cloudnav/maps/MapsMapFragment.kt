@@ -571,7 +571,7 @@ class MapsMapFragment : Fragment() {
             }
             s.vectorStyleUrl != null -> {
                 Thread {
-                    val json = VectorStyleLoader.loadLocalized(s.vectorStyleUrl, s.labelFieldPref)
+                    val json = VectorStyleLoader.loadLocalized(s.vectorStyleUrl, s.labelFieldPref, MapStyles.hillshade)
                     ui { applyRemoteResult(json, s, m, firstLoad) }
                 }.start()
             }

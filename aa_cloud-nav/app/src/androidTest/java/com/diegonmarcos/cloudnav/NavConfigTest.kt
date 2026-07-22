@@ -767,6 +767,57 @@ class NavConfigTest {
         assertTrue("height driven by render_height", paint.get("fill-extrusion-height").toString().contains("render_height"))
     }
 
+    // Real-elevation hillshade: when a Hillshade config is passed, localize must
+    // add a raster-dem source (terrarium DEM) + a hillshade layer positioned
+    // under the roads/labels. This is 2D shading — MapLibre Native has no 3D
+    // tilted terrain (maplibre-native#252) — but the relief is real elevation,
+    // not the flat painted image the style ships.
+    @Test fun geo_vector_style_localize_injects_real_elevation_hillshade() {
+        val sample = JSONObject().put("sources", JSONObject().put("openmaptiles", JSONObject().put("type", "vector")))
+            .put("layers", org.json.JSONArray().apply {
+                put(JSONObject().put("id", "background").put("type", "background"))
+                put(JSONObject().put("id", "landcover").put("type", "fill").put("source", "openmaptiles"))
+                put(JSONObject().put("id", "road").put("type", "line").put("source", "openmaptiles"))
+                put(
+                    JSONObject().put("id", "place-city").put("type", "symbol")
+                        .put("layout", JSONObject().put("text-field", "{name}"))
+                )
+            })
+        val hs = MapStyles.Hillshade(
+            demTiles = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+            encoding = "terrarium", tileSize = 256, maxzoom = 15, exaggeration = 0.45, attribution = "Elevation © Mapzen",
+        )
+        val out = JSONObject(VectorStyleLoader.localize(sample.toString(), "name:en", hs))
+        // DEM source added, terrarium-encoded.
+        val dem = out.getJSONObject("sources").getJSONObject("cloudnav-dem")
+        assertEquals("raster-dem", dem.getString("type"))
+        assertEquals("terrarium", dem.getString("encoding"))
+        assertTrue("DEM tiles wired from config", dem.getJSONArray("tiles").getString(0).contains("terrarium"))
+        // Hillshade layer added, and it sits BEFORE the road line (under roads).
+        val layers = out.getJSONArray("layers")
+        val ids = (0 until layers.length()).map { layers.getJSONObject(it).getString("id") }
+        assertTrue("hillshade layer present", ids.contains("cloudnav-hillshade"))
+        assertTrue("hillshade sits under the roads", ids.indexOf("cloudnav-hillshade") < ids.indexOf("road"))
+        val hsLayer = (0 until layers.length()).map { layers.getJSONObject(it) }.first { it.getString("id") == "cloudnav-hillshade" }
+        assertEquals("hillshade", hsLayer.getString("type"))
+        assertEquals(0.45, hsLayer.getJSONObject("paint").getDouble("hillshade-exaggeration"), 1e-9)
+    }
+
+    // Idempotent: a second localize pass must not add a second DEM source/layer.
+    @Test fun geo_vector_style_localize_hillshade_is_idempotent() {
+        val sample = JSONObject().put("sources", JSONObject())
+            .put("layers", org.json.JSONArray().apply {
+                put(JSONObject().put("id", "background").put("type", "background"))
+                put(JSONObject().put("id", "road").put("type", "line").put("source", "openmaptiles"))
+            })
+        val hs = MapStyles.Hillshade("https://x/{z}/{x}/{y}.png", "terrarium", 256, 15, 0.45, "")
+        val once = VectorStyleLoader.localize(sample.toString(), "name:en", hs)
+        val twice = JSONObject(VectorStyleLoader.localize(once, "name:en", hs))
+        val layers = twice.getJSONArray("layers")
+        val hsCount = (0 until layers.length()).count { layers.getJSONObject(it).optString("id") == "cloudnav-hillshade" }
+        assertEquals("hillshade layer added exactly once across two passes", 1, hsCount)
+    }
+
     // Idempotent: a style that ALREADY declares a fill-extrusion (e.g. liberty's
     // building-3d) is left untouched — never doubled, never dropped.
     @Test fun geo_vector_style_localize_keeps_existing_extrusion_unchanged() {

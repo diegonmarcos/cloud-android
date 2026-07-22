@@ -24,18 +24,22 @@ import org.json.JSONObject
  */
 object VectorStyleLoader {
 
+    /** Source id for the injected raster-DEM (guards idempotent re-injection). */
+    private const val DEM_SOURCE = "cloudnav-dem"
+
     /** Returns the localized style JSON, or null on any network/parse failure
-     *  (caller falls back / toasts — never crashes the map). */
-    fun loadLocalized(styleUrl: String, preferField: String): String? = runCatching {
+     *  (caller falls back / toasts — never crashes the map). [hillshade], when
+     *  non-null, adds a real-elevation raster-DEM + hillshade layer. */
+    fun loadLocalized(styleUrl: String, preferField: String, hillshade: MapStyles.Hillshade? = null): String? = runCatching {
         val body = fetch(styleUrl) ?: return null
-        localize(body, preferField)
+        localize(body, preferField, hillshade)
     }.getOrNull()
 
     /** Pure JSON rewrite (no network) — every name-label symbol layer gets a
      *  `["coalesce", ["get", preferField], ["get","name:latin"], ["get","name"]]`
      *  text-field. Non-name labels (road-ref shields) are left untouched.
      *  Exposed for testing without a network round-trip. */
-    fun localize(styleJson: String, preferField: String): String {
+    fun localize(styleJson: String, preferField: String, hillshade: MapStyles.Hillshade? = null): String {
         val root = JSONObject(styleJson)
         val layers = root.optJSONArray("layers") ?: return root.toString()
         for (i in 0 until layers.length()) {
@@ -46,7 +50,58 @@ object VectorStyleLoader {
             localizeLayout(layout, preferField)
         }
         injectBuildings3d(root)
+        if (hillshade != null) injectHillshade(root, hillshade)
         return root.toString()
+    }
+
+    /**
+     * Adds a real-elevation raster-DEM source + a `hillshade` layer, replacing
+     * the flat painted relief the style ships (positron/dark's `ne2_shaded`
+     * image) with shading computed from actual elevation. MapLibre Native
+     * renders hillshade natively; this is 2D shading — it does NOT rise when the
+     * camera tilts (true 3D terrain is unsupported by MapLibre Native — see
+     * maplibre-native#252). Idempotent; the DEM source id guards re-entry.
+     *
+     * The hillshade layer is inserted just below the first vector line/symbol
+     * (roads/labels) so relief reads under them but over the base fills —
+     * positioned by layer TYPE, never a hardcoded index.
+     */
+    private fun injectHillshade(root: JSONObject, h: MapStyles.Hillshade) {
+        val sources = root.optJSONObject("sources") ?: JSONObject().also { root.put("sources", it) }
+        if (sources.has(DEM_SOURCE)) return  // already added
+        sources.put(
+            DEM_SOURCE,
+            JSONObject()
+                .put("type", "raster-dem")
+                .put("tiles", JSONArray().put(h.demTiles))
+                .put("tileSize", h.tileSize)
+                .put("encoding", h.encoding)
+                .put("maxzoom", h.maxzoom)
+                .put("attribution", h.attribution),
+        )
+        val layers = root.optJSONArray("layers") ?: JSONArray().also { root.put("layers", it) }
+        val hillshadeLayer = JSONObject()
+            .put("id", "cloudnav-hillshade")
+            .put("type", "hillshade")
+            .put("source", DEM_SOURCE)
+            .put("paint", JSONObject().put("hillshade-exaggeration", h.exaggeration))
+        // Insert just before the first road (line) — else first label (symbol),
+        // else after the base layer — so relief sits over fills, under roads.
+        var insertAt = -1
+        for (i in 0 until layers.length()) {
+            if (layers.getJSONObject(i).optString("type") == "line") { insertAt = i; break }
+        }
+        if (insertAt < 0) for (i in 0 until layers.length()) {
+            if (layers.getJSONObject(i).optString("type") == "symbol") { insertAt = i; break }
+        }
+        if (insertAt < 0) insertAt = minOf(1, layers.length())
+        val rebuilt = JSONArray()
+        for (i in 0 until layers.length()) {
+            if (i == insertAt) rebuilt.put(hillshadeLayer)
+            rebuilt.put(layers.getJSONObject(i))
+        }
+        if (insertAt >= layers.length()) rebuilt.put(hillshadeLayer)
+        root.put("layers", rebuilt)
     }
 
     /**

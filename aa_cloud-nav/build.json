@@ -384,6 +384,15 @@
         "vector_overlay_url": "https://tiles.openfreemap.org/styles/positron",
         "label_field_pref": "name_en",
         "raster_fallback": "satellite"
+      },
+      "_doc_hillshade": "Real-elevation hillshade added to every vector style by VectorStyleLoader (NOT a selectable basemap — not in `order`). Terrarium-encoded raster-DEM from AWS's keyless Terrain Tiles open dataset; MapLibre Native renders a hillshade layer (accurate mountain relief, replacing the flat painted ne2_shaded image). NOTE: this is 2D shading — true 3D tilted terrain is unsupported by MapLibre Native (maplibre-native#252, unfunded).",
+      "hillshade": {
+        "dem_tiles": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+        "encoding": "terrarium",
+        "tile_size": 256,
+        "maxzoom": 15,
+        "exaggeration": 0.45,
+        "attribution": "Elevation © Mapzen · AWS Terrain Tiles"
       }
     },
     "maps_active": {

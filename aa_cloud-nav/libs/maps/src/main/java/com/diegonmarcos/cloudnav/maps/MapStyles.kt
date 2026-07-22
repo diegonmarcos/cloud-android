@@ -59,6 +59,33 @@ object MapStyles {
      *  Configs > APIs. */
     val defaultFamily: String by lazy { root.optString("default_family", "vector") }
 
+    /** Real-elevation hillshade config (build.json::ui.map_styles.hillshade) —
+     *  a raster-DEM source + hillshade layer [VectorStyleLoader] adds to every
+     *  vector style. Null when unconfigured (feature off). Not a selectable
+     *  basemap (absent from [order]); 2D shading only — MapLibre Native has no
+     *  3D tilted terrain (maplibre-native#252). */
+    data class Hillshade(
+        val demTiles: String,
+        val encoding: String,
+        val tileSize: Int,
+        val maxzoom: Int,
+        val exaggeration: Double,
+        val attribution: String,
+    )
+
+    val hillshade: Hillshade? by lazy {
+        val o = root.optJSONObject("hillshade") ?: return@lazy null
+        val tiles = o.optString("dem_tiles", "").ifBlank { return@lazy null }
+        Hillshade(
+            demTiles = tiles,
+            encoding = o.optString("encoding", "terrarium"),
+            tileSize = o.optInt("tile_size", 256),
+            maxzoom = o.optInt("maxzoom", 15),
+            exaggeration = o.optDouble("exaggeration", 0.45),
+            attribution = o.optString("attribution", ""),
+        )
+    }
+
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_MAP_STYLES_B64, Base64.DEFAULT))) }
             .getOrDefault(JSONObject())
