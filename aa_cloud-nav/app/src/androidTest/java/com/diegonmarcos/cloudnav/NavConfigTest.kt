@@ -329,12 +329,15 @@ class NavConfigTest {
     }
 
     @Test fun map_switcher_cycle_decodes() {
-        assertEquals(
-            listOf("light", "dark", "satellite", "vector_light", "vector_dark", "satellite_hybrid"),
-            MapStyles.order,
-        )
-        assertEquals("dark", MapStyles.next("light"))
-        assertEquals("light", MapStyles.next("satellite_hybrid"))  // wraps
+        // Data-driven: derive expectations from the decoded build.json order so adding or
+        // removing a style (e.g. vector_liberty) never staleness-breaks this snapshot.
+        val order = MapStyles.order
+        assertTrue("map style order decodes from build.json", order.isNotEmpty())
+        assertEquals("no duplicate styles in the switcher cycle", order.size, order.toSet().size)
+        // next() advances through the decoded order and wraps at the end
+        order.forEachIndexed { i, id ->
+            assertEquals("next($id) cycles to the following style", order[(i + 1) % order.size], MapStyles.next(id))
+        }
     }
 
     @Test fun vector_styles_are_data_driven_and_localized_to_english() {
