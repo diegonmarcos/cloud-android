@@ -333,6 +333,7 @@
         "satellite",
         "vector_light",
         "vector_dark",
+        "vector_liberty",
         "satellite_hybrid"
       ],
       "light": {
@@ -375,6 +376,14 @@
         "label_field_pref": "name_en",
         "raster_fallback": "dark"
       },
+      "vector_liberty": {
+        "label": "Liberty (Vector)",
+        "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
+        "background": "#e8eef4",
+        "vector_style_url": "https://tiles.openfreemap.org/styles/liberty",
+        "label_field_pref": "name_en",
+        "raster_fallback": "light"
+      },
       "satellite_hybrid": {
         "label": "Satellite (labels)",
         "attribution": "© Esri, Maxar, Earthstar Geographics · © OpenFreeMap, © OpenMapTiles",
@@ -393,6 +402,13 @@
         "maxzoom": 15,
         "exaggeration": 0.45,
         "attribution": "Elevation © Mapzen · AWS Terrain Tiles"
+      },
+      "_doc_nature": "Vivid-green nature layer added to every vector style by VectorStyleLoader.injectNature (NOT a selectable basemap — not in `order`). OpenMapTiles' own landcover/landuse fills render wood/grass/park/forest/meadow/grassland in whatever muted tone the upstream style picked (near-white on positron, near-black on dark/liberty), so nature barely reads against the basemap. Synthesizes ONE additional fill layer from the same vector source, filtered to `classes` via a match expression, painted `green_color` at `opacity`. `minzoom` keeps it off at world-scale zooms where it would just be noise.",
+      "nature": {
+        "green_color": "#3fa34d",
+        "opacity": 0.55,
+        "classes": ["wood", "grass", "park", "forest", "meadow", "grassland"],
+        "minzoom": 5
       }
     },
     "maps_active": {

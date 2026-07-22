@@ -86,6 +86,32 @@ object MapStyles {
         )
     }
 
+    /** Vivid-green nature-layer config (build.json::ui.map_styles.nature) — a
+     *  synthesized fill [VectorStyleLoader] adds to every vector style,
+     *  recoloring OpenMapTiles landcover/landuse [classes] (wood/grass/park/…)
+     *  with a punchy [greenColor] so nature reads clearly against Positron/
+     *  Dark/Liberty instead of each style's own muted tone. Null when
+     *  unconfigured (feature off). Not a selectable basemap (absent from
+     *  [order]). */
+    data class Nature(
+        val greenColor: String,
+        val opacity: Double,
+        val classes: List<String>,
+        val minzoom: Int,
+    )
+
+    val nature: Nature? by lazy {
+        val o = root.optJSONObject("nature") ?: return@lazy null
+        val color = o.optString("green_color", "").ifBlank { return@lazy null }
+        val classesArr = o.optJSONArray("classes")
+        Nature(
+            greenColor = color,
+            opacity = o.optDouble("opacity", 0.55),
+            classes = if (classesArr == null) emptyList() else (0 until classesArr.length()).map { classesArr.getString(it) },
+            minzoom = o.optInt("minzoom", 5),
+        )
+    }
+
     private val root: JSONObject by lazy {
         runCatching { JSONObject(String(Base64.decode(BuildConfig.UI_MAP_STYLES_B64, Base64.DEFAULT))) }
             .getOrDefault(JSONObject())

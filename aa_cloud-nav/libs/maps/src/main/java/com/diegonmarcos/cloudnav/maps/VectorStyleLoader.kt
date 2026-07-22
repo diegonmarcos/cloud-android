@@ -50,6 +50,7 @@ object VectorStyleLoader {
             localizeLayout(layout, preferField)
         }
         injectBuildings3d(root)
+        injectNature(root, MapStyles.nature)
         if (hillshade != null) injectHillshade(root, hillshade)
         return root.toString()
     }
@@ -162,6 +163,87 @@ object VectorStyleLoader {
             rebuilt.put(layers.getJSONObject(i))
             if (i == buildingFillIdx) rebuilt.put(extrusion)
         }
+        root.put("layers", rebuilt)
+    }
+
+    /**
+     * Vivid-green nature layer (build.json::ui.map_styles.nature, [MapStyles.Nature]).
+     * OpenMapTiles' own landcover/landuse fills render wood/grass/park/forest/
+     * meadow/grassland in whatever muted tone the upstream style picked
+     * (near-white on positron, near-black on dark/liberty) — nature barely
+     * reads against the basemap. Synthesizes ONE additional fill layer from
+     * the SAME vector source (reusing whichever fill layer's `source` we can
+     * find — landcover/landuse first, falling back to the building fill, same
+     * dynamic lookup [injectBuildings3d] uses — never a hardcoded source id),
+     * filtered to [MapStyles.Nature.classes] via a `match` expression, painted
+     * [MapStyles.Nature.greenColor] at [MapStyles.Nature.opacity].
+     *
+     * A no-op when [nature] is null (feature off) or the style has no vector
+     * source to reuse. Idempotent, guarded by the `cloudnav-nature-green`
+     * layer id. Positioned by layer TYPE, never a hardcoded index — just
+     * before the first fill-extrusion (buildings), else first line (roads),
+     * else first symbol (labels), else after the base layer, so nature sits
+     * over the base fills but under buildings/roads/labels.
+     */
+    internal fun injectNature(root: JSONObject, nature: MapStyles.Nature?) {
+        if (nature == null) return
+        val layers = root.optJSONArray("layers") ?: return
+        for (i in 0 until layers.length()) {
+            if (layers.getJSONObject(i).optString("id") == "cloudnav-nature-green") return  // already added
+        }
+        var source: String? = null
+        for (i in 0 until layers.length()) {
+            val l = layers.getJSONObject(i)
+            if (l.optString("type") == "fill" && l.optString("source-layer") in setOf("landcover", "landuse")) {
+                source = l.optString("source").ifBlank { null }
+                break
+            }
+        }
+        if (source == null) for (i in 0 until layers.length()) {
+            val l = layers.getJSONObject(i)
+            if (l.optString("type") == "fill" && l.optString("source-layer") == "building") {
+                source = l.optString("source").ifBlank { null }
+                break
+            }
+        }
+        val src = source ?: return  // no vector source to reuse
+
+        val filter = JSONArray()
+            .put("match")
+            .put(JSONArray().put("get").put("class"))
+            .put(JSONArray().also { arr -> nature.classes.forEach { arr.put(it) } })
+            .put(true)
+            .put(false)
+        val natureLayer = JSONObject()
+            .put("id", "cloudnav-nature-green")
+            .put("type", "fill")
+            .put("source", src)
+            .put("source-layer", "landcover")
+            .put("minzoom", nature.minzoom)
+            .put("filter", filter)
+            .put(
+                "paint",
+                JSONObject()
+                    .put("fill-color", nature.greenColor)
+                    .put("fill-opacity", nature.opacity),
+            )
+        var insertAt = -1
+        for (i in 0 until layers.length()) {
+            if (layers.getJSONObject(i).optString("type") == "fill-extrusion") { insertAt = i; break }
+        }
+        if (insertAt < 0) for (i in 0 until layers.length()) {
+            if (layers.getJSONObject(i).optString("type") == "line") { insertAt = i; break }
+        }
+        if (insertAt < 0) for (i in 0 until layers.length()) {
+            if (layers.getJSONObject(i).optString("type") == "symbol") { insertAt = i; break }
+        }
+        if (insertAt < 0) insertAt = minOf(1, layers.length())
+        val rebuilt = JSONArray()
+        for (i in 0 until layers.length()) {
+            if (i == insertAt) rebuilt.put(natureLayer)
+            rebuilt.put(layers.getJSONObject(i))
+        }
+        if (insertAt >= layers.length()) rebuilt.put(natureLayer)
         root.put("layers", rebuilt)
     }
 

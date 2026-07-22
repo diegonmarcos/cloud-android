@@ -116,4 +116,12 @@ dependencies {
     // vector styles. Same family as `maplibre-gl` (JS) that
     // front/c-Suite/mymaps-navigation uses for visual consistency.
     implementation 'org.maplibre.gl:android-sdk:11.7.0'
+
+    // JVM unit tests (VectorStyleLoaderNatureTest): org.json is bundled in the
+    // real Android platform, but AGP's unit-test stub android.jar throws
+    // "not mocked" for it like any other framework class — a real org.json
+    // jar on the test classpath is needed so JSONObject/JSONArray actually
+    // work off-device (no Robolectric needed for pure JSON logic).
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20250107'
 }
