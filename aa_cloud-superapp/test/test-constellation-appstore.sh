@@ -18,14 +18,25 @@ echo "== T1: fleet manifest auto-generated with every app =="
 if [ -f "$FLEET" ]; then
   N=$(jq '.apps | length' "$FLEET" 2>/dev/null)
   [ "${N:-0}" -ge 8 ] && ok "constellation-fleet.json has $N apps (>=8)" || bad "expected >=8 apps, got ${N:-0}"
-  for id in superapp comms-hub nav ide-hub comms-mail comms-chat comms-matrix comms-dialer; do
+  # Every standalone ea_cloud-<id> self-registers: the top-level apps +
+  # the 4 promoted ex-comms fork-apps (dialer/chat/mail/matrix), each now its
+  # OWN dir + ship-cloud-<id>.yml CI. Fleet ids = the dir basenames.
+  for id in superapp nav ide browser vault wallet dialer chat mail matrix; do
     jq -e --arg i "$id" '.apps[] | select(.id==$i) | .package and .image and .registry' "$FLEET" >/dev/null 2>&1 \
       && ok "fleet entry $id has package+image" || bad "fleet entry $id missing/incomplete"
   done
+  # cloud-comms HUB is decommissioned (archived to z_archive/) — it and the old
+  # comms-* fork ids must be GONE (the forks are now independent apps above).
+  jq -e '.apps[] | select(.package=="com.diegonmarcos.comms" or .image=="cloud-comms-hub")' "$FLEET" >/dev/null 2>&1 \
+    && bad "cloud-comms hub still in fleet (should be decommissioned)" || ok "cloud-comms hub absent (decommissioned)"
+  jq -e '.apps[] | select(.id | startswith("comms-"))' "$FLEET" >/dev/null 2>&1 \
+    && bad "stale comms-* fork id present" || ok "no stale comms-* fork ids"
 else bad "constellation-fleet.json missing (run data/regen.sh)"; fi
 has "$APP/data/regen.sh" "regen_constellation" "regen.sh auto-scans siblings → fleet json"
-# self-registering / DRY: packages come from each app's build.json, not hand-typed
-grep -q '"com.diegonmarcos.comms.mail"' "$FLEET" 2>/dev/null && ok "fork package scanned from ea_cloud-comms/build.json" || bad "fork package not scanned"
+# self-registering / DRY: the dialer package is scanned from ea_cloud-dialer/
+# build.json (forks.dialer.app_id), not hand-typed — dialer is now an
+# independent fleet app with its own ship CI.
+grep -q '"com.diegonmarcos.comms.dialer"' "$FLEET" 2>/dev/null && ok "dialer package scanned from ea_cloud-dialer/build.json" || bad "dialer package not scanned"
 
 echo "== T2: baked into BuildConfig (data-driven) =="
 has "$APP/app/build.gradle" "constellation-fleet.json" "build.gradle reads the fleet snapshot"

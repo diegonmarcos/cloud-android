@@ -24,10 +24,16 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 # ── constellation-fleet.json — the Constellation AppStore's app registry.
-# Auto-scanned from each sibling app's OWN build.json (self-registering, DRY):
-# top-level hubs (superapp/comms-hub/nav/ide-hub) from android.application_id +
-# release.ghcr, plus the cloud-comms forks (mail/chat/matrix/dialer) from
-# ea_cloud-comms/build.json::forks.*. No hand-maintained app list (FIRE 4/6).
+# Auto-scanned from each sibling ea_cloud-*/build.json (self-registering, DRY),
+# in TWO shapes, no hand-maintained list (FIRE 4/6):
+#   • top-level apps (browser/vault/wallet/superapp/nav/ide) — identity at
+#     .android.application_id + .release.ghcr.image.
+#   • fork-apps (dialer/chat/mail/matrix) — the promoted ex-cloud-comms forks,
+#     each now its OWN ea_cloud-<id> dir + ship-cloud-<id>.yml CI; identity
+#     lives under .forks.<key>. Scanned ONLY for non-top-level dirs, so the IDE
+#     hub's own nested forks (editor/files/utils) are never pulled in.
+# The cloud-comms HUB is decommissioned (archived to z_archive/ea_cloud-comms),
+# so it is no longer scanned and drops out of the fleet automatically.
 # Baked into BuildConfig.CONSTELLATION_FLEET_B64 by app/build.gradle. Depends
 # ONLY on the sibling repos (always present), so it runs before the cloud-data
 # snapshot resolution below.
@@ -36,62 +42,69 @@ regen_constellation() {
     command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; return 1; }
     # owner/repo = the monorepo these apps ship from (invariant identity).
     local rel="https://github.com/diegonmarcos/unix/releases"
+    local tree="https://github.com/diegonmarcos/unix/tree/main"
+    local pkg="https://github.com/diegonmarcos/unix/pkgs/container"
 
-    # ── Top-level apps: TRULY auto-discovered (FIRE 4/6) ──────────────────
-    # Scan every sibling ea_cloud-*/build.json and keep the ones that declare
-    # BOTH a GHCR image and an Android application_id — the shippable-app
-    # marker. A new ea_cloud-<x> app self-registers into the AppStore the
-    # instant its build.json has release.ghcr + android.application_id; nothing
-    # here is hand-listed. id = the dir basename sans the ea_cloud- prefix
-    # (browser/vault/wallet/superapp/comms/ide/nav). The cloud-comms FORKS
-    # (mail/chat/matrix/dialer) are NOT separate dirs — they live under
-    # ea_cloud-comms/build.json::forks.* and are appended below.
-    local tops="[]" bj id
+    # Scan every sibling ea_cloud-*/build.json. A dir self-registers as EITHER a
+    # top-level app (has .android.application_id + .release.ghcr.image) OR a
+    # fork-app (no top-level marker, but a real .forks.<key> entry). id = the dir
+    # basename sans the ea_cloud- prefix. Nothing is hand-listed; archiving a dir
+    # (e.g. ea_cloud-comms → z_archive/) drops it from the fleet automatically.
+    local apps="[]" bj id dir
     for bj in "$UNIX"/ea_cloud-*/build.json; do
         [ -f "$bj" ] || continue
-        jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1 || continue
-        id="$(basename "$(dirname "$bj")")"; id="${id#ea_cloud-}"
-        tops="$(jq --argjson acc "$tops" --arg id "$id" --arg rel "$rel" '
-            ($rel + "/latest/download/" + .release.gh_release.asset_name) as $url
-            | $acc + [ { id: $id,
-                         label: (.name // $id),
-                         package: .android.application_id,
-                         registry: .release.ghcr.registry,
-                         namespace: .release.ghcr.namespace,
-                         image: .release.ghcr.image,
-                         tag: (.release.auto_update.tag // "latest"),
-                         alt_id: null,
-                         asset: .release.gh_release.asset_name,
-                         # top-level apps publish a rolling `latest` release →
-                         # stable direct-download URL.
-                         release_url: $url,
-                         blocked: false } ]' "$bj")"
+        dir="$(basename "$(dirname "$bj")")"; id="${dir#ea_cloud-}"
+        if jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1; then
+            # ── Top-level app (browser/vault/wallet/superapp/nav/ide) ─────────
+            # Publishes a rolling `latest` release → stable direct-download URL.
+            apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$dir" \
+                       --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
+                ($rel + "/latest/download/" + .release.gh_release.asset_name) as $url
+                | $acc + [ { id: $id,
+                             label: (.name // $id),
+                             package: .android.application_id,
+                             alt_id: null,
+                             registry: .release.ghcr.registry,
+                             namespace: .release.ghcr.namespace,
+                             image: .release.ghcr.image,
+                             tag: (.release.auto_update.tag // "latest"),
+                             asset: .release.gh_release.asset_name,
+                             release_url: $url,
+                             repo_url: ($tree + "/" + $dir),
+                             ghcr_page: ($pkg + "/" + .release.ghcr.image),
+                             blocked: false } ]' "$bj")"
+        elif jq -e '(.forks // {}) | to_entries
+                    | map(select(.key != "_doc" and (.value|type=="object")))
+                    | length > 0' "$bj" >/dev/null 2>&1; then
+            # ── Fork-app (dialer/chat/mail/matrix) ───────────────────────────
+            # A standalone ea_cloud-<id> promoted from an ex-cloud-comms fork:
+            # identity under .forks.<key> (one real fork per dir). Forks publish
+            # --latest=false tagged releases → link the releases page, not a
+            # /latest/download. keystore-signed package id is preserved.
+            apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$dir" \
+                       --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
+                (.release.ghcr) as $cg
+                | ( .forks | to_entries
+                    | map(select(.key != "_doc" and (.value|type=="object")))
+                    | .[0].value ) as $f
+                | $acc + [ { id: $id,
+                             label: ($f.label // $id),
+                             package: $f.app_id,
+                             alt_id: ($f.alt_id // null),
+                             registry: $cg.registry,
+                             namespace: $cg.namespace,
+                             image: $f.image,
+                             tag: "latest",
+                             asset: ($f.image + ".apk"),
+                             release_url: $rel,
+                             repo_url: ($tree + "/" + $dir),
+                             ghcr_page: ($pkg + "/" + $f.image),
+                             blocked: ($f.blocked_on != null) } ]' "$bj")"
+        fi
     done
 
-    jq -n \
-        --argjson tops "$tops" \
-        --slurpfile co "$UNIX/ea_cloud-comms/build.json" \
-        --arg rel "$rel" '
-        ($co[0].release.ghcr) as $cg
-        | { version: 1,
-            apps: (
-                $tops
-              + ( $co[0].forks | to_entries
-                  | map(select(.value | type == "object"))
-                  | map({ id: ("comms-" + .key),
-                          label: .value.label,
-                          package: .value.app_id,
-                          alt_id: (.value.alt_id // null),
-                          registry: $cg.registry,
-                          namespace: $cg.namespace,
-                          image: .value.image,
-                          tag: "latest",
-                          asset: (.value.image + ".apk"),
-                          # forks publish --latest=false tagged releases → no
-                          # stable /latest/download; link the releases page.
-                          release_url: $rel,
-                          blocked: (.value.blocked_on != null) }) ) ) }
-        ' > "$HERE/constellation-fleet.json"
+    jq -n --argjson apps "$apps" '{ version: 1, apps: $apps }' \
+        > "$HERE/constellation-fleet.json"
     echo "constellation apps: $(jq '.apps | length' "$HERE/constellation-fleet.json")"
 }
 regen_constellation
