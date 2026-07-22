@@ -13,7 +13,7 @@
       "priority": 1,
       "blocked_on": null,
       "build": {
-        "_doc": "How build-fork builds this fork: gradle task run via the fork's OWN wrapper (FairEmail pins Gradle 9.4.1 / AGP 9.2.1 — never our devShell gradle), glob of the output APK, and signing='keystore_properties' meaning the engine writes keystore.properties at the fork root from the comms keystore (FairEmail's signingConfigs.release reads it natively — zero signing patch).",
+        "_doc": "How build-fork builds this fork: gradle task run via the fork's OWN wrapper (FairEmail pins Gradle 9.4.1 / AGP 9.2.1 \u2014 never our devShell gradle), glob of the output APK, and signing='keystore_properties' meaning the engine writes keystore.properties at the fork root from the comms keystore (FairEmail's signingConfigs.release reads it natively \u2014 zero signing patch).",
         "gradle_task": "assembleGithubRelease",
         "apk_glob": "app/build/outputs/apk/github/release/*.apk",
         "signing": "keystore_properties",
@@ -22,11 +22,15 @@
           "COMMS_GH_REPO": "unix",
           "COMMS_RELEASE_ASSET_NAME": "cloud-comms-mail.apk",
           "COMMS_BUILD_TIMESTAMP": "$ENV:COMMS_BUILD_TIMESTAMP",
-          "_COMMS_RSS_BASE_doc": "SUPER RSS READER default feed root (wg0-only rss-gateway, feed_auth=none). Baked into BuildConfig.COMMS_RSS_BASE; WorkerFeedSync auto-provisions the channel tree from <base>/channels.json on first run — no manual Cloud Feeds dialog needed.",
+          "_COMMS_RSS_BASE_doc": "SUPER RSS READER default feed root (wg0-only rss-gateway, feed_auth=none). Baked into BuildConfig.COMMS_RSS_BASE; WorkerFeedSync auto-provisions the channel tree from <base>/channels.json on first run \u2014 no manual Cloud Feeds dialog needed.",
           "COMMS_RSS_BASE": "https://rss.diegonmarcos.com/feed"
         }
       },
-      "comment": "FairEmail. Reuses the EXISTING ea_mail-fairmail tracker clone already used by ea_cloud-superapp's cherry-pick — materialize-fork checks out the pin, never trusts the tracker HEAD. Server: Maddy + Stalwart on oci-mail (imap./smtps. via SNI on :443, jmap.). Do this fork first: pure Java, no RN/Rust, mail server is live."
+      "comment": "FairEmail. Reuses the EXISTING ea_mail-fairmail tracker clone already used by ea_cloud-superapp's cherry-pick \u2014 materialize-fork checks out the pin, never trusts the tracker HEAD. Server: Maddy + Stalwart on oci-mail (imap./smtps. via SNI on :443, jmap.). Do this fork first: pure Java, no RN/Rust, mail server is live."
     }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   }
 }

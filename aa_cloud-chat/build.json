@@ -13,13 +13,17 @@
       "priority": 3,
       "blocked_on": null,
       "build": {
-        "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open — prevents 20+ react-native arm64+x86_64.'",
+        "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open \u2014 prevents 20+ react-native arm64+x86_64.'",
         "command": "node node_modules/.bin/react-native build-android --mode=release 2>&1",
         "apk_glob": "android/app/build/outputs/apk/release/*.apk",
         "resign_unsigned": true,
         "signing": "resign_post_build"
       },
-      "comment": "Mattermost Mobile. RN build; harder than mail — needs node 20 + ruby for Podfile lock."
+      "comment": "Mattermost Mobile. RN build; harder than mail \u2014 needs node 20 + ruby for Podfile lock."
     }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   }
 }

@@ -20,5 +20,9 @@
       },
       "comment": "Fossify Phone dialer fork."
     }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   }
 }
