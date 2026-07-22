@@ -45,7 +45,64 @@ object VectorStyleLoader {
             if (!isNameLabel(layout)) continue
             localizeLayout(layout, preferField)
         }
+        injectBuildings3d(root)
         return root.toString()
+    }
+
+    /**
+     * OpenFreeMap's positron/dark styles carry the OpenMapTiles `building`
+     * source-layer (real footprints + `render_height`/`render_min_height`) but
+     * render it as a FLAT 2D fill — no `fill-extrusion` layer — so a tilted
+     * camera shows a flat map, never 3D buildings. If the style has a building
+     * fill but no extrusion, synthesize one from the SAME source/source-layer,
+     * reusing the 2D fill's own colour so it matches the light/dark basemap.
+     *
+     * Idempotent and safe: a no-op when the style already declares ANY
+     * fill-extrusion (e.g. liberty's `building-3d`) or has no building layer.
+     * The extrusion only visibly "pops" when the camera is tilted — flat maps
+     * see the roof top-down, indistinguishable from the old 2D fill.
+     */
+    private fun injectBuildings3d(root: JSONObject) {
+        val layers = root.optJSONArray("layers") ?: return
+        var buildingFillIdx = -1
+        var buildingSource: String? = null
+        var buildingColor = "#c8ccd4"
+        for (i in 0 until layers.length()) {
+            val l = layers.getJSONObject(i)
+            if (l.optString("type") == "fill-extrusion") return  // already 3D — leave it
+            if (buildingFillIdx < 0 && l.optString("type") == "fill" &&
+                l.optString("source-layer") == "building"
+            ) {
+                buildingFillIdx = i
+                buildingSource = l.optString("source").ifBlank { null }
+                (l.optJSONObject("paint")?.opt("fill-color") as? String)
+                    ?.takeIf { it.isNotBlank() }?.let { buildingColor = it }
+            }
+        }
+        val src = buildingSource ?: return  // no building geometry to extrude
+        val extrusion = JSONObject()
+            .put("id", "cloudnav-building-3d")
+            .put("type", "fill-extrusion")
+            .put("source", src)
+            .put("source-layer", "building")
+            .put("minzoom", 14)
+            .put(
+                "paint",
+                JSONObject()
+                    .put("fill-extrusion-color", buildingColor)
+                    .put("fill-extrusion-height", JSONArray().put("coalesce").put(JSONArray().put("get").put("render_height")).put(5))
+                    .put("fill-extrusion-base", JSONArray().put("coalesce").put(JSONArray().put("get").put("render_min_height")).put(0))
+                    .put("fill-extrusion-opacity", 0.85),
+            )
+        // Rebuild the array with the extrusion inserted right after the 2D
+        // building fill (org.json JSONArray has no insert-at-index) — keeps it in
+        // buildings' paint slot, below the labels/roads that follow.
+        val rebuilt = JSONArray()
+        for (i in 0 until layers.length()) {
+            rebuilt.put(layers.getJSONObject(i))
+            if (i == buildingFillIdx) rebuilt.put(extrusion)
+        }
+        root.put("layers", rebuilt)
     }
 
     /** Fetches [vectorOverlayUrl] and composites its roads+labels over

@@ -365,11 +365,13 @@ class MapsMapFragment : Fragment() {
         manual3d = !manual3d
         context?.let { MapsBasemapPrefs(it).is3d = manual3d }
         val cur = map?.cameraPosition ?: return
-        map?.animateCamera(
-            CameraUpdateFactory.newCameraPosition(
-                CameraPosition.Builder(cur).tilt(effTilt).build()
-            )
-        )
+        val b = CameraPosition.Builder(cur).tilt(effTilt)
+        // Building geometry only exists in z14+ vector tiles; if the user turns
+        // 3D on while zoomed out, lift to street level so buildings are actually
+        // in frame (otherwise the tilt reveals an empty flat map — "nothing
+        // happens"). Leave zoom alone when turning 3D off.
+        if (manual3d && cur.zoom < 15.0) b.zoom(16.5)
+        map?.animateCamera(CameraUpdateFactory.newCameraPosition(b.build()))
     }
 
     /** Current manual-3D toggle state — the 3D FAB reflects this on rebuild. */

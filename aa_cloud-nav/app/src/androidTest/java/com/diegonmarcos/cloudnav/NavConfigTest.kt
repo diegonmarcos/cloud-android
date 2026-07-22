@@ -731,24 +731,56 @@ class NavConfigTest {
     }
 
     // ── 3D maps ──────────────────────────────────────────────────────────
-    // The plain vector-style path (VectorStyleLoader.localize) must never drop
-    // fill-extrusion (building) layers — that's what makes tilted vector maps
-    // show real 3D buildings. Only the satellite-hybrid path (buildHybrid)
-    // intentionally strips them, since imagery already shows buildings.
-    @Test fun geo_vector_style_localize_preserves_building_layers() {
-        val sample = JSONObject().apply {
-            put("layers", org.json.JSONArray().apply {
-                put(JSONObject().put("id", "building").put("type", "fill-extrusion").put("source", "openmaptiles"))
-                put(
-                    JSONObject().put("id", "place-city").put("type", "symbol")
-                        .put("layout", JSONObject().put("text-field", "{name}"))
-                )
-            })
-        }
+    // OpenFreeMap's positron/dark ship the OpenMapTiles `building` source-layer
+    // as a FLAT 2D fill and NO fill-extrusion — so a tilted vector map shows a
+    // flat map, never 3D buildings (the exact "toggle 3D does nothing" bug).
+    // VectorStyleLoader.localize must SYNTHESISE a fill-extrusion from that
+    // building fill's own source/source-layer/colour. This is the regression
+    // guard the first cut lacked (it only checked a pre-existing extrusion
+    // survived — but positron/dark never had one).
+    @Test fun geo_vector_style_localize_injects_3d_from_2d_building_fill() {
+        // Mirrors positron's real shape: a 2D `building` fill on `openmaptiles`,
+        // no extrusion anywhere.
+        val sample = JSONObject().put("layers", org.json.JSONArray().apply {
+            put(
+                JSONObject().put("id", "building").put("type", "fill")
+                    .put("source", "openmaptiles").put("source-layer", "building")
+                    .put("paint", JSONObject().put("fill-color", "rgb(234, 234, 229)"))
+            )
+            put(
+                JSONObject().put("id", "place-city").put("type", "symbol")
+                    .put("layout", JSONObject().put("text-field", "{name}"))
+            )
+        })
         val out = JSONObject(VectorStyleLoader.localize(sample.toString(), "name:en"))
-        val types = (0 until out.getJSONArray("layers").length())
-            .map { out.getJSONArray("layers").getJSONObject(it).optString("type") }
-        assertTrue("fill-extrusion" in types)
+        val layers = out.getJSONArray("layers")
+        val extrusion = (0 until layers.length()).map { layers.getJSONObject(it) }
+            .firstOrNull { it.optString("type") == "fill-extrusion" }
+        assertTrue("a fill-extrusion must be synthesised from the 2D building fill", extrusion != null)
+        extrusion!!
+        assertEquals("extrudes the same source", "openmaptiles", extrusion.optString("source"))
+        assertEquals("extrudes the building source-layer", "building", extrusion.optString("source-layer"))
+        val paint = extrusion.getJSONObject("paint")
+        assertEquals("reuses the 2D fill colour (matches light/dark)", "rgb(234, 234, 229)", paint.getString("fill-extrusion-color"))
+        assertTrue("height driven by render_height", paint.get("fill-extrusion-height").toString().contains("render_height"))
+    }
+
+    // Idempotent: a style that ALREADY declares a fill-extrusion (e.g. liberty's
+    // building-3d) is left untouched — never doubled, never dropped.
+    @Test fun geo_vector_style_localize_keeps_existing_extrusion_unchanged() {
+        val sample = JSONObject().put("layers", org.json.JSONArray().apply {
+            put(JSONObject().put("id", "building-3d").put("type", "fill-extrusion").put("source", "openmaptiles"))
+            put(
+                JSONObject().put("id", "place-city").put("type", "symbol")
+                    .put("layout", JSONObject().put("text-field", "{name}"))
+            )
+        })
+        val out = JSONObject(VectorStyleLoader.localize(sample.toString(), "name:en"))
+        val layers = out.getJSONArray("layers")
+        val extrusions = (0 until layers.length()).map { layers.getJSONObject(it) }
+            .filter { it.optString("type") == "fill-extrusion" }
+        assertEquals("exactly one extrusion — not doubled", 1, extrusions.size)
+        assertEquals("the original is preserved", "building-3d", extrusions[0].optString("id"))
     }
 
     @Test fun geo_vector_families_have_building_geometry_raster_does_not() {
