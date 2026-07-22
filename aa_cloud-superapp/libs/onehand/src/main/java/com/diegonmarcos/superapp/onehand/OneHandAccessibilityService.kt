@@ -245,15 +245,42 @@ class OneHandAccessibilityService : AccessibilityService() {
                     val key = SwipeClassifier.classify(h.edge, e.rawX - downX, e.rawY - downY, dp(c.swipeThresholdDp))
                     key?.let { h.gestures[it]?.perform(this) }
                     endPreview()
+                } else if (hypot(e.rawX - downX, e.rawY - downY) < dp(12)) {
+                    // Plain tap on the handle: Android never re-dispatches a consumed
+                    // touch to the window below, so we replay it — window goes
+                    // untouchable for a beat, dispatchGesture injects the tap, restore.
+                    replayTap(view, downX, downY)
                 }
-                // Tap without inward drag: Samsung-style — the handle simply doesn't
-                // react. The window is in its own small rect; short taps just don't
-                // trigger anything rather than needing complex replay.
                 activated = false
             }
             MotionEvent.ACTION_CANCEL -> { endPreview(); activated = false }
         }
         return true
+    }
+
+    /** Pass a consumed tap through to the app below: make the handle window
+     *  untouchable, inject the tap via accessibility, then restore touchability. */
+    private fun replayTap(view: View, x: Float, y: Float) {
+        val wm = windowManager ?: return
+        val lp = view.layoutParams as WindowManager.LayoutParams
+        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        runCatching { wm.updateViewLayout(view, lp) }
+        val restore = {
+            handler.post {
+                lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                runCatching { wm.updateViewLayout(view, lp) }
+            }
+        }
+        val path = android.graphics.Path().apply { moveTo(x, y) }
+        val gesture = android.accessibilityservice.GestureDescription.Builder()
+            .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 40))
+            .build()
+        val ok = dispatchGesture(gesture, object : GestureResultCallback() {
+            override fun onCompleted(g: android.accessibilityservice.GestureDescription?) { restore() }
+            override fun onCancelled(g: android.accessibilityservice.GestureDescription?) { restore() }
+        }, handler)
+        if (!ok) restore()
+        Log.i(TAG, "replayTap at ${x.toInt()},${y.toInt()} dispatched=$ok")
     }
 
     private fun activate(h: OneHandConfig.Handle) {
