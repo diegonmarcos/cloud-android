@@ -10,6 +10,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- GIF panel (libs:media) fetches from Giphy/Tenor over HTTPS. libs:media
+         declares NO permissions by design — it delegates INTERNET to the
+         consuming app (see its manifest comment). The superapp app declares
+         these; the standalone keyboard must too, or httpGetJson() fails
+         silently and the GIF tab is empty regardless of the baked API key.
+         Stickers are local (bundled) so they work without this. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- WorkManager on-demand init: HeliBoard's manifest merge drops the default
          WorkManagerInitializer. Complete the on-demand setup here (App provides
          Configuration.Provider so the first getInstance() lazily initializes it). -->

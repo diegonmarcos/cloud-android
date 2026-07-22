@@ -63,9 +63,33 @@ class App : Application(), WorkManagerConfiguration.Provider {
                     .getResourceSubtypesForLocale(locale).firstOrNull()
                     ?: helium314.keyboard.latin.utils.SubtypeUtilsAdditional.createDefaultSubtype(locale)
                 helium314.keyboard.latin.utils.SubtypeSettings.addEnabledSubtype(prefs, subtype)
+                prewarmEmojiDict(locale)
             }
         }
         prefs.edit().putBoolean(PREF_DEFAULT_LOCALES_SEEDED, true).apply()
+    }
+
+    /**
+     * Extract the bundled emoji dictionary (assets/dicts/emoji_<locale>.dict, shipped
+     * by libs:keyboard) into this locale's per-locale cache on first install.
+     *
+     * PREF_SUGGEST_EMOJIS already defaults true, but emoji suggestions and inline
+     * emoji search gate on getLocalesWithEmojiDicts(), which reads the *cache* dir —
+     * and normal extraction is lazy (only on first dictionary load). On a fresh
+     * install that leaves the "An emoji dictionary is required for this feature"
+     * dialog showing until the keyboard has been opened once. Pre-extracting here
+     * (a cheap asset→file copy, no binary load) makes emoji suggestions work from
+     * first boot. Emoji dicts only — main dicts stay lazy to keep first launch fast.
+     */
+    private fun prewarmEmojiDict(locale: java.util.Locale) {
+        val (_, nonExtracted) = helium314.keyboard.latin.dictionary.DictionaryFactory
+            .getAvailableDictsForLocale(locale, this, true)
+        nonExtracted
+            .filter { it.substringBefore("_") == helium314.keyboard.latin.dictionary.Dictionary.TYPE_EMOJI }
+            .forEach { filename ->
+                helium314.keyboard.latin.utils.DictionaryInfoUtils
+                    .extractAssetsDictionary(filename, locale, this)
+            }
     }
 
     private companion object {
