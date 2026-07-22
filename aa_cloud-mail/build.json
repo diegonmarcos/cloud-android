@@ -1,0 +1,32 @@
+{
+  "forks": {
+    "mail": {
+      "app_id": "com.diegonmarcos.comms.mail",
+      "label": "Cloud Mail (Fairmail)",
+      "image": "cloud-comms-mail",
+      "upstream_repo": "https://github.com/M66B/FairEmail.git",
+      "tracker_dir": "ea_upstreams-sources/mail-fairmail",
+      "pinned_tag": "1.2321",
+      "license": "GPL-3.0",
+      "primary_lang": "Java",
+      "runtime": "native",
+      "priority": 1,
+      "blocked_on": null,
+      "build": {
+        "_doc": "How build-fork builds this fork: gradle task run via the fork's OWN wrapper (FairEmail pins Gradle 9.4.1 / AGP 9.2.1 — never our devShell gradle), glob of the output APK, and signing='keystore_properties' meaning the engine writes keystore.properties at the fork root from the comms keystore (FairEmail's signingConfigs.release reads it natively — zero signing patch).",
+        "gradle_task": "assembleGithubRelease",
+        "apk_glob": "app/build/outputs/apk/github/release/*.apk",
+        "signing": "keystore_properties",
+        "gradle_props": {
+          "COMMS_GH_OWNER": "diegonmarcos",
+          "COMMS_GH_REPO": "unix",
+          "COMMS_RELEASE_ASSET_NAME": "cloud-comms-mail.apk",
+          "COMMS_BUILD_TIMESTAMP": "$ENV:COMMS_BUILD_TIMESTAMP",
+          "_COMMS_RSS_BASE_doc": "SUPER RSS READER default feed root (wg0-only rss-gateway, feed_auth=none). Baked into BuildConfig.COMMS_RSS_BASE; WorkerFeedSync auto-provisions the channel tree from <base>/channels.json on first run — no manual Cloud Feeds dialog needed.",
+          "COMMS_RSS_BASE": "https://rss.diegonmarcos.com/feed"
+        }
+      },
+      "comment": "FairEmail. Reuses the EXISTING ea_mail-fairmail tracker clone already used by ea_cloud-superapp's cherry-pick — materialize-fork checks out the pin, never trusts the tracker HEAD. Server: Maddy + Stalwart on oci-mail (imap./smtps. via SNI on :443, jmap.). Do this fork first: pure Java, no RN/Rust, mail server is live."
+    }
+  }
+}

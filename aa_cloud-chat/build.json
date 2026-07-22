@@ -1,0 +1,25 @@
+{
+  "forks": {
+    "chat": {
+      "app_id": "com.diegonmarcos.comms.chat",
+      "label": "Cloud Chat (Mattermost)",
+      "image": "cloud-comms-chat",
+      "upstream_repo": "https://github.com/mattermost/mattermost-mobile.git",
+      "tracker_dir": "ea_upstreams-sources/chat-mattermost",
+      "pinned_tag": "v2.25.1",
+      "license": "Apache-2.0",
+      "primary_lang": "TypeScript (React Native)",
+      "runtime": "native",
+      "priority": 3,
+      "blocked_on": null,
+      "build": {
+        "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open — prevents 20+ react-native arm64+x86_64.'",
+        "command": "node node_modules/.bin/react-native build-android --mode=release 2>&1",
+        "apk_glob": "android/app/build/outputs/apk/release/*.apk",
+        "resign_unsigned": true,
+        "signing": "resign_post_build"
+      },
+      "comment": "Mattermost Mobile. RN build; harder than mail — needs node 20 + ruby for Podfile lock."
+    }
+  }
+}

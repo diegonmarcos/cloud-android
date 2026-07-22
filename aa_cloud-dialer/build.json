@@ -1,0 +1,24 @@
+{
+  "forks": {
+    "dialer": {
+      "app_id": "com.diegonmarcos.comms.dialer",
+      "label": "Cloud Dialer (Fossify)",
+      "image": "cloud-comms-dialer",
+      "upstream_repo": "https://github.com/FossifyOrg/Phone.git",
+      "tracker_dir": "ea_upstreams-sources/dialer-fossify",
+      "pinned_tag": "1.7.0",
+      "license": "GPL-3.0",
+      "primary_lang": "Kotlin",
+      "runtime": "native",
+      "priority": 4,
+      "blocked_on": null,
+      "build": {
+        "_doc": "Fossify Phone. gradle task + keystore signing. apk_glob finds the assembleRelease output under the typical Fossify build path.",
+        "gradle_task": "assembleRelease",
+        "apk_glob": "app/build/outputs/apk/release/*.apk",
+        "signing": "keystore_properties"
+      },
+      "comment": "Fossify Phone dialer fork."
+    }
+  }
+}

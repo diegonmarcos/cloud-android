@@ -1,0 +1,35 @@
+{
+  "forks": {
+    "matrix": {
+      "app_id": "com.diegonmarcos.comms.matrix",
+      "_alt_id_doc": "Real installed package of the resigned STOCK Element X APK (io.element.android.x, extracted from the fdroid release manifest). Detection + install use this, never app_id.",
+      "alt_id": "io.element.android.x",
+      "label": "Messenger (Element)",
+      "image": "cloud-comms-matrix",
+      "upstream_repo": "https://github.com/element-hq/element-x-android.git",
+      "tracker_dir": "ea_upstreams-sources/chat-element",
+      "pinned_tag": "",
+      "license": "AGPL-3.0",
+      "primary_lang": "Kotlin",
+      "runtime": "native",
+      "priority": 3,
+      "blocked_on": null,
+      "_blocked_on_history": "Was 'matrix-chat-bridge-stack-ship' (continuwuity + mautrix-whatsapp + element stack). Unblocked 2026-07-09 to publish the standalone GHCR APK for the Constellation AppStore \u2014 the resigned upstream Element X APK installs independent of the homeserver; the app is non-functional until the Matrix backend stack is deployed.",
+      "comment": "Element X Android (Kotlin + Rust matrix-sdk FFI). Exporter reads via the Rust-SDK Kotlin BINDINGS, never raw store files. Push via UnifiedPush with our ntfy (rss.diegonmarcos.com) as distributor \u2014 Element X supports it natively.",
+      "upstream_apk": {
+        "_doc": "Pinned UPSTREAM RELEASE APK \u2014 bundle fallback (owner directive 2026-06-12: ALL apps ship inside the hub NOW). bundle-forks embeds this sha256-verified APK whenever our own fork image isn't on GHCR yet; the patched fork replaces it the moment its CI lands. resign=true \u2192 the engine zipalign+apksigner's it with the constellation key (Mattermost publishes unsigned APKs \u2014 unsigned can't install; our key also makes it IPC-compatible). NOTE: blocked_on gates OUR fork build (homeserver work), not stock-client bundling \u2014 Element X is a generic Matrix client.",
+        "url": "https://github.com/element-hq/element-x-android/releases/download/v26.06.2/app-fdroid-arm64-v8a-release-signed.apk",
+        "sha256": "7735b5193d4bea1b350de2616f9faecb21c01cfdb9effb6ac5be4668783d5889",
+        "resign": true,
+        "package": "io.element.android.x",
+        "abi_variants": {
+          "_doc": "Per-ABI upstream assets. bundle-forks picks abi_variants[$COMMS_BUNDLE_ABI] when set (default arm64-v8a uses the top-level url/sha256). x86_64 = Waydroid debug builds.",
+          "x86_64": {
+            "url": "https://github.com/element-hq/element-x-android/releases/download/v26.06.2/app-fdroid-x86_64-release-signed.apk",
+            "sha256": "33f8baf3878da0638f0cd919ce16f5c6b6406c289b7a359824275d8bfc4aa260"
+          }
+        }
+      }
+    }
+  }
+}
