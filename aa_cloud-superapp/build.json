@@ -951,19 +951,19 @@
             "id": "mail",
             "label": "Mail",
             "icon": "ic_mail",
-            "target": "extapp:cloud-comms/mail"
+            "target": "extapp:cloud-mail"
           },
           {
             "id": "chat-matrix",
             "label": "Chat-Matrix",
             "icon": "ic_p_chat_matrix",
-            "target": "extapp:cloud-comms/matrix"
+            "target": "extapp:cloud-matrix"
           },
           {
             "id": "chat-mm",
             "label": "Chat-Mattermost",
             "icon": "ic_p_chat_mattermost",
-            "target": "extapp:cloud-comms/chat"
+            "target": "extapp:cloud-chat"
           }
         ],
         "stack_apps": [
@@ -1479,27 +1479,27 @@
                 "id": "mail",
                 "label": "Mail",
                 "icon": "ic_mail",
-                "target": "extapp:cloud-comms/mail"
+                "target": "extapp:cloud-mail"
               },
               {
                 "id": "mattermost",
                 "label": "Chat (Mattermost)",
                 "icon": "ic_p_chat_mattermost",
-                "target": "extapp:cloud-comms/chat"
+                "target": "extapp:cloud-chat"
               },
               {
                 "id": "element",
                 "label": "Messenger (Element)",
                 "icon": "ic_p_chat_matrix",
-                "target": "extapp:cloud-comms/matrix",
-                "_doc": "Routes to the Cloud-Comms constellation (matrix fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as the Comms bottom-nav section and the Suite/AI IDE tile. Replaces the old app://im.vector.app launcher."
+                "target": "extapp:cloud-matrix",
+                "_doc": "Opens the standalone Cloud-Matrix app (ea_cloud-matrix, com.diegonmarcos.comms.matrix) via extapp:cloud-matrix — installed → launches; absent → install via Configs ▸ Constellation. The Cloud-Comms hub is decommissioned; the matrix fork is now its own constellation app. Replaces the old app://im.vector.app launcher."
               },
               {
                 "id": "dialer",
                 "label": "Dialer",
                 "icon": "ic_p_dialer",
-                "target": "extapp:cloud-comms/dialer",
-                "_doc": "Routes to the Cloud-Comms constellation (Fossify Phone fork → hub → install Cloud-Comms-Hub.apk), same extapp mechanism as Mail / Mattermost / Matrix above."
+                "target": "extapp:cloud-dialer",
+                "_doc": "Opens the standalone Cloud-Dialer app (ea_cloud-dialer, com.diegonmarcos.comms.dialer, Fossify Phone) via extapp:cloud-dialer — installed → launches; absent → install via Configs ▸ Constellation. Its own constellation app now that the Cloud-Comms hub is decommissioned; same extapp mechanism as Mail / Chat / Messenger above."
               }
             ]
           },
@@ -5343,19 +5343,39 @@
         }
       ]
     },
-    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>/<fork_key>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the per-fork package, then the hub package, then — if neither is installed — hands install_apk_url + install_package to libs:updater (PackageInstaller prompt). Fully data-driven: package ids + the GitHub-release APK URL live ONLY here, never in Kotlin. Cloud-Comms = the constellation hub (com.diegonmarcos.comms) + 3 fork APKs; appIds mirror ea_cloud-comms/build.json::forks[*].app_id, the install URL mirrors its release.gh_release (rolling `latest` asset Cloud-Comms-Hub.apk).",
+    "_doc_external_apps": "Companion Android apps the SuperApp launches instead of rendering an in-app fragment. A tile target of `extapp:<id>` (see ui.sections[communication]) resolves here: MainActivity.launchExternalApp tries the app's package (hub_package); if not installed it snacks '<label> not installed' (install via Configs ▸ Constellation, which pulls the APK from GHCR). Fully data-driven: package ids live ONLY here, never in Kotlin. The ex-Cloud-Comms forks are now STANDALONE constellation apps (ea_cloud-{dialer,chat,mail,matrix}, each its own ship-cloud-<id>.yml CI); the cloud-comms hub is decommissioned (archived). They keep their com.diegonmarcos.comms.<fork> package ids. install_apk_url is blank on purpose: fork-apps publish --latest=false tagged GHCR releases (no stable /latest/download), so install goes through the Constellation AppStore (Fleet → GHCR), not a direct APK URL. forkless (forks:{}), so extapp:<id> resolves straight to hub_package.",
     "external_apps": [
       {
-        "id": "cloud-comms",
-        "label": "Cloud-Comms",
-        "hub_package": "com.diegonmarcos.comms",
-        "install_package": "com.diegonmarcos.comms",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Comms-Hub.apk",
-        "forks": {
-          "mail": "com.diegonmarcos.comms.mail",
-          "chat": "com.diegonmarcos.comms.chat",
-          "matrix": "com.diegonmarcos.comms.matrix"
-        }
+        "id": "cloud-dialer",
+        "label": "Cloud Dialer (Fossify)",
+        "hub_package": "com.diegonmarcos.comms.dialer",
+        "install_package": "com.diegonmarcos.comms.dialer",
+        "install_apk_url": "",
+        "forks": {}
+      },
+      {
+        "id": "cloud-chat",
+        "label": "Cloud Chat (Mattermost)",
+        "hub_package": "com.diegonmarcos.comms.chat",
+        "install_package": "com.diegonmarcos.comms.chat",
+        "install_apk_url": "",
+        "forks": {}
+      },
+      {
+        "id": "cloud-mail",
+        "label": "Cloud Mail (Fairmail)",
+        "hub_package": "com.diegonmarcos.comms.mail",
+        "install_package": "com.diegonmarcos.comms.mail",
+        "install_apk_url": "",
+        "forks": {}
+      },
+      {
+        "id": "cloud-matrix",
+        "label": "Messenger (Element)",
+        "hub_package": "com.diegonmarcos.comms.matrix",
+        "install_package": "com.diegonmarcos.comms.matrix",
+        "install_apk_url": "",
+        "forks": {}
       },
       {
         "id": "cloud-ide",
@@ -5574,8 +5594,8 @@
         },
         {
           "label": "Cloud Comms",
-          "target": "app:com.diegonmarcos.comms",
-          "install_app": "cloud-comms"
+          "target": "section:communication",
+          "_doc": "The Cloud-Comms hub is decommissioned; its 4 ex-forks are standalone apps. This parent now opens SuperApp's Communications section (Mail/Chat/Messenger/Dialer tiles → extapp:cloud-{mail,chat,matrix,dialer}) instead of launching/installing a dead hub. The `comms` context below still bolds this parent + lists the 4 apps (app:com.diegonmarcos.comms.*) when any is foreground."
         },
         {
           "label": "Cloud Nav",
