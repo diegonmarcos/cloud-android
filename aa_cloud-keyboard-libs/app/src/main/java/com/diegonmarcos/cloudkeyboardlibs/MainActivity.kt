@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import android.app.Activity
 
 /**
  * Minimal launcher Activity.
@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
  * Displays a brief description of the feature pack (stickers/GIF, voice,
  * translate) and an Update button that opens the latest APK on GitHub Releases.
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
