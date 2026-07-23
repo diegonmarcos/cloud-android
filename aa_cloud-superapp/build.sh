@@ -919,7 +919,7 @@ step_sync_zoomies() {
 # ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
 step_sync_keyboard_dicts() {
   local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts"
-  local dst="$SCRIPT_DIR/libs/keyboard/src/main/assets/dicts"
+  local dst="$SCRIPT_DIR/libs/keyboard/dicts-data"  # OUT of the asset tree: only the companion bundles these; cloud-keyboard reads them at runtime
   local bj="$SCRIPT_DIR/build.json"
   [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts, or set UNIX_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-keyboard-dicts: jq required"; exit 1; }
@@ -939,9 +939,9 @@ step_sync_keyboard_dicts() {
     done
   done < <(jq -r '.keyboard_dicts.types[] | "\(.type) \(.dir)"' "$bj")
 
-  log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/.../assets/dicts/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
-  log "  NOTE: ea_cloud-keyboard-libs also picks these up via assets.srcDirs — run this after updating dicts."
-  log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/src/main/assets/dicts/"
+  log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/dicts-data/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
+  log "  NOTE: ea_cloud-keyboard-libs bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
+  log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/dicts-data/"
   [ "$miss" -eq 0 ] || { errlog "sync-keyboard-dicts: $miss dict(s) missing — fix build.json::keyboard_dicts or update the clone"; exit 1; }
 }
 

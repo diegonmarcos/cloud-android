@@ -63,18 +63,9 @@ android {
     ndkVersion "28.0.13004108"
 
 }
-
-// Drop the bundled .dict files (~39 MB) from THIS APK — cloud-keyboard reads them at runtime
-// from the companion cloud-keyboard-libs (CompanionDictExtractor); graceful no-dict fallback
-// if the companion is absent. aapt2 ignoreAssetsPatterns does NOT reliably filter
-// library-merged assets, so delete dicts/ from the merged-assets output before packaging.
-android.applicationVariants.all { variant ->
-    variant.mergeAssetsProvider.configure { mergeTask ->
-        mergeTask.doLast {
-            delete fileTree(dir: mergeTask.outputDir.get().asFile) { include 'dicts/**' }
-        }
-    }
-}
+// Note: cloud-keyboard does NOT bundle the ~39MB dicts. They live outside libs:keyboard's
+// asset tree (libs/keyboard/dicts-data), bundled only by the cloud-keyboard-libs companion;
+// cloud-keyboard extracts them at runtime via CompanionDictExtractor (graceful fallback).
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
