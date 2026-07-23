@@ -55,6 +55,27 @@ fun MainSettingsScreen(
             Column(
                 Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding))
             ) {
+                // SuperApp addition — self-update entry, shown ONLY in the standalone Cloud
+                // Keyboard app (the SuperApp updates its embedded keyboard via its own AppStore,
+                // so this is hidden there). Opens the latest published Cloud-Keyboard.apk release.
+                val updateCtx = LocalContext.current
+                if (updateCtx.packageName == "com.diegonmarcos.cloudkeyboard") {
+                    Preference(
+                        name = stringResource(R.string.keyboard_update),
+                        description = stringResource(R.string.keyboard_update_summary),
+                        onClick = {
+                            runCatching {
+                                updateCtx.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk")
+                                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                        },
+                        icon = R.drawable.ic_settings_about
+                    ) { NextScreenIcon() }
+                }
                 Preference(
                     name = stringResource(R.string.language_and_layouts_title),
                     description = enabledSubtypes.joinToString(", ") { it.displayName() },

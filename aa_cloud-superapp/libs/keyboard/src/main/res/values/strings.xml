@@ -243,6 +243,9 @@
     <string name="grammar_check_now">Fix current text</string>
     <string name="grammar_check_now_summary">Run grammar fixes over the whole current field</string>
     <string name="grammar_category_fixes">Fixes</string>
+    <!-- Standalone Cloud Keyboard self-update entry (Configs menu) -->
+    <string name="keyboard_update">Update Cloud Keyboard</string>
+    <string name="keyboard_update_summary">Download and install the latest version</string>
 
     <!-- Description, used for non-image clipboard files -->
     <string name="item_description">Description: %s</string>
