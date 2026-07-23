@@ -1,0 +1,273 @@
+From b0fcda83fd281b76b49f78128db9209621340a43 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Thu, 23 Jul 2026 19:18:35 +0300
+Subject: [PATCH] comms: on-device ML Kit translation provider (offline;
+ en/pt/es/de)
+
+Adds an offline Google ML Kit translation provider as an alternative to
+the DeepL cloud API, selected via a new 'Translate on device' checkbox in
+the DeepL settings dialog (pref key deepl_ondevice).
+
+- MLKitTranslate: language-id source detection + on-device Translator,
+  blocking helper for FairEmail's SimpleTask background thread; best-effort
+  prefetch of en/pt/es/de models on first enable (Wi-Fi only).
+- DeepL.canTranslate/getTargetLanguages/translate branch to the on-device
+  path when the pref is set (no API key required, works with no network).
+- Read path only (received-message translate); DeepL stays the default.
+---
+ app/build.gradle                              |   5 +
+ .../main/java/eu/faircode/email/DeepL.java    |  26 ++++
+ .../eu/faircode/email/MLKitTranslate.java     | 124 ++++++++++++++++++
+ app/src/main/res/layout/dialog_deepl.xml      |  12 +-
+ 4 files changed, 166 insertions(+), 1 deletion(-)
+ create mode 100644 app/src/main/java/eu/faircode/email/MLKitTranslate.java
+
+diff --git a/app/build.gradle b/app/build.gradle
+index 836fec6460..a0d30c5f67 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -874,6 +874,11 @@ dependencies {
+     // https://mvnrepository.com/artifact/com.google.zxing/core
+     implementation "com.google.zxing:core:$zxing_version"
+ 
++    // https://developers.google.com/ml-kit/language/translation
++    // https://developers.google.com/ml-kit/language/identification
++    implementation "com.google.mlkit:translate:17.0.3"
++    implementation "com.google.mlkit:language-id:17.0.6"
++
+     // https://github.com/ezylang/EvalEx
+     implementation "com.ezylang:EvalEx:$evalex_version"
+ 
+diff --git a/app/src/main/java/eu/faircode/email/DeepL.java b/app/src/main/java/eu/faircode/email/DeepL.java
+index 9c7c517d9f..4ddcdf3ec6 100644
+--- a/app/src/main/java/eu/faircode/email/DeepL.java
++++ b/app/src/main/java/eu/faircode/email/DeepL.java
+@@ -87,11 +87,26 @@ public class DeepL {
+ 
+     public static boolean canTranslate(Context context) {
+         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
++        if (prefs.getBoolean("deepl_ondevice", false)) return true;
+         String deepl_key = prefs.getString("deepl_key", null);
+         return !TextUtils.isEmpty(deepl_key);
+     }
+ 
+     public static List<Language> getTargetLanguages(Context context, boolean favorites) {
++        if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean("deepl_ondevice", false)) {
++            List<Language> result = new ArrayList<>();
++            for (String tag : MLKitTranslate.supportedLanguageTags()) {
++                String name = new Locale(tag).getDisplayLanguage();
++                result.add(new Language(name, tag, false, null, false, 0));
++            }
++            Collections.sort(result, new Comparator<Language>() {
++                @Override
++                public int compare(Language l1, Language l2) {
++                    return l1.name.compareToIgnoreCase(l2.name);
++                }
++            });
++            return result;
++        }
+         try {
+             ensureLanguages(context);
+ 
+@@ -203,6 +218,11 @@ public class DeepL {
+             return new Translation(detected == null ? language : detected.toLanguageTag(), language, transliterated);
+         }
+ 
++        if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean("deepl_ondevice", false)) {
++            String[] r = MLKitTranslate.translateBlocking(context, text.toString(), target);
++            return new Translation(r[0], target, r[1]);
++        }
++
+         if (!ConnectionHelper.getNetworkState(context).isConnected())
+             throw new IllegalArgumentException(context.getString(R.string.title_no_internet));
+ 
+@@ -402,6 +422,7 @@ public class DeepL {
+             final CheckBox cbReplace = view.findViewById(R.id.cbReplace);
+             final CheckBox cbHighlight = view.findViewById(R.id.cbHighlight);
+             final CheckBox cbHtml = view.findViewById(R.id.cbHtml);
++            final CheckBox cbOnDevice = view.findViewById(R.id.cbOnDevice);
+             final TextView tvUsage = view.findViewById(R.id.tvUsage);
+             final TextView tvPrivacy = view.findViewById(R.id.tvPrivacy);
+ 
+@@ -453,6 +474,7 @@ public class DeepL {
+             cbReplace.setEnabled(!small);
+             cbHighlight.setChecked(highlight);
+             cbHtml.setChecked(html);
++            cbOnDevice.setChecked(prefs.getBoolean("deepl_ondevice", false));
+ 
+             tvUsage.setVisibility(View.GONE);
+ 
+@@ -517,6 +539,10 @@ public class DeepL {
+                             editor.putBoolean("deepl_replace", cbReplace.isChecked());
+                             editor.putBoolean("deepl_highlight", cbHighlight.isChecked());
+                             editor.putBoolean("deepl_html", cbHtml.isChecked());
++                            boolean ondevice = cbOnDevice.isChecked();
++                            editor.putBoolean("deepl_ondevice", ondevice);
++                            if (ondevice)
++                                MLKitTranslate.prefetchDefaults(getContext());
+                             editor.apply();
+                         }
+                     })
+diff --git a/app/src/main/java/eu/faircode/email/MLKitTranslate.java b/app/src/main/java/eu/faircode/email/MLKitTranslate.java
+new file mode 100644
+index 0000000000..414331567a
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/MLKitTranslate.java
+@@ -0,0 +1,124 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++import android.content.Context;
++
++import com.google.android.gms.tasks.Tasks;
++import com.google.mlkit.common.model.DownloadConditions;
++import com.google.mlkit.common.model.RemoteModelManager;
++import com.google.mlkit.nl.languageid.LanguageIdentification;
++import com.google.mlkit.nl.languageid.LanguageIdentifier;
++import com.google.mlkit.nl.translate.TranslateLanguage;
++import com.google.mlkit.nl.translate.TranslateRemoteModel;
++import com.google.mlkit.nl.translate.Translation;
++import com.google.mlkit.nl.translate.Translator;
++import com.google.mlkit.nl.translate.TranslatorOptions;
++
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
++
++public class MLKitTranslate {
++
++    static String[] translateBlocking(Context context, String text, String targetTag) throws IOException {
++        if (text == null || text.trim().isEmpty())
++            return new String[]{"und", text == null ? "" : text};
++
++        String detected = "und";
++        LanguageIdentifier identifier = LanguageIdentification.getClient();
++        try {
++            detected = Tasks.await(identifier.identifyLanguage(text));
++        } catch (Throwable ex) {
++            if (ex instanceof IOException)
++                throw (IOException) ex;
++            throw new IOException(ex);
++        } finally {
++            identifier.close();
++        }
++
++        String sourceLanguage = TranslateLanguage.fromLanguageTag(detected);
++        String targetLanguage = TranslateLanguage.fromLanguageTag(targetTag);
++
++        if (targetLanguage == null)
++            throw new IOException("Unsupported target language: " + targetTag);
++
++        if (sourceLanguage == null)
++            throw new IOException("Could not detect source language");
++
++        if (sourceLanguage.equals(targetLanguage))
++            return new String[]{detected, text};
++
++        TranslatorOptions options = new TranslatorOptions.Builder()
++                .setSourceLanguage(sourceLanguage)
++                .setTargetLanguage(targetLanguage)
++                .build();
++
++        Translator translator = Translation.getClient(options);
++        try {
++            DownloadConditions conditions = new DownloadConditions.Builder().build();
++            Tasks.await(translator.downloadModelIfNeeded(conditions));
++            String result = Tasks.await(translator.translate(text));
++            return new String[]{detected, result};
++        } catch (Throwable ex) {
++            if (ex instanceof IOException)
++                throw (IOException) ex;
++            throw new IOException(ex);
++        } finally {
++            translator.close();
++        }
++    }
++
++    static List<String> supportedLanguageTags() {
++        return new ArrayList<>(TranslateLanguage.getAllLanguages());
++    }
++
++    static void prefetchDefaults(Context context) {
++        new Thread(new Runnable() {
++            @Override
++            public void run() {
++                try {
++                    RemoteModelManager manager = RemoteModelManager.getInstance();
++                    DownloadConditions conditions = new DownloadConditions.Builder()
++                            .requireWifi()
++                            .build();
++
++                    String[] defaults = new String[]{
++                            TranslateLanguage.ENGLISH,
++                            TranslateLanguage.PORTUGUESE,
++                            TranslateLanguage.SPANISH,
++                            TranslateLanguage.GERMAN
++                    };
++
++                    for (String tag : defaults) {
++                        try {
++                            TranslateRemoteModel model = new TranslateRemoteModel.Builder(tag).build();
++                            Tasks.await(manager.download(model, conditions));
++                        } catch (Throwable ex) {
++                            // best-effort: ignore per-language failures
++                        }
++                    }
++                } catch (Throwable ex) {
++                    // best-effort: ignore all failures
++                }
++            }
++        }).start();
++    }
++}
+diff --git a/app/src/main/res/layout/dialog_deepl.xml b/app/src/main/res/layout/dialog_deepl.xml
+index c6b6169eca..349d0ba237 100644
+--- a/app/src/main/res/layout/dialog_deepl.xml
++++ b/app/src/main/res/layout/dialog_deepl.xml
+@@ -61,6 +61,16 @@
+             </com.google.android.material.textfield.TextInputEditText>
+         </com.google.android.material.textfield.TextInputLayout>
+ 
++        <CheckBox
++            android:id="@+id/cbOnDevice"
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="Translate on device (offline, no API key needed)"
++            app:layout_constraintEnd_toEndOf="parent"
++            app:layout_constraintStart_toStartOf="parent"
++            app:layout_constraintTop_toBottomOf="@id/tilKey" />
++
+         <CheckBox
+             android:id="@+id/cbFormal"
+             android:layout_width="wrap_content"
+@@ -68,7 +78,7 @@
+             android:layout_marginTop="12dp"
+             android:text="@string/title_translate_formal"
+             app:layout_constraintStart_toStartOf="parent"
+-            app:layout_constraintTop_toBottomOf="@id/tilKey" />
++            app:layout_constraintTop_toBottomOf="@id/cbOnDevice" />
+ 
+         <TextView
+             android:id="@+id/tvFormal"
+-- 
+2.44.2
+
