@@ -44,10 +44,8 @@ class SiriusStar(private val activity: AppCompatActivity) {
             return bmp
         }
 
-        override fun pagesFor(section: String): List<CircularMenu.Leaf> =
-            SectionPages.pagesFor(section).map {
-                CircularMenu.Leaf(it.label, "", "page:$section/${it.id}")
-            }
+        override fun childrenOf(key: String): List<CircularMenu.Child> =
+            CircularMenuTree.childrenOf(activity, key)
     }
 
     /** Wire glyph/size/tap once. Call [update] afterwards for the initial state. */

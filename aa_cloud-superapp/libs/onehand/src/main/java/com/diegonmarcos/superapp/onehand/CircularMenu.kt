@@ -28,9 +28,9 @@ import kotlin.math.sin
  */
 object CircularMenu {
 
-    data class Leaf(val label: String, val iconName: String, val target: String)
+    data class Child(val label: String, val iconName: String, val target: String, val childKey: String?)
     data class Node(
-        val label: String, val iconName: String, val target: String, val section: String?,
+        val label: String, val iconName: String, val target: String, val childKey: String?,
     )
     data class Config(
         val enabled: Boolean,
@@ -52,8 +52,11 @@ object CircularMenu {
     interface Host {
         fun navigate(target: String)
         fun iconBitmap(name: String, sizePx: Int): Bitmap?
-        /** Live pages of [section] → the fan-out leaves. Empty = childless node. */
-        fun pagesFor(section: String): List<Leaf>
+        /** Children of [key] (a section id or a nested key like "suite/phone").
+         *  A child whose childKey is non-null is itself expandable — descending
+         *  re-queries childrenOf(childKey); a null childKey is a terminal leaf
+         *  whose target is navigated on release. Empty = childless node. */
+        fun childrenOf(key: String): List<Child>
     }
 
     /** Decode this lib's baked onehand config and pull the circular_menu subtree.
@@ -70,7 +73,7 @@ object CircularMenu {
                 label = n.optString("label"),
                 iconName = n.optString("icon"),
                 target = n.optString("target"),
-                section = n.optString("section").ifBlank { null }.takeIf { it != "null" },
+                childKey = n.optString("section").ifBlank { null }.takeIf { it != "null" },
             ))
         }
         Config(
@@ -148,10 +151,10 @@ object CircularMenu {
         }
         private val kidCache = HashMap<String, List<Node>>()
         private fun childrenOf(it: Node): List<Node> {
-            val sec = it.section ?: return emptyList()
-            return kidCache.getOrPut(it.target) {
-                runCatching { host.pagesFor(sec) }.getOrDefault(emptyList())
-                    .map { l -> Node(l.label, l.iconName, l.target, null) } // leaves = terminal
+            val key = it.childKey ?: return emptyList()
+            return kidCache.getOrPut(key) {
+                runCatching { host.childrenOf(key) }.getOrDefault(emptyList())
+                    .map { c -> Node(c.label, c.iconName, c.target, c.childKey) }
             }
         }
 
@@ -239,7 +242,7 @@ object CircularMenu {
             val sel = lv.items[best]
             // descend: drag past the outermost ring into a node with children. Leaf
             // levels carry no sections, so packed rings never trigger this.
-            if (r > outerR(lv) + dp(44) && sel.section != null) {
+            if (r > outerR(lv) + dp(44) && sel.childKey != null) {
                 val kids = childrenOf(sel)
                 if (kids.isNotEmpty()) {
                     val (nx, ny) = slotPos(lv, slots[best])
