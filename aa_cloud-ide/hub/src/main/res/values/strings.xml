@@ -23,7 +23,7 @@
     <string name="cfg_autoupdate">Auto-update: %1$s (every %2$dh, tag \"%3$s\")</string>
     <!-- Terminal setup instructions (shown on the Configs page) -->
     <string name="cfg_terminal_setup_title">Terminal setup</string>
-    <string name="cfg_terminal_setup_steps">The terminal SSHes into termux / nix-on-droid. One-time setup:\n\n1. Terminal SSH key → copy → add to ~/.ssh/authorized_keys in the env.\n2. Start sshd in the env (termux :8023 · nix-on-droid :8022).\n3. Terminal backend → pick termux or nix-on-droid.\n4. Terminal connection → set host/port/user, Test connection until ✓.\n5. Open the terminal from Home.</string>
+    <string name="cfg_terminal_setup_steps">The terminal SSHes over 127.0.0.1 ONLY. Start the env\'s sshd bound to LOOPBACK — it is never reachable from WiFi/mobile:\n\nTERMUX  (port 8023)\n  pkg install openssh\n  ssh-keygen -A\n  sshd -p 8023 -o ListenAddress=127.0.0.1\n\nNIX-ON-DROID  (port 8022)\n  nix-shell -p openssh\n  ssh-keygen -A\n  sshd -p 8022 -o ListenAddress=127.0.0.1\n\n(-o ListenAddress=127.0.0.1 binds loopback only — no 0.0.0.0, no network interface.)\n\nThen in this app:\n1. Terminal SSH key → copy → append to ~/.ssh/authorized_keys in that env.\n2. Terminal backend → pick the env.\n3. Terminal connection → host 127.0.0.1 / port / user → Test until ✓.\n4. Open the terminal from Home.</string>
     <!-- Terminal backend switcher -->
     <string name="cfg_terminal_backend">Terminal backend</string>
     <string name="cfg_terminal_backend_sub">Active: %1$s · %2$s:%3$d · tap to switch</string>

@@ -116,7 +116,11 @@ class ConfigsActivity : AppCompatActivity() {
             enabled = true,
         ) { startActivity(android.content.Intent(this, AboutActivity::class.java)) })
 
-        root.addView(body)
+        val scroll = android.widget.ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(MATCH, MATCH)
+        }
+        scroll.addView(body)
+        root.addView(scroll)
         setContentView(root)
     }
 
