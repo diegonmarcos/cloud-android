@@ -87,4 +87,5 @@ object SettingsWithoutKey {
     // clipboard export/import (Feature 3)
     const val CLIPBOARD_EXPORT_JSON = "clipboard_export_json"
     const val CLIPBOARD_IMPORT_JSON = "clipboard_import_json"
+    const val CLIPBOARD_RENAME_LIST = "clipboard_rename_list"
 }

@@ -305,10 +305,8 @@ class ClipboardHistoryView @JvmOverloads constructor(
                     refreshTabs()
                     clipboardAdapter.notifyDataSetChanged()
                 }
-                // Long-press on a pin-list tab → rename dialog (default/unpinned tab is not renamable)
-                if (listName != null) {
-                    setOnLongClickListener { showRenameListDialog(listName, windowToken) ; true }
-                }
+                // Pin-list rename moved to Settings → Clipboard (can't type into a dialog while
+                // the clipboard panel replaces the keyboard).
             }
             clipboardTabs.addView(tab)
         }

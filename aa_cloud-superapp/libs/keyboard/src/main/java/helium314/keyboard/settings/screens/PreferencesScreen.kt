@@ -90,6 +90,7 @@ fun PreferencesScreen(
         // clipboard export / import (always shown when clipboard is enabled)
         if (clipboardHistoryEnabled) SettingsWithoutKey.CLIPBOARD_EXPORT_JSON else null,
         if (clipboardHistoryEnabled) SettingsWithoutKey.CLIPBOARD_IMPORT_JSON else null,
+        if (clipboardHistoryEnabled) SettingsWithoutKey.CLIPBOARD_RENAME_LIST else null,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,
@@ -255,6 +256,38 @@ fun createPreferencesSettings(context: Context) = listOf(
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("application/json")
             importLauncher.launch(intent)
+        })
+    },
+    // Rename a pin list from Settings (the in-panel version can't work: while the
+    // clipboard is open the keyboard shows the clipboard, so there's nothing to type into).
+    Setting(context, SettingsWithoutKey.CLIPBOARD_RENAME_LIST, R.string.clipboard_rename_list) {
+        val ctx = LocalContext.current
+        Preference(name = stringResource(R.string.clipboard_rename_list), onClick = {
+            val dao = ClipboardDao.getInstance(ctx)
+            val names = dao?.getListNames().orEmpty()
+            if (dao != null && names.isNotEmpty()) {
+                android.app.AlertDialog.Builder(ctx)
+                    .setTitle(R.string.clipboard_rename_list)
+                    .setItems(names.toTypedArray()) { _, which ->
+                        val old = names[which]
+                        val input = android.widget.EditText(ctx).apply {
+                            setText(old)
+                            hint = ctx.getString(R.string.clipboard_rename_list_hint)
+                            setSingleLine()
+                            selectAll()
+                        }
+                        android.app.AlertDialog.Builder(ctx)
+                            .setTitle(R.string.clipboard_rename_list)
+                            .setView(input)
+                            .setPositiveButton(android.R.string.ok) { _, _ ->
+                                val newName = input.text?.toString()?.trim().orEmpty()
+                                if (newName.isNotEmpty()) dao.renameList(old, newName)
+                            }
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show()
+                    }
+                    .show()
+            }
         })
     },
     Setting(context, Settings.PREF_VIBRATION_DURATION_SETTINGS, R.string.prefs_keypress_vibration_duration_settings) { setting ->
