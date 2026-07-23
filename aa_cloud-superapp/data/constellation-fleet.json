@@ -62,6 +62,21 @@
       "blocked": false
     },
     {
+      "id": "keyboard",
+      "label": "cloud-keyboard",
+      "package": "com.diegonmarcos.cloudkeyboard",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard",
+      "tag": "latest",
+      "asset": "Cloud-Keyboard.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard",
+      "blocked": false
+    },
+    {
       "id": "mail",
       "label": "Cloud Mail (Fairmail)",
       "package": "com.diegonmarcos.comms.mail",

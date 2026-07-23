@@ -2,6 +2,9 @@
   "name": "cloud-keyboard",
   "description": "Cloud Keyboard — HeliBoard IME with on-device translation, voice input, and bundled sticker packs. Standalone constellation APK.",
   "category": "keyboard",
+  "android": {
+    "application_id": "com.diegonmarcos.cloudkeyboard"
+  },
   "toolchain": {
     "agp": "8.13.2",
     "gradle": "8.14",
