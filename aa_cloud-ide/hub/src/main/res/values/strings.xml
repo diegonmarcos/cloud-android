@@ -24,6 +24,18 @@
     <!-- Terminal backend switcher -->
     <string name="cfg_terminal_backend">Terminal backend</string>
     <string name="cfg_terminal_backend_sub">Active: %1$s · %2$s:%3$d · tap to switch</string>
+    <!-- Terminal connection overrides -->
+    <string name="cfg_terminal_conn">Terminal connection</string>
+    <string name="cfg_terminal_conn_sub">SSH host / port / user for %1$s — tap to edit + test</string>
+    <string name="term_conn_host">Host</string>
+    <string name="term_conn_port">Port</string>
+    <string name="term_conn_user">User</string>
+    <string name="term_conn_test">Test connection</string>
+    <string name="term_conn_save">Save</string>
+    <string name="term_conn_cancel">Cancel</string>
+    <string name="term_conn_testing">Testing…</string>
+    <string name="term_conn_ok">✓ Connected</string>
+    <string name="term_conn_saved">Saved</string>
     <!-- Terminal SSH key pairing -->
     <string name="cfg_terminal_ssh_key">Terminal SSH key</string>
     <string name="cfg_terminal_ssh_key_sub">Tap to copy public key → add to ~/.ssh/authorized_keys in Termux &amp; Nix-on-Droid</string>

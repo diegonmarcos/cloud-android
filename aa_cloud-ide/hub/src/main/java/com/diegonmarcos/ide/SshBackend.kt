@@ -4,6 +4,7 @@ import android.content.Context
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.JSch
+import com.jcraft.jsch.JSchException
 import com.jcraft.jsch.KeyPair
 import com.jcraft.jsch.Session
 import java.io.File
@@ -229,6 +230,32 @@ class SshBackend(private val ctx: Context) {
         // Drain stdout so the channel completes cleanly.
         ch.inputStream.readBytes()
         ch.disconnect()
+    }
+
+    // ── Connection test ───────────────────────────────────────────────────────
+
+    /**
+     * Try to open (and immediately close) a throwaway SSH session to [target].
+     * Returns null on success, or a human-readable error string on failure.
+     * Blocking — MUST be called off the UI thread.
+     * Does not touch any cached live sessions.
+     */
+    fun testConnection(target: TerminalTargets.Target): String? {
+        if (!privKeyFile.exists()) return "Key not yet generated — open the terminal once first"
+        return try {
+            val testJsch = JSch()
+            testJsch.addIdentity(privKeyFile.absolutePath)
+            val s = testJsch.getSession(target.user, target.host, target.port)
+            s.setConfig("StrictHostKeyChecking",    "no")
+            s.setConfig("PreferredAuthentications", "publickey")
+            s.connect(6_000)
+            s.disconnect()
+            null   // success
+        } catch (e: JSchException) {
+            e.message ?: e.toString()
+        } catch (e: Exception) {
+            e.message ?: e.toString()
+        }
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────

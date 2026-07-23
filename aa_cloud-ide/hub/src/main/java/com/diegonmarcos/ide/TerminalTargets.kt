@@ -1,5 +1,6 @@
 package com.diegonmarcos.ide
 
+import android.content.Context
 import android.util.Base64
 import org.json.JSONObject
 
@@ -44,5 +45,18 @@ object TerminalTargets {
             port  = obj.getInt("port"),
             user  = obj.getString("user"),
         )
+    }
+
+    /**
+     * Returns the effective [Target] for [key]: baked default overlaid with any
+     * per-backend overrides stored in [IdePrefs].  Blank host / port ≤ 0 / blank
+     * user each fall back to the baked default independently.
+     */
+    fun effectiveTarget(ctx: Context, key: String): Target {
+        val base = forBackend(key)
+        val h = IdePrefs.terminalHost(ctx, key)?.takeIf { it.isNotBlank() } ?: base.host
+        val p = IdePrefs.terminalPort(ctx, key).takeIf { it > 0 } ?: base.port
+        val u = IdePrefs.terminalUser(ctx, key)?.takeIf { it.isNotBlank() } ?: base.user
+        return base.copy(host = h, port = p, user = u)
     }
 }

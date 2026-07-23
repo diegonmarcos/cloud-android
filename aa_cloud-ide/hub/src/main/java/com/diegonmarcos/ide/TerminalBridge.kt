@@ -39,7 +39,7 @@ class TerminalBridge(
     @JavascriptInterface
     fun ptyStart(id: String, cols: Int, rows: Int, cwd: String) {
         executor.submit {
-            val target = TerminalTargets.forBackend(backendKey())
+            val target = TerminalTargets.effectiveTarget(activity, backendKey())
             try {
                 ssh.openShell(
                     target  = target,
@@ -79,7 +79,7 @@ class TerminalBridge(
     @JavascriptInterface
     fun listDir(rid: Int, path: String) {
         executor.submit {
-            val target = TerminalTargets.forBackend(backendKey())
+            val target = TerminalTargets.effectiveTarget(activity, backendKey())
             try {
                 val entries = ssh.listDir(target, path)
                 val arr = JSONArray()
@@ -100,7 +100,7 @@ class TerminalBridge(
     @JavascriptInterface
     fun readFile(rid: Int, path: String) {
         executor.submit {
-            val target = TerminalTargets.forBackend(backendKey())
+            val target = TerminalTargets.effectiveTarget(activity, backendKey())
             try {
                 val text = ssh.readFile(target, path)
                 // Shim does JSON.parse(j) → must pass JSONObject.quote(text) so
@@ -115,7 +115,7 @@ class TerminalBridge(
     @JavascriptInterface
     fun writeFile(rid: Int, path: String, content: String) {
         executor.submit {
-            val target = TerminalTargets.forBackend(backendKey())
+            val target = TerminalTargets.effectiveTarget(activity, backendKey())
             try {
                 ssh.writeFile(target, path, content)
                 emitRaw("window.__afsResult($rid,true,null)")

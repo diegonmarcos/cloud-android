@@ -27,4 +27,35 @@ object IdePrefs {
     fun setTerminalBackend(ctx: Context, v: String) {
         sp(ctx).edit().putString(KEY_BACKEND, v).apply()
     }
+
+    // ── Per-backend connection overrides ──────────────────────────────────────
+    // Keys: terminal_<backend>_host / _port / _user
+    // Getters return null / -1 / null when unset (caller uses baked default).
+
+    fun terminalHost(ctx: Context, backend: String): String? =
+        sp(ctx).getString("terminal_${backend}_host", null)
+
+    fun terminalPort(ctx: Context, backend: String): Int =
+        sp(ctx).getInt("terminal_${backend}_port", -1)
+
+    fun terminalUser(ctx: Context, backend: String): String? =
+        sp(ctx).getString("terminal_${backend}_user", null)
+
+    /** Persist all three connection fields for [backend]. */
+    fun setTerminalConn(ctx: Context, backend: String, host: String, port: Int, user: String) {
+        sp(ctx).edit()
+            .putString("terminal_${backend}_host", host)
+            .putInt("terminal_${backend}_port", port)
+            .putString("terminal_${backend}_user", user)
+            .apply()
+    }
+
+    /** Remove all connection overrides for [backend], reverting to baked defaults. */
+    fun clearTerminalConn(ctx: Context, backend: String) {
+        sp(ctx).edit()
+            .remove("terminal_${backend}_host")
+            .remove("terminal_${backend}_port")
+            .remove("terminal_${backend}_user")
+            .apply()
+    }
 }
