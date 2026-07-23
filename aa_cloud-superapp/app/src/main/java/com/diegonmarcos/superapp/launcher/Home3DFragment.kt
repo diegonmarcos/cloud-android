@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -118,6 +119,19 @@ class RotatingCubeView @JvmOverloads constructor(
         com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("cube_anim")
     }.getOrDefault(true)
 
+    // "Cube drag-to-spin" — when on, touch overrides the clock-driven
+    // rotation so the user can manually spin the cube; momentum coasts.
+    private val cubeInteractive: Boolean = runCatching {
+        com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("cube_interactive")
+    }.getOrDefault(false)
+
+    // Drag / momentum state (only used when cubeInteractive = true)
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
+    private var velY = 0f   // angular velocity (rad/frame) about Y
+    private var velX = 0f   // about X
+    private var dragging = false
+
     private val vertices = arrayOf(
         floatArrayOf(-1f, -1f, -1f),
         floatArrayOf( 1f, -1f, -1f),
@@ -134,16 +148,56 @@ class RotatingCubeView @JvmOverloads constructor(
         intArrayOf(0,4), intArrayOf(1,5), intArrayOf(2,6), intArrayOf(3,7),
     )
 
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (!cubeInteractive) return super.onTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                dragging = true; velY = 0f; velX = 0f
+                lastTouchX = event.x; lastTouchY = event.y
+                parent?.requestDisallowInterceptTouchEvent(true)   // own the drag
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val k = 0.01f   // radians per pixel
+                velY = (event.x - lastTouchX) * k          // horizontal drag → spin about Y
+                velX = -(event.y - lastTouchY) * k         // vertical drag → tumble about X
+                rotY += velY; rotX += velX
+                lastTouchX = event.x; lastTouchY = event.y
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                dragging = false
+                parent?.requestDisallowInterceptTouchEvent(false)
+                postInvalidateOnAnimation()   // let momentum coast out
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        // Time since first frame — drives both rotation axes. Reading the
-        // monotonic system clock every frame instead of accumulating in a
-        // ValueAnimator means the loop boundary is invisible: every
-        // angle is reproducible from `elapsed` without any state to
-        // discontinue.
-        val elapsed = (SystemClock.elapsedRealtime() - animStartMs).toDouble()
-        rotY = (rotY0 + (elapsed / periodYMs) * (2.0 * Math.PI)).toFloat()
-        rotX = (rotX0 + (elapsed / periodXMs) * (2.0 * Math.PI)).toFloat()
+        // Angle source: interactive mode uses manual drag + momentum;
+        // non-interactive uses the monotonic clock (original behaviour).
+        if (cubeInteractive) {
+            if (!dragging) {                 // coast: apply + decay momentum
+                rotY += velY; rotX += velX
+                velY *= 0.95f; velX *= 0.95f
+                if (kotlin.math.abs(velY) < 1e-4f) velY = 0f
+                if (kotlin.math.abs(velX) < 1e-4f) velX = 0f
+            }
+            // while dragging, rotY/rotX are set directly by onTouchEvent
+        } else {
+            // Time since first frame — drives both rotation axes. Reading the
+            // monotonic system clock every frame instead of accumulating in a
+            // ValueAnimator means the loop boundary is invisible: every
+            // angle is reproducible from `elapsed` without any state to
+            // discontinue.
+            val elapsed = (SystemClock.elapsedRealtime() - animStartMs).toDouble()
+            rotY = (rotY0 + (elapsed / periodYMs) * (2.0 * Math.PI)).toFloat()
+            rotX = (rotX0 + (elapsed / periodXMs) * (2.0 * Math.PI)).toFloat()
+        }
         val cx = width / 2f
         val cy = height / 2f
         // Smaller scale denominator → larger cube; pump it back to ~3.4f
@@ -181,8 +235,12 @@ class RotatingCubeView @JvmOverloads constructor(
         for (i in 0..7) canvas.drawCircle(px[i], py[i], 4f, accent)
         // Schedule the next frame — VSYNC-aligned by the platform. When
         // the view detaches the framework drops these invalidations, so
-        // there's no leak risk. Skipped when "Cube animation" is off →
-        // the cube draws once at its start angle and stops.
-        if (cubeAnimate) postInvalidateOnAnimation()
+        // there's no leak risk.
+        if (cubeInteractive) {
+            // keep animating only while coasting (momentum not yet settled)
+            if (!dragging && (velY != 0f || velX != 0f)) postInvalidateOnAnimation()
+        } else if (cubeAnimate) {
+            postInvalidateOnAnimation()
+        }
     }
 }

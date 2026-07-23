@@ -5480,6 +5480,13 @@
           "battery": true
         },
         {
+          "id": "cube_interactive",
+          "label": "Cube drag-to-spin",
+          "subtitle": "Touch and drag the home cube to spin it across its 3D faces.",
+          "default": false,
+          "battery": false
+        },
+        {
           "id": "island_anim",
           "label": "Island animation",
           "subtitle": "Home-screen island wave motion.",
