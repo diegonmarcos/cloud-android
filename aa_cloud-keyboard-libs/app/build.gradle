@@ -57,6 +57,17 @@ android {
         buildConfig = true
         aidl true
     }
+
+    // Bundle the keyboard dicts (word-suggestion + emoji .dict files) from
+    // libs:keyboard's assets/dicts/ folder. No binary duplication — the same
+    // directory that sync-keyboard-dicts populates. Files land at the root of
+    // this APK's assets/ (not under "dicts/"), so CompanionDictExtractor in
+    // cloud-keyboard opens them as assets.open(filename) without a subdir prefix.
+    sourceSets {
+        main {
+            assets.srcDirs += [file("$rootDir/../ea_cloud-superapp/libs/keyboard/src/main/assets/dicts")]
+        }
+    }
 }
 
 dependencies {

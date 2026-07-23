@@ -940,6 +940,7 @@ step_sync_keyboard_dicts() {
   done < <(jq -r '.keyboard_dicts.types[] | "\(.type) \(.dir)"' "$bj")
 
   log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/.../assets/dicts/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
+  log "  NOTE: ea_cloud-keyboard-libs also picks these up via assets.srcDirs — run this after updating dicts."
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/src/main/assets/dicts/"
   [ "$miss" -eq 0 ] || { errlog "sync-keyboard-dicts: $miss dict(s) missing — fix build.json::keyboard_dicts or update the clone"; exit 1; }
 }

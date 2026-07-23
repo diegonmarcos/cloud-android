@@ -43,6 +43,13 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // delegate to the companion cloud-keyboard-libs service (ML Kit not bundled here).
         runCatching { TranslateEngines.client = AidlTranslateEngineClient(this) }
 
+        // Extract keyboard dicts from companion cloud-keyboard-libs (which bundles
+        // the .dict files since this APK omits them to save ~39 MB). Must run
+        // before seedDefaultLocales/prewarmEmojiDict so the cache is populated
+        // before HeliBoard's lazy-extraction path is hit. No-op if companion is
+        // absent or dicts are already cached.
+        runCatching { CompanionDictExtractor.extractIfNeeded(this) }
+
         // Seed the default enabled languages once (data-driven from
         // build.json::default_locales → BuildConfig.DEFAULT_LOCALES). Runs only on
         // a fresh install (no subtype yet + never seeded), so it never fights a

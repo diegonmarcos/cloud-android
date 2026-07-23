@@ -61,6 +61,15 @@ android {
 
     // HeliBoard uses ndk-build; inherit the same NDK version as superapp.
     ndkVersion "28.0.13004108"
+
+    // Drop the bundled .dict files (~39 MB) — cloud-keyboard reads them at
+    // runtime from the companion cloud-keyboard-libs via CompanionDictExtractor.
+    // Graceful fallback: if the companion is absent, no-dict behavior (no crash).
+    // AGP 8 `androidResources.ignoreAssetsPatterns` accepts aapt2 asset patterns:
+    // "!dicts" excludes the entire dicts/ directory from the packaged APK assets.
+    androidResources {
+        ignoreAssetsPatterns += ['!dicts']
+    }
 }
 
 dependencies {
