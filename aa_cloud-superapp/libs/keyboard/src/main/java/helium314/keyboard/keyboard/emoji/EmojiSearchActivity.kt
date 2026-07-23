@@ -322,6 +322,11 @@ class EmojiSearchActivity : ComponentActivity() {
                 dictionaryFacilitator?.getWordProperty(getEmojiNeutralVersion(emoji))?.let {
                     if (it.mHasShortcuts) it.mShortcutTargets[0]?.mWord else null
                 } else null
+
+            // SuperApp: pinning is an in-panel 5s-hold gesture; the standalone
+            // emoji-search activity has no pinned grid, so this is a no-op.
+            override fun onPinEmoji(key: Key) {
+            }
         })
         KeyboardSwitcher.getInstance().setAlphabetKeyboard()
         Log.d(TAG, "init end")
