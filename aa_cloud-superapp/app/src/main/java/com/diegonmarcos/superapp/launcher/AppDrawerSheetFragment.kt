@@ -179,8 +179,11 @@ class AppDrawerSheetFragment : Fragment() {
             val requested = arguments?.getString(ARG_INITIAL_TAB)?.takeIf { it.isNotBlank() }
                 ?: tabs.firstOrNull()?.id ?: "cloud"
             val idx = tabs.indexOfFirst { it.id == requested }.coerceAtLeast(0)
+            // Set the body directly — don't rely on TabLayout.select() dispatching
+            // onTabSelected (it can be a no-op before layout, which left the drawer
+            // on Cloud when opened for Phone). Then sync the visual chip.
+            showTab(tabs.getOrNull(idx)?.id ?: "cloud")
             if (idx > 0) bodyTabs.getTabAt(idx)?.select()
-            else showTab(tabs.firstOrNull()?.id ?: "cloud")
         }
         return root
     }
