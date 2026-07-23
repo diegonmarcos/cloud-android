@@ -97,6 +97,15 @@ step_bundle_frontend() {
     log "bundle-frontend: vendor/ already populated (${#vendored[@]} file(s)) — skip"
   fi
 
+  # Profiles + config → frontend/data/*.json (theme/keybindings/engine block +
+  # the 12 profiles). UNconditional, unlike vendor: these change per build and
+  # are gitignored/generated, so a fresh checkout has none. Skipping it ships a
+  # WebView whose fetch("data/…") 404s → no profiles + no engine switcher.
+  log "bundle-frontend: regenerating frontend/data/ (profiles + config)"
+  if ! ( cd "$src_dir/.." && ./build.sh bundle-data ); then
+    errlog "bundle-frontend: bundle-data failed — frontend/data/{profiles,config}.json would be missing"; exit 1
+  fi
+
   local dest="$SCRIPT_DIR/hub/src/main/assets/frontend"
   rm -rf "$dest"
   mkdir -p "$dest"
