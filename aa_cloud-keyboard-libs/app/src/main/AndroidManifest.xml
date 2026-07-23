@@ -19,6 +19,12 @@
     <!-- libs:voice records the mic for offline Vosk dictation. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Signature-level permission: only apps signed with the same constellation
+         key may bind to TranslateEngineService. -->
+    <permission
+        android:name="com.diegonmarcos.cloudkeyboardlibs.BIND_ENGINE"
+        android:protectionLevel="signature" />
+
     <application
         android:name=".App"
         android:label="@string/app_name"
@@ -51,6 +57,18 @@
             android:authorities="${applicationId}.stickercontentprovider"
             android:exported="false"
             android:grantUriPermissions="true" />
+
+        <!-- Bound service exposing ITranslateEngine AIDL.
+             Callers must hold com.diegonmarcos.cloudkeyboardlibs.BIND_ENGINE
+             (signature-level) to bind. -->
+        <service
+            android:name=".TranslateEngineService"
+            android:exported="true"
+            android:permission="com.diegonmarcos.cloudkeyboardlibs.BIND_ENGINE">
+            <intent-filter>
+                <action android:name="com.diegonmarcos.cloudkeyboardlibs.ITranslateEngine" />
+            </intent-filter>
+        </service>
 
     </application>
 </manifest>
