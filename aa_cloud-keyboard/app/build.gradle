@@ -68,7 +68,7 @@ android {
     // AGP 8 `androidResources.ignoreAssetsPatterns` accepts aapt2 asset patterns:
     // "!dicts" excludes the entire dicts/ directory from the packaged APK assets.
     androidResources {
-        ignoreAssetsPatterns += ['!dicts']
+        ignoreAssetsPatterns.add('!dicts')
     }
 }
 
