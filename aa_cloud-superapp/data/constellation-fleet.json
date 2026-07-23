@@ -77,6 +77,21 @@
       "blocked": false
     },
     {
+      "id": "keyboard-libs",
+      "label": "cloud-keyboard-libs",
+      "package": "com.diegonmarcos.cloudkeyboardlibs",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard-libs",
+      "tag": "latest",
+      "asset": "Cloud-Keyboard-Libs.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard-Libs.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard-libs",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard-libs",
+      "blocked": false
+    },
+    {
       "id": "mail",
       "label": "Cloud Mail (Fairmail)",
       "package": "com.diegonmarcos.comms.mail",
