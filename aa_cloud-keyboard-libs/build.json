@@ -1,0 +1,112 @@
+{
+  "name": "cloud-keyboard-libs",
+  "description": "Cloud Keyboard — Feature Pack APK. Bundles libs:media (stickers/GIF), libs:translate (ML Kit), and libs:voice (Vosk) as a companion APK updatable independently of the keyboard.",
+  "category": "keyboard",
+  "android": {
+    "application_id": "com.diegonmarcos.cloudkeyboardlibs"
+  },
+  "toolchain": {
+    "agp": "8.13.2",
+    "gradle": "8.14",
+    "kotlin": "2.3.20",
+    "compile_sdk": 36,
+    "jdk": "17"
+  },
+  "modules": {
+    "_doc": "Feature libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle.",
+    "app": {
+      "type": "application",
+      "depends_on": [
+        "libs:media",
+        "libs:translate",
+        "libs:voice"
+      ],
+      "comment": "Thin launcher shell. All feature lib components come from the shared libs via manifest merge."
+    }
+  },
+  "keyboard_media": {
+    "_doc": "Same block as ea_cloud-superapp and ea_cloud-keyboard — shared vault secret. build.sh sops-decrypts vault_secrets → GIPHY_API_KEY env var → Gradle BuildConfig → MediaRuntime.configure().",
+    "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
+    "enabled": true,
+    "sticker": {
+      "enabled": true
+    },
+    "gif": {
+      "provider": "giphy",
+      "limit": 30,
+      "giphy": {
+        "base_url": "https://api.giphy.com/v1/gifs",
+        "categories": [
+          {
+            "id": "trending",
+            "label": "Trending",
+            "query": ""
+          },
+          {
+            "id": "reactions",
+            "label": "Reactions",
+            "query": "reaction"
+          },
+          {
+            "id": "love",
+            "label": "Love",
+            "query": "love"
+          },
+          {
+            "id": "happy",
+            "label": "Happy",
+            "query": "happy"
+          },
+          {
+            "id": "sad",
+            "label": "Sad",
+            "query": "sad"
+          },
+          {
+            "id": "celebrate",
+            "label": "Celebrate",
+            "query": "celebrate"
+          }
+        ]
+      }
+    }
+  },
+  "default_locales": [
+    "en_GB",
+    "es_ES",
+    "pt_BR",
+    "de_DE"
+  ],
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. build.sh::_resolve_signing resolves $VAULT_DIR + sops-decrypts the passwords. NO fallback.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "artifact": {
+      "debug": "Cloud-Keyboard-Libs.apk",
+      "release": "Cloud-Keyboard-Libs-release.apk"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard-libs",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ea_cloud-keyboard-libs-v*",
+      "asset_name": "Cloud-Keyboard-Libs.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}
