@@ -189,6 +189,7 @@ object Defaults {
     const val PREF_GRAMMAR_FIX_REPEATED_WORDS = true
     const val PREF_GRAMMAR_MODE = "local" // "off"|"local"|"remote"
     const val PREF_GRAMMAR_REMOTE_URL = "https://languagetool.diegonmarcos.com/v2/check"
+    const val PREF_GRAMMAR_NGRAM_URL = "" // placeholder for future n-gram API
     const val PREF_SHOW_DEBUG_SETTINGS = false
     val PREF_DEBUG_MODE = BuildConfig.DEBUG
     const val PREF_SHOW_SUGGESTION_INFOS = false

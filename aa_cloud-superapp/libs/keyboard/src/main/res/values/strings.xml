@@ -249,6 +249,8 @@
     <string name="grammar_mode_remote">Remote</string>
     <string name="grammar_remote_url_title">LanguageTool server URL</string>
     <string name="grammar_remote_url_summary">Used in Remote mode for whole-field checks</string>
+    <string name="grammar_ngram_url_title">Grammar n-gram API connect</string>
+    <string name="grammar_ngram_url_summary">Endpoint for future n-gram confusion-pair detection (placeholder — not yet active)</string>
     <!-- Standalone Cloud Keyboard self-update entry (Configs menu) -->
     <string name="keyboard_update">Update Cloud Keyboard</string>
     <string name="keyboard_update_summary">Download and install the latest version</string>

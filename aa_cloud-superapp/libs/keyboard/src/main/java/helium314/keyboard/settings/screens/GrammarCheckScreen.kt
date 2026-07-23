@@ -64,6 +64,15 @@ fun createGrammarSettings(context: Context): List<Setting> = listOf(
     ) { setting ->
         TextInputPreference(setting, Defaults.PREF_GRAMMAR_REMOTE_URL)
     },
+    // Placeholder for future n-gram confusion-pair API (not yet wired to anything).
+    Setting(
+        context,
+        Settings.PREF_GRAMMAR_NGRAM_URL,
+        R.string.grammar_ngram_url_title,
+        R.string.grammar_ngram_url_summary,
+    ) { setting ->
+        TextInputPreference(setting, Defaults.PREF_GRAMMAR_NGRAM_URL)
+    },
 )
 
 @Composable
@@ -75,6 +84,7 @@ fun GrammarCheckScreen(onClickBack: () -> Unit) {
         Settings.PREF_GRAMMAR_FIX_SENTENCE_CAPS,
         Settings.PREF_GRAMMAR_FIX_REPEATED_WORDS,
         Settings.PREF_GRAMMAR_REMOTE_URL,
+        Settings.PREF_GRAMMAR_NGRAM_URL,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,

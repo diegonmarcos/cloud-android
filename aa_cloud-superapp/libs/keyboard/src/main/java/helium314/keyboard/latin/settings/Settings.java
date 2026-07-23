@@ -213,6 +213,7 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_GRAMMAR_FIX_REPEATED_WORDS = "grammar_fix_repeated_words";
     public static final String PREF_GRAMMAR_MODE = "grammar_mode"; // "off"|"local"|"remote"
     public static final String PREF_GRAMMAR_REMOTE_URL = "grammar_remote_url";
+    public static final String PREF_GRAMMAR_NGRAM_URL = "grammar_ngram_url"; // placeholder for future n-gram API
 
     public static final String PREF_VERSION_CODE = "version_code";
     public static final String PREF_LIBRARY_CHECKSUM = "lib_checksum";
