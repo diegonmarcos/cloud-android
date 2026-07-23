@@ -12,8 +12,6 @@ import androidx.work.Configuration as WorkManagerConfiguration
 import com.diegonmarcos.superapp.core.NotificationStore
 import com.diegonmarcos.superapp.devcontrol.DevControlServer
 import com.diegonmarcos.superapp.notificationcenter.KdeStatusService
-import com.diegonmarcos.superapp.translate.LocalTranslateEngineClient
-import com.diegonmarcos.superapp.translate.TranslateEngines
 import com.google.android.material.color.DynamicColors
 
 /**
@@ -54,9 +52,6 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // on the very first inflation.
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         super.onCreate()
-        // Register in-process ML Kit engine so the keyboard's translate bar
-        // (TranslateBarView / Translator) works in-process via LocalTranslateEngineClient.
-        TranslateEngines.client = LocalTranslateEngineClient(this)
         // Capture process-start time before anything else so About →
         // Battery & Usage can report the real uptime.
         AppProcessUptime.initOnce()

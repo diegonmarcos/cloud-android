@@ -300,9 +300,6 @@
       "type": "library",
       "depends_on": [],
       "comment": "Zoomies pets \u2014 the animated status-bar companion. PetStrengthView (an AppCompatImageView) plays a per-tool animal whose gait (idle\u2192walk\u2192walk_fast\u2192run) tracks the tool's strength, decoded from the vendored zoomies GIFs at assets/zoomies/<animal>/<variant>_<gait>.gif (CC BY-ND, used unmodified). Pure view module: no build.json config, no inter-lib deps \u2014 only androidx.appcompat. Consumed by app/launcher (LauncherStatusStripView instantiates one PetStrengthView per tool)."
-    },
-    "libs:translate-mlkit": {
-      "comment": "ML Kit engine implementation for libs:translate (TranslateEngine + LocalTranslateEngineClient). Superapp and cloud-keyboard-libs include this; cloud-keyboard does not."
     }
   },
   "onehand": {
