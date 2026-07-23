@@ -673,6 +673,9 @@ dependencies {
     // libs:zoomies — animated status-bar pet (PetStrengthView + zoomies GIF assets),
     // extracted from app/launcher. Consumed by LauncherStatusStripView.
     implementation project(':libs:zoomies')
+    // libs:translate-mlkit — ML Kit engine (LocalTranslateEngineClient). Registered
+    // in App.onCreate so the keyboard's translate bar uses in-process ML Kit.
+    implementation project(':libs:translate-mlkit')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

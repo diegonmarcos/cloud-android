@@ -62,6 +62,9 @@ android {
 dependencies {
     implementation project(':libs:media')
     implementation project(':libs:translate')
+    // ML Kit engine (LocalTranslateEngineClient) — registered in App.onCreate
+    // so TranslateEngineService.translateBlocking can be called in-process.
+    implementation project(':libs:translate-mlkit')
     implementation project(':libs:voice')
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }

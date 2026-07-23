@@ -1,11 +1,8 @@
-// libs:translate — on-device translation engine for the vendored
-// keyboard's TRANSLATE toolbar key. Self-contained ML Kit wrapper that
-// lives OUTSIDE libs/keyboard/src/main so `build.sh sync-heliboard`
-// (rsync --delete mirror of upstream HeliBoard) never clobbers it.
+// libs:translate — translate engine interface + Translator orchestrator.
+// ML-Kit-free; the actual ML Kit implementation lives in libs:translate-mlkit
+// so cloud-keyboard (standalone IME) can depend on libs:translate without
+// bundling ML Kit (it binds the companion cloud-keyboard-libs service instead).
 //
-// ML Kit on-device translation: fully offline after the per-language
-// model is fetched once (~30 MB/pair). No API key, no server, nothing
-// leaves the device except the one-time model download from Google.
 // libs:keyboard depends on this module; InputLogic's KeyCode.TRANSLATE
 // handler calls Translator.translate(...).
 
@@ -30,9 +27,4 @@ android {
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
-
-    // On-device translation + source-language auto-detection. Models
-    // download lazily on first use, then run fully offline.
-    implementation 'com.google.mlkit:translate:17.0.3'
-    implementation 'com.google.mlkit:language-id:17.0.6'
 }

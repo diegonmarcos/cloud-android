@@ -54,7 +54,10 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
 
-    buildFeatures { buildConfig = true }
+    buildFeatures {
+        buildConfig = true
+        aidl true   // generate ITranslateEngine stub for AIDL binding to cloud-keyboard-libs
+    }
 
     // HeliBoard uses ndk-build; inherit the same NDK version as superapp.
     ndkVersion "28.0.13004108"

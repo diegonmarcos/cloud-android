@@ -3,6 +3,7 @@ package com.diegonmarcos.cloudkeyboard
 import android.app.Application
 import androidx.work.Configuration as WorkManagerConfiguration
 import com.diegonmarcos.superapp.media.MediaRuntime
+import com.diegonmarcos.superapp.translate.TranslateEngines
 import helium314.keyboard.latin.utils.prefs as heliboardPrefs
 
 /**
@@ -38,6 +39,9 @@ class App : Application(), WorkManagerConfiguration.Provider {
         runCatching { helium314.keyboard.latin.settings.Defaults.initDynamicDefaults(this) }
         runCatching { helium314.keyboard.latin.utils.upgradeToolbarPrefs(heliboardPrefs()) }
         runCatching { MediaRuntime.configure(BuildConfig.MEDIA_CONFIG_B64, null, BuildConfig.GIPHY_API_KEY) }
+        // Register AIDL client so libs:translate's Translator / TranslateBarView
+        // delegate to the companion cloud-keyboard-libs service (ML Kit not bundled here).
+        runCatching { TranslateEngines.client = AidlTranslateEngineClient(this) }
 
         // Seed the default enabled languages once (data-driven from
         // build.json::default_locales → BuildConfig.DEFAULT_LOCALES). Runs only on

@@ -35,11 +35,12 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
     /** Supplies the current InputConnection (the IME's getCurrentInputConnection). */
     fun interface IcProvider { fun get(): InputConnection? }
 
-    // Every language ML Kit can translate — DATA-DRIVEN from the SDK itself, no
-    // hardcoded list. "auto" (detect) is a From-only option. Sorted by display
-    // name for the picker.
+    // Every language the engine can translate — DATA-DRIVEN from the client,
+    // no hardcoded list. "auto" (detect) is a From-only option. Sorted by
+    // display name for the picker. Falls back to empty list when no client
+    // is registered (translate bar won't show languages, which is acceptable).
     private val toLangs: List<String> by lazy {
-        com.google.mlkit.nl.translate.TranslateLanguage.getAllLanguages()
+        (TranslateEngines.client?.supportedLanguages() ?: emptyList())
             .sortedBy { java.util.Locale(it).displayLanguage }
     }
     private val fromLangs: List<String> by lazy { listOf("auto") + toLangs }

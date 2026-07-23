@@ -19,6 +19,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Permission to bind the translate engine service in cloud-keyboard-libs
+         (signature-level: both apps are signed with the same constellation key). -->
+    <uses-permission android:name="com.diegonmarcos.cloudkeyboardlibs.BIND_ENGINE" />
+
+    <!-- Android 11+ package visibility: declare the companion libs package so
+         PackageManager resolves it and bindService() succeeds. -->
+    <queries>
+        <package android:name="com.diegonmarcos.cloudkeyboardlibs" />
+    </queries>
+
     <!-- WorkManager on-demand init: HeliBoard's manifest merge drops the default
          WorkManagerInitializer. Complete the on-demand setup here (App provides
          Configuration.Provider so the first getInstance() lazily initializes it). -->
