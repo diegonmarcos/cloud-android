@@ -42,8 +42,9 @@
     "node": "20"
   },
   "ui": {
-    "_doc": "Hub UI defaults baked into BuildConfig. overlay_nav_bar_default: the floating cross-app wrapper bar (NavOverlayService) is DISABLED by default — Cloud-SuperApp now owns the system-wide bar. The code stays; Configs has a toggle (persisted in prefs) for users who run Cloud-IDE standalone.",
-    "overlay_nav_bar_default": false
+    "_doc": "Hub UI defaults baked into BuildConfig. overlay_nav_bar_default: the floating cross-app wrapper bar (NavOverlayService) is DISABLED by default — Cloud-SuperApp now owns the system-wide bar. The code stays; Configs has a toggle (persisted in prefs) for users who run Cloud-IDE standalone. terminal_backend_default: which phone env the terminal SSHes into by default ('termux' or 'nix-on-droid'); the Configs 'Terminal backend' switcher overrides this per-device.",
+    "overlay_nav_bar_default": false,
+    "terminal_backend_default": "termux"
   },
   "modules": {
     "_doc": "Gradle module graph — settings.gradle iterates this (FIRE rule 6: never hardcode the list). Only the hub is an in-tree gradle module; the three forks are SEPARATE gradle/cordova projects living in their materialized tracker clones, built via `./build.sh build-fork <name>`, never included here.",

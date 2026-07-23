@@ -8,9 +8,10 @@ plugins {
 // JSON at config time and baked into BuildConfig — no parallel hardcoded list
 // in Kotlin (FIRE rule 4). Bump a value in build.json / data, get a
 // rebuilt BuildConfig on the next gradle run.
-def repoRoot   = rootDir                       // ea_cloud-ide/
-def buildJson  = new groovy.json.JsonSlurper().parse(file("$repoRoot/build.json"))
-def endpoints  = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/ide-endpoints.json"))
+def repoRoot          = rootDir                       // ea_cloud-ide/
+def buildJson         = new groovy.json.JsonSlurper().parse(file("$repoRoot/build.json"))
+def endpoints         = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/ide-endpoints.json"))
+def terminalTargets   = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/terminal-targets.json"))
 
 def runNumber  = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
 def codeBase   = (buildJson.android.version_code as Number).intValue()
@@ -27,7 +28,9 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
 }
 
 // Endpoints baked for the workspace root + 'open in app' deep-link fallbacks.
-def endpointsB64 = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64().toString()
+def endpointsB64        = groovy.json.JsonOutput.toJson(endpoints).bytes.encodeBase64().toString()
+// Terminal SSH targets baked so the runtime reads host/port/user without hardcoding.
+def terminalTargetsB64  = groovy.json.JsonOutput.toJson(terminalTargets).bytes.encodeBase64().toString()
 
 // GHCR + in-app updater config — same source of truth (build.json::release) the
 // build.sh oras-push / oras-pull / gh-release steps read. The hub's
@@ -101,7 +104,9 @@ android {
         versionCode codeFinal
         versionName "${buildJson.android.version_name} (sha-${shortSha})"
 
-        buildConfigField "String", "ENDPOINTS_JSON_B64","\"${endpointsB64}\""
+        buildConfigField "String", "ENDPOINTS_JSON_B64",          "\"${endpointsB64}\""
+        buildConfigField "String", "TERMINAL_TARGETS_JSON_B64",  "\"${terminalTargetsB64}\""
+        buildConfigField "String", "TERMINAL_BACKEND_DEFAULT",   "\"${buildJson.ui.terminal_backend_default}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
         buildConfigField "String", "LOG_SINK_URL",     "\"${logSinkUrl}\""
         buildConfigField "String", "LOG_SINK_STREAM",  "\"${logSinkStream}\""
@@ -187,6 +192,11 @@ dependencies {
     // CoroutineWorker. GhcrClient uses built-in org.json (no extra dep).
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    // Terminal SSH backend: JSch fork with modern crypto (ECDSA, Ed25519, ChaCha20).
+    // Package name stays com.jcraft.jsch — drop-in replacement.
+    implementation 'com.github.mwiede:jsch:0.2.17'
+    // WebViewCompat.addDocumentStartJavaScript — injects Transport shim before page scripts.
+    implementation 'androidx.webkit:webkit:1.11.0'
 
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test:runner:1.6.2'

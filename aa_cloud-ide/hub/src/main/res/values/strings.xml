@@ -21,6 +21,13 @@
     <string name="cfg_check_updates">Check for updates</string>
     <string name="cfg_about">About</string>
     <string name="cfg_autoupdate">Auto-update: %1$s (every %2$dh, tag \"%3$s\")</string>
+    <!-- Terminal backend switcher -->
+    <string name="cfg_terminal_backend">Terminal backend</string>
+    <string name="cfg_terminal_backend_sub">Active: %1$s · %2$s:%3$d · tap to switch</string>
+    <!-- Terminal SSH key pairing -->
+    <string name="cfg_terminal_ssh_key">Terminal SSH key</string>
+    <string name="cfg_terminal_ssh_key_sub">Tap to copy public key → add to ~/.ssh/authorized_keys in Termux &amp; Nix-on-Droid</string>
+    <string name="cfg_terminal_ssh_key_copied">Public key copied — add to ~/.ssh/authorized_keys in Termux &amp; Nix-on-Droid</string>
     <string name="upd_checking">Checking GHCR…</string>
     <string name="upd_uptodate">Up to date (%1$s)</string>
     <string name="upd_downloading">Downloading… %1$d%%</string>

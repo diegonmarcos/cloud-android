@@ -1,8 +1,12 @@
 package com.diegonmarcos.ide
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.diegonmarcos.ide.update.UpdateProgress
 import com.diegonmarcos.ide.update.Updater
@@ -51,6 +55,35 @@ class ConfigsActivity : AppCompatActivity() {
             "${BuildConfig.GHCR_NAMESPACE}/${BuildConfig.GHCR_IMAGE}:${BuildConfig.AUTO_UPDATE_TAG}",
             enabled = true,
         ) { startUpdateCheck() })
+
+        // ── Terminal backend switcher ─────────────────────────────────────
+        val currentBackend = IdePrefs.terminalBackend(this)
+        val backendTarget  = TerminalTargets.forBackend(currentBackend)
+        body.addView(Ui.appCard(
+            this, "⌨",
+            getString(R.string.cfg_terminal_backend),
+            getString(R.string.cfg_terminal_backend_sub, backendTarget.label,
+                backendTarget.host, backendTarget.port),
+            enabled = true,
+        ) {
+            val next = if (currentBackend == IdePrefs.BACKEND_TERMUX)
+                IdePrefs.BACKEND_NIXONDROID else IdePrefs.BACKEND_TERMUX
+            IdePrefs.setTerminalBackend(this, next)
+            recreate()
+        })
+
+        // ── Terminal SSH key — copy to authorized_keys ────────────────────
+        body.addView(Ui.appCard(
+            this, "🔑",
+            getString(R.string.cfg_terminal_ssh_key),
+            getString(R.string.cfg_terminal_ssh_key_sub),
+            enabled = true,
+        ) {
+            val pubKey = SshBackend(this).publicKeyOpenSsh()
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("cloud-ide-terminal pubkey", pubKey))
+            Toast.makeText(this, getString(R.string.cfg_terminal_ssh_key_copied), Toast.LENGTH_LONG).show()
+        })
 
         // ── About — the FULL SuperApp-architecture page ───────────────────
         body.addView(Ui.appCard(
