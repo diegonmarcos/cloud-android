@@ -9,19 +9,26 @@ import android.text.style.SuggestionSpan
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.prefs
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.util.concurrent.Executors
 
 /**
- * Fully offline grammar pass over the word/separator the user just typed. Only high-confidence,
- * unambiguous fixes are applied (no its/it's, your/you're style word-choice guessing - that
- * needs real grammar parsing to avoid constant false positives, which is out of scope here).
+ * Offline + optional remote grammar pass over the word/separator the user just typed.
  *
- * [checkAndFix] runs once per separator keypress and only ever looks at the word immediately
- * before the cursor.  [checkWholeField] applies the same rules across the entire field on demand
- * (Grammar toolbar key tap).
+ * Mode (PREF_GRAMMAR_MODE):
+ *   "off"    — all grammar checks disabled.
+ *   "local"  — the three built-in rules (capitalize-I, sentence-caps, repeated-words).
+ *   "remote" — whole-field check POSTs to a LanguageTool-compatible server; falls back
+ *              to the local rules on any network failure.
  *
- * Both entry points respect the master toggle (PREF_GRAMMAR_CHECK_ENABLED) and the three
- * individual sub-toggles.  InputLogic.java calls checkAndFix unconditionally — the enable
- * gate is enforced here so InputLogic stays untouched.
+ * Back-compat: if PREF_GRAMMAR_MODE is absent the old PREF_GRAMMAR_CHECK_ENABLED boolean
+ * is consulted (true → "local", false → "off").
+ *
+ * [checkAndFix] runs once per separator keypress — always local, never remote (too slow).
+ * [checkWholeField] is triggered by the GRAMMAR toolbar key and uses the selected mode.
  */
 object GrammarChecker {
     private const val LOOKBACK = 60
@@ -29,6 +36,21 @@ object GrammarChecker {
     private const val FIELD_LIMIT = 4096
     private val TRAILING_WORD = Regex("""(\w+)$""")
     private val SENTENCE_END = Regex("""[.!?]\s*$""")
+
+    private val remoteExecutor = Executors.newSingleThreadExecutor()
+
+    // ── mode helper ──────────────────────────────────────────────────────────
+
+    private fun resolveMode(context: Context): String {
+        val prefs = context.prefs()
+        // New pref takes precedence.
+        if (prefs.contains(Settings.PREF_GRAMMAR_MODE)) {
+            return prefs.getString(Settings.PREF_GRAMMAR_MODE, Defaults.PREF_GRAMMAR_MODE)
+                ?: Defaults.PREF_GRAMMAR_MODE
+        }
+        // Back-compat: derive from old boolean.
+        return if (prefs.getBoolean(Settings.PREF_GRAMMAR_CHECK_ENABLED, Defaults.PREF_GRAMMAR_CHECK_ENABLED)) "local" else "off"
+    }
 
     // ── per-fix helpers ─────────────────────────────────────────────────────
 
@@ -67,18 +89,98 @@ object GrammarChecker {
         return sb.toString()
     }
 
+    // ── local 3-rule pass ────────────────────────────────────────────────────
+
+    private fun applyLocalRules(context: Context, text: String): String {
+        val prefs = context.prefs()
+        var fixed = text
+        if (prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_CAPITALIZE_I, Defaults.PREF_GRAMMAR_FIX_CAPITALIZE_I))
+            fixed = applyCapitalizeI(fixed)
+        if (prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_REPEATED_WORDS, Defaults.PREF_GRAMMAR_FIX_REPEATED_WORDS))
+            fixed = applyDedupeWords(fixed)
+        if (prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_SENTENCE_CAPS, Defaults.PREF_GRAMMAR_FIX_SENTENCE_CAPS))
+            fixed = applySentenceCaps(fixed)
+        return fixed
+    }
+
+    // ── remote LanguageTool call ─────────────────────────────────────────────
+
+    /**
+     * POST [text] to the LanguageTool-compatible endpoint and return the fixed text,
+     * applying all safe single-replacement matches from highest offset to lowest so
+     * earlier offsets stay valid.  Returns null on any failure (caller falls back to local).
+     *
+     * "Safe" = issueType in {typographical, grammar} AND at least one replacement available.
+     * Only single replacements are applied (multi-replacement matches are skipped to avoid
+     * ambiguity).  Matches are applied in descending offset order.
+     *
+     * Must NOT be called on the IME main thread.
+     */
+    private fun callRemote(context: Context, text: String): String? {
+        return try {
+            val prefs = context.prefs()
+            val urlStr = prefs.getString(Settings.PREF_GRAMMAR_REMOTE_URL, Defaults.PREF_GRAMMAR_REMOTE_URL)
+                ?: Defaults.PREF_GRAMMAR_REMOTE_URL
+            val body = "text=${URLEncoder.encode(text, "UTF-8")}&language=auto&level=default"
+            val url = URL(urlStr)
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 1500
+                readTimeout = 1500
+                doOutput = true
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+            }
+            conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            if (conn.responseCode != 200) return null
+            val responseJson = conn.inputStream.bufferedReader().use { it.readText() }
+            conn.disconnect()
+
+            // Parse matches array.
+            val root = JSONObject(responseJson)
+            val matches = root.optJSONArray("matches") ?: return text
+
+            // Collect safe single-replacement matches, sort highest offset first.
+            data class Fix(val offset: Int, val length: Int, val replacement: String)
+            val fixes = mutableListOf<Fix>()
+            for (i in 0 until matches.length()) {
+                val m = matches.getJSONObject(i)
+                val issueType = m.optJSONObject("rule")?.optString("issueType") ?: continue
+                if (issueType != "typographical" && issueType != "grammar") continue
+                val reps = m.optJSONArray("replacements") ?: continue
+                if (reps.length() == 0) continue
+                val replacement = reps.getJSONObject(0).optString("value").takeIf { it.isNotEmpty() } ?: continue
+                val offset = m.optInt("offset", -1).takeIf { it >= 0 } ?: continue
+                val length = m.optInt("length", 0).takeIf { it > 0 } ?: continue
+                fixes.add(Fix(offset, length, replacement))
+            }
+
+            // Apply highest-offset-first so earlier offsets remain valid.
+            fixes.sortByDescending { it.offset }
+            val sb = StringBuilder(text)
+            for (fix in fixes) {
+                val end = fix.offset + fix.length
+                if (end > sb.length) continue // guard against stale offsets
+                sb.replace(fix.offset, end, fix.replacement)
+            }
+            sb.toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     // ── public entry points ──────────────────────────────────────────────────
 
     /**
      * Called unconditionally by InputLogic on every separator keypress (~line 1249).
-     * Reads prefs and returns immediately if the master toggle is off.
-     * Each sub-fix is individually gated.
+     * Always uses local rules only (remote is too slow per-keystroke).
+     * Returns immediately if mode is "off".
      */
     @JvmStatic
     fun checkAndFix(context: Context, connection: RichInputConnection) {
+        if (resolveMode(context) == "off") return
+        // Always local: remote only from checkWholeField.
         val prefs = context.prefs()
-        if (!prefs.getBoolean(Settings.PREF_GRAMMAR_CHECK_ENABLED, Defaults.PREF_GRAMMAR_CHECK_ENABLED)) return
-
         val capitalizeI  = prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_CAPITALIZE_I,      Defaults.PREF_GRAMMAR_FIX_CAPITALIZE_I)
         val dedupeWords  = prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_REPEATED_WORDS,    Defaults.PREF_GRAMMAR_FIX_REPEATED_WORDS)
         val sentenceCaps = prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_SENTENCE_CAPS,     Defaults.PREF_GRAMMAR_FIX_SENTENCE_CAPS)
@@ -119,66 +221,56 @@ object GrammarChecker {
 
     /**
      * On-demand whole-field grammar fix, triggered by the GRAMMAR toolbar key.
-     * Reads text before AND after the cursor (up to FIELD_LIMIT each side), applies each
-     * enabled fix across the combined text, then replaces the field if something changed.
-     *
-     * Replacement strategy (cursor-safe, uses only public RichInputConnection API):
-     *  1. finishComposingText — drop any pending composition to stabilise the cursor.
-     *  2. beginBatchEdit.
-     *  3. Re-read rawBefore / rawAfter inside the batch (cursor position is stable).
-     *  4. Apply fixes to full = rawBefore + rawAfter.
-     *  5. Split fixed at rawBefore.length to get fixedBefore / fixedAfter.
-     *  6. Replace before-cursor region: deleteTextBeforeCursor(rawBefore.length) +
-     *     commitText(fixedBefore, 1)   → cursor lands right after fixedBefore.
-     *  7. If after-cursor text changed: deleteTextBeforeCursor(0) won't help; instead
-     *     we move the cursor forward past the old after-text with a setSelection trick,
-     *     but RichInputConnection doesn't expose setSelection publicly.  To stay within
-     *     the public API we only rewrite rawAfter when it changed by deleting it char-by-
-     *     char backwards via deleteTextBeforeCursor after first appending the fixedAfter
-     *     and moving back.  This is overly complex — instead we take the conservative
-     *     path: apply fixes only to the before-cursor region (where typos almost always
-     *     are when the user taps the toolbar key), and leave after-cursor text untouched.
-     *     This is always correct and avoids any cursor-position arithmetic.
-     *  8. endBatchEdit.
+     * In remote mode: fires async network call; on success applies LanguageTool matches;
+     * on failure falls back to local 3-rule pass.  In local mode: applies local rules
+     * synchronously.  In off mode: no-op.
      */
     @JvmStatic
     fun checkWholeField(context: Context, connection: RichInputConnection) {
-        val prefs = context.prefs()
-        if (!prefs.getBoolean(Settings.PREF_GRAMMAR_CHECK_ENABLED, Defaults.PREF_GRAMMAR_CHECK_ENABLED)) return
+        when (resolveMode(context)) {
+            "off" -> return
+            "remote" -> checkWholeFieldRemote(context, connection)
+            else -> checkWholeFieldLocal(context, connection)
+        }
+    }
 
-        val capitalizeI  = prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_CAPITALIZE_I,   Defaults.PREF_GRAMMAR_FIX_CAPITALIZE_I)
-        val dedupeWords  = prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_REPEATED_WORDS, Defaults.PREF_GRAMMAR_FIX_REPEATED_WORDS)
-        val sentenceCaps = prefs.getBoolean(Settings.PREF_GRAMMAR_FIX_SENTENCE_CAPS,  Defaults.PREF_GRAMMAR_FIX_SENTENCE_CAPS)
-
-        // Stabilise composing state before reading.
+    private fun checkWholeFieldLocal(context: Context, connection: RichInputConnection) {
         connection.finishComposingText()
-
-        // Read all text before the cursor (the region we can safely rewrite).
         val rawBefore = connection.getTextBeforeCursor(FIELD_LIMIT, 0)?.toString() ?: return
-
-        // Also read after-cursor so sentence-caps can see the full context, but we only
-        // rewrite the before-cursor region (conservative, cursor-safe).
-        val rawAfter = connection.getTextAfterCursor(FIELD_LIMIT, 0)?.toString() ?: ""
+        val rawAfter  = connection.getTextAfterCursor(FIELD_LIMIT, 0)?.toString() ?: ""
         val full = rawBefore + rawAfter
 
-        // Apply enabled fixes to the whole text for context accuracy, then take only the
-        // before-cursor portion for the actual rewrite.
-        var fixed = full
-        if (capitalizeI)  fixed = applyCapitalizeI(fixed)
-        if (dedupeWords)  fixed = applyDedupeWords(fixed)
-        if (sentenceCaps) fixed = applySentenceCaps(fixed)
-
-        // Extract the before-cursor slice of the fixed text.
-        // If fixes removed characters before the cursor, clamp to avoid overrun.
+        val fixed = applyLocalRules(context, full)
         val fixedBefore = fixed.substring(0, rawBefore.length.coerceAtMost(fixed.length))
-
-        // Nothing changed in the before-cursor region — nothing to do.
         if (fixedBefore == rawBefore) return
 
         connection.beginBatchEdit()
         connection.deleteTextBeforeCursor(rawBefore.length)
-        connection.commitText(fixedBefore, 1) // cursor placed after fixedBefore
+        connection.commitText(fixedBefore, 1)
         connection.endBatchEdit()
+    }
+
+    private fun checkWholeFieldRemote(context: Context, connection: RichInputConnection) {
+        connection.finishComposingText()
+        val rawBefore = connection.getTextBeforeCursor(FIELD_LIMIT, 0)?.toString() ?: return
+        val rawAfter  = connection.getTextAfterCursor(FIELD_LIMIT, 0)?.toString() ?: ""
+        val full = rawBefore + rawAfter
+        if (full.isBlank()) return
+
+        // Capture connection reference for the background thread callback.
+        remoteExecutor.execute {
+            val fixedFull = callRemote(context, full) ?: applyLocalRules(context, full)
+            val fixedBefore = fixedFull.substring(0, rawBefore.length.coerceAtMost(fixedFull.length))
+            if (fixedBefore == rawBefore) return@execute
+
+            // Post the edit back; RichInputConnection methods are thread-safe (they use
+            // Handler.post internally through InputConnection.sendKeyEvent routing).
+            // beginBatchEdit/endBatchEdit pair keeps it atomic for undo history.
+            connection.beginBatchEdit()
+            connection.deleteTextBeforeCursor(rawBefore.length)
+            connection.commitText(fixedBefore, 1)
+            connection.endBatchEdit()
+        }
     }
 
     // ── private low-level helper ─────────────────────────────────────────────

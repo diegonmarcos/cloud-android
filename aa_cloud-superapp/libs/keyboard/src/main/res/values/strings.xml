@@ -243,6 +243,12 @@
     <string name="grammar_check_now">Fix current text</string>
     <string name="grammar_check_now_summary">Run grammar fixes over the whole current field</string>
     <string name="grammar_category_fixes">Fixes</string>
+    <string name="grammar_mode_title">Grammar mode</string>
+    <string name="grammar_mode_off">Off</string>
+    <string name="grammar_mode_local">Local</string>
+    <string name="grammar_mode_remote">Remote</string>
+    <string name="grammar_remote_url_title">LanguageTool server URL</string>
+    <string name="grammar_remote_url_summary">Used in Remote mode for whole-field checks</string>
     <!-- Standalone Cloud Keyboard self-update entry (Configs menu) -->
     <string name="keyboard_update">Update Cloud Keyboard</string>
     <string name="keyboard_update_summary">Download and install the latest version</string>

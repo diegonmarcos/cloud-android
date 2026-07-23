@@ -15,7 +15,9 @@ import helium314.keyboard.latin.utils.previewDark
 import helium314.keyboard.settings.SearchSettingsScreen
 import helium314.keyboard.settings.Setting
 import helium314.keyboard.settings.initPreview
+import helium314.keyboard.settings.preferences.ListPreference
 import helium314.keyboard.settings.preferences.SwitchPreference
+import helium314.keyboard.settings.preferences.TextInputPreference
 
 // SuperApp addition (patch 0002) — Grammar check settings screen.
 // Mirrors the shape of TextCorrectionScreen / createCorrectionSettings.
@@ -23,11 +25,15 @@ import helium314.keyboard.settings.preferences.SwitchPreference
 fun createGrammarSettings(context: Context): List<Setting> = listOf(
     Setting(
         context,
-        Settings.PREF_GRAMMAR_CHECK_ENABLED,
-        R.string.grammar_check_enabled,
-        R.string.grammar_check_enabled_summary,
-    ) {
-        SwitchPreference(it, Defaults.PREF_GRAMMAR_CHECK_ENABLED)
+        Settings.PREF_GRAMMAR_MODE,
+        R.string.grammar_mode_title,
+    ) { setting ->
+        val items = listOf(
+            context.getString(R.string.grammar_mode_off) to "off",
+            context.getString(R.string.grammar_mode_local) to "local",
+            context.getString(R.string.grammar_mode_remote) to "remote",
+        )
+        ListPreference(setting, items, Defaults.PREF_GRAMMAR_MODE)
     },
     Setting(
         context,
@@ -50,16 +56,25 @@ fun createGrammarSettings(context: Context): List<Setting> = listOf(
     ) {
         SwitchPreference(it, Defaults.PREF_GRAMMAR_FIX_REPEATED_WORDS)
     },
+    Setting(
+        context,
+        Settings.PREF_GRAMMAR_REMOTE_URL,
+        R.string.grammar_remote_url_title,
+        R.string.grammar_remote_url_summary,
+    ) { setting ->
+        TextInputPreference(setting, Defaults.PREF_GRAMMAR_REMOTE_URL)
+    },
 )
 
 @Composable
 fun GrammarCheckScreen(onClickBack: () -> Unit) {
     val items = listOf(
-        Settings.PREF_GRAMMAR_CHECK_ENABLED,
+        Settings.PREF_GRAMMAR_MODE,
         R.string.grammar_category_fixes,
         Settings.PREF_GRAMMAR_FIX_CAPITALIZE_I,
         Settings.PREF_GRAMMAR_FIX_SENTENCE_CAPS,
         Settings.PREF_GRAMMAR_FIX_REPEATED_WORDS,
+        Settings.PREF_GRAMMAR_REMOTE_URL,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,

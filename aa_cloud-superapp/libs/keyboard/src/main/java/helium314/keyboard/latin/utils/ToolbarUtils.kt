@@ -137,7 +137,7 @@ val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java))
 // map to MOVE_START/END_OF_LINE. SETTINGS (Config) is intentionally NOT here —
 // it lives in the pinned/fixed list below instead.
 val defaultToolbarPref by lazy {
-    val default = listOf(FULL_LEFT, WORD_LEFT, UNDO, CLIPBOARD, TRANSLATE, GRAMMAR, NUMPAD, VOICE, SELECT_ALL, REDO, WORD_RIGHT, FULL_RIGHT)
+    val default = listOf(FULL_LEFT, WORD_LEFT, UNDO, CLIPBOARD, TRANSLATE, NUMPAD, VOICE, SELECT_ALL, REDO, WORD_RIGHT, FULL_RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
