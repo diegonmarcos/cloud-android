@@ -63,6 +63,13 @@ class ConfigsActivity : AppCompatActivity() {
             enabled = true,
         ) { startUpdateCheck() })
 
+        // ── Terminal setup instructions (shown on the page) ───────────────
+        body.addView(Ui.header(
+            this,
+            getString(R.string.cfg_terminal_setup_title),
+            getString(R.string.cfg_terminal_setup_steps),
+        ))
+
         // ── Terminal backend switcher ─────────────────────────────────────
         val currentBackend = IdePrefs.terminalBackend(this)
         val backendTarget  = TerminalTargets.forBackend(currentBackend)

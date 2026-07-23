@@ -21,6 +21,9 @@
     <string name="cfg_check_updates">Check for updates</string>
     <string name="cfg_about">About</string>
     <string name="cfg_autoupdate">Auto-update: %1$s (every %2$dh, tag \"%3$s\")</string>
+    <!-- Terminal setup instructions (shown on the Configs page) -->
+    <string name="cfg_terminal_setup_title">Terminal setup</string>
+    <string name="cfg_terminal_setup_steps">The terminal SSHes into termux / nix-on-droid. One-time setup:\n\n1. Terminal SSH key → copy → add to ~/.ssh/authorized_keys in the env.\n2. Start sshd in the env (termux :8023 · nix-on-droid :8022).\n3. Terminal backend → pick termux or nix-on-droid.\n4. Terminal connection → set host/port/user, Test connection until ✓.\n5. Open the terminal from Home.</string>
     <!-- Terminal backend switcher -->
     <string name="cfg_terminal_backend">Terminal backend</string>
     <string name="cfg_terminal_backend_sub">Active: %1$s · %2$s:%3$d · tap to switch</string>
