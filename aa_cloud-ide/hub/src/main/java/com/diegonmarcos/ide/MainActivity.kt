@@ -60,7 +60,28 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.loadUrl("file:///android_asset/frontend/index.html")
-        setContentView(webView)
+
+        // Floating ⚙ → native Configs (terminal backend switcher, SSH connection
+        // editor, key pairing, setup steps). The WebView has no chrome, so this
+        // is the only entry point into ConfigsActivity.
+        val frame = android.widget.FrameLayout(this)
+        frame.addView(webView)
+        frame.addView(android.widget.TextView(this).apply {
+            text = "⚙"
+            textSize = 22f
+            setTextColor(0xFFE9D8FD.toInt())
+            setBackgroundColor(0x99000000.toInt())
+            setPadding(dpx(12), dpx(8), dpx(12), dpx(8))
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.BOTTOM or android.view.Gravity.END,
+            ).apply { val m = dpx(14); rightMargin = m; bottomMargin = m }
+            setOnClickListener {
+                startActivity(android.content.Intent(this@MainActivity, ConfigsActivity::class.java))
+            }
+        })
+        setContentView(frame)
     }
 
     override fun onBackPressed() {
@@ -76,6 +97,8 @@ class MainActivity : AppCompatActivity() {
         ssh.disconnectAll()
         super.onDestroy()
     }
+
+    private fun dpx(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     companion object {
         /**
