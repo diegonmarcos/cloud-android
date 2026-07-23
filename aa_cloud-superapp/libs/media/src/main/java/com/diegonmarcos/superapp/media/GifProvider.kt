@@ -1,9 +1,15 @@
 package com.diegonmarcos.superapp.media
 
 import android.net.Uri
+import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+
+private const val TAG = "GifProvider"
+
+/** Hide the api key before a URL reaches logcat. */
+private fun redact(spec: String): String = spec.replace(Regex("(api_key|key)=[^&]*"), "$1=***")
 
 /**
  * A GIF search backend. Two impls, chosen data-driven by
@@ -27,10 +33,18 @@ private fun httpGetJson(spec: String): JSONObject? = runCatching {
         connectTimeout = 8000; readTimeout = 8000; requestMethod = "GET"
     }
     try {
-        if (c.responseCode != 200) return null
+        val code = c.responseCode
+        if (code != 200) {
+            // Make an empty GIF tab diagnosable instead of silent: a bad/missing key
+            // is 401/403, a rate limit is 429. Without this the failure is
+            // indistinguishable from "the search genuinely had no results".
+            val body = runCatching { c.errorStream?.bufferedReader()?.use { it.readText() } }.getOrNull()
+            Log.w(TAG, "GIF fetch HTTP $code ${redact(spec)} ${body?.take(200).orEmpty()}")
+            return null
+        }
         JSONObject(c.inputStream.bufferedReader().use { it.readText() })
     } finally { c.disconnect() }
-}.getOrNull()
+}.onFailure { Log.w(TAG, "GIF fetch failed ${redact(spec)}: ${it.message}") }.getOrNull()
 
 /** Tenor v2 (Google). Trending = /featured, else /search. */
 private class Tenor(private val base: String, private val key: String) : GifProvider {

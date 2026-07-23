@@ -30,6 +30,7 @@ import helium314.keyboard.settings.screens.PersonalDictionaryScreen
 import helium314.keyboard.settings.screens.PreferencesScreen
 import helium314.keyboard.settings.screens.SecondaryLayoutScreen
 import helium314.keyboard.settings.screens.SubtypeScreen
+import helium314.keyboard.settings.screens.GrammarCheckScreen
 import helium314.keyboard.settings.screens.TextCorrectionScreen
 import helium314.keyboard.settings.screens.ToolbarScreen
 import helium314.keyboard.settings.screens.gesturedata.GestureDataScreen
@@ -69,6 +70,7 @@ fun SettingsNavHost(
             MainSettingsScreen(
                 onClickAbout = { navController.navigate(SettingsDestination.About) },
                 onClickTextCorrection = { navController.navigate(SettingsDestination.TextCorrection) },
+                onClickGrammarCheck = { navController.navigate(SettingsDestination.GrammarCheck) }, // SuperApp patch 0002
                 onClickPreferences = { navController.navigate(SettingsDestination.Preferences) },
                 onClickToolbar = { navController.navigate(SettingsDestination.Toolbar) },
                 onClickGestureTyping = { navController.navigate(SettingsDestination.GestureTyping) },
@@ -86,6 +88,9 @@ fun SettingsNavHost(
         }
         composable(SettingsDestination.TextCorrection) {
             TextCorrectionScreen(onClickBack = ::goBack)
+        }
+        composable(SettingsDestination.GrammarCheck) { // SuperApp addition (patch 0002)
+            GrammarCheckScreen(onClickBack = ::goBack)
         }
         composable(SettingsDestination.Preferences) {
             PreferencesScreen(onClickBack = ::goBack)
@@ -148,6 +153,7 @@ object SettingsDestination {
     const val Settings = "settings"
     const val About = "about"
     const val TextCorrection = "text_correction"
+    const val GrammarCheck = "grammar_check" // SuperApp addition (patch 0002)
     const val Preferences = "preferences"
     const val Toolbar = "toolbar"
     const val GestureTyping = "gesture_typing"

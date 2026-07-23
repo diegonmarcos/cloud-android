@@ -55,6 +55,8 @@ public final class EmojiPageKeyboardView extends KeyboardView implements
     private static final boolean LOG = false;
     private static final long KEY_PRESS_DELAY_TIME = 250;  // msec
     private static final long KEY_RELEASE_DELAY_TIME = 30;  // msec
+    // patch 0010: hold 5 seconds on any emoji to pin/unpin it
+    private static final long EMOJI_PIN_HOLD_TIME = 5000;  // msec
 
     private static final EmojiViewCallback EMPTY_EMOJI_VIEW_CALLBACK = new EmojiViewCallback() {
         @Override
@@ -65,6 +67,9 @@ public final class EmojiPageKeyboardView extends KeyboardView implements
         public String getDescription(String emoji) {
             return null;
         }
+        // patch 0010
+        @Override
+        public void onPinEmoji(final Key key) {}
     };
 
     private EmojiViewCallback mEmojiViewCallback = EMPTY_EMOJI_VIEW_CALLBACK;
@@ -77,6 +82,8 @@ public final class EmojiPageKeyboardView extends KeyboardView implements
     private Key mCurrentKey;
     private Runnable mPendingKeyDown;
     private Runnable mPendingLongPress;
+    // patch 0010: independent 5-second timer for pin/unpin (additive to the ~500ms skin-tone timer)
+    private Runnable mPendingPinEmoji;
     private final Handler mHandler;
 
     // More keys keyboard
@@ -349,6 +356,9 @@ public final class EmojiPageKeyboardView extends KeyboardView implements
     private void registerLongPress(final Key key) {
         mPendingLongPress = () -> onLongPressed(key);
         mHandler.postDelayed(mPendingLongPress, getLongPressTimeout());
+        // patch 0010: start the independent 5-second pin timer alongside the ~500ms skin-tone timer
+        mPendingPinEmoji = () -> mEmojiViewCallback.onPinEmoji(key);
+        mHandler.postDelayed(mPendingPinEmoji, EMOJI_PIN_HOLD_TIME);
     }
 
     void callListenerOnReleaseKey(final Key releasedKey, final boolean withKeyRegistering) {
@@ -380,6 +390,9 @@ public final class EmojiPageKeyboardView extends KeyboardView implements
     public void cancelLongPress() {
         mHandler.removeCallbacks(mPendingLongPress);
         mPendingLongPress = null;
+        // patch 0010: also cancel the pin timer (finger moved off key or released before 5s)
+        mHandler.removeCallbacks(mPendingPinEmoji);
+        mPendingPinEmoji = null;
     }
 
     public boolean onDown(final MotionEvent e) {

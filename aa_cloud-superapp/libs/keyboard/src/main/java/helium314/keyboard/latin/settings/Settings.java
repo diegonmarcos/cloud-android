@@ -201,8 +201,16 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     // Emoji
     public static final String PREF_EMOJI_MAX_SDK = "emoji_max_sdk";
     public static final String PREF_EMOJI_RECENT_KEYS = "emoji_recent_keys";
+    // SuperApp addition — pinned emojis grid (5s-hold to pin), mirrors recent keys
+    public static final String PREF_EMOJI_PINNED_KEYS = "emoji_pinned_keys";
     public static final String PREF_LAST_SHOWN_EMOJI_CATEGORY_ID = "last_shown_emoji_category_id";
     public static final String PREF_LAST_SHOWN_EMOJI_CATEGORY_PAGE_ID = "last_shown_emoji_category_page_id";
+
+    // Grammar check (SuperApp addition — offline GrammarChecker)
+    public static final String PREF_GRAMMAR_CHECK_ENABLED = "grammar_check_enabled";
+    public static final String PREF_GRAMMAR_FIX_CAPITALIZE_I = "grammar_fix_capitalize_i";
+    public static final String PREF_GRAMMAR_FIX_SENTENCE_CAPS = "grammar_fix_sentence_caps";
+    public static final String PREF_GRAMMAR_FIX_REPEATED_WORDS = "grammar_fix_repeated_words";
 
     public static final String PREF_VERSION_CODE = "version_code";
     public static final String PREF_LIBRARY_CHECKSUM = "lib_checksum";
@@ -223,7 +231,7 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     private static boolean reloadOnChanged(String key) {
         return switch (key) {
             case PREF_LAST_SHOWN_EMOJI_CATEGORY_PAGE_ID, PREF_LAST_SHOWN_EMOJI_CATEGORY_ID, PREF_EMOJI_RECENT_KEYS,
-                 PREF_DONT_SHOW_MISSING_DICTIONARY_DIALOG, PREF_SELECTED_SUBTYPE -> false;
+                 PREF_EMOJI_PINNED_KEYS, PREF_DONT_SHOW_MISSING_DICTIONARY_DIALOG, PREF_SELECTED_SUBTYPE -> false;
             default -> !key.startsWith(PREF_SAVED_APP_SUBTYPE_PREFIX) && !key.startsWith("floating_pos");
         };
     }

@@ -748,6 +748,12 @@ public final class InputLogic {
                 // live translate bar above the keys (the main translate UI).
                 mLatinIME.toggleTranslateBar();
                 break;
+            case KeyCode.GRAMMAR:
+                // SuperApp addition (patch 0002): TAP → run the whole-field grammar
+                // fixer across text before the cursor (capitalize "i", sentence caps,
+                // dedupe repeated words).  Respects the per-user pref toggles.
+                helium314.keyboard.latin.GrammarChecker.checkWholeField(mLatinIME, mConnection);
+                break;
             case KeyCode.TRANSLATE_BAR: {
                 // SuperApp addition (patch 0001): LONG-PRESS → quick in-place
                 // translate of the selection (or whole field) into the active

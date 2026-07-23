@@ -180,7 +180,13 @@ object Defaults {
     const val PREF_SPACE_BAR_TEXT = ""
     const val PREF_TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss"
     const val PREF_EMOJI_RECENT_KEYS = ""
+    const val PREF_EMOJI_PINNED_KEYS = ""
     const val PREF_LAST_SHOWN_EMOJI_CATEGORY_PAGE_ID = 0
+    // Grammar check (SuperApp addition)
+    const val PREF_GRAMMAR_CHECK_ENABLED = true
+    const val PREF_GRAMMAR_FIX_CAPITALIZE_I = true
+    const val PREF_GRAMMAR_FIX_SENTENCE_CAPS = true
+    const val PREF_GRAMMAR_FIX_REPEATED_WORDS = true
     const val PREF_SHOW_DEBUG_SETTINGS = false
     val PREF_DEBUG_MODE = BuildConfig.DEBUG
     const val PREF_SHOW_SUGGESTION_INFOS = false

@@ -91,6 +91,7 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
     FLOATING -> KeyCode.TOGGLE_FLOATING_WINDOW
     BACKGROUND_GATHERING -> KeyCode.BACKGROUND_GATHERING
     TRANSLATE -> KeyCode.TRANSLATE // SuperApp addition (patch 0001)
+    GRAMMAR -> KeyCode.GRAMMAR    // SuperApp addition (patch 0002)
 }
 
 fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
@@ -111,6 +112,7 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
     PAGE_DOWN -> KeyCode.MOVE_END_OF_PAGE
     BACKGROUND_GATHERING -> KeyCode.BACKGROUND_GATHERING_TEMP_OFF
     TRANSLATE -> KeyCode.TRANSLATE_BAR // SuperApp addition (patch 0001) — long-press opens the live translate bar
+    GRAMMAR -> KeyCode.UNSPECIFIED     // SuperApp addition (patch 0002) — no long-press action defined
     else -> KeyCode.UNSPECIFIED
 }
 
@@ -119,7 +121,8 @@ enum class ToolbarKey {
     VOICE, CLIPBOARD, NUMPAD, UNDO, REDO, SETTINGS, SELECT_ALL, SELECT_WORD, COPY, CUT, PASTE, ONE_HANDED, FLOATING, SPLIT,
     INCOGNITO, AUTOCORRECT, CLEAR_CLIPBOARD, CLOSE_HISTORY, EMOJI, LEFT, RIGHT, UP, DOWN, WORD_LEFT, WORD_RIGHT,
     PAGE_UP, PAGE_DOWN, FULL_LEFT, FULL_RIGHT, PAGE_START, PAGE_END, BACKGROUND_GATHERING,
-    TRANSLATE // SuperApp addition (patch 0001) — on-device ML Kit translate to active subtype language
+    TRANSLATE, // SuperApp addition (patch 0001) — on-device ML Kit translate to active subtype language
+    GRAMMAR    // SuperApp addition (patch 0002) — on-demand whole-field grammar fix
 }
 
 enum class ToolbarMode {
@@ -129,12 +132,12 @@ enum class ToolbarMode {
 val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java)) { it.toString().lowercase(Locale.US) }
 
 // SuperApp default toolbar order (left -> right): all-to-left (line start),
-// word-left, undo, clipboard, translate, number keyboard, voice input,
+// word-left, undo, clipboard, translate, grammar, number keyboard, voice input,
 // select all, redo, word-right, all-to-right (line end). FULL_LEFT/FULL_RIGHT
 // map to MOVE_START/END_OF_LINE. SETTINGS (Config) is intentionally NOT here —
 // it lives in the pinned/fixed list below instead.
 val defaultToolbarPref by lazy {
-    val default = listOf(FULL_LEFT, WORD_LEFT, UNDO, CLIPBOARD, TRANSLATE, NUMPAD, VOICE, SELECT_ALL, REDO, WORD_RIGHT, FULL_RIGHT)
+    val default = listOf(FULL_LEFT, WORD_LEFT, UNDO, CLIPBOARD, TRANSLATE, GRAMMAR, NUMPAD, VOICE, SELECT_ALL, REDO, WORD_RIGHT, FULL_RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }

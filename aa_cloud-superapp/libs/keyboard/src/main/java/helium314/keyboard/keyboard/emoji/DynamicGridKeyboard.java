@@ -45,6 +45,8 @@ final class DynamicGridKeyboard extends Keyboard {
     private final int mMaxKeyCount;
     private final boolean mFixedRowCount;
     private final boolean mIsRecents;
+    // patch 0010: true when this keyboard backs the pinned-emoji category
+    private final boolean mIsPinned;
     private final ArrayDeque<GridKey> mGridKeys = new ArrayDeque<>();
     private final ArrayDeque<Key> mPendingKeys = new ArrayDeque<>();
 
@@ -83,6 +85,7 @@ final class DynamicGridKeyboard extends Keyboard {
         mMaxKeyCount = fixedRowCount? maxCount * getOccupiedColumnCount() : maxCount;
         mFixedRowCount = fixedRowCount;
         mIsRecents = categoryId == EmojiCategory.ID_RECENTS;
+        mIsPinned = categoryId == EmojiCategory.ID_PINNED; // patch 0010
         mPrefs = prefs;
     }
 
@@ -173,16 +176,16 @@ final class DynamicGridKeyboard extends Keyboard {
         }
         synchronized (mLock) {
             mCachedGridKeys = null;
-            // When a key is added to recents keyboard, we don't want to keep its popup keys
+            // When a key is added to recents/pinned keyboard, we don't want to keep its popup keys
             // neither its hint label. Also, we make sure its background type is matching our keyboard
             // if key comes from another keyboard (ie. a {@link PopupKeysKeyboard}).
-            final boolean dropPopupKeys = mIsRecents;
+            final boolean dropPopupKeys = mIsRecents || mIsPinned; // patch 0010: pinned also drops popup keys
             // Check if hint was a more emoji indicator and prevent its copy if popup keys aren't copied
             final boolean dropHintLabel = dropPopupKeys && EMOJI_HINT_LABEL.equals(usedKey.getHintLabel());
             final GridKey key = new GridKey(usedKey,
                     dropPopupKeys ? null : usedKey.getPopupKeys(),
                     dropHintLabel ? null : usedKey.getHintLabel(),
-                    mIsRecents ? Key.BACKGROUND_TYPE_EMPTY : usedKey.getBackgroundType());
+                    (mIsRecents || mIsPinned) ? Key.BACKGROUND_TYPE_EMPTY : usedKey.getBackgroundType());
             while (mGridKeys.remove(key)) {
                 // Remove duplicate keys.
             }
@@ -220,6 +223,66 @@ final class DynamicGridKeyboard extends Keyboard {
         }
         final String jsonStr = JsonUtils.listToJsonStr(keys);
         mPrefs.edit().putString(Settings.PREF_EMOJI_RECENT_KEYS, jsonStr).apply();
+    }
+
+    // patch 0010: persist pinned-emoji grid to PREF_EMOJI_PINNED_KEYS
+    private void savePinnedKeys() {
+        final ArrayList<Object> keys = new ArrayList<>();
+        for (final Key key : mGridKeys) {
+            if (key.getOutputText() != null) {
+                keys.add(key.getOutputText());
+            } else {
+                keys.add(key.getCode());
+            }
+        }
+        final String jsonStr = JsonUtils.listToJsonStr(keys);
+        mPrefs.edit().putString(Settings.PREF_EMOJI_PINNED_KEYS, jsonStr).apply();
+    }
+
+    // patch 0010: toggle a key in/out of the pinned grid and persist.
+    // Returns true if the key was added (pinned), false if it was removed (unpinned).
+    public boolean addOrRemovePinnedKey(final Key key) {
+        synchronized (mLock) {
+            final GridKey probe = new GridKey(key, null, null, Key.BACKGROUND_TYPE_EMPTY);
+            if (mGridKeys.remove(probe)) {
+                mCachedGridKeys = null;
+                // Recompute coordinates after removal
+                int index = 0;
+                for (final GridKey gk : mGridKeys) {
+                    while (mEmptyColumnIndices.contains(index % mColumnsNum)) index++;
+                    gk.updateCoordinates(getKeyX0(index), getKeyY0(index),
+                            getKeyX1(index), getKeyY1(index));
+                    index++;
+                }
+                savePinnedKeys();
+                return false; // unpinned
+            }
+        }
+        // Not found — add it first (like recents)
+        addKey(key, true);
+        synchronized (mLock) {
+            savePinnedKeys();
+        }
+        return true; // pinned
+    }
+
+    // patch 0010: load pinned keys from PREF_EMOJI_PINNED_KEYS (mirrors loadRecentKeys)
+    public void loadPinnedKeys(final Collection<DynamicGridKeyboard> keyboards) {
+        final String str = mPrefs.getString(Settings.PREF_EMOJI_PINNED_KEYS, Defaults.PREF_EMOJI_PINNED_KEYS);
+        final List<Object> keys = JsonUtils.jsonStrToList(str);
+        for (final Object o : keys) {
+            final Key key;
+            if (o instanceof Integer) {
+                final int code = (Integer) o;
+                key = getKeyByCode(keyboards, code);
+            } else if (o instanceof final String outputText) {
+                key = getKeyByOutputText(keyboards, outputText);
+            } else {
+                Log.w(TAG, "Invalid pinned object: " + o);
+                continue;
+            }
+            addKeyLast(key);
+        }
     }
 
     private Key getKeyByCode(final Collection<DynamicGridKeyboard> keyboards,

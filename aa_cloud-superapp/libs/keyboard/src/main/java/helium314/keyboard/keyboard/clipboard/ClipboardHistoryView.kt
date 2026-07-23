@@ -3,12 +3,18 @@
 package helium314.keyboard.keyboard.clipboard
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.IBinder
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -32,6 +38,7 @@ import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.ResourceUtils
 import helium314.keyboard.latin.utils.ToolbarKey
+import helium314.keyboard.latin.utils.getPlatformDialogThemeContext
 import helium314.keyboard.latin.utils.createToolbarKey
 import helium314.keyboard.latin.utils.getCodeForToolbarKey
 import helium314.keyboard.latin.utils.getCodeForToolbarKeyLongClick
@@ -55,6 +62,7 @@ class ClipboardHistoryView @JvmOverloads constructor(
     private lateinit var clipboardRecyclerView: ClipboardHistoryRecyclerView
     private lateinit var placeholderView: TextView
     private lateinit var clipboardTabs: LinearLayout
+    private lateinit var clipboardSearch: EditText
     private val toolbarKeys = mutableListOf<ImageButton>()
     private lateinit var clipboardAdapter: ClipboardAdapter
 
@@ -96,6 +104,23 @@ class ClipboardHistoryView @JvmOverloads constructor(
         }
         placeholderView = findViewById(R.id.clipboard_empty_view)
         clipboardTabs = findViewById(R.id.clipboard_tabs)
+
+        // Search box: theme text color to match other clipboard views; clear query when re-opened.
+        clipboardSearch = findViewById<EditText>(R.id.clipboard_search).apply {
+            setHintTextColor(colors.get(ColorType.KEY_TEXT).run { (this and 0x00FFFFFF) or 0x66000000 })
+            setTextColor(colors.get(ColorType.KEY_TEXT))
+            hint = context.getString(R.string.clipboard_search_hint)
+            colors.setBackground(this, ColorType.KEY_BACKGROUND)
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    clipboardHistoryManager.searchQuery = s?.toString() ?: ""
+                    clipboardAdapter.notifyDataSetChanged()
+                }
+            })
+        }
+
         clipboardRecyclerView = findViewById<ClipboardHistoryRecyclerView>(R.id.clipboard_list).apply {
             // SuperApp: clipboard card scale. The orientation/size-qualified
             // integer resource gives the base column count; the user's card-scale
@@ -160,11 +185,13 @@ class ClipboardHistoryView @JvmOverloads constructor(
     ) {
         clipboardHistoryManager = historyManager
         historyManager.setCurrentList(null) // always reopen on the default (unpinned) page
+        historyManager.searchQuery = "" // clear any leftover search from the previous session
         initialize()
         setupToolbarKeys()
         historyManager.prepareClipboardHistory()
         historyManager.setHistoryChangeListener(this)
         clipboardAdapter.clipboardHistoryManager = historyManager
+        if (this::clipboardSearch.isInitialized) clipboardSearch.setText("") // clear search box on re-open
         refreshTabs()
 
         val params = KeyDrawParams()
@@ -278,9 +305,50 @@ class ClipboardHistoryView @JvmOverloads constructor(
                     refreshTabs()
                     clipboardAdapter.notifyDataSetChanged()
                 }
+                // Long-press on a pin-list tab → rename dialog (default/unpinned tab is not renamable)
+                if (listName != null) {
+                    setOnLongClickListener { showRenameListDialog(listName, windowToken) ; true }
+                }
             }
             clipboardTabs.addView(tab)
         }
+    }
+
+    /**
+     * Show an AlertDialog above the keyboard (same window setup as showPinListPicker) that lets
+     * the user rename [listName] to a new value. On OK, delegates to [ClipboardHistoryManager.renameList]
+     * and updates [currentList] if the renamed tab was the one being viewed.
+     */
+    private fun showRenameListDialog(listName: String, windowToken: IBinder?) {
+        val input = EditText(context).apply {
+            setText(listName)
+            hint = context.getString(R.string.clipboard_rename_list_hint)
+            setSingleLine()
+            selectAll()
+        }
+        val dialog = AlertDialog.Builder(getPlatformDialogThemeContext(context))
+            .setTitle(R.string.clipboard_rename_list)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { di, _ ->
+                di.dismiss()
+                val newName = input.text?.toString()?.trim() ?: return@setPositiveButton
+                if (newName.isEmpty()) return@setPositiveButton
+                val wasCurrentList = clipboardHistoryManager.getCurrentList() == listName
+                clipboardHistoryManager.renameList(listName, newName)
+                if (wasCurrentList) clipboardHistoryManager.setCurrentList(newName)
+                // onHistoryChanged fires via renameList → historyChangeListener; refreshTabs + notifyDataSetChanged
+                // are already handled there. No extra call needed.
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+        dialog.window?.apply {
+            attributes = attributes.apply {
+                token = windowToken
+                type = WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG
+            }
+            addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+        }
+        dialog.show()
     }
 
     override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {

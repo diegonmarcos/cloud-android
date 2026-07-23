@@ -65,6 +65,8 @@
         <item name="iconEmojiCategory8Tab">@drawable/ic_emoji_symbols_lxx</item>
         <item name="iconEmojiCategory9Tab">@drawable/ic_emoji_flags_lxx</item>
         <item name="iconEmojiCategory10Tab">@drawable/ic_emoji_emoticons_lxx</item>
+        <!-- patch 0010: pinned-emoji tab (reuses clipboard-pin drawable) -->
+        <item name="iconEmojiCategory11Tab">@drawable/ic_clipboard_pin_lxx</item>
     </style>
     <style
         name="ClipboardHistoryView.LXX_Base"

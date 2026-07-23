@@ -186,6 +186,19 @@ class ClipboardDao private constructor(private val db: Database) {
         db.writableDatabase.update(TABLE, cv, "$COLUMN_ID = ${entry.id}", null)
     }
 
+    /**
+     * Rename [oldName] to [newName] in both DB and in-memory cache.
+     * Silently ignored if [newName] is blank or already in use (to avoid unexpected merges).
+     */
+    fun renameList(oldName: String, newName: String) = synchronized(this) {
+        if (newName.isBlank()) return@synchronized
+        if (cache.any { it.listName == newName }) return@synchronized
+        cache.filter { it.listName == oldName }.forEach { it.listName = newName }
+        val cv = ContentValues(1)
+        cv.put(COLUMN_LIST_NAME, newName)
+        db.writableDatabase.update(TABLE, cv, "$COLUMN_LIST_NAME = ?", arrayOf(oldName))
+    }
+
     // caller already updates its own (filtered) adapter, so we don't call listener here
     // (matches the id, since the filtered position doesn't match the raw cache position)
     fun deleteClip(id: Long) {
@@ -230,6 +243,74 @@ class ClipboardDao private constructor(private val db: Database) {
         cache.clear()
         listener?.onClipsRemoved(0, count())
         db.writableDatabase.delete(TABLE, null, null)
+    }
+
+    /** Convenience wrapper: returns [exportToJson] result together with the exported entry count. */
+    fun exportToJsonWithCount(context: Context): Pair<String, Int> {
+        val json = exportToJson(context)
+        // count only entries that have a "text" key (non-binary)
+        val count = cache.count { it.filename == null }
+        return Pair(json, count)
+    }
+
+    /**
+     * Serialize all text clips to a JSON array string.
+     * Binary (file-backed) clips are excluded in v1 — a "filename" note is kept so the
+     * entry is visible in a diff but will not be re-imported.
+     * Format: [{timeStamp, listName, text, mimeTypes}, ...]
+     *
+     * Uses org.json (android.jar built-in) — no extra dependency.
+     */
+    fun exportToJson(context: Context): String {
+        val array = org.json.JSONArray()
+        cache.forEach { entry ->
+            val obj = org.json.JSONObject()
+            obj.put("timeStamp", entry.timeStamp)
+            obj.put("listName", entry.listName ?: org.json.JSONObject.NULL)
+            if (entry.filename != null) {
+                // binary clip — record filename as a note; text field omitted
+                obj.put("filename", entry.filename)
+                obj.put("_skipped", "binary clips not supported in v1 export")
+            } else {
+                obj.put("text", entry.text ?: "")
+                val mimeArr = org.json.JSONArray()
+                entry.mimeTypes?.forEach { mimeArr.put(it) }
+                obj.put("mimeTypes", mimeArr)
+            }
+            array.put(obj)
+        }
+        return array.toString(2) // pretty-print with 2-space indent
+    }
+
+    /**
+     * Parse a JSON array produced by [exportToJson] and insert each text entry via [insertNewEntry].
+     * Skips binary-only entries (no "text" key) and deduplicates by text+listName.
+     * Returns the number of entries actually inserted.
+     */
+    fun importFromJson(context: Context, json: String): Int {
+        val array = try {
+            org.json.JSONArray(json)
+        } catch (e: org.json.JSONException) {
+            Log.w(TAG, "importFromJson: parse error", e)
+            return 0
+        }
+        var inserted = 0
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            if (!obj.has("text")) continue // binary entry — skip
+            val text = obj.optString("text").takeIf { it.isNotEmpty() } ?: continue
+            val listName = obj.optString("listName").takeIf { !obj.isNull("listName") }
+            // dedupe: skip if a clip with identical text+listName already exists
+            if (cache.any { it.text == text && it.listName == listName }) continue
+            val timeStamp = obj.optLong("timeStamp", System.currentTimeMillis())
+            val mimeArr = obj.optJSONArray("mimeTypes")
+            val mimeTypes = if (mimeArr != null) {
+                (0 until mimeArr.length()).mapNotNull { mimeArr.optString(it).takeIf { s -> s.isNotEmpty() } }
+            } else null
+            insertNewEntry(timeStamp, listName, text, null, mimeTypes, context)
+            inserted++
+        }
+        return inserted
     }
 
     fun cleanupFiles(prefs: SharedPreferences) {

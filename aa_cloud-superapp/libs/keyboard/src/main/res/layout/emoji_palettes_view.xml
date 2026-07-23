@@ -15,6 +15,20 @@
     android:background="@android:color/transparent"
     style="?attr/emojiPalettesViewStyle"
 >
+    <!-- patch 0010: ROW 0 — emoji search bar. Height is fixed (wrap_content ~40dp);
+         EmojiLayoutParams already accounts for it because the pager height is set
+         separately via setEmojiListProperties(). The bar is always visible above the pager. -->
+    <EditText
+        android:id="@+id/emoji_search_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textFilter"
+        android:maxLines="1"
+        android:padding="6dp"
+        android:textSize="14sp"
+        android:background="@android:color/transparent"
+        android:hint="@string/emoji_search_hint" />
+
     <!-- SuperApp (patch 0007): ROW 1 — Emoji / Sticker / GIF type tabs. Hidden
          unless build.json::keyboard_media.enabled. Toggles the bodies below. -->
     <LinearLayout

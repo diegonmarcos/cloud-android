@@ -26,4 +26,7 @@ public interface EmojiViewCallback {
      * Called from keyboard view to get an emoji description
      */
     String getDescription(String emoji);
+
+    // patch 0010: called after a 5-second hold to toggle the emoji in/out of the pinned grid
+    void onPinEmoji(Key key);
 }

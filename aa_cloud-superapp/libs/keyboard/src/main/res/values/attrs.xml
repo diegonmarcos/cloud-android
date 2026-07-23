@@ -166,6 +166,8 @@
         <attr name="iconEmojiCategory8Tab" format="reference" />
         <attr name="iconEmojiCategory9Tab" format="reference" />
         <attr name="iconEmojiCategory10Tab" format="reference" />
+        <!-- patch 0010: pinned-emoji tab icon (reuses pin drawable per theme) -->
+        <attr name="iconEmojiCategory11Tab" format="reference" />
     </declare-styleable>
 
     <declare-styleable name="ClipboardHistoryView">

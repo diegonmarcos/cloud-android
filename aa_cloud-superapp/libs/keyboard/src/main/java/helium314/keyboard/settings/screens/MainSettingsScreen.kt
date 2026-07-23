@@ -33,6 +33,7 @@ import helium314.keyboard.settings.screens.gesturedata.TWO_WEEKS_IN_MILLIS
 fun MainSettingsScreen(
     onClickAbout: () -> Unit,
     onClickTextCorrection: () -> Unit,
+    onClickGrammarCheck: () -> Unit, // SuperApp addition (patch 0002)
     onClickPreferences: () -> Unit,
     onClickToolbar: () -> Unit,
     onClickGestureTyping: () -> Unit,
@@ -93,6 +94,12 @@ fun MainSettingsScreen(
                     onClick = onClickTextCorrection,
                     icon = R.drawable.ic_settings_correction
                 ) { NextScreenIcon() }
+                // SuperApp addition (patch 0002) — Grammar check settings entry
+                Preference(
+                    name = stringResource(R.string.settings_screen_grammar),
+                    onClick = onClickGrammarCheck,
+                    icon = R.drawable.ic_settings_correction
+                ) { NextScreenIcon() }
                 Preference(
                     name = stringResource(R.string.settings_screen_secondary_layouts),
                     onClick = onClickLayouts,
@@ -124,7 +131,7 @@ private fun PreviewScreen() {
     initPreview(LocalContext.current)
     Theme(previewDark) {
         Surface {
-            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
         }
     }
 }

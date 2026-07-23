@@ -13,9 +13,14 @@ import helium314.keyboard.keyboard.KeyboardLayoutSet
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.latin.AudioAndHapticFeedbackManager
 import helium314.keyboard.latin.R
+import android.content.Intent
+import android.widget.Toast
 import helium314.keyboard.latin.database.ClipboardDao
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.settings.SettingsWithoutKey
+import helium314.keyboard.settings.filePicker
+import helium314.keyboard.settings.preferences.Preference
 import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.getActivity
@@ -82,6 +87,9 @@ fun PreferencesScreen(
         if (clipboardHistoryEnabled) Settings.PREF_CLIPBOARD_USE_FILES else null,
         if (clipboardHistoryEnabled && prefs.getBoolean(Settings.PREF_CLIPBOARD_USE_FILES, Defaults.PREF_CLIPBOARD_USE_FILES))
             Settings.PREF_CLIPBOARD_FILES_SIZE_LIMIT else null,
+        // clipboard export / import (always shown when clipboard is enabled)
+        if (clipboardHistoryEnabled) SettingsWithoutKey.CLIPBOARD_EXPORT_JSON else null,
+        if (clipboardHistoryEnabled) SettingsWithoutKey.CLIPBOARD_IMPORT_JSON else null,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,
@@ -204,6 +212,50 @@ fun createPreferencesSettings(context: Context) = listOf(
             },
             range = 1f..1001f,
         ) { ClipboardDao.getInstance(ctx)?.cleanupFiles(ctx.prefs()) }
+    },
+    Setting(context, SettingsWithoutKey.CLIPBOARD_EXPORT_JSON, R.string.clipboard_export_json, R.string.clipboard_export_json_summary) {
+        val ctx = LocalContext.current
+        // Launch SAF CREATE_DOCUMENT, then write exportToJson output to the chosen URI.
+        val exportLauncher = filePicker { uri ->
+            val dao = ClipboardDao.getInstance(ctx) ?: return@filePicker
+            runCatching {
+                val (json, count) = dao.exportToJsonWithCount(ctx)
+                ctx.contentResolver.openOutputStream(uri)?.use { os ->
+                    os.write(json.toByteArray(Charsets.UTF_8))
+                }
+                Toast.makeText(ctx, ctx.getString(R.string.clipboard_export_success, count), Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(ctx, R.string.clipboard_import_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+        Preference(name = stringResource(R.string.clipboard_export_json), onClick = {
+            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json")
+                .putExtra(Intent.EXTRA_TITLE, "clipboard-export.json")
+            exportLauncher.launch(intent)
+        })
+    },
+    Setting(context, SettingsWithoutKey.CLIPBOARD_IMPORT_JSON, R.string.clipboard_import_json, R.string.clipboard_import_json_summary) {
+        val ctx = LocalContext.current
+        // Launch SAF OPEN_DOCUMENT, read the chosen JSON file, and call importFromJson.
+        val importLauncher = filePicker { uri ->
+            val dao = ClipboardDao.getInstance(ctx) ?: return@filePicker
+            runCatching {
+                val json = ctx.contentResolver.openInputStream(uri)?.use { it.reader().readText() }
+                    ?: return@filePicker
+                val count = dao.importFromJson(ctx, json)
+                Toast.makeText(ctx, ctx.getString(R.string.clipboard_import_success, count), Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(ctx, R.string.clipboard_import_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+        Preference(name = stringResource(R.string.clipboard_import_json), onClick = {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json")
+            importLauncher.launch(intent)
+        })
     },
     Setting(context, Settings.PREF_VIBRATION_DURATION_SETTINGS, R.string.prefs_keypress_vibration_duration_settings) { setting ->
         SliderPreference(

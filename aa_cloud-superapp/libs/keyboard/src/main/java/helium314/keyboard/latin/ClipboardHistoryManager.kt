@@ -139,8 +139,16 @@ class ClipboardHistoryManager(
         }
     }
 
-    // entries for the page currently shown (default unpinned page, or one pin list)
-    private fun filteredEntries() = clipboardDao?.getForList(currentList) ?: emptyList()
+    // Live search query — empty string means "no filter". Updated by the search EditText in ClipboardHistoryView.
+    var searchQuery: String = ""
+
+    // entries for the page currently shown (default unpinned page, or one pin list),
+    // further filtered by [searchQuery] when non-blank (search is within-current-tab)
+    private fun filteredEntries(): List<ClipboardHistoryEntry> {
+        val list = clipboardDao?.getForList(currentList) ?: emptyList()
+        val q = searchQuery
+        return if (q.isEmpty()) list else list.filter { it.text?.contains(q, ignoreCase = true) == true }
+    }
 
     fun getCurrentList() = currentList
 
@@ -180,6 +188,17 @@ class ClipboardHistoryManager(
     /** Long-press on an already-pinned clip (only reachable from within its own pin list tab): unpin directly. */
     fun unpin(id: Long) {
         clipboardDao?.unpin(id)
+        historyChangeListener?.onHistoryChanged()
+    }
+
+    /**
+     * Rename pin list [oldName] to [newName].
+     * Delegates guard logic (blank / collision) to ClipboardDao.
+     * If the currently-viewed list was renamed the caller is responsible for calling
+     * setCurrentList(newName) before (or after) this, then refreshing the adapter.
+     */
+    fun renameList(oldName: String, newName: String) {
+        clipboardDao?.renameList(oldName, newName)
         historyChangeListener?.onHistoryChanged()
     }
 

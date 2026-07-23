@@ -44,6 +44,8 @@
     <string name="settings_screen_gesture">Gesture Typing</string>
     <!-- Settings screen title for text correction options -->
     <string name="settings_screen_correction">Text correction</string>
+    <!-- SuperApp addition — Grammar check settings screen -->
+    <string name="settings_screen_grammar">Grammar check</string>
     <!-- Settings screen title for advanced settings -->
     <string name="settings_screen_advanced">Advanced</string>
     <!-- Settings screen title for keyboard theme settings -->
@@ -214,6 +216,34 @@
     <string name="clipboard_pin_choose_list">Pin to list</string>
     <!-- Option in the pin list dialog to create a new pin list -->
     <string name="clipboard_pin_new_list">+ New list</string>
+
+    <!-- ===== SuperApp additions ===== -->
+    <!-- Clipboard: rename a pin list, search, JSON export/import -->
+    <string name="clipboard_search_hint">Search clipboard</string>
+    <string name="clipboard_rename_list">Rename list</string>
+    <string name="clipboard_rename_list_hint">List name</string>
+    <string name="clipboard_export_json">Export clipboard (JSON)</string>
+    <string name="clipboard_export_json_summary">Save clipboard history and pins to a JSON file</string>
+    <string name="clipboard_import_json">Import clipboard (JSON)</string>
+    <string name="clipboard_import_json_summary">Restore clipboard history and pins from a JSON file</string>
+    <string name="clipboard_export_success">Exported %d clips</string>
+    <string name="clipboard_import_success">Imported %d clips</string>
+    <string name="clipboard_import_failed">Import failed</string>
+    <!-- Emoji: search bar, pinned category, 5s-hold to pin -->
+    <string name="emoji_search_hint">Search emoji</string>
+    <string name="emoji_category_pinned">Pinned</string>
+    <string name="emoji_pinned_toast">Pinned</string>
+    <string name="emoji_unpinned_toast">Unpinned</string>
+    <!-- Grammar check screen (offline GrammarChecker) -->
+    <string name="grammar_check_enabled">Auto-fix while typing</string>
+    <string name="grammar_check_enabled_summary">Apply high-confidence grammar fixes as you type</string>
+    <string name="grammar_fix_capitalize_i">Capitalize \"i\"</string>
+    <string name="grammar_fix_sentence_caps">Capitalize sentence start</string>
+    <string name="grammar_fix_repeated_words">Remove repeated words</string>
+    <string name="grammar_check_now">Fix current text</string>
+    <string name="grammar_check_now_summary">Run grammar fixes over the whole current field</string>
+    <string name="grammar_category_fixes">Fixes</string>
+
     <!-- Description, used for non-image clipboard files -->
     <string name="item_description">Description: %s</string>
     <!-- Type, used for non-image clipboard files -->

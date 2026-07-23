@@ -27,6 +27,7 @@ import helium314.keyboard.latin.settings.Settings;
 import helium314.keyboard.latin.utils.ResourceUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,6 +39,8 @@ final class EmojiCategory {
 
     private static final int ID_UNSPECIFIED = -1;
     public static final int ID_RECENTS = 0;
+    // patch 0010: pinned-emoji category (id 11, appended after existing 0-10 range)
+    public static final int ID_PINNED = 11;
     private static final int ID_SMILEYS_EMOTION = 1;
     private static final int ID_PEOPLE_BODY = 2;
     private static final int ID_ANIMALS_NATURE = 3;
@@ -75,7 +78,9 @@ final class EmojiCategory {
             "objects",
             "symbols",
             "flags",
-            "emoticons" };
+            "emoticons",
+            // patch 0010: index 11 = pinned (ID_PINNED = 11)
+            "pinned" };
 
     private static final int[] sCategoryTabIconAttr = {
             R.styleable.EmojiPalettesView_iconEmojiRecentsTab,
@@ -88,7 +93,9 @@ final class EmojiCategory {
             R.styleable.EmojiPalettesView_iconEmojiCategory7Tab,
             R.styleable.EmojiPalettesView_iconEmojiCategory8Tab,
             R.styleable.EmojiPalettesView_iconEmojiCategory9Tab,
-            R.styleable.EmojiPalettesView_iconEmojiCategory10Tab };
+            R.styleable.EmojiPalettesView_iconEmojiCategory10Tab,
+            // patch 0010: index 11 = pinned tab icon (uses clipboard-pin drawable via theme attr)
+            R.styleable.EmojiPalettesView_iconEmojiCategory11Tab };
 
     private static final int[] sAccessibilityDescriptionResourceIdsForCategories = {
             R.string.spoken_description_emoji_category_recents,
@@ -101,7 +108,9 @@ final class EmojiCategory {
             R.string.spoken_description_emoji_category_objects,
             R.string.spoken_description_emoji_category_symbols,
             R.string.spoken_description_emoji_category_flags,
-            R.string.spoken_description_emoji_category_emoticons};
+            R.string.spoken_description_emoji_category_emoticons,
+            // patch 0010: index 11 = pinned (architect provides R.string.emoji_category_pinned)
+            R.string.emoji_category_pinned};
 
     private static final int[] sCategoryElementId = {
             KeyboardId.ELEMENT_EMOJI_RECENTS,
@@ -114,7 +123,9 @@ final class EmojiCategory {
             KeyboardId.ELEMENT_EMOJI_CATEGORY7,
             KeyboardId.ELEMENT_EMOJI_CATEGORY8,
             KeyboardId.ELEMENT_EMOJI_CATEGORY9,
-            KeyboardId.ELEMENT_EMOJI_CATEGORY10 };
+            KeyboardId.ELEMENT_EMOJI_CATEGORY10,
+            // patch 0010: index 11 = pinned (reuses ELEMENT_EMOJI_RECENTS; pinned is also a DynamicGridKeyboard)
+            KeyboardId.ELEMENT_EMOJI_RECENTS };
 
     private final SharedPreferences mPrefs;
     private final Resources mRes;
@@ -144,6 +155,8 @@ final class EmojiCategory {
     public void initialize() {
         int defaultCategoryId = EmojiCategory.ID_SMILEYS_EMOTION;
         addShownCategoryId(EmojiCategory.ID_RECENTS);
+        // patch 0010: pinned category immediately after recents
+        addShownCategoryId(EmojiCategory.ID_PINNED);
         addShownCategoryId(EmojiCategory.ID_SMILEYS_EMOTION);
         addShownCategoryId(EmojiCategory.ID_PEOPLE_BODY);
         addShownCategoryId(EmojiCategory.ID_ANIMALS_NATURE);
@@ -251,6 +264,11 @@ final class EmojiCategory {
         return mCurrentCategoryId == EmojiCategory.ID_RECENTS;
     }
 
+    // patch 0010
+    public boolean isInPinnedTab() {
+        return mCurrentCategoryId == EmojiCategory.ID_PINNED;
+    }
+
     public int getTabIdFromCategoryId(final int categoryId) {
         for (int i = 0; i < mShownCategories.size(); ++i) {
             if (mShownCategories.get(i).mCategoryId == categoryId) {
@@ -263,6 +281,11 @@ final class EmojiCategory {
 
     public int getRecentTabId() {
         return getTabIdFromCategoryId(EmojiCategory.ID_RECENTS);
+    }
+
+    // patch 0010
+    public int getPinnedTabId() {
+        return getTabIdFromCategoryId(EmojiCategory.ID_PINNED);
     }
 
     private int computeCategoryPageCount(final int categoryId) {
@@ -299,6 +322,15 @@ final class EmojiCategory {
                 kbd.loadRecentKeys(mCategoryKeyboardMap.values());
                 return kbd;
             }
+            // patch 0010: pinned category is a DynamicGridKeyboard backed by PREF_EMOJI_PINNED_KEYS
+            if (categoryId == EmojiCategory.ID_PINNED) {
+                final DynamicGridKeyboard kbd = DynamicGridKeyboard.ofKeyCount(mPrefs,
+                        mLayoutSet.getKeyboard(KeyboardId.ELEMENT_EMOJI_RECENTS),
+                        mMaxRecentsKeyCount, categoryId, currentWidth);
+                mCategoryKeyboardMap.put(categoryKeyboardMapKey, kbd);
+                kbd.loadPinnedKeys(mCategoryKeyboardMap.values());
+                return kbd;
+            }
 
             final Keyboard keyboard = mLayoutSet.getKeyboard(sCategoryElementId[categoryId]);
             final int keyCountPerPage = computeMaxKeyCountPerPage();
@@ -318,6 +350,31 @@ final class EmojiCategory {
             }
             return mCategoryKeyboardMap.get(categoryKeyboardMapKey);
         }
+    }
+
+    // patch 0010: build a throw-away DynamicGridKeyboard from a flat list of emoji output-text strings.
+    // Used by the search results overlay — does not enter mCategoryKeyboardMap.
+    public DynamicGridKeyboard createSearchKeyboard(final List<String> emojiTexts) {
+        final int currentWidth = ResourceUtils.getKeyboardWidth(mContext, Settings.getValues());
+        // Use a large fixed key-count so all results fit in one scrollable page.
+        final DynamicGridKeyboard kbd = DynamicGridKeyboard.ofKeyCount(mPrefs,
+                mLayoutSet.getKeyboard(KeyboardId.ELEMENT_EMOJI_RECENTS),
+                Integer.MAX_VALUE / 2, EmojiCategory.ID_RECENTS /* not pinned; just needs a grid */, currentWidth);
+        final Collection<DynamicGridKeyboard> allKbds = mCategoryKeyboardMap.values();
+        for (final String text : emojiTexts) {
+            // find matching key from any loaded category keyboard
+            Key found = null;
+            for (final DynamicGridKeyboard candidate : allKbds) {
+                for (final Key k : candidate.getSortedKeys()) {
+                    if (text.equals(k.getOutputText())) { found = k; break; }
+                }
+                if (found != null) break;
+            }
+            if (found != null) {
+                kbd.addKeyLast(found);
+            }
+        }
+        return kbd;
     }
 
     private int computeMaxKeyCountPerPage() {
