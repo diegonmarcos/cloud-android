@@ -6,6 +6,7 @@ import com.diegonmarcos.superapp.system.ModePrefs
 import com.diegonmarcos.superapp.system.BackgroundOrchestrator
 import com.diegonmarcos.superapp.ui.Haptics
 import com.diegonmarcos.superapp.ui.IslandWaveView
+import com.diegonmarcos.superapp.launcher.Pages
 import com.diegonmarcos.superapp.launcher.TileGridFragment
 import com.diegonmarcos.superapp.launcher.TabbedSectionFragment
 import com.diegonmarcos.superapp.launcher.Sections
@@ -33,6 +34,7 @@ import com.diegonmarcos.superapp.settings.LauncherConfigFragment
 import com.diegonmarcos.superapp.settings.ImportConfigsFragment
 import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
+import com.diegonmarcos.superapp.launcher.HomeGroupedFragment
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
 import com.diegonmarcos.superapp.battery.BatterySessionWorker
 import com.diegonmarcos.superapp.search.SearchSheetFragment
@@ -118,6 +120,8 @@ class MainActivity : AppCompatActivity(),
             is com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.ExternalAppEntry -> runCatching {
                 packageManager.getLaunchIntentForPackage(entry.packageName)?.let { startActivity(it) }
             }
+            is com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.TargetEntry ->
+                dispatchTarget(entry.target)
         }
     }
 
@@ -912,6 +916,12 @@ class MainActivity : AppCompatActivity(),
                 .recordPage(sectionId, pageId, label = label, iconName = icon)
         }
     }
+    override fun recordTarget(target: String, label: String, icon: String) {
+        runCatching {
+            com.diegonmarcos.superapp.apptabs.AppTabPrefs(this)
+                .recordTarget(target, label = label, iconName = icon)
+        }
+    }
 
     /** True while a [swapContent] section change is mid-flight — the
      *  clearBackStack pop fires the OnBackStackChangedListener BEFORE the
@@ -1252,6 +1262,15 @@ class MainActivity : AppCompatActivity(),
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
         }
+        // App Tabs capture — the single dispatch chokepoint. `action:`/`tab:`/
+        // `mode:` destinations are real "pages" (Constellation, Suite·All, the
+        // Suite tabs) but aren't recorded by goSection/openSectionPage, so they
+        // never reached the Tabs shelf. If the target is a named page in the
+        // build.json::ui.pages registry, record it here. `section:`/`page:`/
+        // `extapp:` are deliberately excluded — their own paths already record.
+        if (tileId.startsWith("action:") || tileId.startsWith("tab:") || tileId.startsWith("mode:")) {
+            runCatching { Pages.byTarget(tileId)?.let { recordTarget(tileId, it.label, it.icon) } }
+        }
         when {
             tileId.startsWith("section:") -> {
                 val id = tileId.removePrefix("section:")
@@ -1360,11 +1379,34 @@ class MainActivity : AppCompatActivity(),
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet()
             }
-            // Same Home Apps drawer, opened on the Phone tab — Suite/Phone's
-            // "More" footer routes here (build.json::sections[suite].phone_footer).
+            // Same Home Apps drawer, opened on the Phone tab — legacy long-press
+            // target (build.json::sections[suite].long_press).
             actionType == "open_home_apps_phone" -> {
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet("phone")
+            }
+            // Suite · Cloud "More" → the full Cloud page as a dedicated screen
+            // (no Cloud|Phone tab strip). build.json page id `suite-cloud-all`.
+            actionType == "open_suite_cloud_all" -> {
+                val frag = HomeGroupedFragment.newInstance()
+                applyChrome(frag)
+                supportFragmentManager.beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.fragment_container, frag)
+                    .addToBackStack(null)
+                    .commit()
+            }
+            // Suite · Phone "More" (footer tap + pull-past-bottom) → the full
+            // Phone apps page as a dedicated screen (no tab strip). Page id
+            // `suite-phone-all`. This is the fix for "Phone More opened Cloud".
+            actionType == "open_suite_phone_all" -> {
+                val frag = PhoneAppsFragment.newInstance()
+                applyChrome(frag)
+                supportFragmentManager.beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .replace(R.id.fragment_container, frag)
+                    .addToBackStack(null)
+                    .commit()
             }
             // Cloud Notification Center — same surface the top-bar bell
             // icon opens. Wiring it here means any data-driven entry

@@ -147,10 +147,12 @@ class AppTabsFragment : Fragment() {
         // name owned by app/'s R; external apps use PackageManager.
         when (entry) {
             is AppTabPrefs.Entry.SectionEntry,
-            is AppTabPrefs.Entry.PageEntry -> {
+            is AppTabPrefs.Entry.PageEntry,
+            is AppTabPrefs.Entry.TargetEntry -> {
                 val iconName = when (entry) {
                     is AppTabPrefs.Entry.SectionEntry -> entry.iconName
                     is AppTabPrefs.Entry.PageEntry    -> entry.iconName
+                    is AppTabPrefs.Entry.TargetEntry  -> entry.iconName
                     else                              -> ""
                 }
                 val id = ctx.resources.getIdentifier(iconName, "drawable", ctx.packageName)
@@ -176,12 +178,14 @@ class AppTabsFragment : Fragment() {
         is AppTabPrefs.Entry.SectionEntry     -> e.label.ifBlank { e.sectionId }
         is AppTabPrefs.Entry.PageEntry        -> e.label.ifBlank { "${e.sectionId}/${e.pageId}" }
         is AppTabPrefs.Entry.ExternalAppEntry -> e.label.ifBlank { e.packageName }
+        is AppTabPrefs.Entry.TargetEntry      -> e.label.ifBlank { e.target }
     }
 
     private fun displaySubtitle(e: AppTabPrefs.Entry): String = when (e) {
         is AppTabPrefs.Entry.SectionEntry     -> "section"
         is AppTabPrefs.Entry.PageEntry        -> "page · ${e.sectionId}"
         is AppTabPrefs.Entry.ExternalAppEntry -> "app · ${e.packageName.take(28)}"
+        is AppTabPrefs.Entry.TargetEntry      -> "page"
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()

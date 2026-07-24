@@ -8,6 +8,7 @@ import com.diegonmarcos.superapp.cloud.CalendarMonthFragment
 import com.diegonmarcos.superapp.cloud.CalendarAgendaFragment
 import com.diegonmarcos.superapp.network.WireGuardFragment
 import com.diegonmarcos.superapp.profile.ProfileFragment
+import com.diegonmarcos.superapp.apps.RecentAppsFragment
 
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.ai.AiFragment
@@ -69,6 +70,8 @@ object SectionPages {
         // "browser" section is dead — tile target extapp:cloud-browser bypasses openSectionPage.
         sectionId == "apptabs"                              ->
             com.diegonmarcos.superapp.apptabs.AppTabsFragment.newInstance()
+        sectionId == "recentapps"                           ->
+            RecentAppsFragment.newInstance()
         else -> PageContentFragment.newInstance(sectionId, pageId, label)
     }
 }

@@ -94,6 +94,11 @@ def uiLauncherSettingsB64  = uiLauncherSettingsJson.bytes.encodeBase64().toStrin
 // build.json::ui.home_apps_tabs.
 def uiHomeAppsTabsJson = groovy.json.JsonOutput.toJson(buildJson.ui.home_apps_tabs ?: [])
 def uiHomeAppsTabsB64  = uiHomeAppsTabsJson.bytes.encodeBase64().toString()
+// Page registry — reverse index of named destinations (target → metadata).
+// Source of truth: build.json::ui.pages. Consumed by AppTabPrefs.recordPage
+// to label and icon-ify entries in the App Tabs recents shelf.
+def uiPagesJson        = groovy.json.JsonOutput.toJson(buildJson.ui.pages ?: [])
+def uiPagesB64         = uiPagesJson.bytes.encodeBase64().toString()
 // App Tabs LRU window size (build.json::ui.app_tabs.cap). MainActivity pushes
 // this into AppTabPrefs.cap at startup.
 def uiAppTabsCap       = (buildJson.ui.app_tabs?.cap ?: 10) as Integer
@@ -503,6 +508,7 @@ android {
         buildConfigField "String", "UI_SCREENSAVERS_B64",      "\"${uiScreensaversB64}\""
         buildConfigField "String", "UI_LAUNCHER_SETTINGS_B64", "\"${uiLauncherSettingsB64}\""
         buildConfigField "String", "UI_HOME_APPS_TABS_B64",   "\"${uiHomeAppsTabsB64}\""
+        buildConfigField "String", "UI_PAGES_B64",            "\"${uiPagesB64}\""
         buildConfigField "int",    "UI_APP_TABS_CAP",         "${uiAppTabsCap}"
         buildConfigField "String", "UI_SWIPE_WALK_B64",       "\"${uiSwipeWalkB64}\""
         buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""

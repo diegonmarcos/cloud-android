@@ -1327,13 +1327,13 @@
           "id": "more-cloud",
           "label": "More",
           "icon": "ic_p_more",
-          "target": "action:open_home_apps"
+          "target": "action:open_suite_cloud_all"
         },
         "phone_footer": {
           "id": "more-phone",
           "label": "More",
           "icon": "ic_p_more",
-          "target": "action:open_home_apps_phone"
+          "target": "action:open_suite_phone_all"
         },
         "_doc_active_apps": "Suite/Phone-only 'Active Apps' section rendered BELOW the last curated group (Configs) and ABOVE the More footer. Lists the `limit` most-recently-used apps (libs:datamanager AppUsageProvider.recentUsed \u2192 same UsageStatsManager data as the Phone 'Recent 7' smart folder). Empty (section hidden) when usage-access is not granted. Baked to scalar BuildConfig fields UI_SUITE_ACTIVE_APPS_{ENABLED,TITLE,LIMIT}.",
         "active_apps": {
@@ -2457,6 +2457,21 @@
             "id": "grid",
             "label": "Tabs",
             "icon": "ic_mode_apps"
+          }
+        ]
+      },
+      {
+        "_doc": "Recent Apps \u2014 hidden/utility section hosting the recent-apps grid. Reached only via page:recentapps/grid (e.g. from ui.pages registry). Mirrors apptabs shape: single page 'grid', bottom_nav:false, module:null so it never appears in the drawer or bottom nav.",
+        "id": "recentapps",
+        "label": "Recent Apps",
+        "icon": "ic_home_apps",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          {
+            "id": "grid",
+            "label": "Recent Apps",
+            "icon": "ic_home_apps"
           }
         ]
       },
@@ -6072,6 +6087,62 @@
           "imap": 993,
           "smtp": 465
         }
+      }
+    ],
+    "pages": [
+      {
+        "id": "suite-cloud-quickmarks",
+        "label": "Suite · Cloud",
+        "icon": "ic_suite",
+        "target": "tab:cloud:suite"
+      },
+      {
+        "id": "suite-cloud-all",
+        "label": "Cloud · All",
+        "icon": "ic_suite",
+        "target": "action:open_suite_cloud_all"
+      },
+      {
+        "id": "suite-phone-quickmarks",
+        "label": "Suite · Phone",
+        "icon": "ic_suite",
+        "target": "tab:phone:suite"
+      },
+      {
+        "id": "suite-phone-all",
+        "label": "Phone · All",
+        "icon": "ic_mode_apps",
+        "target": "action:open_suite_phone_all"
+      },
+      {
+        "id": "constellation",
+        "label": "Constellation",
+        "icon": "ic_refresh",
+        "target": "action:constellation"
+      },
+      {
+        "id": "recent-apps",
+        "label": "Recent Apps",
+        "icon": "ic_home_apps",
+        "target": "page:recentapps/grid"
+      },
+      {
+        "id": "home-apps",
+        "label": "Home Apps",
+        "icon": "ic_home_apps",
+        "target": "action:open_home_apps"
+      },
+      {
+        "id": "apptabs-grid",
+        "label": "Tabs",
+        "icon": "ic_mode_apps",
+        "target": "page:apptabs/grid"
+      },
+      {
+        "id": "update",
+        "label": "Update",
+        "icon": "ic_refresh",
+        "target": "action:check_updates"
       }
     ],
     "tile_columns": 6

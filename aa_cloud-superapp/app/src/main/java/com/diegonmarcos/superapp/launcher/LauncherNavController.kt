@@ -216,5 +216,6 @@ class LauncherNavController(private val host: NavHost) {
         fun tabHaptic()
         fun recordSection(id: String, label: String, icon: String)
         fun recordPage(sectionId: String, pageId: String, label: String, icon: String)
+        fun recordTarget(target: String, label: String, icon: String)
     }
 }

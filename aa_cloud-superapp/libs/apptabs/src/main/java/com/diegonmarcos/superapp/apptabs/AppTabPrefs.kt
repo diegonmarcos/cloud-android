@@ -53,6 +53,19 @@ class AppTabPrefs(context: Context) {
         ) : Entry() {
             override val key get() = "app:$packageName"
         }
+
+        /** A destination reached by a raw navigation target that is not a
+         *  plain section/page — e.g. an `action:` page (Constellation) or a
+         *  `tab:`/`mode:` facet. Stores the full [target] so a tap can just
+         *  re-dispatch it. */
+        data class TargetEntry(
+            val target: String,
+            val label: String,
+            val iconName: String,
+            override val ts: Long,
+        ) : Entry() {
+            override val key get() = "target:$target"
+        }
     }
 
     private val sp = context.applicationContext
@@ -81,6 +94,10 @@ class AppTabPrefs(context: Context) {
 
     fun recordExternalApp(packageName: String, label: String) {
         push(Entry.ExternalAppEntry(packageName, label, System.currentTimeMillis()))
+    }
+
+    fun recordTarget(target: String, label: String, iconName: String) {
+        push(Entry.TargetEntry(target, label, iconName, System.currentTimeMillis()))
     }
 
     fun clear() = save(emptyList())
@@ -123,6 +140,12 @@ class AppTabPrefs(context: Context) {
                 put("packageName", e.packageName)
                 put("label", e.label)
             }
+            is Entry.TargetEntry -> {
+                put("type", "target")
+                put("target", e.target)
+                put("label", e.label)
+                put("icon", e.iconName)
+            }
         }
     }
 
@@ -146,6 +169,12 @@ class AppTabPrefs(context: Context) {
                 packageName = o.optString("packageName"),
                 label       = o.optString("label"),
                 ts          = ts,
+            )
+            "target" -> Entry.TargetEntry(
+                target    = o.optString("target"),
+                label     = o.optString("label"),
+                iconName  = o.optString("icon"),
+                ts        = ts,
             )
             else -> null
         }
