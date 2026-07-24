@@ -26,6 +26,7 @@
   // Top-nav pills
   const nav = document.getElementById("profiles");
   profiles.forEach((p, i) => {
+    if (p.name === "agentic") return;   // Agentic promoted to row 1 (home actions)
     const pill = document.createElement("div");
     pill.className = "profile-pill" + (i === 0 ? " active" : "");
     pill.textContent = p.display_name || p.name;
@@ -97,7 +98,11 @@
   // Global menu (top-right ⋮): restore session, about
   const menuBtn = document.getElementById("btn-menu");
   const menuDrop = document.getElementById("menu-dropdown");
-  menuBtn.addEventListener("click", (e) => { e.stopPropagation(); menuDrop.hidden = !menuDrop.hidden; });
+  menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (window.AndroidTerm && window.AndroidTerm.openConfigs) window.AndroidTerm.openConfigs();
+    else menuDrop.hidden = !menuDrop.hidden;
+  });
   document.addEventListener("click", () => { menuDrop.hidden = true; });
 
   document.getElementById("menu-restore-session").addEventListener("click", () => Tabs.restoreSession());
@@ -119,6 +124,10 @@
   document.getElementById("btn-home-filebrowser").addEventListener("click", () => Tabs.openFileBrowserTab("~"));
   document.getElementById("btn-home-fileeditor").addEventListener("click", () => Tabs.openFileEditorTab(null));
   document.getElementById("btn-home-browser").addEventListener("click", () => Tabs.openBrowserTab());
+  document.getElementById("btn-home-agentic").addEventListener("click", () => {
+    const ag = profiles.find((p) => p.name === "agentic");
+    if (ag) selectProfile(ag, document.getElementById("btn-home-agentic"));
+  });
   // About lives in the Configs (⋮ → menu-about) dropdown now — no standalone button.
 
   // Sidebar view switcher: Commands (search + per-profile items) | Tabs (vertical, grouped)

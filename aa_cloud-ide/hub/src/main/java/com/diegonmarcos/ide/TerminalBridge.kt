@@ -34,6 +34,16 @@ class TerminalBridge(
 
     private val executor = Executors.newCachedThreadPool()
 
+    /** Open the native Configs screen (terminal backend switcher, connection
+     *  editor + test, SSH key, setup steps) — the frontend "Configs" button
+     *  calls this so everything lives in one scrollable place. */
+    @JavascriptInterface
+    fun openConfigs() {
+        activity.runOnUiThread {
+            activity.startActivity(android.content.Intent(activity, ConfigsActivity::class.java))
+        }
+    }
+
     // ── PTY ───────────────────────────────────────────────────────────────────
 
     @JavascriptInterface
