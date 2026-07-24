@@ -197,7 +197,7 @@ step_build() {
   local abifields abi suffix
   abifields="$(_abi_fields "${2:-}")" || exit 1
   abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f2)"
-  step_bundle_frontend
+  # frontend is committed under assets/frontend (self-contained) — no build-time sync
   _resolve_signing
   log "Build: cloud-ide hub (WebView + my-konsole frontend, debug APK, abi $abi)"
   in_nix gradle :hub:assembleDebug
@@ -213,7 +213,7 @@ step_release() {
   local abifields abi suffix
   abifields="$(_abi_fields "${2:-}")" || exit 1
   abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f2)"
-  step_bundle_frontend
+  # frontend is committed under assets/frontend (self-contained) — no build-time sync
   _resolve_signing
   log "Build: cloud-ide hub (WebView + my-konsole frontend, release APK, abi $abi)"
   in_nix gradle :hub:assembleRelease
