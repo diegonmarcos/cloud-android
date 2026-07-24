@@ -2464,14 +2464,14 @@
         "_doc": "Recent Apps \u2014 hidden/utility section hosting the recent-apps grid. Reached only via page:recentapps/grid (e.g. from ui.pages registry). Mirrors apptabs shape: single page 'grid', bottom_nav:false, module:null so it never appears in the drawer or bottom nav.",
         "id": "recentapps",
         "label": "Recent Apps",
-        "icon": "ic_home_apps",
+        "icon": "ic_file_stack",
         "module": null,
         "bottom_nav": false,
         "pages": [
           {
             "id": "grid",
             "label": "Recent Apps",
-            "icon": "ic_home_apps"
+            "icon": "ic_file_stack"
           }
         ]
       },
@@ -6123,7 +6123,7 @@
       {
         "id": "recent-apps",
         "label": "Recent Apps",
-        "icon": "ic_home_apps",
+        "icon": "ic_file_stack",
         "target": "page:recentapps/grid"
       },
       {

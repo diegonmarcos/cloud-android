@@ -44,7 +44,7 @@ object HomeFanMenu {
      *  stays as it is" instruction. */
     val HOME_ITEMS = listOf(
         "action:open_home_apps"   to (R.drawable.ic_home_apps to "Home Apps"),
-        "page:recentapps/grid"    to (R.drawable.ic_home_apps to "Recent Apps"),
+        "page:recentapps/grid"    to (R.drawable.ic_file_stack to "Recent Apps"),
         "page:apptabs/grid"       to (R.drawable.ic_mode_apps to "Tabs"),
         "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
     )

@@ -19,7 +19,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 /**
- * Full-screen grid of the last 12 recently-opened Android apps, 3 per
+ * Full-screen grid of the last 24 recently-opened Android apps, 3 per
  * row, icon + label. Data source: AppUsageProvider.recentUsed (ranked
  * most-recent first). Own package filtered out; packages that cannot be
  * resolved to a launchable activity are skipped silently.
@@ -64,7 +64,7 @@ class RecentAppsFragment : Fragment() {
             .asSequence()
             .filter { it != ctx.packageName }
             .mapNotNull { resolve(it) }
-            .take(12)
+            .take(24)
             .toList()
 
         if (recent.isEmpty()) {
