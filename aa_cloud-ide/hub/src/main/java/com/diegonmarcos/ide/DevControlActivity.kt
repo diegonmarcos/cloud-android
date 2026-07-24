@@ -81,7 +81,7 @@ class DevControlActivity : AppCompatActivity() {
             setTextColor(Ui.TEXT)
             setBackgroundColor(Ui.CARD)
             setTypeface(Typeface.MONOSPACE)
-            isTextSelectable = true
+            setTextIsSelectable(true)
             setPadding(dp(8), dp(8), dp(8), dp(8))
             text = "Loading…"
         }
