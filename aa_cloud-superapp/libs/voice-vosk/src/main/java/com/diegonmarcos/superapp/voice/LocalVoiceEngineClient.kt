@@ -28,7 +28,7 @@ class LocalVoiceEngineClient(private val context: Context) : VoiceEngineClient, 
     @Volatile private var onErrorCb: ((String) -> Unit)? = null
 
     /** language tag resolved from the current IME subtype — set before [start]. */
-    @Volatile var languageTag: String? = null
+    @Volatile override var languageTag: String? = null
 
     override fun start(
         onPartial: (String) -> Unit,
