@@ -7,6 +7,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 
@@ -44,7 +45,15 @@ class MainActivity : AppCompatActivity() {
                 mediaPlaybackRequiresUserGesture = false
                 mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             }
-            webViewClient = WebViewClient()       // keep navigation in-app
+            val assetLoader = WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this@MainActivity))
+                .build()
+            webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView, request: android.webkit.WebResourceRequest,
+                ): android.webkit.WebResourceResponse? =
+                    assetLoader.shouldInterceptRequest(request.url)
+            }
             webChromeClient = WebChromeClient()   // console logging
         }
 
@@ -59,7 +68,7 @@ class MainActivity : AppCompatActivity() {
             WebViewCompat.addDocumentStartJavaScript(webView, TRANSPORT_SHIM_JS, setOf("*"))
         }
 
-        webView.loadUrl("file:///android_asset/frontend/index.html")
+        webView.loadUrl("https://appassets.androidplatform.net/assets/frontend/index.html")
 
         // Floating ⚙ → native Configs (terminal backend switcher, SSH connection
         // editor, key pairing, setup steps). The WebView has no chrome, so this
