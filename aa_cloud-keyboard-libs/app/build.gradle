@@ -77,5 +77,8 @@ dependencies {
     // so TranslateEngineService.translateBlocking can be called in-process.
     implementation project(':libs:translate-mlkit')
     implementation project(':libs:voice')
+    // Vosk engine (LocalVoiceEngineClient) — registered in VoiceEngineService so
+    // cross-process callers (cloud-keyboard) get in-process Vosk recognition.
+    implementation project(':libs:voice-vosk')
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }

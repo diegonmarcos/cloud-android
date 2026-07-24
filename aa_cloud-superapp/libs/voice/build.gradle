@@ -1,14 +1,13 @@
-// libs:voice — on-device OFFLINE voice-input engine (Vosk) for the vendored
-// keyboard's VOICE toolbar key. Self-contained, lives OUTSIDE libs/keyboard/
-// src/main so `build.sh sync-heliboard` (rsync --delete mirror of upstream
-// HeliBoard) never clobbers it — same isolation rationale as libs:translate.
+// libs:voice — light VOICE-INPUT module: VoiceBarView UI + AudioRecord capture +
+// VoiceEngineClient/VoiceEngines interface + VoiceModelManager (model download).
+// NO Vosk / libvosk.so dependency here — the heavy engine lives in libs:voice-vosk
+// (companion APK only). cloud-keyboard includes ONLY this module, keeping libvosk.so
+// out of the keyboard APK (~33 MB saved across the 4 ABI slices in the AAR).
 //
-// Vosk runs a small acoustic model fully on-device: after the per-language
-// model is fetched once (~40-50 MB), nothing leaves the device and NO Google /
-// system speech-recognition IME is required (that absence is why the VOICE key
-// did nothing on de-googled devices). The model registry is data-driven from
-// build.json::voice.models, baked into BuildConfig below. libs:keyboard depends
-// on this module; LatinIME's KeyCode.VOICE_INPUT handler calls VoiceInput.toggle.
+// libs:keyboard depends on this module; LatinIME's VOICE_INPUT key calls VoiceBarView.
+// VoiceBarView delegates recognition to VoiceEngines.client (set at Application.onCreate).
+// Model download registry (build.json::voice.models) is baked into BuildConfig here so
+// VoiceModelManager can resolve and download models regardless of which APK calls it.
 
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -54,11 +53,9 @@ android {
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
 
-    // Translate button in the dictation box reuses the on-device ML Kit engine.
+    // Translate button in the dictation box (VoiceBarView) reuses the engine
+    // from libs:translate — same as before the split.
     implementation project(':libs:translate')
 
-    // Vosk offline speech recognition. The AAR bundles the native libvosk.so
-    // for arm64-v8a/armeabi-v7a/x86_64; JNA is its required native bridge.
-    implementation 'com.alphacephei:vosk-android:0.3.47'
-    implementation 'net.java.dev.jna:jna:5.13.0@aar'
+    // NO Vosk here. libvosk.so lives ONLY in libs:voice-vosk (companion APK).
 }

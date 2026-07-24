@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.Configuration as WorkManagerConfiguration
 import com.diegonmarcos.superapp.media.MediaRuntime
 import com.diegonmarcos.superapp.translate.TranslateEngines
+import com.diegonmarcos.superapp.voice.VoiceEngines
 import helium314.keyboard.latin.utils.prefs as heliboardPrefs
 
 /**
@@ -42,6 +43,9 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // Register AIDL client so libs:translate's Translator / TranslateBarView
         // delegate to the companion cloud-keyboard-libs service (ML Kit not bundled here).
         runCatching { TranslateEngines.client = AidlTranslateEngineClient(this) }
+        // Register AIDL voice client so libs:voice's VoiceBarView delegates to the
+        // companion cloud-keyboard-libs service (Vosk not bundled here).
+        runCatching { VoiceEngines.client = AidlVoiceEngineClient(this) }
 
         // Extract keyboard dicts from companion cloud-keyboard-libs (which bundles
         // the .dict files since this APK omits them to save ~39 MB). Must run

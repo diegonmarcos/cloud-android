@@ -4,6 +4,8 @@ import android.app.Application
 import com.diegonmarcos.superapp.media.MediaRuntime
 import com.diegonmarcos.superapp.translate.LocalTranslateEngineClient
 import com.diegonmarcos.superapp.translate.TranslateEngines
+import com.diegonmarcos.superapp.voice.LocalVoiceEngineClient
+import com.diegonmarcos.superapp.voice.VoiceEngines
 
 /**
  * Application entry point for Cloud Keyboard Libs.
@@ -22,6 +24,9 @@ class App : Application() {
         }
         runCatching {
             TranslateEngines.client = LocalTranslateEngineClient(this)
+        }
+        runCatching {
+            VoiceEngines.client = LocalVoiceEngineClient(this)
         }
     }
 }

@@ -15,6 +15,9 @@ import android.graphics.Path
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
@@ -29,7 +32,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.diegonmarcos.superapp.translate.Translator
-import org.vosk.Model
+import kotlin.concurrent.thread
+import kotlin.math.abs
+import kotlin.math.max
+
+private const val SAMPLE_RATE = 16000
+private const val POINTS = 96 // oscilloscope sample count per frame
 
 /**
  * Offline voice dictation bar, hosted INSIDE the keyboard frame (added as the
@@ -38,8 +46,13 @@ import org.vosk.Model
  * focus / touch / mic-lifecycle bugs. It sits directly above the keyboard, the
  * keys stay usable below, and the mic key TOGGLES it (tap = open, tap = close).
  *
- * The mic lifecycle is tied to visibility: [onShown] starts the recognizer,
- * [onHidden] stops it and RELEASES the mic — so closing always frees the mic.
+ * The mic lifecycle is tied to visibility: [onShown] starts capture + the engine,
+ * [onHidden] stops them and RELEASES the mic — so closing always frees the mic.
+ *
+ * Audio capture runs in VoiceBarView (the foreground IME holds RECORD_AUDIO).
+ * Recognition is delegated to [VoiceEngines.client]:
+ *   - cloud-keyboard-libs (companion APK): LocalVoiceEngineClient — Vosk in-process
+ *   - cloud-keyboard (standalone APK):     AidlVoiceEngineClient  — cross-process AIDL
  */
 @SuppressLint("ViewConstructor", "SetTextI18n")
 class VoiceBarView(context: Context) : LinearLayout(context) {
@@ -57,7 +70,11 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
     private var icSupplier: IcProvider? = null
     private var langTag: String = "en-us"
     private var onCloseRequest: Runnable? = null
-    private var recognizer: VoiceRecognizer? = null
+
+    // Capture state — owned by VoiceBarView so the mic lives here (foreground IME).
+    @Volatile private var record: AudioRecord? = null
+    @Volatile private var capturing = false
+    private var captureThread: Thread? = null
 
     // Data-driven translate targets (build.json::voice.translate_targets). The
     // chip cycles through them; Translate uses the selected one. Lets you pick a
@@ -76,9 +93,6 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
         const val DANGER = 0xFF5A2E45.toInt()
         const val TEXT = 0xFFF2EEFF.toInt()
         const val MUTED = 0xFFB9A7FF.toInt()
-        // Model cache shared across open/close so we load the ~40 MB model once.
-        @Volatile var cachedModel: Model? = null
-        @Volatile var cachedDir: String? = null
     }
 
     init {
@@ -149,41 +163,68 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
             onCloseRequest?.run() // close; user re-taps after granting
             return
         }
+        val engine = VoiceEngines.client
+        if (engine == null) {
+            hintView.text = "Voice unavailable — install cloud-keyboard-libs companion"
+            return
+        }
         editor.setText("")
-        hintView.text = "Preparing voice model…"
-        val key = VoiceModelManager.resolveModelKey(langTag)
-        VoiceModelManager.ensureModel(
-            ctx, key,
-            onReady = { dir -> main.post { startRecognition(dir) } },
-            onError = { msg -> main.post { hintView.text = "Model error: $msg" } }
+        hintView.text = "Preparing voice engine…"
+        // Propagate the current language tag to the engine if it supports it.
+        if (engine is LanguageTagAware) engine.languageTag = langTag
+        engine.start(
+            onPartial = { t -> main.post { hintView.text = if (t.isEmpty()) "Listening…" else "… $t" } },
+            onFinal   = { t -> main.post { hintView.text = "Listening…"; appendFinal(t) } },
+            onError   = { msg -> main.post { hintView.text = "Voice error: $msg"; stopCapture() } }
         )
+        startCapture(engine)
+        hintView.text = "Listening…"
     }
 
     /** Called by LatinIME when the bar is hidden — STOP and release the mic. */
     fun onHidden() {
-        val rec = recognizer; recognizer = null
-        if (rec != null) Thread { rec.stop() }.start()
+        stopCapture()
+        VoiceEngines.client?.stop()
     }
 
-    private fun startRecognition(dir: String) {
-        try {
-            if (cachedDir != dir || cachedModel == null) {
-                cachedModel?.close(); cachedModel = Model(dir); cachedDir = dir
-            }
-            val model = cachedModel ?: return
-            hintView.text = "Listening…"
-            val rec = VoiceRecognizer(
-                model,
-                onWaveform = { samples -> wave.setWaveform(samples) },
-                onPartial = { t -> hintView.text = if (t.isEmpty()) "Listening…" else "… $t" },
-                onFinal = { t -> hintView.text = "Listening…"; appendFinal(t) },
-                onError = { msg -> hintView.text = "Voice error: $msg" }
-            )
-            recognizer = rec
-            rec.start()
-        } catch (e: Exception) {
-            hintView.text = "Voice init failed: ${e.message}"
+    private fun startCapture(engine: VoiceEngineClient) {
+        val minBuf = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+        )
+        val bufSize = if (minBuf > 0) minBuf * 2 else SAMPLE_RATE
+        val rec = AudioRecord(
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufSize
+        )
+        if (rec.state != AudioRecord.STATE_INITIALIZED) {
+            main.post { hintView.text = "Microphone unavailable" }
+            rec.release()
+            return
         }
+        record = rec
+        capturing = true
+        captureThread = thread(name = "vosk-capture", isDaemon = true) {
+            val buffer = ByteArray(bufSize)
+            rec.startRecording()
+            while (capturing) {
+                val r = record ?: break
+                val n = try { r.read(buffer, 0, buffer.size) } catch (_: Exception) { break }
+                if (n <= 0) continue
+                val wf = waveform(buffer, n)
+                main.post { wave.setWaveform(wf) }
+                engine.feed(buffer.copyOf(n), n)
+            }
+        }
+    }
+
+    private fun stopCapture() {
+        capturing = false
+        val r = record ?: return
+        record = null
+        runCatching { if (r.recordingState == AudioRecord.RECORDSTATE_RECORDING) r.stop() }
+        runCatching { r.release() }
+        captureThread?.let { if (it !== Thread.currentThread()) runCatching { it.join(500) } }
+        captureThread = null
     }
 
     private fun appendFinal(text: String) {
@@ -250,6 +291,30 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /**
+     * Downsample a PCM16LE buffer to [POINTS] signed, normalised (-1..1) samples
+     * by taking the peak (most-extreme) sample in each slice.
+     */
+    private fun waveform(buf: ByteArray, len: Int): FloatArray {
+        val total = len / 2
+        val out = FloatArray(POINTS)
+        if (total <= 0) return out
+        val step = max(1, total / POINTS)
+        for (p in 0 until POINTS) {
+            var peak = 0
+            val start = p * step
+            var j = 0
+            while (j < step && start + j < total) {
+                val idx = (start + j) * 2
+                val s = ((buf[idx].toInt() and 0xff) or (buf[idx + 1].toInt() shl 8)).toShort().toInt()
+                if (abs(s) > abs(peak)) peak = s
+                j++
+            }
+            out[p] = (peak / 32768f).coerceIn(-1f, 1f)
+        }
+        return out
+    }
+
+    /**
      * Oscilloscope-style waveform: draws the actual captured audio wave as a
      * smooth gradient line (with a soft glow + faint mirror) across the strip,
      * scrolling/wiggling with the voice — a synthesizer/scope look, not bars.
@@ -308,4 +373,9 @@ class VoiceBarView(context: Context) : LinearLayout(context) {
 
         private fun dp(v: Float) = v * resources.displayMetrics.density
     }
+}
+
+/** Implemented by engines that can be told which language to transcribe. */
+interface LanguageTagAware {
+    var languageTag: String?
 }
