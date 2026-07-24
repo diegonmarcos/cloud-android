@@ -44,6 +44,12 @@ class TerminalBridge(
         }
     }
 
+    /** Open the native browser overlay for [url] — bypasses X-Frame-Options. */
+    @JavascriptInterface
+    fun browserOpen(url: String) {
+        activity.runOnUiThread { (activity as? MainActivity)?.openBrowser(url) }
+    }
+
     // ── PTY ───────────────────────────────────────────────────────────────────
 
     @JavascriptInterface

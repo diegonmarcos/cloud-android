@@ -1,11 +1,17 @@
 package com.diegonmarcos.ide
 
 import android.os.Bundle
+import android.text.InputType
+import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
@@ -26,6 +32,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var ssh: SshBackend
+    private lateinit var browserOverlay: LinearLayout
+    private lateinit var browserAddr: EditText
+    private lateinit var browserWeb: WebView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,10 +90,83 @@ class MainActivity : AppCompatActivity() {
                 startActivity(android.content.Intent(this@MainActivity, ConfigsActivity::class.java))
             }
         })
+
+        // ── Native browser overlay ─────────────────────────────────────────────
+        // Covers the whole frame (added last so it sits on top). Initially GONE.
+        // Opened via openBrowser(url) called from TerminalBridge.browserOpen().
+        browserOverlay = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF232629.toInt())
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+            visibility = View.GONE
+        }
+
+        // Top chrome: back | address bar | close
+        val chrome = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dpx(4), dpx(4), dpx(4), dpx(4))
+        }
+        val backBtn = Button(this).apply {
+            text = "‹"
+            setOnClickListener { if (browserWeb.canGoBack()) browserWeb.goBack() }
+        }
+        browserAddr = EditText(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            inputType = InputType.TYPE_TEXT_VARIATION_URI
+            imeOptions = EditorInfo.IME_ACTION_GO
+            isSingleLine = true
+            hint = "https://…"
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_GO) {
+                    var v = text.toString().trim()
+                    if (!Regex("^[a-z]+://.*").matches(v)) v = "https://$v"
+                    setText(v)
+                    browserWeb.loadUrl(v)
+                    true
+                } else false
+            }
+        }
+        val closeBtn = Button(this).apply {
+            text = "✕"
+            setOnClickListener { browserOverlay.visibility = View.GONE }
+        }
+        chrome.addView(backBtn)
+        chrome.addView(browserAddr)
+        chrome.addView(closeBtn)
+
+        browserWeb = WebView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f,
+            )
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            webViewClient = WebViewClient()
+            webChromeClient = WebChromeClient()
+        }
+
+        browserOverlay.addView(chrome)
+        browserOverlay.addView(browserWeb)
+        frame.addView(browserOverlay)
+
         setContentView(frame)
     }
 
+    /** Open the native browser overlay, navigate to [url], and show it. */
+    fun openBrowser(url: String) {
+        browserAddr.setText(url)
+        browserWeb.loadUrl(url)
+        browserOverlay.visibility = View.VISIBLE
+    }
+
     override fun onBackPressed() {
+        if (browserOverlay.visibility == View.VISIBLE) {
+            if (browserWeb.canGoBack()) browserWeb.goBack()
+            else browserOverlay.visibility = View.GONE
+            return
+        }
         if (webView.canGoBack()) {
             webView.goBack()
         } else {

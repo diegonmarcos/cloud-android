@@ -188,6 +188,7 @@ const Tabs = {
   // webview engine (WebKitGTK) — no bundled Chromium, no extra deps.
   openBrowserTab(url = "https://duckduckgo.com", profile = this.activeProfile) {
     const tabId = "T" + ++this.seq;
+    if (window.AndroidTerm && window.AndroidTerm.browserOpen) window.AndroidTerm.browserOpen(url);
     const rootEl = document.createElement("div");
     rootEl.className = "tab-root";
     rootEl.dataset.id = tabId;
