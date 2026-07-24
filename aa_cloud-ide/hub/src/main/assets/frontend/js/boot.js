@@ -126,7 +126,7 @@
   // plain action (there is no file-editor profile).
   const goProfile = (name, el) => { const p = profiles.find((x) => x.name === name); if (p) selectProfile(p, el); };
   document.getElementById("btn-home-filebrowser").addEventListener("click", (e) => goProfile("file-browser", e.currentTarget));
-  document.getElementById("btn-home-fileeditor").addEventListener("click", () => Tabs.openFileEditorTab((window.Configs && Configs.get(Configs.KEYS.fePath)) || null));
+  document.getElementById("btn-home-fileeditor").addEventListener("click", (e) => selectProfile({ name: "file-editor", display_name: "File Editor", fileeditor: true }, e.currentTarget));
   document.getElementById("btn-home-browser").addEventListener("click", (e) => goProfile("web-browser", e.currentTarget));
   document.getElementById("btn-home-agentic").addEventListener("click", (e) => goProfile("agentic", e.currentTarget));
   // About lives in the Configs (⋮ → menu-about) dropdown now — no standalone button.

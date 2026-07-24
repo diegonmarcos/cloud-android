@@ -203,7 +203,7 @@ const Tabs = {
     addr.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
       let v = addr.value.trim();
-      if (!/^[a-z]+:\/\//i.test(v)) v = "http://" + v;
+      if (!/^[a-z]+:\/\//i.test(v)) v = "https://" + v;
       addr.value = v;
       frame.src = v;
     });
@@ -315,6 +315,7 @@ const Tabs = {
     if (last && this.tabs.has(last)) { this.activate(last); return; }
     if (p.browser) this.openBrowserTab((window.Configs && Configs.get(Configs.KEYS.browserUrl)) || p.url, name);
     else if (p.filebrowser) this.openFileBrowserTab((window.Configs && Configs.get(Configs.KEYS.fbPath)) || p.start_path || "~", name);
+    else if (p.fileeditor) this.openFileEditorTab((window.Configs && Configs.get(Configs.KEYS.fePath)) || null, name);
     else this.newTab(name);
   },
 
