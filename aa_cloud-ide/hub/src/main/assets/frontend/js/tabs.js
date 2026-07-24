@@ -313,8 +313,8 @@ const Tabs = {
 
     const last = this.lastActiveByProfile.get(name);
     if (last && this.tabs.has(last)) { this.activate(last); return; }
-    if (p.browser) this.openBrowserTab(p.url, name);
-    else if (p.filebrowser) this.openFileBrowserTab(p.start_path || "~", name);
+    if (p.browser) this.openBrowserTab((window.Configs && Configs.get(Configs.KEYS.browserUrl)) || p.url, name);
+    else if (p.filebrowser) this.openFileBrowserTab((window.Configs && Configs.get(Configs.KEYS.fbPath)) || p.start_path || "~", name);
     else this.newTab(name);
   },
 

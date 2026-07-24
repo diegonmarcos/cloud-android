@@ -77,6 +77,37 @@
     <div id="palette-results"></div>
   </div>
 
+  <div id="configs-overlay" hidden>
+    <div class="cfg-panel">
+      <div class="cfg-header">
+        <span class="cfg-title">Configs</span>
+        <button id="cfg-close" class="cfg-close-btn" title="Close">✕ Close</button>
+      </div>
+      <div class="cfg-body">
+        <section class="cfg-section">
+          <div class="cfg-section-title">Terminal / SSH</div>
+          <div class="cfg-hint">Backend (Termux / Nix-on-Droid), host / port / user, Test connection, SSH key.</div>
+          <button id="cfg-ssh-open" class="cfg-btn">Open SSH settings</button>
+        </section>
+        <section class="cfg-section">
+          <div class="cfg-section-title">Browser</div>
+          <label class="cfg-row"><span>Default URL</span><input id="cfg-browser-url" type="text" spellcheck="false" /></label>
+        </section>
+        <section class="cfg-section">
+          <div class="cfg-section-title">File Browser</div>
+          <label class="cfg-row"><span>Start path</span><input id="cfg-fb-path" type="text" spellcheck="false" /></label>
+        </section>
+        <section class="cfg-section">
+          <div class="cfg-section-title">File Editor</div>
+          <label class="cfg-row"><span>Default file</span><input id="cfg-fe-path" type="text" spellcheck="false" /></label>
+        </section>
+        <section class="cfg-section">
+          <div class="cfg-section-title">Agentic</div>
+          <div class="cfg-hint">Runs as a shell profile — its commands appear in the left sidebar when selected.</div>
+        </section>
+      </div>
+    </div>
+  </div>
   <script src="vendor/xterm.js"></script>
   <script src="vendor/xterm-addon-fit.js"></script>
   <script src="vendor/xterm-addon-search.js"></script>
@@ -93,6 +124,7 @@ window.MYK_PROFILES={"profiles":[{"name":"home","display_name":"Home","theme":{"
 ;
 ;
   </script>
+  <script src="js/configs.js"></script>
   <script src="js/boot.js"></script>
 </body>
 </html>
