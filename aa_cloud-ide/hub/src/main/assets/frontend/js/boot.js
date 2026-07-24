@@ -25,8 +25,9 @@
 
   // Top-nav pills
   const nav = document.getElementById("profiles");
+  const ROW1 = new Set(["file-browser", "web-browser", "agentic"]);
   profiles.forEach((p, i) => {
-    if (p.name === "agentic") return;   // Agentic promoted to row 1 (home actions)
+    if (ROW1.has(p.name)) return;   // row-1 home profiles (File Browser / Browser / Agentic)
     const pill = document.createElement("div");
     pill.className = "profile-pill" + (i === 0 ? " active" : "");
     pill.textContent = p.display_name || p.name;
@@ -120,14 +121,14 @@
   document.getElementById("menu-about").addEventListener("click", showAbout);
   document.getElementById("about-close").addEventListener("click", () => { document.getElementById("about").hidden = true; });
 
-  // Row 1 (Home): fixed actions, always visible regardless of active profile.
-  document.getElementById("btn-home-filebrowser").addEventListener("click", () => Tabs.openFileBrowserTab("~"));
+  // Row 1 (Home): File Browser / Browser / Agentic are PROFILES (own left-side
+  // commands + own independent tab group via switchProfile). File Editor is a
+  // plain action (there is no file-editor profile).
+  const goProfile = (name, el) => { const p = profiles.find((x) => x.name === name); if (p) selectProfile(p, el); };
+  document.getElementById("btn-home-filebrowser").addEventListener("click", (e) => goProfile("file-browser", e.currentTarget));
   document.getElementById("btn-home-fileeditor").addEventListener("click", () => Tabs.openFileEditorTab(null));
-  document.getElementById("btn-home-browser").addEventListener("click", () => Tabs.openBrowserTab());
-  document.getElementById("btn-home-agentic").addEventListener("click", () => {
-    const ag = profiles.find((p) => p.name === "agentic");
-    if (ag) selectProfile(ag, document.getElementById("btn-home-agentic"));
-  });
+  document.getElementById("btn-home-browser").addEventListener("click", (e) => goProfile("web-browser", e.currentTarget));
+  document.getElementById("btn-home-agentic").addEventListener("click", (e) => goProfile("agentic", e.currentTarget));
   // About lives in the Configs (⋮ → menu-about) dropdown now — no standalone button.
 
   // Sidebar view switcher: Commands (search + per-profile items) | Tabs (vertical, grouped)
