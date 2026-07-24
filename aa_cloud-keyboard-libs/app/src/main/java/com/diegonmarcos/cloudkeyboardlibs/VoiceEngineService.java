@@ -16,9 +16,9 @@ public class VoiceEngineService extends Service {
         public void start(IVoiceCallback cb) {
             try {
                 mEngine.start(
-                    text -> { try { cb.onPartial(text); } catch (Throwable ignored) {} },
-                    text -> { try { cb.onFinal(text);   } catch (Throwable ignored) {} },
-                    msg  -> { try { cb.onError(msg);    } catch (Throwable ignored) {} }
+                    text -> { try { cb.onPartial(text); } catch (Throwable ignored) {} return kotlin.Unit.INSTANCE; },
+                    text -> { try { cb.onFinal(text);   } catch (Throwable ignored) {} return kotlin.Unit.INSTANCE; },
+                    msg  -> { try { cb.onError(msg);    } catch (Throwable ignored) {} return kotlin.Unit.INSTANCE; }
                 );
             } catch (Throwable t) {
                 try { cb.onError(t.getMessage() != null ? t.getMessage() : "start failed"); }
