@@ -30,6 +30,11 @@ const Configs = {
       if (window.AndroidTerm && window.AndroidTerm.openConfigs) window.AndroidTerm.openConfigs();
       else alert("Terminal/SSH settings are available in the app build.");
     });
+    const dev = byId("cfg-dev-open");
+    if (dev) dev.addEventListener("click", () => {
+      if (window.AndroidTerm && window.AndroidTerm.openDevControl) window.AndroidTerm.openDevControl();
+      else alert("Dev Control is available in the app build.");
+    });
   },
 };
 window.Configs = Configs;

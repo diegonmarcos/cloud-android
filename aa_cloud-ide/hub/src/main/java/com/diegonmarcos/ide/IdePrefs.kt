@@ -50,6 +50,15 @@ object IdePrefs {
             .apply()
     }
 
+    // ── Dev API toggle ────────────────────────────────────────────────────────
+    private const val KEY_DEV_API = "dev_api_enabled"
+
+    fun devApiEnabled(ctx: Context): Boolean = sp(ctx).getBoolean(KEY_DEV_API, false)
+
+    fun setDevApiEnabled(ctx: Context, v: Boolean) {
+        sp(ctx).edit().putBoolean(KEY_DEV_API, v).apply()
+    }
+
     /** Remove all connection overrides for [backend], reverting to baked defaults. */
     fun clearTerminalConn(ctx: Context, backend: String) {
         sp(ctx).edit()

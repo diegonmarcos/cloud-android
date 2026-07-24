@@ -44,6 +44,14 @@ class TerminalBridge(
         }
     }
 
+    /** Open the Dev Control screen (logcat viewer, copy/export, local dev API). */
+    @JavascriptInterface
+    fun openDevControl() {
+        activity.runOnUiThread {
+            activity.startActivity(android.content.Intent(activity, DevControlActivity::class.java))
+        }
+    }
+
     /** Open the native browser overlay for [url] — bypasses X-Frame-Options. */
     @JavascriptInterface
     fun browserOpen(url: String) {

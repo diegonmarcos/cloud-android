@@ -39,6 +39,7 @@
              (AboutActivity). Update = UpdateOverlay DialogFragment. -->
         <activity android:name=".ConfigsActivity" android:exported="false" />
         <activity android:name=".AboutActivity" android:exported="false" />
+        <activity android:name=".DevControlActivity" android:exported="false" />
 
         <!-- In-app updater + bundled-app PackageInstaller status callback. -->
         <receiver
