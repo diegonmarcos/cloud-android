@@ -466,7 +466,7 @@
     "arc_menu": {
       "enabled": true,
       "section": "config",
-      "radius_dp": 140
+      "radius_dp": 200
     },
     "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
     "home_swipes": {
