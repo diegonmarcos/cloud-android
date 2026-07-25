@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Date: Fri, 25 Jul 2026 10:00:00 +0000
+Subject: [PATCH] fix: force compileSdkVersion/buildToolsVersion on all subprojects
+
+Some RN library modules (e.g. voximplant_react-native-foreground-service)
+hardcode a compileSdkVersion < 30, which breaks compilation with Java 9+
+source. Add a subprojects afterEvaluate block to inherit the root values.
+---
+ android/build.gradle | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/android/build.gradle b/android/build.gradle
+index d9e7bb120..a13d72de1 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -47,3 +47,14 @@ apply plugin: "com.facebook.react.rootproject"
+ dependencyLocking {
+     lockAllConfigurations()
+ }
++
++subprojects {
++    afterEvaluate { project ->
++        if (project.hasProperty('android')) {
++            android {
++                compileSdkVersion rootProject.ext.compileSdkVersion
++                buildToolsVersion rootProject.ext.buildToolsVersion
++            }
++        }
++    }
++}
