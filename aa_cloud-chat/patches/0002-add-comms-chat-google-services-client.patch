@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Date: Fri, 25 Jul 2026 12:00:00 +0000
+Subject: [PATCH] add com.diegonmarcos.comms.chat client to google-services.json
+
+The com.google.gms.google-services Gradle plugin matches google-services.json
+against the applicationId (not the namespace as patch 0001 assumed), so the
+repackaged applicationId com.diegonmarcos.comms.chat had "No matching client
+found" and failed :app:processReleaseGoogleServices. Add a client entry cloned
+from the com.mattermost.rnbeta beta client (same upstream Firebase project).
+Push remains effectively disabled for this self-compiled fork (delivery is tied
+to the upstream project's sender), but Firebase resource generation + init now
+succeed so the release build completes.
+diff --git a/android/app/google-services.json b/android/app/google-services.json
+index 6b71b966d..96d5ddc39 100644
+--- a/android/app/google-services.json
++++ b/android/app/google-services.json
+@@ -77,6 +77,35 @@
+           ]
+         }
+       }
++    },
++    {
++      "client_info": {
++        "mobilesdk_app_id": "1:184930218130:android:c7debfa7ea3f75a7",
++        "android_client_info": {
++          "package_name": "com.diegonmarcos.comms.chat"
++        }
++      },
++      "oauth_client": [
++        {
++          "client_id": "184930218130-8nahrspll1opff0uogtkh2qsv8coqngo.apps.googleusercontent.com",
++          "client_type": 3
++        }
++      ],
++      "api_key": [
++        {
++          "current_key": "AIzaSyASRwdI3DKpyjt_gMbL1MpViI3BTHB9rFg"
++        }
++      ],
++      "services": {
++        "appinvite_service": {
++          "other_platform_oauth_client": [
++            {
++              "client_id": "109751306267633962395",
++              "client_type": 3
++            }
++          ]
++        }
++      }
+     }
+   ],
+   "configuration_version": "1"
