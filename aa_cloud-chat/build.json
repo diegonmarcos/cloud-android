@@ -14,6 +14,7 @@
       "blocked_on": null,
       "build": {
         "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open \u2014 prevents 20+ react-native arm64+x86_64.'",
+        "prepare": ["npm ci"],
         "command": "node node_modules/.bin/react-native build-android --mode=release 2>&1",
         "apk_glob": "android/app/build/outputs/apk/release/*.apk",
         "resign_unsigned": true,
