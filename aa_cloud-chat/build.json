@@ -6,7 +6,7 @@
       "image": "cloud-comms-chat",
       "upstream_repo": "https://github.com/mattermost/mattermost-mobile.git",
       "tracker_dir": "ea_upstreams-sources/chat-mattermost",
-      "pinned_tag": "v2.25.1",
+      "pinned_tag": "v2.40.0",
       "license": "Apache-2.0",
       "primary_lang": "TypeScript (React Native)",
       "runtime": "native",
