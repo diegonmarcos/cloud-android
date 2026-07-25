@@ -119,6 +119,11 @@ object CircularMenu {
         val dismiss: (View) -> Unit,
     ) : View(ctx), Session {
 
+        companion object {
+            private const val TARGET_BACK = "__back__"
+            private val BACK_NODE = Node("← Back", "ic_navigate_before", TARGET_BACK, null)
+        }
+
         private val dm = resources.displayMetrics
         private fun dp(v: Int) = v * dm.density
         private val ring = dp(cfg.radiusDp)
@@ -132,8 +137,9 @@ object CircularMenu {
         private val arrow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.argb(230, 163, 122, 244); strokeWidth = dp(3); strokeCap = Paint.Cap.ROUND
         }
-        private val disc = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(235, 24, 20, 40) }
-        private val hot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(255, 124, 58, 237) }
+        private val disc  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(235, 24, 20, 40) }
+        private val hot   = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(255, 124, 58, 237) }
+        private val back  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(200, 60, 60, 80) }
         private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE; textAlign = Paint.Align.CENTER; textSize = dp(11)
         }
@@ -227,10 +233,7 @@ object CircularMenu {
         private fun recompute() {
             val lv = stack.last()
             val dx = fx - lv.cx; val dy = fy - lv.cy; val r = hypot(dx, dy)
-            if (r < dead) {                   // finger in the center dead-zone
-                if (stack.size > 1) stack.removeAt(stack.size - 1) // pop up a level
-                active = -1; return
-            }
+            if (r < dead) { active = -1; return }
             val slots = layout(lv)
             // nearest item by straight-line distance — correct across concentric rings
             var best = 0; var bestD = Float.MAX_VALUE
@@ -240,13 +243,13 @@ object CircularMenu {
             }
             active = best
             val sel = lv.items[best]
-            // descend: drag past the outermost ring into a node with children. Leaf
-            // levels carry no sections, so packed rings never trigger this.
+            // descend: drag past the outermost ring into a node with children.
+            // Keep the same center — redraw the ring with children + a Back node.
             if (r > outerR(lv) + dp(44) && sel.childKey != null) {
                 val kids = childrenOf(sel)
                 if (kids.isNotEmpty()) {
-                    val (nx, ny) = slotPos(lv, slots[best])
-                    stack.add(Level(nx, ny, kids)); active = -1  // node becomes new center
+                    stack.add(Level(lv.cx, lv.cy, listOf(BACK_NODE) + kids))
+                    active = -1
                 }
             }
         }
@@ -258,8 +261,15 @@ object CircularMenu {
                 }
                 MotionEvent.ACTION_UP -> {
                     val lv = stack.last(); val sel = active
-                    dismiss(this)
-                    if (sel in lv.items.indices) host.navigate(lv.items[sel].target)
+                    val target = if (sel in lv.items.indices) lv.items[sel].target else null
+                    if (target == TARGET_BACK) {
+                        // pop back to parent level, keep menu open
+                        if (stack.size > 1) stack.removeAt(stack.size - 1)
+                        active = -1; invalidate()
+                    } else {
+                        dismiss(this)
+                        if (target != null) host.navigate(target)
+                    }
                 }
                 MotionEvent.ACTION_CANCEL -> dismiss(this)
             }
@@ -271,8 +281,6 @@ object CircularMenu {
         override fun onDraw(c: Canvas) {
             c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrim)
             val lv = stack.last()
-            // breadcrumb: a faint disc at each ancestor center (that's where "back" is)
-            for (i in 0 until stack.size - 1) c.drawCircle(stack[i].cx, stack[i].cy, dp(8), disc)
             val slots = layout(lv)
             // arrow from the current center toward the finger (clamped to inner ring)
             val dx = fx - lv.cx; val dy = fy - lv.cy; val len = hypot(dx, dy)
@@ -280,16 +288,18 @@ object CircularMenu {
                 val t = (slots.minOf { it.r } - nodeR) / len
                 c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
-            // Radius is already at the screen-limited max; when the visible arc still
-            // can't fit full-size icons at this count, shrink them to the neighbour
-            // spacing so they never overlap (few-item levels keep full size).
             val nr = nodeRadiusFor(lv, slots)
             slots.forEachIndexed { i, s ->
                 val (nx, ny) = slotPos(lv, s)
-                c.drawCircle(nx, ny, nr, if (i == active) hot else disc)
                 val nd = lv.items[i]
+                val isBack = nd.target == TARGET_BACK
+                val bgPaint = when {
+                    i == active -> hot
+                    isBack      -> back
+                    else        -> disc
+                }
+                c.drawCircle(nx, ny, nr, bgPaint)
                 icon(nd.iconName)?.let {
-                    // native icon size (iconPx), scaled down only when the node shrank
                     val h = iconPx / 2f * (nr / nodeR)
                     c.drawBitmap(it, null, RectF(nx - h, ny - h, nx + h, ny + h), null)
                 }
