@@ -53,10 +53,17 @@ data class OneHandConfig(
     data class AppOption(val label: String, val pkg: String)
 
     companion object {
-        /** The 3 sectors of a handle, ordered top→center→down (UI + preview iterate these). */
+        /** Sectors of a handle, ordered top→down (UI + preview iterate these). Left/right
+         *  edges have 5 sectors; bottom edge keeps 3 (left/center/right). */
         fun slotsFor(edge: Edge): List<Slot> = when (edge) {
             Edge.BOTTOM -> listOf(Slot("left", "Left"), Slot("center", "Center"), Slot("right", "Right"))
-            else -> listOf(Slot("top", "Top"), Slot("center", "Center"), Slot("down", "Down"))
+            else -> listOf(
+                Slot("top",         "Top"),
+                Slot("top_middle",  "Top-middle"),
+                Slot("center",      "Center"),
+                Slot("down_middle", "Down-middle"),
+                Slot("down",        "Down"),
+            )
         }
 
         fun decode(b64: String): OneHandConfig {
