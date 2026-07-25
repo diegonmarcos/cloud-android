@@ -450,7 +450,12 @@ class MainActivity : AppCompatActivity(),
                         return consumed
                     }
 
-                    // HORIZONTAL swipes — cycle the bottom nav.
+                    // HORIZONTAL swipes are ALSO home-only. Off-home the inner
+                    // fragment owns horizontal gestures (Cloud|Phone tab strips,
+                    // carousels, WebView pan) — the activity must NOT steal them
+                    // to step the walk-list. Mirrors the vertical guard above so
+                    // swipe left/right/up are captured strictly on the Home screen.
+                    if (currentSection != "home") return false
                     // Drawer owns left-edge swipes; ignore those.
                     if (e1.x < edgeIgnorePx) return false
                     if (absDx < minSwipePx) return false
@@ -467,7 +472,8 @@ class MainActivity : AppCompatActivity(),
                     // Infos·Apps → Infos·Admin → Home-Apps·Cloud → … → Labs·
                     // Admin → wrap). Left-swipe (dx<0) = next, right = prev.
                     fireGeminiPattern()
-                    val swipeAction = if (dx < 0) BuildConfig.HOME_SWIPE_LEFT else BuildConfig.HOME_SWIPE_RIGHT
+                    val prefs = com.diegonmarcos.superapp.settings.HomeSwipePrefs(this@MainActivity)
+                    val swipeAction = if (dx < 0) prefs.left else prefs.right
                     if (swipeAction == "walk_step_next" || swipeAction == "walk_step_prev") {
                         walkStep(direction = if (dx < 0) +1 else -1)
                     } else {
@@ -501,7 +507,7 @@ class MainActivity : AppCompatActivity(),
                           }
         return when {
             dy < 0 && currentSection == "home" && !sheetIsUp -> {
-                handleHomeSwipeAction(BuildConfig.HOME_SWIPE_UP); true
+                handleHomeSwipeAction(com.diegonmarcos.superapp.settings.HomeSwipePrefs(this).up); true
             }
             else -> false
         }

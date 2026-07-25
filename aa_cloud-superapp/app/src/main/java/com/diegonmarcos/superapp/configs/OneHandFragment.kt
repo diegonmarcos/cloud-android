@@ -20,6 +20,7 @@ import com.diegonmarcos.superapp.onehand.OneHandAction
 import com.diegonmarcos.superapp.onehand.OneHandConfig
 import com.diegonmarcos.superapp.onehand.OneHandController
 import com.diegonmarcos.superapp.onehand.OneHandPrefs
+import com.diegonmarcos.superapp.settings.HomeSwipePrefs
 
 /**
  * Configs > One-Hand. Master toggle + a per-sector action editor laid out to
@@ -97,6 +98,18 @@ class OneHandFragment : Fragment() {
                     Toast.LENGTH_LONG).show()
             }
         })
+
+        // Home-screen swipe actions — runtime-editable overrides of
+        // build.json::onehand.home_swipes. These fire ONLY while on the Home
+        // section (MainActivity guards on currentSection == "home"); off-home
+        // the inner fragment owns the gesture.
+        root.addView(TextView(ctx).apply {
+            text = "Home-screen swipes"
+            gravity = Gravity.CENTER; setPadding(0, pad, 0, pad / 2); textSize = 16f
+        })
+        addHomeSwipePicker(root, ctx, "Swipe up",    { HomeSwipePrefs(ctx).up },    { HomeSwipePrefs(ctx).up = it })
+        addHomeSwipePicker(root, ctx, "Swipe left",  { HomeSwipePrefs(ctx).left },  { HomeSwipePrefs(ctx).left = it })
+        addHomeSwipePicker(root, ctx, "Swipe right", { HomeSwipePrefs(ctx).right }, { HomeSwipePrefs(ctx).right = it })
 
         val cfg = OneHandConfig.effective(ctx)
         val options = buildOptions(cfg)
@@ -200,6 +213,31 @@ class OneHandFragment : Fragment() {
                 }
             })
         }
+    }
+
+    /** One home-swipe row: a caption + a Spinner over the shared action
+     *  vocabulary. Reads the current value via [get], persists via [set]. */
+    private fun addHomeSwipePicker(
+        col: LinearLayout, ctx: Context, label: String,
+        get: () -> String, set: (String) -> Unit,
+    ) {
+        val d = resources.displayMetrics.density
+        col.addView(TextView(ctx).apply {
+            text = label; setPadding(0, (8 * d).toInt(), 0, 0)
+        })
+        val actions = HomeSwipePrefs.ACTIONS
+        val adapter = ArrayAdapter(
+            ctx, android.R.layout.simple_spinner_dropdown_item, actions.map { it.second })
+        val cur = actions.indexOfFirst { it.first == get() }.coerceAtLeast(0)
+        col.addView(Spinner(ctx).apply {
+            this.adapter = adapter; setSelection(cur)
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onNothingSelected(p: AdapterView<*>?) {}
+                override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    set(actions[pos].first)
+                }
+            }
+        })
     }
 
     private fun prettify(name: String) =

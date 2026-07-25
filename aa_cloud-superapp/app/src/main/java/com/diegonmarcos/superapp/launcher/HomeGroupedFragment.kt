@@ -101,63 +101,12 @@ class HomeGroupedFragment : Fragment(R.layout.fragment_home_grouped) {
         for (bucket in buckets) {
             addGroupHeader(root, inflater, bucket.title)
 
-            // Horizontal-scroll groups: render all tiles in a single
-            // HorizontalScrollView strip, each tile sized to 1/COLS of
-            // the screen width so the row's first 5 tiles are visible
-            // and the rest scroll into view per-tile. A small "→"
-            // hint sits below the row to flag that more tiles exist.
-            if (bucket.scroll == "horizontal") {
-                val tileWidthPx = resources.displayMetrics.widthPixels / COLS -
-                    (8 * resources.displayMetrics.density).toInt()
-                val hStrip = android.widget.HorizontalScrollView(ctx).apply {
-                    isHorizontalScrollBarEnabled = false
-                    overScrollMode = View.OVER_SCROLL_NEVER
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, rowHeightPx,
-                    )
-                }
-                val stripRow = LinearLayout(ctx).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        rowHeightPx,
-                    )
-                }
-                hStrip.addView(stripRow)
-                for ((idTile, labelTile, iconTile) in bucket.tiles) {
-                    val tileView = inflater.inflate(R.layout.item_tile, stripRow, false)
-                    tileView.layoutParams = LinearLayout.LayoutParams(
-                        tileWidthPx, ViewGroup.LayoutParams.MATCH_PARENT,
-                    ).apply {
-                        // Tight 2dp margins between tiles — matches Suite's
-                        // density now that tile_columns is 6.
-                        val m = (2 * resources.displayMetrics.density).toInt()
-                        setMargins(m, m, m, m)
-                    }
-                    val iconRes = Sections.iconResFor(ctx, iconTile).takeIf { it != 0 }
-                        ?: R.drawable.ic_settings
-                    bindTile(tileView, idTile, labelTile, iconRes, palette)
-                    stripRow.addView(tileView)
-                }
-                root.addView(hStrip)
-                // Small "more →" hint — only when there's actually
-                // overflow (more tiles than columns can show), so a
-                // 5-tile scroll-flagged group doesn't lie about having
-                // more apps than are visible.
-                if (bucket.tiles.size > COLS) {
-                    root.addView(android.widget.TextView(ctx).apply {
-                        text = "swipe → ${bucket.tiles.size} apps"
-                        gravity = android.view.Gravity.CENTER
-                        setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                        setTextColor(0x88FFFFFF.toInt())
-                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
-                        val v = (2 * resources.displayMetrics.density).toInt()
-                        setPadding(0, v, 0, v * 3)
-                    })
-                }
-                continue
-            }
-
+            // All groups render as a full multi-row grid (COLS per row,
+            // wrapping to as many rows as needed) — every icon visible,
+            // row per row. The container ScrollView (fragment_home_grouped)
+            // handles vertical overflow. The build.json `scroll:"horizontal"`
+            // flag is intentionally ignored now: the old single-row
+            // HorizontalScrollView strip hid apps behind a left/right scroll.
             val rowsContainer = LinearLayout(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
