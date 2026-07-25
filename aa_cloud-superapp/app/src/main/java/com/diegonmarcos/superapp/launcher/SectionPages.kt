@@ -32,12 +32,12 @@ import com.diegonmarcos.superapp.fin.MyFinDashboardFragment
  */
 object SectionPages {
 
-    data class Page(val id: String, val label: String, val action: String = "", val factory: () -> Fragment)
+    data class Page(val id: String, val label: String, val iconName: String = "", val action: String = "", val factory: () -> Fragment)
 
     fun pagesFor(sectionId: String): List<Page> {
         val section = Sections.byId(sectionId) ?: return emptyList()
         return section.pages.map { p ->
-            Page(p.id, p.label, p.action) { factoryFor(sectionId, p.id, p.label) }
+            Page(p.id, p.label, p.iconName ?: "", p.action) { factoryFor(sectionId, p.id, p.label) }
         }
     }
 

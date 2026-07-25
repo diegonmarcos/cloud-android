@@ -47,7 +47,7 @@ class CanopusStar(private val activity: AppCompatActivity) {
 
         override fun itemsFor(section: String): List<ArcMenu.Item> =
             SectionPages.pagesFor(section).map {
-                ArcMenu.Item(it.label, "", "page:$section/${it.id}")
+                ArcMenu.Item(it.label, it.iconName, "page:$section/${it.id}")
             }
     }
 
