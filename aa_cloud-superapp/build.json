@@ -375,9 +375,9 @@
         "position_pct": 50,
         "gestures": {
           "top": "app:com.whatsapp.w4b",
-          "top_middle": "none",
+          "top_middle": "app:com.google.android.apps.translate",
           "center": "back",
-          "down_middle": "none",
+          "down_middle": "app:md.obsidian",
           "down": "app:com.instagram.android"
         }
       },
@@ -387,9 +387,9 @@
         "position_pct": 50,
         "gestures": {
           "top": "app:com.x8bit.bitwarden",
-          "top_middle": "none",
+          "top_middle": "app:com.brave.browser",
           "center": "back",
-          "down_middle": "none",
+          "down_middle": "app:com.google.android.apps.bard",
           "down": "app:com.google.android.apps.maps"
         }
       }
