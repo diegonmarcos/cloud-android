@@ -86,19 +86,16 @@ object ArcMenu {
         private fun dp(v: Float) = v * dm.density
 
         private val ring   = dp(radiusDp.toFloat())
-        private val nodeR  = dp(24f)   // icon bounding radius (no filled circle)
-        private val iconPx = dp(38f).toInt()  // larger icon now that circle is gone
+        private val nodeR  = dp(26f)
+        private val iconPx = dp(22f).toInt()  // icon above the label
         private val dead   = dp(20f)
 
-        private val scrim  = Paint().apply { color = Color.argb(120, 0, 0, 0) }
-        // Filled disc removed — only a ring drawn for the active node
-        private val hotRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(255, 124, 58, 237)
-            style = Paint.Style.STROKE; strokeWidth = dp(2.5f)
-        }
-        private val lbl = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        private val scrim = Paint().apply { color = Color.argb(120, 0, 0, 0) }
+        private val disc  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 24, 20, 40) }
+        private val hot   = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(255, 124, 58, 237) }
+        private val lbl   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE; textAlign = Paint.Align.CENTER
-            textSize = dp(9f)   // smaller label, only shown on active node
+            textSize = dp(9f); isFakeBoldText = true  // smaller font
         }
 
         private val iconCache = HashMap<String, Bitmap?>()
@@ -146,20 +143,18 @@ object ArcMenu {
         override fun onDraw(c: Canvas) {
             c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrim)
             slots.forEachIndexed { i, (px, py) ->
-                val isActive = i == active
-                // Active node: draw highlight ring
-                if (isActive) c.drawCircle(px, py, nodeR + dp(4f), hotRing)
-                // Icon — large enough to be self-identifying without a circle backing
-                val h = iconPx / 2f
-                icon(items[i].iconName)?.let { bmp ->
-                    c.drawBitmap(bmp, null, RectF(px - h, py - h, px + h, py + h), null)
-                } ?: run {
-                    // Fallback: short text label when no icon available
-                    c.drawText(items[i].label.take(5), px, py + dp(4f), lbl)
-                }
-                // Label only on the active (hovered) node — avoids overlap
-                if (isActive) {
-                    c.drawText(items[i].label, px, py + nodeR + dp(14f), lbl)
+                // Background disc
+                c.drawCircle(px, py, nodeR, if (i == active) hot else disc)
+                val bmp = icon(items[i].iconName)
+                if (bmp != null) {
+                    // Icon in upper half of disc, label below inside disc
+                    val h = iconPx / 2f
+                    val iconCy = py - dp(5f)
+                    c.drawBitmap(bmp, null, RectF(px - h, iconCy - h, px + h, iconCy + h), null)
+                    c.drawText(items[i].label, px, py + nodeR - dp(2f), lbl)
+                } else {
+                    // No icon: just centered label
+                    c.drawText(items[i].label, px, py + dp(4f), lbl)
                 }
             }
         }
