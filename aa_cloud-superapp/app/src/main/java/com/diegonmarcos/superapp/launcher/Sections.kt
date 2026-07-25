@@ -911,6 +911,22 @@ object Sections {
                     if (idx >= 0) derivedTiles.add(idx + 1, extra) else derivedTiles += extra
                 }
             }
+            // Optional `tiles_from_linktree: <slideId>` — pulls every link
+            // from the named linktree slide and creates URL-target tiles.
+            val fromLinktree = o.optString("tiles_from_linktree", "").takeIf { it.isNotBlank() }
+            if (fromLinktree != null) {
+                val slide = linktreeSlide(fromLinktree)
+                if (slide != null) {
+                    val linkTiles = slide.columns.flatMap { col ->
+                        col.links.map { lnk ->
+                            HomeTile(id = lnk.url, label = lnk.label, iconName = lnk.icon.ifBlank { "ic_link" })
+                        }
+                    }
+                    parsed.add(HomeGroup(title = parentTitle, tiles = linkTiles, scroll = scrollMode))
+                    continue
+                }
+            }
+
             parsed.add(HomeGroup(
                 title  = parentTitle,
                 tiles  = derivedTiles,

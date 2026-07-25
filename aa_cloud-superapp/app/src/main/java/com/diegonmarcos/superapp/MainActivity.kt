@@ -467,7 +467,12 @@ class MainActivity : AppCompatActivity(),
                     // Infos·Apps → Infos·Admin → Home-Apps·Cloud → … → Labs·
                     // Admin → wrap). Left-swipe (dx<0) = next, right = prev.
                     fireGeminiPattern()
-                    walkStep(direction = if (dx < 0) +1 else -1)
+                    val swipeAction = if (dx < 0) BuildConfig.HOME_SWIPE_LEFT else BuildConfig.HOME_SWIPE_RIGHT
+                    if (swipeAction == "walk_step_next" || swipeAction == "walk_step_prev") {
+                        walkStep(direction = if (dx < 0) +1 else -1)
+                    } else {
+                        handleHomeSwipeAction(swipeAction)
+                    }
                     return true
                 }
             })
@@ -496,14 +501,37 @@ class MainActivity : AppCompatActivity(),
                           }
         return when {
             dy < 0 && currentSection == "home" && !sheetIsUp -> {
-                openAppDrawerSheet(); true
+                handleHomeSwipeAction(BuildConfig.HOME_SWIPE_UP); true
             }
-            // swipe-down (dy > 0) was here to close the sheet — removed
-            // because it was firing during normal scroll inside the sheet
-            // and inside section pages, making lists feel sticky and
-            // dismissing the sheet unintentionally. Back button / system
-            // back-gesture remain as the explicit close path.
             else -> false
+        }
+    }
+
+    /** Dispatch a home-screen swipe action by name. Values come from
+     *  build.json::onehand.home_swipes baked into BuildConfig. */
+    private fun handleHomeSwipeAction(action: String) {
+        when (action) {
+            "open_home_apps" -> openAppDrawerSheet()
+            "open_last_superapp_page" -> {
+                val last = runCatching {
+                    com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).all()
+                        .firstOrNull { it !is com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.ExternalAppEntry }
+                }.getOrNull()
+                if (last != null) onAppTabPicked(last) else openAppDrawerSheet()
+            }
+            "open_last_android_app" -> {
+                val last = runCatching {
+                    com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).all()
+                        .filterIsInstance<com.diegonmarcos.superapp.apptabs.AppTabPrefs.Entry.ExternalAppEntry>()
+                        .firstOrNull()
+                }.getOrNull()
+                if (last != null) {
+                    runCatching { startActivity(packageManager.getLaunchIntentForPackage(last.packageName)?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                } else openAppDrawerSheet()
+            }
+            "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
+            "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
+            else             -> openAppDrawerSheet()
         }
     }
 

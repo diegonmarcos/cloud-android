@@ -451,6 +451,12 @@
       "enabled": true,
       "section": "config",
       "radius_dp": 140
+    },
+    "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
+    "home_swipes": {
+      "swipe_up": "open_home_apps",
+      "swipe_left": "open_last_superapp_page",
+      "swipe_right": "open_last_android_app"
     }
   },
   "shizuku_diagnostics": {
@@ -4646,6 +4652,34 @@
         "title": "Configs",
         "scroll": "horizontal",
         "tiles_from_section": "config",
+        "tiles": []
+      },
+      {
+        "_doc": "Linktree · Suite slide — all links from data/linktree.json slide id=suite rendered as URL-target tiles in a horizontal-scroll strip. tiles_from_linktree is handled by Sections.homeGroups().",
+        "title": "Linktree · Suite",
+        "scroll": "horizontal",
+        "tiles_from_linktree": "suite",
+        "tiles": []
+      },
+      {
+        "_doc": "Linktree · Cloud slide — all links from data/linktree.json slide id=cloud.",
+        "title": "Linktree · Cloud",
+        "scroll": "horizontal",
+        "tiles_from_linktree": "cloud",
+        "tiles": []
+      },
+      {
+        "_doc": "Linktree · Lab Tools slide — all links from data/linktree.json slide id=lab-tools.",
+        "title": "Linktree · Lab Tools",
+        "scroll": "horizontal",
+        "tiles_from_linktree": "lab-tools",
+        "tiles": []
+      },
+      {
+        "_doc": "Linktree · Circus slide — all links from data/linktree.json slide id=circus.",
+        "title": "Linktree · Circus",
+        "scroll": "horizontal",
+        "tiles_from_linktree": "circus",
         "tiles": []
       }
     ],
