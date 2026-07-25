@@ -5,27 +5,33 @@ Subject: [PATCH] fix: force compileSdkVersion/buildToolsVersion on all subprojec
 
 Some RN library modules (e.g. voximplant_react-native-foreground-service)
 hardcode a compileSdkVersion < 30, which breaks compilation with Java 9+
-source. Add a subprojects afterEvaluate block to inherit the root values.
+source. Use pluginManager.withPlugin (lazy, no afterEvaluate) to inherit
+root values without triggering "Cannot run afterEvaluate when project is
+already evaluated" in Gradle 8+.
 ---
- android/build.gradle | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ android/build.gradle | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
 diff --git a/android/build.gradle b/android/build.gradle
-index d9e7bb120..a13d72de1 100644
+index d9e7bb120..b3f4d8f27 100644
 --- a/android/build.gradle
 +++ b/android/build.gradle
-@@ -47,3 +47,14 @@ apply plugin: "com.facebook.react.rootproject"
+@@ -47,3 +47,17 @@ apply plugin: "com.facebook.react.rootproject"
  dependencyLocking {
      lockAllConfigurations()
  }
 +
 +subprojects {
-+    afterEvaluate { project ->
-+        if (project.hasProperty('android')) {
-+            android {
-+                compileSdkVersion rootProject.ext.compileSdkVersion
-+                buildToolsVersion rootProject.ext.buildToolsVersion
-+            }
++    pluginManager.withPlugin("com.android.library") {
++        android {
++            compileSdkVersion rootProject.ext.compileSdkVersion
++            buildToolsVersion rootProject.ext.buildToolsVersion
++        }
++    }
++    pluginManager.withPlugin("com.android.application") {
++        android {
++            compileSdkVersion rootProject.ext.compileSdkVersion
++            buildToolsVersion rootProject.ext.buildToolsVersion
 +        }
 +    }
 +}
