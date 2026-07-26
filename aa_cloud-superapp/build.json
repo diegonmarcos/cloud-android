@@ -5498,6 +5498,15 @@
         "install_package": "com.diegonmarcos.cloudvault",
         "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Vault.apk",
         "forks": {}
+      },
+      {
+        "_doc": "Cloud Media Center — standalone gallery app (ea_cloud-media-center), a Google-Photos/Samsung-Gallery replacement: on-device MediaStore gallery + PhotoPrism cloud library (WebDAV) + camera-roll auto-backup, plus YouTube (NewPipeExtractor) and mirrored-Instagram profiles. Single-app fork (forkless), so extapp:cloud-media-center resolves straight to hub_package. NOT YET SHIPPED: ea_cloud-media-center has no build engine/CI wired yet (ship-cloud-media-center.yml EXISTS at 1_workflows/src/cicd/ but is not yet regenerated into .github/workflows/, and no build.sh engine exists for the app yet, so nothing builds; no release published), so install_apk_url below is the intended rolling-latest location mirrored from release.gh_release.asset_name but currently 404s until CI produces an artifact. Do not treat this URL as live.",
+        "id": "cloud-media-center",
+        "label": "Cloud Media Center",
+        "hub_package": "com.diegonmarcos.mediacenter",
+        "install_package": "com.diegonmarcos.mediacenter",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-media-center.apk",
+        "forks": {}
       }
     ],
     "_doc_sirius_star": "The Sirius Star — a single bright sparkle centred on the home screen (theme-agnostic overlay in activity_main.xml, gated to the `home` section by MainActivity). Tapping it force-opens the FloatingNav menu (FloatingNavService.showMenu). `enabled` toggles it; `glyph` is the character rendered (default ✦). Declarative on/off without touching layout/code.",
