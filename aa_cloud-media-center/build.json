@@ -6,6 +6,9 @@
     "type": "gradle",
     "entry": "build.sh"
   },
+  "mode": "single-app",
+  "_doc_mode": "Engine data-signal (cloud-comms-fork-engine.sh) opting this app OUT of the hub+bundle-forks+IPC-contract model used by ea_cloud-{mail,chat,dialer,matrix}. Absence of this key (their build.json shape) means the engine's original hub-coupled steps run unchanged; 'single-app' means the engine builds+signs the one forks.<key> entry directly via the existing step_build_fork machinery.",
+  "launcher_activity": "com.diegonmarcos.mediacenter.MainActivity",
   "android": {
     "application_id": "com.diegonmarcos.mediacenter",
     "compile_sdk": 37,
@@ -14,7 +17,9 @@
     "target_sdk": 37,
     "version_code": 1,
     "version_name": "0.1.0-dev",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "license": {
     "_doc": "Upstream ReFra (ex-Gallery) is Apache-2.0. OUR fork is GPL-3.0 for the whole app, NOT Apache-2.0, because we statically link com.github.teamnewpipe:NewPipeExtractor (GPL-3.0, pulled via JitPack for the 'newpipe' YouTube source — see data/media-profiles.json::profiles[youtube]). GPL-3.0 is a stricter copyleft than Apache-2.0; combining a GPL-3.0 dependency into the app requires the resulting APK/derivative work to be distributed under GPL-3.0 terms. This is a DECIDED relicense, not an oversight — record it verbatim in README.md and in the app's about/licenses screen once implemented.",
@@ -44,29 +49,34 @@
     "log_sink_stream": "cloud-media-center",
     "enabled": true
   },
-  "fork": {
-    "_doc": "Single-fork model (unlike ea_cloud-comms/ea_cloud-ide's multi-fork 'forks' map) — this app IS the fork, there is no separate thin hub. Modeled on ea_cloud-mail/build.json::forks.mail but flattened since there's only one.",
-    "upstream_repo": "https://github.com/IacobIonut01/ReFra.git",
-    "tracker_dir": "ea_upstreams-sources/media-refra",
-    "pinned_tag": "5.1.1-51101-nightly",
-    "_doc_pinned_tag": "Re-verified 2026-07-26 via GitHub API tag list: there is NO tag literally named '5.1.0' — a prior scaffold pass fabricated it. Real tags (newest first): 5.1.1-51101-nightly, 5.1.0-51005-nightly, 5.1.0-51004-nightly, 5.1.0-51003-nightly, 5.1.0-51002-nightly, 5.1.0-51001-nightly, 5.0.3-50301-nightly, 5.0.2-50201-nightly, 5.0.0-50002-nightly, 4.3.1-43101-nightly, 4.3.0. Upstream ships nightlies as its de facto release channel — there is no recent non-nightly tag; 4.3.0 is the last plain-semver tag. Pinned to the newest tag, 5.1.1-51101-nightly, deviating from house convention (ea_cloud-mail pins a stable FairEmail tag) only because no recent stable tag exists. REVIEW this pin whenever upstream cuts an actual stable release.",
-    "license": "Apache-2.0",
-    "primary_lang": "Kotlin",
-    "build": {
-      "_doc": "gradle_task confirmed by reading upstream app/build.gradle.kts (fetched 2026-07-26): productFlavors are dimensioned by ABI (arm64V8a/armeabiV7a/x86_64/x86) x ML variant (withML/noML), giving task names like assembleArm64V8aNoMLRelease / assembleArm64V8aWithMLRelease. We select the NoML flavor (matches abi_filters=[arm64-v8a], avoids bundling upstream's on-device ML models we don't need) and the Release build type. apk_glob is intentionally broadened to app/build/outputs/apk/**/*.apk rather than a single guessed flavor-dimension directory name, because Android Gradle Plugin's flavor-dimension output folder naming (e.g. arm64V8aNoMl vs arm64v8aNoML casing) was not independently verified against an actual build — the first materialize-fork + build-fork run MUST confirm the exact folder and this glob can then be tightened.",
-      "gradle_task": "assembleArm64V8aNoMLRelease",
-      "apk_glob": "app/build/outputs/apk/**/*.apk",
-      "signing": "keystore_properties",
-      "_doc_ml_asset_pack": "Upstream declares an asset pack module `:ml-models` (`assetPacks += listOf(\":ml-models\")`) alongside the WithML/NoML flavor dimension. UNCONFIRMED: whether the NoML flavor we build still pulls in the :ml-models asset pack at the Gradle Play Asset Delivery level, or whether NoML fully excludes it. Do not assume exclusion — verify against the actual `assembleArm64V8aNoMLRelease` output (and `app/build.gradle.kts` asset-pack wiring) on the first real build before relying on this."
-    },
-    "blocked_on": null,
-    "comment": "ReFra (ex-Gallery, com.dot.gallery). Pure Kotlin/Compose, no RN/Cordova wrapper — closest in shape to the FairEmail fork (native gradle build, keystore.properties signing), not to the RN/Cordova forks in ea_cloud-comms. No patches/ series exists yet (empty tracker checkout at pinned tag is valid during scaffolding, per cloud-comms-fork-engine.sh::step_materialize_fork's 'no patches yet' path)."
+  "forks": {
+    "media-center": {
+      "_doc": "Plural 'forks.<key>' map — same shape as ea_cloud-mail/build.json::forks.mail (and chat/dialer/matrix), reconciled 2026-07-26 to match the engine's existing forks-keyed step_build_fork/step_materialize_fork loop instead of a bespoke singular block. This app has exactly one key ('media-center') because it IS the fork (no separate thin hub) — see top-level mode:'single-app'.",
+      "upstream_repo": "https://github.com/IacobIonut01/ReFra.git",
+      "tracker_dir": "ea_upstreams-sources/media-refra",
+      "pinned_tag": "5.1.1-51101-nightly",
+      "_doc_pinned_tag": "Re-verified 2026-07-26 via GitHub API tag list: there is NO tag literally named '5.1.0' — a prior scaffold pass fabricated it. Real tags (newest first): 5.1.1-51101-nightly, 5.1.0-51005-nightly, 5.1.0-51004-nightly, 5.1.0-51003-nightly, 5.1.0-51002-nightly, 5.1.0-51001-nightly, 5.0.3-50301-nightly, 5.0.2-50201-nightly, 5.0.0-50002-nightly, 4.3.1-43101-nightly, 4.3.0. Upstream ships nightlies as its de facto release channel — there is no recent non-nightly tag; 4.3.0 is the last plain-semver tag. Pinned to the newest tag, 5.1.1-51101-nightly, deviating from house convention (ea_cloud-mail pins a stable FairEmail tag) only because no recent stable tag exists. REVIEW this pin whenever upstream cuts an actual stable release.",
+      "license": "Apache-2.0",
+      "primary_lang": "Kotlin",
+      "build": {
+        "_doc": "gradle_task confirmed by reading upstream app/build.gradle.kts (fetched 2026-07-26): productFlavors are dimensioned by ABI (arm64V8a/armeabiV7a/x86_64/x86) x ML variant (withML/noML), giving task names like assembleArm64V8aNoMLRelease / assembleArm64V8aWithMLRelease. We select the NoML flavor (matches abi_filters=[arm64-v8a], avoids bundling upstream's on-device ML models we don't need) and the Release build type. apk_glob is intentionally broadened to app/build/outputs/apk/**/*.apk rather than a single guessed flavor-dimension directory name, because Android Gradle Plugin's flavor-dimension output folder naming (e.g. arm64V8aNoMl vs arm64v8aNoML casing) was not independently verified against an actual build — the first materialize-fork + build-fork run MUST confirm the exact folder and this glob can then be tightened.",
+        "gradle_task": "assembleArm64V8aNoMLRelease",
+        "apk_glob": "app/build/outputs/apk/**/*.apk",
+        "signing": "keystore_properties",
+        "_doc_ml_asset_pack": "Upstream declares an asset pack module `:ml-models` (`assetPacks += listOf(\":ml-models\")`) alongside the WithML/NoML flavor dimension. UNCONFIRMED: whether the NoML flavor we build still pulls in the :ml-models asset pack at the Gradle Play Asset Delivery level, or whether NoML fully excludes it. Do not assume exclusion — verify against the actual `assembleArm64V8aNoMLRelease` output (and `app/build.gradle.kts` asset-pack wiring) on the first real build before relying on this."
+      },
+      "blocked_on": null,
+      "comment": "ReFra (ex-Gallery, com.dot.gallery). Pure Kotlin/Compose, no RN/Cordova wrapper — closest in shape to the FairEmail fork (native gradle build, keystore.properties signing), not to the RN/Cordova forks in ea_cloud-comms. No patches/ series exists yet (empty tracker checkout at pinned tag is valid during scaffolding, per cloud-comms-fork-engine.sh::step_materialize_fork's 'no patches yet' path).",
+      "app_id": "com.diegonmarcos.mediacenter"
+    }
   },
   "release": {
     "_doc": "Per-APK distribution, same data-driven pattern as ea_cloud-ide::release / ea_cloud-mail::release. {sha} → git short sha, {version_name} → android.version_name.",
     "abis": {
       "_doc": "ABI build axis. arm64-v8a is the device default; x86_64 covers Waydroid/emulator debugging (mirrors ea_cloud-ide::release.abis).",
-      "arm64-v8a": { "default": true },
+      "arm64-v8a": {
+        "default": true
+      },
       "x86_64": {}
     },
     "artifact": {
@@ -80,7 +90,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-media-center",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "_doc": "Rolling GH release 'latest', overwritten every main push, mirrors ea_cloud-ide::release.gh_release and ea_cloud-mail's shared rolling release pattern so /releases/latest/download/cloud-media-center.apk stays stable. Consumed by ea_cloud-superapp ui.external_apps[cloud-media-center].install_apk_url once wired there.",
