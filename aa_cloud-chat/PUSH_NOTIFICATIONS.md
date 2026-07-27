@@ -3,6 +3,27 @@
 Status: **SCAFFOLD / BLOCKED on owner-provided Firebase (FCM) project.**
 Decision (owner): self-host Mattermost Push Proxy + FCM. Build now, deploy when creds ready.
 
+## Scaffolding key in patch 0002 — NOT a secret leak
+
+`patches/0002-add-comms-chat-google-services-client.patch` embeds a `current_key`
+(`AIzaSyASRwdI3DKpyjt_gMbL1MpViI3BTHB9rFg`) so `:app:processReleaseGoogleServices`
+succeeds during the release build. That key is **Mattermost's public Firebase API
+key**, already present verbatim in the upstream repo's `google-services.json`
+(`github.com/mattermost/mattermost-mobile`; Firebase project
+`api-7231322553409637977-752355`; shared by the `com.mattermost.rn` +
+`com.mattermost.rnbeta` clients).
+
+Firebase Android API keys are designed to ship inside APKs — their security comes
+from Firebase Security Rules, not key secrecy. The key is cloned here ONLY as
+scaffolding; it will be **replaced** by the owner's own `google-services.json`
+(see section 3 "App (this fork)" below, provided via vault/sops) before push
+delivery is enabled.
+
+**Secret scanners flag `AIza...` patterns regardless of ownership — this one is a
+documented false positive.** There is nothing to rotate or revoke here; the key is
+not ours to revoke (it belongs to Mattermost's Firebase project) and is already
+public in the upstream repo.
+
 Mattermost mobile has NO UnifiedPush/ntfy support — a self-compiled app REQUIRES
 your own Mattermost Push Proxy backed by your own Firebase Cloud Messaging project.
 The existing `ntfy-bridge.py` is inbound-only (ntfy alerts → MM channels); it is NOT
