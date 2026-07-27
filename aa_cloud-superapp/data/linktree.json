@@ -1,9 +1,9 @@
 {
-  "_description": "Declarative source of truth for the Personal Tools section-box. Each `slide` becomes one swiper-slide. `kind=tools` slides render as `.link-section > .featured-image + .tools-dashboard > .tools-column` (matches the hand-coded markup). Slides hand-coded in index.html are not listed here; only the migrated ones are.",
+  "_description": "Declarative source of truth for the Projects section-box. Each `slide` becomes one swiper-slide. `kind=tools` slides render as `.link-section > .featured-image + .tools-dashboard > .tools-column` (matches the hand-coded markup). Slides hand-coded in index.html are not listed here; only the migrated ones are.",
   "section": {
-    "id": "personal-tools",
-    "title": "Personal Tools",
-    "swiper_class": "personal-tools-swiper",
+    "id": "projects",
+    "title": "Projects",
+    "swiper_class": "projects-swiper",
     "box": 2
   },
   "slides": [

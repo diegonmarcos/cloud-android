@@ -130,14 +130,14 @@ if [ -z "$MESH" ]; then
 fi
 if [ -z "$LINKTREE" ]; then
     for cand in \
-        "$HOME/git/front/a-Portals/linktree/src/data/personal-tools.json"; do
+        "$HOME/git/front/a-Portals/linktree/src/data/projects.json"; do
         [ -f "$cand" ] && { LINKTREE="$cand"; break; }
     done
 fi
 
 : "${CONSOLIDATED:?consolidated.json not found; pass as arg 1}"
 : "${MESH:?mesh.json not found; pass as arg 2}"
-: "${LINKTREE:?personal-tools.json not found; pass as arg 3}"
+: "${LINKTREE:?projects.json not found; pass as arg 3}"
 
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; exit 1; }
 
@@ -150,7 +150,7 @@ echo "→ writing into: $HERE/"
 # the field-set). No transform.
 cp "$MESH" "$HERE/mesh.json"
 
-# Linktree personal-tools.json is the source of truth for what shows
+# Linktree projects.json is the source of truth for what shows
 # under the Tools aggregator (Apps mode = SUITE+LAB+CIRCUS slides;
 # Admin mode = CLOUD slide). Verbatim copy — the APK parser picks
 # which slide to render based on build.json::ui.sections[tools].stack_*.

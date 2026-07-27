@@ -180,7 +180,7 @@ def importSchemaB64  = importSchemaJson.bytes.encodeBase64().toString()
 def driveConnsJson   = groovy.json.JsonOutput.toJson(buildJson.ui.drive_connections ?: [])
 def driveConnsB64    = driveConnsJson.bytes.encodeBase64().toString()
 // Linktree snapshot — drives Tools aggregator (Apps + Admin modes).
-// Source: front/a-Portals/linktree/src/data/personal-tools.json (snapshot
+// Source: front/a-Portals/linktree/src/data/projects.json (snapshot
 // committed in data/linktree.json via data/regen.sh).
 def linktreeFile     = file("../data/linktree.json")
 def linktreeJson     = linktreeFile.exists() ? linktreeFile.text : "{\"slides\":[]}"

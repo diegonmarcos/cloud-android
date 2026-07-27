@@ -176,7 +176,7 @@ object Sections {
         val links:     List<LinkItem>,
     )
 
-    /** One slide from data/linktree.json (mirror of personal-tools.json). */
+    /** One slide from data/linktree.json (mirror of projects.json). */
     data class LinktreeSlide(
         val id:    String,
         val title: String,
@@ -1168,7 +1168,7 @@ object Sections {
     fun externalApp(id: String): ExternalApp? = externalApps().firstOrNull { it.id == id }
 
     /** data/linktree.json — mirror of front/a-Portals/linktree/src/data/
-     *  personal-tools.json. Lookup is by `slide.id` (suite | lab-tools |
+     *  projects.json. Lookup is by `slide.id` (suite | lab-tools |
      *  circus | cloud). Used by [StackPanel.kind] = "linktree_slide". */
     fun linktreeSlide(id: String): LinktreeSlide? {
         loadLinktree()
