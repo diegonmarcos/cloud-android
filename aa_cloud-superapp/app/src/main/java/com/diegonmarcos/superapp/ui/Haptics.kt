@@ -66,9 +66,23 @@ object Haptics {
         fire(view.context, intensity = 0.7f, durationMs = 25)
     }
 
-    /** Subtle in-transit tick. */
+    /** Subtle in-transit tick. Dual-path like the other primitives so the
+     *  "answer" segment of the Gemini pattern (4 ticks at 250/330/410/490ms
+     *  in MainActivity.fireGeminiPattern) never goes silent if the direct
+     *  Vibrator path fails on an OEM quirk. performHapticFeedback(EFFECT_TICK)
+     *  fires via the OS haptic service (no VIBRATE permission needed); fire()
+     *  supplements it with the direct Vibrator path for intensity. */
     fun segmentTick(view: View) {
         if (!enabled(view.context)) return
+        runCatching {
+            view.isHapticFeedbackEnabled = true
+            view.performHapticFeedback(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    HapticFeedbackConstants.CLOCK_TICK else HapticFeedbackConstants.KEYBOARD_TAP,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+            )
+        }
         fire(view.context, intensity = 0.3f, durationMs = 15)
     }
 
