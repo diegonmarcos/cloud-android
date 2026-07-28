@@ -5,6 +5,11 @@
     <!-- Network for JMAP / CloudData fetch / GHCR in-app updater. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Haptics.tap / Vibrator.vibrate() in ui/Haptics.kt — without this,
+         v.vibrate() throws SecurityException which fire() swallows via
+         runCatching, so the "Vibration on tap" toggle silently no-ops.
+         performHapticFeedback alone is unreliable (OEMs ship it OFF). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Read-only Wi-Fi state for the About page: SSID/BSSID need both
          this AND ACCESS_FINE_LOCATION (Android 10+ scoped Wi-Fi info);
          link speed / frequency / RSSI come from the same surface. -->
