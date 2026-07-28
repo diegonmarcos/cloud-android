@@ -312,7 +312,10 @@ class LauncherConfigFragment : Fragment() {
         })
         addView(SwitchCompat(ctx).apply {
             isChecked = checked
-            setOnCheckedChangeListener { v, isOn -> Haptics.tap(v); onChange(isOn) }
+            // Persist FIRST, then buzz — otherwise Haptics.tap reads the
+            // stale (pre-toggle) value and the "Vibration on tap" switch
+            // itself silently no-ops when flipped ON.
+            setOnCheckedChangeListener { v, isOn -> onChange(isOn); Haptics.tap(v) }
         })
     }
 
