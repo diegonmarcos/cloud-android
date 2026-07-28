@@ -94,26 +94,31 @@ object Haptics {
      *  don't expose composition primitives — the silent failure is
      *  better than a crash. */
     private fun fire(ctx: android.content.Context, intensity: Float, durationMs: Long) {
+        val v = vibrator(ctx) ?: return
+        // 1) Try composition primitive (API 31+) — most refined, but some OEMs
+        //    throw or no-op. If it fails, fall through to predefined effect.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching {
+                val effect = VibrationEffect.startComposition()
+                    .addPrimitive(
+                        VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
+                        intensity.coerceIn(0f, 1f),
+                        0,
+                    ).compose()
+                v.vibrate(effect)
+            }.onFailure { /* fall through to fallback below */ }
+                .onSuccess { return } // primitive worked, done
+        }
+        // 2) Fallback: predefined EFFECT_TICK (API 29+) — universally supported.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            runCatching {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            }.onSuccess { return }
+        }
+        // 3) Last resort: deprecated one-shot — works on everything.
         runCatching {
-            val v = vibrator(ctx) ?: return
-            when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                    val effect = VibrationEffect.startComposition()
-                        .addPrimitive(
-                            VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
-                            intensity.coerceIn(0f, 1f),
-                            0,
-                        ).compose()
-                    v.vibrate(effect)
-                }
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                    v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-                }
-                else -> {
-                    @Suppress("DEPRECATION")
-                    v.vibrate(durationMs)
-                }
-            }
+            @Suppress("DEPRECATION")
+            v.vibrate(durationMs)
         }
     }
 
