@@ -9,6 +9,7 @@ import com.diegonmarcos.superapp.ui.IslandWaveView
 import com.diegonmarcos.superapp.launcher.Pages
 import com.diegonmarcos.superapp.launcher.TileGridFragment
 import com.diegonmarcos.superapp.launcher.TabbedSectionFragment
+import com.diegonmarcos.superapp.launcher.CircularMenuTree
 import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.launcher.SectionPages
 import com.diegonmarcos.superapp.launcher.SectionMenuFragment
@@ -45,7 +46,10 @@ import com.diegonmarcos.superapp.profile.BusinessCardFragment
 import com.diegonmarcos.superapp.core.SuppressVerticalSwipe
 import com.diegonmarcos.superapp.launcher.LauncherToolbarFx
 import com.diegonmarcos.superapp.launcher.LauncherNavController
-import com.diegonmarcos.superapp.launcher.SiriusStar
+import com.diegonmarcos.superapp.onehand.ArcMenu
+import com.diegonmarcos.superapp.onehand.CanopusStar
+import com.diegonmarcos.superapp.onehand.CircularMenu
+import com.diegonmarcos.superapp.onehand.SiriusStar
 import com.diegonmarcos.superapp.media.MusicIslandController
 import com.diegonmarcos.superapp.notificationcenter.NotificationCenterFragment
 
@@ -133,7 +137,7 @@ class MainActivity : AppCompatActivity(),
     private lateinit var drawerPageTabs: TabLayout
 
     // Custom setter = single chokepoint: every section change re-evaluates
-    // the Sirius Star's visibility (shown only on `home`). findViewById is
+    // all three home stars' visibility (shown only on `home`). findViewById is
     // null-safe so the very first assignment (before setContentView) no-ops.
     override var currentSection: String = ""
         set(value) {
@@ -141,11 +145,56 @@ class MainActivity : AppCompatActivity(),
             siriusStar.update(value); canopusStar.update(value); centauriStar.update(value)
         }
     override var currentLabel:   String = ""
-    private val siriusStar by lazy { SiriusStar(this) }
-    private val canopusStar by lazy { com.diegonmarcos.superapp.launcher.CanopusStar(this) }
-    // Centauri lives in libs:onehand (unlike Sirius/Canopus) — its content
-    // (last 9 recent apps) is pure platform API, no app callback needed, so
-    // it takes the star View + island anchor directly instead of `this`.
+
+    // All THREE home stars live in libs:onehand — Sirius/Canopus/Centauri are
+    // all generic widget classes there now. Sirius and Canopus need app-side
+    // content (the section/page tree), so MainActivity builds their Host here
+    // and injects it; Centauri needs none (pure platform API), so it takes no
+    // Host at all. iconBitmap is identical for Sirius and Canopus — both
+    // resolve build.json icon names via Sections.iconResFor, same as every
+    // other launcher surface.
+    private fun iconBitmapFor(name: String, sizePx: Int): android.graphics.Bitmap? {
+        if (name.isBlank() || sizePx <= 0) return null
+        val resId = Sections.iconResFor(this, name)
+        if (resId == 0) return null
+        val d = androidx.core.content.ContextCompat.getDrawable(this, resId) ?: return null
+        val bmp = android.graphics.Bitmap.createBitmap(sizePx, sizePx, android.graphics.Bitmap.Config.ARGB_8888)
+        d.setBounds(0, 0, sizePx, sizePx); d.draw(android.graphics.Canvas(bmp))
+        return bmp
+    }
+
+    private val siriusStar by lazy {
+        SiriusStar(
+            activity = this,
+            star = findViewById(R.id.sirius_star),
+            host = object : CircularMenu.Host {
+                override fun navigate(target: String) { onTileClicked(target) }
+                override fun iconBitmap(name: String, sizePx: Int) = iconBitmapFor(name, sizePx)
+                override fun childrenOf(key: String) = CircularMenuTree.childrenOf(this@MainActivity, key)
+            },
+            twinkleEnabled = {
+                com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this).toggle("star_twinkle")
+            },
+        )
+    }
+    private val canopusStar by lazy {
+        CanopusStar(
+            activity = this,
+            star = findViewById(R.id.canopus_star),
+            island = findViewById(R.id.bottom_nav_island),
+            host = object : ArcMenu.Host {
+                override fun navigate(target: String) { onTileClicked(target) }
+                override fun iconBitmap(name: String, sizePx: Int) = iconBitmapFor(name, sizePx)
+                override fun itemsFor(section: String) =
+                    SectionPages.pagesFor(section).map {
+                        ArcMenu.Item(it.label, it.iconName, "page:$section/${it.id}")
+                    }
+            },
+        )
+    }
+    // Centauri lives in libs:onehand (like Sirius/Canopus) — its content
+    // (last 9 recent apps) is pure platform API, no app Host needed, so it
+    // takes the star View + island anchor directly instead of a Host.
     private val centauriStar by lazy {
         com.diegonmarcos.superapp.onehand.CentaurusStar(
             this,

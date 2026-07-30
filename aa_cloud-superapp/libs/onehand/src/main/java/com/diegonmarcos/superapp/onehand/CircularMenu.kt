@@ -17,9 +17,11 @@ import kotlin.math.sin
 
 /**
  * The libs:onehand "circular-menu" — a two-level radial pie, sibling to the
- * edge-menu. Triggered by the Canopus home star: a ring of top-level nodes with
- * a centre arrow that follows the finger; the pointed node highlights and its
- * section's pages fan out further in that direction; releasing on a leaf (or a
+ * edge-menu. Triggered by the SIRIUS home star (SiriusStar.kt, this package —
+ * corrected: an earlier version of this comment said Canopus, which actually
+ * triggers ArcMenu instead): a ring of top-level nodes with a centre arrow
+ * that follows the finger; the pointed node highlights and its section's
+ * pages fan out further in that direction; releasing on a leaf (or a
  * childless node) navigates.
  *
  * App-agnostic: everything app-specific arrives via [Host]. Node data is
