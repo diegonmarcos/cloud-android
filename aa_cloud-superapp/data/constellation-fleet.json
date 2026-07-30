@@ -122,6 +122,21 @@
       "blocked": false
     },
     {
+      "id": "media-center",
+      "label": "cloud-media-center",
+      "package": "com.diegonmarcos.mediacenter",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-media-center",
+      "tag": "latest",
+      "asset": "cloud-media-center.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-media-center.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-media-center",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-media-center",
+      "blocked": false
+    },
+    {
       "id": "nav",
       "label": "cloud-nav",
       "package": "com.diegonmarcos.cloudnav",

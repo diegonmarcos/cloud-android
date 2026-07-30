@@ -1559,6 +1559,13 @@
                 "target": "app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com"
               },
               {
+                "_doc": "Cloud Media Center — our Google-Photos/Samsung-Gallery replacement (local gallery + PhotoPrism cloud library + backup). Registered in ui.external_apps[cloud-media-center]; this tile is what makes it VISIBLE in the launcher — an external_apps entry alone only makes an app installable/openable BY ID and shows nothing. FOLLOW-UP: the sibling 'photos' tile still points at Google Photos (app://com.google.android.apps.photos). Retarget or remove it once cloud-media-center ships a green APK — deliberately NOT done yet because that tile currently works and this one 404s until the first successful release.",
+                "id": "mediacenter",
+                "label": "Media Center",
+                "icon": "ic_photos",
+                "target": "extapp:cloud-media-center"
+              },
+              {
                 "id": "music",
                 "label": "Music",
                 "icon": "ic_music",
