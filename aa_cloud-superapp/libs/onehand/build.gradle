@@ -32,6 +32,12 @@ android {
 
 dependencies {
     implementation project(':libs:core')
+    // Centauri star's recent-apps arc-menu reads AppUsageProvider.recentUsed
+    // (UsageStatsManager ranking) — same provider app/apps' RecentAppsFragment
+    // and Phone Smart Folders already use. libs:datamanager has no deps beyond
+    // core+ktx+appcompat, so this stays a clean one-directional edge in the
+    // module graph (onehand -> datamanager -> core, no cycle).
+    implementation project(':libs:datamanager')
     implementation 'androidx.core:core-ktx:1.13.1'
 
     // JVM unit test for the PURE SwipeClassifier (no Android deps).

@@ -27,6 +27,13 @@ import com.diegonmarcos.superapp.settings.HomeSwipePrefs
  * MIRROR the phone: the left handle's Top/Center/Down live in the LEFT column,
  * the right handle's in the RIGHT column. Grant the two permissions in the
  * centralized Configs > Permissions page.
+ *
+ * This module also owns the THREE home-screen stars (see MainActivity /
+ * libs:onehand — not editable from this screen, this is descriptive only):
+ *   - Sirius   — full multi-level circular-menu (Suite/Infos/Labs/Configs…)
+ *   - Canopus  — single-level arc-menu over the Configs section's pages
+ *   - Centauri — SAME arc-menu as Canopus, showing the last 9 recently-opened
+ *                Android apps (needs Usage-access, Configs > Permissions)
  */
 class OneHandFragment : Fragment() {
 
@@ -60,6 +67,17 @@ class OneHandFragment : Fragment() {
             }
         }
         root.addView(toggle)
+
+        // Descriptive only — the 3 stars are wired in MainActivity, not toggled
+        // from this screen. Glyph/size shared via onehand.circular_menu.star;
+        // Centauri additionally needs Usage-access (Configs > Permissions).
+        root.addView(TextView(ctx).apply {
+            text = "Home screen has 3 stars: ✦ Sirius (full menu) · " +
+                "✦ Canopus (Configs arc) · ✦ Centauri (recent apps arc)"
+            setTextColor(0x99FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, pad / 4, 0, pad / 2)
+        })
 
         // How the menu is summoned. Swipe (Samsung edge-panel style) is the default:
         // touch the edge handle + drag inward. A plain tap passes through to the app.

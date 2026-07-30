@@ -136,10 +136,23 @@ class MainActivity : AppCompatActivity(),
     // the Sirius Star's visibility (shown only on `home`). findViewById is
     // null-safe so the very first assignment (before setContentView) no-ops.
     override var currentSection: String = ""
-        set(value) { field = value; siriusStar.update(value); canopusStar.update(value) }
+        set(value) {
+            field = value
+            siriusStar.update(value); canopusStar.update(value); centauriStar.update(value)
+        }
     override var currentLabel:   String = ""
     private val siriusStar by lazy { SiriusStar(this) }
     private val canopusStar by lazy { com.diegonmarcos.superapp.launcher.CanopusStar(this) }
+    // Centauri lives in libs:onehand (unlike Sirius/Canopus) — its content
+    // (last 9 recent apps) is pure platform API, no app callback needed, so
+    // it takes the star View + island anchor directly instead of `this`.
+    private val centauriStar by lazy {
+        com.diegonmarcos.superapp.onehand.CentaurusStar(
+            this,
+            findViewById(R.id.centauri_star),
+            findViewById(R.id.bottom_nav_island),
+        )
+    }
 
     /** Re-entrancy guards: both drawerTabs.selectTab() AND
      *  bottomNav.selectedItemId fire their selection listeners. When the
@@ -210,6 +223,7 @@ class MainActivity : AppCompatActivity(),
             currentLabel = getString(R.string.section_home)
             siriusStar.setup(); siriusStar.update(currentSection)
             canopusStar.setup(); canopusStar.update(currentSection)
+            centauriStar.setup(); centauriStar.update(currentSection)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)

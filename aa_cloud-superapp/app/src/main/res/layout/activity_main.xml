@@ -111,6 +111,31 @@
             android:elevation="16dp"
             android:visibility="gone" />
 
+        <!-- Centauri star — the 3rd star (libs:onehand CentaurusStar), sitting
+             EXACTLY between Sirius (screen centre) and Canopus (near the
+             bottom-nav island) — translationY = half of Canopus's own
+             island-anchored offset, set in code. Opens the SAME arc-menu as
+             Canopus, but content = last 9 recently-opened Android apps
+             (AppUsageProvider), not a build.json section. VISIBLE only on
+             `home`. -->
+        <TextView
+            android:id="@+id/centauri_star"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="✦"
+            android:textSize="17sp"
+            android:textColor="#F2F7FF"
+            android:shadowColor="#9CC2FF"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="7"
+            android:contentDescription="Centauri Star — recent apps"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="16dp"
+            android:visibility="gone" />
+
         <!-- Launcher status strip — visible ONLY when the SuperApp is
              the default Android launcher AND the active LauncherTheme
              is Cloud. Drawn at the very top edge (where the system

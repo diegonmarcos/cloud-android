@@ -16,11 +16,16 @@ import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * ARC-MENU — libs:onehand bottom-arc menu. Triggered by the Canopus home star.
+ * ARC-MENU — libs:onehand bottom-arc menu. Triggered by TWO home stars:
+ *   - Canopus  (app/launcher): items = children of build.json::onehand
+ *     .arc_menu.section (default "config").
+ *   - Centauri (libs:onehand, CentaurusStar): items = last 9 recently-opened
+ *     Android apps — its Host ignores the `section` param entirely.
+ * Both share this exact same visual (radius, disc style, upward fan); only
+ * the Host's itemsFor/iconBitmap/navigate implementation differs.
  *
- * Opens a fixed half-moon arc anchored at the bottom-centre of the screen,
- * showing children of a configured section (build.json::onehand.arc_menu.section,
- * default "config"). Single level — no drill-down.
+ * Opens a fixed half-moon arc anchored at the bottom-centre of the screen.
+ * Single level — no drill-down.
  *
  * Distinct from the other two onehand menus:
  *   - edge-menu  (GesturePreviewView): swipe-from-edge service overlay, 3 items
