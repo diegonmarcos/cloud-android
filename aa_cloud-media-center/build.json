@@ -79,7 +79,8 @@
       },
       "blocked_on": null,
       "comment": "ReFra (ex-Gallery, com.dot.gallery). Pure Kotlin/Compose, no RN/Cordova wrapper — closest in shape to the FairEmail fork (native gradle build, keystore.properties signing), not to the RN/Cordova forks in ea_cloud-comms. No patches/ series exists yet (empty tracker checkout at pinned tag is valid during scaffolding, per cloud-comms-fork-engine.sh::step_materialize_fork's 'no patches yet' path).",
-      "app_id": "com.diegonmarcos.mediacenter"
+      "app_id": "com.diegonmarcos.mediacenter",
+      "image": "cloud-media-center"
     }
   },
   "release": {
@@ -92,8 +93,8 @@
       "x86_64": {}
     },
     "artifact": {
-      "debug": "cloud-media-center.apk",
-      "release": "cloud-media-center-release.apk"
+      "debug": "cloud-media-center-debug.apk",
+      "release": "cloud-media-center.apk"
     },
     "ghcr": {
       "_doc": "ORAS push as an OCI artifact (APK is a blob, not a container). Mirrors ea_cloud-ide::release.ghcr shape.",
