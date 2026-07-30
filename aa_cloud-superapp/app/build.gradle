@@ -111,6 +111,7 @@ def uiSwipeWalkB64  = uiSwipeWalkJson.bytes.encodeBase64().toString()
 def homeSwipeUp    = (buildJson.onehand?.home_swipes?.swipe_up    ?: "open_home_apps") as String
 def homeSwipeLeft  = (buildJson.onehand?.home_swipes?.swipe_left  ?: "walk_step_next") as String
 def homeSwipeRight = (buildJson.onehand?.home_swipes?.swipe_right ?: "walk_step_prev") as String
+def homeSwipeDown  = (buildJson.onehand?.home_swipes?.swipe_down  ?: "open_home_apps") as String
 // Top search-sheet scope chips. Source of truth = build.json::ui.search_scopes.
 // Decoupled from home_apps_tabs. Consumed by SearchScopes / SearchSheetFragment.
 def uiSearchScopesJson = groovy.json.JsonOutput.toJson(buildJson.ui.search_scopes ?: [])
@@ -518,6 +519,7 @@ android {
         buildConfigField "String", "HOME_SWIPE_UP",    "\"${homeSwipeUp}\""
         buildConfigField "String", "HOME_SWIPE_LEFT",  "\"${homeSwipeLeft}\""
         buildConfigField "String", "HOME_SWIPE_RIGHT", "\"${homeSwipeRight}\""
+        buildConfigField "String", "HOME_SWIPE_DOWN",  "\"${homeSwipeDown}\""
         buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""
         buildConfigField "String", "UI_PHONE_FOLDERS_B64",    "\"${uiPhoneFoldersB64}\""
         buildConfigField "String", "UI_PHONE_SECTIONS_B64",   "\"${uiPhoneSectionsB64}\""

@@ -56,6 +56,21 @@ object AppUsageProvider {
         return counts.entries.sortedByDescending { it.value }.map { it.key }
     }
 
+    /** Packages ranked by total foreground time (totalTimeInForeground sum), 7-day window. */
+    fun mostUsedTime(ctx: Context, now: Long = System.currentTimeMillis()): List<String> {
+        val u = usm(ctx) ?: return emptyList()
+        val start = now - 7 * DAY_MS
+        val totals = HashMap<String, Long>()
+        runCatching {
+            u.queryUsageStats(UsageStatsManager.INTERVAL_BEST, start, now)
+        }.getOrNull()?.forEach { s ->
+            if (s.totalTimeInForeground > 0L) {
+                totals[s.packageName] = (totals[s.packageName] ?: 0L) + s.totalTimeInForeground
+            }
+        }
+        return totals.entries.sortedByDescending { it.value }.map { it.key }
+    }
+
     /** Shared: max lastTimeUsed per package over [start,end], keeping only
      *  rows whose lastTimeUsed is at/after [floor], ranked most-recent first. */
     private fun rankByLastUse(ctx: Context, start: Long, end: Long, floor: Long): List<String> {

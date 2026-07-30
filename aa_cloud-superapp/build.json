@@ -471,9 +471,10 @@
     },
     "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
     "home_swipes": {
-      "swipe_up": "open_home_apps",
+      "swipe_up": "action:open_suite_phone_all",
       "swipe_left": "open_last_superapp_page",
-      "swipe_right": "open_last_android_app"
+      "swipe_right": "open_last_android_app",
+      "swipe_down": "tab:phone:suite"
     }
   },
   "shizuku_diagnostics": {
@@ -4302,6 +4303,7 @@
       {
         "id": "cloud",
         "title": "Cloud",
+        "group": "Dev",
         "_doc": "Our own constellation APKs. Every Cloud app is namespaced com.diegonmarcos.* (superapp, cloudbrowser/keyboard/nav/vault/wallet, comms.matrix/dialer) — a single pkg_prefix matches the whole fleet and nothing else.",
         "rule": {
           "type": "pkg_prefix",
@@ -4313,6 +4315,7 @@
       {
         "id": "samsung",
         "title": "Samsung",
+        "group": "Dev",
         "rule": {
           "type": "pkg_prefix",
           "values": [
@@ -4324,6 +4327,7 @@
       {
         "id": "google",
         "title": "Google",
+        "group": "Dev",
         "rule": {
           "type": "pkg_prefix",
           "values": [
@@ -4333,8 +4337,21 @@
         }
       },
       {
+        "id": "google_play",
+        "title": "Google Play",
+        "group": "Stores",
+        "_doc": "Apps whose install-source-of-record is the Play Store itself, regardless of package name.",
+        "rule": {
+          "type": "install_source_in",
+          "values": [
+            "com.android.vending"
+          ]
+        }
+      },
+      {
         "id": "fdroid",
         "title": "F-Droid · Sideload",
+        "group": "Stores",
         "_doc": "F-Droid installs PLUS raw-APK sideloads (com.google.android.packageinstaller = installed by hand, owned by no store). These get no automatic Play/Samsung updates.",
         "rule": {
           "type": "install_source_in",
@@ -4347,6 +4364,7 @@
       {
         "id": "uptodown",
         "title": "Uptodown",
+        "group": "Stores",
         "rule": {
           "type": "install_source_in",
           "values": [
@@ -4355,17 +4373,36 @@
         }
       },
       {
+        "id": "direct",
+        "title": "Direct",
+        "group": "Stores",
+        "_doc": "Sideloaded APKs not owned by any known store (raw install, e.g. via file manager/ADB). Anything whose install source is NOT one of the recognized stores below.",
+        "rule": {
+          "type": "install_source_not",
+          "values": [
+            "com.android.vending",
+            "com.sec.android.app.samsungapps",
+            "com.uptodown",
+            "org.fdroid.fdroid",
+            "com.epicgames.portal",
+            "com.facebook.system"
+          ]
+        }
+      },
+      {
         "id": "new_apps",
         "title": "New Apps",
-        "_doc": "Newest installs by firstInstallTime, capped at `limit`. `recently_installed` is a ranking rule (sort + take), not a per-app filter — PhoneSmartFolders.select handles it; no `values` needed.",
+        "group": "Usage",
+        "_doc": "The 7 newest installs by firstInstallTime, capped at `limit`. `recently_installed` is a ranking rule (sort + take), not a per-app filter — PhoneSmartFolders.select handles it; no `values` needed.",
         "rule": {
           "type": "recently_installed",
-          "limit": 12
+          "limit": 7
         }
       },
       {
         "id": "recent7",
         "title": "Recent 7",
+        "group": "Usage",
         "_doc": "The 7 most-recently-used apps (UsageStatsManager.lastTimeUsed, 30d lookback). Ranking rule via libs:datamanager AppUsageProvider.recentUsed. Needs usage-access — empty (hidden) without it.",
         "rule": {
           "type": "recent_used",
@@ -4375,6 +4412,7 @@
       {
         "id": "recent48h",
         "title": "Recent 48h",
+        "group": "Usage",
         "_doc": "Apps used within the last 48 hours, most-recent first. Ranking rule via AppUsageProvider.activeSince(window_h). `limit` optional (0 = show all in-window). Needs usage-access.",
         "rule": {
           "type": "active_since",
@@ -4383,8 +4421,20 @@
         }
       },
       {
+        "id": "active_apps",
+        "title": "Active Apps",
+        "group": "Usage",
+        "_doc": "Apps used within the last 2 hours — the shortest active_since window, distinct from Recent 48h.",
+        "rule": {
+          "type": "active_since",
+          "window_h": 2,
+          "limit": 0
+        }
+      },
+      {
         "id": "top_opened",
-        "title": "Top 7 Opened",
+        "title": "Top 7 Open",
+        "group": "Rank",
         "_doc": "The 7 most-opened apps by launch count (MOVE_TO_FOREGROUND events, 7d) via AppUsageProvider.mostOpened. Needs usage-access.",
         "rule": {
           "type": "most_opened",
@@ -4392,20 +4442,22 @@
         }
       },
       {
-        "id": "top_network",
-        "title": "Top 7 Network",
-        "_doc": "The 7 heaviest network apps by total bytes rx+tx (NetworkStatsManager, WiFi+mobile, 7d) via AppNetworkProvider.topByBytes. Needs usage-access.",
+        "id": "top_battery",
+        "title": "Top 7 Battery",
+        "group": "Rank",
+        "_doc": "The 7 heaviest apps by estimated energy (mAh) via libs:battery EnergyWatchdog.perAppEstimate (AccuBattery-style: foreground-time × avg discharge mA). Needs usage-access.",
         "rule": {
-          "type": "top_network",
+          "type": "top_battery",
           "limit": 7
         }
       },
       {
-        "id": "top_battery",
-        "title": "Top 7 Battery",
-        "_doc": "The 7 heaviest apps by estimated energy (mAh) via libs:battery EnergyWatchdog.perAppEstimate (AccuBattery-style: foreground-time × avg discharge mA). Needs usage-access.",
+        "id": "top_time_usage",
+        "title": "Top 7 Time Usage",
+        "group": "Rank",
+        "_doc": "The 7 apps with the most total foreground time (UsageStats.totalTimeInForeground, 7d) via AppUsageProvider.mostUsedTime. Needs usage-access.",
         "rule": {
-          "type": "top_battery",
+          "type": "most_used_time",
           "limit": 7
         }
       }

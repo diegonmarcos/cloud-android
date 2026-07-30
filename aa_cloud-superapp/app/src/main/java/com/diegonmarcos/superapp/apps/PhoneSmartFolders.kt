@@ -37,7 +37,10 @@ import org.json.JSONArray
  *   • top_battery         — RANKING. Packages by estimated mAh
  *                           (libs:battery EnergyWatchdog.perAppEstimate),
  *                           capped at `limit`. Needs usage-access.
- *   All five ranking rules degrade to an empty folder (hidden) when the
+ *   • most_used_time      — RANKING. Packages by total foreground time
+ *                           (UsageStats.totalTimeInForeground sum, 7d), capped
+ *                           at `limit`. Needs usage-access.
+ *   All ranking rules degrade to an empty folder (hidden) when the
  *   usage-access grant is missing — see the providers' runCatching.
  *   • install_source_not  — PackageManager.getInstallSourceInfo
  *                           .installingPackageName not in values.
@@ -110,7 +113,7 @@ object PhoneSmartFolders {
         }.getOrDefault(emptySet())
     }
 
-    data class SmartFolder(val id: String, val title: String, val rule: Rule) {
+    data class SmartFolder(val id: String, val title: String, val rule: Rule, val group: String? = null) {
         /** The apps this smart folder shows, from the master [apps] list.
          *  Predicate rules filter; the ranking rules (recently_installed +
          *  the usage/network/battery ones) order a provider's ranked
@@ -131,6 +134,7 @@ object PhoneSmartFolders {
                     if (rule.limit > 0) ranked.take(rule.limit) else ranked
                 }
                 "most_opened" -> rankToApps(AppUsageProvider.mostOpened(ctx), apps).take(cap)
+                "most_used_time" -> rankToApps(AppUsageProvider.mostUsedTime(ctx), apps).take(cap)
                 "top_network" -> rankToApps(AppNetworkProvider.topByBytes(ctx), apps).take(cap)
                 "top_battery" -> rankToApps(
                     EnergyWatchdog.perAppEstimate(ctx).map { it.pkg }, apps).take(cap)
@@ -173,12 +177,13 @@ object PhoneSmartFolders {
             // positive `limit`; active_since needs a positive `window_h`.
             val valid = when (type) {
                 "recently_installed", "recent_used",
-                "most_opened", "top_network", "top_battery" -> limit > 0
+                "most_opened", "top_network", "top_battery", "most_used_time" -> limit > 0
                 "active_since" -> windowH > 0
                 else -> values.isNotEmpty()
             }
             if (!valid) continue
-            out.add(SmartFolder(id, title, Rule(type, values, limit, windowH)))
+            val group = o.optString("group").takeIf { it.isNotBlank() }
+            out.add(SmartFolder(id, title, Rule(type, values, limit, windowH), group))
         }
         out
     }.getOrDefault(emptyList())

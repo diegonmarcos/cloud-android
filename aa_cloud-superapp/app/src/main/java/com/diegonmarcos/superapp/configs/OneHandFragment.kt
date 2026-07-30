@@ -128,6 +128,7 @@ class OneHandFragment : Fragment() {
         addHomeSwipePicker(root, ctx, "Swipe up",    { HomeSwipePrefs(ctx).up },    { HomeSwipePrefs(ctx).up = it })
         addHomeSwipePicker(root, ctx, "Swipe left",  { HomeSwipePrefs(ctx).left },  { HomeSwipePrefs(ctx).left = it })
         addHomeSwipePicker(root, ctx, "Swipe right", { HomeSwipePrefs(ctx).right }, { HomeSwipePrefs(ctx).right = it })
+        addHomeSwipePicker(root, ctx, "Swipe down",  { HomeSwipePrefs(ctx).down },  { HomeSwipePrefs(ctx).down = it })
 
         val cfg = OneHandConfig.effective(ctx)
         val options = buildOptions(cfg)

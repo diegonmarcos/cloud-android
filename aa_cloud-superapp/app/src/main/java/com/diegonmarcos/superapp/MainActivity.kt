@@ -547,12 +547,8 @@ class MainActivity : AppCompatActivity(),
             })
     }
 
-    /** Open the app drawer on swipe-up while on Home. Swipe-down is
-     *  intentionally NOT bound — it was conflicting with normal in-app
-     *  navigation (scrolling lists, pull-to-refresh, sheet-close all
-     *  fighting for the same gesture). The Home Apps sheet still
-     *  closes via the back button or back gesture. Returns true if
-     *  the gesture was consumed. */
+    /** Fire the configured action on swipe-up/down while on Home. Returns
+     *  true if the gesture was consumed. */
     private fun handleVerticalFling(dy: Float): Boolean {
         // Some fragments (browser/WebView in detail mode etc.) need to
         // own vertical flings — let the inner content scroll, pull-to-
@@ -571,6 +567,9 @@ class MainActivity : AppCompatActivity(),
         return when {
             dy < 0 && currentSection == "home" && !sheetIsUp -> {
                 handleHomeSwipeAction(com.diegonmarcos.superapp.settings.HomeSwipePrefs(this).up); true
+            }
+            dy > 0 && currentSection == "home" && !sheetIsUp -> {
+                handleHomeSwipeAction(com.diegonmarcos.superapp.settings.HomeSwipePrefs(this).down); true
             }
             else -> false
         }
@@ -600,7 +599,9 @@ class MainActivity : AppCompatActivity(),
             }
             "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
             "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
-            else             -> openAppDrawerSheet()
+            // Target-string actions (e.g. "tab:phone:suite", "action:open_suite_phone_all")
+            // route through the same dispatch grammar as tile taps.
+            else             -> if (action.contains(':')) onTileClicked(action) else openAppDrawerSheet()
         }
     }
 

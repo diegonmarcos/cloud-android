@@ -32,10 +32,15 @@ class HomeSwipePrefs(context: Context) {
         get() = sp.getString(K_RIGHT, BuildConfig.HOME_SWIPE_RIGHT) ?: BuildConfig.HOME_SWIPE_RIGHT
         set(value) { sp.edit().putString(K_RIGHT, value).apply() }
 
+    var down: String
+        get() = sp.getString(K_DOWN, BuildConfig.HOME_SWIPE_DOWN) ?: BuildConfig.HOME_SWIPE_DOWN
+        set(value) { sp.edit().putString(K_DOWN, value).apply() }
+
     companion object {
         private const val K_UP = "swipe_up"
         private const val K_LEFT = "swipe_left"
         private const val K_RIGHT = "swipe_right"
+        private const val K_DOWN = "swipe_down"
 
         /** UI-facing action vocabulary: id → human label. Order = picker order.
          *  Kept in sync with MainActivity.handleHomeSwipeAction. */
@@ -44,6 +49,8 @@ class HomeSwipePrefs(context: Context) {
             "open_last_superapp_page" to "Last SuperApp page",
             "open_last_android_app"   to "Last Android app",
             "walk_step_next"          to "Walk → next",
+            "tab:phone:suite"         to "Suite: Phone Quickmarks",
+            "action:open_suite_phone_all" to "Suite: Phone All",
             "walk_step_prev"          to "Walk ← prev",
         )
     }

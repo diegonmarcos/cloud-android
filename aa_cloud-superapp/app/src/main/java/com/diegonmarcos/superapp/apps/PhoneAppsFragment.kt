@@ -240,20 +240,28 @@ class PhoneAppsFragment : Fragment() {
         }
         if (visibleSmart.isNotEmpty()) {
             rootCol.addView(subhead(ctx, "Smart Folders"))
-            // Synthesize a Folder per Smart Folder so the existing
-            // renderFolderGrid + makeFolderCard helpers light up
-            // unchanged. id prefixed with "smart:" so it can't collide
-            // with a real folder id from build.json.
-            val syntheticFolders = visibleSmart.map { vs ->
-                PhoneFolders.Folder(
-                    id            = "smart:${vs.spec.id}",
-                    order         = "zz",
-                    label         = vs.spec.title,
-                    matchKeywords = emptyList(),
-                )
+            // Smaller "subtile" cells for Smart Folders — denser than the
+            // A-Z/category grid above, and grouped under sub-labels
+            // (Usage/Stores/Dev/Rank/…) per build.json's `group` field.
+            val subtileCell = dp(ctx, 44)
+            val subtileColumns = columns + 1
+            visibleSmart.groupBy { it.spec.group ?: "Other" }.forEach { (group, rendered) ->
+                rootCol.addView(subhead(ctx, group))
+                // Synthesize a Folder per Smart Folder so the existing
+                // renderFolderGrid + makeFolderCard helpers light up
+                // unchanged. id prefixed with "smart:" so it can't collide
+                // with a real folder id from build.json.
+                val syntheticFolders = rendered.map { vs ->
+                    PhoneFolders.Folder(
+                        id            = "smart:${vs.spec.id}",
+                        order         = "zz",
+                        label         = vs.spec.title,
+                        matchKeywords = emptyList(),
+                    )
+                }
+                val smartGrouped = rendered.associate { vs -> "smart:${vs.spec.id}" to vs.apps }
+                renderFolderGrid(rootCol, ctx, syntheticFolders, smartGrouped, subtileColumns, subtileCell)
             }
-            val smartGrouped = visibleSmart.associate { vs -> "smart:${vs.spec.id}" to vs.apps }
-            renderFolderGrid(rootCol, ctx, syntheticFolders, smartGrouped, columns)
         }
     }
 
@@ -285,6 +293,7 @@ class PhoneAppsFragment : Fragment() {
         folders: List<PhoneFolders.Folder>,
         grouped: Map<String, List<PhoneApp>>,
         columns: Int,
+        cellSize: Int = dp(ctx, 60),
     ) {
         folders.chunked(columns).forEach { rowFolders ->
             val row = LinearLayout(ctx).apply {
@@ -296,7 +305,7 @@ class PhoneAppsFragment : Fragment() {
             }
             for (folder in rowFolders) {
                 val apps = grouped[folder.id].orEmpty()
-                row.addView(makeFolderCard(ctx, folder, apps))
+                row.addView(makeFolderCard(ctx, folder, apps, cellSize))
             }
             // Pad the row with empty weighted spacers if it has fewer
             // than `columns` folders, so the last row stays left-aligned
@@ -318,8 +327,8 @@ class PhoneAppsFragment : Fragment() {
         ctx: Context,
         folder: PhoneFolders.Folder,
         apps: List<PhoneApp>,
+        cellSize: Int = dp(ctx, 60),
     ): View {
-        val cellSize = dp(ctx, 60)
         val column = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
