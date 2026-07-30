@@ -62,13 +62,20 @@
         "_doc": "gradle_task_by_abi VERIFIED against a real GHA build (run 30535280370) plus upstream app/build.gradle.kts. Upstream declares `flavorDimensions += listOf(\"abi\",\"ml\")` and generates one abi flavor per key of `abiVersionCodes` = arm64-v8a / armeabi-v7a / x86_64 / x86 / universal. Gradle capitalizes only the FIRST letter of a flavor name, so the hyphen SURVIVES in the task name: assembleArm64-v8aNoMLRelease, NOT assembleArm64V8aNoMLRelease. Run 30535280370 failed with exactly that: \"Task assembleArm64V8aNoMLRelease not found ... Some candidates are: assembleArm64-v8aNoMLRelease\". We select the NoML flavor (skips upstream on-device ML models) + Release build type. The engine picks the entry matching COMMS_BUNDLE_ABI, falling back to .gradle_task.",
         "gradle_task": "assembleArm64-v8aNoMLRelease",
         "apk_glob": "app/build/outputs/apk/**/*.apk",
-        "signing": "keystore_properties",
+        "signing": "vault_jks_env",
         "_doc_ml_asset_pack": "Upstream declares an asset pack module `:ml-models` (`assetPacks += listOf(\":ml-models\")`) alongside the WithML/NoML flavor dimension. UNCONFIRMED: whether the NoML flavor we build still pulls in the :ml-models asset pack at the Gradle Play Asset Delivery level, or whether NoML fully excludes it. Do not assume exclusion — verify against the actual `assembleArm64V8aNoMLRelease` output (and `app/build.gradle.kts` asset-pack wiring) on the first real build before relying on this.",
         "gradle_task_by_abi": {
           "arm64-v8a": "assembleArm64-v8aNoMLRelease",
           "x86_64": "assembleX86_64NoMLRelease"
         },
-        "_doc_gradle_task_legacy": "gradle_task retained as the single-ABI fallback and is DEPRECATED for this app; the by_abi map above is authoritative. It is intentionally left pointing at the arm64 task so a build with no COMMS_BUNDLE_ABI set still targets the phone ABI."
+        "_doc_gradle_task_legacy": "gradle_task retained as the single-ABI fallback and is DEPRECATED for this app; the by_abi map above is authoritative. It is intentionally left pointing at the arm64 task so a build with no COMMS_BUNDLE_ABI set still targets the phone ABI.",
+        "keystore_dest": "app/release_key.jks",
+        "signing_env": {
+          "SIGNING_STORE_PASSWORD": "store_password",
+          "SIGNING_KEY_ALIAS": "key_alias",
+          "SIGNING_KEY_PASSWORD": "key_password"
+        },
+        "_doc_signing": "VERIFIED against upstream app/build.gradle.kts: signingConfigs.release sets storeFile = file(\"release_key.jks\") (relative to the app/ module) and reads storePassword/keyAlias/keyPassword from System.getenv(\"SIGNING_STORE_PASSWORD\"/\"SIGNING_KEY_ALIAS\"/\"SIGNING_KEY_PASSWORD\"). ReFra never reads a keystore.properties — the string \"keystore.properties\" does not appear anywhere in its gradle files. The previous value \"keystore_properties\" was copied verbatim from ea_cloud-mail (FairEmail DOES read that file) and made GHA run 30538571570 fail at configure time with: storeFile specifies file .../app/release_key.jks which doesnt exist. storeFile resolves during CONFIGURATION, so the engine must place the keystore before the task graph is built. Still the ONE shared vault key (.signing.vault_keystore) — this only changes DELIVERY, never which key signs."
       },
       "blocked_on": null,
       "comment": "ReFra (ex-Gallery, com.dot.gallery). Pure Kotlin/Compose, no RN/Cordova wrapper — closest in shape to the FairEmail fork (native gradle build, keystore.properties signing), not to the RN/Cordova forks in ea_cloud-comms. No patches/ series exists yet (empty tracker checkout at pinned tag is valid during scaffolding, per cloud-comms-fork-engine.sh::step_materialize_fork's 'no patches yet' path).",
