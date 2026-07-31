@@ -506,19 +506,23 @@ class MainActivity : AppCompatActivity(),
                     // conflict the user reported.
                     val sheetIsUp = supportFragmentManager
                         .findFragmentByTag(AppDrawerSheetFragment.BACK_STACK_TAG) != null
-                    if (currentSection == "home" && !sheetIsUp &&
+                    // "Home screen" means the Home ROOT — currentSection stays
+                    // "home" for every fragment pushed while inside the Home
+                    // section (e.g. Suite:Phone:All), so that alone isn't
+                    // enough: also require an empty back stack, mirroring
+                    // atHomeRoot in onPrepareOptionsMenu. Otherwise swipe
+                    // up/down leaks into those pages and fights their scroll.
+                    val atHomeRoot = currentSection == "home" &&
+                        supportFragmentManager.backStackEntryCount == 0
+                    if (atHomeRoot && !sheetIsUp &&
                         absDy > absDx * 1.4f && absDy > minSwipePx && Math.abs(vY) > 600f) {
                         val consumed = handleVerticalFling(dy)
                         if (consumed) Haptics.tap(bottomNav)
                         return consumed
                     }
 
-                    // HORIZONTAL swipes are ALSO home-only. Off-home the inner
-                    // fragment owns horizontal gestures (Cloud|Phone tab strips,
-                    // carousels, WebView pan) — the activity must NOT steal them
-                    // to step the walk-list. Mirrors the vertical guard above so
-                    // swipe left/right/up are captured strictly on the Home screen.
-                    if (currentSection != "home") return false
+                    // HORIZONTAL swipes are ALSO home-root-only, same reason.
+                    if (!atHomeRoot) return false
                     // Drawer owns left-edge swipes; ignore those.
                     if (e1.x < edgeIgnorePx) return false
                     if (absDx < minSwipePx) return false
