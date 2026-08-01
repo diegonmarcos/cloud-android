@@ -1,9 +1,11 @@
 package com.diegonmarcos.superapp.media
 
 import android.content.Context
+import android.widget.ImageView
 import coil.ImageLoader
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
+import coil.request.ImageRequest
 import org.json.JSONObject
 
 /**
@@ -52,6 +54,11 @@ object MediaRuntime {
             .crossfade(true)
             .build()
             .also { loader = it }
+    }
+
+    /** Load [url] into [view] without callers needing a direct Coil dependency. */
+    fun load(context: Context, view: ImageView, url: String) {
+        imageLoader(context).enqueue(ImageRequest.Builder(context).data(url).target(view).build())
     }
 
     fun configure(configB64: String?, tenorKey: String?, giphyKey: String?) {

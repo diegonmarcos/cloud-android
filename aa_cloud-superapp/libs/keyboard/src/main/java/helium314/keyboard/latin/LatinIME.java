@@ -145,6 +145,10 @@ public class LatinIME extends InputMethodService implements
     // SuperApp addition (patch 0005): offline Vosk voice dictation bar, hosted at
     // the top of the keyboard frame like the translate bar. Toggled by the mic key.
     private com.diegonmarcos.superapp.voice.VoiceBarView mVoiceBar;
+    // SuperApp addition (patch 0011): toggle-able emoji/sticker/GIF search bar,
+    // hosted the same way as the translate bar. Replaces the old always-visible
+    // in-panel emoji-only search field.
+    private helium314.keyboard.keyboard.emoji.EmojiSearchBarView mEmojiSearchBar;
 
     private RichInputMethodManager mRichImm;
     final KeyboardSwitcher mKeyboardSwitcher;
@@ -688,6 +692,7 @@ public class LatinIME extends InputMethodService implements
         mKeyboardSwitcher.setThemeNeedsReload(); // necessary for emoji search
         EmojiPalettesView.closeDictionaryFacilitator();
         EmojiSearchActivity.Companion.closeDictionaryFacilitator();
+        if (mEmojiSearchBar != null) mEmojiSearchBar.closeDictionaryFacilitator();
     }
 
     // used for debug
@@ -790,6 +795,8 @@ public class LatinIME extends InputMethodService implements
         final View strip = mInputView.findViewById(R.id.strip_container);
         if (strip == null || !(strip.getParent() instanceof android.widget.LinearLayout)) return;
         final android.widget.LinearLayout frame = (android.widget.LinearLayout) strip.getParent();
+        final boolean opening = mTranslateBar == null || mTranslateBar.getVisibility() != View.VISIBLE;
+        if (opening) { hideEmojiSearchBar(); hideVoiceBar(); }
         if (mTranslateBar == null) {
             mTranslateBar = new com.diegonmarcos.superapp.translate.TranslateBarView(this);
             final java.util.Locale loc = mRichImm.getCurrentSubtypeLocale();
@@ -809,6 +816,45 @@ public class LatinIME extends InputMethodService implements
         if (mTranslateBar != null) mTranslateBar.setVisibility(View.GONE);
     }
 
+    /**
+     * SuperApp addition (patch 0011): toggle the emoji/sticker/GIF search bar.
+     * Hosted identically to the translate bar (first child of the keyboard
+     * frame) so the keyboard itself stays visible underneath it.
+     */
+    public void toggleEmojiSearchBar() {
+        if (mInputView == null) return;
+        final View strip = mInputView.findViewById(R.id.strip_container);
+        if (strip == null || !(strip.getParent() instanceof android.widget.LinearLayout)) return;
+        final android.widget.LinearLayout frame = (android.widget.LinearLayout) strip.getParent();
+        final boolean opening = mEmojiSearchBar == null || mEmojiSearchBar.getVisibility() != View.VISIBLE;
+        if (opening) { hideTranslateBar(); hideVoiceBar(); }
+        if (mEmojiSearchBar == null) {
+            mEmojiSearchBar = new helium314.keyboard.keyboard.emoji.EmojiSearchBarView(this);
+            final java.util.Locale loc = mRichImm.getCurrentSubtypeLocale();
+            mEmojiSearchBar.bind(this::getCurrentInputConnection,
+                    info -> mKeyboardActionListener.onContent(info),
+                    loc != null ? loc : java.util.Locale.getDefault(),
+                    this::hideEmojiSearchBar);
+            frame.addView(mEmojiSearchBar, 0);
+        }
+        if (mEmojiSearchBar.getVisibility() == View.VISIBLE) {
+            hideEmojiSearchBar();
+        } else {
+            mEmojiSearchBar.setVisibility(View.VISIBLE);
+            mEmojiSearchBar.onShown();
+        }
+    }
+
+    public void hideEmojiSearchBar() {
+        if (mEmojiSearchBar != null) mEmojiSearchBar.setVisibility(View.GONE);
+    }
+
+    /** SuperApp (patch 0011): true while the emoji search bar is shown — LatinIME
+     *  routes key presses into it instead of the app field. */
+    public boolean isEmojiSearchBarActive() {
+        return mEmojiSearchBar != null && mEmojiSearchBar.getVisibility() == View.VISIBLE;
+    }
+
     /** SuperApp (patch 0001): true while the translate bar is shown — LatinIME
      *  routes key presses into it instead of the app field. */
     public boolean isTranslateBarActive() {
@@ -826,6 +872,8 @@ public class LatinIME extends InputMethodService implements
         final View strip = mInputView.findViewById(R.id.strip_container);
         if (strip == null || !(strip.getParent() instanceof android.widget.LinearLayout)) return;
         final android.widget.LinearLayout frame = (android.widget.LinearLayout) strip.getParent();
+        final boolean opening = mVoiceBar == null || mVoiceBar.getVisibility() != View.VISIBLE;
+        if (opening) { hideTranslateBar(); hideEmojiSearchBar(); }
         if (mVoiceBar == null) {
             mVoiceBar = new com.diegonmarcos.superapp.voice.VoiceBarView(this);
             final java.util.Locale loc = mRichImm.getCurrentSubtypeLocale();
@@ -1292,6 +1340,10 @@ public class LatinIME extends InputMethodService implements
         else if (mVoiceBar != null && mVoiceBar.getVisibility() == View.VISIBLE) {
             visibleTopY -= mVoiceBar.getHeight();
         }
+        // SuperApp (patch 0011): same treatment for the emoji/sticker/GIF search bar.
+        else if (mEmojiSearchBar != null && mEmojiSearchBar.getVisibility() == View.VISIBLE) {
+            visibleTopY -= mEmojiSearchBar.getHeight();
+        }
 
         if (hasSuggestionStripView()) {
             mSuggestionStripView.setMoreSuggestionsHeight(visibleTopY);
@@ -1509,6 +1561,12 @@ public class LatinIME extends InputMethodService implements
             if (KeyCode.DELETE == event.getKeyCode()) { mTranslateBar.backspace(); return; }
             final int cp = event.getCodePoint();
             if (cp > 0) { mTranslateBar.appendCodePoint(cp); return; }
+        }
+        // SuperApp (patch 0011): same manual key-routing as the translate bar.
+        if (isEmojiSearchBarActive()) {
+            if (KeyCode.DELETE == event.getKeyCode()) { mEmojiSearchBar.backspace(); return; }
+            final int cp = event.getCodePoint();
+            if (cp > 0) { mEmojiSearchBar.appendCodePoint(cp); return; }
         }
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
             // SuperApp (patch 0005): toggle the bundled OFFLINE Vosk dictation bar

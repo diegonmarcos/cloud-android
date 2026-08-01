@@ -166,6 +166,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         }
     }
 
+    override fun onEmojiSearch() = latinIME.toggleEmojiSearchBar()
+
     override fun onStartBatchInput() = latinIME.onStartBatchInput()
 
     override fun onUpdateBatchInput(batchPointers: InputPointers?) = latinIME.onUpdateBatchInput(batchPointers)

@@ -301,8 +301,28 @@ public final class EmojiPalettesView extends LinearLayout
         setCurrentCategoryId(mEmojiCategory.getCurrentCategoryId(), true);
         mEmojiCategoryPageIndicatorView.setColors(mColors.get(ColorType.EMOJI_CATEGORY_SELECTED), mColors.get(ColorType.STRIP_BACKGROUND));
         setupMediaPanel();
-        setupSearchBar(); // patch 0010
+        // patch 0011: the old always-visible in-panel search field (patch 0010) is
+        // superseded by the toggle-able EmojiSearchBarView (search icon below,
+        // opens above the keyboard so it doesn't permanently eat panel space and
+        // also covers stickers/GIFs, not just emoji). Left wired but never shown.
+        setupSearchBar();
+        addSearchToggleIcon(mTabStrip);
         initialized = true;
+    }
+
+    // patch 0011: appended after the category icons — always reachable regardless
+    // of whether the Sticker/GIF media panel is enabled.
+    private void addSearchToggleIcon(final LinearLayout host) {
+        if (host == null) return;
+        final ImageView searchIcon = new ImageView(getContext());
+        mColors.setBackground(searchIcon, ColorType.STRIP_BACKGROUND);
+        mColors.setColor(searchIcon, ColorType.EMOJI_CATEGORY);
+        searchIcon.setScaleType(ImageView.ScaleType.CENTER);
+        searchIcon.setImageResource(R.drawable.sym_keyboard_search_lxx);
+        searchIcon.setContentDescription(getContext().getString(R.string.emoji_search_hint));
+        host.addView(searchIcon);
+        searchIcon.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        searchIcon.setOnClickListener(v -> mKeyboardActionListener.onEmojiSearch());
     }
 
     // SuperApp (patch 0007): wire the Emoji/Sticker/GIF type tabs + media body.
