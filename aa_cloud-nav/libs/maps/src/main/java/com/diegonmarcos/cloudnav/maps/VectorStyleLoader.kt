@@ -153,7 +153,18 @@ object VectorStyleLoader {
                     .put("fill-extrusion-color", buildingColor)
                     .put("fill-extrusion-height", JSONArray().put("coalesce").put(JSONArray().put("get").put("render_height")).put(5))
                     .put("fill-extrusion-base", JSONArray().put("coalesce").put(JSONArray().put("get").put("render_min_height")).put(0))
-                    .put("fill-extrusion-opacity", 0.85),
+                    // Fade in over one zoom level instead of an instant pop at
+                    // buildingMinzoom -- the building source-layer has NO geometry
+                    // below that zoom at all (confirmed against OpenFreeMap's
+                    // tilejson: minzoom 13, maxzoom 14 for the `building` layer),
+                    // so this cannot make buildings appear further out; it only
+                    // smooths the transition at the boundary that already exists.
+                    .put(
+                        "fill-extrusion-opacity",
+                        JSONArray().put("interpolate").put(JSONArray().put("linear")).put(JSONArray().put("zoom"))
+                            .put(buildingMinzoom).put(0.0)
+                            .put(buildingMinzoom + 1).put(0.85),
+                    ),
             )
         // Rebuild the array with the extrusion inserted right after the 2D
         // building fill (org.json JSONArray has no insert-at-index) — keeps it in
