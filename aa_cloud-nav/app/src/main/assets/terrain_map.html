@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <!--
-  Real 3D terrain (mountains that rise on tilt) — MapLibre Native (the app's
-  main renderer) has never shipped setTerrain/raster-dem tilt support, so
-  this screen uses MapLibre GL JS in a WebView instead, which has since 2022.
+  Real 3D terrain (mountains that rise on tilt) AND globe view — MapLibre
+  Native (the app's main renderer) has neither: no setTerrain/raster-dem tilt
+  support, and globe projection is GL-JS-only (added in v5) with zero Android
+  Native support even on the latest release (confirmed against
+  github.com/maplibre/maplibre-native issue #3161 — still open/roadmap, not
+  shipped). This screen uses MapLibre GL JS v5 in a WebView for both.
   CDN-loaded for now (v1); bundling gl-js locally under assets/ for full
   offline support is a follow-up, not done here.
 -->
@@ -10,8 +13,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #0d1117; }
   </style>
@@ -30,6 +33,11 @@
     });
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+    map.addControl(new maplibregl.GlobeControl());
+
+    // Globe at extreme zoom-out, morphing to flat Mercator as you zoom in —
+    // this is GL JS v5's built-in globe/mercator projection behavior.
+    map.setProjection({ type: 'globe' });
 
     map.on('load', () => {
       map.addSource('cloudnav-terrain-dem', {

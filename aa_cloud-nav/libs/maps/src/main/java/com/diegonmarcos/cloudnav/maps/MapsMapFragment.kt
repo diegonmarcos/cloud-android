@@ -294,39 +294,15 @@ class MapsMapFragment : Fragment() {
                     alpha = if (is3dOn()) 1f else 0.5f
                 }
             }
-            // Real 3D terrain (mountains that rise on tilt) — MapLibre Native has no
-            // terrain support, so this opens a separate MapLibre GL JS WebView screen.
-            val terrainFab = FloatingActionButton(ctx).apply {
-                setImageResource(R.drawable.ic_map_layers)
-                contentDescription = "Terrain view"
-                size = FloatingActionButton.SIZE_MINI
-                layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
-                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(330)) }
-                setOnClickListener {
-                    val cam = map?.cameraPosition
-                    val target = cam?.target
-                    val intent = android.content.Intent().apply {
-                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.TerrainActivity")
-                        if (target != null) {
-                            putExtra("lat", target.latitude)
-                            putExtra("lon", target.longitude)
-                            putExtra("zoom", cam.zoom)
-                        }
-                    }
-                    try {
-                        ctx.startActivity(intent)
-                    } catch (e: android.content.ActivityNotFoundException) {
-                        Toast.makeText(ctx, "Terrain view unavailable", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            // Point-the-phone-at-the-sky constellation view, stacked under the terrain FAB.
+            // Point-the-phone-at-the-sky constellation view, stacked above the 3D FAB.
+            // (Terrain is NOT a separate FAB — it's an entry in the existing map-style
+            // switcher sheet, showStyleMenu(), same as any other basemap.)
             val skyFab = FloatingActionButton(ctx).apply {
-                setImageResource(R.drawable.ic_map_layers)
+                setImageResource(R.drawable.ic_constellation)
                 contentDescription = "Constellations"
                 size = FloatingActionButton.SIZE_MINI
                 layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
-                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(378)) }
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(330)) }
                 setOnClickListener {
                     val intent = android.content.Intent().apply {
                         setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.sky.ConstellationsActivity")
@@ -360,7 +336,6 @@ class MapsMapFragment : Fragment() {
             root.addView(northFab)
             root.addView(switchFab)
             root.addView(threeDFab)
-            root.addView(terrainFab)
             root.addView(skyFab)
         }
         return root
@@ -429,21 +404,10 @@ class MapsMapFragment : Fragment() {
         // happens"). Leave zoom alone when turning 3D off.
         if (manual3d && cur.zoom < 15.0) b.zoom(16.5)
         map?.animateCamera(CameraUpdateFactory.newCameraPosition(b.build()))
-        applyBuildingZoomFloor()
     }
 
     /** Current manual-3D toggle state — the 3D FAB reflects this on rebuild. */
     fun is3dOn(): Boolean = manual3d
-
-    /**
-     * While 3D is on and the style actually carries buildings, stop the camera from
-     * zooming out past [BUILDING_MIN_ZOOM] — beyond that the building source-layer has
-     * no geometry at all, so uncapped zoom-out used to make buildings disappear with no
-     * visual explanation. Off (or on a raster style), no floor is applied.
-     */
-    private fun applyBuildingZoomFloor() {
-        map?.setMinZoomPreference(if (manual3d && styleHasBuildings()) BUILDING_MIN_ZOOM else 0.0)
-    }
 
     /** Keep the scale bar current; reveal it on a zoom change, fade it on idle. */
     private fun onScaleCameraChange(m: MapLibreMap, moving: Boolean) {
@@ -624,6 +588,48 @@ class MapsMapFragment : Fragment() {
             if (selected) row.addView(TextView(ctx).apply { text = "✓"; textSize = 18f; setTextColor(0xFF4ADE80.toInt()) })
             list.addView(row)
         }
+        // Real 3D terrain (mountains that rise on tilt) + forest tint — MapLibre Native
+        // (everything above) has no terrain support at all, so this is a separate
+        // MapLibre GL JS WebView screen, listed here as a style-menu entry rather than
+        // its own FAB. EXPERIMENTAL: loads gl-js from a CDN (no offline support yet).
+        list.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dpi(14), dpi(12), dpi(14), dpi(12))
+            isClickable = true
+            setOnClickListener {
+                dialog.dismiss()
+                val cam = map?.cameraPosition
+                val target = cam?.target
+                val intent = android.content.Intent().apply {
+                    setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.TerrainActivity")
+                    if (target != null) {
+                        putExtra("lat", target.latitude)
+                        putExtra("lon", target.longitude)
+                        putExtra("zoom", cam.zoom)
+                    }
+                }
+                try {
+                    ctx.startActivity(intent)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    Toast.makeText(ctx, "Terrain view unavailable", Toast.LENGTH_SHORT).show()
+                }
+            }
+            addView(TextView(ctx).apply { text = "🏔️"; textSize = 22f; setPadding(0, 0, dpi(14), 0) })
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f)
+                addView(TextView(ctx).apply {
+                    text = "Terrain (experimental)"; textSize = 16f
+                    setTextColor(0xFFECEFF4.toInt())
+                    typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                })
+                addView(TextView(ctx).apply {
+                    text = "Real 3D mountains + forest · separate screen, online only"
+                    textSize = 12f; setTextColor(0xFF9AA3B2.toInt())
+                })
+            })
+        })
         col.addView(ScrollView(ctx).apply { addView(list) })
         dialog.setContentView(col)
         dialog.show()
@@ -750,7 +756,6 @@ class MapsMapFragment : Fragment() {
             )
         )
         styleReady = true
-        applyBuildingZoomFloor()
         pushMe()
         pushRoute()
         // Let callers (re)install their own extra fill layers — they are wiped
@@ -859,12 +864,6 @@ class MapsMapFragment : Fragment() {
         const val ARG_AUTOLOCATE = "autolocate"
         const val ARG_WORLD_VIEW = "world_view"
         const val ARG_TEXTURE = "texture_mode"
-
-        // OpenMapTiles' `building` source-layer only exists in tiles z13+ (confirmed
-        // against OpenFreeMap's tilejson) — there is no building geometry to reveal by
-        // zooming out further. While 3D is on, floor the camera here instead of letting
-        // it zoom out past the point buildings silently vanish.
-        const val BUILDING_MIN_ZOOM = 13.0
 
         const val COLOR_RESULT = "#D93025"
         const val COLOR_PLACE  = "#1A73E8"
