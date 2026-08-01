@@ -320,6 +320,24 @@ class MapsMapFragment : Fragment() {
                     }
                 }
             }
+            // Point-the-phone-at-the-sky constellation view, stacked under the terrain FAB.
+            val skyFab = FloatingActionButton(ctx).apply {
+                setImageResource(R.drawable.ic_map_layers)
+                contentDescription = "Constellations"
+                size = FloatingActionButton.SIZE_MINI
+                layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(378)) }
+                setOnClickListener {
+                    val intent = android.content.Intent().apply {
+                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.sky.ConstellationsActivity")
+                    }
+                    try {
+                        ctx.startActivity(intent)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        Toast.makeText(ctx, "Constellations view unavailable", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
             // Reset-to-north (between switcher and locate-me).
             val northFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_compass_north)
@@ -343,6 +361,7 @@ class MapsMapFragment : Fragment() {
             root.addView(switchFab)
             root.addView(threeDFab)
             root.addView(terrainFab)
+            root.addView(skyFab)
         }
         return root
     }
