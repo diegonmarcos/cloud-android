@@ -33,6 +33,7 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var skyView: SkyView
     private lateinit var statusText: TextView
     private var dataLoaded = false
+    private var loadError: String? = null
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,19 +66,30 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
     private fun loadCelestialDataAsync() {
         val appCtx = applicationContext
         thread(name = "celestial-load") {
-            val stars = CelestialData.loadStars(appCtx)
-            val lines = CelestialData.loadConstellationLines(appCtx)
-            val mw = CelestialData.loadMilkyWay(appCtx)
-            val elements = PlanetEphemeris.loadElements(appCtx)
-            val bodies = PlanetEphemeris.positions(elements, System.currentTimeMillis())
-            Handler(Looper.getMainLooper()).post {
-                skyView.stars = stars
-                skyView.constellationLines = lines
-                skyView.milkyWay = mw
-                skyView.bodies = bodies
-                dataLoaded = true
-                skyView.invalidate()
-                updateStatus()
+            // A raw Thread's uncaught exception kills the WHOLE APP on Android, not just
+            // this thread -- any bad-asset-read/parse hiccup here would silently crash
+            // the activity with no on-screen explanation. Catch and surface it instead.
+            try {
+                val stars = CelestialData.loadStars(appCtx)
+                val lines = CelestialData.loadConstellationLines(appCtx)
+                val mw = CelestialData.loadMilkyWay(appCtx)
+                val elements = PlanetEphemeris.loadElements(appCtx)
+                val bodies = PlanetEphemeris.positions(elements, System.currentTimeMillis())
+                Handler(Looper.getMainLooper()).post {
+                    skyView.stars = stars
+                    skyView.constellationLines = lines
+                    skyView.milkyWay = mw
+                    skyView.bodies = bodies
+                    dataLoaded = true
+                    skyView.invalidate()
+                    updateStatus()
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("Constellations", "celestial data load failed", t)
+                Handler(Looper.getMainLooper()).post {
+                    loadError = "${t.javaClass.simpleName}: ${t.message}"
+                    updateStatus()
+                }
             }
         }
     }
@@ -115,7 +127,11 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
             else if (!hasLocationPermission()) "No location permission — using 0,0 (wrong sky)"
             else "Locating…"
         val sensorLine = if (rotationSensor == null) " · no orientation sensor, drag to look around" else ""
-        val loadLine = if (!dataLoaded) "\nLoading stars/constellations/planets…" else ""
+        val loadLine = when {
+            loadError != null -> "\nFailed to load sky data: $loadError"
+            !dataLoaded -> "\nLoading stars/constellations/planets…"
+            else -> ""
+        }
         statusText.text = "Constellations · Sun/planets · Milky Way (no moons)\n$locLine$sensorLine$loadLine"
     }
 
@@ -131,6 +147,7 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
+        try {
         val rotMatrix = FloatArray(9)
         SensorManager.getRotationMatrixFromVector(rotMatrix, event.values)
 
@@ -154,6 +171,9 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
         // up at the sky moves stars the wrong way on a real device, flip this sign.
         skyView.sensorPitchDeg = PITCH_SIGN * Math.toDegrees(orientation[1].toDouble())
         skyView.invalidate()
+        } catch (t: Throwable) {
+            android.util.Log.e("Constellations", "onSensorChanged failed", t)
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
