@@ -46,6 +46,8 @@
     <string name="settings_screen_correction">Text correction</string>
     <!-- SuperApp addition — Grammar check settings screen -->
     <string name="settings_screen_grammar">Grammar check</string>
+    <!-- SuperApp addition — Clipboard settings, promoted out of Preferences -->
+    <string name="settings_screen_clipboard">Clipboard</string>
     <!-- SuperApp addition — Translation / Emoji / Voice Transcript info screens -->
     <string name="settings_screen_translation">Translation</string>
     <string name="settings_screen_emoji">Emoji, GIFs &amp; Stickers</string>

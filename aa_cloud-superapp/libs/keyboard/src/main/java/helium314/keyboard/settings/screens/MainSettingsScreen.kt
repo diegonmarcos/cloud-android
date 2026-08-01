@@ -25,6 +25,7 @@ import helium314.keyboard.settings.SearchSettingsScreen
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.settings.initPreview
 import helium314.keyboard.settings.preferences.Preference
+import helium314.keyboard.settings.preferences.PreferenceCategory
 import helium314.keyboard.latin.utils.previewDark
 import helium314.keyboard.settings.screens.gesturedata.END_DATE_EPOCH_MILLIS
 import helium314.keyboard.settings.screens.gesturedata.TWO_WEEKS_IN_MILLIS
@@ -34,6 +35,7 @@ fun MainSettingsScreen(
     onClickAbout: () -> Unit,
     onClickTextCorrection: () -> Unit,
     onClickGrammarCheck: () -> Unit, // SuperApp addition (patch 0002)
+    onClickClipboard: () -> Unit, // SuperApp addition
     onClickTranslation: () -> Unit, // SuperApp addition
     onClickEmoji: () -> Unit, // SuperApp addition
     onClickVoiceTranscript: () -> Unit, // SuperApp addition
@@ -58,9 +60,37 @@ fun MainSettingsScreen(
             Column(
                 Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding))
             ) {
+                // ── SuperApp section (patch 0011 reorder): our own additions first ──
+                Preference(
+                    name = stringResource(R.string.settings_screen_clipboard),
+                    onClick = onClickClipboard,
+                    icon = R.drawable.ic_settings_preferences
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_emoji),
+                    onClick = onClickEmoji,
+                    icon = R.drawable.ic_settings_about
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_translation),
+                    onClick = onClickTranslation,
+                    icon = R.drawable.ic_settings_about
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_grammar),
+                    onClick = onClickGrammarCheck,
+                    icon = R.drawable.ic_settings_correction
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_voice_transcript),
+                    onClick = onClickVoiceTranscript,
+                    icon = R.drawable.ic_settings_about
+                ) { NextScreenIcon() }
                 // SuperApp addition — self-update entry, shown ONLY in the standalone Cloud
                 // Keyboard app (the SuperApp updates its embedded keyboard via its own AppStore,
                 // so this is hidden there). Opens the latest published Cloud-Keyboard.apk release.
+                // TODO: currently only updates the standalone APK — does not yet also check/update
+                // the cloud-keyboard-libs companion app that hosts translate/voice/dictionaries.
                 val updateCtx = LocalContext.current
                 if (updateCtx.packageName == "com.diegonmarcos.cloudkeyboard") {
                     Preference(
@@ -79,6 +109,9 @@ fun MainSettingsScreen(
                         icon = R.drawable.ic_settings_about
                     ) { NextScreenIcon() }
                 }
+
+                // ── Everything below is upstream HeliBoard's own menu ──────────────
+                PreferenceCategory("Keyboard defaults")
                 Preference(
                     name = stringResource(R.string.language_and_layouts_title),
                     description = enabledSubtypes.joinToString(", ") { it.displayName() },
@@ -86,19 +119,34 @@ fun MainSettingsScreen(
                     icon = R.drawable.ic_settings_languages
                 ) { NextScreenIcon() }
                 Preference(
-                    name = stringResource(R.string.settings_screen_preferences),
-                    onClick = onClickPreferences,
-                    icon = R.drawable.ic_settings_preferences
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_appearance),
-                    onClick = onClickAppearance,
-                    icon = R.drawable.ic_settings_appearance
+                    name = stringResource(R.string.dictionary_settings_category),
+                    onClick = onClickDictionaries,
+                    icon = R.drawable.ic_dictionary
                 ) { NextScreenIcon() }
                 Preference(
                     name = stringResource(R.string.settings_screen_toolbar),
                     onClick = onClickToolbar,
                     icon = R.drawable.ic_settings_toolbar
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_preferences),
+                    onClick = onClickPreferences,
+                    icon = R.drawable.ic_settings_preferences
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_advanced),
+                    onClick = onClickAdvanced,
+                    icon = R.drawable.ic_settings_advanced
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_secondary_layouts),
+                    onClick = onClickLayouts,
+                    icon = R.drawable.ic_ime_switcher
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_appearance),
+                    onClick = onClickAppearance,
+                    icon = R.drawable.ic_settings_appearance
                 ) { NextScreenIcon() }
                 if (JniUtils.sHaveGestureLib)
                     Preference(
@@ -118,43 +166,6 @@ fun MainSettingsScreen(
                     onClick = onClickTextCorrection,
                     icon = R.drawable.ic_settings_correction
                 ) { NextScreenIcon() }
-                // SuperApp addition (patch 0002) — Grammar check settings entry
-                Preference(
-                    name = stringResource(R.string.settings_screen_grammar),
-                    onClick = onClickGrammarCheck,
-                    icon = R.drawable.ic_settings_correction
-                ) { NextScreenIcon() }
-                // SuperApp addition — Translation / Emoji / Voice Transcript info screens
-                Preference(
-                    name = stringResource(R.string.settings_screen_translation),
-                    onClick = onClickTranslation,
-                    icon = R.drawable.ic_settings_about
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_emoji),
-                    onClick = onClickEmoji,
-                    icon = R.drawable.ic_settings_about
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_voice_transcript),
-                    onClick = onClickVoiceTranscript,
-                    icon = R.drawable.ic_settings_about
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_secondary_layouts),
-                    onClick = onClickLayouts,
-                    icon = R.drawable.ic_ime_switcher
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.dictionary_settings_category),
-                    onClick = onClickDictionaries,
-                    icon = R.drawable.ic_dictionary
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_advanced),
-                    onClick = onClickAdvanced,
-                    icon = R.drawable.ic_settings_advanced
-                ) { NextScreenIcon() }
                 Preference(
                     name = stringResource(R.string.settings_screen_about),
                     onClick = onClickAbout,
@@ -171,7 +182,7 @@ private fun PreviewScreen() {
     initPreview(LocalContext.current)
     Theme(previewDark) {
         Surface {
-            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
         }
     }
 }

@@ -36,6 +36,7 @@ import helium314.keyboard.settings.screens.ToolbarScreen
 import helium314.keyboard.settings.screens.TranslationInfoScreen
 import helium314.keyboard.settings.screens.EmojiInfoScreen
 import helium314.keyboard.settings.screens.VoiceTranscriptInfoScreen
+import helium314.keyboard.settings.screens.ClipboardSettingsScreen
 import helium314.keyboard.settings.screens.gesturedata.GestureDataScreen
 import helium314.keyboard.settings.screens.gesturedata.ReviewScreen
 import kotlinx.coroutines.CoroutineScope
@@ -74,6 +75,7 @@ fun SettingsNavHost(
                 onClickAbout = { navController.navigate(SettingsDestination.About) },
                 onClickTextCorrection = { navController.navigate(SettingsDestination.TextCorrection) },
                 onClickGrammarCheck = { navController.navigate(SettingsDestination.GrammarCheck) }, // SuperApp patch 0002
+                onClickClipboard = { navController.navigate(SettingsDestination.Clipboard) },
                 onClickTranslation = { navController.navigate(SettingsDestination.Translation) },
                 onClickEmoji = { navController.navigate(SettingsDestination.Emoji) },
                 onClickVoiceTranscript = { navController.navigate(SettingsDestination.VoiceTranscript) },
@@ -97,6 +99,9 @@ fun SettingsNavHost(
         }
         composable(SettingsDestination.GrammarCheck) { // SuperApp addition (patch 0002)
             GrammarCheckScreen(onClickBack = ::goBack)
+        }
+        composable(SettingsDestination.Clipboard) {
+            ClipboardSettingsScreen(onClickBack = ::goBack)
         }
         composable(SettingsDestination.Translation) {
             TranslationInfoScreen(onClickBack = ::goBack)
@@ -169,6 +174,7 @@ object SettingsDestination {
     const val About = "about"
     const val TextCorrection = "text_correction"
     const val GrammarCheck = "grammar_check" // SuperApp addition (patch 0002)
+    const val Clipboard = "clipboard" // SuperApp addition
     const val Translation = "translation_info" // SuperApp addition
     const val Emoji = "emoji_info" // SuperApp addition
     const val VoiceTranscript = "voice_transcript_info" // SuperApp addition
