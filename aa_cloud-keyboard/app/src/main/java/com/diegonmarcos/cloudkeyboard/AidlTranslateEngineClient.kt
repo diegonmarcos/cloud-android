@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import com.diegonmarcos.cloudkeyboardlibs.ITranslateEngine
 import com.diegonmarcos.superapp.translate.TranslateEngineClient
 
@@ -37,9 +38,19 @@ class AidlTranslateEngineClient(private val context: Context) : TranslateEngineC
     init { bindService() }
 
     private fun bindService() {
-        runCatching {
+        val result = runCatching {
             val intent = Intent(LIBS_ACTION).apply { setPackage(LIBS_PKG) }
+            // bindService() returns false (no exception!) when the target service
+            // can't be found/bound — e.g. the cloud-keyboard-libs companion app
+            // isn't installed. That return value used to be silently discarded,
+            // which meant a failed bind and a successful-but-pending bind were
+            // indistinguishable from the outside. Log it so it's diagnosable.
             context.applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+        }
+        val bound = result.getOrDefault(false)
+        if (!bound) {
+            Log.w(TAG, "bindService to $LIBS_PKG/$LIBS_ACTION failed " +
+                "(exception=${result.exceptionOrNull()}) — is cloud-keyboard-libs installed?")
         }
     }
 
@@ -48,4 +59,10 @@ class AidlTranslateEngineClient(private val context: Context) : TranslateEngineC
 
     override fun supportedLanguages(): List<String> =
         engine?.supportedLanguages() ?: emptyList()
+
+    override fun isConnected(): Boolean = engine != null
+
+    private companion object {
+        const val TAG = "AidlTranslateEngine"
+    }
 }

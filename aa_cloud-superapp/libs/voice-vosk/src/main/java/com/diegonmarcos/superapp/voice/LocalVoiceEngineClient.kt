@@ -79,6 +79,9 @@ class LocalVoiceEngineClient(private val context: Context) : VoiceEngineClient, 
         onErrorCb   = null
     }
 
+    // In-process — always ready, no bind step to fail.
+    override fun isConnected(): Boolean = true
+
     companion object {
         const val SAMPLE_RATE = 16000
 

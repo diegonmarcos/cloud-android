@@ -40,7 +40,20 @@ fun VoiceTranscriptInfoScreen(onClickBack: () -> Unit) {
             )
             PreferenceCategory("Engine")
             Text(
-                "Type: ${client?.javaClass?.simpleName ?: "not connected"}",
+                "Type: ${client?.javaClass?.simpleName ?: "none registered"}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            // client != null only means the object exists — isConnected() reflects
+            // whether the AIDL bind (for the standalone app) actually succeeded.
+            Text(
+                when {
+                    client == null -> "Not connected — no engine registered."
+                    client.isConnected() -> "Connected — dictation is functional."
+                    else -> "NOT connected — client exists but the underlying service " +
+                        "isn't bound. On the standalone Cloud Keyboard app this means the " +
+                        "cloud-keyboard-libs companion app is either not installed, or its " +
+                        "service failed to bind (see logcat tag AidlVoiceEngine)."
+                },
                 style = MaterialTheme.typography.bodyMedium
             )
             PreferenceCategory("Languages (from build.json::voice.models)")

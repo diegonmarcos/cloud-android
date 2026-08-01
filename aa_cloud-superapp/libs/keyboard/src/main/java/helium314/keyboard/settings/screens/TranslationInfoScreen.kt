@@ -45,18 +45,25 @@ fun TranslationInfoScreen(onClickBack: () -> Unit) {
             )
             PreferenceCategory("Engine")
             Text(
-                "Type: ${client?.javaClass?.simpleName ?: "not connected"}",
+                "Type: ${client?.javaClass?.simpleName ?: "none registered"}",
                 style = MaterialTheme.typography.bodyMedium
             )
-            if (client == null) {
-                Text(
-                    "No translate engine registered in this app. On the standalone Cloud " +
-                        "Keyboard app, translation runs via the cloud-keyboard-libs companion " +
-                        "app over AIDL — install it for translation to actually run (the " +
-                        "language picker below still works either way).",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            // client != null only means the client OBJECT exists — for the AIDL
+            // client that's true even when the underlying bind to the companion
+            // service failed or is still pending. isConnected() reflects the
+            // actual bind state, so this line can be trusted.
+            Text(
+                when {
+                    client == null -> "Not connected — no engine registered."
+                    client.isConnected() -> "Connected — translation is functional."
+                    else -> "NOT connected — client exists but the underlying service " +
+                        "isn't bound. On the standalone Cloud Keyboard app this means the " +
+                        "cloud-keyboard-libs companion app is either not installed, or its " +
+                        "service failed to bind (see logcat tag AidlTranslateEngine). " +
+                        "Translation will silently do nothing until this is connected."
+                },
+                style = MaterialTheme.typography.bodyMedium
+            )
             PreferenceCategory("Installed / default languages")
             Text(
                 installedLangs.joinToString(", ") { code ->

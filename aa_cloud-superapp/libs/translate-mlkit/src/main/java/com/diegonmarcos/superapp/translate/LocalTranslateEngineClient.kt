@@ -18,4 +18,7 @@ class LocalTranslateEngineClient(private val context: Context) : TranslateEngine
 
     override fun supportedLanguages(): List<String> =
         TranslateEngine.supportedLanguageTags()
+
+    // In-process — always ready, no bind step to fail.
+    override fun isConnected(): Boolean = true
 }

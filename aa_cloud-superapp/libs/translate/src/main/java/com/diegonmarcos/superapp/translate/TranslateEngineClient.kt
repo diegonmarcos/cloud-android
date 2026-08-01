@@ -14,4 +14,14 @@ interface TranslateEngineClient {
     /** Returns [detectedTag, translatedText]. */
     fun translate(text: String, targetTag: String): Array<String>
     fun supportedLanguages(): List<String>
+
+    /**
+     * True when the engine is actually able to translate right now — for
+     * AidlTranslateEngineClient this reflects the real AIDL bind state, NOT
+     * just whether the client object exists (a client can be constructed and
+     * registered successfully while its underlying service connection is
+     * still pending, failed, or was silently refused). Settings/diagnostic
+     * screens must check this, not `client != null`, to report honest status.
+     */
+    fun isConnected(): Boolean
 }

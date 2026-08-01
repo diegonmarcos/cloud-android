@@ -33,4 +33,9 @@ interface VoiceEngineClient {
 
     /** Finish the session and flush the final result. Idempotent. */
     fun stop()
+
+    /** True when the engine can actually recognize speech right now. For
+     *  AIDL-backed implementations this reflects the real bind state, not
+     *  just whether the client object was constructed. */
+    fun isConnected(): Boolean
 }

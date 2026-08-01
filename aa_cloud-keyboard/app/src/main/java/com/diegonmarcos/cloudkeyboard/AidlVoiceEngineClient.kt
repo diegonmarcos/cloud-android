@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import com.diegonmarcos.cloudkeyboardlibs.IVoiceCallback
 import com.diegonmarcos.cloudkeyboardlibs.IVoiceEngine
 import com.diegonmarcos.superapp.voice.LanguageTagAware
@@ -48,9 +49,17 @@ class AidlVoiceEngineClient(private val context: Context) : VoiceEngineClient, L
     init { bindService() }
 
     private fun bindService() {
-        runCatching {
+        val result = runCatching {
             val intent = Intent(LIBS_ACTION).apply { setPackage(LIBS_PKG) }
+            // bindService() returns false (no exception) on failure — e.g. the
+            // cloud-keyboard-libs companion app isn't installed. That was
+            // previously discarded silently; log it so it's diagnosable.
             context.applicationContext.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+        }
+        val bound = result.getOrDefault(false)
+        if (!bound) {
+            Log.w(TAG, "bindService to $LIBS_PKG/$LIBS_ACTION failed " +
+                "(exception=${result.exceptionOrNull()}) — is cloud-keyboard-libs installed?")
         }
     }
 
@@ -78,5 +87,11 @@ class AidlVoiceEngineClient(private val context: Context) : VoiceEngineClient, L
 
     override fun stop() {
         runCatching { engine?.stop() }
+    }
+
+    override fun isConnected(): Boolean = engine != null
+
+    private companion object {
+        const val TAG = "AidlVoiceEngine"
     }
 }
