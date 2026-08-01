@@ -9,7 +9,7 @@ data class ConstellationSegment(val a: DoubleArray /* raDeg, decDeg */, val b: D
 data class SkyPolygon(val ring: List<DoubleArray>)
 
 /**
- * Loads the real bundled sky catalog (assets/celestial/*.json, from d3-celestial —
+ * Loads the real bundled sky catalog (assets/celestial JSON files, from d3-celestial —
  * see CREDITS.md) instead of a hand-typed list. GeoJSON's [lon, lat] here IS already
  * [RA in degrees represented in the -180..180 range, Dec in degrees] per the source
  * data's own conversion note -- feeding that lon straight in as raDeg to SkyMath.altAz
