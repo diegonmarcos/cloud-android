@@ -14,7 +14,7 @@ data class ConstellationLine(val name: String, val starIndices: List<Pair<Int, I
 object StarCatalog {
     val stars: List<Star> = listOf(
         // Ursa Major (Big Dipper)
-        Star("Dubhe", 165.93, 61.75, 1.79),
+        Star("Dubhe", 165.43, 61.75, 1.79),
         Star("Merak", 165.46, 56.38, 2.37),
         Star("Phecda", 178.46, 53.69, 2.44),
         Star("Megrez", 183.86, 57.03, 3.31),
@@ -46,7 +46,7 @@ object StarCatalog {
         Star("Sargas", 264.33, -42.99, 1.86),
         Star("Dschubba", 240.08, -22.62, 2.29),
         // Southern Cross neighbour / navigation
-        Star("Sirius", 101.29, -16.72, -1.46),
+        Star("Sirius", 101.63, -16.72, -1.46),
         Star("Canopus", 95.99, -52.70, -0.74),
         Star("Polaris", 37.95, 89.26, 1.98),
         Star("Vega", 279.23, 38.78, 0.03),

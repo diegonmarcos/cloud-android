@@ -103,12 +103,32 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
         if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
         val rotMatrix = FloatArray(9)
         SensorManager.getRotationMatrixFromVector(rotMatrix, event.values)
+
+        // Raw getOrientation() reports where the SCREEN faces (its reference "forward" is
+        // the device's own Y axis with the device flat, screen up) -- that's the wrong
+        // question for a sky app, where the phone is held vertically, screen toward the
+        // user, and the intent is "what's in the direction the BACK of the phone points."
+        // Remap so the old Z axis (out the back) takes over the Y slot getOrientation()
+        // treats as forward -- the same technique documented for AR apps referencing the
+        // rear camera direction (Android's own sample naming: "rearCameraMatrix").
+        val remapped = FloatArray(9)
+        SensorManager.remapCoordinateSystem(rotMatrix, SensorManager.AXIS_X, SensorManager.AXIS_Z, remapped)
         val orientation = FloatArray(3)
-        SensorManager.getOrientation(rotMatrix, orientation)
+        SensorManager.getOrientation(remapped, orientation)
+
         skyView.sensorAzimuthDeg = Math.toDegrees(orientation[0].toDouble()).let { if (it < 0) it + 360 else it }
-        skyView.sensorPitchDeg = -Math.toDegrees(orientation[1].toDouble())
+        // UNVERIFIED sign: AOSP's pitch javadoc ("angle between a plane parallel to the
+        // screen and a plane parallel to the ground") is written for the natural axes and
+        // is ambiguous once remapped like this -- no physical device was available to
+        // confirm which way pitch should go after the remap above. If tilting the phone
+        // up at the sky moves stars the wrong way on a real device, flip this sign.
+        skyView.sensorPitchDeg = PITCH_SIGN * Math.toDegrees(orientation[1].toDouble())
         skyView.invalidate()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    companion object {
+        private const val PITCH_SIGN = 1.0
+    }
 }

@@ -6,15 +6,18 @@
   Native support even on the latest release (confirmed against
   github.com/maplibre/maplibre-native issue #3161 — still open/roadmap, not
   shipped). This screen uses MapLibre GL JS v5 in a WebView for both.
-  CDN-loaded for now (v1); bundling gl-js locally under assets/ for full
-  offline support is a follow-up, not done here.
+  Pinned to the exact 5.24.0 release (not a floating "@5" tag) -- 5.0.0
+  introduced globe support but GlobeControl had a UI-sync bug against
+  setProjection() until 5.18.0 (maplibre-gl-js changelog), so pinning below
+  that would silently regress. Still CDN-loaded (v1); bundling gl-js locally
+  under assets/ for full offline support is a follow-up, not done here.
 -->
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #0d1117; }
   </style>
