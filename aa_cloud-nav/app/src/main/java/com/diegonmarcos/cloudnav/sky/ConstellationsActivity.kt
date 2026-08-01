@@ -178,6 +178,10 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
+    /** Test-only accessor (ConstellationsRenderTest) -- mirrors the debugXxx() pattern
+     *  MapsExploredFragment uses for ExploredRenderTest. */
+    fun findSkyViewForTest(): SkyView? = if (::skyView.isInitialized) skyView else null
+
     companion object {
         private const val PITCH_SIGN = 1.0
     }
