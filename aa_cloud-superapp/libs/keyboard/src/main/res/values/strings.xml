@@ -46,6 +46,10 @@
     <string name="settings_screen_correction">Text correction</string>
     <!-- SuperApp addition — Grammar check settings screen -->
     <string name="settings_screen_grammar">Grammar check</string>
+    <!-- SuperApp addition — Translation / Emoji / Voice Transcript info screens -->
+    <string name="settings_screen_translation">Translation</string>
+    <string name="settings_screen_emoji">Emoji, GIFs &amp; Stickers</string>
+    <string name="settings_screen_voice_transcript">Voice transcript</string>
     <!-- Settings screen title for advanced settings -->
     <string name="settings_screen_advanced">Advanced</string>
     <!-- Settings screen title for keyboard theme settings -->

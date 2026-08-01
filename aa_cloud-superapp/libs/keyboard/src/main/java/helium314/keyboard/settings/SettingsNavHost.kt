@@ -33,6 +33,9 @@ import helium314.keyboard.settings.screens.SubtypeScreen
 import helium314.keyboard.settings.screens.GrammarCheckScreen
 import helium314.keyboard.settings.screens.TextCorrectionScreen
 import helium314.keyboard.settings.screens.ToolbarScreen
+import helium314.keyboard.settings.screens.TranslationInfoScreen
+import helium314.keyboard.settings.screens.EmojiInfoScreen
+import helium314.keyboard.settings.screens.VoiceTranscriptInfoScreen
 import helium314.keyboard.settings.screens.gesturedata.GestureDataScreen
 import helium314.keyboard.settings.screens.gesturedata.ReviewScreen
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +74,9 @@ fun SettingsNavHost(
                 onClickAbout = { navController.navigate(SettingsDestination.About) },
                 onClickTextCorrection = { navController.navigate(SettingsDestination.TextCorrection) },
                 onClickGrammarCheck = { navController.navigate(SettingsDestination.GrammarCheck) }, // SuperApp patch 0002
+                onClickTranslation = { navController.navigate(SettingsDestination.Translation) },
+                onClickEmoji = { navController.navigate(SettingsDestination.Emoji) },
+                onClickVoiceTranscript = { navController.navigate(SettingsDestination.VoiceTranscript) },
                 onClickPreferences = { navController.navigate(SettingsDestination.Preferences) },
                 onClickToolbar = { navController.navigate(SettingsDestination.Toolbar) },
                 onClickGestureTyping = { navController.navigate(SettingsDestination.GestureTyping) },
@@ -91,6 +97,15 @@ fun SettingsNavHost(
         }
         composable(SettingsDestination.GrammarCheck) { // SuperApp addition (patch 0002)
             GrammarCheckScreen(onClickBack = ::goBack)
+        }
+        composable(SettingsDestination.Translation) {
+            TranslationInfoScreen(onClickBack = ::goBack)
+        }
+        composable(SettingsDestination.Emoji) {
+            EmojiInfoScreen(onClickBack = ::goBack)
+        }
+        composable(SettingsDestination.VoiceTranscript) {
+            VoiceTranscriptInfoScreen(onClickBack = ::goBack)
         }
         composable(SettingsDestination.Preferences) {
             PreferencesScreen(onClickBack = ::goBack)
@@ -154,6 +169,9 @@ object SettingsDestination {
     const val About = "about"
     const val TextCorrection = "text_correction"
     const val GrammarCheck = "grammar_check" // SuperApp addition (patch 0002)
+    const val Translation = "translation_info" // SuperApp addition
+    const val Emoji = "emoji_info" // SuperApp addition
+    const val VoiceTranscript = "voice_transcript_info" // SuperApp addition
     const val Preferences = "preferences"
     const val Toolbar = "toolbar"
     const val GestureTyping = "gesture_typing"

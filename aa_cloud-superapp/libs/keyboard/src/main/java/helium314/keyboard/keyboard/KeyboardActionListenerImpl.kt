@@ -157,7 +157,11 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         val editorMimeTypes = EditorInfoCompat.getContentMimeTypes(editorInfo)
         if (editorMimeTypes.any { content.description.hasMimeType(it) }) {
             connection.commitContent(content, editorInfo)
-        } else if (editorMimeTypes.isEmpty()) { // make the fallback optional?
+        } else {
+            // Editor either declared no accepted mime types, or declared some that don't
+            // include ours (e.g. only image/png) — either way commitContent would be
+            // rejected, so always fall back to a clipboard-paste instead of dropping the
+            // pick silently.
             latinIME.clipboardHistoryManager.pasteWithoutChangingClips(content)
         }
     }

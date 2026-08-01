@@ -37,13 +37,14 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
 
     // Every language the engine can translate — DATA-DRIVEN from the client,
     // no hardcoded list. "auto" (detect) is a From-only option. Sorted by
-    // display name for the picker. Falls back to empty list when no client
-    // is registered (translate bar won't show languages, which is acceptable).
-    private val toLangs: List<String> by lazy {
+    // display name for the picker. Computed fresh on each read (not cached):
+    // the AIDL client (cloud-keyboard) binds its service asynchronously, so a
+    // one-shot `by lazy` snapshot taken before the bind completes would freeze
+    // the list at empty forever and make the language chips look unresponsive.
+    private fun toLangs(): List<String> =
         (TranslateEngines.client?.supportedLanguages() ?: emptyList())
             .sortedBy { java.util.Locale(it).displayLanguage }
-    }
-    private val fromLangs: List<String> by lazy { listOf("auto") + toLangs }
+    private fun fromLangs(): List<String> = listOf("auto") + toLangs()
 
     private var icp: IcProvider? = null
     private var onClose: Runnable? = null
@@ -97,7 +98,7 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
     fun bind(provider: IcProvider, defaultTarget: String, onCloseAction: Runnable) {
         icp = provider
         onClose = onCloseAction
-        toTag = if (toLangs.contains(defaultTarget)) defaultTarget else "en"
+        toTag = if (toLangs().contains(defaultTarget)) defaultTarget else "en"
         toChip.text = chipLabel(toTag)
     }
 
@@ -163,7 +164,11 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
     /** Tap a chip → scrollable language picker (all ML Kit langs). From includes
      *  "auto". Anchored to the chip; selecting sets the language + re-translates. */
     private fun showLangMenu(anchor: View, isFrom: Boolean) {
-        val codes = if (isFrom) fromLangs else toLangs
+        val codes = if (isFrom) fromLangs() else toLangs()
+        if (codes.isEmpty()) {
+            android.widget.Toast.makeText(context, "Translate engine not connected yet", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         val labels = codes.map {
             if (it == "auto") "Auto-detect"
             else java.util.Locale(it).displayLanguage.let { n ->

@@ -34,6 +34,9 @@ fun MainSettingsScreen(
     onClickAbout: () -> Unit,
     onClickTextCorrection: () -> Unit,
     onClickGrammarCheck: () -> Unit, // SuperApp addition (patch 0002)
+    onClickTranslation: () -> Unit, // SuperApp addition
+    onClickEmoji: () -> Unit, // SuperApp addition
+    onClickVoiceTranscript: () -> Unit, // SuperApp addition
     onClickPreferences: () -> Unit,
     onClickToolbar: () -> Unit,
     onClickGestureTyping: () -> Unit,
@@ -121,6 +124,22 @@ fun MainSettingsScreen(
                     onClick = onClickGrammarCheck,
                     icon = R.drawable.ic_settings_correction
                 ) { NextScreenIcon() }
+                // SuperApp addition — Translation / Emoji / Voice Transcript info screens
+                Preference(
+                    name = stringResource(R.string.settings_screen_translation),
+                    onClick = onClickTranslation,
+                    icon = R.drawable.ic_settings_about
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_emoji),
+                    onClick = onClickEmoji,
+                    icon = R.drawable.ic_settings_about
+                ) { NextScreenIcon() }
+                Preference(
+                    name = stringResource(R.string.settings_screen_voice_transcript),
+                    onClick = onClickVoiceTranscript,
+                    icon = R.drawable.ic_settings_about
+                ) { NextScreenIcon() }
                 Preference(
                     name = stringResource(R.string.settings_screen_secondary_layouts),
                     onClick = onClickLayouts,
@@ -152,7 +171,7 @@ private fun PreviewScreen() {
     initPreview(LocalContext.current)
     Theme(previewDark) {
         Surface {
-            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
         }
     }
 }
