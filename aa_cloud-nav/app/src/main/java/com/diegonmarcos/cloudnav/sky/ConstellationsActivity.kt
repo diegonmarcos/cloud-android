@@ -9,18 +9,22 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import kotlin.concurrent.thread
 
 /**
- * Point-the-phone-at-the-sky constellation view (clean-room, not a Stardroid port --
- * see StarCatalog.kt for why). Uses TYPE_ROTATION_VECTOR for device pointing direction
- * (when present — drag/pinch on [SkyView] works regardless) and the last-known/fresh
- * location for the alt/az conversion. If location is truly unavailable, it says so
- * on-screen rather than silently rendering the wrong sky for (0,0).
+ * Point-the-phone-at-the-sky view: real stars, full IAU constellation lines, Milky Way,
+ * Sun + planets (see CelestialData.kt / PlanetEphemeris.kt / CREDITS.md) -- not a
+ * Stardroid port (GPLv3, license-incompatible with reuse here). Uses TYPE_ROTATION_VECTOR
+ * for device pointing direction (when present — drag/pinch on [SkyView] works regardless)
+ * and the last-known/fresh location for the alt/az conversion. If location is truly
+ * unavailable, it says so on-screen rather than silently rendering the wrong sky for (0,0).
  */
 class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
 
@@ -28,6 +32,7 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
     private var rotationSensor: Sensor? = null
     private lateinit var skyView: SkyView
     private lateinit var statusText: TextView
+    private var dataLoaded = false
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +55,31 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
 
         resolveLocation()
+        loadCelestialDataAsync()
         updateStatus()
+    }
+
+    /** Parses ~1.2MB of bundled JSON (stars/lines/Milky Way/planet elements) off the main
+     *  thread, then hands the results to [skyView]. Planet/Sun positions barely move over
+     *  a single viewing session, so they're computed once here rather than every frame. */
+    private fun loadCelestialDataAsync() {
+        val appCtx = applicationContext
+        thread(name = "celestial-load") {
+            val stars = CelestialData.loadStars(appCtx)
+            val lines = CelestialData.loadConstellationLines(appCtx)
+            val mw = CelestialData.loadMilkyWay(appCtx)
+            val elements = PlanetEphemeris.loadElements(appCtx)
+            val bodies = PlanetEphemeris.positions(elements, System.currentTimeMillis())
+            Handler(Looper.getMainLooper()).post {
+                skyView.stars = stars
+                skyView.constellationLines = lines
+                skyView.milkyWay = mw
+                skyView.bodies = bodies
+                dataLoaded = true
+                skyView.invalidate()
+                updateStatus()
+            }
+        }
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -86,7 +115,8 @@ class ConstellationsActivity : AppCompatActivity(), SensorEventListener {
             else if (!hasLocationPermission()) "No location permission — using 0,0 (wrong sky)"
             else "Locating…"
         val sensorLine = if (rotationSensor == null) " · no orientation sensor, drag to look around" else ""
-        statusText.text = "Constellations (v1: stars only, no planets)\n$locLine$sensorLine"
+        val loadLine = if (!dataLoaded) "\nLoading stars/constellations/planets…" else ""
+        statusText.text = "Constellations · Sun/planets · Milky Way (no moons)\n$locLine$sensorLine$loadLine"
     }
 
     override fun onResume() {
