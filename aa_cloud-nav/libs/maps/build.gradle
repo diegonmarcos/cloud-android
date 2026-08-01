@@ -115,7 +115,7 @@ dependencies {
     // MapLibre Native Android SDK — OSS map renderer using OSM tiles +
     // vector styles. Same family as `maplibre-gl` (JS) that
     // front/c-Suite/mymaps-navigation uses for visual consistency.
-    implementation 'org.maplibre.gl:android-sdk:13.4.1'
+    implementation 'org.maplibre.gl:android-sdk:11.7.0'
 
     // JVM unit tests (VectorStyleLoaderNatureTest): org.json is bundled in the
     // real Android platform, but AGP's unit-test stub android.jar throws
