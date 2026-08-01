@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.diegonmarcos.superapp.voice.VoiceEngines
+import com.diegonmarcos.superapp.voice.VoiceModelManager
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.latin.utils.previewDark
@@ -28,6 +29,7 @@ fun VoiceTranscriptInfoScreen(onClickBack: () -> Unit) {
         title = stringResource(R.string.settings_screen_voice_transcript),
         settings = emptyList(),
     ) {
+        val context = LocalContext.current
         val client = VoiceEngines.client
         Column(Modifier.padding(16.dp)) {
             Text(
@@ -36,11 +38,23 @@ fun VoiceTranscriptInfoScreen(onClickBack: () -> Unit) {
                     "input language, and the transcript is typed as you speak.",
                 style = MaterialTheme.typography.bodyMedium
             )
-            PreferenceCategory("Engine status")
+            PreferenceCategory("Engine")
             Text(
-                if (client == null) "No voice engine connected." else "Voice engine connected.",
+                "Type: ${client?.javaClass?.simpleName ?: "not connected"}",
                 style = MaterialTheme.typography.bodyMedium
             )
+            PreferenceCategory("Languages (from build.json::voice.models)")
+            val langs = runCatching { VoiceModelManager.registeredLanguages(context) }.getOrDefault(emptyList())
+            if (langs.isEmpty()) {
+                Text("No voice models declared.", style = MaterialTheme.typography.bodyMedium)
+            } else {
+                langs.forEach { (key, downloaded) ->
+                    Text(
+                        "$key — ${if (downloaded) "downloaded on this device" else "not downloaded yet (fetches on first use)"}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
     }
 }

@@ -72,9 +72,6 @@ public interface KeyboardActionListener {
     /** sends content (URI and description) */
     void onContent(InputContentInfoCompat content);
 
-    /** SuperApp addition (patch 0011): toggle the emoji/sticker/GIF search bar. */
-    void onEmojiSearch();
-
     /**
      * Called when user started batch input.
      */
@@ -145,8 +142,6 @@ public interface KeyboardActionListener {
         public void onTextInput(String text) {}
         @Override
         public void onContent(InputContentInfoCompat content) {}
-        @Override
-        public void onEmojiSearch() {}
         @Override
         public void onStartBatchInput() {}
         @Override

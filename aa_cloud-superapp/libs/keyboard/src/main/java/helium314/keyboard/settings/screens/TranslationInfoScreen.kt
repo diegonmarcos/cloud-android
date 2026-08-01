@@ -32,21 +32,36 @@ fun TranslationInfoScreen(onClickBack: () -> Unit) {
         settings = emptyList(),
     ) {
         val client = TranslateEngines.client
-        val langs = client?.supportedLanguages() ?: emptyList()
+        val liveLangs = client?.supportedLanguages().orEmpty()
+        val defaultLangs = listOf("en", "pt", "es", "de")
+        val installedLangs = liveLangs.ifEmpty { defaultLangs }
         Column(Modifier.padding(16.dp)) {
             Text(
                 "Tap the translate icon on the keyboard toolbar to open a translate bar above " +
                     "the keys. Pick a source (or Auto-detect) and target language from the two " +
-                    "chips at the top — every language the engine supports is listed there, " +
-                    "including German (de). What you type is translated live and the translation " +
+                    "chips at the top. What you type is translated live and the translation " +
                     "(not your original text) is committed to the app.",
                 style = MaterialTheme.typography.bodyMedium
             )
-            PreferenceCategory("Engine status")
+            PreferenceCategory("Engine")
             Text(
-                if (client == null) "No translate engine connected."
-                else "Connected — ${langs.size} languages available" +
-                    (if ("de" in langs) " (German included)." else " (German not reported by engine)."),
+                "Type: ${client?.javaClass?.simpleName ?: "not connected"}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            if (client == null) {
+                Text(
+                    "No translate engine registered in this app. On the standalone Cloud " +
+                        "Keyboard app, translation runs via the cloud-keyboard-libs companion " +
+                        "app over AIDL — install it for translation to actually run (the " +
+                        "language picker below still works either way).",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            PreferenceCategory("Installed / default languages")
+            Text(
+                installedLangs.joinToString(", ") { code ->
+                    java.util.Locale(code).displayLanguage + " ($code)"
+                } + if (liveLangs.isEmpty()) " — defaults, engine not reporting yet" else " — from engine",
                 style = MaterialTheme.typography.bodyMedium
             )
         }

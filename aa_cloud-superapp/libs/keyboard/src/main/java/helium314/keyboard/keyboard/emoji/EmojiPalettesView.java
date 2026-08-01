@@ -13,16 +13,11 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -202,16 +197,6 @@ public final class EmojiPalettesView extends LinearLayout
 
     private static SingleDictionaryFacilitator sDictionaryFacilitator;
 
-    // patch 0010: search index — built once lazily from all category keyboards
-    // Maps emoji output-text → lowercase searchable name (Unicode character names).
-    private static java.util.HashMap<String, String> sEmojiSearchIndex = null;
-    // Debounce handler for search query changes (avoids filtering on every keystroke).
-    private final Handler mSearchDebounceHandler = new Handler(Looper.getMainLooper());
-    private Runnable mPendingSearch = null;
-    private EditText mSearchBar = null;
-    // patch 0010: search results overlay adapter; null when search is inactive
-    private EmojiSearchAdapter mSearchAdapter = null;
-
     private boolean initialized = false;
     private final Colors mColors;
     private final EmojiLayoutParams mEmojiLayoutParams;
@@ -301,28 +286,7 @@ public final class EmojiPalettesView extends LinearLayout
         setCurrentCategoryId(mEmojiCategory.getCurrentCategoryId(), true);
         mEmojiCategoryPageIndicatorView.setColors(mColors.get(ColorType.EMOJI_CATEGORY_SELECTED), mColors.get(ColorType.STRIP_BACKGROUND));
         setupMediaPanel();
-        // patch 0011: the old always-visible in-panel search field (patch 0010) is
-        // superseded by the toggle-able EmojiSearchBarView (search icon below,
-        // opens above the keyboard so it doesn't permanently eat panel space and
-        // also covers stickers/GIFs, not just emoji). Left wired but never shown.
-        setupSearchBar();
-        addSearchToggleIcon(mTabStrip);
         initialized = true;
-    }
-
-    // patch 0011: appended after the category icons — always reachable regardless
-    // of whether the Sticker/GIF media panel is enabled.
-    private void addSearchToggleIcon(final LinearLayout host) {
-        if (host == null) return;
-        final ImageView searchIcon = new ImageView(getContext());
-        mColors.setBackground(searchIcon, ColorType.STRIP_BACKGROUND);
-        mColors.setColor(searchIcon, ColorType.EMOJI_CATEGORY);
-        searchIcon.setScaleType(ImageView.ScaleType.CENTER);
-        searchIcon.setImageResource(R.drawable.sym_keyboard_search_lxx);
-        searchIcon.setContentDescription(getContext().getString(R.string.emoji_search_hint));
-        host.addView(searchIcon);
-        searchIcon.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        searchIcon.setOnClickListener(v -> mKeyboardActionListener.onEmojiSearch());
     }
 
     // SuperApp (patch 0007): wire the Emoji/Sticker/GIF type tabs + media body.
@@ -379,104 +343,9 @@ public final class EmojiPalettesView extends LinearLayout
         if (g != null) g.setAlpha(type == MediaType.GIF ? 1f : 0.55f);
     }
 
-    // patch 0010: wire the search EditText injected above the pager by the layout.
-    // Filtering uses Character.getName() for offline Unicode name matching — no bundled assets.
-    private void setupSearchBar() {
-        mSearchBar = findViewById(R.id.emoji_search_bar);
-        if (mSearchBar == null) return; // layout not updated yet (e.g. floating keyboard variant)
-        mSearchBar.setHint(R.string.emoji_search_hint);
-        mColors.setBackground(mSearchBar, ColorType.STRIP_BACKGROUND);
-        mSearchBar.setTextColor(mColors.get(ColorType.KEY_TEXT));
-        mSearchBar.setHintTextColor(mColors.get(ColorType.EMOJI_CATEGORY));
-        mSearchBar.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                final String query = s.toString().trim().toLowerCase();
-                if (mPendingSearch != null) mSearchDebounceHandler.removeCallbacks(mPendingSearch);
-                mPendingSearch = () -> applyEmojiSearch(query);
-                // 150ms debounce — corpus is small (~4k entries) so filtering is fast
-                mSearchDebounceHandler.postDelayed(mPendingSearch, 150);
-            }
-        });
-    }
-
-    // patch 0010: apply search query. When blank, restore normal pager; else show results overlay.
-    private void applyEmojiSearch(final String query) {
-        if (query.isEmpty()) {
-            if (mSearchAdapter != null) {
-                // Restore normal pager visibility
-                mPager.setAdapter(new PagerAdapter(mPager));
-                mEmojiLayoutParams.setEmojiListProperties(mPager);
-                setCurrentCategoryId(mEmojiCategory.getCurrentCategoryId(), true);
-                mSearchAdapter = null;
-            }
-            return;
-        }
-        // Build search index lazily (once per process lifetime).
-        // The index is invalidated when clearKeyboardCache() is called.
-        if (sEmojiSearchIndex == null) {
-            sEmojiSearchIndex = buildEmojiSearchIndex();
-        }
-        // Collect matching emoji output-text strings
-        final java.util.ArrayList<String> matchedTexts = new java.util.ArrayList<>();
-        for (final java.util.Map.Entry<String, String> entry : sEmojiSearchIndex.entrySet()) {
-            if (entry.getValue().contains(query)) {
-                matchedTexts.add(entry.getKey());
-            }
-        }
-        // Build a throw-away DynamicGridKeyboard from the matched emoji strings
-        final DynamicGridKeyboard resultKbd = mEmojiCategory.createSearchKeyboard(matchedTexts);
-        // Swap the pager adapter to show only the search results (single page)
-        mSearchAdapter = new EmojiSearchAdapter(resultKbd, this);
-        mPager.setAdapter(mSearchAdapter);
-        mEmojiLayoutParams.setEmojiListProperties(mPager);
-    }
-
-    // patch 0010: build emoji name index from all category keyboards using Character.getName().
-    // For multi-codepoint ZWJ sequences concatenates names of constituent codepoints.
-    private java.util.HashMap<String, String> buildEmojiSearchIndex() {
-        final java.util.HashMap<String, String> index = new java.util.HashMap<>(4096);
-        for (final EmojiCategory.CategoryProperties props : mEmojiCategory.getShownCategories()) {
-            final int catId = props.mCategoryId;
-            if (catId == EmojiCategory.ID_RECENTS || catId == EmojiCategory.ID_PINNED) continue;
-            final int pageCount = props.getPageCount();
-            for (int page = 0; page < pageCount; page++) {
-                final DynamicGridKeyboard kbd = mEmojiCategory.getKeyboard(catId, page);
-                if (kbd == null) continue;
-                for (final helium314.keyboard.keyboard.Key key : kbd.getSortedKeys()) {
-                    final String emoji = key.getOutputText();
-                    if (emoji == null || index.containsKey(emoji)) continue;
-                    index.put(emoji, emojiToSearchName(emoji));
-                }
-            }
-        }
-        return index;
-    }
-
-    // patch 0010: derive a lowercase searchable name for an emoji string via Character.getName().
-    // Multi-codepoint sequences (ZWJ, variation selectors, keycap combos) get names of all
-    // base (non-modifier) codepoints concatenated with spaces — best-effort, good enough for search.
-    private static String emojiToSearchName(final String emoji) {
-        final StringBuilder sb = new StringBuilder();
-        int i = 0;
-        while (i < emoji.length()) {
-            final int cp = emoji.codePointAt(i);
-            i += Character.charCount(cp);
-            // Skip variation selectors (U+FE0E/FE0F), ZWJ (U+200D), tag chars (U+E0000 range)
-            if (cp == 0xFE0E || cp == 0xFE0F || cp == 0x200D ||
-                    (cp >= 0xE0000 && cp <= 0xE01FF)) continue;
-            try {
-                final String name = Character.getName(cp);
-                if (name != null) {
-                    if (sb.length() > 0) sb.append(' ');
-                    sb.append(name.toLowerCase());
-                }
-            } catch (IllegalArgumentException ignore) { /* undefined codepoint */ }
-        }
-        return sb.toString();
-    }
+    // patch 0011: patch 0010's in-panel EditText search (always-visible, emoji-only)
+    // is removed entirely — replaced by EmojiSearchBarView, toggled from the existing
+    // bottom-row magnifier key (see KeyCode.EMOJI_SEARCH in InputLogic).
 
     /**
      * Called from {@link EmojiPageKeyboardView} through {@link android.view.View.OnClickListener}
@@ -627,11 +496,6 @@ public final class EmojiPalettesView extends LinearLayout
     public void stopEmojiPalettes() {
         if (!initialized) return;
         getRecentsKeyboard().flushPendingRecentKeys();
-        // patch 0010: pinned grid is always persisted immediately; cancel any in-flight search debounce
-        if (mPendingSearch != null) {
-            mSearchDebounceHandler.removeCallbacks(mPendingSearch);
-            mPendingSearch = null;
-        }
     }
 
     private DynamicGridKeyboard getRecentsKeyboard() {
@@ -690,7 +554,6 @@ public final class EmojiPalettesView extends LinearLayout
         }
 
         mEmojiCategory.clearKeyboardCache();
-        sEmojiSearchIndex = null; // patch 0010: rebuild on next search after keyboard set changes
         mPager.getAdapter().notifyDataSetChanged();
         closeDictionaryFacilitator();
     }

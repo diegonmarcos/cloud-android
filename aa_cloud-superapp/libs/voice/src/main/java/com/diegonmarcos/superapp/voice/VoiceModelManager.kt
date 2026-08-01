@@ -46,6 +46,20 @@ object VoiceModelManager {
         return BuildConfig.VOICE_DEFAULT_LANGUAGE
     }
 
+    /** Every language key declared in build.json::voice.models, with whether its
+     *  model is actually downloaded on this device yet. For settings/info screens. */
+    fun registeredLanguages(context: Context): List<Pair<String, Boolean>> {
+        val out = ArrayList<Pair<String, Boolean>>()
+        val keys = models.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val dirName = models.optJSONObject(key)?.optString("dir").orEmpty()
+            val downloaded = dirName.isNotBlank() && File(File(context.filesDir, "vosk"), "$dirName/am").isDirectory
+            out.add(key to downloaded)
+        }
+        return out
+    }
+
     /**
      * Ensure the model for [key] is present on disk, downloading+unzipping it on
      * first use. [onReady] receives the absolute model directory path; [onError]

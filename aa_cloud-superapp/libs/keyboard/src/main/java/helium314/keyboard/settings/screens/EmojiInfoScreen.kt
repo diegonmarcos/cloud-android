@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.diegonmarcos.superapp.media.MediaRuntime
 import com.diegonmarcos.superapp.media.StickerRepo
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.utils.DictionaryInfoUtils
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.latin.utils.previewDark
 import helium314.keyboard.settings.SearchSettingsScreen
@@ -34,22 +35,36 @@ fun EmojiInfoScreen(onClickBack: () -> Unit) {
         Column(Modifier.padding(16.dp)) {
             PreferenceCategory("Emoji")
             Text(
-                "The emoji key opens the standard emoji keyboard: categories, recents, and a " +
-                    "search shortcut that looks up emoji by name from the on-device dictionary.",
+                "Tap the search icon in the emoji keyboard's category strip to search emoji, " +
+                    "stickers and GIFs together in one bar drawn above the keys.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            val emojiLocales = runCatching { DictionaryInfoUtils.getLocalesWithEmojiDicts(context) }.getOrDefault(emptyList())
+            Text(
+                if (emojiLocales.isEmpty()) "No on-device emoji-name dictionary installed for the enabled languages."
+                else "Emoji-name search dictionary installed for: ${emojiLocales.joinToString(", ") { it.displayLanguage }}.",
                 style = MaterialTheme.typography.bodyMedium
             )
             PreferenceCategory("Stickers")
             val packs = runCatching { StickerRepo.packs(context) }.getOrDefault(emptyList())
             Text(
-                if (packs.isEmpty()) "No sticker packs installed. Sticker images are bundled as asset packs."
+                "Source: WhatsApp-compatible sticker content providers (any installed app " +
+                    "exposing one is picked up automatically, no per-app configuration).",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                if (packs.isEmpty()) "No sticker packs installed."
                 else "${packs.size} sticker pack(s) installed: ${packs.joinToString(", ") { it.name }}.",
                 style = MaterialTheme.typography.bodyMedium
             )
             PreferenceCategory("GIFs")
+            val gif = MediaRuntime.gif
             Text(
-                if (MediaRuntime.gif == null) "GIFs are disabled (no provider configured)."
-                else if (!MediaRuntime.gifEnabled) "GIF provider configured but no API key set."
-                else "GIF search is active.",
+                when {
+                    gif == null -> "GIFs are disabled (no provider configured in build.json)."
+                    !MediaRuntime.gifEnabled -> "Source: ${gif.provider} — configured but no API key set."
+                    else -> "Source: ${gif.provider} — API key set, GIF search is active."
+                },
                 style = MaterialTheme.typography.bodyMedium
             )
         }

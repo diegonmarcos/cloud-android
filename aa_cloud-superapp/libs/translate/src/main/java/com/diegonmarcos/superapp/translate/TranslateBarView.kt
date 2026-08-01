@@ -35,16 +35,24 @@ class TranslateBarView(context: Context) : LinearLayout(context) {
     /** Supplies the current InputConnection (the IME's getCurrentInputConnection). */
     fun interface IcProvider { fun get(): InputConnection? }
 
-    // Every language the engine can translate — DATA-DRIVEN from the client,
-    // no hardcoded list. "auto" (detect) is a From-only option. Sorted by
-    // display name for the picker. Computed fresh on each read (not cached):
-    // the AIDL client (cloud-keyboard) binds its service asynchronously, so a
-    // one-shot `by lazy` snapshot taken before the bind completes would freeze
-    // the list at empty forever and make the language chips look unresponsive.
+    // Every language the engine can translate — DATA-DRIVEN from the client
+    // when it reports one. Computed fresh on each read (not cached): the AIDL
+    // client (cloud-keyboard) binds its service asynchronously, so a one-shot
+    // `by lazy` snapshot taken before the bind completes would freeze the list
+    // at empty forever and make the language chips look unresponsive.
+    //
+    // Falls back to DEFAULT_LANGS (English, Portuguese, Spanish, German) when
+    // the engine hasn't reported anything yet (or isn't connected at all) —
+    // the picker must always open with a usable selection rather than an
+    // empty list, even before/without the translate companion service.
     private fun toLangs(): List<String> =
-        (TranslateEngines.client?.supportedLanguages() ?: emptyList())
+        (TranslateEngines.client?.supportedLanguages()?.takeIf { it.isNotEmpty() } ?: DEFAULT_LANGS)
             .sortedBy { java.util.Locale(it).displayLanguage }
     private fun fromLangs(): List<String> = listOf("auto") + toLangs()
+
+    companion object {
+        private val DEFAULT_LANGS = listOf("en", "pt", "es", "de")
+    }
 
     private var icp: IcProvider? = null
     private var onClose: Runnable? = null
