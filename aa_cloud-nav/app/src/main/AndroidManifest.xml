@@ -52,6 +52,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".TerrainActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.CloudNav" />
+
         <receiver
             android:name="com.diegonmarcos.cloudnav.updater.PackageInstallerReceiver"
             android:exported="false" />

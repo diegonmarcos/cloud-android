@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!--
+  Real 3D terrain (mountains that rise on tilt) — MapLibre Native (the app's
+  main renderer) has never shipped setTerrain/raster-dem tilt support, so
+  this screen uses MapLibre GL JS in a WebView instead, which has since 2022.
+  CDN-loaded for now (v1); bundling gl-js locally under assets/ for full
+  offline support is a follow-up, not done here.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: #0d1117; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: [8.5, 46.8], // Swiss Alps default — Kotlin side re-centers via flyTo
+      zoom: 11,
+      pitch: 60,
+      maxPitch: 85,
+      hash: false,
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+
+    map.on('load', () => {
+      map.addSource('cloudnav-terrain-dem', {
+        type: 'raster-dem',
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        encoding: 'terrarium',
+        maxzoom: 15,
+      });
+      map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: 1.4 });
+
+      map.addLayer({
+        id: 'cloudnav-terrain-hillshade',
+        type: 'hillshade',
+        source: 'cloudnav-terrain-dem',
+        paint: { 'hillshade-exaggeration': 0.5 },
+      }, firstSymbolLayerId());
+
+      // Forest/vegetation tint on top of the vector landcover layer, if present.
+      if (map.getLayer('landcover_wood') || map.getLayer('landcover-wood')) {
+        // style already has a wood layer — leave as-is, don't fight the base style.
+      } else if (map.getLayer('landcover')) {
+        map.setPaintProperty('landcover', 'fill-color', '#2f6b3a');
+      }
+    });
+
+    function firstSymbolLayerId() {
+      const layers = map.getStyle().layers || [];
+      for (const l of layers) if (l.type === 'symbol') return l.id;
+      return undefined;
+    }
+
+    // Kotlin -> JS bridge: CloudNavTerrain.recenter(lat, lon, zoom)
+    window.cloudNavRecenter = function (lat, lon, zoom) {
+      map.flyTo({ center: [lon, lat], zoom: zoom || map.getZoom(), essential: true });
+    };
+  </script>
+</body>
+</html>

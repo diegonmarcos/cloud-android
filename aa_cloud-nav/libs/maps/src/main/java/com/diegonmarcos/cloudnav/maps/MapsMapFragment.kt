@@ -294,6 +294,32 @@ class MapsMapFragment : Fragment() {
                     alpha = if (is3dOn()) 1f else 0.5f
                 }
             }
+            // Real 3D terrain (mountains that rise on tilt) — MapLibre Native has no
+            // terrain support, so this opens a separate MapLibre GL JS WebView screen.
+            val terrainFab = FloatingActionButton(ctx).apply {
+                setImageResource(R.drawable.ic_map_layers)
+                contentDescription = "Terrain view"
+                size = FloatingActionButton.SIZE_MINI
+                layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
+                    .apply { val m = dp(16); setMargins(m, m, m, m + dp(330)) }
+                setOnClickListener {
+                    val cam = map?.cameraPosition
+                    val target = cam?.target
+                    val intent = android.content.Intent().apply {
+                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.TerrainActivity")
+                        if (target != null) {
+                            putExtra("lat", target.latitude)
+                            putExtra("lon", target.longitude)
+                            putExtra("zoom", cam.zoom)
+                        }
+                    }
+                    try {
+                        ctx.startActivity(intent)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        Toast.makeText(ctx, "Terrain view unavailable", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
             // Reset-to-north (between switcher and locate-me).
             val northFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_compass_north)
@@ -316,6 +342,7 @@ class MapsMapFragment : Fragment() {
             root.addView(northFab)
             root.addView(switchFab)
             root.addView(threeDFab)
+            root.addView(terrainFab)
         }
         return root
     }
