@@ -44,6 +44,15 @@ object PlanetEphemeris {
             val elementsArr = body.optJSONArray("elements")
             if (elementsArr == null || elementsArr.length() == 0) continue
             val el = elementsArr.getJSONObject(0)
+            // Minor bodies (Eris/Makemake/Haumea/Vesta/Ceres/Pallas -- dwarf planets and
+            // asteroids, not among the 8 major planets actually asked for) ship a DIFFERENT
+            // orbital-element schema in this data: mean anomaly M + mean motion n (deg/day)
+            // + argument of perihelion w directly, instead of mean longitude L + centuries-
+            // rate dL + longitude of perihelion W. Found via a real crash in CI (an
+            // instrumented test caught "JSONException: No value for L" instead of the app
+            // silently crashing) -- not implementing that second schema under time
+            // pressure; skip these bodies explicitly rather than guess at it.
+            if (!el.has("L") || !el.has("W")) continue
             out[key] = OrbitalElements(
                 name = body.optString("en", body.optString("name", key)),
                 a = el.getDouble("a"), e = el.getDouble("e"), i = el.getDouble("i"),
