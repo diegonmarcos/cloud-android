@@ -410,10 +410,21 @@ class MapsMapFragment : Fragment() {
         // happens"). Leave zoom alone when turning 3D off.
         if (manual3d && cur.zoom < 15.0) b.zoom(16.5)
         map?.animateCamera(CameraUpdateFactory.newCameraPosition(b.build()))
+        applyBuildingZoomFloor()
     }
 
     /** Current manual-3D toggle state — the 3D FAB reflects this on rebuild. */
     fun is3dOn(): Boolean = manual3d
+
+    /**
+     * While 3D is on and the style actually carries buildings, stop the camera from
+     * zooming out past [BUILDING_MIN_ZOOM] — beyond that the building source-layer has
+     * no geometry at all, so uncapped zoom-out used to make buildings disappear with no
+     * visual explanation. Off (or on a raster style), no floor is applied.
+     */
+    private fun applyBuildingZoomFloor() {
+        map?.setMinZoomPreference(if (manual3d && styleHasBuildings()) BUILDING_MIN_ZOOM else 0.0)
+    }
 
     /** Keep the scale bar current; reveal it on a zoom change, fade it on idle. */
     private fun onScaleCameraChange(m: MapLibreMap, moving: Boolean) {
@@ -720,6 +731,7 @@ class MapsMapFragment : Fragment() {
             )
         )
         styleReady = true
+        applyBuildingZoomFloor()
         pushMe()
         pushRoute()
         // Let callers (re)install their own extra fill layers — they are wiped
@@ -828,6 +840,12 @@ class MapsMapFragment : Fragment() {
         const val ARG_AUTOLOCATE = "autolocate"
         const val ARG_WORLD_VIEW = "world_view"
         const val ARG_TEXTURE = "texture_mode"
+
+        // OpenMapTiles' `building` source-layer only exists in tiles z13+ (confirmed
+        // against OpenFreeMap's tilejson) — there is no building geometry to reveal by
+        // zooming out further. While 3D is on, floor the camera here instead of letting
+        // it zoom out past the point buildings silently vanish.
+        const val BUILDING_MIN_ZOOM = 13.0
 
         const val COLOR_RESULT = "#D93025"
         const val COLOR_PLACE  = "#1A73E8"
