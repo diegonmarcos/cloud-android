@@ -1,0 +1,92 @@
+{
+  "name": "cloud-calendar",
+  "description": "Diego's Cloud Calendar — standalone WebView-based calendar & time planner Android app. Renders a local HTML/Tailwind UI with month/year scroll, arc event indicators, and an analog clock face. Build via Nix devShell, one APK out.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.cloudcalendar",
+    "compile_sdk": 36,
+    "min_sdk": 26,
+    "target_sdk": 35,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "abi_filters": ["arm64-v8a"]
+  },
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. KEY LOCATION: A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "diagnostics": {
+    "_doc": "On-device DevControlServer diagnostics → cloud sink.",
+    "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
+    "log_sink_stream": "cloud-calendar"
+  },
+  "modules": {
+    "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list.",
+    "app": {
+      "type": "application",
+      "depends_on": ["libs:core", "libs:updater"]
+    },
+    "libs:core": { "type": "library" },
+    "libs:updater": { "type": "library" }
+  },
+  "release": {
+    "artifact": {
+      "debug": "Cloud-Calendar.apk",
+      "release": "Cloud-Calendar-release.apk"
+    },
+    "variants": [
+      {
+        "id": "arm64",
+        "abis": ["arm64-v8a"],
+        "supported_abis": ["arm64-v8a", "armeabi-v7a"],
+        "artifact_debug": "Cloud-Calendar.apk",
+        "gh_asset": "Cloud-Calendar.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": ["x86_64"],
+        "supported_abis": ["x86_64", "x86"],
+        "artifact_debug": "Cloud-Calendar-x86_64.apk",
+        "gh_asset": "Cloud-Calendar-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ],
+    "auto_update": {
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "install_mode": "silent"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-calendar",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "Cloud-Calendar.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    },
+    "phone_install": {
+      "default_tag": "latest",
+      "target_dir": "~/storage/downloads",
+      "asset_name": "Cloud-Calendar.apk"
+    }
+  }
+}

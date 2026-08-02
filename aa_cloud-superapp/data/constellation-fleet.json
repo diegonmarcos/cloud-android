@@ -195,6 +195,21 @@
       "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-wallet",
       "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-wallet",
       "blocked": false
+    },
+    {
+      "id": "calendar",
+      "label": "cloud-calendar",
+      "package": "com.diegonmarcos.cloudcalendar",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-calendar",
+      "tag": "latest",
+      "asset": "Cloud-Calendar.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Calendar.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-calendar",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-calendar",
+      "blocked": false
     }
   ]
 }

@@ -1,0 +1,189 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def gradleScriptStartMs = System.currentTimeMillis()
+
+def buildJson  = new groovy.json.JsonSlurper().parse(file('../build.json'))
+def runNumber  = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
+def codeBase   = (buildJson.android.version_code as Number).intValue()
+def codeFinal  = codeBase + runNumber
+def shortSha = (System.getenv('GITHUB_SHA')
+                ?: providers.exec {
+                       commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
+                       ignoreExitValue = true
+                   }.standardOutput.asText.get().trim())
+                .take(8)
+def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'").with {
+    setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
+    format(new java.util.Date())
+}
+def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
+def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-calendar')
+
+def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toString() }
+def uiPermissionsRuntimeB64 = b64(buildJson.ui.permissions?.runtime ?: [])
+def uiPermissionsRolesB64   = b64(buildJson.ui.permissions?.roles   ?: [])
+def profileDefault   = buildJson.ui.profile_default ?: [:]
+def profileName      = (profileDefault.name      ?: '').toString()
+def profileEmail     = (profileDefault.email     ?: '').toString()
+def profileInitials  = (profileDefault.initials  ?: '').toString()
+def profileCompany   = (profileDefault.company   ?: '').toString()
+def profileLocation  = (profileDefault.location  ?: '').toString()
+def profileWebsite   = (profileDefault.website   ?: '').toString()
+def profileTitles    = (profileDefault.titles    ?: '').toString()
+def profileReposB64  = b64(profileDefault.repos  ?: [])
+def consolidatedCfg  = (profileDefault.consolidated_config ?: '').toString()
+
+// Stack scan — baked into BuildConfig for the About page.
+def repoRoot = rootDir
+def stackExtMap = [
+    "kt": "Kotlin", "java": "Java", "xml": "XML (resources/manifest)",
+    "json": "JSON (config)", "gradle": "Gradle (Groovy)", "kts": "Gradle (Kotlin DSL)",
+    "sh": "Shell", "md": "Markdown", "nix": "Nix", "pro": "ProGuard",
+]
+def stackSkipDirs = ["build", ".gradle", ".idea", "dist", ".result"]
+def stackStats = [:]
+[new File(repoRoot, "app/src/main"), new File(repoRoot, "libs"),
+ new File(repoRoot, "build.json"),   new File(repoRoot, "build.sh"),
+ new File(repoRoot, "flake.nix"),    rootDir].each { root ->
+    if (!root.exists()) return
+    if (root.isFile()) {
+        def ext = root.name.tokenize(".").last().toLowerCase()
+        def label = stackExtMap[ext]
+        if (label != null) {
+            def loc = 0; try { loc = root.readLines("UTF-8").size() } catch (Throwable t) {}
+            def b = stackStats[label] ?: [files: 0, loc: 0]; b.files += 1; b.loc += loc; stackStats[label] = b
+        }
+        return
+    }
+    root.eachFileRecurse { f ->
+        if (!f.isFile()) return
+        def rel = f.absolutePath.replace(rootDir.absolutePath + "/", "")
+        if (stackSkipDirs.any { rel.startsWith(it) || rel.contains("/${it}/") }) return
+        def ext = f.name.tokenize(".").last().toLowerCase()
+        def label = stackExtMap[ext]; if (label == null) return
+        def loc = 0; try { loc = f.readLines("UTF-8").size() } catch (Throwable t) { return }
+        def b = stackStats[label] ?: [files: 0, loc: 0]; b.files += 1; b.loc += loc; stackStats[label] = b
+    }
+}
+def stackLanguagesB64 = b64(stackStats)
+def stackDeps = new TreeSet()
+def depPattern = ~/\b(implementation|api|compileOnly|runtimeOnly)\s*[\(\s]\s*['"]([^'":]+:[^'":]+:[^'"]+)['"]/
+[rootDir, new File(repoRoot, "libs")].findAll { it.exists() }.each { root ->
+    root.eachFileRecurse { f ->
+        if (!f.isFile() || !(f.name.endsWith(".gradle") || f.name.endsWith(".gradle.kts"))) return
+        def text = ""; try { text = f.text } catch (Throwable t) { return }
+        depPattern.matcher(text).each { m -> stackDeps.add(m[2]) }
+    }
+}
+def stackFrameworksB64 = b64(stackDeps.toList())
+def stackTreeB64 = "—".bytes.encodeBase64().toString()
+
+def buildHistorySecs = []
+try {
+    def ghOut = providers.exec {
+        commandLine 'gh', 'run', 'list',
+            '--workflow=ship-cloud-calendar.yml',
+            '--limit', '10', '--status', 'success',
+            '--json', 'startedAt,updatedAt'
+        ignoreExitValue = true
+    }.standardOutput.asText.get().trim()
+    if (ghOut.startsWith('[')) {
+        new groovy.json.JsonSlurper().parseText(ghOut).each { r ->
+            try {
+                def s = java.time.Instant.parse(r.startedAt).epochSecond
+                def e = java.time.Instant.parse(r.updatedAt).epochSecond
+                if (e > s) buildHistorySecs << (e - s)
+            } catch (Throwable t) {}
+        }
+    }
+} catch (Throwable t) {}
+def buildAvgSecs    = buildHistorySecs.isEmpty() ? -1L : (buildHistorySecs.sum() / buildHistorySecs.size()).longValue()
+def buildLastSecs   = buildHistorySecs.isEmpty() ? -1L : (buildHistorySecs[0] as long)
+def buildSampleSize = buildHistorySecs.size()
+
+android {
+    namespace 'com.diegonmarcos.cloudcalendar'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.diegonmarcos.cloudcalendar'
+        minSdk 26
+        targetSdk 35
+        versionCode codeFinal
+        versionName "${buildJson.android.version_name} (sha-${shortSha})"
+        ndk {
+            def abiOverride = System.getenv('CLOUDCALENDAR_ABIS')
+            def abis = (abiOverride?.trim()) \
+                ? abiOverride.split(',').collect { it.trim() }.findAll { it } \
+                : (buildJson.android.abi_filters ?: ['arm64-v8a'])
+            abiFilters.addAll(abis as List)
+        }
+        buildConfigField "String", "GIT_SHORT_SHA",   "\"${shortSha}\""
+        buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTimestamp}\""
+        buildConfigField "String", "LOG_SINK_URL",    "\"${logSinkUrl}\""
+        buildConfigField "String", "LOG_SINK_STREAM", "\"${logSinkStream}\""
+        buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
+        buildConfigField "String", "UI_PERMISSIONS_ROLES_B64",   "\"${uiPermissionsRolesB64}\""
+        buildConfigField "String", "UI_PROFILE_NAME",      "\"${profileName}\""
+        buildConfigField "String", "UI_PROFILE_EMAIL",     "\"${profileEmail}\""
+        buildConfigField "String", "UI_PROFILE_INITIALS",  "\"${profileInitials}\""
+        buildConfigField "String", "UI_PROFILE_COMPANY",   "\"${profileCompany}\""
+        buildConfigField "String", "UI_PROFILE_LOCATION",  "\"${profileLocation}\""
+        buildConfigField "String", "UI_PROFILE_WEBSITE",   "\"${profileWebsite}\""
+        buildConfigField "String", "UI_PROFILE_TITLES",    "\"${profileTitles}\""
+        buildConfigField "String", "UI_PROFILE_REPOS_B64", "\"${profileReposB64}\""
+        buildConfigField "String", "UI_CONSOLIDATED_CONFIG", "\"${consolidatedCfg}\""
+        buildConfigField "String", "UI_STACK_LANGUAGES_JSON_B64",  "\"${stackLanguagesB64}\""
+        buildConfigField "String", "UI_STACK_FRAMEWORKS_JSON_B64", "\"${stackFrameworksB64}\""
+        buildConfigField "String", "UI_STACK_FOLDER_TREE_B64",     "\"${stackTreeB64}\""
+        buildConfigField "long",   "STACK_GRADLE_CONFIG_MS",  "${System.currentTimeMillis() - gradleScriptStartMs}L"
+        buildConfigField "long",   "STACK_BUILD_AVG_SECS",    "${buildAvgSecs}L"
+        buildConfigField "long",   "STACK_BUILD_LAST_SECS",   "${buildLastSecs}L"
+        buildConfigField "int",    "STACK_BUILD_SAMPLE",      "${buildSampleSize}"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildFeatures { buildConfig = true }
+
+    // ONE shared Cloud-constellation key — same key as SuperApp/Nav/Comms/Wallet/IDE.
+    signingConfigs {
+        debug {
+            def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
+            if (envStore == null || envStore.isEmpty() || !file(envStore).exists()) {
+                throw new GradleException("ONE shared constellation key required; run via build.sh / set ANDROID_KEYSTORE_FILE; no fallback")
+            }
+            storeFile     file(envStore)
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias      System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword   System.getenv("ANDROID_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        debug   { debuggable true;  signingConfig signingConfigs.debug }
+        release { debuggable true; minifyEnabled false
+                  proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  signingConfig signingConfigs.debug }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+    implementation project(':libs:updater')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+
+    androidTestImplementation 'androidx.test:runner:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}
