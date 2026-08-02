@@ -45,10 +45,16 @@
     }
     #cloudnav-exag-panel input[type=range] { width: 100%; }
 
-    /* Flying-mode dual joysticks -- Mode 2 RC/flight-sim convention
-       (verified real-world standard, not invented): left stick =
-       throttle (Y) + rudder/yaw (X), right stick = pitch/climb (Y) +
-       roll/bank-turn (X). Hidden until Flying Mode is toggled on. */
+    /* Flying-mode joysticks -- Mode 2 RC/flight-sim convention (verified
+       real-world standard, not invented): left stick = throttle (Y) +
+       rudder/yaw (X), right stick = pitch/climb (Y) + roll/bank-turn (X).
+       A third, smaller "look" stick (bottom-center) turns the pilot's
+       HEAD, not the airplane -- yaw is a full free-look 360 (real
+       independent camera-vs-heading offset), pitch-look is clamped to
+       what MapLibre's camera can actually render (0-maxPitch, same
+       honest limitation as the pitch-toggle button elsewhere on this
+       screen: no true look-behind/look-up via tilt). Hidden until Flying
+       Mode is toggled on. */
     .cloudnav-joystick {
       display: none; position: absolute; bottom: 24px; z-index: 3;
       width: 120px; height: 120px; border-radius: 50%;
@@ -58,25 +64,43 @@
     .cloudnav-joystick.visible { display: block; }
     #cloudnav-stick-left { left: 20px; }
     #cloudnav-stick-right { right: 20px; }
+    #cloudnav-stick-look {
+      left: 50%; bottom: 24px; width: 84px; height: 84px;
+      margin-left: -42px; background: #ffffff0c;
+    }
     .cloudnav-joystick-knob {
       position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
       margin: -24px 0 0 -24px; border-radius: 50%;
       background: #2b6cb0cc; border: 1px solid #6fb1ff;
     }
+    #cloudnav-stick-look .cloudnav-joystick-knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
     #cloudnav-flight-hud {
       display: none; position: absolute; left: 50%; top: 10px; z-index: 3;
       transform: translateX(-50%); color: #eee; font: 12px monospace;
-      background: #1a1d24cc; padding: 4px 10px; border-radius: 6px;
-      text-align: center; white-space: nowrap;
+      background: #1a1d24cc; padding: 6px 10px; border-radius: 6px;
+      text-align: center; white-space: nowrap; min-width: 180px;
     }
     #cloudnav-flight-hud.visible { display: block; }
+    #cloudnav-speed-track {
+      margin-top: 5px; width: 100%; height: 8px; border-radius: 4px;
+      background: #ffffff22; overflow: hidden;
+    }
+    #cloudnav-speed-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg, #4caf50, #ffb300 60%, #e53935);
+    }
+    #cloudnav-speed-label { margin-top: 3px; font-size: 11px; color: #cdd6e8; }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <div id="cloudnav-stick-left" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
   <div id="cloudnav-stick-right" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
-  <div id="cloudnav-flight-hud"></div>
+  <div id="cloudnav-stick-look" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
+  <div id="cloudnav-flight-hud">
+    <div id="cloudnav-flight-text"></div>
+    <div id="cloudnav-speed-track"><div id="cloudnav-speed-fill"></div></div>
+    <div id="cloudnav-speed-label"></div>
+  </div>
   <div id="cloudnav-exag-panel">
     Exaggeration: <span id="cloudnav-exag-value"></span>x
     <input type="range" id="cloudnav-exag-slider" min="1" max="100" step="1" />
@@ -229,13 +253,21 @@
       toggleSatelliteDrape(btn);
     }), 'top-right');
 
-    // ---- Flying mode: dual virtual joysticks + simplified arcade flight
+    // ---- Flying mode: three virtual joysticks + simplified arcade flight
     // physics, camera-driven over the same 3D terrain. ----
     //
     // Stick convention: real-world Mode 2 (the RC/mobile-flight-sim
     // standard, verified, not invented) -- left stick Y = throttle, left
     // stick X = rudder/yaw; right stick Y = pitch/climb, right stick X =
-    // roll/bank.
+    // roll/bank; a third, smaller stick (bottom-center) turns the pilot's
+    // HEAD -- free 360 look, fully decoupled from the plane's actual
+    // heading/travel direction (headingDeg keeps flying wherever it was
+    // pointed; lookYawDeg/lookPitchDeg only change what the camera faces).
+    //
+    // Speed is shown both ways, real units: km/h (from the simulated
+    // speed) and on-screen px/s (via the standard Web Mercator meters-
+    // per-pixel formula, so it reflects how fast things actually move on
+    // screen at the current zoom/latitude, not just abstract world speed).
     //
     // HONEST LIMITATION: MapLibre's camera has yaw (bearing) and pitch,
     // but no roll/bank axis -- there's no way to visually tilt the
@@ -248,7 +280,7 @@
     // aerodynamics.
     const FLIGHT = {
       active: false,
-      headingDeg: 0,      // current bearing, 0-360
+      headingDeg: 0,      // aircraft's actual travel direction, 0-360
       speed: 0,            // 0..1 fraction of max speed
       zoom: TERRAIN_CONFIG.zoom, // used as a proxy for altitude (standard
                                   // web-map convention: higher zoom = lower altitude)
@@ -256,8 +288,19 @@
       maxTurnRateDegPerSec: 45,
       maxClimbZoomPerSec: 0.6,
       throttleRate: 0.6,   // how fast throttle input reaches target speed (per second)
+      // Third stick: the pilot's HEAD, decoupled from headingDeg (the
+      // plane's actual travel direction) -- real look-around, not
+      // steering. lookYawDeg is a free 360 offset added to headingDeg for
+      // the rendered camera bearing; lookPitchDeg is the camera's actual
+      // MapLibre pitch, independently adjustable within what MapLibre can
+      // render (0-maxPitch -- can't look straight up or behind via tilt,
+      // same honest limitation as the pitch-toggle button).
+      lookYawDeg: 0,
+      lookPitchDeg: TERRAIN_CONFIG.pitch,
+      maxLookRateDegPerSec: 90,
     };
     const EARTH_RADIUS_M = 6371000;
+    const MERCATOR_M_PER_PX_AT_ZOOM0_EQUATOR = 156543.03392; // standard Web Mercator resolution constant, verified (2*pi*6378137/256)
 
     function makeJoystick(el) {
       const knob = el.querySelector('.cloudnav-joystick-knob');
@@ -286,6 +329,7 @@
 
     const stickLeft = makeJoystick(document.getElementById('cloudnav-stick-left'));
     const stickRight = makeJoystick(document.getElementById('cloudnav-stick-right'));
+    const stickLook = makeJoystick(document.getElementById('cloudnav-stick-look'));
 
     // Real destination-point-given-bearing-and-distance formula (spherical
     // navigation, the standard used across aviation/marine software --
@@ -334,11 +378,34 @@
       const distanceM = FLIGHT.speed * FLIGHT.maxSpeedMps * dt;
       const [lat2, lon2] = destinationPoint(map.getCenter().lat, map.getCenter().lng, FLIGHT.headingDeg, distanceM);
 
-      map.jumpTo({ center: [lon2, lat2], bearing: FLIGHT.headingDeg, zoom: FLIGHT.zoom });
+      // Third stick: the pilot's head turning, NOT the airplane steering --
+      // free 360 yaw look (real, continuous, not clamped) and a pitch look
+      // clamped to what MapLibre can actually render (0-maxPitch; can't
+      // look straight up or fully behind via tilt, disclosed above).
+      const lookYawRate = stickLook.x * FLIGHT.maxLookRateDegPerSec;
+      FLIGHT.lookYawDeg = (FLIGHT.lookYawDeg + lookYawRate * dt + 360) % 360;
+      const lookPitchRate = -stickLook.y * FLIGHT.maxLookRateDegPerSec;
+      FLIGHT.lookPitchDeg = Math.min(TERRAIN_CONFIG.maxPitch, Math.max(0, FLIGHT.lookPitchDeg + lookPitchRate * dt));
+      const cameraBearing = (FLIGHT.headingDeg + FLIGHT.lookYawDeg) % 360;
 
-      const hud = document.getElementById('cloudnav-flight-hud');
-      hud.textContent = `HDG ${Math.round(FLIGHT.headingDeg).toString().padStart(3, '0')}°  `
-        + `SPD ${Math.round(FLIGHT.speed * 100)}%  ALT z${FLIGHT.zoom.toFixed(1)}`;
+      map.jumpTo({ center: [lon2, lat2], bearing: cameraBearing, pitch: FLIGHT.lookPitchDeg, zoom: FLIGHT.zoom });
+
+      // Real units, not just an abstract percentage: km/h from the actual
+      // simulated speed, and on-screen px/s via the standard Web Mercator
+      // meters-per-pixel formula (verified: 2*pi*6378137/256, the same
+      // constant OSM/Mapbox/Leaflet all use internally), so px/s reflects
+      // how fast things visibly move on screen at the current zoom/latitude,
+      // not just the underlying real-world speed.
+      const speedMps = FLIGHT.speed * FLIGHT.maxSpeedMps;
+      const kmh = speedMps * 3.6;
+      const metersPerPixel = MERCATOR_M_PER_PX_AT_ZOOM0_EQUATOR * Math.cos(lat2 * Math.PI / 180) / Math.pow(2, FLIGHT.zoom);
+      const pxPerSec = speedMps / metersPerPixel;
+
+      document.getElementById('cloudnav-flight-text').textContent =
+        `HDG ${Math.round(FLIGHT.headingDeg).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)}`;
+      document.getElementById('cloudnav-speed-fill').style.width = `${Math.round(FLIGHT.speed * 100)}%`;
+      document.getElementById('cloudnav-speed-label').textContent =
+        `${Math.round(kmh)} km/h  |  ${Math.round(pxPerSec)} px/s`;
 
       requestAnimationFrame(flightStep);
     }
@@ -347,6 +414,7 @@
       FLIGHT.active = !FLIGHT.active;
       document.getElementById('cloudnav-stick-left').classList.toggle('visible', FLIGHT.active);
       document.getElementById('cloudnav-stick-right').classList.toggle('visible', FLIGHT.active);
+      document.getElementById('cloudnav-stick-look').classList.toggle('visible', FLIGHT.active);
       document.getElementById('cloudnav-flight-hud').classList.toggle('visible', FLIGHT.active);
       btn.classList.toggle('active', FLIGHT.active);
       btn.title = FLIGHT.active ? 'Flying mode: on' : 'Flying mode: off';
@@ -359,6 +427,8 @@
         handlers.forEach(h => h.disable());
         FLIGHT.headingDeg = map.getBearing();
         FLIGHT.zoom = map.getZoom();
+        FLIGHT.lookYawDeg = 0;
+        FLIGHT.lookPitchDeg = map.getPitch();
         flightLastFrame = null;
         requestAnimationFrame(flightStep);
       } else {
