@@ -48,11 +48,18 @@
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
     map.addControl(new maplibregl.GlobeControl());
 
-    // Globe at extreme zoom-out, morphing to flat Mercator as you zoom in —
-    // this is GL JS v5's built-in globe/mercator projection behavior.
-    map.setProjection({ type: 'globe' });
-
     map.on('load', () => {
+      // Globe at extreme zoom-out, morphing to flat Mercator as you zoom in —
+      // GL JS v5's built-in globe/mercator behavior. MUST be called after the
+      // style has loaded (MapLibre's own globe example calls this inside
+      // 'style.load'/'load', not right after the Map constructor) — calling
+      // it earlier is documented to silently fail. An earlier version of
+      // this file called it synchronously right after construction, which
+      // would have meant the globe projection never actually applied; moved
+      // here after verifying the correct order against MapLibre's own
+      // published example.
+      map.setProjection({ type: 'globe' });
+
       map.addSource('cloudnav-terrain-dem', {
         type: 'raster-dem',
         tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
