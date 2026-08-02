@@ -23,9 +23,9 @@ def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
 def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-calendar')
 
 def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toString() }
-def uiPermissionsRuntimeB64 = b64(buildJson.ui.permissions?.runtime ?: [])
-def uiPermissionsRolesB64   = b64(buildJson.ui.permissions?.roles   ?: [])
-def profileDefault   = buildJson.ui.profile_default ?: [:]
+def uiPermissionsRuntimeB64 = b64(buildJson.ui?.permissions?.runtime ?: [])
+def uiPermissionsRolesB64   = b64(buildJson.ui?.permissions?.roles   ?: [])
+def profileDefault   = buildJson.ui?.profile_default ?: [:]
 def profileName      = (profileDefault.name      ?: '').toString()
 def profileEmail     = (profileDefault.email     ?: '').toString()
 def profileInitials  = (profileDefault.initials  ?: '').toString()
