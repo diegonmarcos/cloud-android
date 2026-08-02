@@ -196,7 +196,7 @@
       <div id="cloudnav-speed-label"></div>
       <div id="cloudnav-maxspeed-row">
         Max: <span id="cloudnav-maxspeed-value"></span> px/s
-        <input type="range" id="cloudnav-maxspeed-slider" min="2" max="200" step="1" />
+        <input type="range" id="cloudnav-maxspeed-slider" min="2" max="600" step="1" />
       </div>
     </div>
   </div>
@@ -387,7 +387,7 @@
       zoom: TERRAIN_CONFIG.zoom, // used as a proxy for altitude (standard
                                   // web-map convention: higher zoom = lower altitude)
       // Max speed is set by the on-screen slider directly in px/s (real
-      // on-screen movement rate, 2-200), then converted to a real m/s
+      // on-screen movement rate, 2-600), then converted to a real m/s
       // each frame via the current Web Mercator meters-per-pixel value --
       // so the same px/s cap corresponds to a LARGER real-world speed
       // the higher you "climb" (zoom out), same as a real aircraft: cruise
@@ -439,7 +439,7 @@
     const stickRight = makeJoystick(document.getElementById('cloudnav-stick-right'));
     const stickLook = makeJoystick(document.getElementById('cloudnav-stick-look'));
 
-    // Max-speed slider, real px/s range 2-200. Sets FLIGHT.maxSpeedPxPerSec
+    // Max-speed slider, real px/s range 2-600. Sets FLIGHT.maxSpeedPxPerSec
     // directly (the actual on-screen movement rate at full throttle) --
     // see FLIGHT.maxSpeedPxPerSec's own comment for why px/s and not a
     // fixed m/s constant.
