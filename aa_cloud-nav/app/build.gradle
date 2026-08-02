@@ -259,6 +259,11 @@ dependencies {
     implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
     implementation 'androidx.fragment:fragment-ktx:1.8.5'
     implementation 'androidx.activity:activity-ktx:1.9.3'
+    // WebViewAssetLoader -- serves local assets over a real https:// origin
+    // instead of file://, because Chromium's fetch() blocks file:// requests
+    // by CORS policy (the real cause of MilkyWayActivity's black screen:
+    // galaxy_map.html's fetch() calls for star data were silently failing).
+    implementation 'androidx.webkit:webkit:1.16.0'
 
     androidTestImplementation 'androidx.test:runner:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'

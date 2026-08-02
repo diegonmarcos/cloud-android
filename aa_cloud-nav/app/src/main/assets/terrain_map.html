@@ -31,15 +31,31 @@
       -webkit-tap-highlight-color: transparent;
     }
     #cloudnav-sat-toggle.active { background: #2b6cb0dd; border-color: #6fb1ff; }
+    #cloudnav-exag-panel {
+      position: absolute; left: 10px; top: 10px; z-index: 2;
+      background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
+      border-radius: 6px; padding: 8px 12px; font: 12px sans-serif; width: 190px;
+    }
+    #cloudnav-exag-panel input[type=range] { width: 100%; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div id="cloudnav-exag-panel">
+    Exaggeration: <span id="cloudnav-exag-value"></span>x
+    <input type="range" id="cloudnav-exag-slider" min="0.5" max="4" step="0.1" />
+  </div>
   <button id="cloudnav-sat-toggle">🛰️ Satellite drape: off</button>
   <script>
     // Tweak these by hand and reload — no rebuild needed, this file loads
     // straight from assets. exaggeration/hillshadeExaggeration/shadowColor
-    // are the knobs that most affect how "mountain-y" this looks.
+    // are the knobs that most affect how "mountain-y" this looks. Editing
+    // this SOURCE constant only takes effect on the next build though --
+    // exaggeration specifically also has a REAL in-app slider (below,
+    // #cloudnav-exag-slider) that changes it live and persists the choice
+    // via localStorage, since editing a bundled asset file isn't something
+    // an installed app can actually do.
+    const savedExaggeration = parseFloat(localStorage.getItem('cloudnav_exaggeration'));
     const TERRAIN_CONFIG = {
       center: [7.6586, 45.9763], // Matterhorn — real named peak, not a generic town
       zoom: 12.2,
@@ -49,7 +65,7 @@
       // flat ground next to Liberty's building extrusions — 1.8 is a value
       // commonly used by terrain-demo maps specifically so alpine relief
       // reads clearly at typical mobile pitch/zoom.
-      exaggeration: 1.8,
+      exaggeration: Number.isFinite(savedExaggeration) ? savedExaggeration : 1.8,
       hillshadeExaggeration: 0.5,
       // Default MapLibre hillshade shadow is flat gray-blue; MapLibre's own
       // official 3D-terrain example (maplibre.org/maplibre-gl-js/docs/examples/3d-terrain)
@@ -208,6 +224,24 @@
     };
 
     document.getElementById('cloudnav-sat-toggle').addEventListener('click', toggleSatelliteDrape);
+
+    // Live-editable exaggeration slider -- calls map.setTerrain() directly
+    // (real MapLibre API, can be re-called any time to change an already-
+    // active terrain's exaggeration) and persists the choice so it survives
+    // closing/reopening this screen, since editing TERRAIN_CONFIG in this
+    // source file isn't something a running app can do.
+    const exagSlider = document.getElementById('cloudnav-exag-slider');
+    const exagValueLabel = document.getElementById('cloudnav-exag-value');
+    exagSlider.value = TERRAIN_CONFIG.exaggeration;
+    exagValueLabel.textContent = TERRAIN_CONFIG.exaggeration.toFixed(1);
+    exagSlider.addEventListener('input', () => {
+      const v = parseFloat(exagSlider.value);
+      exagValueLabel.textContent = v.toFixed(1);
+      localStorage.setItem('cloudnav_exaggeration', String(v));
+      if (map.getSource('cloudnav-terrain-dem')) {
+        map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: v });
+      }
+    });
   </script>
 </body>
 </html>
