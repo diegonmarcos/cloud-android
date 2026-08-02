@@ -228,21 +228,39 @@
 
     // Live-editable exaggeration slider -- calls map.setTerrain() directly
     // (real MapLibre API, can be re-called any time to change an already-
-    // active terrain's exaggeration) and persists the choice so it survives
-    // closing/reopening this screen, since editing TERRAIN_CONFIG in this
-    // source file isn't something a running app can do.
+    // active terrain's exaggeration). Configs > Layers (native, MapsLayerPrefs)
+    // is the authoritative source now -- every change here is pushed back
+    // through window.AndroidBridge (TerrainActivity's JS interface) so the
+    // native tab and this in-page slider never drift out of sync. localStorage
+    // is kept only as a fallback for the rare case this page is opened
+    // without that bridge present (e.g. a future non-Android host).
     const exagSlider = document.getElementById('cloudnav-exag-slider');
     const exagValueLabel = document.getElementById('cloudnav-exag-value');
     exagSlider.value = TERRAIN_CONFIG.exaggeration;
     exagValueLabel.textContent = String(TERRAIN_CONFIG.exaggeration);
     exagSlider.addEventListener('input', () => {
       const v = parseInt(exagSlider.value, 10);
+      applyExaggeration(v);
+      if (window.AndroidBridge) window.AndroidBridge.setExaggeration(v);
+      else localStorage.setItem('cloudnav_exaggeration', String(v));
+    });
+
+    function applyExaggeration(v) {
+      TERRAIN_CONFIG.exaggeration = v;
+      exagSlider.value = v;
       exagValueLabel.textContent = String(v);
-      localStorage.setItem('cloudnav_exaggeration', String(v));
       if (map.getSource('cloudnav-terrain-dem')) {
         map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: v });
       }
-    });
+    }
+
+    // Called by TerrainActivity.onPageFinished with the current value from
+    // Configs > Layers -- authoritative over whatever TERRAIN_CONFIG/
+    // localStorage had, since the native tab is meant to be the one place
+    // this setting actually lives.
+    window.cloudNavSetExaggeration = function (v) {
+      applyExaggeration(v);
+    };
   </script>
 </body>
 </html>
