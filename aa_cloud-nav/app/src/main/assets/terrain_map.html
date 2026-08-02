@@ -38,12 +38,36 @@
        there's no custom icon in its spritesheet for either of these. */
     .cloudnav-ctrl-btn { font-size: 16px; }
     .cloudnav-ctrl-btn.active { background: #2b6cb0; }
-    #cloudnav-exag-panel {
-      position: absolute; left: 10px; top: 10px; z-index: 2;
-      background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
-      border-radius: 6px; padding: 8px 12px; font: 12px sans-serif; width: 190px;
+    /* Left-side vertical panel: exaggeration slider stacked above the
+       speed bar, both real vertical controls (not the old top-left
+       horizontal exaggeration panel / top-center horizontal speed bar).
+       Range inputs go vertical via the standard rotate-transform trick
+       (set the pre-rotation width to the desired visual HEIGHT, then
+       rotate -90deg) -- more broadly reliable across engines than the
+       non-standard -webkit-appearance:slider-vertical. */
+    #cloudnav-left-panel {
+      position: absolute; left: 10px; top: 50%; z-index: 2;
+      transform: translateY(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
     }
-    #cloudnav-exag-panel input[type=range] { width: 100%; }
+    .cloudnav-vpanel-block {
+      background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
+      border-radius: 8px; padding: 8px 6px; font: 11px sans-serif;
+      text-align: center; display: flex; flex-direction: column; align-items: center;
+    }
+    .cloudnav-vslider-wrap {
+      width: 32px; height: 150px; margin-top: 6px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #cloudnav-exag-slider {
+      width: 150px; height: 24px; margin: 0; background: transparent;
+      transform: rotate(-90deg);
+    }
+    .cloudnav-vbar-track {
+      width: 16px; height: 150px; margin-top: 6px; border-radius: 8px;
+      background: #ffffff22; overflow: hidden;
+      display: flex; align-items: flex-end;
+    }
 
     /* Flying-mode joysticks -- Mode 2 RC/flight-sim convention (verified
        real-world standard, not invented): left stick = throttle (Y) +
@@ -81,12 +105,11 @@
       text-align: center; white-space: nowrap; min-width: 180px;
     }
     #cloudnav-flight-hud.visible { display: block; }
-    #cloudnav-speed-track {
-      margin-top: 5px; width: 100%; height: 8px; border-radius: 4px;
-      background: #ffffff22; overflow: hidden;
-    }
+    /* Speed bar itself lives in #cloudnav-left-panel now (vertical, fill
+       grows upward) -- this is just its numeric km/h|px/s readout, which
+       stays in the top HUD alongside heading/altitude. */
     #cloudnav-speed-fill {
-      height: 100%; width: 0%; background: linear-gradient(90deg, #4caf50, #ffb300 60%, #e53935);
+      width: 100%; height: 0%; background: linear-gradient(0deg, #4caf50, #ffb300 60%, #e53935);
     }
     #cloudnav-speed-label { margin-top: 3px; font-size: 11px; color: #cdd6e8; }
     #cloudnav-maxspeed-row { margin-top: 6px; font-size: 11px; color: #cdd6e8; }
@@ -100,16 +123,25 @@
   <div id="cloudnav-stick-look" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
   <div id="cloudnav-flight-hud">
     <div id="cloudnav-flight-text"></div>
-    <div id="cloudnav-speed-track"><div id="cloudnav-speed-fill"></div></div>
     <div id="cloudnav-speed-label"></div>
     <div id="cloudnav-maxspeed-row">
       Max speed: <span id="cloudnav-maxspeed-value"></span> px/s
       <input type="range" id="cloudnav-maxspeed-slider" min="2" max="200" step="1" />
     </div>
   </div>
-  <div id="cloudnav-exag-panel">
-    Exaggeration: <span id="cloudnav-exag-value"></span>x
-    <input type="range" id="cloudnav-exag-slider" min="1" max="100" step="1" />
+  <!-- Left-side vertical panel: exaggeration slider stacked above the
+       speed bar, both real vertical controls, per explicit request. -->
+  <div id="cloudnav-left-panel">
+    <div class="cloudnav-vpanel-block">
+      <div>Exag <span id="cloudnav-exag-value"></span>x</div>
+      <div class="cloudnav-vslider-wrap">
+        <input type="range" id="cloudnav-exag-slider" min="1" max="100" step="1" />
+      </div>
+    </div>
+    <div class="cloudnav-vpanel-block">
+      <div>Speed</div>
+      <div class="cloudnav-vbar-track"><div id="cloudnav-speed-fill"></div></div>
+    </div>
   </div>
   <script>
     // Tweak these by hand and reload — no rebuild needed, this file loads
@@ -442,7 +474,8 @@
       // just silently render as 0 -- real bug avoided here, not just
       // theoretical): direction is unambiguous from the +/- sign already
       // printed in the km/h label below.
-      document.getElementById('cloudnav-speed-fill').style.width = `${Math.round(Math.abs(FLIGHT.speed) * 100)}%`;
+      // Vertical bar now (left-side panel) -- height, not width, grows.
+      document.getElementById('cloudnav-speed-fill').style.height = `${Math.round(Math.abs(FLIGHT.speed) * 100)}%`;
       document.getElementById('cloudnav-speed-label').textContent =
         `${Math.round(kmh)} km/h  |  ${Math.round(pxPerSec)} px/s${FLIGHT.speed < 0 ? '  (reverse)' : ''}`;
 
