@@ -89,6 +89,8 @@
       height: 100%; width: 0%; background: linear-gradient(90deg, #4caf50, #ffb300 60%, #e53935);
     }
     #cloudnav-speed-label { margin-top: 3px; font-size: 11px; color: #cdd6e8; }
+    #cloudnav-maxspeed-row { margin-top: 6px; font-size: 11px; color: #cdd6e8; }
+    #cloudnav-maxspeed-row input[type=range] { width: 100%; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -100,6 +102,10 @@
     <div id="cloudnav-flight-text"></div>
     <div id="cloudnav-speed-track"><div id="cloudnav-speed-fill"></div></div>
     <div id="cloudnav-speed-label"></div>
+    <div id="cloudnav-maxspeed-row">
+      Max speed: <span id="cloudnav-maxspeed-value"></span> px/s
+      <input type="range" id="cloudnav-maxspeed-slider" min="2" max="200" step="1" />
+    </div>
   </div>
   <div id="cloudnav-exag-panel">
     Exaggeration: <span id="cloudnav-exag-value"></span>x
@@ -284,7 +290,13 @@
       speed: 0,            // -1..1 fraction of max speed; negative = reverse
       zoom: TERRAIN_CONFIG.zoom, // used as a proxy for altitude (standard
                                   // web-map convention: higher zoom = lower altitude)
-      maxSpeedMps: 220,    // fast jet, arcade scale
+      // Max speed is set by the on-screen slider directly in px/s (real
+      // on-screen movement rate, 2-200), then converted to a real m/s
+      // each frame via the current Web Mercator meters-per-pixel value --
+      // so the same px/s cap corresponds to a LARGER real-world speed
+      // the higher you "climb" (zoom out), same as a real aircraft: cruise
+      // altitude looks slow on screen while covering huge ground distance.
+      maxSpeedPxPerSec: 60,
       maxTurnRateDegPerSec: 45,
       maxClimbZoomPerSec: 0.6,
       throttleRate: 0.6,   // how fast throttle input reaches target speed (per second)
@@ -330,6 +342,19 @@
     const stickLeft = makeJoystick(document.getElementById('cloudnav-stick-left'));
     const stickRight = makeJoystick(document.getElementById('cloudnav-stick-right'));
     const stickLook = makeJoystick(document.getElementById('cloudnav-stick-look'));
+
+    // Max-speed slider, real px/s range 2-200. Sets FLIGHT.maxSpeedPxPerSec
+    // directly (the actual on-screen movement rate at full throttle) --
+    // see FLIGHT.maxSpeedPxPerSec's own comment for why px/s and not a
+    // fixed m/s constant.
+    const maxSpeedSlider = document.getElementById('cloudnav-maxspeed-slider');
+    const maxSpeedValueLabel = document.getElementById('cloudnav-maxspeed-value');
+    maxSpeedSlider.value = FLIGHT.maxSpeedPxPerSec;
+    maxSpeedValueLabel.textContent = String(FLIGHT.maxSpeedPxPerSec);
+    maxSpeedSlider.addEventListener('input', () => {
+      FLIGHT.maxSpeedPxPerSec = parseInt(maxSpeedSlider.value, 10);
+      maxSpeedValueLabel.textContent = String(FLIGHT.maxSpeedPxPerSec);
+    });
 
     // Real destination-point-given-bearing-and-distance formula (spherical
     // navigation, the standard used across aviation/marine software --
@@ -379,8 +404,16 @@
       FLIGHT.zoom = Math.min(TERRAIN_CONFIG.zoom + 2, Math.max(9,
         FLIGHT.zoom - climbInput * FLIGHT.maxClimbZoomPerSec * dt));
 
-      const distanceM = FLIGHT.speed * FLIGHT.maxSpeedMps * dt;
-      const [lat2, lon2] = destinationPoint(map.getCenter().lat, map.getCenter().lng, FLIGHT.headingDeg, distanceM);
+      // Max speed is set directly in px/s by the slider -- converted to a
+      // real m/s HERE, every frame, via the current Web Mercator meters-
+      // per-pixel value (current lat + the zoom just updated above), not
+      // a fixed real-world constant. See FLIGHT.maxSpeedPxPerSec comment.
+      const curLat = map.getCenter().lat;
+      const metersPerPixel = MERCATOR_M_PER_PX_AT_ZOOM0_EQUATOR * Math.cos(curLat * Math.PI / 180) / Math.pow(2, FLIGHT.zoom);
+      const maxSpeedMps = FLIGHT.maxSpeedPxPerSec * metersPerPixel;
+
+      const distanceM = FLIGHT.speed * maxSpeedMps * dt;
+      const [lat2, lon2] = destinationPoint(curLat, map.getCenter().lng, FLIGHT.headingDeg, distanceM);
 
       // Third stick: the pilot's head turning, NOT the airplane steering --
       // free 360 yaw look (real, continuous, not clamped) and a pitch look
@@ -395,14 +428,12 @@
       map.jumpTo({ center: [lon2, lat2], bearing: cameraBearing, pitch: FLIGHT.lookPitchDeg, zoom: FLIGHT.zoom });
 
       // Real units, not just an abstract percentage: km/h from the actual
-      // simulated speed, and on-screen px/s via the standard Web Mercator
-      // meters-per-pixel formula (verified: 2*pi*6378137/256, the same
-      // constant OSM/Mapbox/Leaflet all use internally), so px/s reflects
-      // how fast things visibly move on screen at the current zoom/latitude,
-      // not just the underlying real-world speed.
-      const speedMps = FLIGHT.speed * FLIGHT.maxSpeedMps;
+      // simulated speed, and on-screen px/s (reusing the same
+      // metersPerPixel computed above for the movement itself, so the
+      // displayed px/s always matches FLIGHT.maxSpeedPxPerSec exactly at
+      // full throttle).
+      const speedMps = FLIGHT.speed * maxSpeedMps;
       const kmh = speedMps * 3.6;
-      const metersPerPixel = MERCATOR_M_PER_PX_AT_ZOOM0_EQUATOR * Math.cos(lat2 * Math.PI / 180) / Math.pow(2, FLIGHT.zoom);
       const pxPerSec = speedMps / metersPerPixel;
 
       document.getElementById('cloudnav-flight-text').textContent =
