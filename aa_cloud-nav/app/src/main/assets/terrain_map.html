@@ -32,9 +32,15 @@
     const map = new maplibregl.Map({
       container: 'map',
       style: 'https://tiles.openfreemap.org/styles/liberty',
-      center: [8.5, 46.8], // Swiss Alps default — Kotlin side re-centers via flyTo
-      zoom: 11,
-      pitch: 60,
+      // Matterhorn (7.6586, 45.9763) — real named peak, not a generic town center.
+      // The old center [8.5, 46.8] sat in a populated valley where Liberty's
+      // fill-extrusion buildings visually swamped the (real but subtle) DEM
+      // relief at exaggeration 1.4, reading as "just buildings" — not fake
+      // terrain, just terrain nobody could actually see. Kotlin side
+      // re-centers via flyTo/cloudNavRecenter regardless.
+      center: [7.6586, 45.9763],
+      zoom: 12.2,
+      pitch: 70,
       maxPitch: 85,
       hash: false,
     });
@@ -54,7 +60,11 @@
         encoding: 'terrarium',
         maxzoom: 15,
       });
-      map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: 1.4 });
+      // 1.4 was numerically real terrain but visually indistinguishable from
+      // flat ground next to Liberty's building extrusions — bumped to 1.8,
+      // a value commonly used by terrain-demo maps specifically so alpine
+      // relief reads clearly at typical mobile pitch/zoom.
+      map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: 1.8 });
 
       map.addLayer({
         id: 'cloudnav-terrain-hillshade',
@@ -62,6 +72,26 @@
         source: 'cloudnav-terrain-dem',
         paint: { 'hillshade-exaggeration': 0.5 },
       }, firstSymbolLayerId());
+
+      // Sky + atmosphere layer (GL JS 'sky' layer type, supported since v3,
+      // real MapLibre API — not a mock) so the 3D relief reads unambiguously
+      // as terrain against open sky, instead of looking like a building-only
+      // scene with nothing behind it.
+      map.addLayer({
+        id: 'cloudnav-sky',
+        type: 'sky',
+        paint: {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun-intensity': 8,
+        },
+      });
+
+      // This is a dedicated terrain view, not the main building-focused map —
+      // 3D building extrusions here just compete visually with the mountain
+      // relief they're meant to showcase, so hide them here specifically.
+      for (const l of map.getStyle().layers || []) {
+        if (l.type === 'fill-extrusion') map.setLayoutProperty(l.id, 'visibility', 'none');
+      }
 
       // Forest/vegetation tint on top of the vector landcover layer, if present.
       if (map.getLayer('landcover_wood') || map.getLayer('landcover-wood')) {
