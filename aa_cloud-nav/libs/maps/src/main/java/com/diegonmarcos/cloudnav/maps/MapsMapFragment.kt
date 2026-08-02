@@ -231,6 +231,16 @@ class MapsMapFragment : Fragment() {
             map = m
             // Native compass: appears when rotated, tap = snap back to north.
             m.uiSettings.isCompassEnabled = true
+            // Two-finger drag to tilt between top-down and isometric --
+            // matches the WebView terrain view's gesture. Verified this was
+            // already the MapLibre Native SDK default (tiltGesturesEnabled
+            // = true, pitch range 0-60 degrees, per its own source) with
+            // nothing in this app disabling it or intercepting the touch
+            // (no custom gesture detector, no ViewPager2/scroll-container
+            // host anywhere in the codebase) -- made explicit here to
+            // remove any doubt, not because a disabling cause was found.
+            m.uiSettings.isTiltGesturesEnabled = true
+            m.uiSettings.isRotateGesturesEnabled = true
             m.cameraPosition = CameraPosition.Builder()
                 .target(LatLng(initialLat, initialLon))
                 .zoom(initialZoom)
