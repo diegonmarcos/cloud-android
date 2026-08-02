@@ -65,6 +65,13 @@
             android:screenOrientation="unspecified"
             android:theme="@style/Theme.CloudNav" />
 
+        <activity
+            android:name=".MilkyWayActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:screenOrientation="unspecified"
+            android:theme="@style/Theme.CloudNav" />
+
         <receiver
             android:name="com.diegonmarcos.cloudnav.updater.PackageInstallerReceiver"
             android:exported="false" />

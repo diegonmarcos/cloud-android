@@ -304,8 +304,15 @@ class MapsMapFragment : Fragment() {
                 layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
                     .apply { val m = dp(16); setMargins(m, m, m, m + dp(330)) }
                 setOnClickListener {
+                    // Repointed from the native AR "point phone at sky" view
+                    // (com.diegonmarcos.cloudnav.sky.ConstellationsActivity,
+                    // still in the codebase, just no longer wired to this
+                    // button) to the WWT-embedded 3D Milky Way/solar-system
+                    // explorer -- the requested star-dust/constellations/
+                    // dynamic-static/solar-system layered view is real there,
+                    // not in the old AR screen.
                     val intent = android.content.Intent().apply {
-                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.sky.ConstellationsActivity")
+                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.MilkyWayActivity")
                     }
                     try {
                         ctx.startActivity(intent)
