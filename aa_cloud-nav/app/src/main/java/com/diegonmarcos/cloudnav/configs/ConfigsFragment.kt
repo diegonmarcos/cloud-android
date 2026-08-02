@@ -11,12 +11,14 @@ import com.diegonmarcos.cloudnav.maps.MapsConfigFragment
 import com.google.android.material.tabs.TabLayout
 
 /**
- * Configs tab. Four sub-pages via a TabLayout:
+ * Configs tab. Five sub-pages via a TabLayout:
  *   • Tracker — GPS tracker controls + calibration + export
  *               ([MapsConfigFragment] section=tracker).
  *   • APIs    — Search / Reverse-geocoder / POI provider pickers + API keys
  *               ([MapsConfigFragment] section=apis).
  *   • Update  — the in-app GHCR self-updater ([UpdateConfigFragment]).
+ *   • Cache   — real per-mechanism cache size + clear
+ *               ([CacheConfigFragment]).
  *   • About   — the extensive device/app/permissions/battery/memory/network
  *               page ([DevControlFragment], ported from Cloud SuperApp).
  *
@@ -35,6 +37,7 @@ class ConfigsFragment : Fragment() {
             addTab(newTab().setText("Tracker"))
             addTab(newTab().setText("APIs"))
             addTab(newTab().setText("Update"))
+            addTab(newTab().setText("Cache"))
             addTab(newTab().setText("About"))
         }
         this.container = FrameLayout(requireContext()).apply { id = View.generateViewId() }
@@ -55,6 +58,7 @@ class ConfigsFragment : Fragment() {
             0 -> MapsConfigFragment.newInstance(MapsConfigFragment.SECTION_TRACKER)
             1 -> MapsConfigFragment.newInstance(MapsConfigFragment.SECTION_APIS)
             2 -> UpdateConfigFragment()
+            3 -> CacheConfigFragment()
             else -> DevControlFragment()
         }
         childFragmentManager.beginTransaction()
