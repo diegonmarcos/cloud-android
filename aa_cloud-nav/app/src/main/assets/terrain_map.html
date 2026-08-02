@@ -105,6 +105,30 @@
       text-align: center; white-space: nowrap; min-width: 180px;
     }
     #cloudnav-flight-hud.visible { display: block; }
+    /* Compass: real aviation-instrument convention (heading indicator /
+       HSI style) -- the FACE rotates under a fixed marker at the top,
+       rather than a fixed face with a rotating needle, matching how a
+       real aircraft compass/HSI actually works (turn right, the card
+       spins left under the fixed lubber line). */
+    #cloudnav-compass {
+      position: relative; width: 64px; height: 64px; margin: 0 auto 6px;
+    }
+    #cloudnav-compass-face {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: #10131acc; border: 1px solid #ffffff33;
+    }
+    .cn-compass-tick {
+      position: absolute; font-size: 10px; color: #9fb2d9; font-weight: bold;
+      left: 50%; top: 50%; margin: -6px 0 0 -5px;
+    }
+    .cn-tick-n { transform: translateY(-24px); }
+    .cn-tick-e { transform: translateX(24px); }
+    .cn-tick-s { transform: translateY(24px); }
+    .cn-tick-w { transform: translateX(-24px); }
+    #cloudnav-compass-marker {
+      position: absolute; left: 50%; top: -2px; margin-left: -6px;
+      color: #e53935; font-size: 12px; line-height: 1;
+    }
     /* Speed bar itself lives in #cloudnav-left-panel now (vertical, fill
        grows upward) -- this is just its numeric km/h|px/s readout, which
        stays in the top HUD alongside heading/altitude. */
@@ -122,6 +146,15 @@
   <div id="cloudnav-stick-right" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
   <div id="cloudnav-stick-look" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
   <div id="cloudnav-flight-hud">
+    <div id="cloudnav-compass">
+      <div id="cloudnav-compass-face">
+        <span class="cn-compass-tick cn-tick-n">N</span>
+        <span class="cn-compass-tick cn-tick-e">E</span>
+        <span class="cn-compass-tick cn-tick-s">S</span>
+        <span class="cn-compass-tick cn-tick-w">W</span>
+      </div>
+      <div id="cloudnav-compass-marker">&#9650;</div>
+    </div>
     <div id="cloudnav-flight-text"></div>
     <div id="cloudnav-speed-label"></div>
     <div id="cloudnav-maxspeed-row">
@@ -404,6 +437,15 @@
       return [lat2 * 180 / Math.PI, ((lon2 * 180 / Math.PI) + 540) % 360 - 180];
     }
 
+    // Real aviation heading-indicator convention: the compass FACE rotates
+    // by -bearing under a fixed top marker, not a fixed face with a
+    // rotating needle (turn right -> card spins left under the lubber
+    // line, matching a real aircraft compass/HSI).
+    const compassFace = document.getElementById('cloudnav-compass-face');
+    function updateCompass(bearingDeg) {
+      compassFace.style.transform = `rotate(${-bearingDeg}deg)`;
+    }
+
     let flightLastFrame = null;
     function flightStep(now) {
       if (!FLIGHT.active) { flightLastFrame = null; return; }
@@ -444,20 +486,26 @@
       const metersPerPixel = MERCATOR_M_PER_PX_AT_ZOOM0_EQUATOR * Math.cos(curLat * Math.PI / 180) / Math.pow(2, FLIGHT.zoom);
       const maxSpeedMps = FLIGHT.maxSpeedPxPerSec * metersPerPixel;
 
-      const distanceM = FLIGHT.speed * maxSpeedMps * dt;
-      const [lat2, lon2] = destinationPoint(curLat, map.getCenter().lng, FLIGHT.headingDeg, distanceM);
-
-      // Third stick: the pilot's head turning, NOT the airplane steering --
-      // free 360 yaw look (real, continuous, not clamped) and a pitch look
-      // clamped to what MapLibre can actually render (0-maxPitch; can't
-      // look straight up or fully behind via tilt, disclosed above).
+      // Third stick: the pilot's head turning. Computed BEFORE movement,
+      // not after -- real bug fix: forward/back used to move along
+      // FLIGHT.headingDeg regardless of where the look-stick had turned
+      // the camera, so looking south and pushing "forward" still flew
+      // whatever direction the nose last pointed, ignoring the view
+      // entirely. Movement is now camera-relative: it goes wherever
+      // you're actually looking (headingDeg + the look offset), matching
+      // how a free-look flight camera is expected to behave.
       const lookYawRate = stickLook.x * FLIGHT.maxLookRateDegPerSec;
       FLIGHT.lookYawDeg = (FLIGHT.lookYawDeg + lookYawRate * dt + 360) % 360;
       const lookPitchRate = -stickLook.y * FLIGHT.maxLookRateDegPerSec;
       FLIGHT.lookPitchDeg = Math.min(TERRAIN_CONFIG.maxPitch, Math.max(0, FLIGHT.lookPitchDeg + lookPitchRate * dt));
       const cameraBearing = (FLIGHT.headingDeg + FLIGHT.lookYawDeg) % 360;
 
+      const distanceM = FLIGHT.speed * maxSpeedMps * dt;
+      const [lat2, lon2] = destinationPoint(curLat, map.getCenter().lng, cameraBearing, distanceM);
+
       map.jumpTo({ center: [lon2, lat2], bearing: cameraBearing, pitch: FLIGHT.lookPitchDeg, zoom: FLIGHT.zoom });
+
+      updateCompass(cameraBearing);
 
       // Real units, not just an abstract percentage: km/h from the actual
       // simulated speed, and on-screen px/s (reusing the same
@@ -468,8 +516,11 @@
       const kmh = speedMps * 3.6;
       const pxPerSec = speedMps / metersPerPixel;
 
+      // HDG now shows cameraBearing, not the old FLIGHT.headingDeg alone --
+      // that's the actual direction of travel/view now that movement is
+      // camera-relative (see the fix above).
       document.getElementById('cloudnav-flight-text').textContent =
-        `HDG ${Math.round(FLIGHT.headingDeg).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)}`;
+        `HDG ${Math.round(cameraBearing).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)}`;
       // Bar shows MAGNITUDE (a negative CSS width is invalid and would
       // just silently render as 0 -- real bug avoided here, not just
       // theoretical): direction is unambiguous from the +/- sign already
