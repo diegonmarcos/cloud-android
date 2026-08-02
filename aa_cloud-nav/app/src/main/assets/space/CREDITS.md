@@ -1,4 +1,10 @@
-# Galaxy view data credits
+# Space View data credits
+
+This folder was renamed from `galaxy/` to `space/` when the screen was
+refocused onto the Solar System (see `space_view.html`'s top-of-file
+comment). `hyg_stars.bin`/`hyg_named.json` (the earlier interstellar
+star-field layer) are kept here but NOT currently wired into
+`space_view.html` -- left in case that layer is wanted back.
 
 `hyg_stars.bin` and `hyg_named.json` are derived from the **HYG Stellar
 Database v4.4** (astronexus, https://codeberg.org/astronexus/hyg),
@@ -26,9 +32,13 @@ the 549 stars carrying a real proper name in the source catalog.
 
 `three.module.min.js` and `OrbitControls.js` are three.js v0.185.1
 (https://threejs.org), MIT License, bundled locally so the render engine
-loads with no network (star/constellation data is also fully local; this
-screen needs no network at all, unlike terrain_map.html/milkyway_map.html
-which depend on live map/imagery tiles).
+loads with no network (constellation/planet data is also fully local;
+this screen needs no network at all, unlike terrain_map.html which
+depends on live map/imagery tiles).
 
-Constellation lines reuse the already-bundled, already-credited
-`../celestial/constellations.lines.json` (see `../celestial/CREDITS.md`).
+Constellation lines and planetary Keplerian elements reuse the already-
+bundled, already-credited `../celestial/` dataset (see
+`../celestial/CREDITS.md`). Moon orbital periods (semi-major axis not
+used -- see space_view.html's scale disclosure) are real NASA/JPL-
+sourced constants, cross-checked against independent sources, not from
+that dataset.

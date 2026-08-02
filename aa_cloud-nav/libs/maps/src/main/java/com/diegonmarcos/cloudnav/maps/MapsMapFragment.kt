@@ -304,30 +304,28 @@ class MapsMapFragment : Fragment() {
                     alpha = if (is3dOn()) 1f else 0.5f
                 }
             }
-            // Point-the-phone-at-the-sky constellation view, stacked above the 3D FAB.
+            // Space View: Solar System (planets/moons/orbits) + star dust +
+            // constellations, stacked above the 3D FAB. Renamed from
+            // "Constellations" -- see SpaceViewActivity/space_view.html.
             // (Terrain is NOT a separate FAB — it's an entry in the existing map-style
             // switcher sheet, showStyleMenu(), same as any other basemap.)
             val skyFab = FloatingActionButton(ctx).apply {
                 setImageResource(R.drawable.ic_constellation)
-                contentDescription = "Constellations"
+                contentDescription = "Space View"
                 size = FloatingActionButton.SIZE_MINI
                 layoutParams = FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END)
                     .apply { val m = dp(16); setMargins(m, m, m, m + dp(330)) }
                 setOnClickListener {
-                    // Repointed from the native AR "point phone at sky" view
-                    // (com.diegonmarcos.cloudnav.sky.ConstellationsActivity,
-                    // still in the codebase, just no longer wired to this
-                    // button) to the WWT-embedded 3D Milky Way/solar-system
-                    // explorer -- the requested star-dust/constellations/
-                    // dynamic-static/solar-system layered view is real there,
-                    // not in the old AR screen.
+                    // The native AR "point phone at sky" view
+                    // (com.diegonmarcos.cloudnav.sky.ConstellationsActivity)
+                    // is still in the codebase, just not wired to this button.
                     val intent = android.content.Intent().apply {
-                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.MilkyWayActivity")
+                        setClassName(ctx.packageName, "com.diegonmarcos.cloudnav.SpaceViewActivity")
                     }
                     try {
                         ctx.startActivity(intent)
                     } catch (e: android.content.ActivityNotFoundException) {
-                        Toast.makeText(ctx, "Constellations view unavailable", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, "Space View unavailable", Toast.LENGTH_SHORT).show()
                     }
                 }
             }

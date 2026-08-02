@@ -11,29 +11,21 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 
 /**
- * Real, free-fly-navigable 3D star field: a three.js WebGL scene (bundled
- * locally, no network needed) rendering 119,614 real stars from the HYG
- * v4.4 catalog at their actual parallax-derived 3D positions, plus a
- * constellation-line overlay, a procedural galactic-plane "star dust" band,
- * and a real-orbital-mechanics solar-system mode. See
- * assets/galaxy/CREDITS.md and assets/galaxy/galaxy_map.html for the full
- * technical writeup and data provenance.
- *
- * This REPLACES an earlier version of this screen that embedded AAS
- * WorldWide Telescope's web app — WWT's default view is a flat sky
- * panorama, not actual navigable 3D, which is specifically what was asked
- * for here; the embed is gone, not just unused.
+ * "Space View" -- renamed from the earlier "Constellations"/MilkyWayActivity
+ * screen and refocused onto the Solar System (planets, moons, orbits) as
+ * the primary navigable 3D content, with star dust and constellation
+ * stars as toggleable backdrop layers. A three.js WebGL scene (bundled
+ * locally, no network needed). See assets/space/CREDITS.md and
+ * assets/space/space_view.html for the full technical writeup, data
+ * provenance, and scale disclosures.
  *
  * Served via WebViewAssetLoader (https://appassets.androidplatform.net/...)
- * instead of loadUrl("file:///android_asset/...") -- the real, reported bug
- * here was a full black screen, root-caused to Chromium's fetch() API
- * refusing file:// requests by CORS policy (script/link tags aren't
- * affected, which is why terrain_map.html's <script src> loading never hit
- * this, but galaxy_map.html's fetch() calls for the star/constellation/
- * planet data all silently failed). This is Google's own documented fix
- * for exactly this class of bug, not a workaround.
+ * instead of loadUrl("file:///android_asset/...") -- required because
+ * Chromium's fetch() API refuses file:// requests by CORS policy, and
+ * this screen's data (constellation lines, planetary elements) loads via
+ * fetch(). This is Google's own documented fix for that bug class.
  */
-class MilkyWayActivity : AppCompatActivity() {
+class SpaceViewActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
@@ -55,7 +47,7 @@ class MilkyWayActivity : AppCompatActivity() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                 assetLoader.shouldInterceptRequest(request.url)
         }
-        webView.loadUrl("https://appassets.androidplatform.net/assets/galaxy/galaxy_map.html")
+        webView.loadUrl("https://appassets.androidplatform.net/assets/space/space_view.html")
     }
 
     override fun onDestroy() {

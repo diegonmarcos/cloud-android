@@ -26,7 +26,7 @@ import java.io.File
  *     ([com.diegonmarcos.cloudnav.maps.MapsMapFragment]).
  *  2. Android WebView's HTTP cache -- shared by every WebView-hosted
  *     screen ([com.diegonmarcos.cloudnav.TerrainActivity],
- *     [com.diegonmarcos.cloudnav.MilkyWayActivity]). Android does not
+ *     [com.diegonmarcos.cloudnav.SpaceViewActivity]). Android does not
  *     expose a way to separate this by which page/style filled it (it's
  *     one per-app Chromium cache, not per-Activity), so this is reported
  *     and cleared as one bucket -- not faked as a per-map breakdown the

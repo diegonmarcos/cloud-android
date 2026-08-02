@@ -261,8 +261,9 @@ dependencies {
     implementation 'androidx.activity:activity-ktx:1.9.3'
     // WebViewAssetLoader -- serves local assets over a real https:// origin
     // instead of file://, because Chromium's fetch() blocks file:// requests
-    // by CORS policy (the real cause of MilkyWayActivity's black screen:
-    // galaxy_map.html's fetch() calls for star data were silently failing).
+    // by CORS policy (the real cause of a black screen on this activity,
+    // now SpaceViewActivity: its page's fetch() calls for star data were
+    // silently failing).
     // Pinned to 1.12.1, NOT latest (1.16.0) -- 1.16.0's bundled Kotlin
     // metadata (2.1.0) is newer than this project's pinned Kotlin 1.9.0
     // compiler can read ("Class 'kotlin.Unit' was compiled with an
