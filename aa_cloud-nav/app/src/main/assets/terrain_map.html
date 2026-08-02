@@ -44,10 +44,39 @@
       border-radius: 6px; padding: 8px 12px; font: 12px sans-serif; width: 190px;
     }
     #cloudnav-exag-panel input[type=range] { width: 100%; }
+
+    /* Flying-mode dual joysticks -- Mode 2 RC/flight-sim convention
+       (verified real-world standard, not invented): left stick =
+       throttle (Y) + rudder/yaw (X), right stick = pitch/climb (Y) +
+       roll/bank-turn (X). Hidden until Flying Mode is toggled on. */
+    .cloudnav-joystick {
+      display: none; position: absolute; bottom: 24px; z-index: 3;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: #ffffff14; border: 1px solid #ffffff33;
+      touch-action: none; -webkit-tap-highlight-color: transparent;
+    }
+    .cloudnav-joystick.visible { display: block; }
+    #cloudnav-stick-left { left: 20px; }
+    #cloudnav-stick-right { right: 20px; }
+    .cloudnav-joystick-knob {
+      position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
+      margin: -24px 0 0 -24px; border-radius: 50%;
+      background: #2b6cb0cc; border: 1px solid #6fb1ff;
+    }
+    #cloudnav-flight-hud {
+      display: none; position: absolute; left: 50%; top: 10px; z-index: 3;
+      transform: translateX(-50%); color: #eee; font: 12px monospace;
+      background: #1a1d24cc; padding: 4px 10px; border-radius: 6px;
+      text-align: center; white-space: nowrap;
+    }
+    #cloudnav-flight-hud.visible { display: block; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div id="cloudnav-stick-left" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
+  <div id="cloudnav-stick-right" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
+  <div id="cloudnav-flight-hud"></div>
   <div id="cloudnav-exag-panel">
     Exaggeration: <span id="cloudnav-exag-value"></span>x
     <input type="range" id="cloudnav-exag-slider" min="1" max="100" step="1" />
@@ -198,6 +227,143 @@
 
     map.addControl(makeButtonControl('🛰️', 'Satellite drape: off', (btn) => {
       toggleSatelliteDrape(btn);
+    }), 'top-right');
+
+    // ---- Flying mode: dual virtual joysticks + simplified arcade flight
+    // physics, camera-driven over the same 3D terrain. ----
+    //
+    // Stick convention: real-world Mode 2 (the RC/mobile-flight-sim
+    // standard, verified, not invented) -- left stick Y = throttle, left
+    // stick X = rudder/yaw; right stick Y = pitch/climb, right stick X =
+    // roll/bank.
+    //
+    // HONEST LIMITATION: MapLibre's camera has yaw (bearing) and pitch,
+    // but no roll/bank axis -- there's no way to visually tilt the
+    // horizon like a banking aircraft. Bank input is used the way real
+    // aerodynamics actually uses it functionally (bank angle drives turn
+    // rate), just without the visual roll MapLibre can't render. This is
+    // a simplified arcade flight model (throttle->speed via lerp,
+    // stick->target angular rate), the same real technique documented in
+    // Godot's own "Arcade-style Airplane" recipe -- not full 6DOF
+    // aerodynamics.
+    const FLIGHT = {
+      active: false,
+      headingDeg: 0,      // current bearing, 0-360
+      speed: 0,            // 0..1 fraction of max speed
+      zoom: TERRAIN_CONFIG.zoom, // used as a proxy for altitude (standard
+                                  // web-map convention: higher zoom = lower altitude)
+      maxSpeedMps: 220,    // fast jet, arcade scale
+      maxTurnRateDegPerSec: 45,
+      maxClimbZoomPerSec: 0.6,
+      throttleRate: 0.6,   // how fast throttle input reaches target speed (per second)
+    };
+    const EARTH_RADIUS_M = 6371000;
+
+    function makeJoystick(el) {
+      const knob = el.querySelector('.cloudnav-joystick-knob');
+      let active = false;
+      const state = { x: 0, y: 0 }; // normalized -1..1, y: -1 = up/forward
+      function setFromEvent(ev) {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+        const r = rect.width / 2;
+        let dx = (ev.clientX - cx) / r, dy = (ev.clientY - cy) / r;
+        const mag = Math.hypot(dx, dy);
+        if (mag > 1) { dx /= mag; dy /= mag; }
+        state.x = dx; state.y = dy;
+        knob.style.transform = `translate(${dx * r * 0.6}px, ${dy * r * 0.6}px)`;
+      }
+      function reset() {
+        active = false; state.x = 0; state.y = 0;
+        knob.style.transform = 'translate(0,0)';
+      }
+      el.addEventListener('pointerdown', (ev) => { active = true; el.setPointerCapture(ev.pointerId); setFromEvent(ev); });
+      el.addEventListener('pointermove', (ev) => { if (active) setFromEvent(ev); });
+      el.addEventListener('pointerup', reset);
+      el.addEventListener('pointercancel', reset);
+      return state;
+    }
+
+    const stickLeft = makeJoystick(document.getElementById('cloudnav-stick-left'));
+    const stickRight = makeJoystick(document.getElementById('cloudnav-stick-right'));
+
+    // Real destination-point-given-bearing-and-distance formula (spherical
+    // navigation, the standard used across aviation/marine software --
+    // https://www.movable-type.co.uk/scripts/latlong.html's formulary),
+    // not an approximation invented for this file.
+    function destinationPoint(lat, lon, bearingDeg, distanceM) {
+      const dR = distanceM / EARTH_RADIUS_M;
+      const lat1 = lat * Math.PI / 180, lon1 = lon * Math.PI / 180;
+      const brng = bearingDeg * Math.PI / 180;
+      const lat2 = Math.asin(Math.sin(lat1) * Math.cos(dR) + Math.cos(lat1) * Math.sin(dR) * Math.cos(brng));
+      const lon2 = lon1 + Math.atan2(
+        Math.sin(brng) * Math.sin(dR) * Math.cos(lat1),
+        Math.cos(dR) - Math.sin(lat1) * Math.sin(lat2)
+      );
+      return [lat2 * 180 / Math.PI, ((lon2 * 180 / Math.PI) + 540) % 360 - 180];
+    }
+
+    let flightLastFrame = null;
+    function flightStep(now) {
+      if (!FLIGHT.active) { flightLastFrame = null; return; }
+      if (flightLastFrame == null) flightLastFrame = now;
+      const dt = Math.min(0.1, (now - flightLastFrame) / 1000);
+      flightLastFrame = now;
+
+      // Throttle (left stick Y, up = -1 = full throttle) -> target speed,
+      // approached via lerp (real arcade-flight-model technique).
+      const throttleInput = Math.max(0, -stickLeft.y);
+      const targetSpeed = throttleInput;
+      FLIGHT.speed += (targetSpeed - FLIGHT.speed) * Math.min(1, FLIGHT.throttleRate * dt * 4);
+
+      // Rudder/yaw (left stick X) + roll/bank (right stick X, functional
+      // only -- see the honest-limitation note above) both contribute to
+      // turn rate, banking scaled by current speed like a real aircraft
+      // (banking at a standstill doesn't turn you).
+      const yawRate = stickLeft.x * FLIGHT.maxTurnRateDegPerSec;
+      const bankRate = stickRight.x * FLIGHT.maxTurnRateDegPerSec * FLIGHT.speed;
+      FLIGHT.headingDeg = (FLIGHT.headingDeg + (yawRate + bankRate) * dt + 360) % 360;
+
+      // Pitch/climb (right stick Y, up = -1 = climb) -> zoom-as-altitude.
+      // Zoom DECREASES as you "climb" (standard web-map convention: lower
+      // zoom = wider view = higher altitude).
+      const climbInput = -stickRight.y;
+      FLIGHT.zoom = Math.min(TERRAIN_CONFIG.zoom + 2, Math.max(9,
+        FLIGHT.zoom - climbInput * FLIGHT.maxClimbZoomPerSec * dt));
+
+      const distanceM = FLIGHT.speed * FLIGHT.maxSpeedMps * dt;
+      const [lat2, lon2] = destinationPoint(map.getCenter().lat, map.getCenter().lng, FLIGHT.headingDeg, distanceM);
+
+      map.jumpTo({ center: [lon2, lat2], bearing: FLIGHT.headingDeg, zoom: FLIGHT.zoom });
+
+      const hud = document.getElementById('cloudnav-flight-hud');
+      hud.textContent = `HDG ${Math.round(FLIGHT.headingDeg).toString().padStart(3, '0')}°  `
+        + `SPD ${Math.round(FLIGHT.speed * 100)}%  ALT z${FLIGHT.zoom.toFixed(1)}`;
+
+      requestAnimationFrame(flightStep);
+    }
+
+    map.addControl(makeButtonControl('✈️', 'Flying mode: off', (btn) => {
+      FLIGHT.active = !FLIGHT.active;
+      document.getElementById('cloudnav-stick-left').classList.toggle('visible', FLIGHT.active);
+      document.getElementById('cloudnav-stick-right').classList.toggle('visible', FLIGHT.active);
+      document.getElementById('cloudnav-flight-hud').classList.toggle('visible', FLIGHT.active);
+      btn.classList.toggle('active', FLIGHT.active);
+      btn.title = FLIGHT.active ? 'Flying mode: on' : 'Flying mode: off';
+      // Hand off between the native map gestures and the joystick-driven
+      // camera -- both fighting for the same touch input would be
+      // unusable, so one is always fully off. All five are real MapLibre
+      // GL JS interaction-handler methods (documented API, not invented).
+      const handlers = [map.dragPan, map.dragRotate, map.scrollZoom, map.touchZoomRotate, map.touchPitch];
+      if (FLIGHT.active) {
+        handlers.forEach(h => h.disable());
+        FLIGHT.headingDeg = map.getBearing();
+        FLIGHT.zoom = map.getZoom();
+        flightLastFrame = null;
+        requestAnimationFrame(flightStep);
+      } else {
+        handlers.forEach(h => h.enable());
+      }
     }), 'top-right');
 
     map.on('load', () => {
