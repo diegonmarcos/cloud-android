@@ -86,7 +86,22 @@
       touch-action: none; -webkit-tap-highlight-color: transparent;
     }
     .cloudnav-joystick.visible { display: block; }
+    /* Left stick keeps its existing behavior (Y = throttle in whatever
+       direction the camera currently faces, X = turn rate) -- what's new
+       is a DYNAMIC compass ring around it: N/E/S/W ticks rotate each
+       frame to reflect the current camera bearing (same -bearing rotate
+       technique as the top HUD compass), so "forward" (the top of the
+       stick) always visually shows which real direction pushing forward
+       will actually move you, e.g. if the camera's facing east, the "E"
+       tick rotates to the top. Ticks generated in a JS loop rather than 4
+       hand-written elements, since the ring itself doesn't need to differ
+       from the existing top HUD compass's math. */
     #cloudnav-stick-left { left: 20px; }
+    #cloudnav-stick-left-ring { position: absolute; inset: 0; pointer-events: none; }
+    .cn-stick-tick {
+      position: absolute; left: 50%; top: 50%; color: #9fb2d9;
+      font-size: 11px; font-weight: bold; pointer-events: none;
+    }
     #cloudnav-stick-right { right: 20px; }
     #cloudnav-stick-look {
       left: 50%; bottom: 24px; width: 84px; height: 84px;
@@ -142,7 +157,10 @@
 </head>
 <body>
   <div id="map"></div>
-  <div id="cloudnav-stick-left" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
+  <div id="cloudnav-stick-left" class="cloudnav-joystick">
+    <div id="cloudnav-stick-left-ring"></div>
+    <div class="cloudnav-joystick-knob"></div>
+  </div>
   <div id="cloudnav-stick-right" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
   <div id="cloudnav-stick-look" class="cloudnav-joystick"><div class="cloudnav-joystick-knob"></div></div>
   <div id="cloudnav-flight-hud">
@@ -453,6 +471,24 @@
       compassFace.style.transform = `rotate(${-bearingDeg}deg)`;
     }
 
+    // Left-stick compass ring: same rotate-by--bearing idea, so the tick
+    // that's currently at the TOP of the stick (where "forward" pushes)
+    // always shows which real direction pushing forward actually moves
+    // you. Ticks built once here (not 4 hand-written elements) using the
+    // standard rotate-position/counter-rotate-to-stay-upright technique.
+    const stickLeftRing = document.getElementById('cloudnav-stick-left-ring');
+    const STICK_RING_RADIUS = 48;
+    for (const [label, angle] of [['N', 0], ['E', 90], ['S', 180], ['W', 270]]) {
+      const tick = document.createElement('span');
+      tick.className = 'cn-stick-tick';
+      tick.textContent = label;
+      tick.style.transform = `translate(-50%,-50%) rotate(${angle}deg) translateY(${-STICK_RING_RADIUS}px) rotate(${-angle}deg)`;
+      stickLeftRing.appendChild(tick);
+    }
+    function updateStickCompass(bearingDeg) {
+      stickLeftRing.style.transform = `rotate(${-bearingDeg}deg)`;
+    }
+
     let flightLastFrame = null;
     function flightStep(now) {
       if (!FLIGHT.active) { flightLastFrame = null; return; }
@@ -514,6 +550,7 @@
       map.jumpTo({ center: [lon2, lat2], bearing: cameraBearing, pitch: FLIGHT.lookPitchDeg, zoom: FLIGHT.zoom });
 
       updateCompass(cameraBearing);
+      updateStickCompass(cameraBearing);
 
       // Real units, not just an abstract percentage: km/h from the actual
       // simulated speed, and on-screen px/s (reusing the same
