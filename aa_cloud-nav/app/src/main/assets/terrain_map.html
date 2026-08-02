@@ -281,7 +281,7 @@
     const FLIGHT = {
       active: false,
       headingDeg: 0,      // aircraft's actual travel direction, 0-360
-      speed: 0,            // 0..1 fraction of max speed
+      speed: 0,            // -1..1 fraction of max speed; negative = reverse
       zoom: TERRAIN_CONFIG.zoom, // used as a proxy for altitude (standard
                                   // web-map convention: higher zoom = lower altitude)
       maxSpeedMps: 220,    // fast jet, arcade scale
@@ -354,9 +354,13 @@
       const dt = Math.min(0.1, (now - flightLastFrame) / 1000);
       flightLastFrame = now;
 
-      // Throttle (left stick Y, up = -1 = full throttle) -> target speed,
-      // approached via lerp (real arcade-flight-model technique).
-      const throttleInput = Math.max(0, -stickLeft.y);
+      // Throttle (left stick Y, up = -1 = full forward, down = +1 = full
+      // reverse) -> target speed, approached via lerp (real arcade-
+      // flight-model technique). Previously clamped to Math.max(0, ...),
+      // which threw away any backward stick input entirely -- pulling the
+      // stick back could only decelerate to a stop, never actually
+      // reverse. Fixed: full -1..1 range, FLIGHT.speed can go negative.
+      const throttleInput = -stickLeft.y;
       const targetSpeed = throttleInput;
       FLIGHT.speed += (targetSpeed - FLIGHT.speed) * Math.min(1, FLIGHT.throttleRate * dt * 4);
 
@@ -403,9 +407,13 @@
 
       document.getElementById('cloudnav-flight-text').textContent =
         `HDG ${Math.round(FLIGHT.headingDeg).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)}`;
-      document.getElementById('cloudnav-speed-fill').style.width = `${Math.round(FLIGHT.speed * 100)}%`;
+      // Bar shows MAGNITUDE (a negative CSS width is invalid and would
+      // just silently render as 0 -- real bug avoided here, not just
+      // theoretical): direction is unambiguous from the +/- sign already
+      // printed in the km/h label below.
+      document.getElementById('cloudnav-speed-fill').style.width = `${Math.round(Math.abs(FLIGHT.speed) * 100)}%`;
       document.getElementById('cloudnav-speed-label').textContent =
-        `${Math.round(kmh)} km/h  |  ${Math.round(pxPerSec)} px/s`;
+        `${Math.round(kmh)} km/h  |  ${Math.round(pxPerSec)} px/s${FLIGHT.speed < 0 ? '  (reverse)' : ''}`;
 
       requestAnimationFrame(flightStep);
     }
