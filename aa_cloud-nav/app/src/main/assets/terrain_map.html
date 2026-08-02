@@ -327,13 +327,22 @@
     // ---- Flying mode: three virtual joysticks + simplified arcade flight
     // physics, camera-driven over the same 3D terrain. ----
     //
-    // Stick convention: real-world Mode 2 (the RC/mobile-flight-sim
-    // standard, verified, not invented) -- left stick Y = throttle, left
-    // stick X = rudder/yaw; right stick Y = pitch/climb, right stick X =
-    // roll/bank; a third, smaller stick (bottom-center) turns the pilot's
-    // HEAD -- free 360 look, fully decoupled from the plane's actual
-    // heading/travel direction (headingDeg keeps flying wherever it was
-    // pointed; lookYawDeg/lookPitchDeg only change what the camera faces).
+    // Stick roles, per explicit request (re-assigned from the original
+    // Mode 2 RC layout):
+    //  - LEFT  (cloudnav-stick-left, var stickLeft):  Y = throttle
+    //    (forward/back), X = the vector of acceleration of movement --
+    //    i.e. turn rate, steering which way the throttle actually pushes.
+    //  - MIDDLE (cloudnav-stick-look DOM id, var stickLook -- name is a
+    //    leftover from its ORIGINAL job before this re-assignment, kept
+    //    to avoid churning IDs/CSS for no functional reason): Y =
+    //    altitude change (zoom).
+    //  - RIGHT (cloudnav-stick-right, var stickRight): the pilot's HEAD --
+    //    free-look rotation of the view, X = look yaw, Y = look pitch.
+    //    Fully decoupled from the plane's actual heading/travel direction
+    //    (headingDeg keeps flying wherever it was pointed; lookYawDeg/
+    //    lookPitchDeg only change what the camera faces -- but movement
+    //    itself is camera-relative, see cameraBearing below, so turning
+    //    your head does change where "forward" goes).
     //
     // Speed is shown both ways, real units: km/h (from the simulated
     // speed) and on-screen px/s (via the standard Web Mercator meters-
@@ -342,13 +351,11 @@
     //
     // HONEST LIMITATION: MapLibre's camera has yaw (bearing) and pitch,
     // but no roll/bank axis -- there's no way to visually tilt the
-    // horizon like a banking aircraft. Bank input is used the way real
-    // aerodynamics actually uses it functionally (bank angle drives turn
-    // rate), just without the visual roll MapLibre can't render. This is
-    // a simplified arcade flight model (throttle->speed via lerp,
-    // stick->target angular rate), the same real technique documented in
-    // Godot's own "Arcade-style Airplane" recipe -- not full 6DOF
-    // aerodynamics.
+    // horizon like a banking aircraft, so this simplified arcade flight
+    // model (throttle->speed via lerp, stick->target angular rate, the
+    // same real technique documented in Godot's own "Arcade-style
+    // Airplane" recipe) has no bank/roll mechanic at all -- turning is
+    // pure yaw via the left stick.
     const FLIGHT = {
       active: false,
       headingDeg: 0,      // aircraft's actual travel direction, 0-360
@@ -363,9 +370,9 @@
       // altitude looks slow on screen while covering huge ground distance.
       maxSpeedPxPerSec: 60,
       maxTurnRateDegPerSec: 45,
-      maxClimbZoomPerSec: 0.6,
+      maxClimbZoomPerSec: 0.6, // middle stick's Y axis now (altitude/zoom)
       throttleRate: 0.6,   // how fast throttle input reaches target speed (per second)
-      // Third stick: the pilot's HEAD, decoupled from headingDeg (the
+      // Right stick now: the pilot's HEAD, decoupled from headingDeg (the
       // plane's actual travel direction) -- real look-around, not
       // steering. lookYawDeg is a free 360 offset added to headingDeg for
       // the rendered camera bearing; lookPitchDeg is the camera's actual
@@ -463,19 +470,21 @@
       const targetSpeed = throttleInput;
       FLIGHT.speed += (targetSpeed - FLIGHT.speed) * Math.min(1, FLIGHT.throttleRate * dt * 4);
 
-      // Rudder/yaw (left stick X) + roll/bank (right stick X, functional
-      // only -- see the honest-limitation note above) both contribute to
-      // turn rate, banking scaled by current speed like a real aircraft
-      // (banking at a standstill doesn't turn you).
+      // Rudder/yaw (left stick X) = "the vector of acceleration of
+      // movement" -- steers which way the throttle actually pushes. No
+      // bank/roll term anymore: that used to come from the right stick,
+      // which is now dedicated entirely to look/head rotation (below),
+      // not movement.
       const yawRate = stickLeft.x * FLIGHT.maxTurnRateDegPerSec;
-      const bankRate = stickRight.x * FLIGHT.maxTurnRateDegPerSec * FLIGHT.speed;
-      FLIGHT.headingDeg = (FLIGHT.headingDeg + (yawRate + bankRate) * dt + 360) % 360;
+      FLIGHT.headingDeg = (FLIGHT.headingDeg + yawRate * dt + 360) % 360;
 
-      // Pitch/climb (right stick Y, up = -1 = climb) -> zoom-as-altitude.
-      // Zoom DECREASES as you "climb" (standard web-map convention: lower
-      // zoom = wider view = higher altitude).
-      const climbInput = -stickRight.y;
-      FLIGHT.zoom = Math.min(TERRAIN_CONFIG.zoom + 2, Math.max(9,
+      // Middle stick (Y axis) -> altitude change (zoom-as-altitude, same
+      // web-map convention: lower zoom = wider view = higher altitude).
+      // The z9 floor here was a real reported bug -- it silently capped
+      // how high you could climb. Removed; 0 is MapLibre's actual global
+      // minzoom, a real engine limit, not an arbitrary one.
+      const climbInput = -stickLook.y;
+      FLIGHT.zoom = Math.min(TERRAIN_CONFIG.zoom + 2, Math.max(0,
         FLIGHT.zoom - climbInput * FLIGHT.maxClimbZoomPerSec * dt));
 
       // Max speed is set directly in px/s by the slider -- converted to a
@@ -486,17 +495,16 @@
       const metersPerPixel = MERCATOR_M_PER_PX_AT_ZOOM0_EQUATOR * Math.cos(curLat * Math.PI / 180) / Math.pow(2, FLIGHT.zoom);
       const maxSpeedMps = FLIGHT.maxSpeedPxPerSec * metersPerPixel;
 
-      // Third stick: the pilot's head turning. Computed BEFORE movement,
-      // not after -- real bug fix: forward/back used to move along
-      // FLIGHT.headingDeg regardless of where the look-stick had turned
-      // the camera, so looking south and pushing "forward" still flew
-      // whatever direction the nose last pointed, ignoring the view
-      // entirely. Movement is now camera-relative: it goes wherever
-      // you're actually looking (headingDeg + the look offset), matching
-      // how a free-look flight camera is expected to behave.
-      const lookYawRate = stickLook.x * FLIGHT.maxLookRateDegPerSec;
+      // Right stick: the pilot's head turning. Computed BEFORE movement,
+      // not after -- real bug fix (kept from the previous version of this
+      // logic, just now reading from stickRight instead of stickLook):
+      // forward/back used to move along FLIGHT.headingDeg regardless of
+      // where the look-stick had turned the camera. Movement is camera-
+      // relative: it goes wherever you're actually looking (headingDeg +
+      // the look offset).
+      const lookYawRate = stickRight.x * FLIGHT.maxLookRateDegPerSec;
       FLIGHT.lookYawDeg = (FLIGHT.lookYawDeg + lookYawRate * dt + 360) % 360;
-      const lookPitchRate = -stickLook.y * FLIGHT.maxLookRateDegPerSec;
+      const lookPitchRate = -stickRight.y * FLIGHT.maxLookRateDegPerSec;
       FLIGHT.lookPitchDeg = Math.min(TERRAIN_CONFIG.maxPitch, Math.max(0, FLIGHT.lookPitchDeg + lookPitchRate * dt));
       const cameraBearing = (FLIGHT.headingDeg + FLIGHT.lookYawDeg) % 360;
 
@@ -519,8 +527,21 @@
       // HDG now shows cameraBearing, not the old FLIGHT.headingDeg alone --
       // that's the actual direction of travel/view now that movement is
       // camera-relative (see the fix above).
+      //
+      // ALT shows the zoom level AND a real-meters equivalent -- but
+      // honestly: MapLibre has no public "camera altitude in meters"
+      // concept, and I could not verify its internal 3D camera-to-ground
+      // distance formula/constants against this bundled build (checked;
+      // not present/not confirmable). Rather than fabricate a precise-
+      // looking altitude number from an unverified formula, this shows
+      // ground resolution -- the same real, already-verified
+      // metersPerPixel value used for the px/s speed conversion above:
+      // how many real meters one screen pixel covers at the current
+      // zoom/latitude. Smaller = more zoomed in/lower; larger = more
+      // zoomed out/higher -- a real, honest proxy for altitude, not a
+      // precise camera-height claim.
       document.getElementById('cloudnav-flight-text').textContent =
-        `HDG ${Math.round(cameraBearing).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)}`;
+        `HDG ${Math.round(cameraBearing).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)} (~${Math.round(metersPerPixel)}m/px)`;
       // Bar shows MAGNITUDE (a negative CSS width is invalid and would
       // just silently render as 0 -- real bug avoided here, not just
       // theoretical): direction is unambiguous from the +/- sign already
