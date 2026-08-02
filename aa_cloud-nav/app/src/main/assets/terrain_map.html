@@ -52,7 +52,7 @@
     }
     .cloudnav-vpanel-block {
       background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
-      border-radius: 8px; padding: 8px 6px; font: 11px sans-serif;
+      border-radius: 8px; padding: 8px 6px; font: 11px sans-serif; width: 96px;
       text-align: center; display: flex; flex-direction: column; align-items: center;
     }
     .cloudnav-vslider-wrap {
@@ -150,9 +150,10 @@
     #cloudnav-speed-fill {
       width: 100%; height: 0%; background: linear-gradient(0deg, #4caf50, #ffb300 60%, #e53935);
     }
-    #cloudnav-speed-label { margin-top: 3px; font-size: 11px; color: #cdd6e8; }
-    #cloudnav-maxspeed-row { margin-top: 6px; font-size: 11px; color: #cdd6e8; }
+    #cloudnav-speed-label { margin-top: 5px; font-size: 10px; color: #cdd6e8; }
+    #cloudnav-maxspeed-row { margin-top: 6px; font-size: 10px; color: #cdd6e8; width: 100%; }
     #cloudnav-maxspeed-row input[type=range] { width: 100%; vertical-align: middle; }
+    #cloudnav-latlon { margin-top: 3px; font-size: 11px; color: #cdd6e8; }
   </style>
 </head>
 <body>
@@ -174,14 +175,14 @@
       <div id="cloudnav-compass-marker">&#9650;</div>
     </div>
     <div id="cloudnav-flight-text"></div>
-    <div id="cloudnav-speed-label"></div>
-    <div id="cloudnav-maxspeed-row">
-      Max speed: <span id="cloudnav-maxspeed-value"></span> px/s
-      <input type="range" id="cloudnav-maxspeed-slider" min="2" max="200" step="1" />
-    </div>
+    <div id="cloudnav-latlon"></div>
   </div>
   <!-- Left-side vertical panel: exaggeration slider stacked above the
-       speed bar, both real vertical controls, per explicit request. -->
+       speed bar, both real vertical controls, per explicit request. Max-
+       speed control lives in the SAME speed block now too -- it used to
+       sit up in the top HUD, split apart from the speed bar it actually
+       configures, which read as "the speed menu isn't really on the left
+       like asked." -->
   <div id="cloudnav-left-panel">
     <div class="cloudnav-vpanel-block">
       <div>Exag <span id="cloudnav-exag-value"></span>x</div>
@@ -192,6 +193,11 @@
     <div class="cloudnav-vpanel-block">
       <div>Speed</div>
       <div class="cloudnav-vbar-track"><div id="cloudnav-speed-fill"></div></div>
+      <div id="cloudnav-speed-label"></div>
+      <div id="cloudnav-maxspeed-row">
+        Max: <span id="cloudnav-maxspeed-value"></span> px/s
+        <input type="range" id="cloudnav-maxspeed-slider" min="2" max="200" step="1" />
+      </div>
     </div>
   </div>
   <script>
@@ -579,6 +585,10 @@
       // precise camera-height claim.
       document.getElementById('cloudnav-flight-text').textContent =
         `HDG ${Math.round(cameraBearing).toString().padStart(3, '0')}°  ALT z${FLIGHT.zoom.toFixed(1)} (~${Math.round(metersPerPixel)}m/px)`;
+      // 4 decimal places ~= 11m precision at the equator -- plenty for
+      // "where am I roughly" without a false sense of GPS-grade precision.
+      document.getElementById('cloudnav-latlon').textContent =
+        `${lat2 >= 0 ? 'N' : 'S'} ${Math.abs(lat2).toFixed(4)}°  ${lon2 >= 0 ? 'E' : 'W'} ${Math.abs(lon2).toFixed(4)}°`;
       // Bar shows MAGNITUDE (a negative CSS width is invalid and would
       // just silently render as 0 -- real bug avoided here, not just
       // theoretical): direction is unambiguous from the +/- sign already
