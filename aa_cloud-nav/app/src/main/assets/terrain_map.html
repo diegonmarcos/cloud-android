@@ -24,10 +24,18 @@
   <script src="maplibre-gl.js"></script>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #0d1117; }
+    #cloudnav-sat-toggle {
+      position: absolute; left: 10px; bottom: 30px; z-index: 2;
+      background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
+      border-radius: 6px; padding: 8px 12px; font: 13px sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #cloudnav-sat-toggle.active { background: #2b6cb0dd; border-color: #6fb1ff; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <button id="cloudnav-sat-toggle">🛰️ Satellite drape: off</button>
   <script>
     // Tweak these by hand and reload — no rebuild needed, this file loads
     // straight from assets. exaggeration/hillshadeExaggeration/shadowColor
@@ -49,12 +57,64 @@
       // shadow than a generic render — verified against their published code.
       hillshadeShadowColor: '#473B24',
       skySunIntensity: 8,
+      // Mapterhorn, not the old AWS elevation-tiles-prod (Terrarium/Joerd)
+      // bucket -- MapLibre's own official "3D Terrain" example switched to
+      // this source. Verified live (curl: HTTP 200 real webp tiles) and
+      // verified real coverage up to z17 right at the Matterhorn (z18
+      // 404s, so maxzoom below is measured, not guessed). Same 'terrarium'
+      // pixel encoding as before, so no decode-side code changes needed --
+      // only the source URL/tileSize/maxzoom differ. Requires attribution
+      // per mapterhorn.com/attribution; see the addSource call below.
       demSource: {
-        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        maxzoom: 15,
+        tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'],
+        tileSize: 512,
+        maxzoom: 17,
+        attribution: '© Mapterhorn',
       },
     };
+
+    // Photorealistic satellite drape over the same 3D terrain mesh, toggled
+    // by the on-screen button -- technique verified against MapLibre's own
+    // "Display a hybrid satellite map with terrain elevation" example
+    // (insert the raster layer directly below the hillshade layer so it's
+    // still shaded, with vector roads/labels drawn above it, instead of
+    // replacing the whole style). Tiles verified live (curl: HTTP 200 real
+    // jpeg). LICENSE NOTE: EOX's Sentinel-2 cloudless 2018-2024 layers are
+    // CC BY-NC-SA 4.0 -- non-commercial use only. Fine for this personal
+    // app; do NOT ship this in anything commercial without EOX's paid
+    // Commercial Attribution-RestrictedUse license instead.
+    const SATELLITE_CONFIG = {
+      tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg'],
+      tileSize: 256,
+      maxzoom: 14,
+      attribution: 'Sentinel-2 cloudless — s2maps.eu by EOX IT Services GmbH (CC BY-NC-SA 4.0, contains modified Copernicus Sentinel data 2020)',
+    };
+    let satelliteOn = false;
+    function toggleSatelliteDrape() {
+      const btn = document.getElementById('cloudnav-sat-toggle');
+      if (satelliteOn) {
+        if (map.getLayer('cloudnav-satellite')) map.removeLayer('cloudnav-satellite');
+        if (map.getSource('cloudnav-satellite')) map.removeSource('cloudnav-satellite');
+        satelliteOn = false;
+      } else {
+        map.addSource('cloudnav-satellite', {
+          type: 'raster',
+          tiles: SATELLITE_CONFIG.tiles,
+          tileSize: SATELLITE_CONFIG.tileSize,
+          maxzoom: SATELLITE_CONFIG.maxzoom,
+          attribution: SATELLITE_CONFIG.attribution,
+        });
+        // Inserted directly below the hillshade layer so hillshade still
+        // shades the satellite imagery (matches how real terrain photos
+        // look under raking light), while vector roads/labels above the
+        // hillshade layer stay on top and readable.
+        map.addLayer({ id: 'cloudnav-satellite', type: 'raster', source: 'cloudnav-satellite' },
+          map.getLayer('cloudnav-terrain-hillshade') ? 'cloudnav-terrain-hillshade' : firstSymbolLayerId());
+        satelliteOn = true;
+      }
+      btn.textContent = satelliteOn ? '🛰️ Satellite drape: on' : '🛰️ Satellite drape: off';
+      btn.classList.toggle('active', satelliteOn);
+    }
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -68,6 +128,13 @@
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
     map.addControl(new maplibregl.GlobeControl());
+    // Built-in MapLibre control (maplibregl.TerrainControl, same one used in
+    // MapLibre's own official 3D-terrain example) -- a real on-map button to
+    // toggle terrain on/off, not a custom hack.
+    map.addControl(new maplibregl.TerrainControl({
+      source: 'cloudnav-terrain-dem',
+      exaggeration: TERRAIN_CONFIG.exaggeration,
+    }));
 
     map.on('load', () => {
       // Globe at extreme zoom-out, morphing to flat Mercator as you zoom in —
@@ -87,6 +154,7 @@
         tileSize: TERRAIN_CONFIG.demSource.tileSize,
         encoding: 'terrarium',
         maxzoom: TERRAIN_CONFIG.demSource.maxzoom,
+        attribution: TERRAIN_CONFIG.demSource.attribution,
       });
       map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: TERRAIN_CONFIG.exaggeration });
 
@@ -138,6 +206,8 @@
     window.cloudNavRecenter = function (lat, lon, zoom) {
       map.flyTo({ center: [lon, lat], zoom: zoom || map.getZoom(), essential: true });
     };
+
+    document.getElementById('cloudnav-sat-toggle').addEventListener('click', toggleSatelliteDrape);
   </script>
 </body>
 </html>
