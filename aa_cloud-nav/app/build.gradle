@@ -263,7 +263,14 @@ dependencies {
     // instead of file://, because Chromium's fetch() blocks file:// requests
     // by CORS policy (the real cause of MilkyWayActivity's black screen:
     // galaxy_map.html's fetch() calls for star data were silently failing).
-    implementation 'androidx.webkit:webkit:1.16.0'
+    // Pinned to 1.12.1, NOT latest (1.16.0) -- 1.16.0's bundled Kotlin
+    // metadata (2.1.0) is newer than this project's pinned Kotlin 1.9.0
+    // compiler can read ("Class 'kotlin.Unit' was compiled with an
+    // incompatible version of Kotlin"), which broke CI on the first push
+    // (same failure class as the MapLibre 13.4.1 revert earlier in this
+    // project's history). WebViewAssetLoader itself has been stable API
+    // since 1.0.0, so nothing functional is lost by not using latest.
+    implementation 'androidx.webkit:webkit:1.12.1'
 
     androidTestImplementation 'androidx.test:runner:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
