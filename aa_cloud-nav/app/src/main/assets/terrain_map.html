@@ -29,19 +29,40 @@
 <body>
   <div id="map"></div>
   <script>
-    const map = new maplibregl.Map({
-      container: 'map',
-      style: 'https://tiles.openfreemap.org/styles/liberty',
-      // Matterhorn (7.6586, 45.9763) — real named peak, not a generic town center.
-      // The old center [8.5, 46.8] sat in a populated valley where Liberty's
-      // fill-extrusion buildings visually swamped the (real but subtle) DEM
-      // relief at exaggeration 1.4, reading as "just buildings" — not fake
-      // terrain, just terrain nobody could actually see. Kotlin side
-      // re-centers via flyTo/cloudNavRecenter regardless.
-      center: [7.6586, 45.9763],
+    // Tweak these by hand and reload — no rebuild needed, this file loads
+    // straight from assets. exaggeration/hillshadeExaggeration/shadowColor
+    // are the knobs that most affect how "mountain-y" this looks.
+    const TERRAIN_CONFIG = {
+      center: [7.6586, 45.9763], // Matterhorn — real named peak, not a generic town
       zoom: 12.2,
       pitch: 70,
       maxPitch: 85,
+      // 1.4 was numerically real terrain but visually indistinguishable from
+      // flat ground next to Liberty's building extrusions — 1.8 is a value
+      // commonly used by terrain-demo maps specifically so alpine relief
+      // reads clearly at typical mobile pitch/zoom.
+      exaggeration: 1.8,
+      hillshadeExaggeration: 0.5,
+      // Default MapLibre hillshade shadow is flat gray-blue; MapLibre's own
+      // official 3D-terrain example (maplibre.org/maplibre-gl-js/docs/examples/3d-terrain)
+      // uses this warm brown instead, which reads more like real rock/soil
+      // shadow than a generic render — verified against their published code.
+      hillshadeShadowColor: '#473B24',
+      skySunIntensity: 8,
+      demSource: {
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        maxzoom: 15,
+      },
+    };
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: TERRAIN_CONFIG.center,
+      zoom: TERRAIN_CONFIG.zoom,
+      pitch: TERRAIN_CONFIG.pitch,
+      maxPitch: TERRAIN_CONFIG.maxPitch,
       hash: false,
     });
 
@@ -62,22 +83,21 @@
 
       map.addSource('cloudnav-terrain-dem', {
         type: 'raster-dem',
-        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-        tileSize: 256,
+        tiles: TERRAIN_CONFIG.demSource.tiles,
+        tileSize: TERRAIN_CONFIG.demSource.tileSize,
         encoding: 'terrarium',
-        maxzoom: 15,
+        maxzoom: TERRAIN_CONFIG.demSource.maxzoom,
       });
-      // 1.4 was numerically real terrain but visually indistinguishable from
-      // flat ground next to Liberty's building extrusions — bumped to 1.8,
-      // a value commonly used by terrain-demo maps specifically so alpine
-      // relief reads clearly at typical mobile pitch/zoom.
-      map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: 1.8 });
+      map.setTerrain({ source: 'cloudnav-terrain-dem', exaggeration: TERRAIN_CONFIG.exaggeration });
 
       map.addLayer({
         id: 'cloudnav-terrain-hillshade',
         type: 'hillshade',
         source: 'cloudnav-terrain-dem',
-        paint: { 'hillshade-exaggeration': 0.5 },
+        paint: {
+          'hillshade-exaggeration': TERRAIN_CONFIG.hillshadeExaggeration,
+          'hillshade-shadow-color': TERRAIN_CONFIG.hillshadeShadowColor,
+        },
       }, firstSymbolLayerId());
 
       // Sky + atmosphere layer (GL JS 'sky' layer type, supported since v3,
@@ -89,7 +109,7 @@
         type: 'sky',
         paint: {
           'sky-type': 'atmosphere',
-          'sky-atmosphere-sun-intensity': 8,
+          'sky-atmosphere-sun-intensity': TERRAIN_CONFIG.skySunIntensity,
         },
       });
 
