@@ -24,13 +24,20 @@
   <script src="maplibre-gl.js"></script>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #0d1117; }
-    #cloudnav-sat-toggle {
-      position: absolute; left: 10px; bottom: 30px; z-index: 2;
-      background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
-      border-radius: 6px; padding: 8px 12px; font: 13px sans-serif;
-      -webkit-tap-highlight-color: transparent;
+    /* Vertically center the WHOLE top-right control stack (zoom, compass,
+       globe, terrain, pitch-toggle, satellite -- all of them, added via
+       real map.addControl(..., 'top-right') calls below) on the right
+       edge, instead of MapLibre's default top-anchored placement. */
+    .maplibregl-ctrl-top-right {
+      top: 50%; bottom: auto; transform: translateY(-50%);
     }
-    #cloudnav-sat-toggle.active { background: #2b6cb0dd; border-color: #6fb1ff; }
+    /* Our custom buttons (pitch-toggle, satellite) use MapLibre's own
+       maplibregl-ctrl/maplibregl-ctrl-group classes so they're pixel-
+       consistent with the built-in zoom/compass/globe/terrain buttons --
+       just an emoji glyph instead of MapLibre's own icon sprite, since
+       there's no custom icon in its spritesheet for either of these. */
+    .cloudnav-ctrl-btn { font-size: 16px; }
+    .cloudnav-ctrl-btn.active { background: #2b6cb0; }
     #cloudnav-exag-panel {
       position: absolute; left: 10px; top: 10px; z-index: 2;
       background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
@@ -45,7 +52,6 @@
     Exaggeration: <span id="cloudnav-exag-value"></span>x
     <input type="range" id="cloudnav-exag-slider" min="1" max="100" step="1" />
   </div>
-  <button id="cloudnav-sat-toggle">🛰️ Satellite drape: off</button>
   <script>
     // Tweak these by hand and reload — no rebuild needed, this file loads
     // straight from assets. exaggeration/hillshadeExaggeration/shadowColor
@@ -55,8 +61,8 @@
     // #cloudnav-exag-slider) that changes it live and persists the choice
     // via localStorage, since editing a bundled asset file isn't something
     // an installed app can actually do.
-    // Rounded + clamped so a leftover decimal value saved before the
-    // 1x-20x whole-step range was added doesn't render oddly.
+    // Rounded + clamped so a leftover decimal/out-of-range value saved
+    // before the range was widened to 1x-100x doesn't render oddly.
     const savedExaggeration = Math.round(parseFloat(localStorage.getItem('cloudnav_exaggeration')));
     const TERRAIN_CONFIG = {
       center: [7.6586, 45.9763], // Matterhorn — real named peak, not a generic town
@@ -65,8 +71,8 @@
       maxPitch: 85,
       // 1.4 (real terrain, no exaggeration) was visually indistinguishable
       // from flat ground next to Liberty's building extrusions. Slider
-      // range is 1x-20x, whole steps only (per request), default 3x.
-      exaggeration: Number.isFinite(savedExaggeration) ? Math.min(20, Math.max(1, savedExaggeration)) : 3,
+      // range is 1x-100x, whole steps only (per request), default 3x.
+      exaggeration: Number.isFinite(savedExaggeration) ? Math.min(100, Math.max(1, savedExaggeration)) : 3,
       hillshadeExaggeration: 0.5,
       // Default MapLibre hillshade shadow is flat gray-blue; MapLibre's own
       // official 3D-terrain example (maplibre.org/maplibre-gl-js/docs/examples/3d-terrain)
@@ -107,8 +113,7 @@
       attribution: 'Sentinel-2 cloudless — s2maps.eu by EOX IT Services GmbH (CC BY-NC-SA 4.0, contains modified Copernicus Sentinel data 2020)',
     };
     let satelliteOn = false;
-    function toggleSatelliteDrape() {
-      const btn = document.getElementById('cloudnav-sat-toggle');
+    function toggleSatelliteDrape(btn) {
       if (satelliteOn) {
         if (map.getLayer('cloudnav-satellite')) map.removeLayer('cloudnav-satellite');
         if (map.getSource('cloudnav-satellite')) map.removeSource('cloudnav-satellite');
@@ -129,7 +134,9 @@
           map.getLayer('cloudnav-terrain-hillshade') ? 'cloudnav-terrain-hillshade' : firstSymbolLayerId());
         satelliteOn = true;
       }
-      btn.textContent = satelliteOn ? '🛰️ Satellite drape: on' : '🛰️ Satellite drape: off';
+      // Icon-only FAB now -- on/off state shown via the .active background
+      // color (set below) plus this title tooltip, not button text.
+      btn.title = satelliteOn ? 'Satellite drape: on' : 'Satellite drape: off';
       btn.classList.toggle('active', satelliteOn);
     }
 
@@ -143,15 +150,55 @@
       hash: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
-    map.addControl(new maplibregl.GlobeControl());
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+    map.addControl(new maplibregl.GlobeControl(), 'top-right');
     // Built-in MapLibre control (maplibregl.TerrainControl, same one used in
     // MapLibre's own official 3D-terrain example) -- a real on-map button to
     // toggle terrain on/off, not a custom hack.
     map.addControl(new maplibregl.TerrainControl({
       source: 'cloudnav-terrain-dem',
       exaggeration: TERRAIN_CONFIG.exaggeration,
-    }));
+    }), 'top-right');
+
+    // Minimal custom-control factory, using MapLibre's own documented
+    // pattern (container class 'maplibregl-ctrl maplibregl-ctrl-group',
+    // real IControl onAdd/onRemove interface -- verified against
+    // TerrainControl's own source) so our buttons stack and look exactly
+    // like the built-in ones instead of a separately-floating overlay.
+    function makeButtonControl(iconText, initialTitle, onClick) {
+      let container, btn;
+      return {
+        onAdd() {
+          container = document.createElement('div');
+          container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'cloudnav-ctrl-btn';
+          btn.textContent = iconText;
+          btn.title = initialTitle;
+          btn.addEventListener('click', () => onClick(btn));
+          container.appendChild(btn);
+          return container;
+        },
+        onRemove() { container.remove(); },
+      };
+    }
+
+    // Real two-way pitch toggle. MapLibre's own compass button (above,
+    // NavigationControl with visualizePitch:true) only resets to flat --
+    // confirmed against its actual source (navigation_control.ts calls
+    // map.resetNorthPitch(), which always goes to pitch 0, never back to
+    // a tilted view). This button fills that gap: flat <-> the terrain
+    // view's original isometric pitch, both ways.
+    map.addControl(makeButtonControl('⛰️', 'Tilt to isometric view', (btn) => {
+      const goingIsometric = map.getPitch() < 5;
+      map.easeTo({ pitch: goingIsometric ? TERRAIN_CONFIG.pitch : 0 });
+      btn.title = goingIsometric ? 'Flatten to top-down view' : 'Tilt to isometric view';
+    }), 'top-right');
+
+    map.addControl(makeButtonControl('🛰️', 'Satellite drape: off', (btn) => {
+      toggleSatelliteDrape(btn);
+    }), 'top-right');
 
     map.on('load', () => {
       // Globe at extreme zoom-out, morphing to flat Mercator as you zoom in —
@@ -223,8 +270,6 @@
     window.cloudNavRecenter = function (lat, lon, zoom) {
       map.flyTo({ center: [lon, lat], zoom: zoom || map.getZoom(), essential: true });
     };
-
-    document.getElementById('cloudnav-sat-toggle').addEventListener('click', toggleSatelliteDrape);
 
     // Live-editable exaggeration slider -- calls map.setTerrain() directly
     // (real MapLibre API, can be re-called any time to change an already-
