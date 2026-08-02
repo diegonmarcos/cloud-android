@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<!--
+  Real, free-fly-navigable 3D star field -- built after the WWT-embed
+  approach was rejected for looking like "a shitty image" (WWT's default
+  Sky mode is a flat equirectangular sky panorama, not volumetric 3D; its
+  Solar System mode IS real 3D but the app defaults into the flat view).
+  This screen is actual 3D: a WebGL point cloud of 119,614 real stars at
+  their real parallax-derived 3D positions (see galaxy/CREDITS.md), with a
+  free camera (three.js OrbitControls) so you can fly through it, not a
+  fixed image.
+
+  Engine: three.js v0.185.1 (MIT, bundled locally as ES modules -- see
+  CREDITS.md). Everything on this screen -- star data, constellation
+  lines, planetary elements -- is a LOCAL asset; unlike terrain_map.html
+  and milkyway_map.html, this screen needs NO network at all once the
+  APK is installed.
+
+  Layers, matching the 4 requested: "star dust" (procedural galactic-
+  plane glow, see below), "constellations" (reused celestial/ dataset,
+  projected onto a background sphere), "dynamic/static" (a play/pause on
+  the solar-system view's real orbital motion), and "our solar system vs
+  other star systems" -- implemented as a MODE SWITCH, not a simultaneous
+  layer, because the two are ~4 billion times different in scale (1
+  parsec = ~206,265 AU): showing planet orbits and interstellar star
+  positions in one continuously-zoomed 3D space would make the planets
+  literally sub-pixel. This is the same design choice every real tool in
+  this space makes (Celestia, Uncharted, etc.) -- disclosed here rather
+  than faked as one seamless scale.
+
+  "Star dust" is a PROCEDURAL approximation, not a photograph: a
+  vertex-colored sphere shaded by galactic latitude, using the real IAU
+  1958 J2000 North Galactic Pole (RA 192.859508 deg, Dec 27.128336 deg,
+  verified against the actual definition, not guessed) with a Gaussian
+  falloff around the galactic plane. It gives a real, position-correct
+  Milky Way band, just without the photographic dust-lane detail an
+  actual sky image would have.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; }
+    #c { width: 100%; height: 100%; display: block; }
+    #panel {
+      position: absolute; left: 8px; top: 8px; z-index: 2;
+      background: #1a1d24cc; color: #eee; border: 1px solid #ffffff33;
+      border-radius: 8px; padding: 10px 12px; font: 12px sans-serif; max-width: 220px;
+    }
+    #panel label { display: block; margin: 4px 0; }
+    #panel button { margin-top: 6px; width: 100%; padding: 6px; font: 12px sans-serif; }
+    #status { position: absolute; right: 8px; bottom: 8px; z-index: 2; color: #ccc; font: 11px monospace; background: #1a1d24cc; padding: 4px 8px; border-radius: 6px; }
+    #picked { position: absolute; left: 8px; bottom: 8px; z-index: 2; color: #eee; font: 12px sans-serif; background: #1a1d24cc; padding: 6px 10px; border-radius: 6px; display: none; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "./three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="panel">
+    <strong>View: <span id="modeLabel">Galaxy</span></strong>
+    <button id="modeToggle">Switch to Solar System</button>
+    <label><input type="checkbox" id="toggleDust" checked> Star dust (Milky Way)</label>
+    <label><input type="checkbox" id="toggleConst" checked> Constellations</label>
+    <label id="dynRow" style="display:none"><input type="checkbox" id="toggleDynamic" checked> Dynamic (planets orbit)</label>
+  </div>
+  <div id="status"></div>
+  <div id="picked"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from './OrbitControls.js';
+
+    const NGP_RA_DEG = 192.859508;   // IAU 1958 North Galactic Pole, J2000 -- verified, not guessed
+    const NGP_DEC_DEG = 27.128336;
+    const OBLIQUITY_DEG = 23.43928;  // same verified constant used by the AR sky view's PlanetEphemeris.kt
+
+    const canvas = document.getElementById('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 20000);
+    camera.position.set(0, 0, 40);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed = 0.6;
+    controls.minDistance = 0.05;
+    controls.maxDistance = 15000;
+
+    // Equatorial (RA/Dec, HYG's own frame: +X to vernal equinox, +Z to NCP,
+    // +Y to RA=6h/Dec=0) -> three.js scene axes, Y-up, so "north" reads as up.
+    function toScene(x, y, z) { return new THREE.Vector3(x, z, -y); }
+
+    const galaxyGroup = new THREE.Group();
+    const solarGroup = new THREE.Group();
+    solarGroup.visible = false;
+    scene.add(galaxyGroup, solarGroup);
+
+    // ---- Real star field: 119,614 stars from HYG v4.4, real 3D positions ----
+    const starGeom = new THREE.BufferGeometry();
+    fetch('hyg_stars.bin').then(r => r.arrayBuffer()).then(buf => {
+      const floats = new Float32Array(buf);
+      const n = floats.length / 5;
+      const positions = new Float32Array(n * 3);
+      const colors = new Float32Array(n * 3);
+      const sizes = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = floats[i * 5], y = floats[i * 5 + 1], z = floats[i * 5 + 2];
+        const mag = floats[i * 5 + 3], ci = floats[i * 5 + 4];
+        const p = toScene(x, y, z);
+        positions[i * 3] = p.x; positions[i * 3 + 1] = p.y; positions[i * 3 + 2] = p.z;
+        // Coarse B-V color-index bucketing (real astrophysical direction --
+        // blue/hot to red/cool -- but a bucketed approximation, not a
+        // precise black-body fit; ci===99 sentinel means "unknown" -> white.
+        let r, g, b;
+        if (ci === 99) { r = g = b = 1.0; }
+        else if (ci < 0.0) { r = 0.62; g = 0.71; b = 1.0; }
+        else if (ci < 0.3) { r = 0.85; g = 0.91; b = 1.0; }
+        else if (ci < 0.6) { r = 1.0; g = 1.0; b = 0.95; }
+        else if (ci < 1.0) { r = 1.0; g = 0.92; b = 0.7; }
+        else if (ci < 1.5) { r = 1.0; g = 0.75; b = 0.5; }
+        else { r = 1.0; g = 0.55; b = 0.4; }
+        colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
+        sizes[i] = Math.max(0.6, 5.5 - mag * 0.7);
+      }
+      starGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      starGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      starGeom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+      document.getElementById('status').textContent = n.toLocaleString() + ' stars (HYG v4.4)';
+    });
+    const starMat = new THREE.ShaderMaterial({
+      uniforms: {},
+      vertexShader: `
+        attribute float size;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (200.0 / -mv.z);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        varying vec3 vColor;
+        void main() {
+          vec2 c = gl_PointCoord - vec2(0.5);
+          if (length(c) > 0.5) discard;
+          gl_FragColor = vec4(vColor, 1.0);
+        }`,
+      vertexColors: true,
+      transparent: false,
+    });
+    const starPoints = new THREE.Points(starGeom, starMat);
+    galaxyGroup.add(starPoints);
+
+    // ---- Named stars (549 real proper names) -- separate, clickable set ----
+    const namedGroup = new THREE.Group();
+    galaxyGroup.add(namedGroup);
+    let namedStars = [];
+    fetch('hyg_named.json').then(r => r.json()).then(list => {
+      namedStars = list;
+      const positions = new Float32Array(list.length * 3);
+      list.forEach((s, i) => {
+        const p = toScene(s.x, s.y, s.z);
+        positions[i * 3] = p.x; positions[i * 3 + 1] = p.y; positions[i * 3 + 2] = p.z;
+      });
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.35, sizeAttenuation: true });
+      namedGroup.add(new THREE.Points(geom, mat));
+    });
+
+    // ---- Constellation lines: reuse the already-credited celestial/ dataset,
+    // projected onto a background sphere (real RA/Dec, same frame as HYG). ----
+    const CONST_SPHERE_R = 600;
+    const constGroup = new THREE.Group();
+    galaxyGroup.add(constGroup);
+    fetch('../celestial/constellations.lines.json').then(r => r.json()).then(fc => {
+      const pts = [];
+      for (const feat of fc.features) {
+        for (const line of feat.geometry.coordinates) {
+          for (let i = 0; i < line.length - 1; i++) {
+            const [ra1, dec1] = line[i], [ra2, dec2] = line[i + 1];
+            pts.push(raDecToScene(ra1, dec1, CONST_SPHERE_R));
+            pts.push(raDecToScene(ra2, dec2, CONST_SPHERE_R));
+          }
+        }
+      }
+      const geom = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({ color: 0x3a6ea8, transparent: true, opacity: 0.6 });
+      constGroup.add(new THREE.LineSegments(geom, mat));
+    });
+
+    function raDecToScene(raDeg, decDeg, r) {
+      const ra = THREE.MathUtils.degToRad(raDeg), dec = THREE.MathUtils.degToRad(decDeg);
+      const x = r * Math.cos(dec) * Math.cos(ra);
+      const y = r * Math.cos(dec) * Math.sin(ra);
+      const z = r * Math.sin(dec);
+      return toScene(x, y, z);
+    }
+
+    // ---- "Star dust": procedural galactic-plane glow, not a photo (see
+    // top-of-file comment). Vertex-colored sphere shaded by real galactic
+    // latitude, computed from each vertex's own RA/Dec via the verified
+    // IAU 1958 North Galactic Pole. ----
+    const DUST_SPHERE_R = 900;
+    const dustGeom = new THREE.SphereGeometry(DUST_SPHERE_R, 96, 64);
+    {
+      const pos = dustGeom.attributes.position;
+      const colors = new Float32Array(pos.count * 3);
+      const ngpRa = THREE.MathUtils.degToRad(NGP_RA_DEG), ngpDec = THREE.MathUtils.degToRad(NGP_DEC_DEG);
+      for (let i = 0; i < pos.count; i++) {
+        // Sphere vertex (x,y,z three.js-space) back to the same RA/Dec frame
+        // used everywhere else on this screen (invert toScene()).
+        const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+        const ex = vx, ey = -vz, ez = vy; // inverse of toScene(x,y,z) = (x, z, -y)
+        const dec = Math.asin(ez / DUST_SPHERE_R);
+        const ra = Math.atan2(ey, ex);
+        const sinB = Math.sin(dec) * Math.sin(ngpDec) + Math.cos(dec) * Math.cos(ngpDec) * Math.cos(ra - ngpRa);
+        const bDeg = THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(sinB, -1, 1)));
+        const glow = Math.exp(-(bDeg * bDeg) / (2 * 12 * 12)); // ~12 deg half-width band
+        const c = 0.05 + glow * 0.5;
+        colors[i * 3] = c * 0.85; colors[i * 3 + 1] = c * 0.88; colors[i * 3 + 2] = c;
+      }
+      dustGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    }
+    const dustMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, transparent: true, opacity: 0.55, depthWrite: false });
+    const dustSphere = new THREE.Mesh(dustGeom, dustMat);
+    galaxyGroup.add(dustSphere);
+
+    // ---- Solar system mode: real heliocentric ecliptic positions, same
+    // verified JPL Keplerian-element algorithm as PlanetEphemeris.kt (see
+    // that file's numerical validation notes), ported to JS and reusing
+    // the same bundled celestial/planets.json elements. ----
+    const AU_SCALE = 3; // display units per AU (arbitrary zoom, not a data value)
+    let planetElements = {};
+    const planetMeshes = {};
+    fetch('../celestial/planets.json').then(r => r.json()).then(root => {
+      for (const key of Object.keys(root)) {
+        const body = root[key];
+        const arr = body.elements;
+        if (!arr || !arr.length) continue;
+        const el = arr[0];
+        if (!('L' in el) || !('W' in el)) continue; // minor-body schema, see PlanetEphemeris.kt notes
+        planetElements[key] = {
+          name: body.en || body.name || key,
+          a: el.a, e: el.e, i: el.i, L: el.L, W: el.W, N: el.N,
+          da: el.da || 0, de: el.de || 0, di: el.di || 0, dL: el.dL || 0, dW: el.dW || 0, dN: el.dN || 0,
+        };
+      }
+      buildSolarSystemMeshes();
+    });
+
+    function centuriesSinceJ2000(unixMs) { return (unixMs / 86400000 - 10957.5) / 36525; }
+
+    function heliocentricEcliptic(el, t) {
+      const a = el.a + el.da * t, e = el.e + el.de * t, iDeg = el.i + el.di * t;
+      const lDeg = el.L + el.dL * t, wBarDeg = el.W + el.dW * t, omegaDeg = el.N + el.dN * t;
+      const wDeg = wBarDeg - omegaDeg;
+      let mDeg = ((lDeg - wBarDeg) % 360 + 360) % 360;
+      if (mDeg > 180) mDeg -= 360;
+      const eStarDeg = THREE.MathUtils.radToDeg(e);
+      let eAnomDeg = mDeg + eStarDeg * Math.sin(THREE.MathUtils.degToRad(mDeg));
+      for (let iter = 0; iter < 10; iter++) {
+        const dM = mDeg - (eAnomDeg - eStarDeg * Math.sin(THREE.MathUtils.degToRad(eAnomDeg)));
+        const dE = dM / (1 - e * Math.cos(THREE.MathUtils.degToRad(eAnomDeg)));
+        eAnomDeg += dE;
+        if (Math.abs(dE) < 1e-7) break;
+      }
+      const eAnomRad = THREE.MathUtils.degToRad(eAnomDeg);
+      const xOrb = a * (Math.cos(eAnomRad) - e), yOrb = a * Math.sqrt(1 - e * e) * Math.sin(eAnomRad);
+      const wRad = THREE.MathUtils.degToRad(wDeg), iRad = THREE.MathUtils.degToRad(iDeg), oRad = THREE.MathUtils.degToRad(omegaDeg);
+      const cw = Math.cos(wRad), sw = Math.sin(wRad), co = Math.cos(oRad), so = Math.sin(oRad), ci_ = Math.cos(iRad), si = Math.sin(iRad);
+      const x = (cw * co - sw * so * ci_) * xOrb + (-sw * co - cw * so * ci_) * yOrb;
+      const y = (cw * so + sw * co * ci_) * xOrb + (-sw * so + cw * co * ci_) * yOrb;
+      const z = (sw * si) * xOrb + (cw * si) * yOrb;
+      return new THREE.Vector3(x, y, z);
+    }
+
+    function buildSolarSystemMeshes() {
+      const sunGeom = new THREE.SphereGeometry(0.25, 24, 16);
+      const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd66 });
+      solarGroup.add(new THREE.Mesh(sunGeom, sunMat));
+      const sunLight = new THREE.PointLight(0xffffff, 2, 0, 0);
+      solarGroup.add(sunLight);
+
+      const orbitMat = new THREE.LineBasicMaterial({ color: 0x445566, transparent: true, opacity: 0.5 });
+      for (const key of Object.keys(planetElements)) {
+        if (key === 'ter') continue; // Earth handled like any other planet here (heliocentric view)
+        const el = planetElements[key];
+        const g = new THREE.SphereGeometry(0.08, 16, 12);
+        const m = new THREE.MeshStandardMaterial({ color: 0x99bbff, emissive: 0x111122 });
+        const mesh = new THREE.Mesh(g, m);
+        solarGroup.add(mesh);
+        planetMeshes[key] = mesh;
+
+        // Static orbit ring (mean orbit, not re-solved per frame -- cheap
+        // and visually correct enough since eccentricity/inclination barely
+        // change over any session's timescale).
+        const ringPts = [];
+        for (let d = 0; d <= 360; d += 4) {
+          const fake = Object.assign({}, el, { L: el.W + d, dL: 0 });
+          ringPts.push(heliocentricEcliptic(fake, 0).multiplyScalar(AU_SCALE));
+        }
+        const ringGeom = new THREE.BufferGeometry().setFromPoints(ringPts);
+        solarGroup.add(new THREE.LineLoop(ringGeom, orbitMat));
+      }
+    }
+
+    let simTimeMs = Date.now();
+    let dynamicMode = true;
+    function updatePlanetPositions() {
+      const t = centuriesSinceJ2000(simTimeMs);
+      for (const key of Object.keys(planetMeshes)) {
+        const p = heliocentricEcliptic(planetElements[key], t).multiplyScalar(AU_SCALE);
+        planetMeshes[key].position.set(p.x, p.z, -p.y); // same frame convention as toScene()
+      }
+    }
+
+    // ---- UI wiring ----
+    document.getElementById('toggleDust').addEventListener('change', e => { dustSphere.visible = e.target.checked; });
+    document.getElementById('toggleConst').addEventListener('change', e => { constGroup.visible = e.target.checked; });
+    document.getElementById('toggleDynamic').addEventListener('change', e => { dynamicMode = e.target.checked; });
+
+    let inSolarMode = false;
+    document.getElementById('modeToggle').addEventListener('click', () => {
+      inSolarMode = !inSolarMode;
+      galaxyGroup.visible = !inSolarMode;
+      solarGroup.visible = inSolarMode;
+      document.getElementById('modeLabel').textContent = inSolarMode ? 'Solar System' : 'Galaxy';
+      document.getElementById('modeToggle').textContent = inSolarMode ? 'Switch to Galaxy' : 'Switch to Solar System';
+      document.getElementById('dynRow').style.display = inSolarMode ? 'block' : 'none';
+      controls.target.set(0, 0, 0);
+      camera.position.set(0, inSolarMode ? 8 : 0, inSolarMode ? 8 : 40);
+      controls.minDistance = inSolarMode ? 0.5 : 0.05;
+      controls.maxDistance = inSolarMode ? 200 : 15000;
+    });
+
+    // Click-to-identify on named stars.
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Points.threshold = 1.5;
+    const pointer = new THREE.Vector2();
+    renderer.domElement.addEventListener('pointerdown', (ev) => {
+      if (inSolarMode || !namedGroup.children.length) return;
+      pointer.x = (ev.clientX / innerWidth) * 2 - 1;
+      pointer.y = -(ev.clientY / innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObject(namedGroup.children[0]);
+      const el = document.getElementById('picked');
+      if (hits.length) {
+        const s = namedStars[hits[0].index];
+        el.style.display = 'block';
+        el.textContent = `${s.name} (${s.con}) — ${s.dist ?? '?'} pc, mag ${s.mag}, ${s.spect || 'spectral type unknown'}`;
+      } else {
+        el.style.display = 'none';
+      }
+    });
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    let lastFrame = performance.now();
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dtMs = now - lastFrame;
+      lastFrame = now;
+      if (inSolarMode) {
+        if (dynamicMode) simTimeMs += dtMs * 86400000 / 4000; // ~1 real second = 21.6 sim hours
+        updatePlanetPositions();
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

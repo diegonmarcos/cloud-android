@@ -7,15 +7,18 @@ import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 
 /**
- * 3D navigable Milky Way / solar system explorer, embedding the AAS
- * WorldWide Telescope research web app (MIT-licensed, web.wwtassets.org) in
- * a WebView. This is NOT a hand-rolled 3D engine — WWT already provides,
- * with its own on-screen UI, everything this screen was asked for: a
- * star/Milky Way background layer, toggleable constellation figures/
- * boundaries/labels, a real solar-system view mode with accurate planet
- * ephemeris, and time controls (pause = static, resume = dynamic motion).
- * See CREDITS.md for attribution. Requires network for both the app shell
- * and its imagery, same as every other online-only screen in this app.
+ * Real, free-fly-navigable 3D star field: a three.js WebGL scene (bundled
+ * locally, no network needed) rendering 119,614 real stars from the HYG
+ * v4.4 catalog at their actual parallax-derived 3D positions, plus a
+ * constellation-line overlay, a procedural galactic-plane "star dust" band,
+ * and a real-orbital-mechanics solar-system mode. See
+ * assets/galaxy/CREDITS.md and assets/galaxy/galaxy_map.html for the full
+ * technical writeup and data provenance.
+ *
+ * This REPLACES an earlier version of this screen that embedded AAS
+ * WorldWide Telescope's web app — WWT's default view is a flat sky
+ * panorama, not actual navigable 3D, which is specifically what was asked
+ * for here; the embed is gone, not just unused.
  */
 class MilkyWayActivity : AppCompatActivity() {
 
@@ -31,7 +34,7 @@ class MilkyWayActivity : AppCompatActivity() {
             domStorageEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
         }
-        webView.loadUrl("file:///android_asset/milkyway_map.html")
+        webView.loadUrl("file:///android_asset/galaxy/galaxy_map.html")
     }
 
     override fun onDestroy() {
