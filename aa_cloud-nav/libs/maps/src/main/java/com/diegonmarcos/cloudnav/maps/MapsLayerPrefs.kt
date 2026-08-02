@@ -14,10 +14,10 @@ import android.content.Context
 class MapsLayerPrefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("maps_layer_prefs", Context.MODE_PRIVATE)
 
-    /** Terrain view's vertical exaggeration, 1x-20x, whole numbers only. */
+    /** Terrain view's vertical exaggeration, 1x-100x, whole numbers only. */
     var terrainExaggeration: Int
-        get() = sp.getInt(KEY_TERRAIN_EXAGGERATION, DEFAULT_TERRAIN_EXAGGERATION).coerceIn(1, 20)
-        set(value) { sp.edit().putInt(KEY_TERRAIN_EXAGGERATION, value.coerceIn(1, 20)).apply() }
+        get() = sp.getInt(KEY_TERRAIN_EXAGGERATION, DEFAULT_TERRAIN_EXAGGERATION).coerceIn(1, 100)
+        set(value) { sp.edit().putInt(KEY_TERRAIN_EXAGGERATION, value.coerceIn(1, 100)).apply() }
 
     private companion object {
         const val KEY_TERRAIN_EXAGGERATION = "terrain_exaggeration"

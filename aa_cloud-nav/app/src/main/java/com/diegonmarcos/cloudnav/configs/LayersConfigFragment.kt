@@ -44,7 +44,7 @@ class LayersConfigFragment : Fragment() {
         root.addView(caption(ctx, "3D mountain relief exaggeration in the Terrain view (Map style menu > Terrain)."))
         root.addView(slider(ctx, "Exaggeration",
             currentValue = prefs.terrainExaggeration,
-            min = 1, max = 20, unit = "x",
+            min = 1, max = 100, unit = "x",
             onChange = { prefs.terrainExaggeration = it }))
 
         return scroll
