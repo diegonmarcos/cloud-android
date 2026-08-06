@@ -1,232 +1,42 @@
 [
   {
-    "name": "etherpad_postgres",
-    "service": "etherpad",
-    "vm": "oci-A1-f_0",
-    "private_dns": "etherpad-db.app:5436",
-    "port": 5436,
+    "name": "alerts-api",
+    "service": "alerts-api",
+    "vm": "oci-E2-f_1",
+    "private_dns": "alerts-api.app:5050",
+    "port": 5050,
     "protocol": "tcp",
-    "category": "app",
-    "db_engine": "postgres"
+    "category": "tools",
+    "db_engine": null
   },
   {
-    "name": "hedgedoc_postgres",
-    "service": "hedgedoc",
-    "vm": "oci-A1-f_0",
-    "private_dns": "hedgedoc-db.app:5439",
-    "port": 5439,
-    "protocol": "tcp",
-    "category": "app",
-    "db_engine": "postgres"
-  },
-  {
-    "name": "mattermost-postgres",
-    "service": "mattermost-bots",
-    "vm": "oci-A1-f_0",
-    "private_dns": "mattermost-postgres.app:5435",
-    "port": 5435,
-    "protocol": "tcp",
-    "category": "app",
-    "db_engine": "postgres"
-  },
-  {
-    "name": "mattermost-bots",
-    "service": "mattermost-bots",
-    "vm": "oci-A1-f_0",
-    "private_dns": "mattermost-bots.app",
+    "name": "c3-diego-personal-data-mcp",
+    "service": "c3-diego-personal-data-mcp",
+    "vm": "local",
+    "private_dns": "c3-diego-personal-data-mcp",
     "port": null,
     "protocol": "tcp",
-    "category": "app",
+    "category": "data",
     "db_engine": null
   },
   {
-    "name": "photoprism_mariadb",
-    "service": "photoprism",
+    "name": "cloud-builder-x",
+    "service": "cloud-builder-x",
     "vm": "oci-A1-f_0",
-    "private_dns": "photoprism_mariadb",
+    "private_dns": "cloud-builder-x",
     "port": null,
     "protocol": "tcp",
-    "category": "app",
-    "db_engine": "mariadb"
+    "category": "tools",
+    "db_engine": null
   },
   {
-    "name": "photoprism_rclone",
-    "service": "photoprism",
+    "name": "gha-runner",
+    "service": "gha-runner",
     "vm": "oci-A1-f_0",
-    "private_dns": "photoprism_rclone",
+    "private_dns": "gha-runner",
     "port": null,
     "protocol": "tcp",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "photos-webhook",
-    "service": "photos-webhook",
-    "vm": "oci-A1-f_0",
-    "private_dns": "photos-webhook:5002",
-    "port": 5002,
-    "protocol": "http",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "photos-db",
-    "service": "photos-webhook",
-    "vm": "oci-A1-f_0",
-    "private_dns": "photos-db",
-    "port": null,
-    "protocol": "tcp",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "revealmd_app",
-    "service": "revealmd",
-    "vm": "oci-A1-f_0",
-    "private_dns": "revealmd.app:3014",
-    "port": 3014,
-    "protocol": "http",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "maddy",
-    "service": "maddy",
-    "vm": "oci-E2-f_0",
-    "private_dns": "maddy.app",
-    "port": null,
-    "protocol": "tcp",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "maddy-sorter",
-    "service": "maddy",
-    "vm": "oci-E2-f_0",
-    "private_dns": "maddy-sorter",
-    "port": null,
-    "protocol": "tcp",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "stalwart-sorter",
-    "service": "stalwart",
-    "vm": "oci-E2-f_0",
-    "private_dns": "stalwart-sorter",
-    "port": null,
-    "protocol": "tcp",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "crawlee_runner",
-    "service": "crawlee-cloud",
-    "vm": "oci-A1-f_0",
-    "private_dns": "crawlee-runner.app",
-    "port": null,
-    "protocol": "tcp",
-    "category": "fin",
-    "db_engine": null
-  },
-  {
-    "name": "crawlee_dashboard",
-    "service": "crawlee-cloud",
-    "vm": "oci-A1-f_0",
-    "private_dns": "crawlee-dashboard.app:3001",
-    "port": 3001,
-    "protocol": "http",
-    "category": "fin",
-    "db_engine": null
-  },
-  {
-    "name": "crawlee_scheduler",
-    "service": "crawlee-cloud",
-    "vm": "oci-A1-f_0",
-    "private_dns": "crawlee-scheduler.app",
-    "port": null,
-    "protocol": "tcp",
-    "category": "fin",
-    "db_engine": null
-  },
-  {
-    "name": "crawlee_db",
-    "service": "crawlee-cloud",
-    "vm": "oci-A1-f_0",
-    "private_dns": "crawlee-db.app:5433",
-    "port": 5433,
-    "protocol": "tcp",
-    "category": "fin",
-    "db_engine": "postgres"
-  },
-  {
-    "name": "crawlee_redis",
-    "service": "crawlee-cloud",
-    "vm": "oci-A1-f_0",
-    "private_dns": "crawlee-redis.app:6381",
-    "port": 6381,
-    "protocol": "tcp",
-    "category": "fin",
-    "db_engine": "redis"
-  },
-  {
-    "name": "crawlee_minio",
-    "service": "crawlee-cloud",
-    "vm": "oci-A1-f_0",
-    "private_dns": "crawlee-minio.app:9000",
-    "port": 9000,
-    "protocol": "http",
-    "category": "fin",
-    "db_engine": "minio"
-  },
-  {
-    "name": "ollama",
-    "service": "ollama",
-    "vm": "gcp-T4-p_0",
-    "private_dns": "ollama.app:11434",
-    "port": 11434,
-    "protocol": "http",
-    "category": "agi",
-    "db_engine": null
-  },
-  {
-    "name": "ollama-arm",
-    "service": "ollama-arm",
-    "vm": "oci-apps-2",
-    "private_dns": "ollama-arm:11434",
-    "port": 11434,
-    "protocol": "http",
-    "category": "agi",
-    "db_engine": null
-  },
-  {
-    "name": "ollama-hai",
-    "service": "ollama-hai",
-    "vm": "oci-A1-f_0",
-    "private_dns": "ollama-hai.app:11435",
-    "port": 11435,
-    "protocol": "http",
-    "category": "agi",
-    "db_engine": null
-  },
-  {
-    "name": "rig-agentic-hai",
-    "service": "rig-agentic-hai-1.5bq4",
-    "vm": "oci-A1-f_0",
-    "private_dns": "rig-agentic-hai:8091",
-    "port": 8091,
-    "protocol": "http",
-    "category": "agi",
-    "db_engine": null
-  },
-  {
-    "name": "rig-agentic-sonn-14bq8",
-    "service": "rig-agentic-sonn-14bq8",
-    "vm": "oci-A1-f_0",
-    "private_dns": "rig-agentic-sonn-14bq8:8091",
-    "port": 8091,
-    "protocol": "http",
-    "category": "agi",
+    "category": "tools",
     "db_engine": null
   },
   {
@@ -250,6 +60,116 @@
     "db_engine": null
   },
   {
+    "name": "borg-server",
+    "service": "backup-borg",
+    "vm": "oci-A1-f_0",
+    "private_dns": "borg-server:2224",
+    "port": 2224,
+    "protocol": "http",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "bup-server",
+    "service": "backup-bup",
+    "vm": "oci-A1-f_0",
+    "private_dns": "bup-server:2223",
+    "port": 2223,
+    "protocol": "http",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "postlite-npm",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "postlite-npm",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "postlite-vaultwarden",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "postlite-vaultwarden",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "postlite-ntfy",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "postlite-ntfy",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "postlite-authelia",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "postlite-authelia",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "sqlite-npm",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "sqlite-npm",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "sqlite-vaultwarden",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "sqlite-vaultwarden",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "sqlite-ntfy",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "sqlite-ntfy",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "sqlite-authelia",
+    "service": "postlite",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "sqlite-authelia",
+    "port": null,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "redis",
+    "service": "redis",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "redis.app:6379",
+    "port": 6379,
+    "protocol": "tcp",
+    "category": "data",
+    "db_engine": "redis"
+  },
+  {
     "name": "hickory-dns",
     "service": "hickory-dns",
     "vm": "gcp-E2-f_0",
@@ -257,6 +177,96 @@
     "port": 53,
     "protocol": "udp",
     "category": "cloud",
+    "db_engine": null
+  },
+  {
+    "name": "unbound-dns64",
+    "service": "unbound-dns64",
+    "vm": "oci-E2-f_1",
+    "private_dns": "unbound-dns64.app:53",
+    "port": 53,
+    "protocol": "udp",
+    "category": "infra-net",
+    "db_engine": null
+  },
+  {
+    "name": "wireguard-mesh",
+    "service": "wireguard-mesh",
+    "vm": "oci-A1-f_0",
+    "private_dns": "wireguard-mesh:8080",
+    "port": 8080,
+    "protocol": "http",
+    "category": "tools",
+    "db_engine": null
+  },
+  {
+    "name": "wireguard-mesh-ws-tunnel",
+    "service": "wireguard-mesh-ws-tunnel",
+    "vm": "gcp-E2-f_0",
+    "private_dns": "wireguard-mesh-ws-tunnel:8080",
+    "port": 8080,
+    "protocol": "http",
+    "category": "tools",
+    "db_engine": null
+  },
+  {
+    "name": "wireguard-public",
+    "service": "wireguard-public",
+    "vm": "local",
+    "private_dns": "wireguard-public",
+    "port": null,
+    "protocol": "tcp",
+    "category": "net",
+    "db_engine": null
+  },
+  {
+    "name": "syslog-bridge",
+    "service": "ntfy",
+    "vm": "oci-A1-f_0",
+    "private_dns": "syslog-bridge",
+    "port": null,
+    "protocol": "tcp",
+    "category": "tools",
+    "db_engine": null
+  },
+  {
+    "name": "rss-gateway",
+    "service": "ntfy",
+    "vm": "oci-A1-f_0",
+    "private_dns": "rss-gateway:8091",
+    "port": 8091,
+    "protocol": "tcp",
+    "category": "tools",
+    "db_engine": null
+  },
+  {
+    "name": "github-rss",
+    "service": "ntfy",
+    "vm": "oci-A1-f_0",
+    "private_dns": "github-rss",
+    "port": null,
+    "protocol": "tcp",
+    "category": "tools",
+    "db_engine": null
+  },
+  {
+    "name": "umami-db",
+    "service": "umami",
+    "vm": "oci-A1-f_0",
+    "private_dns": "umami-db.app:5442",
+    "port": 5442,
+    "protocol": "tcp",
+    "category": "tools",
+    "db_engine": "postgres"
+  },
+  {
+    "name": "umami-setup",
+    "service": "umami",
+    "vm": "oci-A1-f_0",
+    "private_dns": "umami-setup.app",
+    "port": null,
+    "protocol": "tcp",
+    "category": "tools",
     "db_engine": null
   },
   {
@@ -300,6 +310,16 @@
     "db_engine": null
   },
   {
+    "name": "caddy-public",
+    "service": "caddy-public",
+    "vm": "oci-E2-f_1",
+    "private_dns": "caddy-public.app:443",
+    "port": 443,
+    "protocol": "https",
+    "category": "sec",
+    "db_engine": null
+  },
+  {
     "name": "introspect-proxy",
     "service": "introspect-proxy",
     "vm": "gcp-E2-f_0",
@@ -310,63 +330,153 @@
     "db_engine": null
   },
   {
-    "name": "syslog-central",
-    "service": "sauron-central",
+    "name": "claude-superset-api",
+    "service": "claude-superset-api",
     "vm": "oci-A1-f_0",
-    "private_dns": "syslog-central",
+    "private_dns": "claude-superset-api.app:3117",
+    "port": 3117,
+    "protocol": "http",
+    "category": "agi",
+    "db_engine": null
+  },
+  {
+    "name": "db-agent",
+    "service": "db-agent",
+    "vm": "all",
+    "private_dns": "db-agent",
+    "port": null,
+    "protocol": "none",
+    "category": "data",
+    "db_engine": null
+  },
+  {
+    "name": "hermes-agent",
+    "service": "hermes-agent",
+    "vm": "oci-A1-f_0",
+    "private_dns": "hermes-agent.app:8642",
+    "port": 8642,
+    "protocol": "http",
+    "category": "agi",
+    "db_engine": null
+  },
+  {
+    "name": "kg-store",
+    "service": "kg-store",
+    "vm": "oci-A1-f_0",
+    "private_dns": "kg-store:8001",
+    "port": 8001,
+    "protocol": "http",
+    "category": "data",
+    "db_engine": "surrealdb"
+  },
+  {
+    "name": "my-ai-api",
+    "service": "my-ai-api",
+    "vm": "oci-A1-f_0",
+    "private_dns": "my-ai-api.app:3217",
+    "port": 3217,
+    "protocol": "http",
+    "category": "agi",
+    "db_engine": null
+  },
+  {
+    "name": "session-memory",
+    "service": "session-memory",
+    "vm": "oci-A1-f_0",
+    "private_dns": "session-memory.app:3108",
+    "port": 3108,
+    "protocol": "http",
+    "category": "agi",
+    "db_engine": null
+  },
+  {
+    "name": "mattermost-postgres",
+    "service": "chat-mattermost",
+    "vm": "oci-A1-f_0",
+    "private_dns": "mattermost-postgres.app:5435",
+    "port": 5435,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": "postgres"
+  },
+  {
+    "name": "mattermost-bots",
+    "service": "chat-mattermost",
+    "vm": "oci-A1-f_0",
+    "private_dns": "mattermost-bots.app",
     "port": null,
     "protocol": "tcp",
-    "category": "sec",
+    "category": "app",
     "db_engine": null
   },
   {
-    "name": "siem-api",
-    "service": "sauron-central",
-    "vm": "oci-A1-f_0",
-    "private_dns": "siem-api",
+    "name": "mail-puller",
+    "service": "mail-puller",
+    "vm": "oci-E2-f_0",
+    "private_dns": "mail-puller",
     "port": null,
     "protocol": "tcp",
-    "category": "sec",
+    "category": "app",
     "db_engine": null
   },
   {
-    "name": "fluent-bit",
-    "service": "fluent-bit",
-    "vm": "oci-E2-f_1",
-    "private_dns": "fluent-bit:2020",
-    "port": 2020,
-    "protocol": "http",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "lgtm_loki",
-    "service": "lgtm",
+    "name": "mautrix-whatsapp",
+    "service": "matrix-mautrix-whatsapp",
     "vm": "oci-A1-f_0",
-    "private_dns": "lgtm-loki.app:3110",
-    "port": 3110,
+    "private_dns": "matrix-mautrix-whatsapp.app:29318",
+    "port": 29318,
     "protocol": "http",
-    "category": "tools",
+    "category": "app",
     "db_engine": null
   },
   {
-    "name": "lgtm_tempo",
-    "service": "lgtm",
-    "vm": "oci-A1-f_0",
-    "private_dns": "lgtm-tempo.app:3210",
-    "port": 3210,
+    "name": "snappymail",
+    "service": "snappymail",
+    "vm": "oci-E2-f_0",
+    "private_dns": "snappymail.app:8888",
+    "port": 8888,
     "protocol": "http",
-    "category": "tools",
+    "category": "app",
     "db_engine": null
   },
   {
-    "name": "lgtm_mimir",
-    "service": "lgtm",
+    "name": "maddy",
+    "service": "maddy",
+    "vm": "oci-E2-f_0",
+    "private_dns": "maddy.app",
+    "port": null,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": null
+  },
+  {
+    "name": "stalwart-sorter",
+    "service": "stalwart",
+    "vm": "oci-E2-f_0",
+    "private_dns": "stalwart-sorter",
+    "port": null,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": null
+  },
+  {
+    "name": "photoprism_mariadb",
+    "service": "photoprism",
     "vm": "oci-A1-f_0",
-    "private_dns": "lgtm-mimir.app:9009",
-    "port": 9009,
-    "protocol": "http",
-    "category": "tools",
+    "private_dns": "photoprism_mariadb",
+    "port": null,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": "mariadb"
+  },
+  {
+    "name": "photoprism_rclone",
+    "service": "photoprism",
+    "vm": "oci-A1-f_0",
+    "private_dns": "photoprism_rclone",
+    "port": null,
+    "protocol": "tcp",
+    "category": "app",
     "db_engine": null
   },
   {
@@ -380,143 +490,103 @@
     "db_engine": null
   },
   {
-    "name": "syslog-bridge",
-    "service": "ntfy",
+    "name": "etherpad_postgres",
+    "service": "etherpad",
     "vm": "oci-A1-f_0",
-    "private_dns": "syslog-bridge",
-    "port": null,
+    "private_dns": "etherpad-db.app:5436",
+    "port": 5436,
     "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "github-rss",
-    "service": "ntfy",
-    "vm": "oci-A1-f_0",
-    "private_dns": "github-rss",
-    "port": null,
-    "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "sauron-forwarder",
-    "service": "sauron-forwarder",
-    "vm": "oci-E2-f_1",
-    "private_dns": "sauron-forwarder.app",
-    "port": null,
-    "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "sauron-lite",
-    "service": "sauron-lite",
-    "vm": "all",
-    "private_dns": "sauron-lite",
-    "port": null,
-    "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "syslog-forwarder",
-    "service": "syslog-forwarder",
-    "vm": "oci-E2-f_0",
-    "private_dns": "syslog-forwarder.app",
-    "port": null,
-    "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "umami-db",
-    "service": "umami",
-    "vm": "oci-A1-f_0",
-    "private_dns": "umami-db.app:5442",
-    "port": 5442,
-    "protocol": "tcp",
-    "category": "tools",
+    "category": "app",
     "db_engine": "postgres"
   },
   {
-    "name": "umami-setup",
-    "service": "umami",
+    "name": "hedgedoc_postgres",
+    "service": "hedgedoc",
     "vm": "oci-A1-f_0",
-    "private_dns": "umami-setup.app",
-    "port": null,
+    "private_dns": "hedgedoc-db.app:5439",
+    "port": 5439,
     "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
+    "category": "app",
+    "db_engine": "postgres"
   },
   {
-    "name": "cloud-builder-x",
-    "service": "cloud-builder-x",
+    "name": "paca-api",
+    "service": "paca",
     "vm": "oci-A1-f_0",
-    "private_dns": "cloud-builder-x",
-    "port": null,
-    "protocol": "tcp",
-    "category": "tools",
-    "db_engine": null
-  },
-  {
-    "name": "borg-server",
-    "service": "backup-borg",
-    "vm": "oci-A1-f_0",
-    "private_dns": "borg-server:2224",
-    "port": 2224,
+    "private_dns": "paca-api.app:8080",
+    "port": 8080,
     "protocol": "http",
-    "category": "data",
+    "category": "app",
     "db_engine": null
   },
   {
-    "name": "bup-server",
-    "service": "backup-bup",
+    "name": "paca-web",
+    "service": "paca",
     "vm": "oci-A1-f_0",
-    "private_dns": "bup-server:2223",
-    "port": 2223,
+    "private_dns": "paca-web.app",
+    "port": null,
     "protocol": "http",
-    "category": "data",
+    "category": "app",
     "db_engine": null
   },
   {
-    "name": "c3-diego-personal-data-mcp",
-    "service": "c3-diego-personal-data-mcp",
-    "vm": "local",
-    "private_dns": "c3-diego-personal-data-mcp",
-    "port": null,
-    "protocol": "tcp",
-    "category": "data",
-    "db_engine": null
-  },
-  {
-    "name": "db-agent",
-    "service": "db-agent",
-    "vm": "all",
-    "private_dns": "db-agent",
-    "port": null,
-    "protocol": "tcp",
-    "category": "data",
-    "db_engine": null
-  },
-  {
-    "name": "surrealdb",
-    "service": "kg-graph",
+    "name": "paca-realtime",
+    "service": "paca",
     "vm": "oci-A1-f_0",
-    "private_dns": "surrealdb:8001",
-    "port": 8001,
+    "private_dns": "paca-realtime.app:3001",
+    "port": 3001,
     "protocol": "http",
-    "category": "data",
-    "db_engine": "surrealdb"
+    "category": "app",
+    "db_engine": null
   },
   {
-    "name": "redis",
-    "service": "redis",
-    "vm": "gcp-E2-f_0",
-    "private_dns": "redis.app:6379",
+    "name": "paca-valkey",
+    "service": "paca",
+    "vm": "oci-A1-f_0",
+    "private_dns": "paca-valkey.app:6379",
     "port": 6379,
     "protocol": "tcp",
-    "category": "data",
-    "db_engine": "redis"
+    "category": "app",
+    "db_engine": null
+  },
+  {
+    "name": "paca-postgres",
+    "service": "paca",
+    "vm": "oci-A1-f_0",
+    "private_dns": "paca-postgres.app:5432",
+    "port": 5432,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": "postgres"
+  },
+  {
+    "name": "revealmd_app",
+    "service": "revealmd",
+    "vm": "oci-A1-f_0",
+    "private_dns": "revealmd.app:3014",
+    "port": 3014,
+    "protocol": "http",
+    "category": "app",
+    "db_engine": null
+  },
+  {
+    "name": "send_redis",
+    "service": "send",
+    "vm": "oci-A1-f_0",
+    "private_dns": "send_redis",
+    "port": null,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": null
+  },
+  {
+    "name": "front-end",
+    "service": "front-end",
+    "vm": "local",
+    "private_dns": "front-end",
+    "port": null,
+    "protocol": "tcp",
+    "category": "app",
+    "db_engine": null
   }
 ]
