@@ -2,200 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar & Time App UI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <script>
-    // Calendar category data layer.
-    // Each top-level category maps to one arc color in the UI.
-    // Sub-categories are the task layers within that color track.
-    const CALENDAR_CATEGORIES = [
-        {
-            id: "work",
-            label: "Work",
-            color: "#60B0FF",       // blue arcs
-            colorClass: "color-blue",
-            subs: [
-                { id: "meetings",   label: "Meetings",        color: "#4A9FEF" },
-                { id: "deadlines",  label: "Deadlines",       color: "#3A8FDE" },
-                { id: "reviews",    label: "Reviews",         color: "#6ABFFF" },
-                { id: "planning",   label: "Planning",        color: "#80CFFF" }
-            ]
-        },
-        {
-            id: "personal",
-            label: "Personal",
-            color: "#F5B0ED",       // pink arcs
-            colorClass: "color-pink",
-            subs: [
-                { id: "social",         label: "Social",       color: "#F090DD" },
-                { id: "appointments",   label: "Appointments", color: "#E080CD" },
-                { id: "birthdays",      label: "Birthdays",    color: "#F5C0EE" },
-                { id: "self_care",      label: "Self-care",    color: "#FFD0F8" }
-            ]
-        },
-        {
-            id: "health",
-            label: "Health",
-            color: "#60E0E0",       // cyan arcs
-            colorClass: "color-cyan",
-            subs: [
-                { id: "gym",        label: "Gym",             color: "#40D0D0" },
-                { id: "doctor",     label: "Doctor",          color: "#50C8C8" },
-                { id: "nutrition",  label: "Nutrition",       color: "#70E8E8" },
-                { id: "sleep",      label: "Sleep",           color: "#90F0F0" }
-            ]
-        },
-        {
-            id: "projects",
-            label: "Projects",
-            color: "#FDE060",       // yellow arcs
-            colorClass: "color-yellow",
-            subs: [
-                { id: "sprints",    label: "Sprints",         color: "#EDD050" },
-                { id: "milestones", label: "Milestones",      color: "#FDE870" },
-                { id: "demos",      label: "Demos",           color: "#FDF080" },
-                { id: "research",   label: "Research",        color: "#FEC840" }
-            ]
-        },
-        {
-            id: "family",
-            label: "Family",
-            color: "#F9AD6A",       // orange arcs
-            colorClass: "color-orange",
-            subs: [
-                { id: "events",     label: "Events",          color: "#F09D5A" },
-                { id: "school",     label: "School",          color: "#F8BD7A" },
-                { id: "travel",     label: "Travel",          color: "#FACD8A" },
-                { id: "chores",     label: "Chores",          color: "#E88D4A" }
-            ]
-        }
-    ];
-
-    // State: which categories are visible (all on by default).
-    const activeCategories = new Set(CALENDAR_CATEGORIES.map(c => c.id));
-    const activeSubs = new Set(
-        CALENDAR_CATEGORIES.flatMap(c => c.subs.map(s => s.id))
-    );
-
-    function toggleCategory(id) {
-        const cat = CALENDAR_CATEGORIES.find(c => c.id === id);
-        if (activeCategories.has(id)) {
-            activeCategories.delete(id);
-            cat.subs.forEach(s => activeSubs.delete(s.id));
-        } else {
-            activeCategories.add(id);
-            cat.subs.forEach(s => activeSubs.add(s.id));
-        }
-        applyVisibility();
-    }
-
-    function toggleSub(catId, subId) {
-        if (activeSubs.has(subId)) {
-            activeSubs.delete(subId);
-        } else {
-            activeSubs.add(subId);
-            activeCategories.add(catId);
-        }
-        applyVisibility();
-    }
-
-    function applyVisibility() {
-        CALENDAR_CATEGORIES.forEach(cat => {
-            const arcs = document.querySelectorAll(`.${cat.colorClass}`);
-            const visible = activeCategories.has(cat.id);
-            arcs.forEach(el => el.closest('svg').style.display = visible ? '' : 'none');
-        });
-        // Re-render legend dot states.
-        document.querySelectorAll('[data-cat]').forEach(el => {
-            const id = el.dataset.cat;
-            el.style.opacity = activeCategories.has(id) ? '1' : '0.35';
-        });
-        document.querySelectorAll('[data-sub]').forEach(el => {
-            const id = el.dataset.sub;
-            el.style.opacity = activeSubs.has(id) ? '1' : '0.35';
-        });
-    }
-
-    // Build category pills in a horizontal scroll row.
-    // Tap a category pill → expand sub-category row below it.
-    let expandedCat = null;
-
-    function buildLegend() {
-        const panel = document.getElementById('categories-panel');
-        if (!panel) return;
-        // Category pills
-        panel.innerHTML = CALENDAR_CATEGORIES.map(cat => `
-            <button data-cat="${cat.id}" onclick="tapCategory('${cat.id}')"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap border border-gray-100 transition-all"
-                style="border-color:${cat.color}22; background:${cat.color}18; color:#444;">
-                <span class="w-2 h-2 rounded-full" style="background:${cat.color}"></span>
-                ${cat.label}
-            </button>
-        `).join('');
-        applyVisibility();
-    }
-
-    function tapCategory(id) {
-        if (expandedCat === id) {
-            // Second tap = toggle visibility
-            toggleCategory(id);
-        } else {
-            // First tap = expand sub row
-            expandedCat = id;
-            renderSubRow(id);
-        }
-    }
-
-    function renderSubRow(catId) {
-        const existing = document.getElementById('sub-row');
-        if (existing) existing.remove();
-        const cat = CALENDAR_CATEGORIES.find(c => c.id === catId);
-        const container = document.getElementById('categories-panel').closest('.px-6');
-        const row = document.createElement('div');
-        row.id = 'sub-row';
-        row.className = 'flex overflow-x-auto hide-scrollbar gap-2 mt-2 transition-all';
-        row.innerHTML = cat.subs.map(sub => `
-            <button data-sub="${sub.id}" onclick="toggleSub('${catId}','${sub.id}')"
-                class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap"
-                style="background:${sub.color}22; color:#555; border:1px solid ${sub.color}44;">
-                <span class="w-1.5 h-1.5 rounded-full" style="background:${sub.color}"></span>
-                ${sub.label}
-            </button>
-        `).join('');
-        container.appendChild(row);
-        applyVisibility();
-    }
-
-    document.addEventListener('DOMContentLoaded', buildLegend);
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Calendar</title>
+    <script src="vendor/tailwind.js"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+        :root {
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+            --sal: env(safe-area-inset-left, 0px);
+            --sar: env(safe-area-inset-right, 0px);
+        }
+
+        html, body {
             margin: 0;
+            padding: 0;
+            background: #ffffff;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: #111;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
         }
 
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* Full-bleed app shell: the WebView IS the screen, no device bezel. */
         .app-container {
             width: 100%;
-            max-width: 390px;
-            height: 844px;
-            background-color: white;
-            border-radius: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            overflow: hidden;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: #ffffff;
             position: relative;
-            border: 8px solid #111;
+            display: flex;
+            flex-direction: column;
+            padding-left: var(--sal);
+            padding-right: var(--sar);
         }
 
+        .app-main {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+        }
+
+        .tab-panel.hidden { display: none; }
+
+        .panel-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #ffffff;
+            padding-top: calc(var(--sat) + 18px);
+            padding-bottom: 12px;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .panel-scroll-pad { padding-bottom: calc(96px + var(--sab)); }
+
+        /* ---- arcs on day cells ---- */
         .arc-svg {
             position: absolute;
             inset: -4px;
@@ -210,12 +81,7 @@
         .arc-3 { stroke-dasharray: 15 100.5; stroke-dashoffset: -65; }
         .arc-4 { stroke-dasharray: 22 100.5; stroke-dashoffset: -75; }
 
-        .color-cyan   { stroke: #60E0E0; }
-        .color-pink   { stroke: #F5B0ED; }
-        .color-yellow { stroke: #FDE060; }
-        .color-orange { stroke: #F9AD6A; }
-        .color-blue   { stroke: #60B0FF; }
-
+        /* ---- analog clock ---- */
         .clock-number {
             position: absolute;
             width: 30px; height: 30px;
@@ -224,284 +90,1490 @@
             display: flex; justify-content: center; align-items: center;
             font-size: 15px; font-weight: 500; color: #111;
         }
-
         .clip-highlighter { clip-path: polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%); }
+
+        /* ---- bottom navigation ---- */
+        .bottom-nav {
+            position: fixed;
+            left: var(--sal);
+            right: var(--sar);
+            bottom: 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: stretch;
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid #F0F0F0;
+            padding-top: 8px;
+            padding-bottom: calc(var(--sab) + 8px);
+            z-index: 40;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 3px; color: #B0B0B0; background: none; border: none; font-size: 10px;
+            font-weight: 500; padding: 4px 6px; flex: 1; font-family: inherit;
+        }
+        .nav-item svg { width: 22px; height: 22px; }
+        .nav-item.active { color: #1C1C1C; }
+        .nav-item.active svg { color: #1C1C1C; }
+
+        /* ---- shared building blocks ---- */
+        .seg { display: inline-flex; background: #F3F4F6; border-radius: 999px; padding: 3px; gap: 2px; }
+        .seg button {
+            border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600;
+            padding: 6px 14px; border-radius: 999px; color: #8A8A8A; white-space: nowrap;
+        }
+        .seg button.active { background: #1C1C1C; color: #fff; }
+
+        .pill-scroll { display: flex; overflow-x: auto; gap: 8px; }
+        .pill {
+            padding: 6px 16px; border-radius: 999px; border: 1px solid #EFEFEF; font-size: 13px;
+            font-weight: 500; color: #444; white-space: nowrap; background: #fff; font-family: inherit;
+        }
+        .pill.active { background: #1C1C1C; color: #fff; border-color: #1C1C1C; }
+
+        .switch { position: relative; display: inline-block; width: 40px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .switch .slider {
+            position: absolute; inset: 0; background: #E5E5E5; transition: .15s; border-radius: 999px; cursor: pointer;
+        }
+        .switch .slider:before {
+            content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
+            background: #fff; transition: .15s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+        }
+        .switch input:checked + .slider:before { transform: translateX(16px); }
+
+        .field-label { font-size: 11px; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; display: block; }
+        .field-input {
+            width: 100%; box-sizing: border-box; border: 1px solid #ECECEC; border-radius: 12px; padding: 10px 12px;
+            font-size: 14px; font-family: inherit; background: #FAFAFA; color: #111;
+        }
+        .field-input:focus { outline: none; border-color: #B0B0B0; background: #fff; }
+
+        .btn-dark { background: #1C1C1C; color: #fff; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
+        .btn-light { background: #F3F4F6; color: #1C1C1C; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
+
+        .error-banner { background: #FEF2F2; border: 1px solid #FCD9D9; color: #A33; border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+        .empty-state { text-align: center; color: #B0B0B0; font-size: 13.5px; padding: 40px 20px; }
+
+        .todo-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; }
+        .todo-check {
+            width: 21px; height: 21px; border-radius: 50%; border: 2px solid #D8D8D8; flex-shrink: 0; margin-top: 1px;
+            display: flex; align-items: center; justify-content: center; background: #fff;
+        }
+        .todo-check.done { background: #1C1C1C; border-color: #1C1C1C; }
+        .todo-title.done { text-decoration: line-through; color: #B0B0B0; }
+        .priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+
+        details.proj-group summary { list-style: none; cursor: pointer; }
+        details.proj-group summary::-webkit-details-marker { display: none; }
+        details.proj-group .chev { transition: transform .15s; }
+        details.proj-group[open] .chev { transform: rotate(90deg); }
     </style>
 </head>
-<body class="antialiased text-gray-900">
+<body class="antialiased">
 
-    <div class="app-container flex flex-col">
+    <div class="app-container">
+        <main id="app-main" class="app-main hide-scrollbar">
 
-        <!-- Header -->
-        <header class="px-6 pt-12 pb-4 flex justify-between items-center bg-white z-20">
-            <h1 class="text-xl font-medium flex items-center gap-2">
-                Wednesday 29
-                <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </h1>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 12H5.01M12 12H12.01M19 12H19.01" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </header>
+            <!-- ============ CALENDAR TAB ============ -->
+            <section id="tab-calendar" class="tab-panel">
+                <header class="panel-header flex justify-between items-center">
+                    <button id="cal-today-btn" class="text-xl font-medium flex items-center gap-2" style="background:none;border:none;font-family:inherit;color:#111;padding:0;">
+                        <span id="cal-header-date">Today</span>
+                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div class="seg" id="cal-view-toggle">
+                        <button data-view="month" class="active">Month</button>
+                        <button data-view="list">List</button>
+                    </div>
+                </header>
 
-        <!-- Main Scrollable Area -->
-        <div class="flex-1 overflow-y-auto hide-scrollbar relative pb-32">
+                <div id="cal-error-mount" class="px-6"></div>
 
-            <!-- Month & Year Selectors -->
-            <div class="space-y-3 pt-2">
-                <div class="flex overflow-x-auto hide-scrollbar gap-2 px-6 snap-x">
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">Apr</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">May</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">Jun</div>
-                    <div class="px-4 py-1.5 rounded-full bg-[#1C1C1C] text-white text-[13px] font-medium whitespace-nowrap shadow-sm">Jul</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">Aug</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">Sep</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">Oct</div>
+                <div class="space-y-3 pt-2">
+                    <div class="pill-scroll hide-scrollbar px-6" id="month-pills"></div>
+                    <div class="pill-scroll hide-scrollbar px-6" id="year-pills"></div>
                 </div>
-                <div class="flex overflow-x-auto hide-scrollbar gap-2 px-6 snap-x">
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">2023</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">2024</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">2025</div>
-                    <div class="px-4 py-1.5 rounded-full bg-[#1C1C1C] text-white text-[13px] font-medium whitespace-nowrap shadow-sm">2026</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">2027</div>
-                    <div class="px-4 py-1.5 rounded-full border border-gray-100 text-[13px] font-medium text-gray-700 whitespace-nowrap">2028</div>
-                </div>
-            </div>
 
-            <!-- Category Legend / Filter -->
-            <div class="px-6 mt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Calendars</span>
-                </div>
-                <!-- Collapsed scrollable pill row for quick toggle -->
-                <div class="flex overflow-x-auto hide-scrollbar gap-2">
-                    <!-- ponytail: pills rendered by JS, this div is the mount point -->
-                    <div id="categories-panel" class="flex gap-2">
-                        <!-- JS fills this with category pills -->
+                <div class="px-6 mt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Calendars</span>
                     </div>
+                    <div class="pill-scroll hide-scrollbar" id="categories-panel"></div>
+                    <div id="sub-row-mount"></div>
                 </div>
-            </div>
 
-            <!-- Calendar Grid -->
-            <div class="px-6 mt-6">
-                <div class="grid grid-cols-7 text-center text-[#B0B0B0] text-[10px] mb-4 font-medium tracking-widest">
-                    <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                <!-- Month grid view -->
+                <div id="calendar-month-view" class="px-6 mt-6">
+                    <div class="grid grid-cols-7 text-center text-[#B0B0B0] text-[10px] mb-4 font-medium tracking-widest">
+                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-y-4 text-center text-[14px] font-medium" id="month-grid"></div>
                 </div>
-                <div class="grid grid-cols-7 gap-y-4 text-center text-[14px] font-medium">
-                    <!-- Row 1 -->
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">28
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">29
-                        <svg class="arc-svg"><circle class="arc color-pink arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">30
-                        <svg class="arc-svg"><circle class="arc color-pink arc-1" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">1
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-1" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">2
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-3" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-2" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">3
-                        <svg class="arc-svg"><circle class="arc color-pink arc-4" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-1" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">4
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <!-- Row 2 -->
-                    <div class="relative flex justify-center items-center h-8">5
-                        <svg class="arc-svg"><circle class="arc color-blue arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">6
-                        <svg class="arc-svg"><circle class="arc color-pink arc-2" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">7
-                        <svg class="arc-svg"><circle class="arc color-blue arc-3" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-1" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">8
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-blue arc-2" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">9
-                        <svg class="arc-svg"><circle class="arc color-pink arc-4" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">10
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-2" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">11
-                        <svg class="arc-svg"><circle class="arc color-orange arc-3" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <!-- Row 3 -->
-                    <div class="relative flex justify-center items-center h-8">12
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-1" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">13
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">14
-                        <svg class="arc-svg"><circle class="arc color-blue arc-3" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-1" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">15
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-blue arc-2" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">16
-                        <svg class="arc-svg"><circle class="arc color-orange arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">17
-                        <svg class="arc-svg"><circle class="arc color-pink arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">18
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <!-- Row 4 -->
-                    <div class="relative flex justify-center items-center h-8">19
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">20
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">21
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-4" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-2" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">22
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">23
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-blue arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">24
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">25
-                        <svg class="arc-svg"><circle class="arc color-pink arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-pink arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <!-- Row 5 -->
-                    <div class="relative flex justify-center items-center h-8">26
-                        <svg class="arc-svg"><circle class="arc color-orange arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">27
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">28
-                        <svg class="arc-svg"><circle class="arc color-cyan arc-1" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-3" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8 font-semibold text-black">29
-                        <svg class="arc-svg"><circle class="arc color-pink arc-2" cx="20" cy="20" r="15" /></svg>
-                        <svg class="arc-svg"><circle class="arc color-yellow arc-4" cx="20" cy="20" r="15" /></svg>
-                    </div>
-                    <div class="relative flex justify-center items-center h-8">30</div>
-                    <div class="relative flex justify-center items-center h-8">31</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">1</div>
-                    <!-- Row 6 -->
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">2</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">3</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">4</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">5</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">6</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">7</div>
-                    <div class="relative flex justify-center items-center h-8 text-gray-200">8</div>
-                </div>
-            </div>
 
-            <!-- Clock Area -->
-            <div class="mt-14 relative flex justify-center items-center">
-                <div class="relative w-[240px] h-[240px]">
-                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 240 240">
-                        <circle cx="120" cy="120" r="115" fill="none" stroke="#E5E5E5" stroke-width="2" stroke-dasharray="2 10" />
-                    </svg>
-                    <div class="clock-number" style="transform: rotate(0deg) translateY(-85px) rotate(0deg);">12</div>
-                    <div class="clock-number" style="transform: rotate(30deg) translateY(-85px) rotate(-30deg);">1</div>
-                    <div class="clock-number" style="transform: rotate(60deg) translateY(-85px) rotate(-60deg);">2</div>
-                    <div class="clock-number" style="transform: rotate(90deg) translateY(-85px) rotate(-90deg);">3</div>
-                    <div class="clock-number" style="transform: rotate(120deg) translateY(-85px) rotate(-120deg);">4</div>
-                    <div class="clock-number" style="transform: rotate(150deg) translateY(-85px) rotate(-150deg);">5</div>
-                    <div class="clock-number" style="transform: rotate(180deg) translateY(-85px) rotate(-180deg);">6</div>
-                    <div class="clock-number" style="transform: rotate(210deg) translateY(-85px) rotate(-210deg);">7</div>
-                    <div class="clock-number" style="transform: rotate(240deg) translateY(-85px) rotate(-240deg);">8</div>
-                    <div class="clock-number" style="transform: rotate(270deg) translateY(-85px) rotate(-270deg);">9</div>
-                    <div class="clock-number" style="transform: rotate(300deg) translateY(-85px) rotate(-300deg);">10</div>
-                    <div class="clock-number" style="transform: rotate(330deg) translateY(-85px) rotate(-330deg);">11</div>
-                    <div class="absolute top-1/2 left-1/2 w-[9px] h-[9px] bg-[#D64E4E] rounded-full -translate-x-1/2 -translate-y-1/2 z-20"></div>
-                    <div class="absolute top-1/2 left-1/2 w-[5px] h-[5px] bg-[#111] rounded-full -translate-x-1/2 -translate-y-1/2 z-30"></div>
-                    <div class="absolute bottom-1/2 left-1/2 w-[3px] h-[55px] bg-[#1C1C1C] rounded-full origin-bottom z-10"
-                         style="transform: translateX(-50%) rotate(120deg); margin-bottom: -1.5px;"></div>
-                    <div class="absolute bottom-1/2 left-1/2 w-[3px] h-[85px] bg-[#1C1C1C] rounded-full origin-bottom z-10"
-                         style="transform: translateX(-50%) rotate(30deg); margin-bottom: -1.5px;"></div>
-                    <div class="absolute bottom-1/2 left-1/2 w-[1.5px] h-[105px] bg-[#D64E4E] origin-[50%_80px] z-10"
-                         style="transform: translateX(-50%) translateY(25px) rotate(212deg);"></div>
-                </div>
-                <div class="absolute top-1/2 left-1/2 w-0 h-0 z-0">
-                    <div class="absolute bg-[#F3BAEC] text-[#9A4698] font-medium text-[11px] px-3.5 py-1.5 rounded-[10px] whitespace-nowrap"
-                         style="transform: translate(25px, -150px) rotate(12deg);">Lunch</div>
-                    <div class="absolute bg-[#B7EBF5] text-[#3492A7] font-medium text-[9px] px-2.5 py-1 rounded-full whitespace-nowrap"
-                         style="transform: translate(-155px, -15px);">Anne</div>
-                    <div class="absolute bg-[#F3AEF3] text-[#9B369A] font-medium text-[11px] px-4 py-1.5 rounded-[10px] whitespace-nowrap"
-                         style="transform: translate(-145px, 85px) rotate(-62deg);">Dinner</div>
-                    <svg class="absolute pointer-events-none" style="width: 340px; height: 340px; left: -170px; top: -170px;">
-                        <circle cx="170" cy="170" r="145" fill="none" stroke="#FEF08A" stroke-width="26" stroke-linecap="round"
-                                stroke-dasharray="140 1000" style="transform-origin: center; transform: rotate(62deg);" />
-                    </svg>
-                    <div class="absolute text-[#A59530] font-medium text-[12px]" style="transform: translate(-18px, 138px);">Beach</div>
-                    <div class="absolute text-2xl drop-shadow-md" style="transform: translate(130px, 30px); filter: saturate(1.2);">&#10084;&#65039;</div>
-                </div>
-            </div>
+                <!-- List (agenda) view -->
+                <div id="calendar-list-view" class="px-6 mt-6 hidden"></div>
 
-        </div>
+                <!-- Clock -->
+                <div class="mt-14 relative flex justify-center items-center panel-scroll-pad">
+                    <div class="relative w-[240px] h-[240px]">
+                        <svg class="absolute inset-0 w-full h-full" viewBox="0 0 240 240">
+                            <circle cx="120" cy="120" r="115" fill="none" stroke="#E5E5E5" stroke-width="2" stroke-dasharray="2 10" />
+                        </svg>
+                        <div class="clock-number" style="transform: rotate(0deg) translateY(-85px) rotate(0deg);">12</div>
+                        <div class="clock-number" style="transform: rotate(30deg) translateY(-85px) rotate(-30deg);">1</div>
+                        <div class="clock-number" style="transform: rotate(60deg) translateY(-85px) rotate(-60deg);">2</div>
+                        <div class="clock-number" style="transform: rotate(90deg) translateY(-85px) rotate(-90deg);">3</div>
+                        <div class="clock-number" style="transform: rotate(120deg) translateY(-85px) rotate(-120deg);">4</div>
+                        <div class="clock-number" style="transform: rotate(150deg) translateY(-85px) rotate(-150deg);">5</div>
+                        <div class="clock-number" style="transform: rotate(180deg) translateY(-85px) rotate(-180deg);">6</div>
+                        <div class="clock-number" style="transform: rotate(210deg) translateY(-85px) rotate(-210deg);">7</div>
+                        <div class="clock-number" style="transform: rotate(240deg) translateY(-85px) rotate(-240deg);">8</div>
+                        <div class="clock-number" style="transform: rotate(270deg) translateY(-85px) rotate(-270deg);">9</div>
+                        <div class="clock-number" style="transform: rotate(300deg) translateY(-85px) rotate(-300deg);">10</div>
+                        <div class="clock-number" style="transform: rotate(330deg) translateY(-85px) rotate(-330deg);">11</div>
+                        <div class="absolute top-1/2 left-1/2 w-[9px] h-[9px] bg-[#D64E4E] rounded-full -translate-x-1/2 -translate-y-1/2 z-20"></div>
+                        <div class="absolute top-1/2 left-1/2 w-[5px] h-[5px] bg-[#111] rounded-full -translate-x-1/2 -translate-y-1/2 z-30"></div>
+                        <div id="clock-hour-hand" class="absolute bottom-1/2 left-1/2 w-[3px] h-[55px] bg-[#1C1C1C] rounded-full origin-bottom z-10"
+                             style="transform: translateX(-50%) rotate(120deg); margin-bottom: -1.5px;"></div>
+                        <div id="clock-minute-hand" class="absolute bottom-1/2 left-1/2 w-[3px] h-[85px] bg-[#1C1C1C] rounded-full origin-bottom z-10"
+                             style="transform: translateX(-50%) rotate(30deg); margin-bottom: -1.5px;"></div>
+                    </div>
+                    <div class="absolute top-1/2 left-1/2 w-0 h-0 z-0" id="clock-labels"></div>
+                </div>
+            </section>
 
-        <!-- Bottom Toolbar -->
-        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-white/0 pt-16 pb-6 px-8 flex justify-between items-end z-30">
-            <div class="flex gap-5 items-end w-full justify-center pr-4">
-                <div class="w-7 h-[55px] bg-gradient-to-b from-[#FDE87E] to-[#FCE15F] rounded-t-[6px] relative flex flex-col items-center shadow-sm">
-                    <div class="w-5 h-2.5 bg-[#E6CD3F] rounded-t-sm absolute -top-2.5"></div>
-                    <div class="w-full h-1.5 bg-[#F4D957] absolute top-2"></div>
-                    <div class="w-full h-[1px] bg-white/40 absolute top-4"></div>
-                </div>
-                <div class="w-7 h-[45px] bg-gradient-to-b from-[#94E6F6] to-[#7EDCF0] rounded-t-[6px] relative flex flex-col items-center shadow-sm">
-                    <div class="w-5 h-2.5 bg-[#6BCBDE] rounded-t-sm absolute -top-2.5"></div>
-                    <div class="w-full h-1.5 bg-[#75D2E5] absolute top-2"></div>
-                    <div class="w-full h-[1px] bg-white/40 absolute top-4"></div>
-                </div>
-                <div class="w-7 h-[38px] bg-gradient-to-b from-[#F5A9D0] to-[#EFA0C8] rounded-t-[6px] relative flex flex-col items-center shadow-sm">
-                    <div class="w-[14px] h-[10px] bg-[#E580B2] clip-highlighter absolute -top-[10px]"></div>
-                    <div class="w-[20px] h-[4px] bg-[#EC92BF] absolute -top-[4px] rounded-t-[2px]"></div>
-                    <div class="w-full h-1.5 bg-[#EE95C3] absolute top-2"></div>
-                    <div class="w-full h-[1px] bg-white/40 absolute top-4"></div>
-                </div>
-                <div class="w-7 h-[45px] bg-gradient-to-tr from-[#F2B0D6] via-[#B8D7F4] to-[#F4E38A] rounded-t-[6px] relative flex flex-col items-center shadow-sm">
-                    <div class="w-5 h-2.5 bg-gradient-to-r from-[#DF94C0] to-[#9BC4E6] rounded-t-sm absolute -top-2.5"></div>
-                    <div class="w-full h-1.5 bg-white/30 absolute top-2 backdrop-blur-sm"></div>
-                    <div class="w-full h-[1px] bg-white/50 absolute top-4"></div>
-                </div>
-                <div class="text-[26px] pb-1 ml-2 drop-shadow-sm filter saturate-110">&#10084;&#65039;</div>
-            </div>
-            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-gray-900 rounded-full opacity-80"></div>
-        </div>
+            <!-- ============ TODO TAB ============ -->
+            <section id="tab-todo" class="tab-panel hidden">
+                <header class="panel-header flex justify-between items-center">
+                    <h1 class="text-xl font-medium">ToDo</h1>
+                    <button id="todo-add-btn" class="w-8 h-8 rounded-full bg-[#1C1C1C] text-white flex items-center justify-center" style="font-size:18px;line-height:1;border:none;">+</button>
+                </header>
+                <div id="todo-error-mount" class="px-6"></div>
+                <div class="pill-scroll hide-scrollbar px-6" id="todo-project-pills"></div>
 
+                <div id="todo-add-form" class="px-6 mt-4 hidden">
+                    <div class="rounded-2xl border border-gray-100 p-4 space-y-3" style="background:#FAFAFA;">
+                        <div>
+                            <label class="field-label">Title</label>
+                            <input type="text" id="todo-form-title" class="field-input" placeholder="Task title">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label">Due</label>
+                                <input type="date" id="todo-form-due" class="field-input">
+                            </div>
+                            <div>
+                                <label class="field-label">Priority</label>
+                                <select id="todo-form-priority" class="field-input">
+                                    <option value="">None</option>
+                                    <option value="2">High</option>
+                                    <option value="5" selected>Medium</option>
+                                    <option value="8">Low</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label">Project</label>
+                            <select id="todo-form-project" class="field-input"></select>
+                        </div>
+                        <div class="flex gap-2 justify-end pt-1">
+                            <button id="todo-form-cancel" class="btn-light">Cancel</button>
+                            <button id="todo-form-save" class="btn-dark">Save task</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 mt-3 panel-scroll-pad" id="todo-list"></div>
+            </section>
+
+            <!-- ============ PROJECTS TAB ============ -->
+            <section id="tab-projects" class="tab-panel hidden">
+                <header class="panel-header flex justify-between items-center">
+                    <h1 class="text-xl font-medium">Projects</h1>
+                </header>
+                <div class="px-6" id="projects-error-mount"></div>
+                <div class="px-6">
+                    <div class="seg" id="projects-mode-toggle">
+                        <button data-mode="all" class="active">All tasks</button>
+                        <button data-mode="byproject">By project</button>
+                    </div>
+                </div>
+                <div class="px-6 mt-4 panel-scroll-pad" id="projects-body"></div>
+            </section>
+
+            <!-- ============ EVENTS TAB ============ -->
+            <section id="tab-events" class="tab-panel hidden">
+                <header class="panel-header flex justify-between items-center">
+                    <h1 class="text-xl font-medium">Events</h1>
+                </header>
+                <div class="px-6" id="events-error-mount"></div>
+                <div class="px-6">
+                    <div class="seg" id="events-menu-toggle">
+                        <button data-cat="all" class="active">All</button>
+                        <button data-cat="tickets">Tickets</button>
+                        <button data-cat="bookings">Bookings</button>
+                    </div>
+                </div>
+                <div class="px-6 mt-4 panel-scroll-pad" id="events-body"></div>
+            </section>
+
+            <!-- ============ CONFIGS TAB ============ -->
+            <section id="tab-configs" class="tab-panel hidden">
+                <header class="panel-header flex justify-between items-center">
+                    <h1 class="text-xl font-medium">Configs</h1>
+                </header>
+                <div class="px-6 panel-scroll-pad space-y-8">
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Calendar subscriptions</span>
+                        <p class="text-[11.5px] text-gray-400 mt-1 mb-3">Toggles control visibility in this app; feed sync itself is managed on-device.</p>
+                        <div id="config-calendars-error"></div>
+                        <div id="config-calendars-list" class="divide-y divide-gray-100"></div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">CalDAV account</span>
+                        <div class="mt-3 space-y-3">
+                            <div>
+                                <label class="field-label">Server URL</label>
+                                <input type="text" id="caldav-url" class="field-input" placeholder="https://example.com/dav/">
+                            </div>
+                            <div>
+                                <label class="field-label">Username</label>
+                                <input type="text" id="caldav-username" class="field-input" placeholder="username">
+                            </div>
+                            <div>
+                                <label class="field-label">Password</label>
+                                <input type="password" id="caldav-password" class="field-input" placeholder="••••••••">
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="caldav-save-btn" class="btn-dark">Save</button>
+                                <button id="caldav-test-btn" class="btn-light">Test connection</button>
+                            </div>
+                            <div id="caldav-result" class="text-[13px]"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Sync</span>
+                        <div class="mt-3 flex gap-2">
+                            <button id="sync-calendars-btn" class="btn-dark">Sync calendars</button>
+                            <button id="sync-todos-btn" class="btn-light">Sync tasks</button>
+                        </div>
+                        <div id="sync-status" class="mt-3 text-[13px] space-y-1"></div>
+                    </div>
+
+                </div>
+            </section>
+
+        </main>
+
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-item" data-tab="todo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M7.5 12l3 3 6-6.5"/></svg>
+                <span>ToDo</span>
+            </button>
+            <button class="nav-item" data-tab="events">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5a2 2 0 012-2h12a2 2 0 012 2v1.2a1.8 1.8 0 000 4.6V15a2 2 0 01-2 2H6a2 2 0 01-2-2v-1.2a1.8 1.8 0 000-4.6V8.5z"/><path d="M9.5 6.5v11" stroke-dasharray="2.2 2.2"/></svg>
+                <span>Events</span>
+            </button>
+            <button class="nav-item active" data-tab="calendar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4"/></svg>
+                <span>Calendar</span>
+            </button>
+            <button class="nav-item" data-tab="projects">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.2a1.7 1.7 0 011.7-1.7h3.6l1.8 1.8h8a1.7 1.7 0 011.7 1.7v9.3a1.7 1.7 0 01-1.7 1.7H5.2a1.7 1.7 0 01-1.7-1.7V6.2z"/></svg>
+                <span>Projects</span>
+            </button>
+            <button class="nav-item" data-tab="configs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg>
+                <span>Configs</span>
+            </button>
+        </nav>
     </div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   Utilities
+   ===================================================================== */
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function toMillis(v) {
+    if (v === null || v === undefined || v === '') return null;
+    var n = typeof v === 'number' ? v : parseInt(v, 10);
+    return isNaN(n) ? null : n;
+}
+
+function priorityColor(p) {
+    var n = Number(p) || 0;
+    if (!n) return '#D9D9D9';
+    if (n <= 3) return '#E05252';
+    if (n <= 6) return '#F0A93A';
+    return '#5FBE72';
+}
+
+var DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtTime(ms) {
+    var d = new Date(ms);
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+function fmtDayHeader(d) {
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+function fmtShortDate(ms) {
+    return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+function sameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+function startOfDay(d) { var x = new Date(d); x.setHours(0,0,0,0); return x; }
+
+/* =====================================================================
+   Bridge wrapper — every CalBridge call goes through here.
+   Falls back to MOCK only when window.CalBridge is undefined; any
+   thrown/malformed response from a *present* bridge surfaces as an
+   inline error instead of white-screening the app.
+   ===================================================================== */
+function callBridge(method, args) {
+    if (typeof window.CalBridge !== 'undefined' && typeof window.CalBridge[method] === 'function') {
+        try {
+            var raw = window.CalBridge[method].apply(window.CalBridge, args || []);
+            return { ok: true, data: JSON.parse(raw) };
+        } catch (err) {
+            console.error('[CalBridge.' + method + ']', err);
+            return { ok: false, error: (err && err.message) ? err.message : String(err) };
+        }
+    }
+    return { mock: true };
+}
+
+/* =====================================================================
+   ---- MOCK DATA (browser dev only; the real app uses window.CalBridge) ----
+   Only ever consulted when window.CalBridge is undefined — see Api below.
+   Trivially deletable: this whole IIFE plus the `r.mock` branches in Api.
+   ===================================================================== */
+var MOCK_CALDAV_CONFIGURED = true; // flip to false to exercise the "not configured" empty state
+
+var MOCK = (function () {
+    // ---- calendars: mirrors ea_cloud-calendar/data/calendars.json 1:1,
+    // plus two synthetic feeds (tickets/bookings) so those Events sub-tabs
+    // have something to show — the real subscription list has no such
+    // categories today (see final report).
+    var mockCalendars = [
+        { id: 'de-holidays',     name: 'Germany · Holidays',        category: 'holidays', color: '#E53935', enabled: true },
+        { id: 'berlin-holidays', name: 'Berlin · Public holidays',  category: 'holidays', color: '#D81B60', enabled: true },
+        { id: 'moon-phases',     name: 'Moon phases',               category: 'astro',    color: '#5C6BC0', enabled: true },
+        { id: 'berlin-events',   name: 'Berlin · c-base events',    category: 'events',   color: '#00897B', enabled: true },
+        { id: 'pt-holidays',     name: 'Portugal · Holidays',       category: 'holidays', color: '#43A047', enabled: true },
+        { id: 'es-holidays',     name: 'Spain · Holidays',          category: 'holidays', color: '#FB8C00', enabled: true },
+        { id: 'br-holidays',     name: 'Brazil · Holidays',         category: 'holidays', color: '#7CB342', enabled: true },
+        { id: 'uk-holidays',     name: 'United Kingdom · Holidays', category: 'holidays', color: '#3949AB', enabled: true },
+        { id: 'us-holidays',     name: 'United States · Holidays',  category: 'holidays', color: '#1E88E5', enabled: true },
+        { id: 'fr-holidays',     name: 'France · Holidays',         category: 'holidays', color: '#8E24AA', enabled: true },
+        { id: 'nl-holidays',     name: 'Netherlands · Holidays',    category: 'holidays', color: '#F4511E', enabled: true },
+        { id: 'it-holidays',     name: 'Italy · Holidays',          category: 'holidays', color: '#00ACC1', enabled: true },
+        { id: 'at-holidays',     name: 'Austria · Holidays',        category: 'holidays', color: '#6D4C41', enabled: true },
+        { id: 'ie-holidays',     name: 'Ireland · Holidays',        category: 'holidays', color: '#2E7D32', enabled: true },
+        { id: 'pl-holidays',     name: 'Poland · Holidays',         category: 'holidays', color: '#C62828', enabled: false },
+        { id: 'tickets-demo',    name: 'Tickets & Passes',          category: 'tickets',  color: '#8B5CF6', enabled: true },
+        { id: 'bookings-demo',   name: 'Reservations',              category: 'bookings', color: '#16A34A', enabled: true }
+    ];
+
+    // ---- events: ~60-80 spread across prev/current/next month, generated
+    // relative to "now" so the mock never goes stale.
+    var mockEvents = (function () {
+        var events = [];
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var seq = 1;
+        function dayStart(offset) { var d = new Date(today); d.setDate(d.getDate() + offset); return d; }
+        function addTimed(offset, hh, mm, durMin, calendarId, title, location) {
+            var s = dayStart(offset); s.setHours(hh, mm, 0, 0);
+            var e = new Date(s.getTime() + durMin * 60000);
+            events.push({ id: 'mock-ev-' + (seq++), calendarId: calendarId, title: title, start: String(s.getTime()), end: String(e.getTime()), allDay: false, location: location || '' });
+        }
+        function addAllDay(offset, calendarId, title, spanDays) {
+            var s = dayStart(offset);
+            var e = dayStart(offset + (spanDays || 1));
+            events.push({ id: 'mock-ev-' + (seq++), calendarId: calendarId, title: title, start: String(s.getTime()), end: String(e.getTime()), allDay: true, location: '' });
+        }
+
+        // Holiday feeds, cycling across ~3 months (also covers the disabled pl-holidays,
+        // so toggling it on in Configs is the way to reveal its events/arcs).
+        var holidayCals = ['de-holidays','berlin-holidays','pt-holidays','es-holidays','br-holidays','uk-holidays','us-holidays','fr-holidays','nl-holidays','it-holidays','at-holidays','ie-holidays','pl-holidays'];
+        var holidayTitles = ['Public Holiday', 'Bank Holiday', 'National Day', 'Regional Observance', 'Memorial Day'];
+        var hi = 0;
+        for (var off = -42; off <= 48; off += 3) {
+            addAllDay(off, holidayCals[hi % holidayCals.length], holidayTitles[hi % holidayTitles.length]);
+            hi++;
+        }
+
+        // Moon phases, every ~7 days.
+        var moonTitles = ['New Moon', 'First Quarter', 'Full Moon', 'Last Quarter'];
+        var mi = 0;
+        for (var moff = -40; moff <= 44; moff += 7) {
+            addAllDay(moff, 'moon-phases', moonTitles[mi % 4]);
+            mi++;
+        }
+
+        // c-base (Berlin) — timed venue events, plus one multi-day event.
+        addTimed(-25, 19, 0, 180, 'berlin-events', 'c-base: Hardware Hacking Night', 'c-base, Berlin');
+        addTimed(-11, 20, 0, 150, 'berlin-events', 'c-base: Open Stage', 'c-base, Berlin');
+        addTimed(-3, 18, 30, 120, 'berlin-events', 'c-base: Lightning Talks', 'c-base, Berlin');
+        addTimed(0, 10, 0, 90, 'berlin-events', 'c-base: Coffee & Code', 'c-base, Berlin');
+        addTimed(4, 19, 0, 240, 'berlin-events', 'c-base: Retro Gaming Night', 'c-base, Berlin');
+        addTimed(18, 17, 0, 180, 'berlin-events', 'c-base: Maker Meetup', 'c-base, Berlin');
+        addTimed(33, 20, 0, 150, 'berlin-events', 'c-base: CTF Kickoff', 'c-base, Berlin');
+        addAllDay(10, 'berlin-events', 'Berlin Music Week', 4);
+
+        // Tickets (synthetic demo calendar so the Events > Tickets tab isn't empty).
+        addTimed(-12, 6, 45, 150, 'tickets-demo', 'Flight LH123 BER → LIS', 'Gate B12');
+        addTimed(0, 16, 0, 90, 'tickets-demo', 'Cinema: 8pm showing', 'CineStar');
+        addTimed(6, 20, 0, 150, 'tickets-demo', 'Concert: Radiohead Tribute', 'Mercedes-Benz Arena');
+        addAllDay(20, 'tickets-demo', 'Museum Pass — Pergamon');
+        addTimed(44, 9, 15, 180, 'tickets-demo', 'Flight LH456 LIS → BER', 'Terminal 1');
+
+        // Bookings (synthetic demo calendar so the Events > Bookings tab isn't empty).
+        addTimed(-18, 8, 0, 60, 'bookings-demo', 'Car service booking', 'AutoWerk Garage');
+        addTimed(-5, 9, 30, 45, 'bookings-demo', 'Dentist appointment', 'Zahnarzt Dr. Klein');
+        addTimed(0, 12, 0, 60, 'bookings-demo', 'Haircut appointment', 'Salon Bloom');
+        addTimed(2, 20, 0, 120, 'bookings-demo', 'Dinner reservation — Nobelhart & Schmutzig', 'Friedrichstraße 218');
+        addTimed(27, 15, 0, 60, 'bookings-demo', 'Hotel check-in — Lisbon', 'Hotel Avenida');
+
+        return events;
+    })();
+
+    // ---- projects (counts computed live from mockTodos below, so writes
+    // through saveTodo/setTodoStatus/deleteTodo keep counts honest).
+    var mockProjectsMeta = [
+        { id: 'proj-cloud-infra',  name: 'Cloud Infra',       color: '#60B0FF' },
+        { id: 'proj-calendar-app', name: 'Calendar App',      color: '#F5B0ED' },
+        { id: 'proj-home',         name: 'Home',               color: '#60E0E0' },
+        { id: 'proj-reading',      name: 'Reading',            color: '#FDE060' },
+        { id: 'proj-empty',        name: 'Someday / Maybe',    color: '#F9AD6A' }
+    ];
+
+    // ---- todos: ~27 across those projects, relative to "now".
+    var mockTodos = (function () {
+        var today = new Date(); today.setHours(17, 0, 0, 0);
+        var seq = 1;
+        function due(offsetDays) {
+            if (offsetDays === null) return '';
+            var d = new Date(today); d.setDate(d.getDate() + offsetDays);
+            return String(d.getTime());
+        }
+        function mk(projectId, summary, status, dueOffset, priority, description, completedOffset) {
+            return {
+                id: 'mock-todo-' + (seq++),
+                uid: 'mock-uid-' + seq,
+                projectId: projectId,
+                summary: summary,
+                description: description || '',
+                status: status,
+                due: due(dueOffset),
+                priority: String(priority || ''),
+                completedAt: status === 'COMPLETED' ? due(completedOffset != null ? completedOffset : dueOffset) : ''
+            };
+        }
+        var N = 'NEEDS-ACTION', C = 'COMPLETED';
+        return [
+            // Cloud Infra (open 6 / total 9)
+            mk('proj-cloud-infra', 'Provision staging Kubernetes cluster', C, -10, 2, 'Terraform module + node pool sizing.', -9),
+            mk('proj-cloud-infra', 'Rotate CalDAV service account credentials', N, -2, 1),
+            mk('proj-cloud-infra', 'Write runbook for sync failure alerts', N, 0, 3, 'Cover retry/backoff and manual resync steps.'),
+            mk('proj-cloud-infra', 'Add Prometheus alert for feed staleness >48h', N, 3, 4),
+            mk('proj-cloud-infra', 'Investigate ICS parser edge case for RRULE EXDATE', N, null, 5),
+            mk('proj-cloud-infra', 'Upgrade Postgres to 16', C, -20, 6, '', -18),
+            mk('proj-cloud-infra', "Review teammate's PR on calendar cache eviction", N, 1, 2),
+            mk('proj-cloud-infra', 'Draft on-call rotation for Q4', C, -15, 7, '', -14),
+            mk('proj-cloud-infra', 'Load-test webhook ingestion at 500rps', N, 5, 3),
+            // Calendar App (open 5 / total 8)
+            mk('proj-calendar-app', 'Build List view for Calendar tab', N, 0, 2),
+            mk('proj-calendar-app', 'Wire Configs → CalDAV test button', N, 2, 3),
+            mk('proj-calendar-app', 'Escape untrusted feed titles before render', C, -5, 1, 'XSS hardening pass on event/task rendering.', -5),
+            mk('proj-calendar-app', 'Fix month-grid arc stacking beyond 4 calendars', N, null, 5),
+            mk('proj-calendar-app', 'Persist calendar visibility toggles', C, -8, 6, '', -7),
+            mk('proj-calendar-app', 'Design empty states for Events tab', N, 6, 4),
+            mk('proj-calendar-app', "Ship offline mock dataset for browser dev — covering every tab, filter, and edge case so the whole UI can be exercised without a device or bridge attached", C, -1, 8, '', -1),
+            mk('proj-calendar-app', 'Add pull-to-refresh on ToDo tab', N, 4, 4),
+            // Home (open 3 / total 6)
+            mk('proj-home', 'Pay rent', N, 0, 1),
+            mk('proj-home', 'Fix leaking kitchen faucet', N, -1, 2),
+            mk('proj-home', 'Order replacement router', C, -12, 5, '', -11),
+            mk('proj-home', 'Schedule chimney sweep', N, 14, 6),
+            mk('proj-home', 'Renew home insurance', C, -30, 3, '', -28),
+            mk('proj-home', 'Sort out recycling bins', C, null, 9, '', -6),
+            // Reading (open 2 / total 4)
+            mk('proj-reading', "Finish 'The Pragmatic Programmer'", N, 10, 5, 'Chapters 8-10 left.'),
+            mk('proj-reading', 'Read RFC 5545 (iCalendar) in full', N, null, 4),
+            mk('proj-reading', "Read 'Designing Data-Intensive Applications' ch.7", C, -25, 6, '', -24),
+            mk('proj-reading', 'Skim CalDAV RFC 4791', C, -40, 7, '', -39)
+        ];
+    })();
+
+    var mockCaldav = MOCK_CALDAV_CONFIGURED
+        ? { url: 'https://cal.diegonmarcos.com/remote.php/dav/calendars/diego/', username: 'diego', hasPassword: true }
+        : { url: '', username: '', hasPassword: false };
+
+    var mockCalSync = { running: false, ok: 0, skipped: 0, failed: 0, messages: [] };
+    var mockTodoSync = { running: false, ok: 0, failed: 0, messages: [] };
+
+    function nextId(prefix) { return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1000); }
+
+    return {
+        calendars: function () { return JSON.parse(JSON.stringify(mockCalendars)); },
+
+        events: function (fromMs, toMs) {
+            var from = toMillis(fromMs), to = toMillis(toMs);
+            return mockEvents.filter(function (e) {
+                var s = toMillis(e.start), en = toMillis(e.end);
+                return en >= from && s <= to;
+            });
+        },
+
+        projects: function () {
+            return mockProjectsMeta.map(function (p) {
+                var own = mockTodos.filter(function (t) { return t.projectId === p.id; });
+                var open = own.filter(function (t) { return t.status !== 'COMPLETED'; }).length;
+                return { id: p.id, name: p.name, color: p.color, openCount: open, totalCount: own.length };
+            });
+        },
+
+        todos: function (projectId) {
+            var list = !projectId ? mockTodos : mockTodos.filter(function (t) { return t.projectId === projectId; });
+            return JSON.parse(JSON.stringify(list));
+        },
+
+        saveTodo: function (json) {
+            var obj;
+            try { obj = JSON.parse(json); } catch (e) { return { ok: false, id: '', error: 'invalid json' }; }
+            if (obj.id) {
+                var idx = mockTodos.findIndex(function (t) { return t.id === obj.id; });
+                if (idx >= 0) {
+                    mockTodos[idx] = Object.assign({}, mockTodos[idx], obj);
+                    return { ok: true, id: obj.id, error: '' };
+                }
+            }
+            var id = nextId('mock-todo');
+            mockTodos.push({
+                id: id, uid: id, projectId: obj.projectId || '', summary: obj.summary || '(untitled)',
+                description: obj.description || '', status: obj.status || 'NEEDS-ACTION',
+                due: obj.due || '', priority: obj.priority || '', completedAt: ''
+            });
+            return { ok: true, id: id, error: '' };
+        },
+
+        setTodoStatus: function (id, done) {
+            var t = mockTodos.find(function (t) { return t.id === id; });
+            if (!t) return { ok: false, error: 'not found' };
+            var isDone = done === 'true';
+            t.status = isDone ? 'COMPLETED' : 'NEEDS-ACTION';
+            t.completedAt = isDone ? String(Date.now()) : '';
+            return { ok: true, error: '' };
+        },
+
+        deleteTodo: function (id) {
+            var idx = mockTodos.findIndex(function (t) { return t.id === id; });
+            if (idx < 0) return { ok: false, error: 'not found' };
+            mockTodos.splice(idx, 1);
+            return { ok: true, error: '' };
+        },
+
+        sync: function () {
+            if (!mockCalSync.running) {
+                mockCalSync.running = true;
+                setTimeout(function () {
+                    mockCalSync.running = false;
+                    mockCalSync.ok = 12; mockCalSync.skipped = 2; mockCalSync.failed = 1;
+                    mockCalSync.messages = [
+                        'de-holidays: 462 events cached',
+                        'moon-phases: 27 events cached (ETag unchanged, 304)',
+                        'berlin-events: 1772 events cached',
+                        'pl-holidays: skipped (disabled)',
+                        'it-holidays: FAILED — HTTP 503 from calendar.google.com'
+                    ];
+                }, 1500);
+            }
+            return { started: true };
+        },
+        syncStatus: function () { return JSON.parse(JSON.stringify(mockCalSync)); },
+
+        syncTodos: function () {
+            if (!mockTodoSync.running) {
+                mockTodoSync.running = true;
+                setTimeout(function () {
+                    mockTodoSync.running = false;
+                    mockTodoSync.ok = 27; mockTodoSync.failed = 0;
+                    mockTodoSync.messages = [
+                        'CalDAV: 27 tasks synced from 2 collections',
+                        'Personal: 15 tasks',
+                        'Tasks: 12 tasks'
+                    ];
+                }, 1500);
+            }
+            return { started: true };
+        },
+        todoSyncStatus: function () { return JSON.parse(JSON.stringify(mockTodoSync)); },
+
+        caldavConfig: function () { return JSON.parse(JSON.stringify(mockCaldav)); },
+        setCaldavConfig: function (json) {
+            var obj;
+            try { obj = JSON.parse(json); } catch (e) { return { ok: false, error: 'invalid json' }; }
+            mockCaldav.url = obj.url || '';
+            mockCaldav.username = obj.username || '';
+            if (obj.password) mockCaldav.hasPassword = true;
+            return { ok: true, error: '' };
+        },
+        testCaldav: function () {
+            if (!mockCaldav.url) return { ok: false, error: 'No server configured — set a URL and credentials first.', collections: [] };
+            return { ok: true, error: '', collections: [{ id: 'personal', name: 'Personal' }, { id: 'tasks', name: 'Tasks' }, { id: 'shared-family', name: 'Family (shared)' }] };
+        }
+    };
+})();
+
+/* =====================================================================
+   Api — thin layer on top of callBridge that always resolves to either
+   real bridge data, mock data (no bridge present), or {error} (bridge
+   present but threw / returned garbage). Nothing below this line
+   should touch window.CalBridge directly.
+   ===================================================================== */
+var Api = {
+    calendars: function () {
+        var r = callBridge('calendars');
+        if (r.mock) return MOCK.calendars();
+        return r.ok ? r.data : { error: r.error };
+    },
+    events: function (fromMs, toMs) {
+        var r = callBridge('events', [String(fromMs), String(toMs)]);
+        if (r.mock) return MOCK.events(fromMs, toMs);
+        return r.ok ? r.data : { error: r.error };
+    },
+    projects: function () {
+        var r = callBridge('projects');
+        if (r.mock) return MOCK.projects();
+        return r.ok ? r.data : { error: r.error };
+    },
+    todos: function (projectId) {
+        var r = callBridge('todos', [projectId || '']);
+        if (r.mock) return MOCK.todos(projectId || '');
+        return r.ok ? r.data : { error: r.error };
+    },
+    saveTodo: function (obj) {
+        var json = JSON.stringify(obj);
+        var r = callBridge('saveTodo', [json]);
+        if (r.mock) return MOCK.saveTodo(json);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    setTodoStatus: function (id, doneBool) {
+        var done = doneBool ? 'true' : 'false';
+        var r = callBridge('setTodoStatus', [id, done]);
+        if (r.mock) return MOCK.setTodoStatus(id, done);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    deleteTodo: function (id) {
+        var r = callBridge('deleteTodo', [id]);
+        if (r.mock) return MOCK.deleteTodo(id);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    sync: function () {
+        var r = callBridge('sync');
+        if (r.mock) return MOCK.sync();
+        return r.ok ? r.data : { started: false, error: r.error };
+    },
+    syncStatus: function () {
+        var r = callBridge('syncStatus');
+        if (r.mock) return MOCK.syncStatus();
+        return r.ok ? r.data : { error: r.error };
+    },
+    syncTodos: function () {
+        var r = callBridge('syncTodos');
+        if (r.mock) return MOCK.syncTodos();
+        return r.ok ? r.data : { started: false, error: r.error };
+    },
+    todoSyncStatus: function () {
+        var r = callBridge('todoSyncStatus');
+        if (r.mock) return MOCK.todoSyncStatus();
+        return r.ok ? r.data : { error: r.error };
+    },
+    caldavConfig: function () {
+        var r = callBridge('caldavConfig');
+        if (r.mock) return MOCK.caldavConfig();
+        return r.ok ? r.data : { error: r.error };
+    },
+    setCaldavConfig: function (obj) {
+        var r = callBridge('setCaldavConfig', [JSON.stringify(obj)]);
+        if (r.mock) return MOCK.setCaldavConfig(JSON.stringify(obj));
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    testCaldav: function () {
+        var r = callBridge('testCaldav');
+        if (r.mock) return MOCK.testCaldav();
+        return r.ok ? r.data : { ok: false, error: r.error, collections: [] };
+    }
+};
+
+/* =====================================================================
+   App state
+   ===================================================================== */
+var State = {
+    tab: 'calendar',
+    calendarsById: {},          // id -> calendar object
+    visibleCalendars: new Set(), // calendar ids currently shown
+    calCategoryModel: [],
+    cal: { year: 0, month: 0, view: 'month', events: [], expandedCat: null },
+    todo: { projects: [], selectedProject: '', items: [] },
+    projects: { mode: 'all', projects: [], todos: [] },
+    events: { filter: 'all', items: [] }
+};
+
+try {
+    var savedVis = localStorage.getItem('cc_visible_calendars');
+    if (savedVis) State.visibleCalendars = new Set(JSON.parse(savedVis));
+} catch (e) { /* localStorage unavailable under file:// on some WebViews — ignore */ }
+
+function persistVisibility() {
+    try { localStorage.setItem('cc_visible_calendars', JSON.stringify(Array.from(State.visibleCalendars))); } catch (e) { /* ignore */ }
+}
+
+function errorBanner(message) {
+    return '<div class="error-banner">Couldn’t load this from the bridge: ' + esc(message) + '</div>';
+}
+
+/* =====================================================================
+   Calendar data loading (shared by month grid + list view)
+   ===================================================================== */
+function loadCalendarsIntoState() {
+    var cals = Api.calendars();
+    var mount = document.getElementById('cal-error-mount');
+    if (cals && cals.error) {
+        mount.innerHTML = errorBanner(cals.error);
+        return false;
+    }
+    mount.innerHTML = '';
+    State.calendarsById = {};
+    var haveVis = State.visibleCalendars.size > 0;
+    var freshVis = new Set();
+    var byCat = new Map();
+    cals.forEach(function (cal) {
+        State.calendarsById[cal.id] = cal;
+        if (!haveVis && cal.enabled) freshVis.add(cal.id);
+        var catId = cal.category || 'other';
+        if (!byCat.has(catId)) byCat.set(catId, { id: catId, label: catId.charAt(0).toUpperCase() + catId.slice(1), color: cal.color, subs: [] });
+        byCat.get(catId).subs.push({ id: cal.id, label: cal.name, color: cal.color });
+    });
+    if (!haveVis) { State.visibleCalendars = freshVis; persistVisibility(); }
+    State.calCategoryModel = Array.from(byCat.values());
+    return true;
+}
+
+function isCatVisible(catId) {
+    var cat = State.calCategoryModel.find(function (c) { return c.id === catId; });
+    if (!cat) return false;
+    return cat.subs.some(function (s) { return State.visibleCalendars.has(s.id); });
+}
+
+function toggleCategory(catId) {
+    var cat = State.calCategoryModel.find(function (c) { return c.id === catId; });
+    if (!cat) return;
+    var anyOn = cat.subs.some(function (s) { return State.visibleCalendars.has(s.id); });
+    cat.subs.forEach(function (s) {
+        if (anyOn) State.visibleCalendars.delete(s.id); else State.visibleCalendars.add(s.id);
+    });
+    persistVisibility();
+    onVisibilityChanged();
+}
+
+function toggleSub(subId) {
+    if (State.visibleCalendars.has(subId)) State.visibleCalendars.delete(subId);
+    else State.visibleCalendars.add(subId);
+    persistVisibility();
+    onVisibilityChanged();
+}
+
+function onVisibilityChanged() {
+    renderCategoryPanel();
+    renderMonthGrid();
+    renderListView();
+    renderConfigCalendars();
+}
+
+function renderCategoryPanel() {
+    var panel = document.getElementById('categories-panel');
+    panel.innerHTML = State.calCategoryModel.map(function (cat) {
+        var on = isCatVisible(cat.id);
+        return '<button data-cat="' + esc(cat.id) + '" onclick="tapCategory(\'' + esc(cat.id) + '\')" ' +
+            'class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap border border-gray-100" ' +
+            'style="border-color:' + cat.color + '22;background:' + cat.color + '18;color:#444;opacity:' + (on ? '1' : '0.4') + ';">' +
+            '<span class="w-2 h-2 rounded-full" style="background:' + cat.color + '"></span>' + esc(cat.label) + '</button>';
+    }).join('');
+}
+
+function tapCategory(id) {
+    if (State.cal.expandedCat === id) {
+        toggleCategory(id);
+    } else {
+        State.cal.expandedCat = id;
+        renderSubRow(id);
+    }
+}
+
+function renderSubRow(catId) {
+    var mount = document.getElementById('sub-row-mount');
+    var cat = State.calCategoryModel.find(function (c) { return c.id === catId; });
+    if (!cat) { mount.innerHTML = ''; return; }
+    mount.innerHTML = '<div class="pill-scroll hide-scrollbar mt-2">' + cat.subs.map(function (sub) {
+        var on = State.visibleCalendars.has(sub.id);
+        return '<button data-sub="' + esc(sub.id) + '" onclick="toggleSub(\'' + esc(sub.id) + '\')" ' +
+            'class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap" ' +
+            'style="background:' + sub.color + '22;color:#555;border:1px solid ' + sub.color + '44;opacity:' + (on ? '1' : '0.4') + ';">' +
+            '<span class="w-1.5 h-1.5 rounded-full" style="background:' + sub.color + '"></span>' + esc(sub.label) + '</button>';
+    }).join('') + '</div>';
+}
+
+/* ---- month grid geometry ---- */
+function gridDays(year, month) {
+    var first = new Date(year, month, 1);
+    var startPad = first.getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var totalCells = Math.ceil((startPad + daysInMonth) / 7) * 7;
+    var days = [];
+    for (var i = 0; i < totalCells; i++) {
+        var dayNum = i - startPad + 1;
+        var d = new Date(year, month, dayNum);
+        days.push({ date: d, inMonth: d.getMonth() === month });
+    }
+    return days;
+}
+
+function dateKey(d) { return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); }
+
+function fetchMonthEvents(year, month) {
+    var days = gridDays(year, month);
+    var from = days[0].date.getTime();
+    var to = days[days.length - 1].date.getTime() + 86400000;
+    var res = Api.events(from, to);
+    var mount = document.getElementById('cal-error-mount');
+    if (res && res.error) {
+        mount.innerHTML = errorBanner(res.error);
+        State.cal.events = [];
+        return;
+    }
+    mount.innerHTML = '';
+    State.cal.events = res || [];
+}
+
+function eventsByDayVisible() {
+    var map = {};
+    State.cal.events.forEach(function (e) {
+        var cal = State.calendarsById[e.calendarId];
+        if (!cal || !State.visibleCalendars.has(cal.id)) return;
+        var s = toMillis(e.start), en = toMillis(e.end);
+        if (s === null) return;
+        var cur = startOfDay(new Date(s));
+        var end = en !== null ? startOfDay(new Date(en - 1)) : cur;
+        for (var d = new Date(cur); d <= end; d.setDate(d.getDate() + 1)) {
+            var k = dateKey(d);
+            if (!map[k]) map[k] = [];
+            if (map[k].indexOf(cal.id) === -1) map[k].push(cal.id);
+        }
+    });
+    return map;
+}
+
+function renderMonthGrid() {
+    var grid = document.getElementById('month-grid');
+    var days = gridDays(State.cal.year, State.cal.month);
+    var byDay = eventsByDayVisible();
+    var today = new Date();
+    grid.innerHTML = days.map(function (day) {
+        var k = dateKey(day.date);
+        var calIds = (byDay[k] || []).slice(0, 4);
+        var isToday = sameDay(day.date, today);
+        var cls = 'relative flex justify-center items-center h-8';
+        if (!day.inMonth) cls += ' text-gray-200';
+        else if (isToday) cls += ' font-semibold text-black';
+        var arcs = calIds.map(function (calId, idx) {
+            var cal = State.calendarsById[calId];
+            return '<svg class="arc-svg"><circle class="arc arc-' + ((idx % 4) + 1) + '" cx="20" cy="20" r="15" style="stroke:' + cal.color + '"/></svg>';
+        }).join('');
+        return '<div class="' + cls + '">' + day.date.getDate() + arcs + '</div>';
+    }).join('');
+}
+
+function renderListView() {
+    var mount = document.getElementById('calendar-list-view');
+    var byCalVisible = State.cal.events.filter(function (e) {
+        var cal = State.calendarsById[e.calendarId];
+        return cal && State.visibleCalendars.has(cal.id);
+    }).sort(function (a, b) { return toMillis(a.start) - toMillis(b.start); });
+
+    if (!byCalVisible.length) {
+        mount.innerHTML = '<div class="empty-state">No events this month.</div>';
+        return;
+    }
+
+    var groups = [];
+    var lastKey = null;
+    byCalVisible.forEach(function (e) {
+        var d = new Date(toMillis(e.start));
+        var k = dateKey(d);
+        if (k !== lastKey) { groups.push({ date: d, items: [] }); lastKey = k; }
+        groups[groups.length - 1].items.push(e);
+    });
+
+    mount.innerHTML = groups.map(function (g) {
+        var rows = g.items.map(function (e) {
+            var cal = State.calendarsById[e.calendarId];
+            var timeLabel = e.allDay ? 'All day' : fmtTime(toMillis(e.start));
+            return '<div class="flex items-center gap-3 py-2.5 border-b border-gray-50">' +
+                '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:' + cal.color + '"></span>' +
+                '<span class="text-[12px] text-gray-400 w-16 flex-shrink-0">' + esc(timeLabel) + '</span>' +
+                '<span class="flex-1 min-w-0">' +
+                    '<div class="text-[13.5px] font-medium truncate">' + esc(e.title) + '</div>' +
+                    (e.location ? '<div class="text-[11.5px] text-gray-400 truncate">' + esc(e.location) + '</div>' : '') +
+                '</span></div>';
+        }).join('');
+        return '<div class="mb-4"><div class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">' + esc(fmtDayHeader(g.date)) + '</div>' + rows + '</div>';
+    }).join('');
+}
+
+function renderMonthPills() {
+    var mount = document.getElementById('month-pills');
+    mount.innerHTML = MONTH_NAMES.map(function (m, idx) {
+        var active = idx === State.cal.month;
+        return '<button class="pill' + (active ? ' active' : '') + '" data-month="' + idx + '">' + m + '</button>';
+    }).join('');
+    mount.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () { setCalMonth(parseInt(btn.dataset.month, 10), State.cal.year); });
+    });
+    var activeEl = mount.querySelector('.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+
+function renderYearPills() {
+    var mount = document.getElementById('year-pills');
+    var base = new Date().getFullYear();
+    var years = [];
+    for (var y = base - 3; y <= base + 4; y++) years.push(y);
+    mount.innerHTML = years.map(function (y) {
+        var active = y === State.cal.year;
+        return '<button class="pill' + (active ? ' active' : '') + '" data-year="' + y + '">' + y + '</button>';
+    }).join('');
+    mount.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () { setCalMonth(State.cal.month, parseInt(btn.dataset.year, 10)); });
+    });
+    var activeEl = mount.querySelector('.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+
+function updateCalHeader() {
+    document.getElementById('cal-header-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' });
+}
+
+function setCalMonth(month, year) {
+    State.cal.month = month;
+    State.cal.year = year;
+    State.cal.expandedCat = null;
+    document.getElementById('sub-row-mount').innerHTML = '';
+    renderMonthPills();
+    renderYearPills();
+    fetchMonthEvents(year, month);
+    renderMonthGrid();
+    renderListView();
+}
+
+function setCalView(view) {
+    State.cal.view = view;
+    document.querySelectorAll('#cal-view-toggle button').forEach(function (b) { b.classList.toggle('active', b.dataset.view === view); });
+    document.getElementById('calendar-month-view').classList.toggle('hidden', view !== 'month');
+    document.getElementById('calendar-list-view').classList.toggle('hidden', view !== 'list');
+}
+
+function initCalendarTab() {
+    var now = new Date();
+    State.cal.year = now.getFullYear();
+    State.cal.month = now.getMonth();
+    updateCalHeader();
+    document.getElementById('cal-today-btn').addEventListener('click', function () { setCalMonth(new Date().getMonth(), new Date().getFullYear()); });
+    document.getElementById('cal-view-toggle').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-view]');
+        if (btn) setCalView(btn.dataset.view);
+    });
+    if (!loadCalendarsIntoState()) return;
+    renderCategoryPanel();
+    renderMonthPills();
+    renderYearPills();
+    fetchMonthEvents(State.cal.year, State.cal.month);
+    renderMonthGrid();
+    renderListView();
+    initClock();
+}
+
+/* ---- analog clock: real current time + up to 3 of today's events ---- */
+function initClock() {
+    function tick() {
+        var d = new Date();
+        var h = d.getHours() % 12, m = d.getMinutes();
+        var hourDeg = h * 30 + m * 0.5;
+        var minDeg = m * 6;
+        document.getElementById('clock-hour-hand').style.transform = 'translateX(-50%) rotate(' + hourDeg + 'deg)';
+        document.getElementById('clock-minute-hand').style.transform = 'translateX(-50%) rotate(' + minDeg + 'deg)';
+    }
+    tick();
+    setInterval(tick, 30000);
+    renderClockLabels();
+}
+
+function renderClockLabels() {
+    var mount = document.getElementById('clock-labels');
+    var today = startOfDay(new Date());
+    var todays = State.cal.events.filter(function (e) {
+        var cal = State.calendarsById[e.calendarId];
+        if (!cal || !State.visibleCalendars.has(cal.id)) return false;
+        return sameDay(new Date(toMillis(e.start)), today);
+    }).slice(0, 3);
+    var positions = [
+        { t: 'translate(25px, -150px) rotate(8deg)', bg: '#F3BAEC', fg: '#9A4698' },
+        { t: 'translate(-155px, -15px)', bg: '#B7EBF5', fg: '#3492A7' },
+        { t: 'translate(-140px, 90px) rotate(-10deg)', bg: '#F3AEF3', fg: '#9B369A' }
+    ];
+    if (!todays.length) { mount.innerHTML = ''; return; }
+    mount.innerHTML = todays.map(function (e, i) {
+        var p = positions[i % positions.length];
+        return '<div class="absolute font-medium text-[11px] px-3.5 py-1.5 rounded-[10px] whitespace-nowrap" style="background:' + p.bg + ';color:' + p.fg + ';transform:' + p.t + ';max-width:130px;overflow:hidden;text-overflow:ellipsis;">' + esc(e.title) + '</div>';
+    }).join('');
+}
+
+/* =====================================================================
+   ToDo tab
+   ===================================================================== */
+function loadTodoTab() {
+    var pErr = document.getElementById('todo-error-mount');
+    var projects = Api.projects();
+    if (projects && projects.error) { pErr.innerHTML = errorBanner(projects.error); return; }
+    pErr.innerHTML = '';
+    State.todo.projects = projects;
+    renderTodoProjectPills();
+    populateTodoFormProjects();
+    loadTodoList();
+}
+
+function renderTodoProjectPills() {
+    var mount = document.getElementById('todo-project-pills');
+    var pills = [{ id: '', name: 'All', color: '#1C1C1C' }].concat(State.todo.projects);
+    mount.innerHTML = pills.map(function (p) {
+        var active = p.id === State.todo.selectedProject;
+        return '<button class="pill' + (active ? ' active' : '') + '" data-pid="' + esc(p.id) + '">' + esc(p.name) + '</button>';
+    }).join('');
+    mount.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            State.todo.selectedProject = btn.dataset.pid;
+            renderTodoProjectPills();
+            loadTodoList();
+        });
+    });
+}
+
+function loadTodoList() {
+    var mount = document.getElementById('todo-list');
+    var res = Api.todos(State.todo.selectedProject);
+    if (res && res.error) { mount.innerHTML = errorBanner(res.error); return; }
+    State.todo.items = res || [];
+    renderTodoList();
+}
+
+function renderTodoList() {
+    var mount = document.getElementById('todo-list');
+    if (!State.todo.items.length) { mount.innerHTML = '<div class="empty-state">No tasks here yet.</div>'; return; }
+    var sorted = State.todo.items.slice().sort(function (a, b) {
+        if ((a.status === 'COMPLETED') !== (b.status === 'COMPLETED')) return a.status === 'COMPLETED' ? 1 : -1;
+        var ad = toMillis(a.due), bd = toMillis(b.due);
+        if (ad === null && bd === null) return 0;
+        if (ad === null) return 1;
+        if (bd === null) return -1;
+        return ad - bd;
+    });
+    mount.innerHTML = sorted.map(renderTodoRowHtml).join('');
+    mount.querySelectorAll('[data-check-id]').forEach(function (el) {
+        el.addEventListener('click', function () { onToggleTodo(el.dataset.checkId, el.classList.contains('done') === false); });
+    });
+}
+
+function renderTodoRowHtml(t) {
+    var done = t.status === 'COMPLETED';
+    var dueMs = toMillis(t.due);
+    var overdue = !done && dueMs !== null && dueMs < startOfDay(new Date()).getTime();
+    var dueHtml = dueMs !== null
+        ? '<span style="color:' + (overdue ? '#E05252' : '#B0B0B0') + ';font-size:11.5px;">' + esc(fmtShortDate(dueMs)) + (overdue ? ' · overdue' : '') + '</span>'
+        : '';
+    return '<div class="todo-row">' +
+        '<button class="todo-check' + (done ? ' done' : '') + '" data-check-id="' + esc(t.id) + '">' + (done ? '<svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L4 7.5L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '') + '</button>' +
+        '<span class="priority-dot" style="background:' + priorityColor(t.priority) + '"></span>' +
+        '<div class="flex-1 min-w-0">' +
+            '<div class="todo-title' + (done ? ' done' : '') + ' text-[14px] font-medium">' + esc(t.summary) + '</div>' +
+            (dueHtml ? '<div class="mt-0.5">' + dueHtml + '</div>' : '') +
+        '</div></div>';
+}
+
+function onToggleTodo(id, makeDone) {
+    var res = Api.setTodoStatus(id, makeDone);
+    if (!res || res.ok === false) { alert('Could not update task' + (res && res.error ? ': ' + res.error : '')); return; }
+    loadTodoList();
+    if (State.tab === 'projects') loadProjectsTab();
+}
+
+function populateTodoFormProjects() {
+    var sel = document.getElementById('todo-form-project');
+    sel.innerHTML = State.todo.projects.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
+}
+
+function initTodoTab() {
+    document.getElementById('todo-add-btn').addEventListener('click', function () {
+        document.getElementById('todo-add-form').classList.toggle('hidden');
+    });
+    document.getElementById('todo-form-cancel').addEventListener('click', function () {
+        document.getElementById('todo-add-form').classList.add('hidden');
+    });
+    document.getElementById('todo-form-save').addEventListener('click', function () {
+        var title = document.getElementById('todo-form-title').value.trim();
+        if (!title) { alert('Title is required'); return; }
+        var dueVal = document.getElementById('todo-form-due').value;
+        var dueMs = dueVal ? String(new Date(dueVal + 'T00:00:00').getTime()) : '';
+        var obj = {
+            id: '', projectId: document.getElementById('todo-form-project').value,
+            summary: title, description: '', status: 'NEEDS-ACTION',
+            due: dueMs, priority: document.getElementById('todo-form-priority').value
+        };
+        var res = Api.saveTodo(obj);
+        if (!res || res.ok === false) { alert('Could not save task' + (res && res.error ? ': ' + res.error : '')); return; }
+        document.getElementById('todo-form-title').value = '';
+        document.getElementById('todo-form-due').value = '';
+        document.getElementById('todo-add-form').classList.add('hidden');
+        loadTodoTab();
+    });
+}
+
+/* =====================================================================
+   Projects tab
+   ===================================================================== */
+function loadProjectsTab() {
+    var errMount = document.getElementById('projects-error-mount');
+    var projects = Api.projects();
+    if (projects && projects.error) { errMount.innerHTML = errorBanner(projects.error); return; }
+    var allTodos = Api.todos('');
+    if (allTodos && allTodos.error) { errMount.innerHTML = errorBanner(allTodos.error); return; }
+    errMount.innerHTML = '';
+    State.projects.projects = projects;
+    State.projects.todos = allTodos || [];
+    renderProjectsBody();
+}
+
+function projectName(id) {
+    var p = State.projects.projects.find(function (p) { return p.id === id; });
+    return p ? p.name : '—';
+}
+
+function renderProjectsBody() {
+    var mount = document.getElementById('projects-body');
+    if (State.projects.mode === 'all') {
+        if (!State.projects.todos.length) { mount.innerHTML = '<div class="empty-state">No tasks yet.</div>'; return; }
+        var sorted = State.projects.todos.slice().sort(function (a, b) {
+            if ((a.status === 'COMPLETED') !== (b.status === 'COMPLETED')) return a.status === 'COMPLETED' ? 1 : -1;
+            return 0;
+        });
+        mount.innerHTML = sorted.map(function (t) {
+            return '<div class="mb-1">' +
+                '<div class="text-[10.5px] font-semibold text-gray-400 uppercase tracking-wide mt-2">' + esc(projectName(t.projectId)) + '</div>' +
+                renderTodoRowHtml(t) + '</div>';
+        }).join('');
+    } else {
+        mount.innerHTML = State.projects.projects.map(function (p) {
+            var items = State.projects.todos.filter(function (t) { return t.projectId === p.id; });
+            var body = items.length
+                ? items.map(renderTodoRowHtml).join('')
+                : '<div class="empty-state" style="padding:16px 0;">No tasks in this project.</div>';
+            return '<details class="proj-group border-b border-gray-100 py-2">' +
+                '<summary class="flex items-center justify-between py-1.5">' +
+                    '<span class="flex items-center gap-2">' +
+                        '<svg class="chev" width="8" height="12" viewBox="0 0 8 12" fill="none"><path d="M1 1L6 6L1 11" stroke="#B0B0B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                        '<span class="w-2.5 h-2.5 rounded-full" style="background:' + p.color + '"></span>' +
+                        '<span class="text-[14px] font-medium">' + esc(p.name) + '</span>' +
+                    '</span>' +
+                    '<span class="text-[12px] text-gray-400">' + p.openCount + ' / ' + p.totalCount + '</span>' +
+                '</summary><div class="pl-2">' + body + '</div></details>';
+        }).join('');
+    }
+    mount.querySelectorAll('[data-check-id]').forEach(function (el) {
+        el.addEventListener('click', function () { onToggleTodoInProjects(el.dataset.checkId, el.classList.contains('done') === false); });
+    });
+}
+
+function onToggleTodoInProjects(id, makeDone) {
+    var res = Api.setTodoStatus(id, makeDone);
+    if (!res || res.ok === false) { alert('Could not update task' + (res && res.error ? ': ' + res.error : '')); return; }
+    loadProjectsTab();
+    if (State.tab === 'todo') loadTodoList();
+}
+
+function initProjectsTab() {
+    document.getElementById('projects-mode-toggle').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-mode]');
+        if (!btn) return;
+        State.projects.mode = btn.dataset.mode;
+        document.querySelectorAll('#projects-mode-toggle button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        renderProjectsBody();
+    });
+}
+
+/* =====================================================================
+   Events tab
+   ===================================================================== */
+function loadEventsTab() {
+    var errMount = document.getElementById('events-error-mount');
+    var cals = Api.calendars();
+    if (cals && cals.error) { errMount.innerHTML = errorBanner(cals.error); return; }
+    var byId = {};
+    cals.forEach(function (c) { byId[c.id] = c; });
+    var now = Date.now();
+    var horizon = now + 90 * 86400000;
+    var events = Api.events(String(now - 86400000), String(horizon));
+    if (events && events.error) { errMount.innerHTML = errorBanner(events.error); return; }
+    errMount.innerHTML = '';
+    State.events.calendarsById = byId;
+    State.events.items = (events || []).filter(function (e) {
+        var en = toMillis(e.end);
+        return en === null || en >= now;
+    }).sort(function (a, b) { return toMillis(a.start) - toMillis(b.start); });
+    renderEventsBody();
+}
+
+function renderEventsBody() {
+    var mount = document.getElementById('events-body');
+    var filter = State.events.filter;
+    var items = State.events.items.filter(function (e) {
+        var cal = State.events.calendarsById[e.calendarId];
+        if (!cal) return false;
+        if (filter === 'all') return true;
+        return cal.category === filter;
+    });
+    if (!items.length) {
+        mount.innerHTML = '<div class="empty-state">No ' + (filter === 'all' ? 'upcoming events' : filter) + ' to show.</div>';
+        return;
+    }
+    var groups = [];
+    var lastKey = null;
+    items.forEach(function (e) {
+        var d = new Date(toMillis(e.start));
+        var k = dateKey(d);
+        if (k !== lastKey) { groups.push({ date: d, items: [] }); lastKey = k; }
+        groups[groups.length - 1].items.push(e);
+    });
+    mount.innerHTML = groups.map(function (g) {
+        var rows = g.items.map(function (e) {
+            var cal = State.events.calendarsById[e.calendarId];
+            var timeLabel = e.allDay ? 'All day' : fmtTime(toMillis(e.start));
+            return '<div class="flex items-center gap-3 py-2.5 border-b border-gray-50">' +
+                '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:' + cal.color + '"></span>' +
+                '<span class="text-[12px] text-gray-400 w-16 flex-shrink-0">' + esc(timeLabel) + '</span>' +
+                '<span class="flex-1 min-w-0">' +
+                    '<div class="text-[13.5px] font-medium truncate">' + esc(e.title) + '</div>' +
+                    (e.location ? '<div class="text-[11.5px] text-gray-400 truncate">' + esc(e.location) + '</div>' : '') +
+                '</span></div>';
+        }).join('');
+        return '<div class="mb-4"><div class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">' + esc(fmtDayHeader(g.date)) + '</div>' + rows + '</div>';
+    }).join('');
+}
+
+function initEventsTab() {
+    document.getElementById('events-menu-toggle').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-cat]');
+        if (!btn) return;
+        State.events.filter = btn.dataset.cat;
+        document.querySelectorAll('#events-menu-toggle button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        renderEventsBody();
+    });
+}
+
+/* =====================================================================
+   Configs tab
+   ===================================================================== */
+function renderConfigCalendars() {
+    var mount = document.getElementById('config-calendars-list');
+    var errMount = document.getElementById('config-calendars-error');
+    var cals = Api.calendars();
+    if (cals && cals.error) { errMount.innerHTML = errorBanner(cals.error); mount.innerHTML = ''; return; }
+    errMount.innerHTML = '';
+    mount.innerHTML = cals.map(function (c) {
+        var on = State.visibleCalendars.has(c.id);
+        return '<div class="flex items-center justify-between py-3">' +
+            '<span class="flex items-center gap-2.5 min-w-0">' +
+                '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:' + c.color + '"></span>' +
+                '<span class="min-w-0"><div class="text-[13.5px] font-medium truncate">' + esc(c.name) + '</div>' +
+                '<div class="text-[11px] text-gray-400">' + esc(c.category) + '</div></span>' +
+            '</span>' +
+            '<label class="switch"><input type="checkbox" data-cal-id="' + esc(c.id) + '"' + (on ? ' checked' : '') + '><span class="slider"></span></label>' +
+        '</div>';
+    }).join('');
+    mount.querySelectorAll('input[data-cal-id]').forEach(function (input) {
+        input.addEventListener('change', function () {
+            var id = input.dataset.calId;
+            if (input.checked) State.visibleCalendars.add(id); else State.visibleCalendars.delete(id);
+            persistVisibility();
+            renderCategoryPanel();
+            renderMonthGrid();
+            renderListView();
+        });
+    });
+}
+
+function loadConfigCaldav() {
+    var cfg = Api.caldavConfig();
+    if (cfg && cfg.error) { document.getElementById('caldav-result').innerHTML = '<span style="color:#A33;">' + esc(cfg.error) + '</span>'; return; }
+    document.getElementById('caldav-url').value = cfg.url || '';
+    document.getElementById('caldav-username').value = cfg.username || '';
+    document.getElementById('caldav-password').placeholder = cfg.hasPassword ? '•••••••• (unchanged)' : '••••••••';
+}
+
+function initConfigsTab() {
+    document.getElementById('caldav-save-btn').addEventListener('click', function () {
+        var obj = {
+            url: document.getElementById('caldav-url').value.trim(),
+            username: document.getElementById('caldav-username').value.trim(),
+            password: document.getElementById('caldav-password').value
+        };
+        var res = Api.setCaldavConfig(obj);
+        var out = document.getElementById('caldav-result');
+        if (res && res.ok) {
+            out.innerHTML = '<span style="color:#2E7D32;">Saved.</span>';
+            document.getElementById('caldav-password').value = '';
+            loadConfigCaldav();
+        } else {
+            out.innerHTML = '<span style="color:#A33;">' + esc((res && res.error) || 'Could not save.') + '</span>';
+        }
+    });
+    document.getElementById('caldav-test-btn').addEventListener('click', function () {
+        var out = document.getElementById('caldav-result');
+        out.innerHTML = 'Testing…';
+        var res = Api.testCaldav();
+        if (res && res.ok) {
+            var cols = (res.collections || []).map(function (c) { return esc(c.name); }).join(', ');
+            out.innerHTML = '<span style="color:#2E7D32;">Connected.</span>' + (cols ? ' Collections: ' + cols : '');
+        } else {
+            out.innerHTML = '<span style="color:#A33;">' + esc((res && res.error) || 'Connection failed.') + '</span>';
+        }
+    });
+
+    document.getElementById('sync-calendars-btn').addEventListener('click', function () {
+        Api.sync();
+        pollSyncStatus();
+    });
+    document.getElementById('sync-todos-btn').addEventListener('click', function () {
+        Api.syncTodos();
+        pollTodoSyncStatus();
+    });
+
+    loadConfigCaldav();
+    renderConfigCalendars();
+    renderSyncStatus();
+}
+
+var syncPollTimer = null, todoSyncPollTimer = null;
+
+function renderSyncStatus() {
+    var cal = Api.syncStatus();
+    var todo = Api.todoSyncStatus();
+    var mount = document.getElementById('sync-status');
+    var parts = [];
+    if (cal && !cal.error) {
+        parts.push('<div><strong>Calendars:</strong> ' + (cal.running ? 'syncing…' : ('ok ' + cal.ok + ', skipped ' + cal.skipped + ', failed ' + cal.failed)) + '</div>');
+        (cal.messages || []).forEach(function (m) { parts.push('<div class="text-gray-400">• ' + esc(m) + '</div>'); });
+    } else if (cal && cal.error) {
+        parts.push(errorBanner(cal.error));
+    }
+    if (todo && !todo.error) {
+        parts.push('<div class="mt-2"><strong>Tasks:</strong> ' + (todo.running ? 'syncing…' : ('ok ' + todo.ok + ', failed ' + todo.failed)) + '</div>');
+        (todo.messages || []).forEach(function (m) { parts.push('<div class="text-gray-400">• ' + esc(m) + '</div>'); });
+    } else if (todo && todo.error) {
+        parts.push(errorBanner(todo.error));
+    }
+    mount.innerHTML = parts.join('');
+}
+
+function pollSyncStatus() {
+    if (syncPollTimer) clearInterval(syncPollTimer);
+    syncPollTimer = setInterval(function () {
+        var s = Api.syncStatus();
+        renderSyncStatus();
+        if (!s || !s.running) clearInterval(syncPollTimer);
+    }, 500);
+}
+function pollTodoSyncStatus() {
+    if (todoSyncPollTimer) clearInterval(todoSyncPollTimer);
+    todoSyncPollTimer = setInterval(function () {
+        var s = Api.todoSyncStatus();
+        renderSyncStatus();
+        if (!s || !s.running) clearInterval(todoSyncPollTimer);
+    }, 500);
+}
+
+/* =====================================================================
+   Tab switching
+   ===================================================================== */
+var loadedTabs = {};
+
+function switchTab(tab) {
+    State.tab = tab;
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+    document.getElementById('app-main').scrollTop = 0;
+
+    if (!loadedTabs[tab]) {
+        loadedTabs[tab] = true;
+        if (tab === 'todo') loadTodoTab();
+        else if (tab === 'projects') loadProjectsTab();
+        else if (tab === 'events') loadEventsTab();
+        else if (tab === 'configs') { /* initConfigsTab already loaded config data on init */ }
+    } else {
+        if (tab === 'todo') loadTodoList();
+        else if (tab === 'projects') renderProjectsBody();
+        else if (tab === 'events') renderEventsBody();
+        else if (tab === 'configs') renderSyncStatus();
+    }
+}
+
+/* =====================================================================
+   Init
+   ===================================================================== */
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('bottom-nav').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.nav-item');
+        if (btn) switchTab(btn.dataset.tab);
+    });
+
+    initCalendarTab();
+    initTodoTab();
+    initProjectsTab();
+    initEventsTab();
+    initConfigsTab();
+
+    switchTab('calendar');
+});
+</script>
 
 </body>
 </html>
