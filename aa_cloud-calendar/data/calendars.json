@@ -3,13 +3,11 @@
   "_doc_verified": "Every url with verified != null was fetched live on that date and returned HTTP 200 with the stated VEVENT count. Entries that could NOT be verified ship enabled:false so a broken feed never silently degrades the UI — flip them on once a working URL is found.",
   "_doc_fields": "id: stable key, also the cache filename. name: shown in the UI. url: ICS/webcal endpoint. category: holidays|astro|events|personal — drives grouping and the default colour bucket. color: hex used for the event dot/chip. enabled: fetched at sync time. refresh_hours: per-feed override of defaults.refresh_hours. read_only: true for every public feed (no write-back).",
   "version": 1,
-
   "defaults": {
     "refresh_hours": 24,
     "read_only": true,
     "_doc_refresh": "Public holiday feeds change a few times a YEAR; a daily refresh is already generous and keeps the phone off the network. Moon phases are computed years ahead, so they are even cheaper. The engine must also honour HTTP caching (ETag / If-Modified-Since) so an unchanged feed costs one 304."
   },
-
   "calendars": [
     {
       "id": "de-holidays",
@@ -43,15 +41,14 @@
     },
     {
       "id": "berlin-events",
-      "name": "Berlin · Events",
-      "url": "",
+      "name": "Berlin · c-base events",
+      "url": "https://c-base.org/calendar/exported/c-base-events.ics",
       "category": "events",
       "color": "#00897B",
-      "enabled": false,
-      "verified": null,
-      "_doc": "NO WORKING PUBLIC ICS FOUND (2026-08-09). berlin.de publishes events as HTML/JSON, not iCalendar, and the schulferien.org ICS endpoint now 410s. Left declared-but-disabled on purpose: the entry documents the intent and the UI will not show an empty broken calendar. Options when someone wants it: (a) point url at a self-hosted ICS generated from the berlin.de event API by a cloud service, (b) find a curated community feed. Do NOT invent a URL here — an unreachable feed is worse than an absent one."
+      "enabled": true,
+      "verified": "2026-08-09 · 1772 VEVENT, events through 2028-06",
+      "_doc": "c-base is a Berlin hackerspace/venue that publishes a real, live public iCalendar export. Scope is ONE venue, not all of Berlin — the name says so rather than overpromising. Chosen after re-probing the alternatives on 2026-08-09: berlin.de/land/kalender/ical.php 404s, schulferien.org 410s, meetup.com/berlin 404s, bundestag sitzungskalender 404s, visitberlin serves HTML only, musicboard-berlin times out. If a broader curated Berlin feed ever appears, widen this entry rather than adding a second events calendar."
     },
-
     {
       "id": "pt-holidays",
       "name": "Portugal · Holidays",
