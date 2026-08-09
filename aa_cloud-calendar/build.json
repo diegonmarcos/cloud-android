@@ -29,10 +29,11 @@
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list.",
     "app": {
       "type": "application",
-      "depends_on": ["libs:core", "libs:updater"]
+      "depends_on": ["libs:core", "libs:updater", "libs:cal"]
     },
     "libs:core": { "type": "library" },
-    "libs:updater": { "type": "library" }
+    "libs:updater": { "type": "library" },
+    "libs:cal": { "type": "library" }
   },
   "release": {
     "artifact": {

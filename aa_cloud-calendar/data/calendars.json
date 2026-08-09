@@ -1,0 +1,155 @@
+{
+  "_doc": "PUBLIC CALENDAR SUBSCRIPTIONS — the data half of the calendar sync engine. libs:cal fetches each enabled entry's iCalendar (RFC 5545) feed, parses VEVENTs and caches them locally; the Calendar/Events surfaces render from that cache, never from the network. Adding a calendar is an entry HERE plus a rebuild — no Kotlin change. Baked into BuildConfig.CALENDARS_B64 by app/build.gradle, same pattern as data/cloud_services.json.",
+  "_doc_verified": "Every url with verified != null was fetched live on that date and returned HTTP 200 with the stated VEVENT count. Entries that could NOT be verified ship enabled:false so a broken feed never silently degrades the UI — flip them on once a working URL is found.",
+  "_doc_fields": "id: stable key, also the cache filename. name: shown in the UI. url: ICS/webcal endpoint. category: holidays|astro|events|personal — drives grouping and the default colour bucket. color: hex used for the event dot/chip. enabled: fetched at sync time. refresh_hours: per-feed override of defaults.refresh_hours. read_only: true for every public feed (no write-back).",
+  "version": 1,
+
+  "defaults": {
+    "refresh_hours": 24,
+    "read_only": true,
+    "_doc_refresh": "Public holiday feeds change a few times a YEAR; a daily refresh is already generous and keeps the phone off the network. Moon phases are computed years ahead, so they are even cheaper. The engine must also honour HTTP caching (ETag / If-Modified-Since) so an unchanged feed costs one 304."
+  },
+
+  "calendars": [
+    {
+      "id": "de-holidays",
+      "name": "Germany · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/de.german%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#E53935",
+      "enabled": true,
+      "verified": "2026-08-09 · 462 VEVENT"
+    },
+    {
+      "id": "berlin-holidays",
+      "name": "Berlin · Public holidays",
+      "url": "https://www.officeholidays.com/ics/germany/berlin",
+      "category": "holidays",
+      "color": "#D81B60",
+      "enabled": true,
+      "verified": "2026-08-09 · 20 VEVENT",
+      "_doc": "Berlin-specific state holidays (Frauentag, etc.) — the Google de.german feed is national + all-Länder mixed, so this narrower one is what actually tells you if BERLIN is off."
+    },
+    {
+      "id": "moon-phases",
+      "name": "Moon phases",
+      "url": "https://www.calendarlabs.com/ical-calendar/ics/76/Moon_Phases.ics",
+      "category": "astro",
+      "color": "#5C6BC0",
+      "enabled": true,
+      "refresh_hours": 168,
+      "verified": "2026-08-09 · 27 VEVENT",
+      "_doc": "Weekly refresh is plenty — lunar phases are computed, not announced."
+    },
+    {
+      "id": "berlin-events",
+      "name": "Berlin · Events",
+      "url": "",
+      "category": "events",
+      "color": "#00897B",
+      "enabled": false,
+      "verified": null,
+      "_doc": "NO WORKING PUBLIC ICS FOUND (2026-08-09). berlin.de publishes events as HTML/JSON, not iCalendar, and the schulferien.org ICS endpoint now 410s. Left declared-but-disabled on purpose: the entry documents the intent and the UI will not show an empty broken calendar. Options when someone wants it: (a) point url at a self-hosted ICS generated from the berlin.de event API by a cloud service, (b) find a curated community feed. Do NOT invent a URL here — an unreachable feed is worse than an absent one."
+    },
+
+    {
+      "id": "pt-holidays",
+      "name": "Portugal · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/pt.portuguese%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#43A047",
+      "enabled": true,
+      "verified": "2026-08-09 · 231 VEVENT"
+    },
+    {
+      "id": "es-holidays",
+      "name": "Spain · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/es.spain%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#FB8C00",
+      "enabled": true,
+      "verified": "2026-08-09 · 386 VEVENT"
+    },
+    {
+      "id": "br-holidays",
+      "name": "Brazil · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/pt_br.brazilian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#7CB342",
+      "enabled": true,
+      "verified": "2026-08-09 · 275 VEVENT"
+    },
+    {
+      "id": "uk-holidays",
+      "name": "United Kingdom · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/en.uk%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#3949AB",
+      "enabled": true,
+      "verified": "2026-08-09 · 244 VEVENT"
+    },
+    {
+      "id": "us-holidays",
+      "name": "United States · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#1E88E5",
+      "enabled": true,
+      "verified": "2026-08-09 · 317 VEVENT"
+    },
+    {
+      "id": "fr-holidays",
+      "name": "France · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/fr.french%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#8E24AA",
+      "enabled": true,
+      "verified": "2026-08-09 · 209 VEVENT"
+    },
+    {
+      "id": "nl-holidays",
+      "name": "Netherlands · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/nl.dutch%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#F4511E",
+      "enabled": true,
+      "verified": "2026-08-09 · 200 VEVENT"
+    },
+    {
+      "id": "it-holidays",
+      "name": "Italy · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/it.italian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#00ACC1",
+      "enabled": true,
+      "verified": "2026-08-09 · 209 VEVENT"
+    },
+    {
+      "id": "at-holidays",
+      "name": "Austria · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/de.austrian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#6D4C41",
+      "enabled": true,
+      "verified": "2026-08-09 · 297 VEVENT"
+    },
+    {
+      "id": "ie-holidays",
+      "name": "Ireland · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/en.irish%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#2E7D32",
+      "enabled": true,
+      "verified": "2026-08-09 · 194 VEVENT"
+    },
+    {
+      "id": "pl-holidays",
+      "name": "Poland · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/pl.polish%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#C62828",
+      "enabled": true,
+      "verified": "2026-08-09 · 253 VEVENT"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
         }
+        webView.addJavascriptInterface(CalBridge(this), "CalBridge")
         webView.loadUrl("file:///android_asset/calendar.html")
         Updater.start(this)
     }
