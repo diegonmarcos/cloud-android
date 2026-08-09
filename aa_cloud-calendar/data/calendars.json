@@ -147,6 +147,56 @@
       "color": "#C62828",
       "enabled": true,
       "verified": "2026-08-09 · 253 VEVENT"
+    },
+    {
+      "id": "union-berlin",
+      "name": "1. FC Union Berlin",
+      "url": "https://ics.fixtur.es/v2/fc-union-berlin.ics",
+      "category": "sports",
+      "color": "#C62828",
+      "enabled": true,
+      "verified": "2026-08-09 · 323 VEVENT, through 2027-05",
+      "_doc": "fixtur.es real feed path is https://ics.fixtur.es/v2/<team>.ics — NOT the fixtur.es/en/team/<team> page URL, which 404s as .ics. Found by scraping the team page for its webcal link. All DTSTARTs are UTC-Z, so unaffected by the IcsParser TZID gap."
+    },
+    {
+      "id": "hertha-bsc",
+      "name": "Hertha BSC",
+      "url": "https://ics.fixtur.es/v2/hertha-bsc.ics",
+      "category": "sports",
+      "color": "#1565C0",
+      "enabled": true,
+      "verified": "2026-08-09 · 452 VEVENT, through 2027-05",
+      "_doc": "Slug is hertha-bsc; hertha-berlin 404s."
+    },
+    {
+      "id": "f1",
+      "name": "Formula 1 · qualifying + race",
+      "url": "https://f1calendar.com/download/f1-calendar_q_gp.ics",
+      "category": "sports",
+      "color": "#F4511E",
+      "enabled": true,
+      "verified": "2026-08-09 · 58 VEVENT, through 2026-12",
+      "_doc": "f1calendar.com builds the filename from the session set. The widely-quoted f1-calendar_p1_p2_p3_qualifying_sprint_race.ics 500s ('could not find'); _q_gp (quali+race) and _gp (race only) both resolve. Swap the slug if you want practice sessions and find a variant that actually 200s."
+    },
+    {
+      "id": "un-days",
+      "name": "UN international days",
+      "url": "https://www.officeholidays.com/ics-all/various",
+      "category": "observances",
+      "color": "#7CB342",
+      "enabled": true,
+      "verified": "2026-08-09 · 12 VEVENT, through 2027-10",
+      "_doc": "officeholidays' sibling aggregate /ics/various returns a valid but EMPTY VCALENDAR (0 VEVENT), so only the ics-all/various variant is usable."
+    },
+    {
+      "id": "berlin-school-holidays",
+      "name": "Berlin · School holidays",
+      "url": "https://www.ferienwiki.de/exports/ferien/2026/de/berlin",
+      "category": "school",
+      "color": "#8E24AA",
+      "enabled": true,
+      "verified": "2026-08-09 · 7 VEVENT, through 2026-12",
+      "_doc": "WARNING — YEAR-PINNED URL. ferienwiki has no rolling endpoint: /exports/ferien/de/berlin 404s, only /exports/ferien/<year>/de/berlin works (2027 verified to exist). This feed goes SILENTLY EMPTY on 2027-01-01 unless the year is bumped. Proper fix is {year} templating in CalSync's URL expansion; until then this needs a yearly bump. schulferien.org, the usual alternative, 410s."
     }
   ]
 }
