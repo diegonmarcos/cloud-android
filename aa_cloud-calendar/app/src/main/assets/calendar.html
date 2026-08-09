@@ -170,11 +170,26 @@
         details.proj-group summary::-webkit-details-marker { display: none; }
         details.proj-group .chev { transition: transform .15s; }
         details.proj-group[open] .chev { transform: rotate(90deg); }
+
+        /* ---- demo-data honesty banner ---- */
+        .demo-banner {
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+            background: #FFF6DD; border-bottom: 1px solid #F0DA9E; color: #7A5B00;
+            font-size: 12.5px; font-weight: 500; padding: 9px 16px;
+            padding-left: calc(16px + var(--sal)); padding-right: calc(16px + var(--sar));
+        }
+        .demo-banner.hidden { display: none; }
+        .demo-banner button {
+            border: none; background: #7A5B00; color: #FFF6DD; font-family: inherit;
+            font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 4px 12px; flex-shrink: 0;
+        }
+        .demo-banner span.dot { width: 6px; height: 6px; border-radius: 50%; background: #C99A1E; flex-shrink: 0; }
     </style>
 </head>
 <body class="antialiased">
 
     <div class="app-container">
+        <div id="demo-banner" class="demo-banner hidden"></div>
         <main id="app-main" class="app-main hide-scrollbar">
 
             <!-- ============ CALENDAR TAB ============ -->
@@ -315,6 +330,7 @@
                         <button data-cat="all" class="active">All</button>
                         <button data-cat="tickets">Tickets</button>
                         <button data-cat="bookings">Bookings</button>
+                        <button data-cat="invites">Invites Mail</button>
                     </div>
                 </div>
                 <div class="px-6 mt-4 panel-scroll-pad" id="events-body"></div>
@@ -326,6 +342,17 @@
                     <h1 class="text-xl font-medium">Configs</h1>
                 </header>
                 <div class="px-6 panel-scroll-pad space-y-8">
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Demo data</span>
+                        <p class="text-[11.5px] text-gray-400 mt-1 mb-3">Auto shows demo data only while your synced feeds/tasks are empty, and switches itself to real data the moment any land. On always shows demo; Off never does (even if that means empty lists).</p>
+                        <div class="seg" id="demo-mode-toggle">
+                            <button data-mode="auto" class="active">Auto</button>
+                            <button data-mode="on">On</button>
+                            <button data-mode="off">Off</button>
+                        </div>
+                        <div id="demo-mode-status" class="text-[12.5px] text-gray-500 mt-2"></div>
+                    </div>
 
                     <div>
                         <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Calendar subscriptions</span>
@@ -444,12 +471,51 @@ function sameDay(a, b) {
 function startOfDay(d) { var x = new Date(d); x.setHours(0,0,0,0); return x; }
 
 /* =====================================================================
-   Bridge wrapper — every CalBridge call goes through here.
-   Falls back to MOCK only when window.CalBridge is undefined; any
-   thrown/malformed response from a *present* bridge surfaces as an
-   inline error instead of white-screening the app.
+   Demo-mode ("cc.demoMode") — decides whether callBridge() below hands
+   the app MOCK data or real bridge data. Three states, persisted in
+   localStorage (falls back to an in-memory default if storage throws,
+   which happens in some WebView configurations):
+     "auto" (default) — probe the real bridge once; use MOCK only if the
+                         device genuinely has nothing (no events, no
+                         todos, no projects). Re-probed after any sync
+                         completes, so real data flips the app over
+                         automatically the moment it lands.
+     "on"             — always MOCK, even if the bridge has real data.
+     "off"            — never MOCK; always real bridge data/genuine
+                         empty states, even if that means an empty app.
+   Sync/account plumbing (sync, syncStatus, syncTodos, todoSyncStatus,
+   caldavConfig, setCaldavConfig, testCaldav) is deliberately exempt from
+   the mock gate whenever a real bridge exists: these are actions on the
+   real device, not content being displayed, and they are the only way
+   real data can ever land to let "auto" resolve away from demo. They
+   still fall back to MOCK when no bridge exists at all (plain browser
+   dev), matching the previous no-bridge-means-mock behaviour.
    ===================================================================== */
-function callBridge(method, args) {
+var DEMO_MODE_KEY = 'cc.demoMode';
+var SYNC_EXEMPT_METHODS = { sync: 1, syncStatus: 1, syncTodos: 1, todoSyncStatus: 1, caldavConfig: 1, setCaldavConfig: 1, testCaldav: 1 };
+
+function loadDemoMode() {
+    try {
+        var v = localStorage.getItem(DEMO_MODE_KEY);
+        if (v === 'auto' || v === 'on' || v === 'off') return v;
+    } catch (e) { /* localStorage unavailable under file:// on some WebViews — ignore */ }
+    return 'auto';
+}
+
+var DemoState = {
+    mode: loadDemoMode(),   // 'auto' | 'on' | 'off'
+    autoResolved: null      // null until probed, then { mock: bool, reason: string }
+};
+
+function saveDemoMode(mode) {
+    DemoState.mode = mode;
+    try { localStorage.setItem(DEMO_MODE_KEY, mode); } catch (e) { /* ignore — in-memory value above still applies */ }
+}
+
+/* Talks to the real bridge only — never consults demo state. Used both
+   by callBridge() once demo has decided "real", and by the auto-probe,
+   which must always see the genuine device state to make its decision. */
+function rawBridgeCall(method, args) {
     if (typeof window.CalBridge !== 'undefined' && typeof window.CalBridge[method] === 'function') {
         try {
             var raw = window.CalBridge[method].apply(window.CalBridge, args || []);
@@ -459,7 +525,67 @@ function callBridge(method, args) {
             return { ok: false, error: (err && err.message) ? err.message : String(err) };
         }
     }
-    return { mock: true };
+    return { ok: false, error: 'CalBridge not available', noBridge: true };
+}
+
+/* Probes the real bridge ONCE (events over now-180d..now+365d, todos(""),
+   projects()) and decides. Called lazily the first time shouldUseMock()
+   needs an answer in auto mode — including with no bridge present at all
+   (plain browser dev), in which case rawBridgeCall's own no-bridge
+   fallback makes every probe come back empty, which correctly resolves
+   to demo with an honest reason rather than leaving the decision unmade. */
+function probeAutoDemo() {
+    var now = Date.now();
+    var evR = rawBridgeCall('events', [String(now - 180 * 86400000), String(now + 365 * 86400000)]);
+    var toR = rawBridgeCall('todos', ['']);
+    var prR = rawBridgeCall('projects', []);
+    if (evR.noBridge) {
+        DemoState.autoResolved = { mock: true, reason: 'no CalBridge in this environment' };
+        return;
+    }
+    var events = (evR.ok && Array.isArray(evR.data)) ? evR.data : [];
+    var todos = (toR.ok && Array.isArray(toR.data)) ? toR.data : [];
+    var projects = (prR.ok && Array.isArray(prR.data)) ? prR.data : [];
+    var allEmpty = events.length === 0 && todos.length === 0 && projects.length === 0;
+    if (allEmpty) {
+        DemoState.autoResolved = { mock: true, reason: 'no synced events, no tasks, no projects' };
+    } else {
+        var bits = [];
+        if (events.length) bits.push(events.length + ' events');
+        if (todos.length) bits.push(todos.length + ' tasks');
+        if (projects.length) bits.push(projects.length + ' projects');
+        DemoState.autoResolved = { mock: false, reason: bits.join(', ') };
+    }
+}
+
+function shouldUseMock() {
+    if (DemoState.mode === 'on') return true;
+    if (DemoState.mode === 'off') return false;
+    if (!DemoState.autoResolved) probeAutoDemo();
+    return DemoState.autoResolved.mock;
+}
+
+/* =====================================================================
+   Bridge wrapper — every CalBridge call goes through here. This is the
+   single choke point for both demo-mode gating and the pre-existing
+   no-bridge-means-mock fallback (browser dev, no window.CalBridge at
+   all). Any thrown/malformed response from a *present* bridge surfaces
+   as an inline error instead of white-screening the app.
+   ===================================================================== */
+function callBridge(method, args) {
+    var bridgePresent = typeof window.CalBridge !== 'undefined' && typeof window.CalBridge[method] === 'function';
+    // Always resolve (and cache) the demo decision, even when no bridge is
+    // present at all — otherwise Configs would show "Auto — not yet
+    // evaluated" forever in plain-browser dev, since nothing else would
+    // ever trigger the probe. probeAutoDemo()'s own rawBridgeCall calls
+    // degrade gracefully to "nothing found" when there's no bridge, which
+    // is the correct, honest reason in that case too.
+    var mock = shouldUseMock();
+    if (!bridgePresent) return { mock: true };
+    if (mock && !SYNC_EXEMPT_METHODS[method]) return { mock: true };
+    var r = rawBridgeCall(method, args);
+    if (r.noBridge) return { mock: true }; // bridge vanished between the check above and now — fail safe to mock, not a white screen
+    return r;
 }
 
 /* =====================================================================
@@ -470,28 +596,42 @@ function callBridge(method, args) {
 var MOCK_CALDAV_CONFIGURED = true; // flip to false to exercise the "not configured" empty state
 
 var MOCK = (function () {
-    // ---- calendars: mirrors ea_cloud-calendar/data/calendars.json 1:1,
-    // plus two synthetic feeds (tickets/bookings) so those Events sub-tabs
-    // have something to show — the real subscription list has no such
-    // categories today (see final report).
+    // ---- calendars: mirrors ea_cloud-calendar/data/calendars.json 1:1 (20
+    // entries as of 2026-08-09: 13 holiday feeds, moon phases, c-base
+    // events, 3 sports feeds, UN international days, Berlin school
+    // holidays), plus three synthetic feeds (tickets/bookings/invites) so
+    // those Events sub-tabs have something to show — the real subscription
+    // list has no such categories today, and "invites" (mail/iMIP) has no
+    // backend at all yet (see the Events tab render code, final report).
     var mockCalendars = [
-        { id: 'de-holidays',     name: 'Germany · Holidays',        category: 'holidays', color: '#E53935', enabled: true },
-        { id: 'berlin-holidays', name: 'Berlin · Public holidays',  category: 'holidays', color: '#D81B60', enabled: true },
-        { id: 'moon-phases',     name: 'Moon phases',               category: 'astro',    color: '#5C6BC0', enabled: true },
-        { id: 'berlin-events',   name: 'Berlin · c-base events',    category: 'events',   color: '#00897B', enabled: true },
-        { id: 'pt-holidays',     name: 'Portugal · Holidays',       category: 'holidays', color: '#43A047', enabled: true },
-        { id: 'es-holidays',     name: 'Spain · Holidays',          category: 'holidays', color: '#FB8C00', enabled: true },
-        { id: 'br-holidays',     name: 'Brazil · Holidays',         category: 'holidays', color: '#7CB342', enabled: true },
-        { id: 'uk-holidays',     name: 'United Kingdom · Holidays', category: 'holidays', color: '#3949AB', enabled: true },
-        { id: 'us-holidays',     name: 'United States · Holidays',  category: 'holidays', color: '#1E88E5', enabled: true },
-        { id: 'fr-holidays',     name: 'France · Holidays',         category: 'holidays', color: '#8E24AA', enabled: true },
-        { id: 'nl-holidays',     name: 'Netherlands · Holidays',    category: 'holidays', color: '#F4511E', enabled: true },
-        { id: 'it-holidays',     name: 'Italy · Holidays',          category: 'holidays', color: '#00ACC1', enabled: true },
-        { id: 'at-holidays',     name: 'Austria · Holidays',        category: 'holidays', color: '#6D4C41', enabled: true },
-        { id: 'ie-holidays',     name: 'Ireland · Holidays',        category: 'holidays', color: '#2E7D32', enabled: true },
-        { id: 'pl-holidays',     name: 'Poland · Holidays',         category: 'holidays', color: '#C62828', enabled: false },
-        { id: 'tickets-demo',    name: 'Tickets & Passes',          category: 'tickets',  color: '#8B5CF6', enabled: true },
-        { id: 'bookings-demo',   name: 'Reservations',              category: 'bookings', color: '#16A34A', enabled: true }
+        { id: 'de-holidays',              name: 'Germany · Holidays',           category: 'holidays',    color: '#E53935', enabled: true },
+        { id: 'berlin-holidays',          name: 'Berlin · Public holidays',     category: 'holidays',    color: '#D81B60', enabled: true },
+        { id: 'moon-phases',              name: 'Moon phases',                  category: 'astro',       color: '#5C6BC0', enabled: true },
+        { id: 'berlin-events',            name: 'Berlin · c-base events',       category: 'events',      color: '#00897B', enabled: true },
+        { id: 'pt-holidays',              name: 'Portugal · Holidays',          category: 'holidays',    color: '#43A047', enabled: true },
+        { id: 'es-holidays',              name: 'Spain · Holidays',             category: 'holidays',    color: '#FB8C00', enabled: true },
+        { id: 'br-holidays',              name: 'Brazil · Holidays',            category: 'holidays',    color: '#7CB342', enabled: true },
+        { id: 'uk-holidays',              name: 'United Kingdom · Holidays',    category: 'holidays',    color: '#3949AB', enabled: true },
+        { id: 'us-holidays',              name: 'United States · Holidays',     category: 'holidays',    color: '#1E88E5', enabled: true },
+        { id: 'fr-holidays',              name: 'France · Holidays',            category: 'holidays',    color: '#8E24AA', enabled: true },
+        { id: 'nl-holidays',              name: 'Netherlands · Holidays',       category: 'holidays',    color: '#F4511E', enabled: true },
+        { id: 'it-holidays',              name: 'Italy · Holidays',             category: 'holidays',    color: '#00ACC1', enabled: true },
+        { id: 'at-holidays',              name: 'Austria · Holidays',           category: 'holidays',    color: '#6D4C41', enabled: true },
+        { id: 'ie-holidays',              name: 'Ireland · Holidays',           category: 'holidays',    color: '#2E7D32', enabled: true },
+        { id: 'pl-holidays',              name: 'Poland · Holidays',            category: 'holidays',    color: '#C62828', enabled: false },
+        { id: 'union-berlin',             name: '1. FC Union Berlin',           category: 'sports',      color: '#C62828', enabled: true },
+        { id: 'hertha-bsc',               name: 'Hertha BSC',                   category: 'sports',      color: '#1565C0', enabled: true },
+        { id: 'f1',                       name: 'Formula 1 · qualifying + race', category: 'sports',     color: '#F4511E', enabled: true },
+        { id: 'un-days',                  name: 'UN international days',        category: 'observances', color: '#7CB342', enabled: true },
+        { id: 'berlin-school-holidays',   name: 'Berlin · School holidays',     category: 'school',      color: '#8E24AA', enabled: true },
+        { id: 'tickets-demo',             name: 'Tickets & Passes',             category: 'tickets',     color: '#8B5CF6', enabled: true },
+        { id: 'bookings-demo',            name: 'Reservations',                 category: 'bookings',    color: '#16A34A', enabled: true },
+        // Third synthetic feed: mail invites (iMIP) have no real backend yet
+        // (no CalBridge method exists for them — see the Events tab comment
+        // below). Mock-only, so Events > Invites Mail has something to show;
+        // the real (non-demo) path renders a neutral "not wired up" empty
+        // state instead of ever faking this category.
+        { id: 'invites',                  name: 'Invites (Mail)',               category: 'invites',     color: '#EC407A', enabled: true }
     ];
 
     // ---- events: ~60-80 spread across prev/current/next month, generated
@@ -510,6 +650,27 @@ var MOCK = (function () {
             var s = dayStart(offset);
             var e = dayStart(offset + (spanDays || 1));
             events.push({ id: 'mock-ev-' + (seq++), calendarId: calendarId, title: title, start: String(s.getTime()), end: String(e.getTime()), allDay: true, location: '' });
+        }
+        // Mail invites (iMIP) carry two fields real events don't: who sent
+        // the invite and how the recipient has responded so far. These are
+        // mock-only enrichments — the real event schema from CalBridge has
+        // no such fields, which is exactly why this category can't be faked
+        // on the real path (see Events tab render code for the empty state).
+        function addInvite(opts) {
+            var s, e;
+            if (opts.allDay) {
+                s = dayStart(opts.offset);
+                e = dayStart(opts.offset + (opts.spanDays || 1));
+            } else {
+                s = dayStart(opts.offset); s.setHours(opts.hh, opts.mm, 0, 0);
+                e = new Date(s.getTime() + opts.durMin * 60000);
+            }
+            events.push({
+                id: 'mock-ev-' + (seq++), calendarId: 'invites', title: opts.title,
+                start: String(s.getTime()), end: String(e.getTime()), allDay: !!opts.allDay,
+                location: opts.location || '', organizer: opts.organizer || '',
+                responseStatus: opts.status || 'needs-action'
+            });
         }
 
         // Holiday feeds, cycling across ~3 months (also covers the disabled pl-holidays,
@@ -540,19 +701,64 @@ var MOCK = (function () {
         addTimed(33, 20, 0, 150, 'berlin-events', 'c-base: CTF Kickoff', 'c-base, Berlin');
         addAllDay(10, 'berlin-events', 'Berlin Music Week', 4);
 
-        // Tickets (synthetic demo calendar so the Events > Tickets tab isn't empty).
+        // Sports feeds (union-berlin, hertha-bsc, f1) — fixture/session events,
+        // spread across prev/current/next month like the other feeds above.
+        addTimed(-16, 15, 30, 105, 'hertha-bsc', 'Hertha BSC vs. Hamburger SV', 'Olympiastadion Berlin');
+        addTimed(-9, 15, 30, 105, 'union-berlin', 'Union Berlin vs. Bayern München', 'Stadion An der Alten Försterei');
+        addTimed(-6, 14, 0, 60, 'f1', 'F1 Qualifying — Belgian Grand Prix', 'Circuit de Spa-Francorchamps');
+        addTimed(-5, 15, 0, 120, 'f1', 'F1 Race — Belgian Grand Prix', 'Circuit de Spa-Francorchamps');
+        addTimed(8, 18, 30, 105, 'union-berlin', 'Union Berlin vs. Werder Bremen', 'Stadion An der Alten Försterei');
+        addTimed(15, 13, 30, 105, 'hertha-bsc', 'FC St. Pauli vs. Hertha BSC', 'Millerntor-Stadion');
+        addTimed(23, 15, 0, 120, 'f1', 'F1 Race — Italian Grand Prix', 'Autodromo Nazionale Monza');
+        addTimed(29, 15, 30, 105, 'union-berlin', 'RB Leipzig vs. Union Berlin', 'Red Bull Arena');
+
+        // UN international days (observances) — all-day.
+        addAllDay(-33, 'un-days', 'World Humanitarian Day');
+        addAllDay(-14, 'un-days', 'International Youth Day');
+        addAllDay(12, 'un-days', 'International Day of Democracy');
+        addAllDay(40, 'un-days', 'International Day of Peace');
+
+        // Berlin school holidays — multi-day all-day spans.
+        addAllDay(-2, 'berlin-school-holidays', 'Sommerferien (Berlin)', 12);
+        addAllDay(58, 'berlin-school-holidays', 'Herbstferien (Berlin)', 9);
+
+        // Tickets (synthetic demo calendar so Events > Tickets is never
+        // empty) — mostly near-future so the Events tab's 90-day upcoming
+        // window shows a healthy spread, not one clustered day.
         addTimed(-12, 6, 45, 150, 'tickets-demo', 'Flight LH123 BER → LIS', 'Gate B12');
-        addTimed(0, 16, 0, 90, 'tickets-demo', 'Cinema: 8pm showing', 'CineStar');
-        addTimed(6, 20, 0, 150, 'tickets-demo', 'Concert: Radiohead Tribute', 'Mercedes-Benz Arena');
-        addAllDay(20, 'tickets-demo', 'Museum Pass — Pergamon');
+        addTimed(1, 20, 0, 150, 'tickets-demo', 'Concert: Radiohead Tribute', 'Mercedes-Benz Arena');
+        addTimed(3, 16, 0, 90, 'tickets-demo', 'Cinema: 8pm showing — Dune Part Three', 'CineStar');
+        addTimed(6, 15, 30, 120, 'tickets-demo', 'Football: Hertha BSC vs. 1. FC Köln (ticket)', 'Olympiastadion Berlin');
+        addTimed(9, 19, 30, 150, 'tickets-demo', 'Theatre: Der Besuch der alten Dame', 'Deutsches Theater Berlin');
+        addAllDay(13, 'tickets-demo', 'Museum Pass — Pergamon');
+        addTimed(17, 12, 0, 480, 'tickets-demo', 'Festival: Lollapalooza Berlin', 'Olympiapark Berlin');
+        addTimed(21, 7, 10, 120, 'tickets-demo', 'Train ICE 707 Berlin Hbf → München Hbf', 'Platform 6');
         addTimed(44, 9, 15, 180, 'tickets-demo', 'Flight LH456 LIS → BER', 'Terminal 1');
 
-        // Bookings (synthetic demo calendar so the Events > Bookings tab isn't empty).
+        // Bookings (synthetic demo calendar so Events > Bookings is never
+        // empty), also biased toward the near future.
         addTimed(-18, 8, 0, 60, 'bookings-demo', 'Car service booking', 'AutoWerk Garage');
-        addTimed(-5, 9, 30, 45, 'bookings-demo', 'Dentist appointment', 'Zahnarzt Dr. Klein');
-        addTimed(0, 12, 0, 60, 'bookings-demo', 'Haircut appointment', 'Salon Bloom');
         addTimed(2, 20, 0, 120, 'bookings-demo', 'Dinner reservation — Nobelhart & Schmutzig', 'Friedrichstraße 218');
+        addTimed(4, 9, 30, 45, 'bookings-demo', 'Dentist appointment', 'Zahnarzt Dr. Klein');
+        addTimed(7, 12, 0, 60, 'bookings-demo', 'Haircut appointment', 'Salon Bloom');
+        addTimed(10, 18, 0, 45, 'bookings-demo', 'Gym class — spin', 'FitFirst Studio');
+        addTimed(14, 8, 30, 30, 'bookings-demo', 'Vet appointment — Mochi checkup', 'Tierarztpraxis Mitte');
+        addAllDay(20, 'bookings-demo', 'Co-working desk — day pass', 1);
         addTimed(27, 15, 0, 60, 'bookings-demo', 'Hotel check-in — Lisbon', 'Hotel Avenida');
+        addTimed(31, 10, 0, 30, 'bookings-demo', 'Car rental pickup', 'Europcar Tegel');
+
+        // Invites (mail/iMIP) — synthetic demo calendar so Events > Invites
+        // Mail is never empty. Spread over the next few weeks; mix of
+        // response states and a couple of all-day / located ones.
+        addInvite({ offset: 1, hh: 10, mm: 0, durMin: 60, title: 'Sprint planning', organizer: 'anna@cloud-team.com', status: 'needs-action' });
+        addInvite({ offset: 2, hh: 15, mm: 30, durMin: 45, title: 'Design review', organizer: 'priya@cloud-team.com', status: 'needs-action' });
+        addInvite({ offset: 3, hh: 9, mm: 0, durMin: 30, title: '1:1 with manager', organizer: 'jonas@cloud-team.com', status: 'accepted', location: 'Meeting Room 4' });
+        addInvite({ offset: 5, hh: 14, mm: 0, durMin: 60, title: 'Q3 review', organizer: 'marc@cloud-team.com', status: 'accepted' });
+        addInvite({ offset: 7, hh: 11, mm: 0, durMin: 90, title: 'Onboarding session', organizer: 'hr@cloud-team.com', status: 'accepted', location: 'HR Office' });
+        addInvite({ offset: 9, hh: 9, mm: 30, durMin: 30, title: 'Dentist rescheduling', organizer: 'reception@zahnarzt-klein.de', status: 'tentative' });
+        addInvite({ offset: 12, hh: 13, mm: 0, durMin: 45, title: 'Budget sync', organizer: 'fatima@cloud-team.com', status: 'needs-action' });
+        addInvite({ offset: 20, allDay: true, spanDays: 3, title: 'Team offsite', organizer: 'ops@cloud-team.com', status: 'declined', location: 'Spreewald' });
+        addInvite({ offset: 25, allDay: true, title: 'Product launch webinar', organizer: 'events@cloud-team.com', status: 'tentative' });
 
         return events;
     })();
@@ -851,6 +1057,73 @@ function persistVisibility() {
 
 function errorBanner(message) {
     return '<div class="error-banner">Couldn’t load this from the bridge: ' + esc(message) + '</div>';
+}
+
+/* =====================================================================
+   Demo-mode UI: the persistent honesty banner + the Configs "Demo data"
+   section. Both simply read shouldUseMock()/DemoState — callBridge()
+   already made the real decision by the time any data-loading function
+   for the current tab has run.
+   ===================================================================== */
+function renderDemoBanner() {
+    var mount = document.getElementById('demo-banner');
+    if (!shouldUseMock()) { mount.classList.add('hidden'); mount.innerHTML = ''; return; }
+    mount.classList.remove('hidden');
+    mount.innerHTML = '<span class="dot"></span>' +
+        '<span style="flex:1;">Demo data — not your real calendar.</span>' +
+        '<button type="button" id="demo-banner-off-btn">Turn off</button>';
+    document.getElementById('demo-banner-off-btn').addEventListener('click', function () {
+        saveDemoMode('off');
+        rerenderAll();
+    });
+}
+
+function demoModeStatusText() {
+    if (DemoState.mode === 'on') return 'On — demo data is always shown, even once the bridge has real data.';
+    if (DemoState.mode === 'off') return 'Off — your real data is always shown, including genuine empty states.';
+    var r = DemoState.autoResolved;
+    if (!r) return 'Auto — not yet evaluated.';
+    return 'Auto → ' + (r.mock ? 'demo' : 'real') + ' (' + r.reason + ')';
+}
+
+function renderDemoModeConfig() {
+    var toggle = document.getElementById('demo-mode-toggle');
+    toggle.querySelectorAll('button[data-mode]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.mode === DemoState.mode);
+    });
+    document.getElementById('demo-mode-status').textContent = demoModeStatusText();
+}
+
+/* Re-decides demo state (forcing a fresh auto-probe if in auto mode) and
+   re-renders everything currently on screen — the banner, whichever tabs
+   have already loaded, and the Configs demo section — so a mode change
+   or a completed sync never leaves stale mock/real content mixed on
+   screen alongside the new decision. */
+function rerenderAll() {
+    if (DemoState.mode === 'auto') DemoState.autoResolved = null;
+    renderDemoBanner();
+
+    loadCalendarsIntoState();
+    renderCategoryPanel();
+    document.getElementById('sub-row-mount').innerHTML = '';
+    State.cal.expandedCat = null;
+    fetchMonthEvents(State.cal.year, State.cal.month);
+    renderMonthGrid();
+    renderListView();
+    renderClockLabels();
+
+    if (loadedTabs.todo) loadTodoTab();
+    if (loadedTabs.projects) loadProjectsTab();
+    if (loadedTabs.events) loadEventsTab();
+    renderConfigCalendars();
+    renderDemoModeConfig();
+}
+
+function onSyncSettled() {
+    // A sync just finished (real or mock). In auto mode this is exactly
+    // the moment real data might have landed, so re-probe and, if the
+    // resolution changed, the UI switches itself over automatically.
+    rerenderAll();
 }
 
 /* =====================================================================
@@ -1361,6 +1634,45 @@ function loadEventsTab() {
     renderEventsBody();
 }
 
+/* Invites (mail/iMIP) status chip. Only ever populated by MOCK — real
+   events from CalBridge never carry responseStatus/organizer, so this
+   simply renders nothing extra for them (see isInvite checks below). */
+var INVITE_STATUS_META = {
+    'needs-action': { bg: '#FFF3D6', fg: '#92600A', label: 'Needs action' },
+    'accepted':     { bg: '#E3F5E1', fg: '#1E7D32', label: 'Accepted' },
+    'tentative':    { bg: '#E8EEF9', fg: '#35507A', label: 'Tentative' },
+    'declined':     { bg: '#FCE4E4', fg: '#A33333', label: 'Declined' }
+};
+var INVITE_STATUS_RANK = { 'needs-action': 0, 'tentative': 1, 'accepted': 2, 'declined': 3 };
+
+function inviteStatusChipHtml(status) {
+    var s = INVITE_STATUS_META[status] || INVITE_STATUS_META['needs-action'];
+    return '<span style="background:' + s.bg + ';color:' + s.fg + ';font-size:10px;font-weight:700;' +
+        'padding:2px 7px;border-radius:999px;white-space:nowrap;flex-shrink:0;">' + esc(s.label) + '</span>';
+}
+
+/* Invites Mail (category "invites") has no CalBridge method behind it —
+   there is no mail/iMIP integration yet. It is MOCK-only: on the real
+   (non-demo) path no real calendar ever has category "invites", so this
+   filter naturally has nothing to show, and gets an explanatory empty
+   state instead of the generic one — it must never be faked. */
+function eventsEmptyStateHtml(filter) {
+    if (filter === 'invites') {
+        return 'Mail invites aren’t wired up yet — once your organiser’s calendar invitations (iMIP) are connected, they’ll show up here.';
+    }
+    return 'No ' + (filter === 'all' ? 'upcoming events' : filter) + ' to show.';
+}
+
+function eventRowSubLineHtml(e, isInvite) {
+    if (isInvite) {
+        return '<div class="flex items-center gap-2 mt-0.5 min-w-0">' +
+            (e.organizer ? '<span class="text-[11px] text-gray-400 truncate">' + esc(e.organizer) + '</span>' : '') +
+            inviteStatusChipHtml(e.responseStatus) +
+        '</div>';
+    }
+    return e.location ? '<div class="text-[11.5px] text-gray-400 truncate">' + esc(e.location) + '</div>' : '';
+}
+
 function renderEventsBody() {
     var mount = document.getElementById('events-body');
     var filter = State.events.filter;
@@ -1371,9 +1683,38 @@ function renderEventsBody() {
         return cal.category === filter;
     });
     if (!items.length) {
-        mount.innerHTML = '<div class="empty-state">No ' + (filter === 'all' ? 'upcoming events' : filter) + ' to show.</div>';
+        mount.innerHTML = '<div class="empty-state">' + eventsEmptyStateHtml(filter) + '</div>';
         return;
     }
+
+    if (filter === 'invites') {
+        // Needs-action first (those are the ones demanding a response),
+        // then by start time — a flat list rather than day-grouped, since
+        // "what needs my attention" matters more here than chronology.
+        var sorted = items.slice().sort(function (a, b) {
+            var ra = INVITE_STATUS_RANK[a.responseStatus] != null ? INVITE_STATUS_RANK[a.responseStatus] : 0;
+            var rb = INVITE_STATUS_RANK[b.responseStatus] != null ? INVITE_STATUS_RANK[b.responseStatus] : 0;
+            if (ra !== rb) return ra - rb;
+            return toMillis(a.start) - toMillis(b.start);
+        });
+        mount.innerHTML = sorted.map(function (e) {
+            var cal = State.events.calendarsById[e.calendarId];
+            var whenLabel = (e.allDay ? 'All day' : fmtTime(toMillis(e.start))) + ' · ' + fmtShortDate(toMillis(e.start));
+            return '<div class="flex items-start gap-3 py-2.5 border-b border-gray-50">' +
+                '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5" style="background:' + cal.color + '"></span>' +
+                '<span class="flex-1 min-w-0">' +
+                    '<div class="flex items-center justify-between gap-2">' +
+                        '<div class="text-[13.5px] font-medium truncate">' + esc(e.title) + '</div>' +
+                        inviteStatusChipHtml(e.responseStatus) +
+                    '</div>' +
+                    '<div class="text-[11.5px] text-gray-400 truncate mt-0.5">' + esc(whenLabel) +
+                        (e.organizer ? ' · ' + esc(e.organizer) : '') + (e.location ? ' · ' + esc(e.location) : '') +
+                    '</div>' +
+                '</span></div>';
+        }).join('');
+        return;
+    }
+
     var groups = [];
     var lastKey = null;
     items.forEach(function (e) {
@@ -1385,13 +1726,14 @@ function renderEventsBody() {
     mount.innerHTML = groups.map(function (g) {
         var rows = g.items.map(function (e) {
             var cal = State.events.calendarsById[e.calendarId];
+            var isInvite = cal.category === 'invites';
             var timeLabel = e.allDay ? 'All day' : fmtTime(toMillis(e.start));
             return '<div class="flex items-center gap-3 py-2.5 border-b border-gray-50">' +
                 '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:' + cal.color + '"></span>' +
                 '<span class="text-[12px] text-gray-400 w-16 flex-shrink-0">' + esc(timeLabel) + '</span>' +
                 '<span class="flex-1 min-w-0">' +
                     '<div class="text-[13.5px] font-medium truncate">' + esc(e.title) + '</div>' +
-                    (e.location ? '<div class="text-[11.5px] text-gray-400 truncate">' + esc(e.location) + '</div>' : '') +
+                    eventRowSubLineHtml(e, isInvite) +
                 '</span></div>';
         }).join('');
         return '<div class="mb-4"><div class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">' + esc(fmtDayHeader(g.date)) + '</div>' + rows + '</div>';
@@ -1449,6 +1791,14 @@ function loadConfigCaldav() {
 }
 
 function initConfigsTab() {
+    document.getElementById('demo-mode-toggle').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-mode]');
+        if (!btn) return;
+        saveDemoMode(btn.dataset.mode);
+        rerenderAll();
+    });
+    renderDemoModeConfig();
+
     document.getElementById('caldav-save-btn').addEventListener('click', function () {
         var obj = {
             url: document.getElementById('caldav-url').value.trim(),
@@ -1518,7 +1868,7 @@ function pollSyncStatus() {
     syncPollTimer = setInterval(function () {
         var s = Api.syncStatus();
         renderSyncStatus();
-        if (!s || !s.running) clearInterval(syncPollTimer);
+        if (!s || !s.running) { clearInterval(syncPollTimer); onSyncSettled(); }
     }, 500);
 }
 function pollTodoSyncStatus() {
@@ -1526,7 +1876,7 @@ function pollTodoSyncStatus() {
     todoSyncPollTimer = setInterval(function () {
         var s = Api.todoSyncStatus();
         renderSyncStatus();
-        if (!s || !s.running) clearInterval(todoSyncPollTimer);
+        if (!s || !s.running) { clearInterval(todoSyncPollTimer); onSyncSettled(); }
     }, 500);
 }
 
@@ -1570,6 +1920,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initProjectsTab();
     initEventsTab();
     initConfigsTab();
+    renderDemoBanner();
 
     switchTab('calendar');
 });
