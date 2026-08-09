@@ -1,6 +1,6 @@
 {
   "name": "cloud-calendar",
-  "description": "Diego's Cloud Calendar — standalone WebView-based calendar & time planner Android app. Renders a local HTML/Tailwind UI with month/year scroll, arc event indicators, and an analog clock face. Build via Nix devShell, one APK out.",
+  "description": "Diego's Cloud Calendar — standalone Android calendar, task and event app. WebView UI with a five-tab shell (ToDo, Events, Calendar, Projects, Configs): a colourful month grid with per-calendar arc indicators plus an agenda list view, an analog clock face, public-ICS feed sync (holidays, moon phases, sports, Berlin events), and CalDAV/VTODO tasks against a self-hosted Radicale. Build via Nix devShell, one APK out.",
   "category": "android",
   "build": {
     "type": "gradle",
@@ -11,8 +11,8 @@
     "compile_sdk": 36,
     "min_sdk": 26,
     "target_sdk": 35,
-    "version_code": 1,
-    "version_name": "0.1.0-dev",
+    "version_code": 2,
+    "version_name": "0.2.0-dev",
     "abi_filters": ["arm64-v8a"]
   },
   "signing": {
