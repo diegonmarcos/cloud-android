@@ -1,1 +1,1 @@
-../1_workflows/src/scripts/cloud-mail-fork-engine.sh
+../1_configs/src/gha/scripts/cloud-mail-fork-engine.sh

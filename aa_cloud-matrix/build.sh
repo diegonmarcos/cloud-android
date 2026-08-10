@@ -1,1 +1,1 @@
-../1_workflows/src/scripts/cloud-matrix-fork-engine.sh
+../1_configs/src/gha/scripts/cloud-matrix-fork-engine.sh
