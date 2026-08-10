@@ -1,0 +1,172 @@
+{
+  "_doc": "EVENTS — public ICS calendar feeds for the Events tab. Every url below is copied VERBATIM from ea_cloud-calendar/data/calendars.json, which probed and item-counted each one by hand before adding it (see that file's `_doc_verified`/per-entry `verified` note) — not re-probed here, just re-used, same 'libs/core and libs/updater are byte-identical across ea_cloud-calendar and ea_cloud-news' precedent this repo already follows for whole modules, applied to one data file's rows instead. This is every entry from that file whose category is events/sports/observances/school/astro, PLUS every holidays entry — i.e. the full set (calendars.json currently has no category outside those six, so nothing was actually excluded by this filter; if a future calendars.json entry ships in a category this rule doesn't cover — e.g. a personal calendar — it should NOT be copied here without a deliberate decision). Parsed via IcsParser.kt (copied verbatim from ea_cloud-calendar/libs/cal — see that file's header comment), synced by EventsSync.kt (also a field-for-field port of that app's CalSync.kt, including its per-calendar refresh_hours throttle). Adding a calendar is an entry HERE plus a rebuild — no Kotlin change. Baked into BuildConfig.EVENTS_B64 by app/build.gradle, same pattern as data/topics.json/data/sources.json/data/media.json.",
+  "_doc_fields": "id: stable key, also the cache filename. name: shown in the UI. url: ICS/webcal endpoint, copied verbatim from ea_cloud-calendar/data/calendars.json. category: holidays|astro|events|sports|observances|school — drives grouping/colour bucket. color: hex used for the event dot/chip. enabled: fetched at sync time. refresh_hours: per-feed override of defaults.refresh_hours.",
+  "version": 1,
+  "defaults": {
+    "refresh_hours": 24
+  },
+  "calendars": [
+    {
+      "id": "de-holidays",
+      "name": "Germany · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/de.german%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#E53935",
+      "enabled": true
+    },
+    {
+      "id": "berlin-holidays",
+      "name": "Berlin · Public holidays",
+      "url": "https://www.officeholidays.com/ics/germany/berlin",
+      "category": "holidays",
+      "color": "#D81B60",
+      "enabled": true
+    },
+    {
+      "id": "moon-phases",
+      "name": "Moon phases",
+      "url": "https://www.calendarlabs.com/ical-calendar/ics/76/Moon_Phases.ics",
+      "category": "astro",
+      "color": "#5C6BC0",
+      "enabled": true,
+      "refresh_hours": 168
+    },
+    {
+      "id": "berlin-events",
+      "name": "Berlin · c-base events",
+      "url": "https://c-base.org/calendar/exported/c-base-events.ics",
+      "category": "events",
+      "color": "#00897B",
+      "enabled": true
+    },
+    {
+      "id": "pt-holidays",
+      "name": "Portugal · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/pt.portuguese%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#43A047",
+      "enabled": true
+    },
+    {
+      "id": "es-holidays",
+      "name": "Spain · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/es.spain%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#FB8C00",
+      "enabled": true
+    },
+    {
+      "id": "br-holidays",
+      "name": "Brazil · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/pt_br.brazilian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#7CB342",
+      "enabled": true
+    },
+    {
+      "id": "uk-holidays",
+      "name": "United Kingdom · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/en.uk%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#3949AB",
+      "enabled": true
+    },
+    {
+      "id": "us-holidays",
+      "name": "United States · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#1E88E5",
+      "enabled": true
+    },
+    {
+      "id": "fr-holidays",
+      "name": "France · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/fr.french%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#8E24AA",
+      "enabled": true
+    },
+    {
+      "id": "nl-holidays",
+      "name": "Netherlands · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/nl.dutch%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#F4511E",
+      "enabled": true
+    },
+    {
+      "id": "it-holidays",
+      "name": "Italy · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/it.italian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#00ACC1",
+      "enabled": true
+    },
+    {
+      "id": "at-holidays",
+      "name": "Austria · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/de.austrian%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#6D4C41",
+      "enabled": true
+    },
+    {
+      "id": "ie-holidays",
+      "name": "Ireland · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/en.irish%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#2E7D32",
+      "enabled": true
+    },
+    {
+      "id": "pl-holidays",
+      "name": "Poland · Holidays",
+      "url": "https://calendar.google.com/calendar/ical/pl.polish%23holiday%40group.v.calendar.google.com/public/basic.ics",
+      "category": "holidays",
+      "color": "#C62828",
+      "enabled": true
+    },
+    {
+      "id": "union-berlin",
+      "name": "1. FC Union Berlin",
+      "url": "https://ics.fixtur.es/v2/fc-union-berlin.ics",
+      "category": "sports",
+      "color": "#C62828",
+      "enabled": true
+    },
+    {
+      "id": "hertha-bsc",
+      "name": "Hertha BSC",
+      "url": "https://ics.fixtur.es/v2/hertha-bsc.ics",
+      "category": "sports",
+      "color": "#1565C0",
+      "enabled": true
+    },
+    {
+      "id": "f1",
+      "name": "Formula 1 · qualifying + race",
+      "url": "https://f1calendar.com/download/f1-calendar_q_gp.ics",
+      "category": "sports",
+      "color": "#F4511E",
+      "enabled": true
+    },
+    {
+      "id": "un-days",
+      "name": "UN international days",
+      "url": "https://www.officeholidays.com/ics-all/various",
+      "category": "observances",
+      "color": "#7CB342",
+      "enabled": true
+    },
+    {
+      "id": "berlin-school-holidays",
+      "name": "Berlin · School holidays",
+      "url": "https://www.ferienwiki.de/exports/ferien/2026/de/berlin",
+      "category": "school",
+      "color": "#8E24AA",
+      "enabled": true,
+      "_doc": "WARNING — YEAR-PINNED URL, copied as-is from ea_cloud-calendar/data/calendars.json (see that file's note): goes silently empty on 2027-01-01 unless the year is bumped there and here."
+    }
+  ]
+}

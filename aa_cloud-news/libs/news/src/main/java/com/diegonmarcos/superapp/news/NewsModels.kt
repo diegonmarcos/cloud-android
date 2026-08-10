@@ -36,6 +36,20 @@ data class GdeltArticle(
      *  Only GdeltArticle.fromJson (GDELT's own /articles response) or
      *  NewsApi's real GDELT fetch ever sets a non-null value. */
     val tone: Double?,
+    /** YouTube Atom-only: the `<yt:videoId>` of the video this "article"
+     *  actually is. NULLABLE, added at the end with a default so every
+     *  existing named-arg construction of this class (GDELT responses,
+     *  every non-YouTube rss feed) is unaffected — see RssParser.kt for
+     *  the only place this is ever populated, and MediaModels.kt for
+     *  why a YouTube video is modelled as a [GdeltArticle] at all
+     *  (reusing the one shared article shape/cache instead of a second
+     *  "VideoItem" type and a parallel cache). null for every
+     *  non-YouTube article, always. */
+    val videoId: String? = null,
+    /** YouTube Atom-only: the `<media:thumbnail url="...">` for
+     *  [videoId]. Same nullable/default-at-the-end reasoning as
+     *  [videoId] — never populated for a non-YouTube article. */
+    val thumbnail: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("url", url)
@@ -50,6 +64,8 @@ data class GdeltArticle(
         // straight through to JS, where `null` is exactly what a
         // toneless article should read as.
         put("tone", tone ?: JSONObject.NULL)
+        put("videoId", videoId ?: JSONObject.NULL)
+        put("thumbnail", thumbnail ?: JSONObject.NULL)
     }
 
     companion object {
@@ -67,6 +83,8 @@ data class GdeltArticle(
             tone = if (o.has("tone") && !o.isNull("tone")) {
                 o.optDouble("tone").takeUnless { it.isNaN() }
             } else null,
+            videoId   = if (o.has("videoId") && !o.isNull("videoId")) o.optString("videoId").takeIf { it.isNotBlank() } else null,
+            thumbnail = if (o.has("thumbnail") && !o.isNull("thumbnail")) o.optString("thumbnail").takeIf { it.isNotBlank() } else null,
         )
     }
 }

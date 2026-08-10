@@ -50,6 +50,18 @@ import java.time.format.DateTimeFormatter
  * link host is news.google.com, the trailing " - Publisher" is split
  * off into `domain` instead of left glued onto the title, since that
  * is the only publisher signal that particular shape of feed gives.
+ *
+ * YouTube Atom (`https://www.youtube.com/feeds/videos.xml?channel_id=...`)
+ * is handled by this SAME code path, not a second parser — it's just
+ * Atom with two extra pieces of information data/media.json's UI wants:
+ * `<yt:videoId>` (a DIRECT child of `<entry>`, itemDepth+1 — captured
+ * via [GdeltArticle.videoId] the exact same way title/link/pubDate
+ * are) and `<media:thumbnail url="...">` (nested INSIDE
+ * `<media:group>`, i.e. itemDepth+2, one level deeper than every other
+ * field this parser reads — captured via a depth-independent check
+ * alongside the normal itemDepth+1 walk, first occurrence wins, into
+ * [GdeltArticle.thumbnail]). Both are simply absent (null) on every
+ * non-YouTube feed, which every existing source already is.
  */
 object RssParser {
 
@@ -99,6 +111,8 @@ object RssParser {
         var pubDate = ""
         var sourceUrlAttr = ""
         var sourceText = ""
+        var videoId = ""
+        var thumbnail = ""
         var textBuf = StringBuilder()
 
         fun resetItemState() {
@@ -107,6 +121,8 @@ object RssParser {
             pubDate = ""
             sourceUrlAttr = ""
             sourceText = ""
+            videoId = ""
+            thumbnail = ""
         }
 
         var eventType = runCatching { parser.eventType }.getOrDefault(XmlPullParser.END_DOCUMENT)
@@ -136,6 +152,15 @@ object RssParser {
                             }
                         }
                     }
+                    // media:thumbnail lives INSIDE media:group, i.e. one
+                    // level deeper than every other captured field (see
+                    // class kdoc) — checked independently of the
+                    // itemDepth+1 branch above so it's found regardless
+                    // of nesting depth within the item. First occurrence
+                    // wins (a video normally carries just one).
+                    if (inItem && name == "thumbnail" && thumbnail.isEmpty()) {
+                        thumbnail = runCatching { parser.getAttributeValue(null, "url") }.getOrNull().orEmpty()
+                    }
                 }
                 XmlPullParser.TEXT, XmlPullParser.CDSECT -> {
                     if (inItem) textBuf.append(runCatching { parser.text }.getOrDefault(""))
@@ -149,10 +174,11 @@ object RssParser {
                             "link" -> if (link.isEmpty()) link = text.trim()
                             "pubDate", "published", "updated", "date" -> if (pubDate.isEmpty()) pubDate = text.trim()
                             "source" -> if (sourceText.isEmpty()) sourceText = text.trim()
+                            "videoId" -> if (videoId.isEmpty()) videoId = text.trim()
                         }
                     }
                     if (inItem && name == itemTag && depth == itemDepth) {
-                        runCatching { finishItem(title.toString(), link, pubDate, sourceUrlAttr, sourceText) }
+                        runCatching { finishItem(title.toString(), link, pubDate, sourceUrlAttr, sourceText, videoId, thumbnail) }
                             .getOrNull()
                             ?.let { out.add(it) }
                         inItem = false
@@ -177,6 +203,8 @@ object RssParser {
         rawPubDate: String,
         sourceUrlAttr: String,
         sourceText: String,
+        rawVideoId: String = "",
+        rawThumbnail: String = "",
     ): GdeltArticle? {
         val link = rawLink.trim()
         if (link.isEmpty()) return null
@@ -211,6 +239,8 @@ object RssParser {
             language = "",
             sourcecountry = "",
             tone = null,
+            videoId = rawVideoId.trim().takeIf { it.isNotEmpty() },
+            thumbnail = rawThumbnail.trim().takeIf { it.isNotEmpty() },
         )
     }
 
