@@ -240,14 +240,46 @@
         }
         .demo-banner span.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--demo-dot); flex-shrink: 0; }
 
-        /* ---- source chip (Feed header) ---- */
-        .source-chip {
-            display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
-            background: var(--surface); color: var(--text-secondary); border-radius: 999px;
-            padding: 5px 12px 5px 10px; font-size: 12px; font-weight: 600; font-family: inherit; margin-top: 10px;
+        /* ---- Feed top nav: two independently-scrolling pill rows.
+           Row 1 (source) reuses .pill-scroll/.pill as-is — it's the primary
+           control. Row 2 (channel) is a visually secondary variant (smaller
+           type, subtler fill) so the source/channel hierarchy reads at a
+           glance even though both rows are pills. Replaces the old
+           standalone .source-chip (removed — row 1 now shows the source, so
+           a second element saying the same thing would be redundant). ---- */
+        .pill-scroll-sub { display: flex; overflow-x: auto; gap: 6px; margin-top: 6px; }
+        .pill-sub {
+            padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); font-size: 11.5px;
+            font-weight: 500; color: var(--text-muted); white-space: nowrap; background: var(--bg); font-family: inherit;
         }
-        .source-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success-text); flex-shrink: 0; }
-        .source-chip .kind { color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; font-size: 10px; }
+        .pill-sub.active { background: var(--surface-strong); color: var(--text); border-color: var(--text-muted); }
+
+        /* ---- Channel picker sheet — row 2's overflow path when a source
+           has more than CHANNEL_INLINE_MAX channels (e.g. ntfy-self's 40+
+           declared/logs/apps channels). Bottom sheet, not a full modal, to
+           match the app's mobile chrome. ---- */
+        .channel-picker-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60;
+            display: flex; align-items: flex-end; justify-content: center;
+        }
+        .channel-picker-overlay.hidden { display: none; }
+        .channel-picker-sheet {
+            background: var(--bg); width: 100%; max-width: 480px; max-height: 78vh; border-radius: 16px 16px 0 0;
+            display: flex; flex-direction: column; padding-bottom: var(--sab); box-shadow: 0 -4px 24px rgba(0,0,0,.25);
+        }
+        .channel-picker-header { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .channel-picker-title { font-size: 15px; font-weight: 600; }
+        .channel-picker-close-btn {
+            border: none; background: var(--surface-strong); color: var(--text); width: 28px; height: 28px;
+            border-radius: 50%; font-size: 16px; line-height: 1; font-family: inherit; flex-shrink: 0;
+        }
+        .channel-picker-list { overflow-y: auto; padding: 4px 16px 16px; }
+        .channel-picker-group-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: 14px 0 6px; }
+        .channel-picker-row {
+            display: block; width: 100%; text-align: left; padding: 10px 4px; border: none; background: none;
+            border-bottom: 1px solid var(--border); font-family: inherit; font-size: 14px; color: var(--text);
+        }
+        .channel-picker-row.active { font-weight: 700; }
 
         /* ---- source picker (Configs) ---- */
         .source-row {
@@ -272,6 +304,10 @@
         /* ---- article rows (Feed / Saved) ---- */
         .article-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
         .article-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--thumb-bg); }
+        /* Applied by imgFallback() when a real (non-mock) thumbnail URL
+           404s or gets blocked by the cleartext policy — same box, same
+           layout, just visibly "this failed" rather than a vanished row. */
+        .article-thumb-fallback { object-fit: contain; padding: 10px; box-sizing: border-box; }
         .article-body { flex: 1; min-width: 0; cursor: pointer; }
         .article-domain { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
         .article-title { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 2px; line-height: 1.35; }
@@ -309,10 +345,15 @@
             <section id="tab-feed" class="tab-panel">
                 <header class="panel-header">
                     <h1 class="text-xl font-medium">News</h1>
-                    <div id="feed-source-chip"></div>
                 </header>
                 <div id="feed-error-mount" class="px-6"></div>
-                <div class="pill-scroll hide-scrollbar px-6" id="feed-topic-pills"></div>
+                <!-- Row 1: source (one pill per sources() entry). Row 2:
+                     channel (one pill per entry in the active source's
+                     channels array — always populated, even for fixed
+                     feeds). Each scrolls horizontally on its own; see
+                     renderSourcePills()/renderChannelPills(). -->
+                <div class="pill-scroll hide-scrollbar px-6" id="feed-source-pills"></div>
+                <div class="pill-scroll-sub hide-scrollbar px-6" id="feed-channel-pills"></div>
                 <div class="px-6 mt-2 panel-scroll-pad" id="feed-list"></div>
             </section>
 
@@ -447,6 +488,7 @@
                              it leaks the reader's IP to every outlet in the feed and breaks
                              offline use, so images stay OFF until explicitly enabled here. -->
                         <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Off by default: article thumbnails load from arbitrary publisher domains, which leaks your IP to every outlet and breaks offline use. Turn on to load them lazily (each degrades gracefully on failure).</p>
+                        <p class="text-[11.5px] mb-3" style="color:var(--text-muted);">Some thumbnails may still fail to load: this app blocks insecure (http://) images outright, and not every publisher serves their images over https.</p>
                         <div class="flex items-center justify-between">
                             <span class="text-[13.5px] font-medium">Show article images</span>
                             <label class="switch"><input type="checkbox" id="cfg-images-toggle"><span class="slider"></span></label>
@@ -480,6 +522,23 @@
                 <span>Configs</span>
             </button>
         </nav>
+
+        <!-- ============ CHANNEL PICKER (Feed row 2 overflow) ============
+             Opened via the "More…" pill when the active source's channel
+             count exceeds CHANNEL_INLINE_MAX (e.g. ntfy-self's 40+
+             declared/logs/apps channels) — see openChannelPicker(). -->
+        <div id="channel-picker-overlay" class="channel-picker-overlay hidden">
+            <div class="channel-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose channel">
+                <div class="channel-picker-header">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="channel-picker-title">Channels</span>
+                        <button type="button" id="channel-picker-close-btn" class="channel-picker-close-btn" aria-label="Close">&times;</button>
+                    </div>
+                    <input type="text" id="channel-picker-search" class="field-input" placeholder="Search channels…">
+                </div>
+                <div class="channel-picker-list" id="channel-picker-list"></div>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -688,6 +747,47 @@ function imagesEnabled() {
 }
 function setImagesEnabled(v) {
     try { localStorage.setItem(IMAGES_KEY, v ? '1' : '0'); } catch (e) { /* ignore */ }
+}
+
+/* GDELT's socialimage frequently comes back as a plain http:// URL. This
+   app ships network_security_config.xml with cleartextTrafficPermitted
+   set to false for every host except the one mesh host, so a plain-http
+   thumbnail is blocked by the OS before it ever reaches the <img>'s
+   onerror handler — it just silently never loads. Most publisher CDNs
+   serve the same asset over https too, so upgrading the scheme here
+   recovers those thumbnails without weakening the cleartext policy (which
+   must NOT be widened to allow arbitrary-host plaintext just for images). */
+function secureImageUrl(url) {
+    if (!url) return url;
+    return /^http:\/\//i.test(url) ? url.replace(/^http:\/\//i, 'https://') : url;
+}
+
+/* Neutral "image failed" placeholder — same box (article-thumb's fixed
+   56x56) so a failed load never shifts the row layout, and visibly
+   different from a real thumbnail so "images are off" (no <img> at all)
+   reads differently from "this one image failed" (this placeholder).
+   Generated at error-time (not cached) so it always matches the
+   currently-painted theme; colours mirror --thumb-bg/--icon-faint. */
+function placeholderThumbDataUri() {
+    var light = currentTheme() === 'light';
+    var bg = light ? '#F0F0F0' : '#24272B';
+    var fg = light ? '#CBCBCB' : '#4A4E53';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">' +
+        '<rect width="56" height="56" fill="' + bg + '"/>' +
+        '<circle cx="20" cy="20" r="5" fill="none" stroke="' + fg + '" stroke-width="2.5"/>' +
+        '<path d="M8 40l12-14 9 10 7-8 12 14" fill="none" stroke="' + fg + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+    return 'data:image/svg+xml;base64,' + btoa(svg);
+}
+
+// Wired via inline onerror= on <img class="article-thumb"> — swaps in the
+// placeholder above instead of removing the element (the old this.remove()
+// behaviour: thumbnail "kind of renders then disappears" and the row
+// reflows). onerror is cleared first so a failing placeholder can't loop.
+function imgFallback(img) {
+    img.onerror = null;
+    img.src = placeholderThumbDataUri();
+    img.classList.add('article-thumb-fallback');
 }
 
 /* =====================================================================
@@ -935,6 +1035,35 @@ var MOCK = (function () {
     // topic always has one clearly negative and one clearly positive item.
     var TONE_LADDER = [-8.4, -6.1, -3.2, -0.8, 0.6, 2.9, 5.4, 7.8];
 
+    /* Mock thumbnails used to be fabricated as "https://<domain>/img/<slug>.jpg"
+       — a URL nothing serves, so with images ON every one 404s and the
+       onerror handler removed the element (thumbnail "renders then
+       disappears"). Real images require a network; the whole point of MOCK
+       is to work with zero network, so instead each article gets a
+       deterministic, self-contained inline SVG: a colour hashed from the
+       publisher domain plus the domain's initials. This proves the images
+       toggle actually works offline, and never touches the network. */
+    function domainHash(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return h;
+    }
+    function domainInitials(domain) {
+        var base = (domain.split('.')[0] || domain).replace(/[^a-z0-9]/gi, '');
+        return (base.slice(0, 2) || '??').toUpperCase();
+    }
+    function mockSocialImage(domain) {
+        var h = domainHash(domain);
+        var hue = h % 360;
+        var bg = 'hsl(' + hue + ',48%,38%)';
+        var initials = domainInitials(domain);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112">' +
+            '<rect width="112" height="112" fill="' + bg + '"/>' +
+            '<text x="56" y="68" font-family="system-ui,sans-serif" font-size="38" font-weight="700" fill="#ffffff" text-anchor="middle">' + initials + '</text>' +
+        '</svg>';
+        return 'data:image/svg+xml;base64,' + btoa(svg);
+    }
+
     function publicArticle(a) {
         return { url: a.url, title: a.title, seendate: a.seendate, socialimage: a.socialimage, domain: a.domain, language: a.language, sourcecountry: a.sourcecountry, tone: a.tone };
     }
@@ -963,7 +1092,7 @@ var MOCK = (function () {
                     url: 'https://' + dm.domain + '/article/' + slug,
                     title: title,
                     seendate: toGdeltDate(seenMs),
-                    socialimage: 'https://' + dm.domain + '/img/' + slug + '.jpg',
+                    socialimage: mockSocialImage(dm.domain),
                     domain: dm.domain,
                     language: dm.lang,
                     sourcecountry: dm.country,
@@ -1027,7 +1156,13 @@ var MOCK = (function () {
         { id: 'aljazeera', label: 'Al Jazeera', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
         { id: 'tagesschau', label: 'Tagesschau', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
         { id: 'spiegel', label: 'Der Spiegel', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
-        { id: 'hackernews', label: 'Hacker News', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false }
+        { id: 'hackernews', label: 'Hacker News', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        // Self-hosted ntfy / rss-gateway — mesh-only like gdelt-self, and
+        // the one seeded source with a channel count big enough (40+ here;
+        // ~142 for real, per the backend) to actually exercise row 2's
+        // overflow path (CHANNEL_INLINE_MAX + the "More…" picker) in demo
+        // mode. See NTFY_CHANNELS below for the declared/logs/apps mix.
+        { id: 'ntfy-self', label: 'Cloud Feeds (ntfy)', kind: 'ntfy', queryDriven: false, capabilities: ['articles'], requiresMesh: true }
     ];
     var mockActiveSourceId = 'gdelt-self';
     function activeSourceMeta() {
@@ -1035,12 +1170,97 @@ var MOCK = (function () {
     }
     function mockHasCap(cap) { return activeSourceMeta().capabilities.indexOf(cap) !== -1; }
 
+    // ntfy-self's channels: a handful of "declared" topics, a bunch of
+    // per-service "logs", and a few "apps" — enough (40+) to force row 2's
+    // compact/"More…" mode, and grouped so the picker's section-by-group
+    // path is exercised too.
+    var NTFY_CHANNELS = (function () {
+        var declared = ['alerts', 'deploys', 'backups', 'uptime', 'billing', 'security'].map(function (id) {
+            return { id: id, label: id.charAt(0).toUpperCase() + id.slice(1), group: 'declared' };
+        });
+        var logServices = ['caddy', 'postgres', 'nginx', 'redis', 'mesh', 'gdelt-fetcher', 'ntfy-bridge', 'cron',
+            'sshd', 'fail2ban', 'docker', 'borgbackup', 'smokeping', 'netdata', 'wireguard', 'unbound', 'acme',
+            'syncthing', 'vaultwarden', 'miniflux', 'searxng', 'jellyfin', 'photoprism', 'gitea', 'pihole',
+            'homeassistant', 'zigbee2mqtt', 'node-red', 'grafana', 'prometheus'];
+        var logs = logServices.map(function (svc) { return { id: 'log-' + svc, label: 'Log: ' + svc, group: 'logs' }; });
+        var apps = ['weather', 'calendar', 'notes', 'budget', 'recipes', 'habit-tracker', 'photo-backup',
+            'rss-reader', 'password-vault', 'family-chat'].map(function (a) {
+            return { id: 'app-' + a, label: a.charAt(0).toUpperCase() + a.slice(1).replace(/-/g, ' '), group: 'apps' };
+        });
+        return declared.concat(logs, apps);
+    })();
+
+    /* ---- Channels — sources().channels, ALWAYS populated. Query-driven
+       sources (gdelt-self, google-news) have no fixed sub-feeds of their
+       own, so their channels ARE the user's live topic list, synthesised
+       on every call — add/remove a topic and row 2 changes immediately.
+       Fixed feeds get real sub-channels where the outlet actually has them
+       (BBC/Guardian world/technology/business/science, DW all/business, HN
+       frontpage/newest/best, ntfy-self's 40+ declared/logs/apps channels);
+       everything else collapses to a single "all" channel, matching a feed
+       that has no sub-sections to switch between. */
+    function mockChannelsForSource(src) {
+        if (src.queryDriven) {
+            return mockTopicsMeta.map(function (t) { return { id: t.topic, label: t.label }; });
+        }
+        if (src.id === 'bbc-world' || src.id === 'guardian-world') {
+            return [
+                { id: 'world', label: 'World' },
+                { id: 'technology', label: 'Technology' },
+                { id: 'business', label: 'Business' },
+                { id: 'science', label: 'Science' }
+            ];
+        }
+        if (src.id === 'dw-en') {
+            return [{ id: 'all', label: 'All' }, { id: 'business', label: 'Business' }];
+        }
+        if (src.id === 'hackernews') {
+            return [
+                { id: 'frontpage', label: 'Front Page' },
+                { id: 'newest', label: 'Newest' },
+                { id: 'best', label: 'Best' }
+            ];
+        }
+        if (src.id === 'ntfy-self') {
+            return NTFY_CHANNELS;
+        }
+        return [{ id: 'all', label: 'All' }]; // google-top, aljazeera, tagesschau, spiegel
+    }
+    // Each source remembers its own last-picked channel, self-healing back
+    // to that source's first channel if the stored id stops being valid
+    // (e.g. the active topic backing a query-driven channel got removed).
+    var mockActiveChannelBySource = {};
+    function activeChannelId() {
+        var src = activeSourceMeta();
+        var chans = mockChannelsForSource(src);
+        var stored = mockActiveChannelBySource[src.id];
+        if (!stored || !chans.some(function (c) { return c.id === stored; })) {
+            stored = chans[0] ? chans[0].id : '';
+            mockActiveChannelBySource[src.id] = stored;
+        }
+        return stored;
+    }
+
     return {
-        sources: function () { return JSON.parse(JSON.stringify(SOURCES_META)); },
+        sources: function () {
+            return SOURCES_META.map(function (s) {
+                var c = JSON.parse(JSON.stringify(s));
+                c.channels = mockChannelsForSource(s);
+                return c;
+            });
+        },
         activeSource: function () { return { id: mockActiveSourceId }; },
         setSource: function (id) {
             if (!SOURCES_META.some(function (s) { return s.id === id; })) return { ok: false, error: 'unknown source id' };
             mockActiveSourceId = id;
+            return { ok: true, error: '' };
+        },
+        activeChannel: function () { return { id: activeChannelId() }; },
+        setChannel: function (id) {
+            var src = activeSourceMeta();
+            var chans = mockChannelsForSource(src);
+            if (!chans.some(function (c) { return c.id === id; })) return { ok: false, error: 'unknown channel id' };
+            mockActiveChannelBySource[src.id] = id;
             return { ok: true, error: '' };
         },
 
@@ -1058,10 +1278,26 @@ var MOCK = (function () {
             return mockTopicsMeta.map(computeTopicSummary);
         },
 
-        articles: function (topic, limit) {
+        // First arg is now CHANNEL (was topic); "" means "the active
+        // channel" (see activeChannelId()). Query-driven sources still
+        // filter by topic (their channels ARE topics); fixed feeds split
+        // the shared mock article pool into deterministic per-channel
+        // buckets so switching channel visibly changes the list even
+        // without per-outlet mock content.
+        articles: function (channel, limit) {
             var lim = parseInt(limit, 10); if (!lim || lim <= 0) lim = 50;
-            var qd = activeSourceMeta().queryDriven;
-            var list = (!qd || !topic) ? mockArticlesData.slice() : mockArticlesData.filter(function (a) { return a._topic === topic; });
+            var src = activeSourceMeta();
+            var ch = channel || activeChannelId();
+            var list;
+            if (src.queryDriven) {
+                list = ch ? mockArticlesData.filter(function (a) { return a._topic === ch; }) : mockArticlesData.slice();
+            } else {
+                var chans = mockChannelsForSource(src);
+                var idx = chans.findIndex(function (c) { return c.id === ch; });
+                if (idx < 0) idx = 0;
+                var n = chans.length;
+                list = (n <= 1) ? mockArticlesData.slice() : mockArticlesData.filter(function (a, i) { return (i % n) === idx; });
+            }
             list = list.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
             return list.slice(0, lim).map(publicArticle);
         },
@@ -1180,14 +1416,25 @@ var Api = {
         if (r.mock) return MOCK.setSource(id);
         return r.ok ? r.data : { ok: false, error: r.error };
     },
+    activeChannel: function () {
+        var r = callBridge('activeChannel');
+        if (r.mock) return MOCK.activeChannel();
+        return r.ok ? r.data : { error: r.error };
+    },
+    setChannel: function (id) {
+        var r = callBridge('setChannel', [id]);
+        if (r.mock) return MOCK.setChannel(id);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
     topics: function () {
         var r = callBridge('topics');
         if (r.mock) return MOCK.topics();
         return r.ok ? r.data : { error: r.error };
     },
-    articles: function (topic, limit) {
-        var r = callBridge('articles', [topic || '', String(limit || 50)]);
-        if (r.mock) return MOCK.articles(topic || '', limit || 50);
+    // First arg is CHANNEL (not topic) — "" means the active channel.
+    articles: function (channel, limit) {
+        var r = callBridge('articles', [channel || '', String(limit || 50)]);
+        if (r.mock) return MOCK.articles(channel || '', limit || 50);
         return r.ok ? r.data : { error: r.error };
     },
     timeline: function (topic) {
@@ -1261,8 +1508,10 @@ var State = {
     tab: 'feed',
     sources: [],
     activeSourceId: null,
+    channels: [],
+    activeChannelId: null,
     topics: [],
-    feed: { topic: '', items: [], limit: 50 },
+    feed: { items: [], limit: 50 },
     trends: { topic: '', timeline: [], tone: [] },
     saved: { items: [] },
     savedUrls: new Set()
@@ -1287,26 +1536,20 @@ function sourceHasCap(cap) {
     var s = activeSource();
     return !!(s && Array.isArray(s.capabilities) && s.capabilities.indexOf(cap) !== -1);
 }
-function sourceIsQueryDriven() {
-    var s = activeSource();
-    return !s || !!s.queryDriven; // no source resolved yet: default to the richer (query-driven) UI, not the collapsed one
-}
+// channels() always comes from the active source's own `channels` array
+// (see loadSourcesIntoState) — never hardcoded, so a source added later
+// with real sub-feeds Just Works without a code change here.
 
 function loadSourcesIntoState() {
     var srcRes = Api.sources();
     var actRes = Api.activeSource();
     State.sources = Array.isArray(srcRes) ? srcRes : [];
     State.activeSourceId = (actRes && actRes.id) ? actRes.id : (State.sources[0] ? State.sources[0].id : null);
-}
 
-function renderSourceChip() {
-    var mount = document.getElementById('feed-source-chip');
     var s = activeSource();
-    if (!s) { mount.innerHTML = ''; return; }
-    mount.innerHTML = '<button type="button" id="feed-source-chip-btn" class="source-chip">' +
-        '<span class="dot"></span>' + esc(s.label) + '<span class="kind">' + esc(s.kind) + '</span>' +
-    '</button>';
-    document.getElementById('feed-source-chip-btn').addEventListener('click', function () { switchTab('configs'); });
+    State.channels = (s && Array.isArray(s.channels)) ? s.channels : [];
+    var chRes = Api.activeChannel();
+    State.activeChannelId = (chRes && chRes.id) ? chRes.id : (State.channels[0] ? State.channels[0].id : null);
 }
 
 function renderSourceList() {
@@ -1336,10 +1579,9 @@ function onSetSource(id) {
     try { res = Api.setSource(id); } catch (e) { alert('Could not switch source: ' + e.message); return; }
     if (!res || res.ok === false) { alert('Could not switch source' + (res && res.error ? ': ' + res.error : '')); return; }
     State.activeSourceId = id;
-    State.feed.topic = '';
     State.trends.topic = '';
     renderSourceList();
-    rerenderAll();
+    rerenderAll(); // re-renders both feed nav rows (source + channel) and the list
 }
 
 /* =====================================================================
@@ -1381,10 +1623,10 @@ function rerenderAll() {
     renderDemoBanner();
 
     loadSourcesIntoState();
-    renderSourceChip();
     renderSourceList();
+    renderSourcePills();
+    renderChannelPills();
     loadTopicsIntoState();
-    renderFeedPills();
     loadFeedList();
     loadSavedList();
     if (loadedTabs.topics) renderTopicsList();
@@ -1417,7 +1659,7 @@ function articleRowHtml(a) {
     var saved = State.savedUrls.has(a.url);
     var imgHtml = '';
     if (imagesEnabled() && a.socialimage) {
-        imgHtml = '<img class="article-thumb" src="' + esc(a.socialimage) + '" loading="lazy" onerror="this.remove()" alt="">';
+        imgHtml = '<img class="article-thumb" src="' + esc(secureImageUrl(a.socialimage)) + '" loading="lazy" onerror="imgFallback(this)" alt="">';
     }
     // Tone chip only when the active source actually has tone data — a rss
     // source rendering "+0.0" would read as a measured neutral tone, which
@@ -1462,36 +1704,160 @@ function onToggleSaved(article) {
 }
 
 /* =====================================================================
-   Feed tab
+   Feed tab — two-row top nav.
+   Row 1 (source): one pill per sources() entry, always a plain scrolling
+   row — the source list never gets large enough to need anything fancier.
+   Row 2 (channel): one pill per entry in the ACTIVE source's `channels`
+   array, which is always populated (query-driven sources synthesise
+   theirs from the user's topics; fixed feeds carry their own real
+   sub-channels). Some sources (ntfy-self) expose dozens-to-hundreds of
+   channels via `group`-tagged entries — a flat pill row doesn't scale to
+   that, so above CHANNEL_INLINE_MAX we show only the active channel plus
+   a few recently-used ones (persisted per-source in localStorage) and a
+   "More…" pill that opens a searchable, group-sectioned picker sheet.
    ===================================================================== */
-function renderFeedPills() {
-    var mount = document.getElementById('feed-topic-pills');
-    // Non-query-driven sources (every rss source) hand back exactly one
-    // synthetic topic standing in for "the whole feed" — a pill row with
-    // only "All" next to one lonely other pill has nothing useful to
-    // filter, so collapse it entirely rather than show that.
-    if (!sourceIsQueryDriven()) { mount.innerHTML = ''; mount.style.display = 'none'; return; }
-    mount.style.display = '';
-    var enabledTopics = State.topics.filter(function (t) { return t.enabled; });
-    var pills = [{ topic: '', label: 'All' }].concat(enabledTopics);
-    mount.innerHTML = pills.map(function (t) {
-        var active = t.topic === State.feed.topic;
-        return '<button class="pill' + (active ? ' active' : '') + '" data-topic="' + esc(t.topic) + '">' + esc(t.label) + '</button>';
+var CHANNEL_INLINE_MAX = 12;     // channel counts at/below this render as a plain pill row
+var CHANNEL_RECENTS_MAX = 5;     // recent (non-active) channels kept alongside the active one
+var CHANNEL_RECENTS_KEY = 'cn.recentChannels'; // { [sourceId]: [channelId, ...] }, most-recent first
+
+function loadRecentChannels(sourceId) {
+    try {
+        var all = JSON.parse(localStorage.getItem(CHANNEL_RECENTS_KEY) || '{}');
+        return Array.isArray(all[sourceId]) ? all[sourceId] : [];
+    } catch (e) { return []; }
+}
+function pushRecentChannel(sourceId, channelId) {
+    try {
+        var all = JSON.parse(localStorage.getItem(CHANNEL_RECENTS_KEY) || '{}');
+        var list = Array.isArray(all[sourceId]) ? all[sourceId] : [];
+        list = [channelId].concat(list.filter(function (id) { return id !== channelId; })).slice(0, CHANNEL_RECENTS_MAX);
+        all[sourceId] = list;
+        localStorage.setItem(CHANNEL_RECENTS_KEY, JSON.stringify(all));
+    } catch (e) { /* localStorage unavailable — recents just won't persist */ }
+}
+
+function renderSourcePills() {
+    var mount = document.getElementById('feed-source-pills');
+    if (!mount) return;
+    mount.innerHTML = State.sources.map(function (s) {
+        var active = s.id === State.activeSourceId;
+        return '<button type="button" class="pill' + (active ? ' active' : '') + '" data-source-id="' + esc(s.id) + '">' + esc(s.label) + '</button>';
     }).join('');
-    mount.querySelectorAll('button').forEach(function (btn) {
+    mount.querySelectorAll('[data-source-id]').forEach(function (btn) {
+        btn.addEventListener('click', function () { onSetSource(btn.dataset.sourceId); });
+    });
+}
+
+function channelPillHtml(c) {
+    var active = c.id === State.activeChannelId;
+    return '<button type="button" class="pill-sub' + (active ? ' active' : '') + '" data-channel-id="' + esc(c.id) + '">' + esc(c.label) + '</button>';
+}
+
+function renderChannelPills() {
+    var mount = document.getElementById('feed-channel-pills');
+    if (!mount) return;
+    if (!State.channels.length) { mount.innerHTML = ''; return; }
+
+    if (State.channels.length <= CHANNEL_INLINE_MAX) {
+        mount.innerHTML = State.channels.map(channelPillHtml).join('');
+    } else {
+        var byId = {};
+        State.channels.forEach(function (c) { byId[c.id] = c; });
+        var recents = loadRecentChannels(State.activeSourceId);
+        var shortlistIds = [State.activeChannelId].concat(recents).filter(function (id, i, arr) {
+            return id && byId[id] && arr.indexOf(id) === i; // dedupe, drop stale/unknown ids
+        });
+        var shortlist = shortlistIds.map(function (id) { return byId[id]; });
+        mount.innerHTML = shortlist.map(channelPillHtml).join('') +
+            '<button type="button" class="pill-sub" id="feed-channel-more-btn">More…</button>';
+        var moreBtn = document.getElementById('feed-channel-more-btn');
+        if (moreBtn) moreBtn.addEventListener('click', openChannelPicker);
+    }
+    mount.querySelectorAll('[data-channel-id]').forEach(function (btn) {
+        btn.addEventListener('click', function () { onSetChannel(btn.dataset.channelId); });
+    });
+}
+
+function onSetChannel(id) {
+    if (id === State.activeChannelId) return;
+    var res;
+    try { res = Api.setChannel(id); } catch (e) { alert('Could not switch channel: ' + e.message); return; }
+    if (!res || res.ok === false) { alert('Could not switch channel' + (res && res.error ? ': ' + res.error : '')); return; }
+    State.activeChannelId = id;
+    pushRecentChannel(State.activeSourceId, id);
+    renderChannelPills();
+    loadFeedList();
+}
+
+/* ---- Channel picker sheet (row 2 overflow, > CHANNEL_INLINE_MAX channels) ----
+   Searchable, sectioned by `group` when the active source's channels carry
+   one (ntfy-self today), a flat list otherwise. Never invents groups. */
+var ChannelPicker = { open: false, query: '' };
+
+function openChannelPicker() {
+    ChannelPicker.open = true;
+    ChannelPicker.query = '';
+    var input = document.getElementById('channel-picker-search');
+    if (input) input.value = '';
+    renderChannelPicker();
+    document.getElementById('channel-picker-overlay').classList.remove('hidden');
+    if (input) input.focus();
+}
+function closeChannelPicker() {
+    ChannelPicker.open = false;
+    document.getElementById('channel-picker-overlay').classList.add('hidden');
+}
+function channelPickerRowHtml(c) {
+    var active = c.id === State.activeChannelId;
+    return '<button type="button" class="channel-picker-row' + (active ? ' active' : '') + '" data-channel-id="' + esc(c.id) + '">' + esc(c.label) + '</button>';
+}
+function renderChannelPicker() {
+    var listMount = document.getElementById('channel-picker-list');
+    if (!listMount) return;
+    var q = ChannelPicker.query.trim().toLowerCase();
+    var items = State.channels.filter(function (c) {
+        return !q || c.label.toLowerCase().indexOf(q) !== -1 || c.id.toLowerCase().indexOf(q) !== -1;
+    });
+    if (!items.length) { listMount.innerHTML = '<div class="empty-state">No channels match.</div>'; return; }
+    var hasGroups = items.some(function (c) { return !!c.group; });
+    var html;
+    if (hasGroups) {
+        var order = [], byGroup = {};
+        items.forEach(function (c) {
+            var g = c.group || '';
+            if (!byGroup[g]) { byGroup[g] = []; order.push(g); }
+            byGroup[g].push(c);
+        });
+        html = order.map(function (g) {
+            var heading = g ? '<div class="channel-picker-group-heading">' + esc(g) + '</div>' : '';
+            return heading + byGroup[g].map(channelPickerRowHtml).join('');
+        }).join('');
+    } else {
+        html = items.map(channelPickerRowHtml).join('');
+    }
+    listMount.innerHTML = html;
+    listMount.querySelectorAll('[data-channel-id]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            State.feed.topic = btn.dataset.topic;
-            State.feed.limit = 50;
-            renderFeedPills();
-            loadFeedList();
+            onSetChannel(btn.dataset.channelId);
+            closeChannelPicker();
         });
     });
+}
+function initChannelPicker() {
+    var overlay = document.getElementById('channel-picker-overlay');
+    document.getElementById('channel-picker-search').addEventListener('input', function (ev) {
+        ChannelPicker.query = ev.target.value;
+        renderChannelPicker();
+    });
+    document.getElementById('channel-picker-close-btn').addEventListener('click', closeChannelPicker);
+    overlay.addEventListener('click', function (ev) { if (ev.target === overlay) closeChannelPicker(); });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && ChannelPicker.open) closeChannelPicker(); });
 }
 
 function loadFeedList() {
     var errMount = document.getElementById('feed-error-mount');
     var res;
-    try { res = Api.articles(State.feed.topic, State.feed.limit); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    try { res = Api.articles(State.activeChannelId || '', State.feed.limit); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
     if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
     errMount.innerHTML = '';
     State.feed.items = Array.isArray(res) ? res : [];
@@ -1543,11 +1909,21 @@ function renderTopicsList() {
     });
 }
 
+// Topic changes ripple into Feed's channel row for query-driven sources
+// (their channels ARE the topic list) — refresh sources/channels, not just
+// topics, so row 2 and the list stay in sync.
+function refreshFeedNavAfterTopicChange() {
+    loadSourcesIntoState();
+    renderSourcePills();
+    renderChannelPills();
+    loadFeedList();
+}
+
 function onToggleTopicEnabled(topic, enabled) {
     try { Api.setTopicEnabled(topic, enabled); } catch (e) { alert('Could not update topic: ' + e.message); }
     loadTopicsIntoState();
     renderTopicsList();
-    renderFeedPills();
+    refreshFeedNavAfterTopicChange();
 }
 
 function onRemoveTopic(topic) {
@@ -1556,7 +1932,7 @@ function onRemoveTopic(topic) {
     if (!res || res.ok === false) { alert('Could not remove topic' + (res && res.error ? ': ' + res.error : '')); return; }
     loadTopicsIntoState();
     renderTopicsList();
-    renderFeedPills();
+    refreshFeedNavAfterTopicChange();
 }
 
 function initTopicsTab() {
@@ -1571,7 +1947,7 @@ function initTopicsTab() {
         document.getElementById('topics-add-query').value = '';
         loadTopicsIntoState();
         renderTopicsList();
-        renderFeedPills();
+        refreshFeedNavAfterTopicChange();
     });
 }
 
@@ -1852,10 +2228,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     initTheme();
+    initChannelPicker();
     loadSourcesIntoState();
-    renderSourceChip();
+    renderSourcePills();
+    renderChannelPills();
     loadTopicsIntoState();
-    renderFeedPills();
     loadFeedList();
     loadSavedList();
     initTopicsTab();

@@ -5,8 +5,11 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import android.webkit.JavascriptInterface
+import com.diegonmarcos.superapp.news.ChannelStore
+import com.diegonmarcos.superapp.news.DynamicChannelStore
 import com.diegonmarcos.superapp.news.GdeltArticle
 import com.diegonmarcos.superapp.news.NewsApiConfig
+import com.diegonmarcos.superapp.news.NewsChannelConfig
 import com.diegonmarcos.superapp.news.NewsConfigStore
 import com.diegonmarcos.superapp.news.NewsSourceConfig
 import com.diegonmarcos.superapp.news.NewsSourcesConfig
@@ -83,27 +86,85 @@ class NewsBridge(private val ctx: Context) {
         return sources.firstOrNull { it.id == id } ?: sources.first()
     }
 
-    /** The topic list a refresh/articles/topics call should use for
-     *  [source]: the normal user-configurable topic list (baked
-     *  defaults + custom topics + enabled/disabled overlay — same list
-     *  regardless of source) for `gdelt` and query-driven `rss`
-     *  sources, since both take a query term per topic; a SINGLE
-     *  synthetic topic (== source.id/source.label) for a fixed rss
-     *  source, since it has no query term to vary and is always
-     *  "enabled" as itself. */
+    /** The topic list a refresh/topics call should use for [source]:
+     *  the normal user-configurable topic list (baked defaults + custom
+     *  topics + enabled/disabled overlay — same list regardless of
+     *  source) for `gdelt` and query-driven `rss` sources, since both
+     *  take a query term per topic; a SINGLE synthetic topic — the
+     *  source's currently ACTIVE CHANNEL — for a fixed or
+     *  dynamic-channel rss source, since it has no query term to vary
+     *  and its cache is keyed by (source, channel) same as everything
+     *  else (see NewsStore's cacheKey kdoc: "channel" IS "topic" here,
+     *  channel==topic collapses naturally). */
     private fun effectiveTopicsForSource(source: NewsSourceConfig): List<NewsTopicState> =
         if (source.isRss && !source.queryDriven) {
-            listOf(NewsTopicState(topic = source.id, label = source.label, enabled = true, custom = false))
+            val channelId = activeChannelId(source)
+            val label = channelsForSource(source).firstOrNull { it.id == channelId }?.label ?: source.label
+            listOf(NewsTopicState(topic = channelId, label = label, enabled = true, custom = false))
         } else {
             NewsTopicsStore.effective(ctx, bakedTopics())
         }
 
+    // ---- channels -----------------------------------------------------------
+
+    /** [source]'s channel list for the UI's second nav row — ALWAYS
+     *  non-empty (falls back to a single channel built from [source]'s
+     *  own id/label/url as an absolute last resort, so a brand-new or
+     *  not-yet-discovered source is never left with nothing to pick).
+     *  Three populating strategies, per [NewsChannelConfig]'s kdoc:
+     *   - query-driven (gdelt-self, google-news): synthesized 1:1 from
+     *     the LIVE topics store (baked + custom, in effective order) —
+     *     NOT the baked topics.json list alone — so adding/removing a
+     *     topic in the Topics tab is reflected immediately, with zero
+     *     duplication of the topic list into data/sources.json. Each
+     *     channel's id IS the topic id.
+     *   - dynamic-channel (ntfy-self): the last successfully-discovered
+     *     list from [DynamicChannelStore] (refreshed by NewsSync's
+     *     syncRssDynamic on every [refresh]).
+     *   - fixed rss (bbc-world, guardian-world, ...): [source]'s own
+     *     declared `channels`, already guaranteed non-empty by
+     *     [NewsSourcesConfig.parseSources]. */
+    private fun channelsForSource(source: NewsSourceConfig): List<NewsChannelConfig> {
+        val channels = when {
+            source.queryDriven -> NewsTopicsStore.effective(ctx, bakedTopics())
+                .map { NewsChannelConfig(id = it.topic, label = it.label) }
+            source.dynamicChannels -> DynamicChannelStore.channelsFor(ctx, source.id)
+            else -> source.channels
+        }
+        return channels.ifEmpty { listOf(NewsChannelConfig(id = source.id, label = source.label, url = source.url)) }
+    }
+
+    /** The channel a refresh()/articles("") call should use: the
+     *  per-source persisted choice (see [ChannelStore]), defaulting to
+     *  [source]'s first channel — never blank, since
+     *  [channelsForSource] always returns at least one entry. */
+    private fun activeChannelId(source: NewsSourceConfig): String {
+        val fallback = channelsForSource(source).first().id
+        return ChannelStore.active(ctx, source.id, fallback)
+    }
+
+    /** `channels` is ALWAYS populated (never an empty array) — see
+     *  [channelsForSource] — so the UI's second nav row always has
+     *  something to render the moment a source is picked. */
     @JavascriptInterface
     fun sources(): String {
         val arr = JSONArray()
         for (s in bakedSources()) {
             val caps = JSONArray()
             for (c in s.capabilities) caps.put(c)
+            val channelsArr = JSONArray()
+            for (c in channelsForSource(s)) {
+                channelsArr.put(JSONObject().apply {
+                    put("id", c.id)
+                    put("label", c.label)
+                    // Optional — only ever set for a dynamic-channel
+                    // (ntfy-self) entry whose discovery payload itself
+                    // carried a group/category field. Omitted entirely
+                    // (not JSON null) when absent, so `channel.group` on
+                    // the JS side reads as plain `undefined`.
+                    if (!c.group.isNullOrBlank()) put("group", c.group)
+                })
+            }
             arr.put(JSONObject().apply {
                 put("id", s.id)
                 put("label", s.label)
@@ -111,6 +172,7 @@ class NewsBridge(private val ctx: Context) {
                 put("queryDriven", s.queryDriven)
                 put("capabilities", caps)
                 put("requiresMesh", s.requiresMesh)
+                put("channels", channelsArr)
             })
         }
         return arr.toString()
@@ -128,14 +190,35 @@ class NewsBridge(private val ctx: Context) {
         return okErr(true, "")
     }
 
+    /** The active source's active channel — see [activeChannelId]. */
+    @JavascriptInterface
+    fun activeChannel(): String =
+        JSONObject().apply { put("id", activeChannelId(activeSourceConfig())) }.toString()
+
+    /** Persists [id] as the active source's active channel — see
+     *  [ChannelStore]. Rejects an id that isn't one of the active
+     *  source's current [channelsForSource] (typo, stale channel from
+     *  before a rebuild/re-discovery, id belonging to a different
+     *  source, ...) rather than silently accepting an unfetchable
+     *  channel. */
+    @JavascriptInterface
+    fun setChannel(id: String): String {
+        val key = id.trim()
+        if (key.isEmpty()) return okErr(false, "id is required")
+        val source = activeSourceConfig()
+        if (channelsForSource(source).none { it.id == key }) return okErr(false, "unknown channel id")
+        ChannelStore.setActive(ctx, source.id, key)
+        return okErr(true, "")
+    }
+
     // ---- topics -----------------------------------------------------------
 
     /** Every method below OPERATES ON THE ACTIVE SOURCE
      *  ([activeSourceConfig]) — same JS-facing signatures as before
      *  sources.json existed, but reads/writes NewsStore under the
      *  active source's id, and (for a non-query-driven rss source)
-     *  reports that source's single synthetic topic instead of the
-     *  eight GDELT topics. */
+     *  reports a single synthetic topic — that source's ACTIVE
+     *  CHANNEL — instead of the user's GDELT/query topic list. */
     @JavascriptInterface
     fun topics(): String {
         val source = activeSourceConfig()
@@ -166,22 +249,23 @@ class NewsBridge(private val ctx: Context) {
         return arr.toString()
     }
 
-    /** topic "" means the merged feed across all enabled topics, newest
-     *  first (seendate is a zero-padded string for every source —
-     *  RssParser reformats rss dates into the same shape GDELT uses —
-     *  so a plain descending string sort is already chronological, see
+    /** `channel` (the former `topic` param — same bridge slot, new
+     *  meaning: a CHANNEL id, see the class kdoc) "" means the active
+     *  source's active channel (see [activeChannelId]); for a
+     *  query-driven source channel==topic so this is exactly the same
+     *  cache lookup it always was, just for one topic/channel instead
+     *  of a merge across every enabled one. Newest first (seendate is a
+     *  zero-padded string for every source — RssParser reformats rss
+     *  dates into the same shape GDELT uses — so a plain descending
+     *  string sort is already chronological, see
      *  NewsStore.replaceArticles). limit falls back to the effective
      *  config's maxArticles if blank/unparseable. */
     @JavascriptInterface
-    fun articles(topic: String, limit: String): String {
+    fun articles(channel: String, limit: String): String {
         val source = activeSourceConfig()
         val limitInt = limit.toIntOrNull()?.takeIf { it > 0 } ?: effectiveConfig().maxArticles
-        val list = if (topic.isBlank()) {
-            val enabledTopics = effectiveTopicsForSource(source).filter { it.enabled }.map { it.topic }
-            NewsStore.articlesFor(ctx, source.id, enabledTopics)
-        } else {
-            NewsStore.articlesFor(ctx, source.id, topic)
-        }
+        val chanId = channel.ifBlank { activeChannelId(source) }
+        val list = NewsStore.articlesFor(ctx, source.id, chanId)
         val sorted = list.sortedByDescending { it.seendate }.take(limitInt)
         val arr = JSONArray()
         for (a in sorted) arr.put(a.toJson())
@@ -256,7 +340,8 @@ class NewsBridge(private val ctx: Context) {
                     val cfg = effectiveConfig()
                     val source = activeSourceConfig()
                     val topics = effectiveTopicsForSource(source)
-                    val report = NewsSync.syncAll(ctx, source, topics, cfg.base, cfg.maxArticles)
+                    val channel = activeChannelId(source)
+                    val report = NewsSync.syncAll(ctx, source, topics, cfg.base, cfg.maxArticles, channel)
                     lastOk = report.ok
                     lastFailed = report.failed
                     lastMessages = report.messages

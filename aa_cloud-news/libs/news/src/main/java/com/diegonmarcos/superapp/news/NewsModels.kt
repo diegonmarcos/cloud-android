@@ -222,17 +222,67 @@ object NewsTopicsConfig {
 }
 
 /**
+ * One sub-channel within a data/sources.json source — the unit the UI's
+ * second nav row picks from (row 1 picks the source, row 2 picks the
+ * channel). Three ways a source's channel list is populated, uniformly
+ * exposed as `List<NewsChannelConfig>` regardless of which:
+ *  - a FIXED rss source (bbc-world, guardian-world, dw-en, hackernews,
+ *    ...) declares its channels literally in data/sources.json's
+ *    `channels` array — [url] is that declared sub-feed's URL.
+ *  - a QUERY-DRIVEN source (gdelt-self, google-news) carries NO
+ *    `channels` in sources.json at all; [NewsBridge] synthesizes one
+ *    channel per entry in the user's live topics store (baked +
+ *    custom, in effective order), each channel's [id] equal to that
+ *    topic's id — see NewsBridge.channelsForSource. [url] is unused
+ *    (blank) for a synthesized channel: the query template lives on
+ *    the parent [NewsSourceConfig.url] instead.
+ *  - a DYNAMIC-CHANNEL source (ntfy-self) also carries no `channels`
+ *    in sources.json — its channels are discovered at runtime from
+ *    [NewsSourceConfig.channelsUrl] (see [DynamicChannels]), cached on
+ *    disk (NewsStore's DynamicChannelStore), and re-discovered on
+ *    every sync. [url] here IS meaningful: it's that discovered
+ *    channel's own feed URL.
+ *
+ * [group] is optional and ONLY ever set by [DynamicChannels] parsing a
+ * discovery payload that itself carried a group/category field — a
+ * declared or synthesized channel never sets it. Lets a UI section a
+ * large dynamic channel list (e.g. ntfy-self's ~142 channels) without
+ * this app inventing groups the source data never provided.
+ */
+data class NewsChannelConfig(
+    val id: String,
+    val label: String,
+    val url: String = "",
+    val group: String? = null,
+)
+
+/**
  * One entry from data/sources.json's `sources` array — a place the app
  * can pull articles from: the self-hosted GDELT proxy (`kind ==
- * "gdelt"`, talks to [NewsApiConfig.base]) or a public RSS/Atom feed
- * fetched directly from the handset (`kind == "rss"`, see
- * RssParser.kt). Mirrors [NewsTopicConfig]'s role for topics.json.
+ * "gdelt"`, talks to [NewsApiConfig.base]) or a public/self-hosted
+ * RSS/Atom feed fetched directly from the handset (`kind == "rss"`,
+ * see RssParser.kt). Mirrors [NewsTopicConfig]'s role for topics.json.
  *
- * `url` is only meaningful for rss sources and may contain a literal
- * `{query}` placeholder that [queryDriven] sources substitute a topic
- * into (URL-encoded) — see NewsSync. A non-query-driven rss source
- * fetches that exact `url` untouched, once per refresh, and its
- * articles are filed under the synthetic topic id [id] itself.
+ * `url` is only meaningful for a QUERY-DRIVEN rss source and may
+ * contain a literal `{query}` placeholder that [queryDriven] sources
+ * substitute a topic into (URL-encoded) — see NewsSync. A
+ * non-query-driven rss source's articles come from its ACTIVE
+ * [NewsChannelConfig.url] instead (declared in [channels], or
+ * discovered — see [dynamicChannels]/[channelsUrl]/[base]), never from
+ * this top-level `url`; that channel fetch is filed under the cache
+ * key `(id, channel.id)` — see NewsStore's cacheKey.
+ *
+ * [channels] is the declared sub-feed list for a FIXED rss source —
+ * always non-empty by the time [NewsSourcesConfig.parseSources] hands
+ * it out (a fixed rss source with an empty/missing `channels` array in
+ * the JSON falls back to a single synthetic channel built from this
+ * source's own id/label/url, same "never leave the app with nothing
+ * usable" reasoning as [NewsSourcesConfig]'s own FALLBACK_ID). It is
+ * intentionally left EMPTY here (not synthesized at this layer) for a
+ * query-driven source (channels come from the topics store instead,
+ * which needs a Context this pure parsing layer doesn't have — see
+ * NewsBridge.channelsForSource) and for a [dynamicChannels] source
+ * (channels come from a network fetch, also Context/IO-dependent).
  *
  * `capabilities` is the UI's ONLY way to know whether timeline/tone
  * charts make sense for this source: no rss source in data/sources.json
@@ -249,11 +299,92 @@ data class NewsSourceConfig(
     val queryDriven: Boolean,
     val capabilities: List<String>,
     val requiresMesh: Boolean,
+    val channels: List<NewsChannelConfig> = emptyList(),
+    /** true only for ntfy-self: this source's channels are discovered
+     *  at runtime from [channelsUrl] rather than declared in
+     *  data/sources.json — see [DynamicChannels] and NewsSync's
+     *  syncRssDynamic. */
+    val dynamicChannels: Boolean = false,
+    /** dynamic_channels only: prefixed onto a discovered channel's id
+     *  (`"$base/$id"`) when that channel's discovery entry carries no
+     *  explicit url/feed/href of its own. */
+    val base: String = "",
+    /** dynamic_channels only: the JSON endpoint listing this source's
+     *  channels (ntfy-self: rss-gateway's `/feed/channels.json`). */
+    val channelsUrl: String = "",
 ) {
     val isGdelt: Boolean get() = kind == "gdelt"
     val isRss: Boolean get() = kind == "rss"
     val hasTone: Boolean get() = "tone" in capabilities
     val hasTimeline: Boolean get() = "timeline" in capabilities
+}
+
+/**
+ * Parses a data/sources.json `dynamic_channels: true` source's runtime
+ * discovery payload (ntfy-self's rss-gateway `/feed/channels.json`)
+ * into [NewsChannelConfig]s.
+ *
+ * SHAPE IS UNVERIFIED: nothing in this codebase could reach
+ * rss.diegonmarcos.com from the environment this was written in, so
+ * every accepted shape below is a defensive best-effort guess against
+ * the spec that commissioned it, not a confirmed payload — see this
+ * file's git history / the commissioning message for the exact
+ * assumptions. Accordingly this is written maximally permissive and
+ * NEVER throws or fabricates a placeholder channel: a totally
+ * unparseable/unreachable body (caller passes in "" on a failed fetch,
+ * or garbage) degrades to an empty list, and one malformed entry
+ * within an otherwise-good array is skipped while the rest of the
+ * document survives — same "one bad record doesn't take down the
+ * whole document" contract as RssParser/IcsParser.
+ */
+object DynamicChannels {
+    /** [base] is only consulted for an entry that names an id but no
+     *  explicit feed url — see [NewsSourceConfig.base]'s kdoc. */
+    fun parse(json: String, base: String): List<NewsChannelConfig> {
+        if (json.isBlank()) return emptyList()
+        return runCatching {
+            val arr = extractArray(json.trim()) ?: return@runCatching emptyList<NewsChannelConfig>()
+            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { fromEntry(it, base) } }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Accepts a bare top-level array, an object wrapping one under a
+     *  `channels`/`feeds` key (the two names the commissioning spec
+     *  called out), or — defensively, since neither name is
+     *  confirmed — the first key anywhere in the object whose value is
+     *  a non-empty JSON array of objects. */
+    private fun extractArray(trimmed: String): JSONArray? {
+        if (trimmed.startsWith("[")) return runCatching { JSONArray(trimmed) }.getOrNull()
+        val root = runCatching { JSONObject(trimmed) }.getOrNull() ?: return null
+        for (key in arrayOf("channels", "feeds")) {
+            root.optJSONArray(key)?.let { if (it.length() > 0) return it }
+        }
+        val keys = root.keys()
+        while (keys.hasNext()) {
+            val candidate = root.optJSONArray(keys.next()) ?: continue
+            if (candidate.length() > 0 && candidate.optJSONObject(0) != null) return candidate
+        }
+        return null
+    }
+
+    /** null (entry skipped) only when NONE of the id-ish keys are
+     *  present — every other field degrades to a sane fallback instead
+     *  of dropping the whole entry. */
+    private fun fromEntry(o: JSONObject, base: String): NewsChannelConfig? {
+        val id = firstNonBlank(o, "id", "name", "topic", "slug") ?: return null
+        val label = firstNonBlank(o, "label", "title", "name") ?: id
+        val url = firstNonBlank(o, "url", "feed", "href") ?: "${base.trimEnd('/')}/$id"
+        val group = firstNonBlank(o, "group", "category", "type")
+        return NewsChannelConfig(id = id, label = label, url = url, group = group)
+    }
+
+    private fun firstNonBlank(o: JSONObject, vararg keys: String): String? {
+        for (k in keys) {
+            val v = o.optString(k, "").trim()
+            if (v.isNotEmpty()) return v
+        }
+        return null
+    }
 }
 
 /**
@@ -296,14 +427,43 @@ object NewsSourcesConfig {
                 val caps = (0 until capsArr.length()).mapNotNull { j ->
                     capsArr.optString(j, "").trim().takeIf { it.isNotEmpty() }
                 }
+                val label = o.optString("label", id)
+                val url = o.optString("url", "")
+                val queryDriven = o.optBoolean("query_driven", false)
+                val dynamicChannels = o.optBoolean("dynamic_channels", false)
+                val channelsArr = o.optJSONArray("channels") ?: JSONArray()
+                val parsedChannels = (0 until channelsArr.length()).mapNotNull { j ->
+                    val c = channelsArr.optJSONObject(j) ?: return@mapNotNull null
+                    val cid = c.optString("id", "").trim()
+                    if (cid.isEmpty()) return@mapNotNull null
+                    NewsChannelConfig(
+                        id = cid,
+                        label = c.optString("label", cid),
+                        url = c.optString("url", ""),
+                    )
+                }
+                // A fixed (non-query-driven, non-dynamic) rss source
+                // ALWAYS carries at least one channel by the time this
+                // returns — see NewsSourceConfig's kdoc on [channels].
+                // Query-driven and dynamic-channel sources are left
+                // empty on purpose; their channel lists are synthesized
+                // elsewhere (NewsBridge / NewsSync), each needing a
+                // Context this pure parsing layer doesn't have.
+                val channels = if (!queryDriven && !dynamicChannels && parsedChannels.isEmpty()) {
+                    listOf(NewsChannelConfig(id = id, label = label, url = url))
+                } else parsedChannels
                 NewsSourceConfig(
                     id = id,
-                    label = o.optString("label", id),
+                    label = label,
                     kind = o.optString("kind", "rss"),
-                    url = o.optString("url", ""),
-                    queryDriven = o.optBoolean("query_driven", false),
+                    url = url,
+                    queryDriven = queryDriven,
                     capabilities = caps,
                     requiresMesh = o.optBoolean("requires_mesh", false),
+                    channels = channels,
+                    dynamicChannels = dynamicChannels,
+                    base = o.optString("base", ""),
+                    channelsUrl = o.optString("channels_url", ""),
                 )
             }
         }.getOrDefault(emptyList())

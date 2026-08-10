@@ -90,6 +90,17 @@ object NewsApi {
     fun rss(urlStr: String): String =
         get(urlStr, accept = "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5")
 
+    /**
+     * Fetches a `dynamic_channels: true` source's channel-discovery
+     * JSON (ntfy-self's rss-gateway `/feed/channels.json`) — same plain
+     * GET as [rss] above, just a JSON Accept header, and handed to
+     * [DynamicChannels.parse] rather than [RssParser.parse]. Same
+     * PRIVACY note as [rss] would apply if this endpoint were public,
+     * but it isn't: `requires_mesh: true` on ntfy-self means this only
+     * ever runs against the user's own self-hosted rss-gateway.
+     */
+    fun channels(urlStr: String): String = get(urlStr)
+
     /** URL-encodes [s] for safe interpolation into a query string —
      *  exposed (the GDELT endpoints above use the private [enc]
      *  directly) so [NewsSync] can substitute a topic into a

@@ -20,12 +20,23 @@ import org.json.JSONObject
  *
  * Every cache entry is keyed by (source, topic), not just topic — see
  * [cacheKey]. `source` is a data/sources.json id (gdelt-self,
- * google-news, bbc-world, ...); a non-query-driven rss source uses its
- * own source id as its (single, synthetic) `topic` too. Namespacing by
- * source is what lets [com.diegonmarcos.cloudnews.NewsBridge].setSource
- * flip the active source without blowing away whatever was already
- * cached for the source the user is switching AWAY from — switching
- * back later finds that cache still warm.
+ * google-news, bbc-world, ...). For a non-query-driven rss source
+ * (bbc-world, guardian-world, hackernews, ntfy-self, ...) this `topic`
+ * parameter IS a CHANNEL id (see [NewsChannelConfig]) — e.g. bbc-world
+ * caches under keys like `bbc-world::world`/`bbc-world::business`, one
+ * per declared sub-feed, rather than a single `bbc-world::bbc-world`
+ * blob for the whole source. For a query-driven source (gdelt-self,
+ * google-news) a channel IS a topic (same id, by design — see
+ * [com.diegonmarcos.cloudnews.NewsBridge].channelsForSource), so this
+ * collapses to exactly the pre-channels behaviour with zero code
+ * changes needed here: the (source, channel) model IS the (source,
+ * topic) model, just with the second half of the key renamed in the
+ * caller's head, not a parallel scheme. Namespacing by source is what
+ * lets [com.diegonmarcos.cloudnews.NewsBridge].setSource flip the
+ * active source without blowing away whatever was already cached for
+ * the source the user is switching AWAY from — switching back later
+ * finds that cache still warm (and, per source, on whichever channel
+ * was last active there — see NewsBridge's ChannelStore).
  */
 object NewsStore {
     private const val PREFS = "news_cache"
@@ -382,5 +393,87 @@ object SourceStore {
 
     fun setActive(ctx: Context, id: String) {
         prefs(ctx).edit().putString(KEY_ACTIVE, id).apply()
+    }
+}
+
+/**
+ * Persists which CHANNEL within each source (see [NewsChannelConfig])
+ * the user last picked — one entry PER SOURCE ID, not a single global
+ * value, which is what lets switching source away and back remember
+ * where the user was on each independently (switch to Guardian's
+ * "Business" channel, hop to Hacker News, come back to Guardian: still
+ * on "Business"). [NewsBridge]'s activeChannelId falls back to a
+ * source's first channel whenever nothing has been persisted for it
+ * yet (brand-new source, or one whose previously-active channel no
+ * longer exists after a rebuild). Own prefs file, same one-small-value
+ * reasoning as [SourceStore] and [NewsConfigStore].
+ */
+object ChannelStore {
+    private const val PREFS = "news_channel"
+    private const val KEY_PREFIX = "active_channel_"
+
+    private fun prefs(ctx: Context) =
+        ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun active(ctx: Context, sourceId: String, defaultId: String): String =
+        prefs(ctx).getString(KEY_PREFIX + sourceId, null)?.takeIf { it.isNotBlank() } ?: defaultId
+
+    fun setActive(ctx: Context, sourceId: String, channelId: String) {
+        prefs(ctx).edit().putString(KEY_PREFIX + sourceId, channelId).apply()
+    }
+}
+
+/**
+ * On-disk cache of the last successfully-DISCOVERED channel list for a
+ * `dynamic_channels: true` source (ntfy-self) — see NewsModels.kt's
+ * [DynamicChannels] for the discovery parse itself and NewsSync.kt's
+ * syncRssDynamic for when this gets written. Keyed by source id (not
+ * hardcoded to ntfy-self) in case a second dynamic-channel source is
+ * ever added.
+ *
+ * REPLACE-ONLY-ON-SUCCESS, same rule as every other cache in this file:
+ * a failed/unreachable/unparseable discovery fetch leaves whatever was
+ * last cached here untouched rather than blanking it — an offline user
+ * still sees their ~142 channels from the last time discovery
+ * succeeded, they just don't get NEW ones until connectivity returns.
+ * [channelsFor] naturally returns empty for a source that has never
+ * once discovered successfully, which NewsBridge.channelsForSource
+ * covers with its own last-resort single-channel fallback.
+ */
+object DynamicChannelStore {
+    private const val PREFS = "news_dynamic_channels"
+
+    private fun prefs(ctx: Context) =
+        ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun replace(ctx: Context, sourceId: String, channels: List<NewsChannelConfig>) {
+        val arr = JSONArray()
+        for (c in channels) {
+            arr.put(JSONObject().apply {
+                put("id", c.id)
+                put("label", c.label)
+                put("url", c.url)
+                put("group", c.group ?: JSONObject.NULL)
+            })
+        }
+        prefs(ctx).edit().putString(sourceId, arr.toString()).apply()
+    }
+
+    fun channelsFor(ctx: Context, sourceId: String): List<NewsChannelConfig> {
+        val raw = prefs(ctx).getString(sourceId, null) ?: return emptyList()
+        return runCatching {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val id = o.optString("id", "")
+                if (id.isEmpty()) return@mapNotNull null
+                NewsChannelConfig(
+                    id = id,
+                    label = o.optString("label", id),
+                    url = o.optString("url", ""),
+                    group = if (o.has("group") && !o.isNull("group")) o.optString("group").takeIf { it.isNotBlank() } else null,
+                )
+            }
+        }.getOrDefault(emptyList())
     }
 }

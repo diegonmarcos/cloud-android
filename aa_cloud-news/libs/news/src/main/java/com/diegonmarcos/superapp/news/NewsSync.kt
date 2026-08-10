@@ -19,23 +19,32 @@ data class NewsSyncReport(
 
 /**
  * Refreshes the ACTIVE source (see [NewsSourceConfig] / SourceStore)
- * against [topics], and writes results into [NewsStore] namespaced by
- * that source's id. BLOCKING, synchronous engine — like CalSync it does
- * real network I/O on whatever thread calls it; callers (NewsBridge)
- * MUST run [syncAll] off the main/WebView thread.
+ * against [topics] for the query-driven paths, or [activeChannel] for
+ * the fixed/dynamic-channel rss paths, and writes results into
+ * [NewsStore] namespaced by that source's id. BLOCKING, synchronous
+ * engine — like CalSync it does real network I/O on whatever thread
+ * calls it; callers (NewsBridge) MUST run [syncAll] off the
+ * main/WebView thread.
  *
- * Dispatches purely on [NewsSourceConfig.kind]/[NewsSourceConfig.queryDriven]:
+ * Dispatches on [NewsSourceConfig.kind]/[NewsSourceConfig.queryDriven]/
+ * [NewsSourceConfig.dynamicChannels]:
  *  - `gdelt`: the original three-endpoint-per-topic engine, unchanged
  *    in behaviour from before sources.json existed (just namespaced).
  *  - `rss` + query-driven (e.g. google-news): one feed fetch PER
- *    ENABLED TOPIC, `{query}` substituted with that topic.
- *  - `rss`, fixed (e.g. bbc-world): one feed fetch TOTAL per refresh —
- *    NOT once per topic, that would be N× pointless traffic against
- *    the exact same URL — filed under the synthetic topic id
- *    `source.id`.
+ *    ENABLED TOPIC, `{query}` substituted with that topic. Each
+ *    topic's channel id == the topic id itself, so this already lands
+ *    on the right (source, channel) cache key with no extra work.
+ *  - `rss` + dynamic-channel (ntfy-self): re-discovers the channel list
+ *    from `channels_url` (see [DynamicChannels]), caches it on success
+ *    (leaves the previous list untouched on failure), then fetches
+ *    ONLY [activeChannel]'s feed — never all ~142 channels.
+ *  - `rss`, fixed (e.g. bbc-world): fetches ONLY [activeChannel]'s
+ *    declared feed — NOT every channel the source has, that would be
+ *    N× pointless traffic against feeds the user isn't reading —
+ *    filed under the cache key `(source.id, activeChannel)`.
  *
- * Neither rss path ever calls NewsStore.replaceTimeline/replaceTone:
- * no rss source has those endpoints at all (see data/sources.json's
+ * No rss path ever calls NewsStore.replaceTimeline/replaceTone: no rss
+ * source has those endpoints at all (see data/sources.json's
  * capabilities), so those cache keys are simply never written for an
  * rss source id — NewsStore.timelineFor/toneFor already return empty
  * for a key that was never written, so "no timeline/tone data" falls
@@ -44,11 +53,19 @@ data class NewsSyncReport(
  */
 object NewsSync {
 
-    fun syncAll(ctx: Context, source: NewsSourceConfig, topics: List<NewsTopicState>, base: String, maxArticles: Int): NewsSyncReport =
+    fun syncAll(
+        ctx: Context,
+        source: NewsSourceConfig,
+        topics: List<NewsTopicState>,
+        base: String,
+        maxArticles: Int,
+        activeChannel: String,
+    ): NewsSyncReport =
         when {
             source.isGdelt -> syncGdelt(ctx, source.id, topics, base, maxArticles)
             source.isRss && source.queryDriven -> syncRssQueryDriven(ctx, source, topics, maxArticles)
-            source.isRss -> syncRssFixed(ctx, source, maxArticles)
+            source.isRss && source.dynamicChannels -> syncRssDynamic(ctx, source, activeChannel, maxArticles)
+            source.isRss -> syncRssFixed(ctx, source, activeChannel, maxArticles)
             else -> NewsSyncReport(0, 0, listOf("unknown source kind '${source.kind}'"), 0L)
         }
 
@@ -146,27 +163,88 @@ object NewsSync {
         return NewsSyncReport(ok, failed, messages, latestFetch)
     }
 
-    /** A fixed feed (front page / section — no query term to vary) is
-     *  fetched ONCE per refresh, never once per enabled topic, and
-     *  filed under the synthetic topic id [NewsSourceConfig.id] itself.
+    /** A fixed source's declared channel (front page / section — no
+     *  query term to vary) is fetched ONCE per refresh, never once per
+     *  channel and never once per enabled topic — just [activeChannel].
      *  Deliberately does NOT take a `topics` parameter — that keeps a
      *  future caller from accidentally looping this per-topic like the
-     *  other two sync paths. */
-    private fun syncRssFixed(ctx: Context, source: NewsSourceConfig, maxArticles: Int): NewsSyncReport {
+     *  other two sync paths. [source.channels] is guaranteed non-empty
+     *  by [NewsSourcesConfig.parseSources] (see that fun's kdoc), so
+     *  the `?: source.channels.first()` fallback below only ever fires
+     *  for a stale/unknown [activeChannel] id (e.g. a rebuild dropped a
+     *  channel the user had picked), never for a genuinely-empty list. */
+    private fun syncRssFixed(ctx: Context, source: NewsSourceConfig, activeChannel: String, maxArticles: Int): NewsSyncReport {
+        val channel = source.channels.firstOrNull { it.id == activeChannel } ?: source.channels.first()
+        val url = channel.url.ifBlank { source.url }
         val now = System.currentTimeMillis()
-        return runCatching { RssParser.parse(NewsApi.rss(source.url)) }
+        return runCatching { RssParser.parse(NewsApi.rss(url)) }
             .fold(
                 onSuccess = { articles ->
-                    NewsStore.replaceArticles(ctx, source.id, source.id, articles.take(maxArticles))
-                    NewsStore.setLastFetch(ctx, source.id, source.id, now)
+                    NewsStore.replaceArticles(ctx, source.id, channel.id, articles.take(maxArticles))
+                    NewsStore.setLastFetch(ctx, source.id, channel.id, now)
                     NewsSyncReport(ok = 1, failed = 0, messages = emptyList(), lastFetch = now)
                 },
                 onFailure = { e ->
                     NewsSyncReport(
                         ok = 0,
                         failed = 1,
-                        messages = listOf("${source.id}: ${e.message ?: e.javaClass.simpleName}"),
-                        lastFetch = NewsStore.lastFetch(ctx, source.id, source.id),
+                        messages = listOf("${channel.id}: ${e.message ?: e.javaClass.simpleName}"),
+                        lastFetch = NewsStore.lastFetch(ctx, source.id, channel.id),
+                    )
+                },
+            )
+    }
+
+    /** ntfy-self's sync path: re-discovers the FULL channel list from
+     *  [NewsSourceConfig.channelsUrl] on every call (channels come and
+     *  go as the user's self-hosted infrastructure changes), caches it
+     *  to [DynamicChannelStore] ONLY on a successful parse (same
+     *  replace-only-on-success rule as everywhere else in this file —
+     *  see that store's kdoc), then fetches exactly [activeChannel]'s
+     *  feed — never all ~142 discovered channels in one refresh. A
+     *  discovery failure or an activeChannel absent from both the
+     *  freshly-discovered and previously-cached lists is reported as a
+     *  message, never a crash and never a fabricated placeholder
+     *  channel. */
+    private fun syncRssDynamic(ctx: Context, source: NewsSourceConfig, activeChannel: String, maxArticles: Int): NewsSyncReport {
+        val messages = mutableListOf<String>()
+
+        val discovered = runCatching { DynamicChannels.parse(NewsApi.channels(source.channelsUrl), source.base) }
+            .onFailure { e -> messages.add("channels: ${e.message ?: e.javaClass.simpleName}") }
+            .getOrNull()
+        if (!discovered.isNullOrEmpty()) {
+            DynamicChannelStore.replace(ctx, source.id, discovered)
+        } else if (discovered != null) {
+            messages.add("channels: discovery returned no channels")
+        }
+
+        val channels = discovered?.takeIf { it.isNotEmpty() } ?: DynamicChannelStore.channelsFor(ctx, source.id)
+        val channel = channels.firstOrNull { it.id == activeChannel } ?: channels.firstOrNull()
+        if (channel == null || channel.url.isBlank()) {
+            messages.add("no channel available for '$activeChannel'")
+            return NewsSyncReport(
+                ok = 0,
+                failed = 1,
+                messages = messages,
+                lastFetch = NewsStore.lastFetch(ctx, source.id, activeChannel),
+            )
+        }
+
+        val now = System.currentTimeMillis()
+        return runCatching { RssParser.parse(NewsApi.rss(channel.url)) }
+            .fold(
+                onSuccess = { articles ->
+                    NewsStore.replaceArticles(ctx, source.id, channel.id, articles.take(maxArticles))
+                    NewsStore.setLastFetch(ctx, source.id, channel.id, now)
+                    NewsSyncReport(ok = 1, failed = 0, messages = messages, lastFetch = now)
+                },
+                onFailure = { e ->
+                    messages.add("${channel.id}: ${e.message ?: e.javaClass.simpleName}")
+                    NewsSyncReport(
+                        ok = 0,
+                        failed = 1,
+                        messages = messages,
+                        lastFetch = NewsStore.lastFetch(ctx, source.id, channel.id),
                     )
                 },
             )

@@ -1,7 +1,7 @@
 {
-  "_doc": "ARTICLE SOURCES — lets the user switch where article/timeline/tone data comes from: the self-hosted GDELT proxy (data/topics.json's `api.base`) or a well-known public RSS/Atom feed fetched directly from the handset. Adding a source is an entry HERE plus a rebuild — no Kotlin change, same pattern as data/topics.json. Baked into BuildConfig.SOURCES_B64 by app/build.gradle. Every url below was verified reachable and item-counted by hand before being added; none are placeholders or guesses — do not add a source without doing the same.",
-  "_doc_fields": "id: stable key, used as the persisted 'active source' value and (for non-query-driven rss sources) as the synthetic topic id its articles are filed under. label: shown in the UI source picker. kind: 'gdelt' (talks to api.base from topics.json, one query per topic) or 'rss' (parses an RSS2.0/RSS1.0(RDF)/Atom feed directly). url: rss only — the feed URL, with a literal '{query}' placeholder substituted (URL-encoded) for query_driven feeds. query_driven: true if the source takes a search term per topic (gdelt-self, google-news); false if it's one fixed feed regardless of topic (front page / section feeds) — those are fetched ONCE per refresh and filed under the synthetic topic id == source id, never once per topic. capabilities: subset of ['articles','timeline','tone'] this source can actually produce — no RSS source below carries a tone/sentiment field, so every rss entry lists only 'articles'; a UI must not offer timeline/tone charts for a source that doesn't declare that capability. requires_mesh: true only for gdelt-self, which needs the self-hosted proxy (public gateway or WireGuard mesh) to be reachable; every rss source is fetched straight from the public internet.",
-  "version": 1,
+  "_doc": "ARTICLE SOURCES — lets the user switch where article/timeline/tone data comes from: the self-hosted GDELT proxy (data/topics.json's `api.base`), the self-hosted ntfy/rss-gateway mesh feed, or a well-known public RSS/Atom feed fetched directly from the handset. Adding a source is an entry HERE plus a rebuild — no Kotlin change, same pattern as data/topics.json. Baked into BuildConfig.SOURCES_B64 by app/build.gradle. Every url below was probed and item-counted by hand before being added; none are placeholders or guesses — do not add a source (or a channel) without doing the same. EVERY source now exposes SUB-CHANNELS (see `channels` below) so the UI can show a two-row nav: row 1 picks the source, row 2 picks the channel within it.",
+  "_doc_fields": "id: stable key, used as the persisted 'active source' value and (for a non-query-driven rss source with no explicit channel picked yet) as the fallback synthetic channel id. label: shown in the UI source picker. kind: 'gdelt' (talks to api.base from topics.json, one query per topic) or 'rss' (parses an RSS2.0/RSS1.0(RDF)/Atom feed directly). url: rss only, and only meaningful for a QUERY-DRIVEN feed — the feed URL with a literal '{query}' placeholder substituted (URL-encoded) per topic; a fixed rss source's articles come from its `channels[].url` instead, never from this top-level `url`. query_driven: true if the source takes a search term per topic (gdelt-self, google-news) — for these, `channels` is INTENTIONALLY OMITTED here and synthesized at runtime 1:1 from the user's topics store (NewsBridge), so adding a topic in the Topics tab shows up as a channel with no duplication of the topic list into this file; false if it's one or more fixed feeds regardless of topic. channels: declared sub-feeds for a fixed rss source — `[{id, label, url}]`, each fetched only when it is the ACTIVE channel (never all of a source's channels on one refresh — that would be N× pointless traffic against feeds the user isn't even looking at). dynamic_channels: true only for ntfy-self — its channels are NOT declared here at all (there are ~142 of them and they change as the user's self-hosted infrastructure changes); they're discovered at runtime from `channels_url`, cached on disk, and re-discovered on every sync — see NewsModels.kt's DynamicChannels and NewsSync.kt's syncRssDynamic. base/channels_url: dynamic_channels only — `base` is prefixed onto a discovered channel's id when the discovery payload omits an explicit feed url; `channels_url` is the JSON endpoint listing the channels themselves. capabilities: subset of ['articles','timeline','tone'] this source can actually produce — no RSS source below carries a tone/sentiment field, so every rss entry lists only 'articles'; a UI must not offer timeline/tone charts for a source that doesn't declare that capability. requires_mesh: true for gdelt-self and ntfy-self, both of which need the self-hosted proxy/mesh (public gateway or WireGuard mesh) to be reachable; every other rss source is fetched straight from the public internet.",
+  "version": 2,
   "default_source": "gdelt-self",
   "sources": [
     {
@@ -12,6 +12,19 @@
       "query_driven": true,
       "capabilities": ["articles", "timeline", "tone"],
       "requires_mesh": true
+    },
+    {
+      "id": "ntfy-self",
+      "label": "Cloud Feeds (ntfy)",
+      "kind": "rss",
+      "url": "",
+      "base": "https://rss.diegonmarcos.com/feed",
+      "channels_url": "https://rss.diegonmarcos.com/feed/channels.json",
+      "query_driven": false,
+      "dynamic_channels": true,
+      "capabilities": ["articles"],
+      "requires_mesh": true,
+      "_doc_source": "ea_cloud-superapp/data/cloud_services.json (service `ntfy`, vm oci-A1-f_0, port 8090, public_url https://rss.diegonmarcos.com) + ea_cloud-superapp/data/services_private.json (`rss-gateway`, private_dns rss-gateway:8091) + ea_cloud-mail/build.json's COMMS_RSS_BASE + ea_cloud-mail/patches/0055-...: rss-gateway serves /feed/channels.json (142 channels: 22 declared + 89 logs + 31 apps) on wg0, feed_auth=none. Channels are deliberately NOT enumerated here — see the top-level _doc_fields entry for dynamic_channels."
     },
     {
       "id": "google-news",
@@ -29,16 +42,25 @@
       "url": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "all", "label": "Top Stories", "url": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en" }
+      ]
     },
     {
       "id": "bbc-world",
-      "label": "BBC World",
+      "label": "BBC",
       "kind": "rss",
       "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "world",      "label": "World",      "url": "https://feeds.bbci.co.uk/news/world/rss.xml" },
+        { "id": "technology", "label": "Technology",  "url": "https://feeds.bbci.co.uk/news/technology/rss.xml" },
+        { "id": "business",   "label": "Business",    "url": "https://feeds.bbci.co.uk/news/business/rss.xml" },
+        { "id": "science",    "label": "Science",     "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml" }
+      ]
     },
     {
       "id": "dw-en",
@@ -47,16 +69,27 @@
       "url": "https://rss.dw.com/rdf/rss-en-all",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "all",      "label": "All",      "url": "https://rss.dw.com/rdf/rss-en-all" },
+        { "id": "business", "label": "Business", "url": "https://rss.dw.com/xml/rss-en-bus" }
+      ],
+      "_doc_channels": "DW's science feed (rss-en-sci) was probed and returns ZERO items — deliberately omitted rather than shipping a channel that always renders empty."
     },
     {
       "id": "guardian-world",
-      "label": "The Guardian (World)",
+      "label": "The Guardian",
       "kind": "rss",
       "url": "https://www.theguardian.com/world/rss",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "world",      "label": "World",      "url": "https://www.theguardian.com/world/rss" },
+        { "id": "technology", "label": "Technology",  "url": "https://www.theguardian.com/uk/technology/rss" },
+        { "id": "business",   "label": "Business",    "url": "https://www.theguardian.com/uk/business/rss" },
+        { "id": "science",    "label": "Science",     "url": "https://www.theguardian.com/science/rss" }
+      ]
     },
     {
       "id": "aljazeera",
@@ -65,7 +98,10 @@
       "url": "https://www.aljazeera.com/xml/rss/all.xml",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "all", "label": "All", "url": "https://www.aljazeera.com/xml/rss/all.xml" }
+      ]
     },
     {
       "id": "tagesschau",
@@ -74,7 +110,10 @@
       "url": "https://www.tagesschau.de/xml/rss2/",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "all", "label": "All", "url": "https://www.tagesschau.de/xml/rss2/" }
+      ]
     },
     {
       "id": "spiegel",
@@ -83,7 +122,10 @@
       "url": "https://www.spiegel.de/schlagzeilen/index.rss",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "all", "label": "All", "url": "https://www.spiegel.de/schlagzeilen/index.rss" }
+      ]
     },
     {
       "id": "hackernews",
@@ -92,7 +134,12 @@
       "url": "https://hnrss.org/frontpage",
       "query_driven": false,
       "capabilities": ["articles"],
-      "requires_mesh": false
+      "requires_mesh": false,
+      "channels": [
+        { "id": "frontpage", "label": "Front Page", "url": "https://hnrss.org/frontpage" },
+        { "id": "newest",    "label": "Newest",      "url": "https://hnrss.org/newest" },
+        { "id": "best",      "label": "Best",        "url": "https://hnrss.org/best" }
+      ]
     }
   ]
 }
