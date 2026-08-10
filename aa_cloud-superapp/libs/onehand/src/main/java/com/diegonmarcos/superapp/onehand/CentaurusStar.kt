@@ -39,6 +39,35 @@ class CentaurusStar(
 
     private val cfg get() = CircularMenu.config()   // same glyph/size source as Sirius+Canopus
     private var session: ArcMenu.Session? = null
+    private var islandLayoutListener: View.OnLayoutChangeListener? = null
+
+    /**
+     * Recompute translationY to the midpoint between Sirius and Canopus's
+     * anchor, and apply it — but only once both views actually have a
+     * measured height.
+     *
+     * IMPORTANT: `getLocationInWindow` reports the CURRENT on-screen
+     * position, which already includes any translationY from a previous
+     * call. If `canopusOffset` were derived from that directly, a second
+     * call would read back its own output and compute ~0 (star snaps to
+     * its untranslated position), and a third call would move it again —
+     * an oscillation. So we first subtract the star's own current
+     * translationY to recover `base`, its UNTRANSLATED layout position,
+     * and compute canopusOffset from that. This makes the whole function
+     * idempotent: calling it any number of times in a row yields the same
+     * translationY. Do not "simplify" this away.
+     */
+    private fun tryAnchor() {
+        val isl = island ?: return
+        if (isl.height <= 0 || star.height <= 0) return
+        val s = IntArray(2); star.getLocationInWindow(s)
+        val n = IntArray(2); isl.getLocationInWindow(n)
+        val gap = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 12f, activity.resources.displayMetrics)
+        val base = s[1] - star.translationY
+        val canopusOffset = (n[1] - gap - (base + star.height))
+        star.translationY = canopusOffset * 0.5f
+    }
 
     private val host = object : ArcMenu.Host {
         override fun navigate(target: String) {
@@ -78,17 +107,31 @@ class CentaurusStar(
         // Canopus's own anchor (translationY = just above the bottom-nav
         // island) — i.e. HALF of the same island-relative offset Canopus
         // computes for itself.
-        star.post {
-            if (island != null && island.height > 0) {
-                val s = IntArray(2); star.getLocationInWindow(s)
-                val n = IntArray(2); island.getLocationInWindow(n)
-                val gap = TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP, 12f, activity.resources.displayMetrics)
-                val canopusOffset = (n[1] - gap - (s[1] + star.height))
-                star.translationY = canopusOffset * 0.5f
-            } else {
-                star.translationY = star.rootView.height * (c.starBottomPct * 0.5f)
-            }
+        if (island != null) {
+            // Re-run the anchor on every REAL layout change of either view —
+            // first measurement (no race with a "not measured yet" fallback
+            // that lands somewhere else), window-insets settling, rotation,
+            // gesture-nav vs 3-button nav, multi-window resize, and the
+            // island showing/hiding per section. Safe to call repeatedly
+            // because tryAnchor() is idempotent (see its kdoc).
+            val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> tryAnchor() }
+            islandLayoutListener = listener
+            island.addOnLayoutChangeListener(listener)
+            star.addOnLayoutChangeListener(listener)
+            tryAnchor() // covers the warm-start case where both are already laid out
+            // Detach when the star leaves the window so we don't leak the Activity.
+            star.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {}
+                override fun onViewDetachedFromWindow(v: View) {
+                    island.removeOnLayoutChangeListener(listener)
+                    star.removeOnLayoutChangeListener(listener)
+                    star.removeOnAttachStateChangeListener(this)
+                    islandLayoutListener = null
+                }
+            })
+        } else {
+            // Genuine fallback: no island at all to anchor against.
+            star.translationY = star.rootView.height * (c.starBottomPct * 0.5f)
         }
         // Forward press→drag→release to the SAME ArcMenu as Canopus.
         star.setOnTouchListener { _, e ->
