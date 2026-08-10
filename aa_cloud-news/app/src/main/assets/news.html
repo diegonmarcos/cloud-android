@@ -354,6 +354,90 @@
         .tone-dist-domain { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
         .trends-unavailable { text-align: center; padding: 60px 24px; color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
         .trends-unavailable strong { display: block; color: var(--text); font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+
+        /* ---- Media tab: YouTube-style video cards. Thumbnails are remote
+           URLs from the real bridge, so they go through the SAME
+           imagesEnabled()/secureImageUrl()/imgFallback() path as article
+           thumbnails (see mediaCardHtml() in the script) — no separate
+           image-handling code. ---- */
+        .media-list { display: flex; flex-direction: column; gap: 14px; }
+        .media-card { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); cursor: pointer; }
+        .media-thumb-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--thumb-bg); overflow: hidden; }
+        .media-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* Compound selector so this reliably beats .media-thumb's own
+           object-fit regardless of stylesheet order — imgFallback() and the
+           images-off path both just add .article-thumb-fallback onto an
+           existing .media-thumb <img>, they don't replace its class. */
+        .media-thumb.article-thumb-fallback { object-fit: contain; }
+        .media-play-badge { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .media-play-badge svg { width: 14px; height: 14px; color: #fff; }
+        .media-body { padding: 10px 13px 13px; }
+        .media-title { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.35; }
+        .media-meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11.5px; color: var(--text-muted); }
+        .media-meta .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+
+        /* ---- Events tab: swipeable card stack. Drag feedback is a plain
+           CSS transform set inline by the script (translateX + a slight
+           rotate) — no gesture library. .dragging suspends the transition
+           so the card tracks the finger 1:1; releasing it re-enables the
+           transition for the settle/fly-out animation. Save/skip buttons
+           drive the EXACT same flyOut() path as a real swipe (see the
+           script) so keyboard/mouse users and swipe users get identical
+           behaviour and affirmation — this is also what makes the flow
+           screenshot-testable without simulating a touch gesture. ---- */
+        .events-progress { text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 4px 0 14px; }
+        .event-stack { position: relative; height: 430px; margin: 0 6px; }
+        .event-card {
+            position: absolute; inset: 0; border-radius: 20px; background: var(--surface); border: 1px solid var(--border);
+            box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+            touch-action: pan-y; will-change: transform; transition: transform .25s ease, opacity .25s ease;
+        }
+        .event-card.dragging { transition: none; }
+        .event-card-accent { height: 8px; flex-shrink: 0; }
+        .event-card-body { flex: 1; padding: 22px 22px 14px; overflow-y: auto; }
+        .event-card-cal { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
+        .event-card-title { font-size: 21px; font-weight: 700; color: var(--text); margin-top: 10px; line-height: 1.3; }
+        .event-card-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--text-secondary); }
+        .event-card-row svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; color: var(--text-muted); }
+        .event-card-stamp {
+            position: absolute; top: 22px; padding: 6px 14px; border-radius: 8px; border: 3px solid; font-size: 15px; font-weight: 800;
+            letter-spacing: .08em; text-transform: uppercase; opacity: 0; pointer-events: none;
+        }
+        .event-card-stamp.save { right: 18px; color: var(--success-text); border-color: var(--success-text); transform: rotate(8deg); }
+        .event-card-stamp.skip { left: 18px; color: var(--remove-text); border-color: var(--remove-text); transform: rotate(-8deg); }
+        .event-card-actions { display: flex; gap: 12px; padding: 14px 22px calc(16px + var(--sab)); border-top: 1px solid var(--border); flex-shrink: 0; }
+        .event-action-btn { flex: 1; padding: 13px; border-radius: 14px; border: none; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .event-action-skip { background: var(--surface-strong); color: var(--remove-text); }
+        .event-action-save { background: var(--fill); color: var(--fill-text); }
+        .events-done-state, .events-empty-state { text-align: center; padding: 60px 24px; color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
+        .events-done-state strong { display: block; color: var(--text); font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+
+        /* ---- Saved tab: month calendar (saved events) above the existing
+           saved-articles list. No chart/calendar library — a plain CSS
+           grid, same "hand-drawn, no dependency" rule as the Trends
+           sparkline. ---- */
+        .saved-section-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: 18px 0 10px; }
+        .saved-section-heading:first-child { margin-top: 4px; }
+        .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .cal-nav-label { font-size: 15px; font-weight: 700; color: var(--text); }
+        .cal-nav-btn { border: none; background: var(--surface-strong); color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-family: inherit; font-size: 16px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .cal-dow { text-align: center; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding-bottom: 4px; }
+        .cal-day {
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            border-radius: 10px; border: none; background: none; font-family: inherit; color: var(--text); font-size: 12.5px;
+        }
+        .cal-day.other-month { color: var(--text-muted); opacity: .4; }
+        .cal-day.today { font-weight: 800; box-shadow: inset 0 0 0 1.5px var(--text-muted); }
+        .cal-day.selected { background: var(--fill); color: var(--fill-text); }
+        .cal-day-dots { display: flex; gap: 2px; }
+        .cal-day-dot { width: 5px; height: 5px; border-radius: 50%; }
+        .saved-day-list { margin-top: 14px; }
+        .saved-day-heading { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: capitalize; }
+        .saved-event-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .saved-event-accent { width: 4px; align-self: stretch; border-radius: 3px; flex-shrink: 0; }
+        .saved-event-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+        .saved-event-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
     </style>
 </head>
 <body class="antialiased">
@@ -362,6 +446,29 @@
         <div id="demo-banner" class="demo-banner hidden"></div>
         <main id="app-main" class="app-main hide-scrollbar">
 
+            <!-- ============ MEDIA TAB ============ -->
+            <section id="tab-media" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">Media</h1>
+                </header>
+                <div id="media-error-mount" class="px-6"></div>
+                <!-- All + one pill per Api.media() channel, same visual
+                     weight as Feed's row 2 (see renderMediaChannelPills()). -->
+                <div class="pill-scroll-sub hide-scrollbar px-6" id="media-channel-pills"></div>
+                <div class="px-6 mt-3 panel-scroll-pad" id="media-list"></div>
+            </section>
+
+            <!-- ============ EVENTS TAB ============ -->
+            <section id="tab-events" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">Events</h1>
+                </header>
+                <div id="events-error-mount" class="px-6"></div>
+                <div class="events-progress" id="events-progress"></div>
+                <div class="px-6" id="events-stack-mount"></div>
+                <div class="px-6 panel-scroll-pad" id="events-done-mount"></div>
+            </section>
+
             <!-- ============ FEED TAB ============ -->
             <section id="tab-feed" class="tab-panel">
                 <header class="panel-header">
@@ -369,64 +476,44 @@
                 </header>
                 <div id="feed-error-mount" class="px-6"></div>
                 <!-- Row 1: source (one pill per sources() entry). Row 2:
-                     channel (one pill per entry in the active source's
-                     channels array — always populated, even for fixed
-                     feeds). Each scrolls horizontally on its own; see
+                     "Trends" (see below) leftmost, then one pill per entry
+                     in the active source's channels array — always
+                     populated, even for fixed feeds. Each row scrolls
+                     horizontally on its own; see
                      renderSourcePills()/renderChannelPills(). -->
                 <div class="pill-scroll hide-scrollbar px-6" id="feed-source-pills"></div>
                 <div class="pill-scroll-sub hide-scrollbar px-6" id="feed-channel-pills"></div>
                 <!-- Auto-refresh progress + inline failure surface for the
                      source/channel-tap refresh flow — see kickFeedRefresh()
-                     and onFeedRefreshSettled() in the script. -->
+                     and onFeedRefreshSettled() in the script. Only relevant
+                     to article mode; hidden while State.feed.mode==='trends'
+                     (see setFeedModeVisibility()). -->
                 <div class="feed-refresh-bar" id="feed-nav-progress" aria-hidden="true"></div>
                 <div class="px-6" id="feed-refresh-error-mount"></div>
+
                 <div class="px-6 mt-2 panel-scroll-pad" id="feed-list"></div>
-            </section>
 
-            <!-- ============ TOPICS TAB ============ -->
-            <section id="tab-topics" class="tab-panel hidden">
-                <header class="panel-header">
-                    <h1 class="text-xl font-medium">Topics</h1>
-                </header>
-                <div id="topics-error-mount" class="px-6"></div>
+                <!-- Trends view — the former standalone Trends tab, MOVED
+                     (not duplicated) here as the leftmost row-2 channel's
+                     content. Sub-menu = row 1 above (all sources, still
+                     live/tappable while this is showing) for per-SOURCE
+                     browsing, plus trends-topic-pills below for
+                     per-channel/topic browsing within that source. See
+                     onSelectTrendsChannel()/enterTrendsView() in the script. -->
+                <div id="feed-trends-content" class="hidden">
+                    <div id="trends-unavailable-mount" class="px-6"></div>
+                    <div id="trends-content">
+                        <div class="pill-scroll hide-scrollbar px-6" id="trends-topic-pills"></div>
 
-                <div class="px-6 mt-2">
-                    <div class="rounded-2xl p-4 space-y-3" style="background:var(--surface); border:1px solid var(--border);">
-                        <div>
-                            <label class="field-label">Label</label>
-                            <input type="text" id="topics-add-label" class="field-input" placeholder="e.g. Space">
+                        <div class="px-6 mt-5">
+                            <div class="text-[11px] font-semibold tracking-widest uppercase mb-2" style="color:var(--text-secondary);">Tone over time</div>
+                            <div id="trends-sparkline"></div>
                         </div>
-                        <div>
-                            <label class="field-label">GDELT query</label>
-                            <input type="text" id="topics-add-query" class="field-input" placeholder="e.g. space exploration">
+
+                        <div class="px-6 mt-7 panel-scroll-pad">
+                            <div class="text-[11px] font-semibold tracking-widest uppercase mb-3" style="color:var(--text-secondary);">Tone distribution</div>
+                            <div id="trends-tone-dist"></div>
                         </div>
-                        <div class="flex justify-end">
-                            <button id="topics-add-btn" class="btn-dark">Add topic</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="px-6 mt-3 panel-scroll-pad" id="topics-list"></div>
-            </section>
-
-            <!-- ============ TRENDS TAB ============ -->
-            <section id="tab-trends" class="tab-panel hidden">
-                <header class="panel-header">
-                    <h1 class="text-xl font-medium">Trends</h1>
-                </header>
-                <div id="trends-error-mount" class="px-6"></div>
-                <div id="trends-unavailable-mount" class="px-6"></div>
-                <div id="trends-content">
-                    <div class="pill-scroll hide-scrollbar px-6" id="trends-topic-pills"></div>
-
-                    <div class="px-6 mt-5">
-                        <div class="text-[11px] font-semibold tracking-widest uppercase mb-2" style="color:var(--text-secondary);">Tone over time</div>
-                        <div id="trends-sparkline"></div>
-                    </div>
-
-                    <div class="px-6 mt-7 panel-scroll-pad">
-                        <div class="text-[11px] font-semibold tracking-widest uppercase mb-3" style="color:var(--text-secondary);">Tone distribution</div>
-                        <div id="trends-tone-dist"></div>
                     </div>
                 </div>
             </section>
@@ -437,6 +524,19 @@
                     <h1 class="text-xl font-medium">Saved</h1>
                 </header>
                 <div id="saved-error-mount" class="px-6"></div>
+
+                <div class="px-6">
+                    <div class="saved-section-heading">Saved events</div>
+                    <div class="cal-nav">
+                        <button type="button" class="cal-nav-btn" id="saved-cal-prev" aria-label="Previous month">&lsaquo;</button>
+                        <span class="cal-nav-label" id="saved-cal-label"></span>
+                        <button type="button" class="cal-nav-btn" id="saved-cal-next" aria-label="Next month">&rsaquo;</button>
+                    </div>
+                    <div class="cal-grid" id="saved-cal-grid"></div>
+                    <div class="saved-day-list" id="saved-day-list"></div>
+
+                    <div class="saved-section-heading">Saved articles</div>
+                </div>
                 <div class="px-6 panel-scroll-pad" id="saved-list"></div>
             </section>
 
@@ -463,6 +563,30 @@
                         <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Pick where articles come from. Only the self-hosted GDELT source provides tone/sentiment and timeline data — public RSS feeds carry headlines only.</p>
                         <div id="source-list"></div>
                         <p class="privacy-note">Reading from a publisher's own feed (Google, BBC, etc.) means that publisher sees your device's IP address and the fact that you're interested in that feed — the self-hosted GDELT source does not have this effect.</p>
+                    </div>
+
+                    <div>
+                        <!-- Topics management — MOVED here from the old standalone
+                             Topics tab (now removed from the bottom nav), same
+                             capabilities: subscribe/unsubscribe, add a custom
+                             GDELT query, remove. See initTopicsTab()/renderTopicsList(). -->
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Topics</span>
+                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">The GDELT queries this app tracks. Only query-driven sources (GDELT, Google News search) use these — a fixed feed like BBC or Al Jazeera ignores this list.</p>
+                        <div id="configs-topics-error-mount"></div>
+                        <div class="rounded-2xl p-4 space-y-3" style="background:var(--surface); border:1px solid var(--border);">
+                            <div>
+                                <label class="field-label">Label</label>
+                                <input type="text" id="topics-add-label" class="field-input" placeholder="e.g. Space">
+                            </div>
+                            <div>
+                                <label class="field-label">GDELT query</label>
+                                <input type="text" id="topics-add-query" class="field-input" placeholder="e.g. space exploration">
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="topics-add-btn" class="btn-dark">Add topic</button>
+                            </div>
+                        </div>
+                        <div class="mt-1" id="topics-list"></div>
                     </div>
 
                     <div>
@@ -526,18 +650,22 @@
 
         </main>
 
+        <!-- Five tabs, in this exact order: Media · Events · Feed · Saved ·
+             Configs. Topics and Trends are gone from here — Topics moved
+             into Configs, Trends moved into Feed's row 2 (see the Feed tab
+             section above) — nothing they did was dropped, see switchTab(). -->
         <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-item" data-tab="media">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M10.3 9.3l5 2.7-5 2.7z" fill="currentColor" stroke="none"/></svg>
+                <span>Media</span>
+            </button>
+            <button class="nav-item" data-tab="events">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3.5v4M16 3.5v4"/></svg>
+                <span>Events</span>
+            </button>
             <button class="nav-item active" data-tab="feed">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 8.5h9M7.5 12h11M7.5 15.5h11"/></svg>
                 <span>Feed</span>
-            </button>
-            <button class="nav-item" data-tab="topics">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5H5.5a2 2 0 00-2 2V11L12.5 20.5a2 2 0 002.8 0l6.2-6.2a2 2 0 000-2.8L11 3.5z"/><circle cx="7.7" cy="7.7" r="1.3"/></svg>
-                <span>Topics</span>
-            </button>
-            <button class="nav-item" data-tab="trends">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5l5.5-6 4 4 7.5-8.5"/><path d="M14.5 6h6v6"/></svg>
-                <span>Trends</span>
             </button>
             <button class="nav-item" data-tab="saved">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1V21l-6.5-4-6.5 4V4.5a1 1 0 011-1z"/></svg>
@@ -650,8 +778,9 @@ function renderThemeConfig() {
 function refreshThemedViews() {
     renderFeedList();
     renderSavedList();
-    if (loadedTabs.topics) renderTopicsList();
-    if (loadedTabs.trends && trendsAvailable()) { renderSparkline(); renderToneDistribution(); }
+    renderTopicsList();
+    if (State.feed.mode === 'trends' && trendsAvailable()) { renderSparkline(); renderToneDistribution(); }
+    if (loadedTabs.media) renderMediaList();
 }
 
 function initTheme() {
@@ -1234,9 +1363,17 @@ var MOCK = (function () {
        frontpage/newest/best, ntfy-self's 40+ declared/logs/apps channels);
        everything else collapses to a single "all" channel, matching a feed
        that has no sub-sections to switch between. */
+    // Mirrors NewsBridge.kt's ALL_CHANNEL_ID: a query-driven source's channel
+    // list gets a synthetic merged "All" entry FIRST (see channelsForSource's
+    // kdoc there), so it's the default channel and is what the Feed spec
+    // means by "before the merged All channel" when placing the Trends pill.
+    // Distinct from the mock's own id string on purpose — nothing here talks
+    // to the real bridge, so only internal consistency matters.
+    var MOCK_ALL_CHANNEL_ID = '__all__';
     function mockChannelsForSource(src) {
         if (src.queryDriven) {
-            return mockTopicsMeta.map(function (t) { return { id: t.topic, label: t.label }; });
+            return [{ id: MOCK_ALL_CHANNEL_ID, label: 'All' }].concat(
+                mockTopicsMeta.map(function (t) { return { id: t.topic, label: t.label }; }));
         }
         if (src.id === 'bbc-world' || src.id === 'guardian-world') {
             return [
@@ -1277,6 +1414,151 @@ var MOCK = (function () {
         }
         return stored;
     }
+
+    /* ---- Media (YouTube channels) — mirrors MediaModels.kt's
+       {id,label,channelId} shape plus the bridge contract's `thumbnail`,
+       and mediaItems()'s {videoId,title,url,thumbnail,published,
+       channelLabel}. 8 channels, plausible non-real titles, deterministic
+       inline-SVG data: URI thumbnails (never a remote URL — same
+       never-touch-the-network rule as mockSocialImage above) for both the
+       channel avatar and each video thumbnail. `published` is an
+       epoch-millis STRING, same convention as every other date field this
+       bridge hands across (see parseSeenDate, which already parses a plain
+       integer string, so it's reused as-is for these too). ---- */
+    var MEDIA_CHANNELS_META = [
+        { id: 'tech-explained', label: 'Tech Explained', channelId: 'UCTechExplained0001' },
+        { id: 'world-report', label: 'World Report', channelId: 'UCWorldReport0002' },
+        { id: 'science-weekly', label: 'Science Weekly', channelId: 'UCScienceWeekly0003' },
+        { id: 'market-watch', label: 'Market Watch', channelId: 'UCMarketWatch0004' },
+        { id: 'history-uncovered', label: 'History Uncovered', channelId: 'UCHistoryUncov0005' },
+        { id: 'deep-dive-docs', label: 'Deep Dive Docs', channelId: 'UCDeepDiveDocs0006' },
+        { id: 'culture-now', label: 'Culture Now', channelId: 'UCCultureNow0007' },
+        { id: 'space-and-beyond', label: 'Space and Beyond', channelId: 'UCSpaceBeyond0008' }
+    ];
+    var MEDIA_TITLES = {
+        'tech-explained': ['How chips are actually made', 'Inside the new battery tech race', 'Why keyboards still use this layout', 'The rise of edge computing, explained', 'What a CPU actually does, visually', 'Are foldable phones finally good?'],
+        'world-report': ['Inside a border town after the ceasefire', 'What a trade deal actually changes', 'Walking through a reconstruction zone', 'Why this election matters more than usual', 'A week with the negotiators', 'What the summit did not solve'],
+        'science-weekly': ['Mapping the ocean floor, one pass at a time', 'How vaccines are tested, step by step', 'What a new telescope actually sees', 'The physics of a coffee ring', 'Why this eclipse mattered to scientists', 'Inside a fusion research lab'],
+        'market-watch': ['Reading an earnings call in five minutes', 'Why the yield curve matters again', 'A beginner\'s guide to index funds', 'What a rate cut actually changes', 'Inside a trading floor before the open', 'The IPO process, start to finish'],
+        'history-uncovered': ['The forgotten treaty that redrew a border', 'How one harbor shaped a century of trade', 'The engineers behind the first power grid', 'A city that moved itself, brick by brick', 'The cipher that took forty years to crack', 'What the archives actually show'],
+        'deep-dive-docs': ['One factory, three generations', 'The last lighthouse keepers', 'Life on a research base in winter', 'Following the harvest, season to season', 'Inside the busiest port in the region', 'A year with the reforestation crew'],
+        'culture-now': ['The quiet revival of vinyl, explained', 'Street food traditions worth knowing', 'How a local festival went global', 'The architecture of the new library', 'A conversation about modern typography', 'Why this dish has five names'],
+        'space-and-beyond': ['What we actually know about the outer planets', 'Inside the next launch window', 'How satellites avoid each other', 'The search for a second Earth, explained', 'A tour of the deep-space network', 'What a rover does on a quiet day']
+    };
+    function mockSafeInitials(label) {
+        var words = label.replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean);
+        var initials = words.map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+        return initials || '??';
+    }
+    function mockChannelThumb(label) {
+        var hue = domainHash(label) % 360;
+        var bg = 'hsl(' + hue + ',45%,40%)';
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88" viewBox="0 0 88 88">' +
+            '<circle cx="44" cy="44" r="44" fill="' + bg + '"/>' +
+            '<text x="44" y="55" font-family="system-ui,sans-serif" font-size="28" font-weight="700" fill="#ffffff" text-anchor="middle">' + mockSafeInitials(label) + '</text>' +
+        '</svg>';
+        return 'data:image/svg+xml;base64,' + btoa(svg);
+    }
+    function mockVideoThumb(label, seed) {
+        var hue = domainHash(label + '|' + seed) % 360;
+        var bg = 'hsl(' + hue + ',42%,32%)';
+        var bg2 = 'hsl(' + hue + ',42%,18%)';
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">' +
+            '<defs><linearGradient id="g' + seed + '" x1="0" y1="0" x2="1" y2="1">' +
+                '<stop offset="0" stop-color="' + bg + '"/><stop offset="1" stop-color="' + bg2 + '"/>' +
+            '</linearGradient></defs>' +
+            '<rect width="320" height="180" fill="url(#g' + seed + ')"/>' +
+            '<circle cx="160" cy="90" r="26" fill="rgba(255,255,255,.9)"/>' +
+            '<path d="M151 74l32 16-32 16z" fill="' + bg2 + '"/>' +
+        '</svg>';
+        return 'data:image/svg+xml;base64,' + btoa(svg);
+    }
+    var mockMediaData = (function () {
+        var now = Date.now();
+        var list = [];
+        var seq = 1;
+        MEDIA_CHANNELS_META.forEach(function (ch, ci) {
+            var titles = MEDIA_TITLES[ch.id] || [];
+            titles.forEach(function (title, i) {
+                var hoursAgo = (i * 19 + ci * 7) % 240; // spread across ~10 days
+                var publishedMs = now - hoursAgo * 3600000;
+                list.push({
+                    videoId: 'mock-vid-' + (seq++),
+                    title: title,
+                    url: 'https://www.youtube.com/watch?v=mock' + ci + '-' + i,
+                    thumbnail: mockVideoThumb(ch.label, ci + '-' + i),
+                    published: String(publishedMs),
+                    channelLabel: ch.label,
+                    _channel: ch.id
+                });
+            });
+        });
+        return list;
+    })();
+    function publicVideo(v) { return { videoId: v.videoId, title: v.title, url: v.url, thumbnail: v.thumbnail, published: v.published, channelLabel: v.channelLabel }; }
+
+    /* ---- Events (ICS calendars) — mirrors EventsModels.kt's CalEvent/
+       SavedEvent fields, using the bridge contract's public key names
+       (start/end, not startUtcMillis/endUtcMillis). ~24 events across the
+       next three weeks, a few all-day, five differently-coloured mock
+       calendars, and a handful pre-saved so the Saved tab's calendar has
+       marks on day one. ---- */
+    var EVENT_CALENDARS_META = [
+        { id: 'work', label: 'Work', color: '#4C8DFF' },
+        { id: 'personal', label: 'Personal', color: '#34C77B' },
+        { id: 'family', label: 'Family', color: '#F2994A' },
+        { id: 'holidays', label: 'Holidays', color: '#EB5757' },
+        { id: 'fitness', label: 'Fitness', color: '#9B6CF0' }
+    ];
+    var EVENT_TITLES = ['Team sync', 'Dentist appointment', 'Project review', 'Grocery run', 'Yoga class', 'Flight departure', 'Client call', 'Birthday dinner', 'Doctor checkup', 'Book club', 'Car service', 'Parent-teacher meeting', 'Quarterly planning', 'Home repair visit', 'Coffee with Sam', 'Gym session', 'Conference, day one', 'Conference, day two', 'Public holiday', 'Volunteer shift', 'Movie night', 'Weekend hike', 'Photography walk', 'Budget review'];
+    var EVENT_LOCATIONS = ['Main office', '123 Oak St', 'Community center', 'Downtown clinic', '', 'Terminal 2', 'Riverside park', 'The old bistro', 'City library', 'North gym', '', '', 'Conference hall A', 'Home', 'Cafe Luna'];
+    var mockEventsData = (function () {
+        var now = Date.now();
+        var dayMs = 86400000;
+        var list = [];
+        for (var i = 0; i < 24; i++) {
+            var cal = EVENT_CALENDARS_META[i % EVENT_CALENDARS_META.length];
+            var dayOffset = Math.floor(i * 20 / 24) + (i % 3); // spread across ~3 weeks
+            var allDay = (i % 7 === 3); // a few all-day events
+            var base = new Date(now + dayOffset * dayMs);
+            var y = base.getFullYear(), m = base.getMonth(), d = base.getDate();
+            var hour = 8 + (i * 3) % 10;
+            var minute = (i * 11) % 60;
+            var start, end;
+            if (allDay) {
+                start = Date.UTC(y, m, d);
+                end = start + dayMs;
+            } else {
+                start = Date.UTC(y, m, d, hour, minute);
+                end = start + (30 + (i % 4) * 30) * 60000;
+            }
+            list.push({
+                id: 'mock-evt-' + (i + 1),
+                calendarId: cal.id,
+                calendarLabel: cal.label,
+                color: cal.color,
+                title: EVENT_TITLES[i % EVENT_TITLES.length],
+                location: EVENT_LOCATIONS[i % EVENT_LOCATIONS.length],
+                start: String(start),
+                end: String(end),
+                allDay: allDay
+            });
+        }
+        return list.sort(function (a, b) { return Number(a.start) - Number(b.start); });
+    })();
+    // Pre-seeded so the Saved tab's calendar has marks the moment demo mode
+    // is on, without requiring the user to swipe-save anything first.
+    // Deliberately mid/late indices into the (already date-sorted)
+    // mockEventsData, not 0/1/2 — those are the FIRST cards the Events
+    // stack shows, and saveEvent() is a toggle, so pre-saving one of them
+    // would make a first-card swipe-right silently UN-save it instead of
+    // saving it (confusing for both a real user and this file's own
+    // Playwright verification, which swipes the first card).
+    var mockSavedEvents = {};
+    [8, 12, 16, 20].forEach(function (i) {
+        var e = mockEventsData[i];
+        if (e) mockSavedEvents[e.id] = JSON.parse(JSON.stringify(e));
+    });
 
     return {
         sources: function () {
@@ -1327,7 +1609,12 @@ var MOCK = (function () {
             var ch = channel || activeChannelId();
             var list;
             if (src.queryDriven) {
-                list = ch ? mockArticlesData.filter(function (a) { return a._topic === ch; }) : mockArticlesData.slice();
+                if (ch === MOCK_ALL_CHANNEL_ID) {
+                    var enabledTopics = mockTopicsMeta.filter(function (t) { return t.enabled; }).map(function (t) { return t.topic; });
+                    list = mockArticlesData.filter(function (a) { return enabledTopics.indexOf(a._topic) !== -1; });
+                } else {
+                    list = ch ? mockArticlesData.filter(function (a) { return a._topic === ch; }) : mockArticlesData.slice();
+                }
             } else {
                 var chans = mockChannelsForSource(src);
                 var idx = chans.findIndex(function (c) { return c.id === ch; });
@@ -1435,6 +1722,37 @@ var MOCK = (function () {
             if (mockSaved[obj.url]) { delete mockSaved[obj.url]; return { ok: true, saved: false, error: '' }; }
             mockSaved[obj.url] = publicArticle(obj);
             return { ok: true, saved: true, error: '' };
+        },
+
+        media: function () {
+            return MEDIA_CHANNELS_META.map(function (c) { return { id: c.id, label: c.label, channelId: c.channelId, thumbnail: mockChannelThumb(c.label) }; });
+        },
+        mediaItems: function (channel, limit) {
+            var lim = parseInt(limit, 10); if (!lim || lim <= 0) lim = 50;
+            var list = channel ? mockMediaData.filter(function (v) { return v._channel === channel; }) : mockMediaData.slice();
+            list = list.slice().sort(function (a, b) { return (parseInt(b.published, 10) || 0) - (parseInt(a.published, 10) || 0); });
+            return list.slice(0, lim).map(publicVideo);
+        },
+
+        events: function (fromMs, toMs) {
+            var from = parseInt(fromMs, 10), to = parseInt(toMs, 10);
+            return mockEventsData.filter(function (e) {
+                var s = Number(e.start);
+                return (!from || s >= from) && (!to || s <= to);
+            }).map(function (e) { return JSON.parse(JSON.stringify(e)); });
+        },
+        saveEvent: function (json) {
+            var obj;
+            try { obj = JSON.parse(json); } catch (e) { return { ok: false, saved: false, error: 'invalid json' }; }
+            if (!obj || !obj.id) return { ok: false, saved: false, error: 'missing id' };
+            if (mockSavedEvents[obj.id]) { delete mockSavedEvents[obj.id]; return { ok: true, saved: false, error: '' }; }
+            mockSavedEvents[obj.id] = obj;
+            return { ok: true, saved: true, error: '' };
+        },
+        isEventSaved: function (id) { return { saved: !!mockSavedEvents[id] }; },
+        savedEvents: function () {
+            return Object.keys(mockSavedEvents).map(function (id) { return mockSavedEvents[id]; })
+                .sort(function (a, b) { return Number(a.start) - Number(b.start); });
         },
 
         config: function () { return JSON.parse(JSON.stringify(mockConfig)); },
@@ -1557,6 +1875,43 @@ var Api = {
         var r = callBridge('openExternal', [url]);
         if (r.mock) return MOCK.openExternal(url);
         return r.ok ? r.data : { ok: false, error: r.error };
+    },
+
+    // ---- Media (YouTube channels) — see the class kdoc in MediaModels.kt
+    // for the shape; channel "" means "all channels merged, newest first". ----
+    media: function () {
+        var r = callBridge('media');
+        if (r.mock) return MOCK.media();
+        return r.ok ? r.data : { error: r.error };
+    },
+    mediaItems: function (channel, limit) {
+        var r = callBridge('mediaItems', [channel || '', String(limit || 50)]);
+        if (r.mock) return MOCK.mediaItems(channel || '', limit || 50);
+        return r.ok ? r.data : { error: r.error };
+    },
+
+    // ---- Events (ICS calendars) — fromMs/toMs cross as strings, same
+    // epoch-millis-as-string convention as every other bridge date field. ----
+    events: function (fromMs, toMs) {
+        var r = callBridge('events', [String(fromMs || ''), String(toMs || '')]);
+        if (r.mock) return MOCK.events(fromMs, toMs);
+        return r.ok ? r.data : { error: r.error };
+    },
+    saveEvent: function (eventObj) {
+        var json = JSON.stringify(eventObj);
+        var r = callBridge('saveEvent', [json]);
+        if (r.mock) return MOCK.saveEvent(json);
+        return r.ok ? r.data : { ok: false, saved: false, error: r.error };
+    },
+    isEventSaved: function (id) {
+        var r = callBridge('isEventSaved', [id]);
+        if (r.mock) return MOCK.isEventSaved(id);
+        return r.ok ? r.data : { error: r.error };
+    },
+    savedEvents: function () {
+        var r = callBridge('savedEvents');
+        if (r.mock) return MOCK.savedEvents();
+        return r.ok ? r.data : { error: r.error };
     }
 };
 
@@ -1574,10 +1929,18 @@ var State = {
     // skipped because the cache was already fresh) for the CURRENTLY
     // selected source/channel — lets renderFeedList() tell "confirmed
     // empty" apart from "haven't checked yet" (see feedEmptyStateHtml()).
-    feed: { items: [], limit: 50, settled: false },
+    // mode: 'articles' | 'trends' — which of Feed's two content areas is
+    // showing, driven by the leftmost "Trends" row-2 pill (see
+    // onSelectTrendsChannel()/setFeedModeVisibility()). Independent of
+    // activeChannelId, which keeps tracking the last real channel so
+    // switching back to 'articles' needs no re-fetch.
+    feed: { items: [], limit: 50, settled: false, mode: 'articles' },
     trends: { topic: '', timeline: [], tone: [] },
     saved: { items: [] },
-    savedUrls: new Set()
+    savedUrls: new Set(),
+    media: { channels: [], activeChannel: '', items: [], limit: 50 },
+    events: { items: [], index: 0 },
+    savedEvents: { items: [], byDay: {}, viewYear: 0, viewMonth: 0, selectedKey: null }
 };
 
 function errorBanner(message) {
@@ -1698,11 +2061,15 @@ function rerenderAll() {
     renderSourceList();
     renderSourcePills();
     renderChannelPills();
+    setFeedModeVisibility();
     loadTopicsIntoState();
     loadFeedList();
+    if (State.feed.mode === 'trends') enterTrendsView();
     loadSavedList();
-    if (loadedTabs.topics) renderTopicsList();
-    if (loadedTabs.trends && renderTrendsGate()) loadTrendsData();
+    renderTopicsList();
+    if (loadedTabs.media) loadMediaTab();
+    if (loadedTabs.events) loadEventsTab();
+    if (loadedTabs.saved) loadSavedEventsIntoCalendar();
     renderDemoModeConfig();
     renderRefreshStatus();
 }
@@ -1712,7 +2079,10 @@ function rerenderAll() {
    ===================================================================== */
 function loadTopicsIntoState() {
     var r = Api.topics();
-    var mounts = ['feed-error-mount', 'topics-error-mount', 'trends-error-mount'].map(function (id) { return document.getElementById(id); });
+    // feed-error-mount doubles as the Trends view's error surface (Trends
+    // now lives inside the Feed tab); configs-topics-error-mount is Topics
+    // management's own mount, now inside Configs.
+    var mounts = ['feed-error-mount', 'configs-topics-error-mount'].map(function (id) { return document.getElementById(id); });
     if (r && r.error) {
         mounts.forEach(function (m) { if (m) m.innerHTML = errorBanner(r.error); });
         State.topics = [];
@@ -1821,17 +2191,35 @@ function renderSourcePills() {
 }
 
 function channelPillHtml(c) {
-    var active = c.id === State.activeChannelId;
+    // Never shows active while Trends is selected — only one row-2 pill is
+    // ever highlighted at a time (see trendsPillHtml()).
+    var active = State.feed.mode !== 'trends' && c.id === State.activeChannelId;
     return '<button type="button" class="pill-sub' + (active ? ' active' : '') + '" data-channel-id="' + esc(c.id) + '">' + esc(c.label) + '</button>';
+}
+
+// Leftmost row-2 pill, always present regardless of channel count/overflow
+// mode — selecting it doesn't call setChannel() at all, it flips
+// State.feed.mode to show the moved-in Trends view instead (see
+// onSelectTrendsChannel()). Deliberately placed before every real channel,
+// including a query-driven source's synthetic merged "All" channel.
+function trendsPillHtml() {
+    var active = State.feed.mode === 'trends';
+    return '<button type="button" class="pill-sub' + (active ? ' active' : '') + '" id="feed-trends-pill">Trends</button>';
 }
 
 function renderChannelPills() {
     var mount = document.getElementById('feed-channel-pills');
     if (!mount) return;
-    if (!State.channels.length) { mount.innerHTML = ''; return; }
+    var trendsHtml = trendsPillHtml();
+    if (!State.channels.length) {
+        mount.innerHTML = trendsHtml;
+        wireTrendsPill(mount);
+        return;
+    }
 
+    var body;
     if (State.channels.length <= CHANNEL_INLINE_MAX) {
-        mount.innerHTML = State.channels.map(channelPillHtml).join('');
+        body = State.channels.map(channelPillHtml).join('');
     } else {
         var byId = {};
         State.channels.forEach(function (c) { byId[c.id] = c; });
@@ -1840,24 +2228,62 @@ function renderChannelPills() {
             return id && byId[id] && arr.indexOf(id) === i; // dedupe, drop stale/unknown ids
         });
         var shortlist = shortlistIds.map(function (id) { return byId[id]; });
-        mount.innerHTML = shortlist.map(channelPillHtml).join('') +
+        body = shortlist.map(channelPillHtml).join('') +
             '<button type="button" class="pill-sub" id="feed-channel-more-btn">More…</button>';
-        var moreBtn = document.getElementById('feed-channel-more-btn');
-        if (moreBtn) moreBtn.addEventListener('click', openChannelPicker);
     }
+    mount.innerHTML = trendsHtml + body;
+    wireTrendsPill(mount);
+    var moreBtn = document.getElementById('feed-channel-more-btn');
+    if (moreBtn) moreBtn.addEventListener('click', openChannelPicker);
     mount.querySelectorAll('[data-channel-id]').forEach(function (btn) {
         btn.addEventListener('click', function () { onSetChannel(btn.dataset.channelId); });
     });
 }
 
+function wireTrendsPill(mount) {
+    var btn = mount.querySelector('#feed-trends-pill');
+    if (btn) btn.addEventListener('click', onSelectTrendsChannel);
+}
+
+// Toggles which of Feed's two content areas is visible — the article list
+// (+ its refresh bar/error surface, only meaningful in article mode) or the
+// moved-in Trends view. Both stay populated in State either way; this is
+// purely a display switch.
+function setFeedModeVisibility() {
+    var listEl = document.getElementById('feed-list');
+    var trendsEl = document.getElementById('feed-trends-content');
+    var bar = document.getElementById('feed-nav-progress');
+    var errMount = document.getElementById('feed-refresh-error-mount');
+    var trends = State.feed.mode === 'trends';
+    if (listEl) listEl.classList.toggle('hidden', trends);
+    if (trendsEl) trendsEl.classList.toggle('hidden', !trends);
+    if (bar) bar.style.display = trends ? 'none' : '';
+    if (errMount) errMount.style.display = trends ? 'none' : '';
+}
+
+function onSelectTrendsChannel() {
+    if (State.feed.mode === 'trends') return;
+    invalidateFeedRefresh(); // cancel any in-flight article refresh — Trends doesn't use this machinery
+    State.feed.mode = 'trends';
+    renderChannelPills();
+    setFeedModeVisibility();
+    enterTrendsView();
+}
+
 function onSetChannel(id) {
-    if (id === State.activeChannelId) return;
+    var wasTrends = State.feed.mode === 'trends';
+    State.feed.mode = 'articles';
+    if (id === State.activeChannelId) {
+        if (wasTrends) { renderChannelPills(); setFeedModeVisibility(); renderFeedList(); }
+        return;
+    }
     var res;
     try { res = Api.setChannel(id); } catch (e) { alert('Could not switch channel: ' + e.message); return; }
     if (!res || res.ok === false) { alert('Could not switch channel' + (res && res.error ? ': ' + res.error : '')); return; }
     State.activeChannelId = id;
     pushRecentChannel(State.activeSourceId, id);
     renderChannelPills();
+    setFeedModeVisibility();
     State.feed.settled = false;
     loadFeedList(); // instant render from cache
     // Unlike a source switch, only pay for a fetch when the cache actually
@@ -1998,6 +2424,7 @@ function onFeedRefreshSettled(gen, status, opts) {
     }
     State.feed.settled = true;
     loadFeedList();
+    if (State.feed.mode === 'trends') { loadTopicsIntoState(); enterTrendsView(); }
     renderRefreshStatus(); // keep Configs' status view in sync even if it's not the visible tab
 }
 
@@ -2100,13 +2527,11 @@ function renderFeedList() {
 }
 
 /* =====================================================================
-   Topics tab
+   Topics management — MOVED into Configs (no longer its own bottom-nav
+   tab). loadTopicsIntoState() already runs eagerly at top-level init (Feed
+   needs it too), so there's no separate lazy-load entry point here anymore
+   — renderTopicsList() is simply called wherever topics data changes.
    ===================================================================== */
-function loadTopicsTab() {
-    loadTopicsIntoState();
-    renderTopicsList();
-}
-
 function renderTopicsList() {
     var mount = document.getElementById('topics-list');
     if (!State.topics.length) { mount.innerHTML = '<div class="empty-state">No topics yet. Add one above.</div>'; return; }
@@ -2202,8 +2627,13 @@ function renderTrendsGate() {
     return true;
 }
 
-function loadTrendsTab() {
-    loadTopicsIntoState();
+// Entry point into the Trends view — called both when the Trends row-2
+// pill is first tapped (onSelectTrendsChannel) and again whenever the
+// active SOURCE changes while already in trends mode (see onSetSource/
+// onFeedRefreshSettled), which is what makes row 1 (source pills, still
+// live above) work as the "per source" half of Trends' sub-menu; the
+// per-channel half is trends-topic-pills below (renderTrendsPills()).
+function enterTrendsView() {
     if (!State.trends.topic && State.topics.length) State.trends.topic = State.topics[0].topic;
     if (!renderTrendsGate()) return;
     renderTrendsPills();
@@ -2226,7 +2656,7 @@ function renderTrendsPills() {
 }
 
 function loadTrendsData() {
-    var errMount = document.getElementById('trends-error-mount');
+    var errMount = document.getElementById('feed-error-mount'); // Trends now lives inside the Feed tab; shares its error surface
     // Only ask for what the active source claims to support — never call
     // timeline()/tone() against a source that didn't advertise the
     // capability, and never let an unsupported call's failure block the
@@ -2301,9 +2731,387 @@ function renderToneDistribution() {
 }
 
 /* =====================================================================
+   Media tab — YouTube channels. Bridge: Api.media() -> [{id,label,
+   channelId,thumbnail}], Api.mediaItems(channel, limit) -> [{videoId,
+   title,url,thumbnail,published,channelLabel}] (channel "" = all channels
+   merged, newest first). Thumbnails are remote YouTube URLs from the real
+   bridge, so they go through the exact same imagesEnabled()/
+   secureImageUrl()/imgFallback() path as article thumbnails — no new image
+   handling. Tapping a card opens it externally via the existing
+   Api.openExternal(), reusing onOpenArticle() below (it's just a thin
+   Api.openExternal(url) wrapper, name notwithstanding).
+   ===================================================================== */
+function loadMediaTab() {
+    var errMount = document.getElementById('media-error-mount');
+    var res;
+    try { res = Api.media(); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
+    errMount.innerHTML = '';
+    State.media.channels = Array.isArray(res) ? res : [];
+    renderMediaChannelPills();
+    loadMediaItems();
+}
+
+function renderMediaChannelPills() {
+    var mount = document.getElementById('media-channel-pills');
+    if (!mount) return;
+    var allHtml = '<button type="button" class="pill-sub' + (State.media.activeChannel === '' ? ' active' : '') + '" data-media-channel="">All</button>';
+    var restHtml = State.media.channels.map(function (c) {
+        var active = c.id === State.media.activeChannel;
+        return '<button type="button" class="pill-sub' + (active ? ' active' : '') + '" data-media-channel="' + esc(c.id) + '">' + esc(c.label) + '</button>';
+    }).join('');
+    mount.innerHTML = allHtml + restHtml;
+    mount.querySelectorAll('[data-media-channel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (btn.dataset.mediaChannel === State.media.activeChannel) return;
+            State.media.activeChannel = btn.dataset.mediaChannel;
+            State.media.limit = 50;
+            renderMediaChannelPills();
+            loadMediaItems();
+        });
+    });
+}
+
+function loadMediaItems() {
+    var errMount = document.getElementById('media-error-mount');
+    var res;
+    try { res = Api.mediaItems(State.media.activeChannel, State.media.limit); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
+    errMount.innerHTML = '';
+    State.media.items = Array.isArray(res) ? res : [];
+    renderMediaList();
+}
+
+function mediaCardHtml(v) {
+    var ms = parseSeenDate(v.published); // published is an epoch-millis string, same shape parseSeenDate already handles
+    var imgHtml;
+    if (imagesEnabled() && v.thumbnail) {
+        imgHtml = '<img class="media-thumb" src="' + esc(secureImageUrl(v.thumbnail)) + '" loading="lazy" onerror="imgFallback(this)" alt="">';
+    } else {
+        // Images off: still show the existing themed placeholder (never a
+        // blank card) — same data-uri imgFallback() would swap in on a
+        // real failure, just applied up front instead of via onerror.
+        imgHtml = '<img class="media-thumb article-thumb-fallback" src="' + esc(placeholderThumbDataUri()) + '" alt="">';
+    }
+    return '<div class="media-card" data-open-video="' + esc(v.url) + '">' +
+        '<div class="media-thumb-wrap">' + imgHtml +
+            '<span class="media-play-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
+        '</div>' +
+        '<div class="media-body">' +
+            '<div class="media-title">' + esc(v.title) + '</div>' +
+            '<div class="media-meta"><span>' + esc(v.channelLabel) + '</span><span class="dot-sep"></span><span>' + esc(relTime(ms)) + '</span></div>' +
+        '</div>' +
+    '</div>';
+}
+
+function renderMediaList() {
+    var mount = document.getElementById('media-list');
+    if (!mount) return;
+    if (!State.media.items.length) { mount.innerHTML = '<div class="empty-state">No videos yet.</div>'; return; }
+    mount.innerHTML = '<div class="media-list">' + State.media.items.map(mediaCardHtml).join('') + '</div>';
+    mount.querySelectorAll('[data-open-video]').forEach(function (el) {
+        el.addEventListener('click', function () { onOpenArticle(el.dataset.openVideo); });
+    });
+}
+
+/* =====================================================================
+   Events tab — swipeable card stack. Bridge: Api.events(fromMs,toMs) ->
+   [{id,calendarId,calendarLabel,color,title,location,start,end,allDay}],
+   Api.saveEvent(json) -> {ok,saved,error} (toggle), Api.isEventSaved(id)
+   -> {saved}. Default range is "now" through three weeks out — "the next
+   few weeks" per spec. Swipe right / the Save button both funnel through
+   flyOut('save') -> decideEvent('save'); swipe left / Skip funnel through
+   flyOut('skip') -> decideEvent('skip') with no bridge write. Drag tracking
+   is a plain inline CSS transform (translateX + a slight rotate) — no
+   gesture library.
+   ===================================================================== */
+var EVENTS_WINDOW_DAYS = 21;
+
+function loadEventsTab() {
+    var now = Date.now();
+    loadEventsRange(now, now + EVENTS_WINDOW_DAYS * 86400000);
+}
+
+function loadEventsRange(fromMs, toMs) {
+    var errMount = document.getElementById('events-error-mount');
+    var res;
+    try { res = Api.events(fromMs, toMs); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
+    errMount.innerHTML = '';
+    State.events.items = (Array.isArray(res) ? res : []).slice().sort(function (a, b) { return (Number(a.start) || 0) - (Number(b.start) || 0); });
+    State.events.index = 0;
+    renderEventsView();
+}
+
+function currentEvent() { return State.events.items[State.events.index] || null; }
+
+function fmtEventTime(e) {
+    if (e.allDay) return 'All day';
+    var s = Number(e.start), en = Number(e.end);
+    if (!s) return '';
+    function two(n) { return n < 10 ? '0' + n : '' + n; }
+    var sd = new Date(s);
+    var dateStr = sd.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    var out = dateStr + ' · ' + two(sd.getHours()) + ':' + two(sd.getMinutes());
+    if (en && en > s) {
+        var ed = new Date(en);
+        out += '–' + two(ed.getHours()) + ':' + two(ed.getMinutes());
+    }
+    return out;
+}
+
+var EVENT_ICON_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3.5v4M16 3.5v4"/></svg>';
+var EVENT_ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0112 2.5a7 7 0 017 7C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg>';
+
+function eventCardHtml(e, alreadySaved) {
+    var color = /^#[0-9a-fA-F]{3,8}$/.test(e.color || '') ? e.color : '#8B9096';
+    return '<div class="event-card" id="event-active-card">' +
+        '<div class="event-card-accent" style="background:' + esc(color) + ';"></div>' +
+        '<div class="event-card-body">' +
+            '<div class="event-card-cal">' + esc(e.calendarLabel || '') + (alreadySaved ? ' · Already saved' : '') + '</div>' +
+            '<div class="event-card-title">' + esc(e.title || 'Untitled event') + '</div>' +
+            '<div class="event-card-row">' + EVENT_ICON_CAL + '<span>' + esc(fmtEventTime(e)) + '</span></div>' +
+            (e.location ? '<div class="event-card-row">' + EVENT_ICON_PIN + '<span>' + esc(e.location) + '</span></div>' : '') +
+        '</div>' +
+        '<div class="event-card-stamp save" id="event-stamp-save">Save</div>' +
+        '<div class="event-card-stamp skip" id="event-stamp-skip">Skip</div>' +
+        '<div class="event-card-actions">' +
+            '<button type="button" class="event-action-btn event-action-skip" id="event-skip-btn">Skip</button>' +
+            '<button type="button" class="event-action-btn event-action-save" id="event-save-btn">' + (alreadySaved ? 'Saved ✓' : 'Save') + '</button>' +
+        '</div>' +
+    '</div>';
+}
+
+function renderEventsView() {
+    var stackMount = document.getElementById('events-stack-mount');
+    var doneMount = document.getElementById('events-done-mount');
+    var progressEl = document.getElementById('events-progress');
+    if (!stackMount || !doneMount || !progressEl) return;
+    var total = State.events.items.length;
+    if (!total) {
+        progressEl.textContent = '';
+        stackMount.innerHTML = '';
+        doneMount.innerHTML = '<div class="events-empty-state">No upcoming events in this window.</div>';
+        return;
+    }
+    if (State.events.index >= total) {
+        progressEl.textContent = '';
+        stackMount.innerHTML = '';
+        doneMount.innerHTML = '<div class="events-done-state"><strong>All caught up</strong>You’ve gone through all ' + total + ' events in this window. Check Saved for the ones you kept.</div>';
+        return;
+    }
+    doneMount.innerHTML = '';
+    progressEl.textContent = (State.events.index + 1) + ' of ' + total;
+    var e = currentEvent();
+    var alreadySaved = false;
+    try { alreadySaved = !!(Api.isEventSaved(e.id) || {}).saved; } catch (err) { alreadySaved = false; }
+    stackMount.innerHTML = '<div class="event-stack">' + eventCardHtml(e, alreadySaved) + '</div>';
+    wireEventCard();
+}
+
+function wireEventCard() {
+    var card = document.getElementById('event-active-card');
+    if (!card) return;
+    var saveBtn = document.getElementById('event-save-btn');
+    var skipBtn = document.getElementById('event-skip-btn');
+    if (saveBtn) saveBtn.addEventListener('click', function () { flyOut('save'); });
+    if (skipBtn) skipBtn.addEventListener('click', function () { flyOut('skip'); });
+
+    var stampSave = document.getElementById('event-stamp-save');
+    var stampSkip = document.getElementById('event-stamp-skip');
+    var dragging = false, startX = 0, dx = 0;
+    var DRAG_THRESHOLD = 90;
+
+    function onDown(ev) {
+        // pointerdown on the Save/Skip buttons bubbles up to the card (they're
+        // inside it) — without this guard, starting a drag here captures the
+        // pointer on the CARD and can swallow the button's own click, which
+        // would make the accessible/no-gesture path unreliable exactly where
+        // the spec requires it to work. Let button presses through untouched.
+        if (ev.target.closest && ev.target.closest('.event-action-btn')) return;
+        dragging = true;
+        dx = 0;
+        card.classList.add('dragging');
+        startX = ev.clientX;
+        if (card.setPointerCapture && ev.pointerId != null) {
+            try { card.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+        }
+    }
+    function onMove(ev) {
+        if (!dragging) return;
+        dx = ev.clientX - startX;
+        var rot = dx / 14;
+        card.style.transform = 'translateX(' + dx + 'px) rotate(' + rot + 'deg)';
+        var op = Math.min(1, Math.abs(dx) / DRAG_THRESHOLD);
+        if (dx > 0) { stampSave.style.opacity = op; stampSkip.style.opacity = 0; }
+        else { stampSkip.style.opacity = op; stampSave.style.opacity = 0; }
+    }
+    function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        card.classList.remove('dragging');
+        if (dx > DRAG_THRESHOLD) { flyOut('save'); }
+        else if (dx < -DRAG_THRESHOLD) { flyOut('skip'); }
+        else {
+            card.style.transform = '';
+            stampSave.style.opacity = 0;
+            stampSkip.style.opacity = 0;
+        }
+    }
+    card.addEventListener('pointerdown', onDown);
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerup', onUp);
+    card.addEventListener('pointercancel', onUp);
+}
+
+// Shared by swipe release AND the visible Skip/Save buttons — same fly-off
+// animation, same clear visual affirmation, either way (see the spec note
+// that the buttons exist so this flow is testable without a gesture).
+function flyOut(kind) {
+    var card = document.getElementById('event-active-card');
+    if (!card) { decideEvent(kind); return; }
+    var dir = kind === 'save' ? 1 : -1;
+    card.classList.remove('dragging');
+    card.style.transform = 'translateX(' + (dir * 480) + 'px) rotate(' + (dir * 20) + 'deg)';
+    card.style.opacity = '0';
+    var stamp = document.getElementById(kind === 'save' ? 'event-stamp-save' : 'event-stamp-skip');
+    if (stamp) stamp.style.opacity = 1;
+    setTimeout(function () { decideEvent(kind); }, 220);
+}
+
+function decideEvent(kind) {
+    var e = currentEvent();
+    if (!e) return;
+    if (kind === 'save') {
+        try { Api.saveEvent(e); } catch (err) { /* card still advances — a save error must not get the deck stuck */ }
+    }
+    State.events.index++;
+    renderEventsView();
+}
+
+/* =====================================================================
    Saved tab
    ===================================================================== */
-function loadSavedTab() { loadSavedList(); }
+function loadSavedTab() { loadSavedList(); loadSavedEventsIntoCalendar(); }
+
+/* ---- Saved events calendar — a plain CSS-grid month view (no library,
+   same "hand-drawn" rule as the Trends sparkline). Built from
+   Api.savedEvents(); each day cell is marked with a small dot per saved
+   event that occurs on it, coloured by that event's own calendar colour.
+   Tapping a marked day lists that day's saved events below the grid. ---- */
+function dayKey(y, m, d) { return y + '-' + (m + 1) + '-' + d; } // m is 0-based in, 1-based out — purely a display/lookup key
+
+function loadSavedEventsIntoCalendar() {
+    var errMount = document.getElementById('saved-error-mount');
+    var res;
+    try { res = Api.savedEvents(); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
+    errMount.innerHTML = '';
+    State.savedEvents.items = Array.isArray(res) ? res : [];
+    var byDay = {};
+    State.savedEvents.items.forEach(function (e) {
+        var d = new Date(Number(e.start) || 0);
+        var key = dayKey(d.getFullYear(), d.getMonth(), d.getDate());
+        (byDay[key] = byDay[key] || []).push(e);
+    });
+    State.savedEvents.byDay = byDay;
+    if (!State.savedEvents.viewYear) {
+        var now = new Date();
+        State.savedEvents.viewYear = now.getFullYear();
+        State.savedEvents.viewMonth = now.getMonth();
+    }
+    renderSavedCalendar();
+}
+
+var CAL_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+var CAL_DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function renderSavedCalendar() {
+    var label = document.getElementById('saved-cal-label');
+    var grid = document.getElementById('saved-cal-grid');
+    if (!label || !grid) return;
+    var y = State.savedEvents.viewYear, m = State.savedEvents.viewMonth;
+    label.textContent = CAL_MONTH_NAMES[m] + ' ' + y;
+
+    var startWeekday = new Date(y, m, 1).getDay();
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var daysInPrevMonth = new Date(y, m, 0).getDate();
+    var today = new Date();
+    var todayKey = dayKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+    var cells = [];
+    for (var i = 0; i < startWeekday; i++) {
+        var pd = daysInPrevMonth - startWeekday + 1 + i;
+        cells.push({ day: pd, other: true, y: m === 0 ? y - 1 : y, m: m === 0 ? 11 : m - 1 });
+    }
+    for (var d = 1; d <= daysInMonth; d++) cells.push({ day: d, other: false, y: y, m: m });
+    while (cells.length < 42) { // always a full 6-row grid, so the height doesn't jump month to month
+        var last = cells[cells.length - 1];
+        var nd = new Date(last.y, last.m, last.day + 1);
+        cells.push({ day: nd.getDate(), other: true, y: nd.getFullYear(), m: nd.getMonth() });
+    }
+
+    var html = CAL_DOW.map(function (dw) { return '<div class="cal-dow">' + dw + '</div>'; }).join('');
+    html += cells.map(function (c) {
+        var key = dayKey(c.y, c.m, c.day);
+        var events = State.savedEvents.byDay[key] || [];
+        var dots = events.slice(0, 4).map(function (e) {
+            var color = /^#[0-9a-fA-F]{3,8}$/.test(e.color || '') ? e.color : '#8B9096';
+            return '<span class="cal-day-dot" style="background:' + esc(color) + ';"></span>';
+        }).join('');
+        var cls = 'cal-day' + (c.other ? ' other-month' : '') + (key === todayKey ? ' today' : '') + (key === State.savedEvents.selectedKey ? ' selected' : '');
+        return '<button type="button" class="' + cls + '" data-day-key="' + esc(key) + '">' +
+            '<span>' + c.day + '</span>' +
+            (dots ? '<span class="cal-day-dots">' + dots + '</span>' : '') +
+        '</button>';
+    }).join('');
+
+    grid.innerHTML = html;
+    grid.querySelectorAll('[data-day-key]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            State.savedEvents.selectedKey = btn.dataset.dayKey;
+            renderSavedCalendar();
+        });
+    });
+    renderSavedDayList();
+}
+
+function renderSavedDayList() {
+    var mount = document.getElementById('saved-day-list');
+    if (!mount) return;
+    var key = State.savedEvents.selectedKey;
+    if (!key) { mount.innerHTML = '<div class="empty-state">Tap a marked day to see its saved events.</div>'; return; }
+    var events = (State.savedEvents.byDay[key] || []).slice().sort(function (a, b) { return Number(a.start) - Number(b.start); });
+    if (!events.length) { mount.innerHTML = '<div class="empty-state">No saved events on this day.</div>'; return; }
+    var rows = events.map(function (e) {
+        var color = /^#[0-9a-fA-F]{3,8}$/.test(e.color || '') ? e.color : '#8B9096';
+        return '<div class="saved-event-row">' +
+            '<span class="saved-event-accent" style="background:' + esc(color) + ';"></span>' +
+            '<div class="flex-1 min-w-0">' +
+                '<div class="saved-event-title">' + esc(e.title) + '</div>' +
+                '<div class="saved-event-meta">' + esc(fmtEventTime(e)) + (e.location ? ' · ' + esc(e.location) : '') + '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+    var parts = key.split('-');
+    var heading = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    mount.innerHTML = '<div class="saved-day-heading">' + esc(heading) + '</div>' + rows;
+}
+
+function initSavedCalendarNav() {
+    var prev = document.getElementById('saved-cal-prev');
+    var next = document.getElementById('saved-cal-next');
+    if (prev) prev.addEventListener('click', function () {
+        State.savedEvents.viewMonth--;
+        if (State.savedEvents.viewMonth < 0) { State.savedEvents.viewMonth = 11; State.savedEvents.viewYear--; }
+        renderSavedCalendar();
+    });
+    if (next) next.addEventListener('click', function () {
+        State.savedEvents.viewMonth++;
+        if (State.savedEvents.viewMonth > 11) { State.savedEvents.viewMonth = 0; State.savedEvents.viewYear++; }
+        renderSavedCalendar();
+    });
+}
 
 function loadSavedList() {
     var errMount = document.getElementById('saved-error-mount');
@@ -2404,6 +3212,7 @@ function initConfigsTab() {
         setImagesEnabled(ev.target.checked);
         renderFeedList();
         if (State.tab === 'saved') renderSavedList();
+        if (loadedTabs.media) renderMediaList();
     });
 
     loadConfigValues();
@@ -2418,6 +3227,9 @@ function initConfigsTab() {
    ===================================================================== */
 var loadedTabs = {};
 
+// media/events/saved are lazy-loaded on first visit (same pattern the old
+// topics/trends/saved tabs used); feed and configs are eager at init below,
+// so they're intentionally absent from both branches here.
 function switchTab(tab) {
     State.tab = tab;
     document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
@@ -2427,14 +3239,12 @@ function switchTab(tab) {
 
     if (!loadedTabs[tab]) {
         loadedTabs[tab] = true;
-        if (tab === 'topics') loadTopicsTab();
-        else if (tab === 'trends') loadTrendsTab();
+        if (tab === 'media') loadMediaTab();
+        else if (tab === 'events') loadEventsTab();
         else if (tab === 'saved') loadSavedTab();
-        else if (tab === 'configs') { /* initConfigsTab already loaded config data on init */ }
     } else {
-        if (tab === 'topics') renderTopicsList();
-        else if (tab === 'trends') { if (renderTrendsGate()) { renderSparkline(); renderToneDistribution(); } }
-        else if (tab === 'saved') loadSavedList();
+        if (tab === 'events') renderEventsView();
+        else if (tab === 'saved') loadSavedTab();
         else if (tab === 'configs') { renderRefreshStatus(); renderDemoModeConfig(); }
     }
 }
@@ -2450,10 +3260,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     initTheme();
     initChannelPicker();
+    initSavedCalendarNav();
     loadSourcesIntoState();
     renderSourcePills();
     renderChannelPills();
+    setFeedModeVisibility();
     loadTopicsIntoState();
+    renderTopicsList();
     loadFeedList();
     loadSavedList();
     initTopicsTab();
