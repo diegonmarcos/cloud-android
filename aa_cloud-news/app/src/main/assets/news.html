@@ -254,6 +254,27 @@
         }
         .pill-sub.active { background: var(--surface-strong); color: var(--text); border-color: var(--text-muted); }
 
+        /* ---- Feed nav auto-refresh indicator — a thin sweeping line under
+           row 1/row 2, shown while tapping a source/channel triggers a
+           background Api.refresh() (see kickFeedRefresh() in the script).
+           Deliberately not a spinner-on-the-whole-page or a modal: cached
+           content stays fully visible/readable underneath while this runs. */
+        .feed-refresh-bar {
+            height: 2px; margin: 8px 24px 0; border-radius: 999px;
+            background: var(--border); overflow: hidden; position: relative;
+            opacity: 0; transition: opacity .15s;
+        }
+        .feed-refresh-bar.active { opacity: 1; }
+        .feed-refresh-bar.active::after {
+            content: ""; position: absolute; top: 0; left: -40%; height: 100%; width: 40%;
+            background: var(--text-muted); border-radius: 999px;
+            animation: feed-refresh-sweep 1.1s ease-in-out infinite;
+        }
+        @keyframes feed-refresh-sweep {
+            0% { left: -40%; }
+            100% { left: 100%; }
+        }
+
         /* ---- Channel picker sheet — row 2's overflow path when a source
            has more than CHANNEL_INLINE_MAX channels (e.g. ntfy-self's 40+
            declared/logs/apps channels). Bottom sheet, not a full modal, to
@@ -354,6 +375,11 @@
                      renderSourcePills()/renderChannelPills(). -->
                 <div class="pill-scroll hide-scrollbar px-6" id="feed-source-pills"></div>
                 <div class="pill-scroll-sub hide-scrollbar px-6" id="feed-channel-pills"></div>
+                <!-- Auto-refresh progress + inline failure surface for the
+                     source/channel-tap refresh flow — see kickFeedRefresh()
+                     and onFeedRefreshSettled() in the script. -->
+                <div class="feed-refresh-bar" id="feed-nav-progress" aria-hidden="true"></div>
+                <div class="px-6" id="feed-refresh-error-mount"></div>
                 <div class="px-6 mt-2 panel-scroll-pad" id="feed-list"></div>
             </section>
 
@@ -1136,6 +1162,15 @@ var MOCK = (function () {
     var mockRefresh = { running: false, ok: TOPIC_META.length, failed: 0, messages: [], lastFetch: String(Date.now() - 15 * 60000) };
     var mockConfig = { base: 'https://api.diegonmarcos.com/news', refreshSeconds: 60, maxArticles: 50 };
 
+    // Mirrors the real backend's ntfy-self behaviour: its ~142 channels are
+    // DISCOVERED during a sync, so the mock's row 2 for ntfy-self starts
+    // genuinely EMPTY (not just "unfetched") and only becomes NTFY_CHANNELS
+    // once a refresh that ran while ntfy-self was active has settled — see
+    // refresh() below. This is the exact bug the auto-refresh-on-tap
+    // feature exists to fix, so the mock needs to reproduce it to be
+    // testable in a browser at all.
+    var mockNtfyDiscovered = false;
+
     /* ---- Sources — mirrors data/sources.json (via the real
        NewsBridge.sources() seed) exactly: same ids/labels/kind/
        queryDriven/capabilities/requiresMesh, so demo mode proves the
@@ -1222,7 +1257,9 @@ var MOCK = (function () {
             ];
         }
         if (src.id === 'ntfy-self') {
-            return NTFY_CHANNELS;
+            // Empty until discovered — matches the real bridge exactly
+            // (see mockNtfyDiscovered above and refresh() below).
+            return mockNtfyDiscovered ? NTFY_CHANNELS : [];
         }
         return [{ id: 'all', label: 'All' }]; // google-top, aljazeera, tagesschau, spiegel
     }
@@ -1347,18 +1384,40 @@ var MOCK = (function () {
         },
 
         refresh: function () {
+            // Captured at call time, not read again inside the timeout —
+            // the user may switch source again while this run is "in
+            // flight", and the discovery/failure behaviour below must
+            // reflect what was actually being synced, not whatever happens
+            // to be active 1.4s later.
+            var srcAtStart = mockActiveSourceId;
             if (!mockRefresh.running) {
                 mockRefresh.running = true;
                 setTimeout(function () {
                     mockRefresh.running = false;
+                    // Mirrors the real backend: ntfy-self's channel list is
+                    // discovered AS PART OF syncing it, so it only becomes
+                    // populated once a sync that targeted it settles.
+                    if (srcAtStart === 'ntfy-self') mockNtfyDiscovered = true;
                     var enabledTopics = mockTopicsMeta.filter(function (t) { return t.enabled; });
-                    mockRefresh.ok = enabledTopics.length;
-                    mockRefresh.failed = 0;
+                    // aljazeera is wired to always report a sync failure in
+                    // demo mode. The mock has no real network to fail
+                    // against, so this is the one deterministic way to
+                    // exercise/screenshot the inline-failure path (spec
+                    // item 5) without a device — tap Al Jazeera as the
+                    // source to see it.
+                    if (srcAtStart === 'aljazeera') {
+                        mockRefresh.ok = 0;
+                        mockRefresh.failed = 1;
+                        mockRefresh.messages = ['Al Jazeera: fetch failed (HTTP 503 from upstream)'];
+                    } else {
+                        mockRefresh.ok = enabledTopics.length;
+                        mockRefresh.failed = 0;
+                        mockRefresh.messages = enabledTopics.map(function (t) {
+                            var n = mockArticlesData.filter(function (a) { return a._topic === t.topic; }).length;
+                            return t.label + ': ' + n + ' articles cached';
+                        });
+                    }
                     mockRefresh.lastFetch = String(Date.now());
-                    mockRefresh.messages = enabledTopics.map(function (t) {
-                        var n = mockArticlesData.filter(function (a) { return a._topic === t.topic; }).length;
-                        return t.label + ': ' + n + ' articles cached';
-                    });
                 }, 1400);
             }
             return { started: true };
@@ -1511,7 +1570,11 @@ var State = {
     channels: [],
     activeChannelId: null,
     topics: [],
-    feed: { items: [], limit: 50 },
+    // settled: true once a refresh cycle has run to completion (or was
+    // skipped because the cache was already fresh) for the CURRENTLY
+    // selected source/channel — lets renderFeedList() tell "confirmed
+    // empty" apart from "haven't checked yet" (see feedEmptyStateHtml()).
+    feed: { items: [], limit: 50, settled: false },
     trends: { topic: '', timeline: [], tone: [] },
     saved: { items: [] },
     savedUrls: new Set()
@@ -1580,8 +1643,17 @@ function onSetSource(id) {
     if (!res || res.ok === false) { alert('Could not switch source' + (res && res.error ? ': ' + res.error : '')); return; }
     State.activeSourceId = id;
     State.trends.topic = '';
+    State.feed.settled = false;
     renderSourceList();
-    rerenderAll(); // re-renders both feed nav rows (source + channel) and the list
+    rerenderAll(); // instant re-render from cache — row 2 may still be stale/empty
+                    // here (e.g. ntfy-self before its channels are discovered);
+                    // kickFeedRefresh() below re-reads sources() once the sync
+                    // settles to pick that up.
+    // Always fetch on a source switch — unlike a channel tap, there's no
+    // "cache is already fresh" shortcut here, because the whole point is
+    // that a just-selected source may need real work done (ntfy-self's
+    // channel discovery) before its cache means anything.
+    kickFeedRefresh({ reloadSources: true });
 }
 
 /* =====================================================================
@@ -1786,7 +1858,147 @@ function onSetChannel(id) {
     State.activeChannelId = id;
     pushRecentChannel(State.activeSourceId, id);
     renderChannelPills();
+    State.feed.settled = false;
+    loadFeedList(); // instant render from cache
+    // Unlike a source switch, only pay for a fetch when the cache actually
+    // needs it — re-fetching a channel the user is flicking back and forth
+    // to would just burn a phone's data for no visible benefit.
+    if (State.feed.items.length === 0 || isChannelCacheStale()) {
+        kickFeedRefresh({ reloadSources: false });
+    } else {
+        invalidateFeedRefresh(); // cancel/ignore any still-in-flight run from a previous tap
+        State.feed.settled = true;
+        renderFeedList();
+    }
+}
+
+/* =====================================================================
+   Feed nav auto-refresh — drives Api.refresh()/refreshStatus() from a
+   source or channel tap (see onSetSource/onSetChannel above), instead of
+   requiring a trip to Configs → "Refresh now". Kept in its own tiny state
+   machine, deliberately separate from the Configs tab's refreshPollTimer/
+   pollRefreshStatus() (which must keep working exactly as before): the two
+   can run at the same time without stepping on each other since each only
+   ever reads/writes its own timer + gen.
+
+   `gen` is the race guard called for in the spec: every source/channel tap
+   bumps it, every in-flight poll checks it before touching State, so a
+   late-arriving result from a run the user has since abandoned (by tapping
+   something else mid-flight) is silently dropped instead of clobbering
+   whatever is now on screen. `pollTimer`/`debounceTimer` are single slots
+   (not arrays) so starting a new run always cancels the previous one —
+   only one poll loop is ever alive at once. The 150ms debounceTimer means
+   flicking rapidly through several sources/channels only ever fires the
+   final Api.refresh() call, not one per tap.
+   ===================================================================== */
+var FeedRefresh = {
+    gen: 0,
+    pollTimer: null,
+    debounceTimer: null,
+    busy: false
+};
+
+function showFeedRefreshing(on) {
+    var bar = document.getElementById('feed-nav-progress');
+    if (bar) bar.classList.toggle('active', !!on);
+}
+
+// Deliberately NOT errorBanner() — that helper's fixed "Couldn't load this
+// from the bridge:" prefix is for a call that itself threw/errored. This is
+// a call that succeeded but reported sync failures, which is a different
+// (and differently-worded) situation.
+function showFeedRefreshError(message) {
+    var mount = document.getElementById('feed-refresh-error-mount');
+    if (!mount) return;
+    mount.innerHTML = message ? ('<div class="error-banner">' + esc(message) + '</div>') : '';
+}
+
+/* Cache-freshness check for a channel tap: stale if longer than the
+   configured refresh interval has passed since the last completed sync.
+   Errors/missing data fail toward "stale" (fetch anyway) rather than
+   silently leaving a possibly-broken cache on screen. */
+function isChannelCacheStale() {
+    var cfg, status;
+    try { cfg = Api.config(); } catch (e) { return true; }
+    if (!cfg || cfg.error || !cfg.refreshSeconds) return true;
+    try { status = Api.refreshStatus(); } catch (e) { return true; }
+    if (!status || status.error) return true;
+    var last = parseInt(status.lastFetch, 10);
+    if (!last || isNaN(last)) return true;
+    return (Date.now() - last) > (cfg.refreshSeconds * 1000);
+}
+
+/* Bumps the generation counter (superseding any run in flight) and tears
+   down whatever this module currently has running, without starting
+   anything new. Used both as the first step of kickFeedRefresh() and,
+   standalone, when a channel tap decides the cache is already fresh and
+   just needs to cancel a stale earlier run instead of starting one. */
+function invalidateFeedRefresh() {
+    FeedRefresh.gen++;
+    clearTimeout(FeedRefresh.debounceTimer);
+    if (FeedRefresh.pollTimer) { clearInterval(FeedRefresh.pollTimer); FeedRefresh.pollTimer = null; }
+    FeedRefresh.busy = false;
+    showFeedRefreshing(false);
+    return FeedRefresh.gen;
+}
+
+// opts.reloadSources: after the sync settles, re-read Api.sources() (not
+// just re-fetch the article list) before rendering. Essential for a source
+// switch — a dynamic-channel source's row 2 (ntfy-self's ~142 channels)
+// only exists post-discovery, so row 2 must be rebuilt from the fresh list,
+// not just the list the tap started with. Not needed for a plain channel
+// tap, which can't change the set of channels.
+function kickFeedRefresh(opts) {
+    var myGen = invalidateFeedRefresh();
+    FeedRefresh.busy = true;
+    showFeedRefreshing(true);
+    showFeedRefreshError(null);
+    renderFeedList(); // reflect "Loading…" immediately if the cache is empty
+    FeedRefresh.debounceTimer = setTimeout(function () {
+        if (myGen !== FeedRefresh.gen) return; // superseded before the debounce even fired
+        try { Api.refresh(); } catch (e) { /* surfaced by the next status poll */ }
+        pollFeedRefresh(myGen, opts || {});
+    }, 150);
+}
+
+function pollFeedRefresh(gen, opts) {
+    FeedRefresh.pollTimer = setInterval(function () {
+        if (gen !== FeedRefresh.gen) { clearInterval(FeedRefresh.pollTimer); FeedRefresh.pollTimer = null; return; }
+        var s;
+        try { s = Api.refreshStatus(); } catch (e) {
+            clearInterval(FeedRefresh.pollTimer); FeedRefresh.pollTimer = null;
+            if (gen === FeedRefresh.gen) { FeedRefresh.busy = false; showFeedRefreshing(false); }
+            return;
+        }
+        if (!s || !s.running) {
+            clearInterval(FeedRefresh.pollTimer);
+            FeedRefresh.pollTimer = null;
+            onFeedRefreshSettled(gen, s, opts);
+        }
+    }, 400);
+}
+
+function onFeedRefreshSettled(gen, status, opts) {
+    // A newer tap superseded this run — its own settle (or none, if the
+    // fresher selection didn't need one) owns the screen now, so this
+    // late-arriving result must not touch State/DOM at all.
+    if (gen !== FeedRefresh.gen) return;
+    FeedRefresh.busy = false;
+    showFeedRefreshing(false);
+    if (status && status.failed) {
+        var msgs = (status.messages || []).join(' ');
+        showFeedRefreshError('Refresh finished with ' + status.failed + ' failure' + (status.failed === 1 ? '' : 's') + (msgs ? ': ' + msgs : '.'));
+    } else {
+        showFeedRefreshError(null);
+    }
+    if (opts && opts.reloadSources) {
+        loadSourcesIntoState(); // ntfy-self's channels (and any other dynamic list) now exist
+        renderSourcePills();
+        renderChannelPills();
+    }
+    State.feed.settled = true;
     loadFeedList();
+    renderRefreshStatus(); // keep Configs' status view in sync even if it's not the visible tab
 }
 
 /* ---- Channel picker sheet (row 2 overflow, > CHANNEL_INLINE_MAX channels) ----
@@ -1864,9 +2076,18 @@ function loadFeedList() {
     renderFeedList();
 }
 
+// Distinguishes "still fetching" from "confirmed empty after a completed
+// refresh" — an empty list mid-fetch used to look pixel-identical to a
+// genuinely empty channel, which read as broken rather than loading.
+function feedEmptyStateHtml() {
+    if (FeedRefresh.busy) return '<div class="empty-state">Loading…</div>';
+    if (State.feed.settled) return '<div class="empty-state">No articles for this channel.</div>';
+    return '<div class="empty-state">No articles yet.</div>';
+}
+
 function renderFeedList() {
     var mount = document.getElementById('feed-list');
-    if (!State.feed.items.length) { mount.innerHTML = '<div class="empty-state">No articles yet.</div>'; return; }
+    if (!State.feed.items.length) { mount.innerHTML = feedEmptyStateHtml(); return; }
     var sorted = State.feed.items.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
     var html = sorted.map(articleRowHtml).join('');
     if (State.feed.items.length >= State.feed.limit) {
