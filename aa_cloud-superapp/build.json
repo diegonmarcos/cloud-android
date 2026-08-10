@@ -1439,7 +1439,7 @@
             "packages": [
               "md.obsidian",
               "com.sec.android.gallery3d",
-              "com.samsung.android.calendar",
+              "com.diegonmarcos.cloudcalendar",
               "com.samsung.android.app.contacts",
               "com.aspiro.tidal",
               "com.x8bit.bitwarden"
@@ -1449,6 +1449,7 @@
             "title": "Tools Primary",
             "packages": [
               "com.brave.browser",
+              "com.diegonmarcos.cloudnews",
               "com.google.android.apps.maps",
               "com.google.android.apps.walletnfcrel",
               "com.google.android.apps.translate",
