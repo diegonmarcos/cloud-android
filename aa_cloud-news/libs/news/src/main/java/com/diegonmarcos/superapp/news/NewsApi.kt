@@ -94,10 +94,20 @@ object NewsApi {
      * Fetches a `dynamic_channels: true` source's channel-discovery
      * JSON (ntfy-self's rss-gateway `/feed/channels.json`) — same plain
      * GET as [rss] above, just a JSON Accept header, and handed to
-     * [DynamicChannels.parse] rather than [RssParser.parse]. Same
+     * [DynamicChannels.parseResult] rather than [RssParser.parse]. Same
      * PRIVACY note as [rss] would apply if this endpoint were public,
      * but it isn't: `requires_mesh: true` on ntfy-self means this only
      * ever runs against the user's own self-hosted rss-gateway.
+     *
+     * NO AUTH HEADER, ON PURPOSE: the same rss-gateway software (see
+     * ea_cloud-mail's SUPER RSS READER patches) has an optional
+     * Bearer-token config for OTHER deployments of it
+     * (`comms_cloud_token`), but data/sources.json's ntfy-self entry
+     * records this deployment as `feed_auth=none` — so no
+     * Authorization header is ever sent from here. A future deployment
+     * that DOES require one would need a token slot threaded through
+     * [NewsSourceConfig]/data/sources.json first, not silently added
+     * to this call.
      */
     fun channels(urlStr: String): String = get(urlStr)
 

@@ -205,15 +205,25 @@ object NewsSync {
      *  discovery failure or an activeChannel absent from both the
      *  freshly-discovered and previously-cached lists is reported as a
      *  message, never a crash and never a fabricated placeholder
-     *  channel. */
+     *  channel. If the payload's own `counts.total` (see
+     *  [DynamicChannels.Result.totalCount]) disagrees with how many
+     *  channels actually parsed, that discrepancy is ALSO reported as a
+     *  message — turns a silent partial parse into something
+     *  diagnosable instead of a channel list that's just quietly
+     *  short. */
     private fun syncRssDynamic(ctx: Context, source: NewsSourceConfig, activeChannel: String, maxArticles: Int): NewsSyncReport {
         val messages = mutableListOf<String>()
 
-        val discovered = runCatching { DynamicChannels.parse(NewsApi.channels(source.channelsUrl), source.base) }
+        val discoveryResult = runCatching { DynamicChannels.parseResult(NewsApi.channels(source.channelsUrl), source.base) }
             .onFailure { e -> messages.add("channels: ${e.message ?: e.javaClass.simpleName}") }
             .getOrNull()
+        val discovered = discoveryResult?.channels
         if (!discovered.isNullOrEmpty()) {
             DynamicChannelStore.replace(ctx, source.id, discovered)
+            val total = discoveryResult.totalCount
+            if (total != null && total != discovered.size) {
+                messages.add("channels: parsed ${discovered.size} of $total channels")
+            }
         } else if (discovered != null) {
             messages.add("channels: discovery returned no channels")
         }

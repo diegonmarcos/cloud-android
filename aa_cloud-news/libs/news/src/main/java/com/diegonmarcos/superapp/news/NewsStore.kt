@@ -454,6 +454,7 @@ object DynamicChannelStore {
                 put("label", c.label)
                 put("url", c.url)
                 put("group", c.group ?: JSONObject.NULL)
+                put("path", c.path ?: JSONObject.NULL)
             })
         }
         prefs(ctx).edit().putString(sourceId, arr.toString()).apply()
@@ -472,6 +473,11 @@ object DynamicChannelStore {
                     label = o.optString("label", id),
                     url = o.optString("url", ""),
                     group = if (o.has("group") && !o.isNull("group")) o.optString("group").takeIf { it.isNotBlank() } else null,
+                    // "path" is a newer field (added alongside the real
+                    // rss-gateway schema fix) — absent entirely on a
+                    // cache blob written by an older build, which
+                    // o.has() correctly reads as null rather than "".
+                    path = if (o.has("path") && !o.isNull("path")) o.optString("path").takeIf { it.isNotBlank() } else null,
                 )
             }
         }.getOrDefault(emptyList())

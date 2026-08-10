@@ -247,13 +247,23 @@ object NewsTopicsConfig {
  * discovery payload that itself carried a group/category field — a
  * declared or synthesized channel never sets it. Lets a UI section a
  * large dynamic channel list (e.g. ntfy-self's ~142 channels) without
- * this app inventing groups the source data never provided.
+ * this app inventing groups the source data never provided. For the
+ * real rss-gateway `channels.json` shape (see [DynamicChannels]) it is
+ * DERIVED from [path] (every segment but the leaf), not read as its
+ * own field — the payload has no separate group/category field at all.
+ *
+ * [path] is the discovery payload's full slash-separated hierarchy
+ * (e.g. `"Cloud-Infra/CICD/GH"`) verbatim, ONLY ever set by
+ * [DynamicChannels] from a real `path` field — kept alongside the
+ * derived [group] because it is strictly more information (the whole
+ * chain, not just the parent) and costs nothing to carry through.
  */
 data class NewsChannelConfig(
     val id: String,
     val label: String,
     val url: String = "",
     val group: String? = null,
+    val path: String? = null,
 )
 
 /**
@@ -324,41 +334,104 @@ data class NewsSourceConfig(
  * discovery payload (ntfy-self's rss-gateway `/feed/channels.json`)
  * into [NewsChannelConfig]s.
  *
- * SHAPE IS UNVERIFIED: nothing in this codebase could reach
- * rss.diegonmarcos.com from the environment this was written in, so
- * every accepted shape below is a defensive best-effort guess against
- * the spec that commissioned it, not a confirmed payload — see this
- * file's git history / the commissioning message for the exact
- * assumptions. Accordingly this is written maximally permissive and
- * NEVER throws or fabricates a placeholder channel: a totally
- * unparseable/unreachable body (caller passes in "" on a failed fetch,
- * or garbage) degrades to an empty list, and one malformed entry
- * within an otherwise-good array is skipped while the rest of the
- * document survives — same "one bad record doesn't take down the
- * whole document" contract as RssParser/IcsParser.
+ * SHAPE IS NOW CONFIRMED — ea_cloud-mail's SUPER RSS READER
+ * (patches/0054-comms-RSS-channel-tree-.../CommsAccounts.java +
+ * WorkerFeedSync.java) is a working consumer of this exact endpoint
+ * already shipping in production, and
+ * z_archive/ea_cloud-comms/test/test-rss-autoprovision.sh's live check
+ * confirms the top-level shape against the real host. The document is
+ * an OBJECT:
+ * ```
+ * { "base": "https://rss.diegonmarcos.com/feed",
+ *   "counts": { "total": 142, ... },
+ *   "channels": [ { "id": "...", "title": "...",
+ *                   "path": "Cloud-Infra/CICD/GH",
+ *                   "feed": "/feed/c/gh.atom" }, ... ] }
+ * ```
+ * — `title` (not `label`/`name`) is the display name, `path` is the
+ * full slash-separated folder hierarchy (leaf included; see
+ * [NewsChannelConfig.path]/[groupFromPath]), `feed` is the per-topic
+ * ATOM url and may be ORIGIN-RELATIVE (resolved against the payload's
+ * own `base` — falling back to [NewsSourceConfig.base], the configured
+ * default, only when the payload omits `base` entirely — never assumed
+ * absolute). `counts.total` is a server-reported channel count,
+ * independent of `channels.size` after this parses it — see
+ * [DynamicChannels.Result.totalCount] for why that's surfaced instead
+ * of silently trusted.
+ *
+ * AUTH: the commissioning patches carry an optional Bearer-token
+ * concept (`comms_cloud_token`) for OTHER deployments of this same
+ * rss-gateway software, but data/sources.json's own `_doc_source` for
+ * ntfy-self records `feed_auth=none` for THIS deployment — so no
+ * Authorization header is sent here. If a future deployment of
+ * ntfy-self ever requires one, it would need a config slot threaded
+ * through NewsSourceConfig/NewsApi.channels, not silently added here.
+ *
+ * The old field-name guesses (`label`/`name`, `url`/`href`,
+ * `group`/`category`/`type`, a bare top-level array, a `feeds` key) are
+ * kept as a SECONDARY fallback path — never the primary — for
+ * resilience against a future/alternate deployment that doesn't match
+ * this exact shape; they are try-if-`channels`-is-absent, not
+ * try-first. NEVER throws or fabricates a placeholder channel: a
+ * totally unparseable/unreachable body (caller passes in "" on a
+ * failed fetch, or garbage) degrades to an empty list, and one
+ * malformed entry within an otherwise-good array is skipped while the
+ * rest of the document survives — same "one bad record doesn't take
+ * down the whole document" contract as RssParser/IcsParser.
  */
 object DynamicChannels {
-    /** [base] is only consulted for an entry that names an id but no
-     *  explicit feed url — see [NewsSourceConfig.base]'s kdoc. */
-    fun parse(json: String, base: String): List<NewsChannelConfig> {
-        if (json.isBlank()) return emptyList()
+    /** [parse]'s full result: the channels plus [totalCount] — the
+     *  payload's `counts.total` field when present (null for a shape
+     *  that doesn't carry one, e.g. the legacy fallback array). Letting
+     *  the caller ([NewsSync]) compare `channels.size` against this
+     *  turns a silent partial parse (some entries skipped as malformed,
+     *  or the array truncated upstream) into a diagnosable sync-report
+     *  message instead of a channel list that's just quietly short. */
+    data class Result(val channels: List<NewsChannelConfig>, val totalCount: Int? = null)
+
+    /** [base] is [NewsSourceConfig.base] — the CONFIGURED default,
+     *  used only when the payload's own `base` field (preferred — see
+     *  class kdoc) is missing, and (same as before) only ever consulted
+     *  for a relative feed url or an entry that names an id but no feed
+     *  url at all. */
+    fun parse(json: String, base: String): List<NewsChannelConfig> = parseResult(json, base).channels
+
+    fun parseResult(json: String, base: String): Result {
+        if (json.isBlank()) return Result(emptyList())
         return runCatching {
-            val arr = extractArray(json.trim()) ?: return@runCatching emptyList<NewsChannelConfig>()
-            (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { fromEntry(it, base) } }
-        }.getOrDefault(emptyList())
+            val trimmed = json.trim()
+            if (trimmed.startsWith("[")) {
+                // Legacy/defensive shape only: a bare top-level array
+                // carries no `base`/`counts`, so the configured [base]
+                // is used as-is and totalCount is unknown.
+                val arr = JSONArray(trimmed)
+                return@runCatching Result(
+                    (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { fromEntry(it, base) } },
+                )
+            }
+
+            val root = JSONObject(trimmed)
+            val effectiveBase = root.optString("base", "").trim().ifEmpty { base }
+            val totalCount = root.optJSONObject("counts")
+                ?.takeIf { it.has("total") }
+                ?.optInt("total")
+
+            val primary = root.optJSONArray("channels")
+            val arr = primary ?: extractArrayFallback(root)
+                ?: return@runCatching Result(emptyList(), totalCount)
+            Result(
+                (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { fromEntry(it, effectiveBase) } },
+                totalCount,
+            )
+        }.getOrDefault(Result(emptyList()))
     }
 
-    /** Accepts a bare top-level array, an object wrapping one under a
-     *  `channels`/`feeds` key (the two names the commissioning spec
-     *  called out), or — defensively, since neither name is
-     *  confirmed — the first key anywhere in the object whose value is
-     *  a non-empty JSON array of objects. */
-    private fun extractArray(trimmed: String): JSONArray? {
-        if (trimmed.startsWith("[")) return runCatching { JSONArray(trimmed) }.getOrNull()
-        val root = runCatching { JSONObject(trimmed) }.getOrNull() ?: return null
-        for (key in arrayOf("channels", "feeds")) {
-            root.optJSONArray(key)?.let { if (it.length() > 0) return it }
-        }
+    /** SECONDARY path only, tried when the real `channels` key is
+     *  absent — see class kdoc. Accepts an object wrapping the array
+     *  under a `feeds` key, or — defensively — the first key anywhere
+     *  in the object whose value is a non-empty JSON array of objects. */
+    private fun extractArrayFallback(root: JSONObject): JSONArray? {
+        root.optJSONArray("feeds")?.let { if (it.length() > 0) return it }
         val keys = root.keys()
         while (keys.hasNext()) {
             val candidate = root.optJSONArray(keys.next()) ?: continue
@@ -369,13 +442,75 @@ object DynamicChannels {
 
     /** null (entry skipped) only when NONE of the id-ish keys are
      *  present — every other field degrades to a sane fallback instead
-     *  of dropping the whole entry. */
+     *  of dropping the whole entry. `title` leads the label fallback
+     *  chain (the real field), `feed` leads the url chain (the real
+     *  field, resolved against [base] if relative — see [resolveUrl]),
+     *  and `group` is DERIVED from a real `path` field when present
+     *  (see [groupFromPath]), falling back to the old
+     *  group/category/type guesses only when there's no `path` at all. */
     private fun fromEntry(o: JSONObject, base: String): NewsChannelConfig? {
         val id = firstNonBlank(o, "id", "name", "topic", "slug") ?: return null
-        val label = firstNonBlank(o, "label", "title", "name") ?: id
-        val url = firstNonBlank(o, "url", "feed", "href") ?: "${base.trimEnd('/')}/$id"
-        val group = firstNonBlank(o, "group", "category", "type")
-        return NewsChannelConfig(id = id, label = label, url = url, group = group)
+        val label = firstNonBlank(o, "title", "label", "name") ?: id
+        val rawUrl = firstNonBlank(o, "feed", "url", "href")
+        val url = if (rawUrl != null) resolveUrl(rawUrl, base) else "${base.trimEnd('/')}/$id"
+        val path = o.optString("path", "").trim().takeIf { it.isNotEmpty() }
+        val group = path?.let { groupFromPath(it) } ?: firstNonBlank(o, "group", "category", "type")
+        return NewsChannelConfig(id = id, label = label, url = url, group = group, path = path)
+    }
+
+    /** [raw] absolute (`http(s)://...`) is returned as-is; anything
+     *  else (e.g. `"/feed/c/gh.atom"` — the real gateway's `feed` field
+     *  is origin-relative, ALREADY including its own leading `/feed/`
+     *  path segment) is resolved against [base]'s ORIGIN (scheme +
+     *  authority only, [originOf] — never the whole [base] string
+     *  verbatim). This mirrors ea_cloud-mail's already-shipping
+     *  `resolveFeed`/`originOf` (CommsAccounts.java, patch 0054)
+     *  exactly, and matters concretely here: [NewsSourceConfig.base]
+     *  for ntfy-self is configured as `"https://rss.../feed"` (WITH the
+     *  `/feed` suffix) while a real `feed` value is
+     *  `"/feed/c/gh.atom"` (also WITH that prefix) — naively
+     *  concatenating the two verbatim would double it into
+     *  `".../feed/feed/c/gh.atom"`. Stripping to the bare origin first
+     *  and letting the relative feed supply its OWN full path avoids
+     *  that regardless of whether a given `base` string happens to
+     *  carry a path suffix or not. */
+    private fun resolveUrl(raw: String, base: String): String {
+        if (raw.startsWith("http://", ignoreCase = true) || raw.startsWith("https://", ignoreCase = true)) return raw
+        val origin = originOf(base)
+        if (origin.isEmpty()) return raw
+        return origin + (if (raw.startsWith("/")) raw else "/$raw")
+    }
+
+    /** Scheme + authority only (e.g. `"https://rss.diegonmarcos.com"`),
+     *  discarding any path/query/fragment `base` happens to carry —
+     *  see [resolveUrl]'s kdoc for why the path portion must NOT
+     *  survive here. "" (never throws) for a blank/unparseable base,
+     *  which [resolveUrl] treats as "can't resolve, return as-is". */
+    private fun originOf(base: String): String {
+        if (base.isBlank()) return ""
+        return runCatching {
+            val uri = java.net.URI(base.trim())
+            val scheme = uri.scheme
+            val authority = uri.authority
+            if (scheme != null && authority != null) "$scheme://$authority" else ""
+        }.getOrDefault("")
+    }
+
+    /** A channel's group is every segment of its slash-separated
+     *  [path] EXCEPT the leaf (the channel's own name) — e.g.
+     *  `"Cloud-Infra/CICD/GH"` groups as `"Cloud-Infra/CICD"`, and a
+     *  two-segment path like `"Cloud-Apps/gitea"` groups as exactly its
+     *  first segment (`"Cloud-Apps"`), which is the same "drop the
+     *  leaf" rule, not a separate case. A single-segment path (no `/`
+     *  at all — the channel sits at the root) has no meaningful parent
+     *  to group under, so this returns null (no group) rather than the
+     *  leaf naming itself. Blank/empty segments (a stray leading,
+     *  trailing, or doubled `/`) are dropped before the leaf/parent
+     *  split so they never produce an empty group string. */
+    private fun groupFromPath(path: String): String? {
+        val segments = path.split("/").map { it.trim() }.filter { it.isNotEmpty() }
+        if (segments.size <= 1) return null
+        return segments.dropLast(1).joinToString("/")
     }
 
     private fun firstNonBlank(o: JSONObject, vararg keys: String): String? {

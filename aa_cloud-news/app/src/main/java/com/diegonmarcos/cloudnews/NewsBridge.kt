@@ -47,6 +47,27 @@ class NewsBridge(private val ctx: Context) {
 
     private val executor = Executors.newSingleThreadExecutor()
 
+    companion object {
+        /** Reserved id for the synthetic merged "All" channel prepended
+         *  to a QUERY-DRIVEN source's channel list (gdelt-self,
+         *  google-news) — see [channelsForSource]/[articles]. Contains
+         *  "::", the same separator [NewsStore]'s cacheKey kdoc already
+         *  documents as unable to appear in a source id or a GDELT
+         *  query-term topic "in practice". A user-typed custom topic
+         *  (Topics tab addTopic) is free-form text and could in theory
+         *  still collide, but a hand-typed search query containing this
+         *  exact string is vanishingly unlikely, and no BAKED topic can
+         *  ever equal it (data/topics.json is fixed at build time) — so
+         *  this is a best-effort reservation, not a cryptographic
+         *  guarantee, same tradeoff the codebase already accepts for
+         *  "::" elsewhere. This id is NEVER a real topic: it must never
+         *  reach [NewsSync] as a query term (only topic ids sourced
+         *  from [NewsTopicsStore] do) and [topics] must never report it
+         *  as one (it reads straight from NewsTopicsStore, never from
+         *  [channelsForSource], so it structurally can't). */
+        private const val ALL_CHANNEL_ID = "__all::channels__"
+    }
+
     @Volatile private var syncRunning = false
     @Volatile private var lastOk = 0
     @Volatile private var lastFailed = 0
@@ -112,22 +133,36 @@ class NewsBridge(private val ctx: Context) {
      *  own id/label/url as an absolute last resort, so a brand-new or
      *  not-yet-discovered source is never left with nothing to pick).
      *  Three populating strategies, per [NewsChannelConfig]'s kdoc:
-     *   - query-driven (gdelt-self, google-news): synthesized 1:1 from
-     *     the LIVE topics store (baked + custom, in effective order) —
-     *     NOT the baked topics.json list alone — so adding/removing a
-     *     topic in the Topics tab is reflected immediately, with zero
+     *   - query-driven (gdelt-self, google-news): a synthetic
+     *     [ALL_CHANNEL_ID] "All" channel FIRST (see that const's kdoc —
+     *     this is the merged feed, [articles]' whole reason for
+     *     existing), followed by one channel per entry in the LIVE
+     *     topics store (baked + custom, in effective order) — NOT the
+     *     baked topics.json list alone — so adding/removing a topic in
+     *     the Topics tab is reflected immediately, with zero
      *     duplication of the topic list into data/sources.json. Each
-     *     channel's id IS the topic id.
+     *     non-synthetic channel's id IS the topic id. Being first makes
+     *     "All" the fallback in [activeChannelId] — i.e. the default —
+     *     for any source that hasn't had a channel explicitly picked
+     *     yet, matching the pre-two-row-nav default of landing on "All".
      *   - dynamic-channel (ntfy-self): the last successfully-discovered
      *     list from [DynamicChannelStore] (refreshed by NewsSync's
      *     syncRssDynamic on every [refresh]).
      *   - fixed rss (bbc-world, guardian-world, ...): [source]'s own
      *     declared `channels`, already guaranteed non-empty by
-     *     [NewsSourcesConfig.parseSources]. */
+     *     [NewsSourcesConfig.parseSources].
+     *  Deliberately NO synthetic "All" for the dynamic-channel/fixed
+     *  cases: those channels are genuinely different feeds (BBC's World
+     *  vs Business section, ntfy-self's independent topics), not facets
+     *  of one query set — merging them isn't what the old "All" meant,
+     *  and isn't asked for here. */
     private fun channelsForSource(source: NewsSourceConfig): List<NewsChannelConfig> {
         val channels = when {
-            source.queryDriven -> NewsTopicsStore.effective(ctx, bakedTopics())
-                .map { NewsChannelConfig(id = it.topic, label = it.label) }
+            source.queryDriven -> {
+                val topicChannels = NewsTopicsStore.effective(ctx, bakedTopics())
+                    .map { NewsChannelConfig(id = it.topic, label = it.label) }
+                listOf(NewsChannelConfig(id = ALL_CHANNEL_ID, label = "All")) + topicChannels
+            }
             source.dynamicChannels -> DynamicChannelStore.channelsFor(ctx, source.id)
             else -> source.channels
         }
@@ -253,19 +288,35 @@ class NewsBridge(private val ctx: Context) {
      *  meaning: a CHANNEL id, see the class kdoc) "" means the active
      *  source's active channel (see [activeChannelId]); for a
      *  query-driven source channel==topic so this is exactly the same
-     *  cache lookup it always was, just for one topic/channel instead
-     *  of a merge across every enabled one. Newest first (seendate is a
-     *  zero-padded string for every source — RssParser reformats rss
-     *  dates into the same shape GDELT uses — so a plain descending
-     *  string sort is already chronological, see
+     *  cache lookup it always was, just for one topic/channel — UNLESS
+     *  that channel is the synthetic [ALL_CHANNEL_ID] "All" entry (see
+     *  [channelsForSource]), in which case this is a MERGE across every
+     *  currently-ENABLED topic of the active source: each topic's
+     *  cached articles concatenated, deduped by url (the same story
+     *  frequently comes back under two topics — [NewsStore.articlesFor]
+     *  keeps the first/newest-inserted occurrence), then sorted. Never
+     *  merges across SOURCES — only the active source's own topics, via
+     *  [NewsStore]'s per-(source,topic) cache keys. Newest first
+     *  (seendate is a zero-padded string for every source — RssParser
+     *  reformats rss dates into the same shape GDELT uses — so a plain
+     *  descending string sort is already chronological, see
      *  NewsStore.replaceArticles). limit falls back to the effective
-     *  config's maxArticles if blank/unparseable. */
+     *  config's maxArticles if blank/unparseable, and is applied AFTER
+     *  the merge+sort so it still reflects the newest N across every
+     *  topic rather than the newest N of just the first topic. */
     @JavascriptInterface
     fun articles(channel: String, limit: String): String {
         val source = activeSourceConfig()
         val limitInt = limit.toIntOrNull()?.takeIf { it > 0 } ?: effectiveConfig().maxArticles
         val chanId = channel.ifBlank { activeChannelId(source) }
-        val list = NewsStore.articlesFor(ctx, source.id, chanId)
+        val list = if (source.queryDriven && chanId == ALL_CHANNEL_ID) {
+            val enabledTopics = NewsTopicsStore.effective(ctx, bakedTopics())
+                .filter { it.enabled }
+                .map { it.topic }
+            NewsStore.articlesFor(ctx, source.id, enabledTopics)
+        } else {
+            NewsStore.articlesFor(ctx, source.id, chanId)
+        }
         val sorted = list.sortedByDescending { it.seendate }.take(limitInt)
         val arr = JSONArray()
         for (a in sorted) arr.put(a.toJson())
