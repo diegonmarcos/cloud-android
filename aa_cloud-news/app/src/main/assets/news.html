@@ -1,15 +1,1423 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cloud News</title>
-<style>
-  body { font-family: sans-serif; margin: 2rem; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>News</title>
+    <script src="vendor/tailwind.js"></script>
+    <style>
+        :root {
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+            --sal: env(safe-area-inset-left, 0px);
+            --sar: env(safe-area-inset-right, 0px);
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: #111;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Full-bleed app shell: the WebView IS the screen, no device bezel. */
+        .app-container {
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: #ffffff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding-left: var(--sal);
+            padding-right: var(--sar);
+        }
+
+        .app-main {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+        }
+
+        .tab-panel.hidden { display: none; }
+
+        .panel-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #ffffff;
+            padding-top: calc(var(--sat) + 18px);
+            padding-bottom: 12px;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .panel-scroll-pad { padding-bottom: calc(96px + var(--sab)); }
+
+        /* ---- bottom navigation ---- */
+        .bottom-nav {
+            position: fixed;
+            left: var(--sal);
+            right: var(--sar);
+            bottom: 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: stretch;
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid #F0F0F0;
+            padding-top: 8px;
+            padding-bottom: calc(var(--sab) + 8px);
+            z-index: 40;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 3px; color: #B0B0B0; background: none; border: none; font-size: 10px;
+            font-weight: 500; padding: 4px 6px; flex: 1; font-family: inherit;
+        }
+        .nav-item svg { width: 22px; height: 22px; }
+        .nav-item.active { color: #1C1C1C; }
+        .nav-item.active svg { color: #1C1C1C; }
+
+        /* ---- shared building blocks ---- */
+        .seg { display: inline-flex; background: #F3F4F6; border-radius: 999px; padding: 3px; gap: 2px; }
+        .seg button {
+            border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600;
+            padding: 6px 14px; border-radius: 999px; color: #8A8A8A; white-space: nowrap;
+        }
+        .seg button.active { background: #1C1C1C; color: #fff; }
+
+        .pill-scroll { display: flex; overflow-x: auto; gap: 8px; }
+        .pill {
+            padding: 6px 16px; border-radius: 999px; border: 1px solid #EFEFEF; font-size: 13px;
+            font-weight: 500; color: #444; white-space: nowrap; background: #fff; font-family: inherit;
+        }
+        .pill.active { background: #1C1C1C; color: #fff; border-color: #1C1C1C; }
+
+        .switch { position: relative; display: inline-block; width: 40px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .switch .slider {
+            position: absolute; inset: 0; background: #E5E5E5; transition: .15s; border-radius: 999px; cursor: pointer;
+        }
+        .switch .slider:before {
+            content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
+            background: #fff; transition: .15s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+        }
+        .switch input:checked + .slider:before { transform: translateX(16px); }
+        .switch input:checked + .slider { background: #1C1C1C; }
+
+        .field-label { font-size: 11px; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; display: block; }
+        .field-input {
+            width: 100%; box-sizing: border-box; border: 1px solid #ECECEC; border-radius: 12px; padding: 10px 12px;
+            font-size: 14px; font-family: inherit; background: #FAFAFA; color: #111;
+        }
+        .field-input:focus { outline: none; border-color: #B0B0B0; background: #fff; }
+
+        .btn-dark { background: #1C1C1C; color: #fff; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
+        .btn-light { background: #F3F4F6; color: #1C1C1C; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
+
+        .error-banner { background: #FEF2F2; border: 1px solid #FCD9D9; color: #A33; border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+        .empty-state { text-align: center; color: #B0B0B0; font-size: 13.5px; padding: 40px 20px; }
+
+        /* ---- demo-data honesty banner ---- */
+        .demo-banner {
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+            background: #FFF6DD; border-bottom: 1px solid #F0DA9E; color: #7A5B00;
+            font-size: 12.5px; font-weight: 500; padding: 9px 16px;
+            padding-left: calc(16px + var(--sal)); padding-right: calc(16px + var(--sar));
+        }
+        .demo-banner.hidden { display: none; }
+        .demo-banner button {
+            border: none; background: #7A5B00; color: #FFF6DD; font-family: inherit;
+            font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 4px 12px; flex-shrink: 0;
+        }
+        .demo-banner span.dot { width: 6px; height: 6px; border-radius: 50%; background: #C99A1E; flex-shrink: 0; }
+
+        /* ---- tone chip: colourblind-safe orange/red (negative) <-> blue/teal
+           (positive), never colour alone — the numeric value is always shown
+           too. See toneChip() in the script for the five buckets. ---- */
+        .tone-chip {
+            display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px;
+            font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---- article rows (Feed / Saved) ---- */
+        .article-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; }
+        .article-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #F0F0F0; }
+        .article-body { flex: 1; min-width: 0; cursor: pointer; }
+        .article-domain { font-size: 11px; color: #B0B0B0; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+        .article-title { font-size: 14px; font-weight: 600; color: #111; margin-top: 2px; line-height: 1.35; }
+        .article-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+        .article-time { font-size: 11.5px; color: #B0B0B0; }
+        .bookmark-btn { border: none; background: none; padding: 4px; flex-shrink: 0; color: #D0D0D0; align-self: flex-start; }
+        .bookmark-btn.active { color: #1C1C1C; }
+        .bookmark-btn svg { width: 19px; height: 19px; display: block; }
+
+        /* ---- Topics tab ---- */
+        .topic-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid #F5F5F5; }
+        .topic-row-label { font-size: 14px; font-weight: 600; }
+        .topic-row-meta { font-size: 12px; color: #9A9A9A; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+        .topic-remove-btn { border: none; background: #F3F4F6; color: #B0523A; width: 26px; height: 26px; border-radius: 50%; font-size: 16px; line-height: 1; flex-shrink: 0; font-family: inherit; }
+
+        /* ---- Trends tab: hand-drawn sparkline, no chart library ---- */
+        .sparkline-svg { width: 100%; height: 150px; display: block; }
+        .sparkline-legend { display: flex; justify-content: space-between; font-size: 11px; color: #B0B0B0; margin-top: 4px; }
+        .tone-dist-col { margin-bottom: 18px; }
+        .tone-dist-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9A9A9A; margin-bottom: 8px; }
+        .tone-dist-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #F5F5F5; cursor: pointer; }
+        .tone-dist-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tone-dist-domain { font-size: 11px; color: #B0B0B0; flex-shrink: 0; }
+    </style>
 </head>
-<body>
-<h1>Cloud News</h1>
-<p>P0 scaffold — no features yet.</p>
+<body class="antialiased">
+
+    <div class="app-container">
+        <div id="demo-banner" class="demo-banner hidden"></div>
+        <main id="app-main" class="app-main hide-scrollbar">
+
+            <!-- ============ FEED TAB ============ -->
+            <section id="tab-feed" class="tab-panel">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">News</h1>
+                </header>
+                <div id="feed-error-mount" class="px-6"></div>
+                <div class="pill-scroll hide-scrollbar px-6" id="feed-topic-pills"></div>
+                <div class="px-6 mt-2 panel-scroll-pad" id="feed-list"></div>
+            </section>
+
+            <!-- ============ TOPICS TAB ============ -->
+            <section id="tab-topics" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">Topics</h1>
+                </header>
+                <div id="topics-error-mount" class="px-6"></div>
+
+                <div class="px-6 mt-2">
+                    <div class="rounded-2xl border border-gray-100 p-4 space-y-3" style="background:#FAFAFA;">
+                        <div>
+                            <label class="field-label">Label</label>
+                            <input type="text" id="topics-add-label" class="field-input" placeholder="e.g. Space">
+                        </div>
+                        <div>
+                            <label class="field-label">GDELT query</label>
+                            <input type="text" id="topics-add-query" class="field-input" placeholder="e.g. space exploration">
+                        </div>
+                        <div class="flex justify-end">
+                            <button id="topics-add-btn" class="btn-dark">Add topic</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 mt-3 panel-scroll-pad" id="topics-list"></div>
+            </section>
+
+            <!-- ============ TRENDS TAB ============ -->
+            <section id="tab-trends" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">Trends</h1>
+                </header>
+                <div id="trends-error-mount" class="px-6"></div>
+                <div class="pill-scroll hide-scrollbar px-6" id="trends-topic-pills"></div>
+
+                <div class="px-6 mt-5">
+                    <div class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase mb-2">Tone over time</div>
+                    <div id="trends-sparkline"></div>
+                </div>
+
+                <div class="px-6 mt-7 panel-scroll-pad">
+                    <div class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase mb-3">Tone distribution</div>
+                    <div id="trends-tone-dist"></div>
+                </div>
+            </section>
+
+            <!-- ============ SAVED TAB ============ -->
+            <section id="tab-saved" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">Saved</h1>
+                </header>
+                <div id="saved-error-mount" class="px-6"></div>
+                <div class="px-6 panel-scroll-pad" id="saved-list"></div>
+            </section>
+
+            <!-- ============ CONFIGS TAB ============ -->
+            <section id="tab-configs" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-medium">Configs</h1>
+                </header>
+                <div id="configs-error-mount" class="px-6"></div>
+                <div class="px-6 panel-scroll-pad space-y-8">
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Demo data</span>
+                        <p class="text-[11.5px] text-gray-400 mt-1 mb-3">Auto shows demo data only while your real topics/articles are empty, and switches itself to real data the moment any land. On always shows demo; Off never does (even if that means empty lists). Demo headlines are fabricated and deliberately generic — never real reporting.</p>
+                        <div class="seg" id="demo-mode-toggle">
+                            <button data-mode="auto" class="active">Auto</button>
+                            <button data-mode="on">On</button>
+                            <button data-mode="off">Off</button>
+                        </div>
+                        <div id="demo-mode-status" class="text-[12.5px] text-gray-500 mt-2"></div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">API</span>
+                        <div class="mt-3 space-y-3">
+                            <div>
+                                <label class="field-label">Base URL</label>
+                                <input type="text" id="cfg-base" class="field-input" placeholder="https://api.example.com/news">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="field-label">Refresh interval (s)</label>
+                                    <input type="number" id="cfg-refresh-seconds" class="field-input" min="10">
+                                </div>
+                                <div>
+                                    <label class="field-label">Max articles / topic</label>
+                                    <input type="number" id="cfg-max-articles" class="field-input" min="1">
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="cfg-save-btn" class="btn-dark">Save</button>
+                            </div>
+                            <div id="cfg-save-result" class="text-[13px]"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Refresh</span>
+                        <div class="mt-3 flex gap-2">
+                            <button id="cfg-refresh-now-btn" class="btn-dark">Refresh now</button>
+                        </div>
+                        <div id="cfg-refresh-status" class="mt-3 text-[13px] space-y-1"></div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Images</span>
+                        <!-- Privacy: socialimage points at arbitrary publisher domains. Loading
+                             it leaks the reader's IP to every outlet in the feed and breaks
+                             offline use, so images stay OFF until explicitly enabled here. -->
+                        <p class="text-[11.5px] text-gray-400 mt-1 mb-3">Off by default: article thumbnails load from arbitrary publisher domains, which leaks your IP to every outlet and breaks offline use. Turn on to load them lazily (each degrades gracefully on failure).</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[13.5px] font-medium">Show article images</span>
+                            <label class="switch"><input type="checkbox" id="cfg-images-toggle"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+        </main>
+
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-item active" data-tab="feed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 8.5h9M7.5 12h11M7.5 15.5h11"/></svg>
+                <span>Feed</span>
+            </button>
+            <button class="nav-item" data-tab="topics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5H5.5a2 2 0 00-2 2V11L12.5 20.5a2 2 0 002.8 0l6.2-6.2a2 2 0 000-2.8L11 3.5z"/><circle cx="7.7" cy="7.7" r="1.3"/></svg>
+                <span>Topics</span>
+            </button>
+            <button class="nav-item" data-tab="trends">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5l5.5-6 4 4 7.5-8.5"/><path d="M14.5 6h6v6"/></svg>
+                <span>Trends</span>
+            </button>
+            <button class="nav-item" data-tab="saved">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1V21l-6.5-4-6.5 4V4.5a1 1 0 011-1z"/></svg>
+                <span>Saved</span>
+            </button>
+            <button class="nav-item" data-tab="configs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg>
+                <span>Configs</span>
+            </button>
+        </nav>
+    </div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   Utilities
+   ===================================================================== */
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/* GDELT dates arrive as compact UTC strings ("20260810T113000Z" or
+   "20260810113000"); lastFetch/epoch fields arrive as millis-since-epoch
+   strings (see the bridge contract note: "Epoch-millis cross as strings").
+   This one parser handles both compact-GDELT and plain-integer forms, plus
+   a Date.parse() fallback, so a single helper covers seendate, the
+   /timeline `date` field, and anything else the real API might hand back
+   in either shape. Returns null (never NaN) on anything unparsable so
+   callers can treat "no date" as a single falsy case. */
+function parseSeenDate(s) {
+    if (!s) return null;
+    var m = /^(\d{4})(\d{2})(\d{2})T?(\d{2})(\d{2})(\d{2})Z?$/.exec(String(s).trim());
+    if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    var trimmed = String(s).trim();
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+    var parsed = Date.parse(s);
+    return isNaN(parsed) ? null : parsed;
+}
+
+function toGdeltDate(ms) {
+    var d = new Date(ms);
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + 'T' +
+        p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
+}
+
+function relTime(ms) {
+    if (ms === null || ms === undefined || isNaN(ms)) return '';
+    var diff = Date.now() - ms;
+    if (diff < 0) diff = 0;
+    var mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    var days = Math.floor(hrs / 24);
+    return days + 'd ago';
+}
+
+/* Tone chip colour: five buckets, orange/red for negative coverage, grey
+   for neutral, blue/teal for positive — deliberately NOT pure red/green so
+   the distinction reads for colourblind users too. The numeric value is
+   always rendered alongside the colour (see toneChipHtml), never colour
+   alone. */
+function toneChip(tone) {
+    var n = Number(tone);
+    if (isNaN(n)) n = 0;
+    var c;
+    if (n <= -3.5) c = { bg: '#FBE4DA', fg: '#B3421A', bd: '#F0C4AD' };      // strong negative
+    else if (n <= -1) c = { bg: '#FDEEE3', fg: '#C46A2E', bd: '#F5D9BF' };  // mild negative
+    else if (n < 1) c = { bg: '#F1F1F1', fg: '#707070', bd: '#E2E2E2' };    // neutral
+    else if (n < 3.5) c = { bg: '#E1F2F1', fg: '#0E7A72', bd: '#BFE3E0' };  // mild positive
+    else c = { bg: '#DCEBFA', fg: '#0B5E9C', bd: '#BBD8F2' };               // strong positive
+    var label = (n >= 0 ? '+' : '') + n.toFixed(1);
+    return { style: c, label: label };
+}
+function toneChipHtml(tone) {
+    var c = toneChip(tone);
+    return '<span class="tone-chip" style="background:' + c.style.bg + ';color:' + c.style.fg + ';border-color:' + c.style.bd + ';">' + esc(c.label) + '</span>';
+}
+
+function bookmarkSvg(active) {
+    return '<svg viewBox="0 0 24 24" fill="' + (active ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1V21l-6.5-4-6.5 4V4.5a1 1 0 011-1z"/></svg>';
+}
+
+/* =====================================================================
+   Images ("cn.imagesEnabled") — OFF by default. socialimage points at
+   arbitrary publisher domains; loading it leaks the reader's IP to every
+   outlet in the feed and breaks offline use. See the Configs tab comment
+   for the user-facing explanation.
+   ===================================================================== */
+var IMAGES_KEY = 'cn.imagesEnabled';
+function imagesEnabled() {
+    try { return localStorage.getItem(IMAGES_KEY) === '1'; } catch (e) { return false; }
+}
+function setImagesEnabled(v) {
+    try { localStorage.setItem(IMAGES_KEY, v ? '1' : '0'); } catch (e) { /* ignore */ }
+}
+
+/* =====================================================================
+   Demo-mode ("cn.demoMode") — decides whether callBridge() below hands
+   the app MOCK data or real bridge data. Same three-state design as the
+   calendar app's cc.demoMode:
+     "auto" (default) — probe the real bridge once (topics() + articles(""))
+                         and use MOCK only if both come back genuinely
+                         empty. Re-probed after any refresh completes, so
+                         real data flips the app over automatically.
+     "on"             — always MOCK, even once the bridge has real data.
+     "off"            — never MOCK; always real bridge data, including
+                         genuine empty states.
+   This matters MORE here than in the calendar: fabricated news headlines
+   presented as real would be genuinely misleading, so the persistent
+   amber banner (renderDemoBanner) is non-negotiable whenever mock content
+   is on screen, and MOCK.openExternal() below refuses to "open" a demo
+   article's fake URL rather than let a tap-through feel like a real link.
+   ===================================================================== */
+var DEMO_MODE_KEY = 'cn.demoMode';
+// Account/settings plumbing, not content — exempt from mock gating the
+// same way calendar's caldavConfig/testCaldav are, so Configs always
+// reflects the real device even while Feed/Topics/Trends/Saved show demo
+// content. Still falls back to MOCK when no bridge exists at all.
+var NEWS_EXEMPT_METHODS = { refresh: 1, refreshStatus: 1, config: 1, setConfig: 1 };
+
+function loadDemoMode() {
+    try {
+        var v = localStorage.getItem(DEMO_MODE_KEY);
+        if (v === 'auto' || v === 'on' || v === 'off') return v;
+    } catch (e) { /* localStorage unavailable under file:// on some WebViews — ignore */ }
+    return 'auto';
+}
+
+var DemoState = {
+    mode: loadDemoMode(),  // 'auto' | 'on' | 'off'
+    autoResolved: null     // null until probed, then { mock: bool, reason: string }
+};
+
+function saveDemoMode(mode) {
+    DemoState.mode = mode;
+    try { localStorage.setItem(DEMO_MODE_KEY, mode); } catch (e) { /* ignore */ }
+}
+
+/* Talks to the real bridge only — never consults demo state. */
+function rawBridgeCall(method, args) {
+    if (typeof window.NewsBridge !== 'undefined' && typeof window.NewsBridge[method] === 'function') {
+        try {
+            var raw = window.NewsBridge[method].apply(window.NewsBridge, args || []);
+            return { ok: true, data: JSON.parse(raw) };
+        } catch (err) {
+            console.error('[NewsBridge.' + method + ']', err);
+            return { ok: false, error: (err && err.message) ? err.message : String(err) };
+        }
+    }
+    return { ok: false, error: 'NewsBridge not available', noBridge: true };
+}
+
+/* Probes the real bridge ONCE (topics(), articles("")) and decides.
+   Handles the "bridge doesn't exist yet" case cleanly too — the Kotlin
+   worker may not have wired window.NewsBridge in yet, in which case
+   rawBridgeCall's own no-bridge fallback makes the probe come back empty,
+   which correctly resolves to demo with an honest reason. */
+function probeAutoDemo() {
+    var tR = rawBridgeCall('topics', []);
+    var aR = rawBridgeCall('articles', ['', '50']);
+    if (tR.noBridge) {
+        DemoState.autoResolved = { mock: true, reason: 'no NewsBridge in this environment' };
+        return;
+    }
+    var topics = (tR.ok && Array.isArray(tR.data)) ? tR.data : [];
+    var articles = (aR.ok && Array.isArray(aR.data)) ? aR.data : [];
+    var allEmpty = topics.length === 0 && articles.length === 0;
+    if (allEmpty) {
+        DemoState.autoResolved = { mock: true, reason: 'no topics, no articles' };
+    } else {
+        var bits = [];
+        if (topics.length) bits.push(topics.length + ' topics');
+        if (articles.length) bits.push(articles.length + ' articles');
+        DemoState.autoResolved = { mock: false, reason: bits.join(', ') };
+    }
+}
+
+function shouldUseMock() {
+    if (DemoState.mode === 'on') return true;
+    if (DemoState.mode === 'off') return false;
+    if (!DemoState.autoResolved) probeAutoDemo();
+    return DemoState.autoResolved.mock;
+}
+
+/* =====================================================================
+   Bridge wrapper — every NewsBridge call goes through here. Single choke
+   point for demo-mode gating and the no-bridge-means-mock fallback. Any
+   thrown/malformed response from a *present* bridge surfaces as an inline
+   error instead of white-screening the app.
+   ===================================================================== */
+function callBridge(method, args) {
+    var bridgePresent = typeof window.NewsBridge !== 'undefined' && typeof window.NewsBridge[method] === 'function';
+    var mock = shouldUseMock();
+    if (!bridgePresent) return { mock: true };
+    if (mock && !NEWS_EXEMPT_METHODS[method]) return { mock: true };
+    var r = rawBridgeCall(method, args);
+    if (r.noBridge) return { mock: true }; // bridge vanished between the check and now — fail safe to mock, not a white screen
+    return r;
+}
+
+/* =====================================================================
+   ---- MOCK DATA ----
+   Only ever consulted when window.NewsBridge is undefined, absent a
+   method, or demo mode forces it. Trivially deletable: this whole IIFE
+   plus the `r.mock` branches in Api below.
+
+   8 topics ported from ea_cloud-news/data/topics.json, ~64 articles spread
+   across them and across the last ~72h, realistic outlet domains, and an
+   engineered tone spread (each topic's 8 headlines hit the same 8-value
+   tone ladder, so every topic has one clearly negative and one clearly
+   positive headline). Headlines are deliberately generic — no real named
+   people or events — so fabricated mock news can never read as real
+   reporting. Demo writes (toggles, saves, added topics) stay in memory
+   only; nothing here ever touches localStorage.
+   ===================================================================== */
+var MOCK = (function () {
+    var TOPIC_META = [
+        { topic: 'economy', label: 'Economy' },
+        { topic: 'technology', label: 'Technology' },
+        { topic: 'geopolitics', label: 'Geopolitics' },
+        { topic: 'climate change', label: 'Climate' },
+        { topic: 'finance markets', label: 'Finance' },
+        { topic: 'artificial intelligence', label: 'AI' },
+        { topic: 'energy', label: 'Energy' },
+        { topic: 'health', label: 'Health' }
+    ];
+
+    var HEADLINES = {
+        'economy': [
+            'Central bank holds rates steady',
+            'Inflation data comes in below forecasts',
+            'Trade deficit narrows for third straight month',
+            'Regulators unveil new banking guidelines',
+            'Manufacturing index signals slowdown ahead',
+            'Currency markets steady after volatile week',
+            'Job growth beats expectations in latest report',
+            'Consumer spending shows signs of cooling'
+        ],
+        'technology': [
+            'Chipmaker announces fab expansion',
+            'Startup unveils new battery technology',
+            'Major platform rolls out privacy update',
+            'Tech firm reports record quarterly revenue',
+            'Cybersecurity researchers flag new vulnerability',
+            'Cloud provider expands data center footprint',
+            'Antitrust regulators open new inquiry',
+            'Semiconductor shortage eases across supply chain'
+        ],
+        'geopolitics': [
+            'Diplomats resume talks after weeks-long pause',
+            'Regional leaders meet to discuss border tensions',
+            'Sanctions regime extended for another year',
+            'Peace negotiations enter new phase',
+            'Alliance announces joint military exercise',
+            'United Nations calls for de-escalation',
+            'Trade bloc considers new membership bid',
+            'Ceasefire holds into second week'
+        ],
+        'climate change': [
+            'Renewable capacity reaches new milestone',
+            'Drought conditions worsen across region',
+            'Coastal cities unveil flood defense plan',
+            'Emissions targets revised upward by regulators',
+            'Heatwave breaks decades-old records',
+            'Reforestation project expands to new provinces',
+            'Climate summit ends with mixed results',
+            'Insurance costs rise amid extreme weather'
+        ],
+        'finance markets': [
+            'Markets close mixed after volatile session',
+            'Bond yields tick higher on rate expectations',
+            'IPO market shows signs of recovery',
+            'Hedge fund reports strong quarterly returns',
+            'Credit rating agency issues sector warning',
+            'Stock rally fades into the close',
+            'Currency traders eye central bank signals',
+            'Merger talks reportedly advance between rivals'
+        ],
+        'artificial intelligence': [
+            'Researchers publish new benchmark results',
+            'Regulators propose new oversight framework',
+            'Startup raises new funding round for AI tools',
+            'Major lab releases updated model',
+            'Industry group publishes safety guidelines',
+            'Enterprise adoption grows for AI tools',
+            'Study raises questions about model reliability',
+            'New chip architecture targets AI workloads'
+        ],
+        'energy': [
+            'Oil prices steady after inventory report',
+            'Utility announces new grid investment',
+            'Solar project reaches full capacity',
+            'Energy regulator approves pipeline expansion',
+            'Natural gas prices ease on mild weather',
+            'Battery storage project breaks ground',
+            'Refinery outage tightens fuel supply',
+            'Renewable subsidies extended for another year'
+        ],
+        'health': [
+            'Health agency updates vaccination guidance',
+            'Study links exercise to improved outcomes',
+            'Hospital network announces expansion plan',
+            'Regulators approve new treatment option',
+            'Public health officials monitor seasonal illness',
+            'Researchers report progress on early detection',
+            'Health insurers adjust coverage policies',
+            'New guidelines target chronic disease prevention'
+        ]
+    };
+
+    var DOMAIN_META = [
+        { domain: 'reuters.com', country: 'United States', lang: 'en' },
+        { domain: 'apnews.com', country: 'United States', lang: 'en' },
+        { domain: 'bbc.co.uk', country: 'United Kingdom', lang: 'en' },
+        { domain: 'ft.com', country: 'United Kingdom', lang: 'en' },
+        { domain: 'spiegel.de', country: 'Germany', lang: 'de' },
+        { domain: 'bloomberg.com', country: 'United States', lang: 'en' },
+        { domain: 'aljazeera.com', country: 'Qatar', lang: 'en' },
+        { domain: 'theguardian.com', country: 'United Kingdom', lang: 'en' },
+        { domain: 'nytimes.com', country: 'United States', lang: 'en' },
+        { domain: 'cnbc.com', country: 'United States', lang: 'en' },
+        { domain: 'dw.com', country: 'Germany', lang: 'en' },
+        { domain: 'lemonde.fr', country: 'France', lang: 'fr' },
+        { domain: 'elpais.com', country: 'Spain', lang: 'es' },
+        { domain: 'japantimes.co.jp', country: 'Japan', lang: 'en' },
+        { domain: 'scmp.com', country: 'Hong Kong', lang: 'en' },
+        { domain: 'abc.net.au', country: 'Australia', lang: 'en' }
+    ];
+
+    // 8-value ladder from strongly negative to strongly positive — every
+    // topic's 8 headlines get these 8 values (rotated per topic), so each
+    // topic always has one clearly negative and one clearly positive item.
+    var TONE_LADDER = [-8.4, -6.1, -3.2, -0.8, 0.6, 2.9, 5.4, 7.8];
+
+    function publicArticle(a) {
+        return { url: a.url, title: a.title, seendate: a.seendate, socialimage: a.socialimage, domain: a.domain, language: a.language, sourcecountry: a.sourcecountry, tone: a.tone };
+    }
+
+    var mockArticlesData = (function () {
+        var now = Date.now();
+        var list = [];
+        var seq = 1;
+        TOPIC_META.forEach(function (tm, ti) {
+            var heads = HEADLINES[tm.topic];
+            heads.forEach(function (title, i) {
+                var toneIdx = (i + ti * 3) % TONE_LADDER.length;
+                // Rotating the ladder alone keeps every topic's sum (hence
+                // avgTone) identical — add a small per-topic bias so topics
+                // read as genuinely more/less positive on average, while
+                // clamping keeps at least one clearly negative and one
+                // clearly positive headline per topic.
+                var bias = (ti - 3.5) * 1.1;
+                var tone = Math.max(-9.8, Math.min(9.8, Math.round((TONE_LADDER[toneIdx] + bias) * 10) / 10));
+                var dm = DOMAIN_META[(i + ti * 5) % DOMAIN_META.length];
+                var hoursAgo = (i * 9 + ti * 5) % 71;
+                var minutesJitter = (i * 17 + ti * 11) % 60;
+                var seenMs = now - hoursAgo * 3600000 - minutesJitter * 60000;
+                var slug = tm.topic.replace(/\s+/g, '-') + '-' + i;
+                list.push({
+                    url: 'https://' + dm.domain + '/article/' + slug,
+                    title: title,
+                    seendate: toGdeltDate(seenMs),
+                    socialimage: 'https://' + dm.domain + '/img/' + slug + '.jpg',
+                    domain: dm.domain,
+                    language: dm.lang,
+                    sourcecountry: dm.country,
+                    tone: tone,
+                    _topic: tm.topic,
+                    _id: 'mock-art-' + (seq++)
+                });
+            });
+        });
+        return list;
+    })();
+
+    var mockTopicsMeta = TOPIC_META.map(function (tm) { return { topic: tm.topic, label: tm.label, enabled: true }; });
+
+    function computeTopicSummary(tm) {
+        var arts = mockArticlesData.filter(function (a) { return a._topic === tm.topic; });
+        var count = arts.length;
+        var avgTone = count ? (arts.reduce(function (s, a) { return s + a.tone; }, 0) / count) : 0;
+        var lastFetchMs = count
+            ? Math.max.apply(null, arts.map(function (a) { return parseSeenDate(a.seendate) || 0; }))
+            : (Date.now() - 3600000);
+        return { topic: tm.topic, label: tm.label, articleCount: count, avgTone: Math.round(avgTone * 10) / 10, lastFetch: String(lastFetchMs), enabled: tm.enabled };
+    }
+
+    function seedFromTopic(topic) {
+        var h = 0;
+        var s = topic || 'all';
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000;
+        return h;
+    }
+
+    var mockSaved = {};
+    (function seedSaved() {
+        TOPIC_META.forEach(function (tm) {
+            var arts = mockArticlesData.filter(function (a) { return a._topic === tm.topic; });
+            var pick = arts[2] || arts[0];
+            if (pick) mockSaved[pick.url] = publicArticle(pick);
+        });
+    })();
+
+    var mockRefresh = { running: false, ok: TOPIC_META.length, failed: 0, messages: [], lastFetch: String(Date.now() - 15 * 60000) };
+    var mockConfig = { base: 'https://api.diegonmarcos.com/news', refreshSeconds: 60, maxArticles: 50 };
+
+    return {
+        topics: function () { return mockTopicsMeta.map(computeTopicSummary); },
+
+        articles: function (topic, limit) {
+            var lim = parseInt(limit, 10); if (!lim || lim <= 0) lim = 50;
+            var list = !topic ? mockArticlesData.slice() : mockArticlesData.filter(function (a) { return a._topic === topic; });
+            list = list.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
+            return list.slice(0, lim).map(publicArticle);
+        },
+
+        timeline: function (topic) {
+            var seed = seedFromTopic(topic);
+            var now = Date.now();
+            var points = [];
+            var n = 24; // 2h buckets over 48h — enough points for a visible shape
+            for (var i = n - 1; i >= 0; i--) {
+                var t = now - i * 2 * 3600000;
+                var phase = (seed % 20) / 20 * Math.PI * 2;
+                var v = 3.2 * Math.sin((i / 4) + phase) + 1.4 * Math.cos((i / 7) + phase * 0.5) + ((seed % 7) - 3) * 0.3;
+                v = Math.max(-10, Math.min(10, v));
+                points.push({ date: toGdeltDate(t), value: Math.round(v * 10) / 10 });
+            }
+            return points;
+        },
+
+        tone: function (topic) {
+            var list = !topic ? mockArticlesData.slice() : mockArticlesData.filter(function (a) { return a._topic === topic; });
+            return list.map(function (a) { return { url: a.url, title: a.title, tone: a.tone, domain: a.domain }; });
+        },
+
+        setTopicEnabled: function (topic, enabled) {
+            var t = mockTopicsMeta.find(function (t) { return t.topic === topic; });
+            if (!t) return { ok: false, error: 'topic not found' };
+            t.enabled = enabled === 'true';
+            return { ok: true, error: '' };
+        },
+
+        addTopic: function (topic, label) {
+            if (!topic) return { ok: false, error: 'topic query is required' };
+            var exists = mockTopicsMeta.some(function (t) { return t.topic.toLowerCase() === topic.toLowerCase(); });
+            if (exists) return { ok: false, error: 'topic already exists' };
+            mockTopicsMeta.push({ topic: topic, label: label || topic, enabled: true });
+            return { ok: true, error: '' };
+        },
+
+        removeTopic: function (topic) {
+            var idx = mockTopicsMeta.findIndex(function (t) { return t.topic === topic; });
+            if (idx < 0) return { ok: false, error: 'topic not found' };
+            mockTopicsMeta.splice(idx, 1);
+            return { ok: true, error: '' };
+        },
+
+        refresh: function () {
+            if (!mockRefresh.running) {
+                mockRefresh.running = true;
+                setTimeout(function () {
+                    mockRefresh.running = false;
+                    var enabledTopics = mockTopicsMeta.filter(function (t) { return t.enabled; });
+                    mockRefresh.ok = enabledTopics.length;
+                    mockRefresh.failed = 0;
+                    mockRefresh.lastFetch = String(Date.now());
+                    mockRefresh.messages = enabledTopics.map(function (t) {
+                        var n = mockArticlesData.filter(function (a) { return a._topic === t.topic; }).length;
+                        return t.label + ': ' + n + ' articles cached';
+                    });
+                }, 1400);
+            }
+            return { started: true };
+        },
+        refreshStatus: function () { return JSON.parse(JSON.stringify(mockRefresh)); },
+
+        saved: function () {
+            return Object.keys(mockSaved).map(function (u) { return mockSaved[u]; })
+                .sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
+        },
+        toggleSaved: function (json) {
+            var obj;
+            try { obj = JSON.parse(json); } catch (e) { return { ok: false, saved: false, error: 'invalid json' }; }
+            if (!obj || !obj.url) return { ok: false, saved: false, error: 'missing url' };
+            if (mockSaved[obj.url]) { delete mockSaved[obj.url]; return { ok: true, saved: false, error: '' }; }
+            mockSaved[obj.url] = publicArticle(obj);
+            return { ok: true, saved: true, error: '' };
+        },
+
+        config: function () { return JSON.parse(JSON.stringify(mockConfig)); },
+        setConfig: function (json) {
+            var obj;
+            try { obj = JSON.parse(json); } catch (e) { return { ok: false, error: 'invalid json' }; }
+            if (obj.base != null) mockConfig.base = obj.base;
+            if (obj.refreshSeconds != null) mockConfig.refreshSeconds = obj.refreshSeconds;
+            if (obj.maxArticles != null) mockConfig.maxArticles = obj.maxArticles;
+            return { ok: true, error: '' };
+        },
+
+        // Demo articles' URLs are synthetic — refuse to "open" them rather
+        // than let a tap-through feel like a real link to a real story.
+        openExternal: function () { return { ok: false, error: 'Demo data — this article is not real.' }; }
+    };
+})();
+
+/* =====================================================================
+   Api — thin layer on top of callBridge that always resolves to either
+   real bridge data, mock data (no bridge present / demo forced), or
+   {error} (bridge present but threw / returned garbage). Nothing below
+   this line should touch window.NewsBridge directly.
+   ===================================================================== */
+var Api = {
+    topics: function () {
+        var r = callBridge('topics');
+        if (r.mock) return MOCK.topics();
+        return r.ok ? r.data : { error: r.error };
+    },
+    articles: function (topic, limit) {
+        var r = callBridge('articles', [topic || '', String(limit || 50)]);
+        if (r.mock) return MOCK.articles(topic || '', limit || 50);
+        return r.ok ? r.data : { error: r.error };
+    },
+    timeline: function (topic) {
+        var r = callBridge('timeline', [topic || '']);
+        if (r.mock) return MOCK.timeline(topic || '');
+        return r.ok ? r.data : { error: r.error };
+    },
+    tone: function (topic) {
+        var r = callBridge('tone', [topic || '']);
+        if (r.mock) return MOCK.tone(topic || '');
+        return r.ok ? r.data : { error: r.error };
+    },
+    setTopicEnabled: function (topic, enabledBool) {
+        var enabled = enabledBool ? 'true' : 'false';
+        var r = callBridge('setTopicEnabled', [topic, enabled]);
+        if (r.mock) return MOCK.setTopicEnabled(topic, enabled);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    addTopic: function (topic, label) {
+        var r = callBridge('addTopic', [topic, label]);
+        if (r.mock) return MOCK.addTopic(topic, label);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    removeTopic: function (topic) {
+        var r = callBridge('removeTopic', [topic]);
+        if (r.mock) return MOCK.removeTopic(topic);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    refresh: function () {
+        var r = callBridge('refresh');
+        if (r.mock) return MOCK.refresh();
+        return r.ok ? r.data : { started: false, error: r.error };
+    },
+    refreshStatus: function () {
+        var r = callBridge('refreshStatus');
+        if (r.mock) return MOCK.refreshStatus();
+        return r.ok ? r.data : { error: r.error };
+    },
+    saved: function () {
+        var r = callBridge('saved');
+        if (r.mock) return MOCK.saved();
+        return r.ok ? r.data : { error: r.error };
+    },
+    toggleSaved: function (articleObj) {
+        var json = JSON.stringify(articleObj);
+        var r = callBridge('toggleSaved', [json]);
+        if (r.mock) return MOCK.toggleSaved(json);
+        return r.ok ? r.data : { ok: false, saved: false, error: r.error };
+    },
+    config: function () {
+        var r = callBridge('config');
+        if (r.mock) return MOCK.config();
+        return r.ok ? r.data : { error: r.error };
+    },
+    setConfig: function (obj) {
+        var r = callBridge('setConfig', [JSON.stringify(obj)]);
+        if (r.mock) return MOCK.setConfig(JSON.stringify(obj));
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
+    openExternal: function (url) {
+        var r = callBridge('openExternal', [url]);
+        if (r.mock) return MOCK.openExternal(url);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    }
+};
+
+/* =====================================================================
+   State
+   ===================================================================== */
+var State = {
+    tab: 'feed',
+    topics: [],
+    feed: { topic: '', items: [], limit: 50 },
+    trends: { topic: '', timeline: [], tone: [] },
+    saved: { items: [] },
+    savedUrls: new Set()
+};
+
+function errorBanner(message) {
+    return '<div class="error-banner">Couldn’t load this from the bridge: ' + esc(message) + '</div>';
+}
+
+/* =====================================================================
+   Demo-mode UI
+   ===================================================================== */
+function renderDemoBanner() {
+    var mount = document.getElementById('demo-banner');
+    if (!shouldUseMock()) { mount.classList.add('hidden'); mount.innerHTML = ''; return; }
+    mount.classList.remove('hidden');
+    mount.innerHTML = '<span class="dot"></span>' +
+        '<span style="flex:1;">Demo data — not real headlines.</span>' +
+        '<button type="button" id="demo-banner-off-btn">Turn off</button>';
+    document.getElementById('demo-banner-off-btn').addEventListener('click', function () {
+        saveDemoMode('off');
+        rerenderAll();
+    });
+}
+
+function demoModeStatusText() {
+    if (DemoState.mode === 'on') return 'On — demo data is always shown, even once the bridge has real topics and articles.';
+    if (DemoState.mode === 'off') return 'Off — your real data is always shown, including genuine empty states.';
+    var r = DemoState.autoResolved;
+    if (!r) return 'Auto — not yet evaluated.';
+    return 'Auto → ' + (r.mock ? 'demo' : 'real') + ' (' + r.reason + ')';
+}
+
+function renderDemoModeConfig() {
+    var toggle = document.getElementById('demo-mode-toggle');
+    toggle.querySelectorAll('button[data-mode]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.mode === DemoState.mode);
+    });
+    document.getElementById('demo-mode-status').textContent = demoModeStatusText();
+}
+
+/* Re-decides demo state (forcing a fresh auto-probe if in auto mode) and
+   re-renders everything currently on screen. */
+function rerenderAll() {
+    if (DemoState.mode === 'auto') DemoState.autoResolved = null;
+    renderDemoBanner();
+
+    loadTopicsIntoState();
+    renderFeedPills();
+    loadFeedList();
+    loadSavedList();
+    if (loadedTabs.topics) renderTopicsList();
+    if (loadedTabs.trends) loadTrendsData();
+    renderDemoModeConfig();
+    renderRefreshStatus();
+}
+
+/* =====================================================================
+   Shared topic loading (Feed pills, Topics tab, Trends pills)
+   ===================================================================== */
+function loadTopicsIntoState() {
+    var r = Api.topics();
+    var mounts = ['feed-error-mount', 'topics-error-mount', 'trends-error-mount'].map(function (id) { return document.getElementById(id); });
+    if (r && r.error) {
+        mounts.forEach(function (m) { if (m) m.innerHTML = errorBanner(r.error); });
+        State.topics = [];
+        return false;
+    }
+    mounts.forEach(function (m) { if (m) m.innerHTML = ''; });
+    State.topics = Array.isArray(r) ? r : [];
+    return true;
+}
+
+/* =====================================================================
+   Article row rendering — shared by Feed and Saved
+   ===================================================================== */
+function articleRowHtml(a) {
+    var ms = parseSeenDate(a.seendate);
+    var saved = State.savedUrls.has(a.url);
+    var imgHtml = '';
+    if (imagesEnabled() && a.socialimage) {
+        imgHtml = '<img class="article-thumb" src="' + esc(a.socialimage) + '" loading="lazy" onerror="this.remove()" alt="">';
+    }
+    return '<div class="article-row">' +
+        imgHtml +
+        '<div class="article-body" data-open-url="' + esc(a.url) + '">' +
+            '<div class="article-domain">' + esc(a.domain) + '</div>' +
+            '<div class="article-title">' + esc(a.title) + '</div>' +
+            '<div class="article-meta">' + toneChipHtml(a.tone) + '<span class="article-time">' + esc(relTime(ms)) + '</span></div>' +
+        '</div>' +
+        '<button class="bookmark-btn' + (saved ? ' active' : '') + '" data-bookmark-url="' + esc(a.url) + '" aria-label="Save article" type="button">' + bookmarkSvg(saved) + '</button>' +
+    '</div>';
+}
+
+function wireArticleRowEvents(mount, items) {
+    mount.querySelectorAll('[data-open-url]').forEach(function (el) {
+        el.addEventListener('click', function () { onOpenArticle(el.dataset.openUrl); });
+    });
+    mount.querySelectorAll('[data-bookmark-url]').forEach(function (el) {
+        el.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            var url = el.dataset.bookmarkUrl;
+            var art = items.find(function (a) { return a.url === url; });
+            if (art) onToggleSaved(art);
+        });
+    });
+}
+
+function onOpenArticle(url) {
+    try { Api.openExternal(url); } catch (e) { console.error('[openExternal]', e); }
+}
+
+function onToggleSaved(article) {
+    var res;
+    try { res = Api.toggleSaved(article); } catch (e) { alert('Could not update saved state: ' + e.message); return; }
+    if (!res || res.ok === false) { alert('Could not update saved state' + (res && res.error ? ': ' + res.error : '')); return; }
+    if (res.saved) State.savedUrls.add(article.url); else State.savedUrls.delete(article.url);
+    if (State.tab === 'feed') renderFeedList();
+    if (State.tab === 'saved') loadSavedList();
+}
+
+/* =====================================================================
+   Feed tab
+   ===================================================================== */
+function renderFeedPills() {
+    var mount = document.getElementById('feed-topic-pills');
+    var enabledTopics = State.topics.filter(function (t) { return t.enabled; });
+    var pills = [{ topic: '', label: 'All' }].concat(enabledTopics);
+    mount.innerHTML = pills.map(function (t) {
+        var active = t.topic === State.feed.topic;
+        return '<button class="pill' + (active ? ' active' : '') + '" data-topic="' + esc(t.topic) + '">' + esc(t.label) + '</button>';
+    }).join('');
+    mount.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            State.feed.topic = btn.dataset.topic;
+            State.feed.limit = 50;
+            renderFeedPills();
+            loadFeedList();
+        });
+    });
+}
+
+function loadFeedList() {
+    var errMount = document.getElementById('feed-error-mount');
+    var res;
+    try { res = Api.articles(State.feed.topic, State.feed.limit); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
+    errMount.innerHTML = '';
+    State.feed.items = Array.isArray(res) ? res : [];
+    renderFeedList();
+}
+
+function renderFeedList() {
+    var mount = document.getElementById('feed-list');
+    if (!State.feed.items.length) { mount.innerHTML = '<div class="empty-state">No articles yet.</div>'; return; }
+    var sorted = State.feed.items.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
+    var html = sorted.map(articleRowHtml).join('');
+    if (State.feed.items.length >= State.feed.limit) {
+        html += '<button id="feed-load-more" class="btn-light" style="width:100%;margin-top:12px;" type="button">Load more</button>';
+    }
+    mount.innerHTML = html;
+    wireArticleRowEvents(mount, State.feed.items);
+    var moreBtn = document.getElementById('feed-load-more');
+    if (moreBtn) moreBtn.addEventListener('click', function () { State.feed.limit += 50; loadFeedList(); });
+}
+
+/* =====================================================================
+   Topics tab
+   ===================================================================== */
+function loadTopicsTab() {
+    loadTopicsIntoState();
+    renderTopicsList();
+}
+
+function renderTopicsList() {
+    var mount = document.getElementById('topics-list');
+    if (!State.topics.length) { mount.innerHTML = '<div class="empty-state">No topics yet. Add one above.</div>'; return; }
+    mount.innerHTML = State.topics.map(function (t) {
+        return '<div class="topic-row">' +
+            '<div class="flex-1 min-w-0">' +
+                '<div class="topic-row-label">' + esc(t.label) + '</div>' +
+                '<div class="topic-row-meta">' + t.articleCount + ' articles &middot; ' + toneChipHtml(t.avgTone) + '</div>' +
+            '</div>' +
+            '<label class="switch"><input type="checkbox" data-topic-toggle="' + esc(t.topic) + '"' + (t.enabled ? ' checked' : '') + '><span class="slider"></span></label>' +
+            '<button class="topic-remove-btn" data-topic-remove="' + esc(t.topic) + '" aria-label="Remove topic" type="button">&times;</button>' +
+        '</div>';
+    }).join('');
+    mount.querySelectorAll('[data-topic-toggle]').forEach(function (input) {
+        input.addEventListener('change', function () { onToggleTopicEnabled(input.dataset.topicToggle, input.checked); });
+    });
+    mount.querySelectorAll('[data-topic-remove]').forEach(function (btn) {
+        btn.addEventListener('click', function () { onRemoveTopic(btn.dataset.topicRemove); });
+    });
+}
+
+function onToggleTopicEnabled(topic, enabled) {
+    try { Api.setTopicEnabled(topic, enabled); } catch (e) { alert('Could not update topic: ' + e.message); }
+    loadTopicsIntoState();
+    renderTopicsList();
+    renderFeedPills();
+}
+
+function onRemoveTopic(topic) {
+    var res;
+    try { res = Api.removeTopic(topic); } catch (e) { alert('Could not remove topic: ' + e.message); return; }
+    if (!res || res.ok === false) { alert('Could not remove topic' + (res && res.error ? ': ' + res.error : '')); return; }
+    loadTopicsIntoState();
+    renderTopicsList();
+    renderFeedPills();
+}
+
+function initTopicsTab() {
+    document.getElementById('topics-add-btn').addEventListener('click', function () {
+        var label = document.getElementById('topics-add-label').value.trim();
+        var query = document.getElementById('topics-add-query').value.trim();
+        if (!query) { alert('Enter a GDELT query'); return; }
+        var res;
+        try { res = Api.addTopic(query, label || query); } catch (e) { alert('Could not add topic: ' + e.message); return; }
+        if (!res || res.ok === false) { alert('Could not add topic' + (res && res.error ? ': ' + res.error : '')); return; }
+        document.getElementById('topics-add-label').value = '';
+        document.getElementById('topics-add-query').value = '';
+        loadTopicsIntoState();
+        renderTopicsList();
+        renderFeedPills();
+    });
+}
+
+/* =====================================================================
+   Trends tab — a /timeline sparkline (inline SVG, hand-drawn from the
+   points, no chart library) plus a /tone distribution split into
+   most-positive / most-negative. This tab is the reason the app is not
+   just an RSS reader.
+   ===================================================================== */
+function loadTrendsTab() {
+    loadTopicsIntoState();
+    if (!State.trends.topic && State.topics.length) State.trends.topic = State.topics[0].topic;
+    renderTrendsPills();
+    loadTrendsData();
+}
+
+function renderTrendsPills() {
+    var mount = document.getElementById('trends-topic-pills');
+    mount.innerHTML = State.topics.map(function (t) {
+        var active = t.topic === State.trends.topic;
+        return '<button class="pill' + (active ? ' active' : '') + '" data-topic="' + esc(t.topic) + '">' + esc(t.label) + '</button>';
+    }).join('');
+    mount.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            State.trends.topic = btn.dataset.topic;
+            renderTrendsPills();
+            loadTrendsData();
+        });
+    });
+}
+
+function loadTrendsData() {
+    var errMount = document.getElementById('trends-error-mount');
+    var tl, tn;
+    try {
+        tl = Api.timeline(State.trends.topic);
+        tn = Api.tone(State.trends.topic);
+    } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (tl && tl.error) { errMount.innerHTML = errorBanner(tl.error); return; }
+    if (tn && tn.error) { errMount.innerHTML = errorBanner(tn.error); return; }
+    errMount.innerHTML = '';
+    State.trends.timeline = Array.isArray(tl) ? tl : [];
+    State.trends.tone = Array.isArray(tn) ? tn : [];
+    renderSparkline();
+    renderToneDistribution();
+}
+
+function renderSparkline() {
+    var mount = document.getElementById('trends-sparkline');
+    var pts = State.trends.timeline;
+    if (!pts.length) { mount.innerHTML = '<div class="empty-state">No timeline data.</div>'; return; }
+    var W = 600, H = 150, PAD = 12;
+    var values = pts.map(function (p) { return Number(p.value) || 0; });
+    var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    if (min === max) { min -= 1; max += 1; }
+    var stepX = (W - PAD * 2) / Math.max(1, pts.length - 1);
+    var coords = values.map(function (v, i) {
+        var x = PAD + i * stepX;
+        var y = PAD + (H - PAD * 2) * (1 - (v - min) / (max - min));
+        return [x, y];
+    });
+    var path = coords.map(function (c, i) { return (i === 0 ? 'M' : 'L') + c[0].toFixed(1) + ',' + c[1].toFixed(1); }).join(' ');
+    var last = coords[coords.length - 1];
+    var first = coords[0];
+    var areaPath = path + ' L' + last[0].toFixed(1) + ',' + (H - PAD) + ' L' + first[0].toFixed(1) + ',' + (H - PAD) + ' Z';
+    var lineColor = toneChip(values[values.length - 1]).style.fg;
+    mount.innerHTML =
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" class="sparkline-svg" preserveAspectRatio="none">' +
+            '<path d="' + areaPath + '" fill="' + lineColor + '" opacity="0.10"></path>' +
+            '<path d="' + path + '" fill="none" stroke="' + lineColor + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
+            '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="' + lineColor + '"></circle>' +
+        '</svg>' +
+        '<div class="sparkline-legend"><span>min ' + min.toFixed(1) + '</span><span>max ' + max.toFixed(1) + '</span></div>';
+}
+
+function renderToneDistribution() {
+    var mount = document.getElementById('trends-tone-dist');
+    var items = State.trends.tone.slice();
+    if (!items.length) { mount.innerHTML = '<div class="empty-state">No tone data for this topic yet.</div>'; return; }
+    var sorted = items.slice().sort(function (a, b) { return (Number(b.tone) || 0) - (Number(a.tone) || 0); });
+    var half = Math.max(1, Math.min(5, Math.floor(items.length / 2)));
+    var pos = sorted.slice(0, half);
+    var neg = sorted.slice(-half).reverse();
+    function rows(list) {
+        return list.map(function (a) {
+            return '<div class="tone-dist-row" data-open-url="' + esc(a.url) + '">' +
+                toneChipHtml(a.tone) +
+                '<span class="tone-dist-title">' + esc(a.title) + '</span>' +
+                '<span class="tone-dist-domain">' + esc(a.domain) + '</span>' +
+            '</div>';
+        }).join('');
+    }
+    mount.innerHTML =
+        '<div class="tone-dist-col"><div class="tone-dist-heading">Most positive</div>' + rows(pos) + '</div>' +
+        '<div class="tone-dist-col"><div class="tone-dist-heading">Most negative</div>' + rows(neg) + '</div>';
+    mount.querySelectorAll('[data-open-url]').forEach(function (el) {
+        el.addEventListener('click', function () { onOpenArticle(el.dataset.openUrl); });
+    });
+}
+
+/* =====================================================================
+   Saved tab
+   ===================================================================== */
+function loadSavedTab() { loadSavedList(); }
+
+function loadSavedList() {
+    var errMount = document.getElementById('saved-error-mount');
+    var res;
+    try { res = Api.saved(); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (res && res.error) { errMount.innerHTML = errorBanner(res.error); return; }
+    errMount.innerHTML = '';
+    State.saved.items = Array.isArray(res) ? res : [];
+    State.savedUrls = new Set(State.saved.items.map(function (a) { return a.url; }));
+    renderSavedList();
+}
+
+function renderSavedList() {
+    var mount = document.getElementById('saved-list');
+    if (!State.saved.items.length) { mount.innerHTML = '<div class="empty-state">No saved articles yet. Tap the bookmark icon on any article to save it.</div>'; return; }
+    var sorted = State.saved.items.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
+    mount.innerHTML = sorted.map(articleRowHtml).join('');
+    wireArticleRowEvents(mount, State.saved.items);
+}
+
+/* =====================================================================
+   Configs tab
+   ===================================================================== */
+function loadConfigValues() {
+    var errMount = document.getElementById('configs-error-mount');
+    var cfg;
+    try { cfg = Api.config(); } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
+    if (cfg && cfg.error) { errMount.innerHTML = errorBanner(cfg.error); return; }
+    errMount.innerHTML = '';
+    document.getElementById('cfg-base').value = cfg.base || '';
+    document.getElementById('cfg-refresh-seconds').value = cfg.refreshSeconds != null ? cfg.refreshSeconds : '';
+    document.getElementById('cfg-max-articles').value = cfg.maxArticles != null ? cfg.maxArticles : '';
+}
+
+function renderImagesToggle() {
+    document.getElementById('cfg-images-toggle').checked = imagesEnabled();
+}
+
+var refreshPollTimer = null;
+
+function renderRefreshStatus() {
+    var mount = document.getElementById('cfg-refresh-status');
+    var r;
+    try { r = Api.refreshStatus(); } catch (e) { mount.innerHTML = errorBanner(e.message); return; }
+    if (r && r.error) { mount.innerHTML = errorBanner(r.error); return; }
+    var parts = [];
+    parts.push('<div><strong>Status:</strong> ' + (r.running ? 'refreshing…' : ('idle — ok ' + (r.ok || 0) + ', failed ' + (r.failed || 0))) + '</div>');
+    if (r.lastFetch) parts.push('<div class="text-gray-400">Last fetch: ' + esc(relTime(parseInt(r.lastFetch, 10))) + '</div>');
+    (r.messages || []).forEach(function (m) { parts.push('<div class="text-gray-400">• ' + esc(m) + '</div>'); });
+    mount.innerHTML = parts.join('');
+}
+
+function pollRefreshStatus() {
+    if (refreshPollTimer) clearInterval(refreshPollTimer);
+    refreshPollTimer = setInterval(function () {
+        var s;
+        try { s = Api.refreshStatus(); } catch (e) { clearInterval(refreshPollTimer); return; }
+        renderRefreshStatus();
+        if (!s || !s.running) { clearInterval(refreshPollTimer); onRefreshSettled(); }
+    }, 500);
+}
+
+/* A refresh just settled (real or mock). In auto mode this is exactly the
+   moment real data might have landed, so re-probe and, if the resolution
+   changed, the UI switches itself over automatically. */
+function onRefreshSettled() { rerenderAll(); }
+
+function initConfigsTab() {
+    document.getElementById('demo-mode-toggle').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-mode]');
+        if (!btn) return;
+        saveDemoMode(btn.dataset.mode);
+        rerenderAll();
+    });
+
+    document.getElementById('cfg-save-btn').addEventListener('click', function () {
+        var obj = {
+            base: document.getElementById('cfg-base').value.trim(),
+            refreshSeconds: parseInt(document.getElementById('cfg-refresh-seconds').value, 10) || 60,
+            maxArticles: parseInt(document.getElementById('cfg-max-articles').value, 10) || 50
+        };
+        var out = document.getElementById('cfg-save-result');
+        var res;
+        try { res = Api.setConfig(obj); } catch (e) { out.innerHTML = '<span style="color:#A33;">' + esc(e.message) + '</span>'; return; }
+        if (res && res.ok !== false) {
+            out.innerHTML = '<span style="color:#2E7D32;">Saved.</span>';
+        } else {
+            out.innerHTML = '<span style="color:#A33;">' + esc((res && res.error) || 'Could not save.') + '</span>';
+        }
+    });
+
+    document.getElementById('cfg-refresh-now-btn').addEventListener('click', function () {
+        try { Api.refresh(); } catch (e) { /* surfaced on next status poll */ }
+        pollRefreshStatus();
+    });
+
+    document.getElementById('cfg-images-toggle').addEventListener('change', function (ev) {
+        setImagesEnabled(ev.target.checked);
+        renderFeedList();
+        if (State.tab === 'saved') renderSavedList();
+    });
+
+    loadConfigValues();
+    renderImagesToggle();
+    renderDemoModeConfig();
+    renderRefreshStatus();
+}
+
+/* =====================================================================
+   Tab switching
+   ===================================================================== */
+var loadedTabs = {};
+
+function switchTab(tab) {
+    State.tab = tab;
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+    document.getElementById('app-main').scrollTop = 0;
+
+    if (!loadedTabs[tab]) {
+        loadedTabs[tab] = true;
+        if (tab === 'topics') loadTopicsTab();
+        else if (tab === 'trends') loadTrendsTab();
+        else if (tab === 'saved') loadSavedTab();
+        else if (tab === 'configs') { /* initConfigsTab already loaded config data on init */ }
+    } else {
+        if (tab === 'topics') renderTopicsList();
+        else if (tab === 'trends') { renderSparkline(); renderToneDistribution(); }
+        else if (tab === 'saved') loadSavedList();
+        else if (tab === 'configs') { renderRefreshStatus(); renderDemoModeConfig(); }
+    }
+}
+
+/* =====================================================================
+   Init
+   ===================================================================== */
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('bottom-nav').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.nav-item');
+        if (btn) switchTab(btn.dataset.tab);
+    });
+
+    loadTopicsIntoState();
+    renderFeedPills();
+    loadFeedList();
+    loadSavedList();
+    initTopicsTab();
+    initConfigsTab();
+    renderDemoBanner();
+
+    switchTab('feed');
+});
+</script>
 </body>
 </html>
