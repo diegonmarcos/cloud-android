@@ -1,0 +1,27 @@
+// Settings — gradle module graph.
+// Data-driven from build.json::modules (FIRE RULE #6: never hardcode lists).
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "cloud-news"
+
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return
+    include ":${name}"
+    def path = name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}
