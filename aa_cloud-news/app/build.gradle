@@ -85,6 +85,10 @@ def topicsFile = file("../data/topics.json")
 def topicsJson = topicsFile.exists() ? topicsFile.text : "{}"
 def topicsB64  = topicsJson.bytes.encodeBase64().toString()
 
+def sourcesFile = file("../data/sources.json")
+def sourcesJson = sourcesFile.exists() ? sourcesFile.text : "{}"
+def sourcesB64  = sourcesJson.bytes.encodeBase64().toString()
+
 def buildHistorySecs = []
 try {
     def ghOut = providers.exec {
@@ -144,6 +148,7 @@ android {
         buildConfigField "String", "UI_STACK_FRAMEWORKS_JSON_B64", "\"${stackFrameworksB64}\""
         buildConfigField "String", "UI_STACK_FOLDER_TREE_B64",     "\"${stackTreeB64}\""
         buildConfigField "String", "TOPICS_B64", "\"${topicsB64}\""
+        buildConfigField "String", "SOURCES_B64", "\"${sourcesB64}\""
         buildConfigField "long",   "STACK_GRADLE_CONFIG_MS",  "${System.currentTimeMillis() - gradleScriptStartMs}L"
         buildConfigField "long",   "STACK_BUILD_AVG_SECS",    "${buildAvgSecs}L"
         buildConfigField "long",   "STACK_BUILD_LAST_SECS",   "${buildLastSecs}L"

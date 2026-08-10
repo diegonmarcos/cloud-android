@@ -13,7 +13,10 @@ import org.json.JSONObject
  * libs:cal's CalDav.kt / CalendarStore.kt split.
  */
 
-/** One GDELT article, as returned by /articles. Mirrors TS `GdeltArticle`. */
+/** One GDELT article, as returned by /articles. Mirrors TS `GdeltArticle`.
+ *  Also the shared article shape for RSS-sourced articles (see
+ *  RssParser.kt) — there is deliberately no separate "RssArticle" type,
+ *  the bridge/UI contract is one article shape regardless of source. */
 data class GdeltArticle(
     val url: String,
     val title: String,
@@ -22,7 +25,17 @@ data class GdeltArticle(
     val domain: String,
     val language: String,
     val sourcecountry: String,
-    val tone: Double,
+    /** Sentiment score from GDELT's tone analysis, roughly -100..+100.
+     *  NULLABLE ON PURPOSE: null means "this source never measured a
+     *  tone for this article", which is a different fact than "the
+     *  tone measured 0.0 (neutral)". Every rss source in
+     *  data/sources.json was verified by hand to carry no tone/
+     *  sentiment field at all (see that file's kdoc) — RssParser.kt
+     *  therefore always produces tone = null, never 0.0, which would
+     *  otherwise render in the UI as a false "measured as neutral".
+     *  Only GdeltArticle.fromJson (GDELT's own /articles response) or
+     *  NewsApi's real GDELT fetch ever sets a non-null value. */
+    val tone: Double?,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("url", url)
@@ -32,7 +45,11 @@ data class GdeltArticle(
         put("domain", domain)
         put("language", language)
         put("sourcecountry", sourcecountry)
-        put("tone", tone)
+        // Explicit JSON null (JSONObject.NULL), never omitted and never
+        // 0.0 — see the tone kdoc above. NewsBridge crosses this
+        // straight through to JS, where `null` is exactly what a
+        // toneless article should read as.
+        put("tone", tone ?: JSONObject.NULL)
     }
 
     companion object {
@@ -44,7 +61,12 @@ data class GdeltArticle(
             domain        = o.optString("domain", ""),
             language      = o.optString("language", ""),
             sourcecountry = o.optString("sourcecountry", ""),
-            tone          = o.optDouble("tone", 0.0),
+            // Missing key, explicit JSON null, or a value that doesn't
+            // parse as a number all degrade to null — never to 0.0,
+            // same reasoning as the field's kdoc above.
+            tone = if (o.has("tone") && !o.isNull("tone")) {
+                o.optDouble("tone").takeUnless { it.isNaN() }
+            } else null,
         )
     }
 }
@@ -195,6 +217,121 @@ object NewsTopicsConfig {
             )
         }.getOrDefault(NewsApiConfig("https://api.diegonmarcos.com/news", 60, 50))
         apiCache = result
+        return result
+    }
+}
+
+/**
+ * One entry from data/sources.json's `sources` array — a place the app
+ * can pull articles from: the self-hosted GDELT proxy (`kind ==
+ * "gdelt"`, talks to [NewsApiConfig.base]) or a public RSS/Atom feed
+ * fetched directly from the handset (`kind == "rss"`, see
+ * RssParser.kt). Mirrors [NewsTopicConfig]'s role for topics.json.
+ *
+ * `url` is only meaningful for rss sources and may contain a literal
+ * `{query}` placeholder that [queryDriven] sources substitute a topic
+ * into (URL-encoded) — see NewsSync. A non-query-driven rss source
+ * fetches that exact `url` untouched, once per refresh, and its
+ * articles are filed under the synthetic topic id [id] itself.
+ *
+ * `capabilities` is the UI's ONLY way to know whether timeline/tone
+ * charts make sense for this source: no rss source in data/sources.json
+ * carries a tone/sentiment field (verified by hand — see that file's
+ * `_doc`), so every rss entry's capabilities list omits "timeline" and
+ * "tone" entirely rather than the app returning empty chart data that
+ * could be mistaken for "no signal this period".
+ */
+data class NewsSourceConfig(
+    val id: String,
+    val label: String,
+    val kind: String, // "gdelt" | "rss"
+    val url: String,
+    val queryDriven: Boolean,
+    val capabilities: List<String>,
+    val requiresMesh: Boolean,
+) {
+    val isGdelt: Boolean get() = kind == "gdelt"
+    val isRss: Boolean get() = kind == "rss"
+    val hasTone: Boolean get() = "tone" in capabilities
+    val hasTimeline: Boolean get() = "timeline" in capabilities
+}
+
+/**
+ * Decodes data/sources.json (baked into the APP module's
+ * BuildConfig.SOURCES_B64) into [NewsSourceConfig]s — same
+ * split-responsibility reasoning as [NewsTopicsConfig]: libs:news can't
+ * reach BuildConfig directly, so callers (NewsBridge) decode the
+ * Base64 and hand the raw JSON string here. Parsed results are cached
+ * per-process since the underlying data never changes without a
+ * rebuild.
+ */
+object NewsSourcesConfig {
+    /** The one source the rest of the app already assumes exists
+     *  (topics.json's `api.base`) — used both as the hardcoded
+     *  fallback default id and as the synthesized entry a totally
+     *  missing/malformed sources.json degrades to, so the app is never
+     *  left with zero usable sources. */
+    private const val FALLBACK_ID = "gdelt-self"
+
+    @Volatile
+    private var sourcesCache: List<NewsSourceConfig>? = null
+
+    @Volatile
+    private var defaultCache: String? = null
+
+    /** Keys beginning with "_doc" are comments and are ignored, same
+     *  convention as topics.json. Never throws: a malformed/missing
+     *  file degrades to a single synthetic gdelt-self entry rather
+     *  than an empty list. */
+    fun parseSources(json: String): List<NewsSourceConfig> {
+        sourcesCache?.let { return it }
+        val parsed = runCatching {
+            val root = JSONObject(json)
+            val arr: JSONArray = root.optJSONArray("sources") ?: JSONArray()
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val id = o.optString("id", "").trim()
+                if (id.isEmpty()) return@mapNotNull null
+                val capsArr = o.optJSONArray("capabilities") ?: JSONArray()
+                val caps = (0 until capsArr.length()).mapNotNull { j ->
+                    capsArr.optString(j, "").trim().takeIf { it.isNotEmpty() }
+                }
+                NewsSourceConfig(
+                    id = id,
+                    label = o.optString("label", id),
+                    kind = o.optString("kind", "rss"),
+                    url = o.optString("url", ""),
+                    queryDriven = o.optBoolean("query_driven", false),
+                    capabilities = caps,
+                    requiresMesh = o.optBoolean("requires_mesh", false),
+                )
+            }
+        }.getOrDefault(emptyList())
+        val result = parsed.ifEmpty {
+            listOf(
+                NewsSourceConfig(
+                    id = FALLBACK_ID,
+                    label = "GDELT (self-hosted)",
+                    kind = "gdelt",
+                    url = "",
+                    queryDriven = true,
+                    capabilities = listOf("articles", "timeline", "tone"),
+                    requiresMesh = true,
+                ),
+            )
+        }
+        sourcesCache = result
+        return result
+    }
+
+    /** Falls back to [FALLBACK_ID] if `default_source` is missing or
+     *  the file is malformed — never throws. */
+    fun parseDefaultSource(json: String): String {
+        defaultCache?.let { return it }
+        val result = runCatching {
+            JSONObject(json).optString("default_source", FALLBACK_ID).trim().ifEmpty { FALLBACK_ID }
+        }.getOrDefault(FALLBACK_ID)
+        defaultCache = result
         return result
     }
 }

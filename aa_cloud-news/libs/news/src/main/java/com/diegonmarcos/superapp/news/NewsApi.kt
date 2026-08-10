@@ -61,15 +61,51 @@ object NewsApi {
         }
     }
 
+    /**
+     * Fetches a raw RSS 2.0 / RSS 1.0(RDF) / Atom document from one of
+     * data/sources.json's `kind: "rss"` entries — see RssParser.kt for
+     * the parse side. Same plain HttpURLConnection/timeouts/User-Agent
+     * as [get] above, just a feed-flavored Accept header instead of
+     * `application/json`, and (unlike [articles]/[timeline]/[tone]/
+     * [topics]) talking straight to a third-party publisher instead of
+     * our own self-hosted proxy — see the PRIVACY note below.
+     *
+     * PRIVACY: switching the app's active source away from `gdelt-self`
+     * to e.g. Google News/BBC/DW/etc. means THIS request goes straight
+     * from the handset to that publisher's own server. That publisher
+     * now sees the user's IP address and, over repeated refreshes,
+     * which topics/feeds get requested and how often — a real
+     * reading-interest signal. The self-hosted GDELT proxy is the whole
+     * point of self-hosting: those requests never reach a third party
+     * at all. That is a genuine trade-off the user opts into the
+     * moment they call NewsBridge.setSource with a non-gdelt id, not a
+     * bug to "fix" here. This function does not make it any worse than
+     * necessary though: no tracking/analytics query params are added,
+     * no `Referer` header is sent (HttpURLConnection never sets one
+     * unless told to, and nothing here tells it to), and the
+     * User-Agent is the exact same plain [USER_AGENT] string used for
+     * the GDELT proxy — no extra fingerprinting surface beyond what an
+     * ordinary feed-reader request already exposes.
+     */
+    fun rss(urlStr: String): String =
+        get(urlStr, accept = "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5")
+
+    /** URL-encodes [s] for safe interpolation into a query string —
+     *  exposed (the GDELT endpoints above use the private [enc]
+     *  directly) so [NewsSync] can substitute a topic into a
+     *  query-driven rss source's `{query}` placeholder the exact same
+     *  way. */
+    fun encodeQuery(s: String): String = enc(s)
+
     private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
 
-    private fun get(urlStr: String): String {
+    private fun get(urlStr: String, accept: String = "application/json"): String {
         val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = READ_TIMEOUT_MS
             instanceFollowRedirects = true
-            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Accept", accept)
             setRequestProperty("User-Agent", USER_AGENT)
         }
         try {

@@ -1,0 +1,98 @@
+{
+  "_doc": "ARTICLE SOURCES — lets the user switch where article/timeline/tone data comes from: the self-hosted GDELT proxy (data/topics.json's `api.base`) or a well-known public RSS/Atom feed fetched directly from the handset. Adding a source is an entry HERE plus a rebuild — no Kotlin change, same pattern as data/topics.json. Baked into BuildConfig.SOURCES_B64 by app/build.gradle. Every url below was verified reachable and item-counted by hand before being added; none are placeholders or guesses — do not add a source without doing the same.",
+  "_doc_fields": "id: stable key, used as the persisted 'active source' value and (for non-query-driven rss sources) as the synthetic topic id its articles are filed under. label: shown in the UI source picker. kind: 'gdelt' (talks to api.base from topics.json, one query per topic) or 'rss' (parses an RSS2.0/RSS1.0(RDF)/Atom feed directly). url: rss only — the feed URL, with a literal '{query}' placeholder substituted (URL-encoded) for query_driven feeds. query_driven: true if the source takes a search term per topic (gdelt-self, google-news); false if it's one fixed feed regardless of topic (front page / section feeds) — those are fetched ONCE per refresh and filed under the synthetic topic id == source id, never once per topic. capabilities: subset of ['articles','timeline','tone'] this source can actually produce — no RSS source below carries a tone/sentiment field, so every rss entry lists only 'articles'; a UI must not offer timeline/tone charts for a source that doesn't declare that capability. requires_mesh: true only for gdelt-self, which needs the self-hosted proxy (public gateway or WireGuard mesh) to be reachable; every rss source is fetched straight from the public internet.",
+  "version": 1,
+  "default_source": "gdelt-self",
+  "sources": [
+    {
+      "id": "gdelt-self",
+      "label": "GDELT (self-hosted)",
+      "kind": "gdelt",
+      "url": "",
+      "query_driven": true,
+      "capabilities": ["articles", "timeline", "tone"],
+      "requires_mesh": true
+    },
+    {
+      "id": "google-news",
+      "label": "Google News (search)",
+      "kind": "rss",
+      "url": "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en",
+      "query_driven": true,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "google-top",
+      "label": "Google News (top stories)",
+      "kind": "rss",
+      "url": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "bbc-world",
+      "label": "BBC World",
+      "kind": "rss",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "dw-en",
+      "label": "DW (English)",
+      "kind": "rss",
+      "url": "https://rss.dw.com/rdf/rss-en-all",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "guardian-world",
+      "label": "The Guardian (World)",
+      "kind": "rss",
+      "url": "https://www.theguardian.com/world/rss",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "aljazeera",
+      "label": "Al Jazeera",
+      "kind": "rss",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "tagesschau",
+      "label": "Tagesschau",
+      "kind": "rss",
+      "url": "https://www.tagesschau.de/xml/rss2/",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "spiegel",
+      "label": "Der Spiegel",
+      "kind": "rss",
+      "url": "https://www.spiegel.de/schlagzeilen/index.rss",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    },
+    {
+      "id": "hackernews",
+      "label": "Hacker News",
+      "kind": "rss",
+      "url": "https://hnrss.org/frontpage",
+      "query_driven": false,
+      "capabilities": ["articles"],
+      "requires_mesh": false
+    }
+  ]
+}

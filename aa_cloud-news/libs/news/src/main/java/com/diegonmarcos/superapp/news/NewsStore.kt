@@ -17,6 +17,15 @@ import org.json.JSONObject
  * NewsSync AFTER a successful fetch — a failed refresh throws before
  * reaching them, so the previous cache is left untouched rather than
  * blanked. See NewsSync.kt.
+ *
+ * Every cache entry is keyed by (source, topic), not just topic — see
+ * [cacheKey]. `source` is a data/sources.json id (gdelt-self,
+ * google-news, bbc-world, ...); a non-query-driven rss source uses its
+ * own source id as its (single, synthetic) `topic` too. Namespacing by
+ * source is what lets [com.diegonmarcos.cloudnews.NewsBridge].setSource
+ * flip the active source without blowing away whatever was already
+ * cached for the source the user is switching AWAY from — switching
+ * back later finds that cache still warm.
  */
 object NewsStore {
     private const val PREFS = "news_cache"
@@ -24,7 +33,12 @@ object NewsStore {
     private const val TIMELINE_PREFIX = "timeline_"
     private const val TONE_PREFIX = "tone_"
     private const val LAST_FETCH_PREFIX = "last_fetch_"
-    private const val TOPIC_SUMMARIES_KEY = "topic_summaries"
+    private const val TOPIC_SUMMARIES_PREFIX = "topic_summaries_"
+
+    /** `::` can't appear in a source id (data/sources.json ids are
+     *  plain identifiers) or in a GDELT query-term topic in practice,
+     *  so it's a safe separator without needing to escape either half. */
+    private fun cacheKey(prefix: String, source: String, topic: String): String = "$prefix$source::$topic"
 
     // A single topic tops out at data/topics.json's max_articles (50 by
     // default), but a user-raised limit or a misbehaving proxy could
@@ -47,15 +61,15 @@ object NewsStore {
      *  enforced here; callers (NewsBridge) sort by `seendate` at read
      *  time since seendate is a zero-padded `yyyyMMdd'T'HHmmss'Z'`
      *  string and therefore already lexicographically sortable. */
-    fun replaceArticles(ctx: Context, topic: String, articles: List<GdeltArticle>) {
+    fun replaceArticles(ctx: Context, source: String, topic: String, articles: List<GdeltArticle>) {
         val capped = if (articles.size > MAX_ARTICLES_PER_TOPIC) articles.take(MAX_ARTICLES_PER_TOPIC) else articles
         val arr = JSONArray()
         for (a in capped) arr.put(a.toJson())
-        prefs(ctx).edit().putString(ARTICLES_PREFIX + topic, arr.toString()).apply()
+        prefs(ctx).edit().putString(cacheKey(ARTICLES_PREFIX, source, topic), arr.toString()).apply()
     }
 
-    fun articlesFor(ctx: Context, topic: String): List<GdeltArticle> {
-        val raw = prefs(ctx).getString(ARTICLES_PREFIX + topic, null) ?: return emptyList()
+    fun articlesFor(ctx: Context, source: String, topic: String): List<GdeltArticle> {
+        val raw = prefs(ctx).getString(cacheKey(ARTICLES_PREFIX, source, topic), null) ?: return emptyList()
         return runCatching {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i ->
@@ -64,39 +78,43 @@ object NewsStore {
         }.getOrDefault(emptyList())
     }
 
-    /** Union of cached articles across [topics], for the merged "all
-     *  enabled topics" feed. Dedupes by url (the same article can be
-     *  returned under more than one query term). */
-    fun articlesFor(ctx: Context, topics: List<String>): List<GdeltArticle> {
+    /** Union of cached articles across [topics] for one [source], for
+     *  the merged "all enabled topics" feed. Dedupes by url (the same
+     *  article can be returned under more than one query term). */
+    fun articlesFor(ctx: Context, source: String, topics: List<String>): List<GdeltArticle> {
         val seen = LinkedHashMap<String, GdeltArticle>()
         for (t in topics) {
-            for (a in articlesFor(ctx, t)) {
+            for (a in articlesFor(ctx, source, t)) {
                 if (a.url.isNotBlank()) seen.putIfAbsent(a.url, a)
             }
         }
         return seen.values.toList()
     }
 
-    fun clearTopic(ctx: Context, topic: String) {
+    fun clearTopic(ctx: Context, source: String, topic: String) {
         prefs(ctx).edit()
-            .remove(ARTICLES_PREFIX + topic)
-            .remove(TIMELINE_PREFIX + topic)
-            .remove(TONE_PREFIX + topic)
-            .remove(LAST_FETCH_PREFIX + topic)
+            .remove(cacheKey(ARTICLES_PREFIX, source, topic))
+            .remove(cacheKey(TIMELINE_PREFIX, source, topic))
+            .remove(cacheKey(TONE_PREFIX, source, topic))
+            .remove(cacheKey(LAST_FETCH_PREFIX, source, topic))
             .apply()
     }
 
     // ---- timeline -------------------------------------------------------
 
-    fun replaceTimeline(ctx: Context, topic: String, points: List<TimelinePoint>) {
+    fun replaceTimeline(ctx: Context, source: String, topic: String, points: List<TimelinePoint>) {
         val capped = if (points.size > MAX_TIMELINE_POINTS_PER_TOPIC) points.take(MAX_TIMELINE_POINTS_PER_TOPIC) else points
         val arr = JSONArray()
         for (p in capped) arr.put(p.toJson())
-        prefs(ctx).edit().putString(TIMELINE_PREFIX + topic, arr.toString()).apply()
+        prefs(ctx).edit().putString(cacheKey(TIMELINE_PREFIX, source, topic), arr.toString()).apply()
     }
 
-    fun timelineFor(ctx: Context, topic: String): List<TimelinePoint> {
-        val raw = prefs(ctx).getString(TIMELINE_PREFIX + topic, null) ?: return emptyList()
+    /** No rss source ever writes a timeline cache entry (there's no
+     *  endpoint for it) so this naturally returns empty for one — see
+     *  [com.diegonmarcos.cloudnews.NewsBridge].timeline's capability
+     *  gate for the UI-facing half of that contract. */
+    fun timelineFor(ctx: Context, source: String, topic: String): List<TimelinePoint> {
+        val raw = prefs(ctx).getString(cacheKey(TIMELINE_PREFIX, source, topic), null) ?: return emptyList()
         return runCatching {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i ->
@@ -107,15 +125,17 @@ object NewsStore {
 
     // ---- tone -----------------------------------------------------------
 
-    fun replaceTone(ctx: Context, topic: String, entries: List<ToneEntry>) {
+    fun replaceTone(ctx: Context, source: String, topic: String, entries: List<ToneEntry>) {
         val capped = if (entries.size > MAX_TONE_ENTRIES_PER_TOPIC) entries.take(MAX_TONE_ENTRIES_PER_TOPIC) else entries
         val arr = JSONArray()
         for (e in capped) arr.put(e.toJson())
-        prefs(ctx).edit().putString(TONE_PREFIX + topic, arr.toString()).apply()
+        prefs(ctx).edit().putString(cacheKey(TONE_PREFIX, source, topic), arr.toString()).apply()
     }
 
-    fun toneFor(ctx: Context, topic: String): List<ToneEntry> {
-        val raw = prefs(ctx).getString(TONE_PREFIX + topic, null) ?: return emptyList()
+    /** Same "never written for an rss source" reasoning as
+     *  [timelineFor]. */
+    fun toneFor(ctx: Context, source: String, topic: String): List<ToneEntry> {
+        val raw = prefs(ctx).getString(cacheKey(TONE_PREFIX, source, topic), null) ?: return emptyList()
         return runCatching {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i ->
@@ -126,14 +146,17 @@ object NewsStore {
 
     // ---- topic summaries (server-side /topics, cached wholesale) --------
 
-    fun replaceTopicSummaries(ctx: Context, summaries: List<TopicSummary>) {
+    fun replaceTopicSummaries(ctx: Context, source: String, summaries: List<TopicSummary>) {
         val arr = JSONArray()
         for (s in summaries) arr.put(s.toJson())
-        prefs(ctx).edit().putString(TOPIC_SUMMARIES_KEY, arr.toString()).apply()
+        prefs(ctx).edit().putString(TOPIC_SUMMARIES_PREFIX + source, arr.toString()).apply()
     }
 
-    fun topicSummaries(ctx: Context): List<TopicSummary> {
-        val raw = prefs(ctx).getString(TOPIC_SUMMARIES_KEY, null) ?: return emptyList()
+    /** Only ever populated for `kind: "gdelt"` sources (the only ones
+     *  with a server-side /topics summary endpoint) — an rss source's
+     *  key is simply never written, so this returns empty for one. */
+    fun topicSummaries(ctx: Context, source: String): List<TopicSummary> {
+        val raw = prefs(ctx).getString(TOPIC_SUMMARIES_PREFIX + source, null) ?: return emptyList()
         return runCatching {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i ->
@@ -144,11 +167,11 @@ object NewsStore {
 
     // ---- last-fetch bookkeeping ------------------------------------------
 
-    fun lastFetch(ctx: Context, topic: String): Long =
-        prefs(ctx).getLong(LAST_FETCH_PREFIX + topic, 0L)
+    fun lastFetch(ctx: Context, source: String, topic: String): Long =
+        prefs(ctx).getLong(cacheKey(LAST_FETCH_PREFIX, source, topic), 0L)
 
-    fun setLastFetch(ctx: Context, topic: String, millis: Long) {
-        prefs(ctx).edit().putLong(LAST_FETCH_PREFIX + topic, millis).apply()
+    fun setLastFetch(ctx: Context, source: String, topic: String, millis: Long) {
+        prefs(ctx).edit().putLong(cacheKey(LAST_FETCH_PREFIX, source, topic), millis).apply()
     }
 }
 
@@ -334,5 +357,30 @@ object NewsConfigStore {
         if (refreshSeconds != null) editor.putInt(KEY_REFRESH_SECONDS, refreshSeconds)
         if (maxArticles != null) editor.putInt(KEY_MAX_ARTICLES, maxArticles)
         editor.apply()
+    }
+}
+
+/**
+ * Persists which entry from data/sources.json (BuildConfig.SOURCES_B64,
+ * decoded by NewsBridge — same split as [NewsConfigStore]) the user has
+ * picked as the active article source: the self-hosted GDELT proxy, or
+ * one of the public RSS feeds. Its own prefs file, same reasoning as
+ * [NewsConfigStore]: this is one string, not credentials, so plain
+ * SharedPreferences is enough. Defaults to data/sources.json's own
+ * `default_source` (normally "gdelt-self") until the user explicitly
+ * calls [setActive] — see NewsBridge.setSource.
+ */
+object SourceStore {
+    private const val PREFS = "news_source"
+    private const val KEY_ACTIVE = "active_source"
+
+    private fun prefs(ctx: Context) =
+        ctx.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun active(ctx: Context, defaultId: String): String =
+        prefs(ctx).getString(KEY_ACTIVE, null)?.takeIf { it.isNotBlank() } ?: defaultId
+
+    fun setActive(ctx: Context, id: String) {
+        prefs(ctx).edit().putString(KEY_ACTIVE, id).apply()
     }
 }

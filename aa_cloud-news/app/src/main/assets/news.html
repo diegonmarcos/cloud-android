@@ -3,26 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <title>News</title>
+    <!-- Applies the persisted theme (default: dark) to <html data-theme> BEFORE
+         first paint, and before vendor/tailwind.js's stylesheet even loads.
+         Must stay a blocking inline script at the top of <head> — moving it
+         after tailwind.js or to DOMContentLoaded reintroduces the light-flash
+         this exists to prevent. See ThemeState in the main script for the
+         live-updating counterpart (system-mode matchMedia listener, the
+         Configs switcher). -->
+    <script>
+    (function () {
+        var mode = 'dark';
+        try {
+            var v = localStorage.getItem('cn.theme');
+            if (v === 'dark' || v === 'light' || v === 'system') mode = v;
+        } catch (e) { /* localStorage unavailable under file:// on some WebViews */ }
+        var resolved = mode;
+        if (mode === 'system') {
+            try { resolved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+            catch (e) { resolved = 'dark'; }
+        }
+        document.documentElement.setAttribute('data-theme', resolved);
+    })();
+    </script>
     <script src="vendor/tailwind.js"></script>
     <style>
+        /* =================================================================
+           Theme tokens — one source of truth, switched by [data-theme] on
+           <html> (set pre-paint by the inline head script, kept live by
+           ThemeState in the main script). Bare :root is the zero-config
+           fallback and intentionally equals dark, since dark is the app
+           default; [data-theme="light"] overrides every token. Nothing
+           below should ever hardcode a color that appears more than once —
+           add a token instead. Contrast ratios (WCAG relative-luminance
+           formula) are recorded next to the pairs that were hand-tuned to
+           clear 4.5:1; see toneChip() in the script for the chip palettes,
+           which follow the same rule per theme.
+           ================================================================= */
         :root {
             --sat: env(safe-area-inset-top, 0px);
             --sab: env(safe-area-inset-bottom, 0px);
             --sal: env(safe-area-inset-left, 0px);
             --sar: env(safe-area-inset-right, 0px);
+
+            /* ---- dark (default) ---- */
+            --bg: #101214;
+            --surface: #1A1C1F;
+            --surface-strong: #24272B;
+            --border: #2E3236;
+            --text: #F2F3F4;              /* 16.90:1 on --bg */
+            --text-secondary: #B8BCC0;    /* 9.83:1 on --bg, 8.94:1 on --surface */
+            --text-muted: #8B9096;        /* 5.84:1 on --bg, 5.31:1 on --surface */
+            --icon-faint: #4A4E53;
+            --fill: #F2F3F4;              /* strong-contrast "selected" fill */
+            --fill-text: #101214;         /* 16.90:1 on --fill */
+            --nav-bg: rgba(16, 18, 20, 0.9);
+            --thumb-bg: #24272B;
+            --shadow: 0 1px 2px rgba(0,0,0,.5);
+
+            --demo-bg: #332905;
+            --demo-border: #5C4A12;
+            --demo-text: #F2C94C;         /* 9.06:1 on --demo-bg */
+            --demo-dot: #F2C94C;
+            --demo-btn-bg: #F2C94C;
+            --demo-btn-text: #332905;     /* 9.06:1 on --demo-btn-bg */
+
+            --error-bg: #3A1414;
+            --error-border: #5C2020;
+            --error-text: #FF9B8A;        /* 7.99:1 on --error-bg */
+            --success-text: #6FCF7A;      /* 9.73:1 on --bg */
+            --remove-text: #FF8A63;       /* 6.48:1 on --surface-strong */
+        }
+
+        :root[data-theme="light"] {
+            --bg: #FFFFFF;
+            --surface: #FAFAFA;
+            --surface-strong: #F3F4F6;
+            --border: #EFEFEF;
+            --text: #111111;              /* 18.88:1 on --bg */
+            --text-secondary: #55585C;    /* 7.15:1 on --bg, 6.85:1 on --surface */
+            --text-muted: #6E7175;        /* 4.90:1 on --bg, 4.56:1 on --surface */
+            --icon-faint: #CBCBCB;
+            --fill: #1C1C1C;
+            --fill-text: #FFFFFF;         /* 17.04:1 on --fill */
+            --nav-bg: rgba(255, 255, 255, 0.94);
+            --thumb-bg: #F0F0F0;
+            --shadow: 0 1px 2px rgba(0,0,0,.25);
+
+            --demo-bg: #FFF6DD;
+            --demo-border: #F0DA9E;
+            --demo-text: #7A5B00;         /* 5.86:1 on --demo-bg */
+            --demo-dot: #C99A1E;
+            --demo-btn-bg: #7A5B00;
+            --demo-btn-text: #FFF6DD;     /* 5.86:1 on --demo-btn-bg */
+
+            --error-bg: #FEF2F2;
+            --error-border: #FCD9D9;
+            --error-text: #AA3333;        /* 5.94:1 on --error-bg */
+            --success-text: #2E7D32;      /* 5.13:1 on --bg */
+            --remove-text: #B0523A;       /* 4.64:1 on --surface-strong */
         }
 
         html, body {
             margin: 0;
             padding: 0;
-            background: #ffffff;
+            background: var(--bg);
             height: 100%;
         }
 
         body {
             font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            color: #111;
+            color: var(--text);
+            background: var(--bg);
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: none;
         }
@@ -35,7 +128,7 @@
             width: 100%;
             min-height: 100vh;
             min-height: 100dvh;
-            background: #ffffff;
+            background: var(--bg);
             position: relative;
             display: flex;
             flex-direction: column;
@@ -57,7 +150,7 @@
             position: sticky;
             top: 0;
             z-index: 20;
-            background: #ffffff;
+            background: var(--bg);
             padding-top: calc(var(--sat) + 18px);
             padding-bottom: 12px;
             padding-left: 24px;
@@ -75,76 +168,97 @@
             display: flex;
             justify-content: space-around;
             align-items: stretch;
-            background: rgba(255,255,255,0.94);
+            background: var(--nav-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-top: 1px solid #F0F0F0;
+            border-top: 1px solid var(--border);
             padding-top: 8px;
             padding-bottom: calc(var(--sab) + 8px);
             z-index: 40;
         }
         .nav-item {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 3px; color: #B0B0B0; background: none; border: none; font-size: 10px;
+            gap: 3px; color: var(--text-muted); background: none; border: none; font-size: 10px;
             font-weight: 500; padding: 4px 6px; flex: 1; font-family: inherit;
         }
         .nav-item svg { width: 22px; height: 22px; }
-        .nav-item.active { color: #1C1C1C; }
-        .nav-item.active svg { color: #1C1C1C; }
+        .nav-item.active { color: var(--text); }
+        .nav-item.active svg { color: var(--text); }
 
         /* ---- shared building blocks ---- */
-        .seg { display: inline-flex; background: #F3F4F6; border-radius: 999px; padding: 3px; gap: 2px; }
+        .seg { display: inline-flex; background: var(--surface-strong); border-radius: 999px; padding: 3px; gap: 2px; }
         .seg button {
             border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 600;
-            padding: 6px 14px; border-radius: 999px; color: #8A8A8A; white-space: nowrap;
+            padding: 6px 14px; border-radius: 999px; color: var(--text-secondary); white-space: nowrap;
         }
-        .seg button.active { background: #1C1C1C; color: #fff; }
+        .seg button.active { background: var(--fill); color: var(--fill-text); }
 
         .pill-scroll { display: flex; overflow-x: auto; gap: 8px; }
         .pill {
-            padding: 6px 16px; border-radius: 999px; border: 1px solid #EFEFEF; font-size: 13px;
-            font-weight: 500; color: #444; white-space: nowrap; background: #fff; font-family: inherit;
+            padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px;
+            font-weight: 500; color: var(--text-secondary); white-space: nowrap; background: var(--bg); font-family: inherit;
         }
-        .pill.active { background: #1C1C1C; color: #fff; border-color: #1C1C1C; }
+        .pill.active { background: var(--fill); color: var(--fill-text); border-color: var(--fill); }
 
         .switch { position: relative; display: inline-block; width: 40px; height: 24px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
         .switch .slider {
-            position: absolute; inset: 0; background: #E5E5E5; transition: .15s; border-radius: 999px; cursor: pointer;
+            position: absolute; inset: 0; background: var(--surface-strong); transition: .15s; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border);
         }
         .switch .slider:before {
-            content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
-            background: #fff; transition: .15s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+            content: ""; position: absolute; height: 18px; width: 18px; left: 2px; top: 2px;
+            background: var(--bg); transition: .15s; border-radius: 50%; box-shadow: var(--shadow);
         }
         .switch input:checked + .slider:before { transform: translateX(16px); }
-        .switch input:checked + .slider { background: #1C1C1C; }
+        .switch input:checked + .slider { background: var(--fill); border-color: var(--fill); }
 
-        .field-label { font-size: 11px; font-weight: 600; color: #9A9A9A; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; display: block; }
+        .field-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; display: block; }
         .field-input {
-            width: 100%; box-sizing: border-box; border: 1px solid #ECECEC; border-radius: 12px; padding: 10px 12px;
-            font-size: 14px; font-family: inherit; background: #FAFAFA; color: #111;
+            width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+            font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text);
         }
-        .field-input:focus { outline: none; border-color: #B0B0B0; background: #fff; }
+        .field-input:focus { outline: none; border-color: var(--text-muted); background: var(--bg); }
 
-        .btn-dark { background: #1C1C1C; color: #fff; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
-        .btn-light { background: #F3F4F6; color: #1C1C1C; border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
+        .btn-dark { background: var(--fill); color: var(--fill-text); border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
+        .btn-light { background: var(--surface-strong); color: var(--text); border: none; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; font-family: inherit; }
 
-        .error-banner { background: #FEF2F2; border: 1px solid #FCD9D9; color: #A33; border-radius: 12px; padding: 12px 14px; font-size: 13px; }
-        .empty-state { text-align: center; color: #B0B0B0; font-size: 13.5px; padding: 40px 20px; }
+        .error-banner { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+        .empty-state { text-align: center; color: var(--text-muted); font-size: 13.5px; padding: 40px 20px; }
 
         /* ---- demo-data honesty banner ---- */
         .demo-banner {
             display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-            background: #FFF6DD; border-bottom: 1px solid #F0DA9E; color: #7A5B00;
+            background: var(--demo-bg); border-bottom: 1px solid var(--demo-border); color: var(--demo-text);
             font-size: 12.5px; font-weight: 500; padding: 9px 16px;
             padding-left: calc(16px + var(--sal)); padding-right: calc(16px + var(--sar));
         }
         .demo-banner.hidden { display: none; }
         .demo-banner button {
-            border: none; background: #7A5B00; color: #FFF6DD; font-family: inherit;
+            border: none; background: var(--demo-btn-bg); color: var(--demo-btn-text); font-family: inherit;
             font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 4px 12px; flex-shrink: 0;
         }
-        .demo-banner span.dot { width: 6px; height: 6px; border-radius: 50%; background: #C99A1E; flex-shrink: 0; }
+        .demo-banner span.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--demo-dot); flex-shrink: 0; }
+
+        /* ---- source chip (Feed header) ---- */
+        .source-chip {
+            display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+            background: var(--surface); color: var(--text-secondary); border-radius: 999px;
+            padding: 5px 12px 5px 10px; font-size: 12px; font-weight: 600; font-family: inherit; margin-top: 10px;
+        }
+        .source-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success-text); flex-shrink: 0; }
+        .source-chip .kind { color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; font-size: 10px; }
+
+        /* ---- source picker (Configs) ---- */
+        .source-row {
+            display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border);
+            background: none; border-left: none; border-right: none; border-top: none; width: 100%; text-align: left;
+            font-family: inherit; cursor: pointer;
+        }
+        .source-row-label { font-size: 14px; font-weight: 600; color: var(--text); }
+        .source-row-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+        .source-row-check { width: 18px; height: 18px; flex-shrink: 0; color: var(--success-text); }
+        .privacy-note { font-size: 11.5px; color: var(--text-muted); margin-top: 10px; line-height: 1.4; }
 
         /* ---- tone chip: colourblind-safe orange/red (negative) <-> blue/teal
            (positive), never colour alone — the numeric value is always shown
@@ -156,31 +270,33 @@
         }
 
         /* ---- article rows (Feed / Saved) ---- */
-        .article-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; }
-        .article-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #F0F0F0; }
+        .article-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .article-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--thumb-bg); }
         .article-body { flex: 1; min-width: 0; cursor: pointer; }
-        .article-domain { font-size: 11px; color: #B0B0B0; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
-        .article-title { font-size: 14px; font-weight: 600; color: #111; margin-top: 2px; line-height: 1.35; }
+        .article-domain { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+        .article-title { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 2px; line-height: 1.35; }
         .article-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-        .article-time { font-size: 11.5px; color: #B0B0B0; }
-        .bookmark-btn { border: none; background: none; padding: 4px; flex-shrink: 0; color: #D0D0D0; align-self: flex-start; }
-        .bookmark-btn.active { color: #1C1C1C; }
+        .article-time { font-size: 11.5px; color: var(--text-muted); }
+        .bookmark-btn { border: none; background: none; padding: 4px; flex-shrink: 0; color: var(--icon-faint); align-self: flex-start; }
+        .bookmark-btn.active { color: var(--text); }
         .bookmark-btn svg { width: 19px; height: 19px; display: block; }
 
         /* ---- Topics tab ---- */
-        .topic-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid #F5F5F5; }
-        .topic-row-label { font-size: 14px; font-weight: 600; }
-        .topic-row-meta { font-size: 12px; color: #9A9A9A; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
-        .topic-remove-btn { border: none; background: #F3F4F6; color: #B0523A; width: 26px; height: 26px; border-radius: 50%; font-size: 16px; line-height: 1; flex-shrink: 0; font-family: inherit; }
+        .topic-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+        .topic-row-label { font-size: 14px; font-weight: 600; color: var(--text); }
+        .topic-row-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+        .topic-remove-btn { border: none; background: var(--surface-strong); color: var(--remove-text); width: 26px; height: 26px; border-radius: 50%; font-size: 16px; line-height: 1; flex-shrink: 0; font-family: inherit; }
 
         /* ---- Trends tab: hand-drawn sparkline, no chart library ---- */
         .sparkline-svg { width: 100%; height: 150px; display: block; }
-        .sparkline-legend { display: flex; justify-content: space-between; font-size: 11px; color: #B0B0B0; margin-top: 4px; }
+        .sparkline-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
         .tone-dist-col { margin-bottom: 18px; }
-        .tone-dist-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9A9A9A; margin-bottom: 8px; }
-        .tone-dist-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #F5F5F5; cursor: pointer; }
-        .tone-dist-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .tone-dist-domain { font-size: 11px; color: #B0B0B0; flex-shrink: 0; }
+        .tone-dist-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin-bottom: 8px; }
+        .tone-dist-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .tone-dist-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tone-dist-domain { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+        .trends-unavailable { text-align: center; padding: 60px 24px; color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
+        .trends-unavailable strong { display: block; color: var(--text); font-size: 15px; font-weight: 600; margin-bottom: 8px; }
     </style>
 </head>
 <body class="antialiased">
@@ -193,6 +309,7 @@
             <section id="tab-feed" class="tab-panel">
                 <header class="panel-header">
                     <h1 class="text-xl font-medium">News</h1>
+                    <div id="feed-source-chip"></div>
                 </header>
                 <div id="feed-error-mount" class="px-6"></div>
                 <div class="pill-scroll hide-scrollbar px-6" id="feed-topic-pills"></div>
@@ -207,7 +324,7 @@
                 <div id="topics-error-mount" class="px-6"></div>
 
                 <div class="px-6 mt-2">
-                    <div class="rounded-2xl border border-gray-100 p-4 space-y-3" style="background:#FAFAFA;">
+                    <div class="rounded-2xl p-4 space-y-3" style="background:var(--surface); border:1px solid var(--border);">
                         <div>
                             <label class="field-label">Label</label>
                             <input type="text" id="topics-add-label" class="field-input" placeholder="e.g. Space">
@@ -231,16 +348,19 @@
                     <h1 class="text-xl font-medium">Trends</h1>
                 </header>
                 <div id="trends-error-mount" class="px-6"></div>
-                <div class="pill-scroll hide-scrollbar px-6" id="trends-topic-pills"></div>
+                <div id="trends-unavailable-mount" class="px-6"></div>
+                <div id="trends-content">
+                    <div class="pill-scroll hide-scrollbar px-6" id="trends-topic-pills"></div>
 
-                <div class="px-6 mt-5">
-                    <div class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase mb-2">Tone over time</div>
-                    <div id="trends-sparkline"></div>
-                </div>
+                    <div class="px-6 mt-5">
+                        <div class="text-[11px] font-semibold tracking-widest uppercase mb-2" style="color:var(--text-secondary);">Tone over time</div>
+                        <div id="trends-sparkline"></div>
+                    </div>
 
-                <div class="px-6 mt-7 panel-scroll-pad">
-                    <div class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase mb-3">Tone distribution</div>
-                    <div id="trends-tone-dist"></div>
+                    <div class="px-6 mt-7 panel-scroll-pad">
+                        <div class="text-[11px] font-semibold tracking-widest uppercase mb-3" style="color:var(--text-secondary);">Tone distribution</div>
+                        <div id="trends-tone-dist"></div>
+                    </div>
                 </div>
             </section>
 
@@ -262,18 +382,35 @@
                 <div class="px-6 panel-scroll-pad space-y-8">
 
                     <div>
-                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Demo data</span>
-                        <p class="text-[11.5px] text-gray-400 mt-1 mb-3">Auto shows demo data only while your real topics/articles are empty, and switches itself to real data the moment any land. On always shows demo; Off never does (even if that means empty lists). Demo headlines are fabricated and deliberately generic — never real reporting.</p>
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Appearance</span>
+                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Dark is the default. System follows your device's light/dark setting and updates live.</p>
+                        <div class="seg" id="theme-toggle">
+                            <button data-theme-mode="dark">Dark</button>
+                            <button data-theme-mode="light">Light</button>
+                            <button data-theme-mode="system">System</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Source</span>
+                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Pick where articles come from. Only the self-hosted GDELT source provides tone/sentiment and timeline data — public RSS feeds carry headlines only.</p>
+                        <div id="source-list"></div>
+                        <p class="privacy-note">Reading from a publisher's own feed (Google, BBC, etc.) means that publisher sees your device's IP address and the fact that you're interested in that feed — the self-hosted GDELT source does not have this effect.</p>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Demo data</span>
+                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Auto shows demo data only while your real topics/articles are empty, and switches itself to real data the moment any land. On always shows demo; Off never does (even if that means empty lists). Demo headlines are fabricated and deliberately generic — never real reporting.</p>
                         <div class="seg" id="demo-mode-toggle">
                             <button data-mode="auto" class="active">Auto</button>
                             <button data-mode="on">On</button>
                             <button data-mode="off">Off</button>
                         </div>
-                        <div id="demo-mode-status" class="text-[12.5px] text-gray-500 mt-2"></div>
+                        <div id="demo-mode-status" class="text-[12.5px] mt-2" style="color:var(--text-secondary);"></div>
                     </div>
 
                     <div>
-                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">API</span>
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">API</span>
                         <div class="mt-3 space-y-3">
                             <div>
                                 <label class="field-label">Base URL</label>
@@ -297,7 +434,7 @@
                     </div>
 
                     <div>
-                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Refresh</span>
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Refresh</span>
                         <div class="mt-3 flex gap-2">
                             <button id="cfg-refresh-now-btn" class="btn-dark">Refresh now</button>
                         </div>
@@ -305,11 +442,11 @@
                     </div>
 
                     <div>
-                        <span class="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">Images</span>
+                        <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Images</span>
                         <!-- Privacy: socialimage points at arbitrary publisher domains. Loading
                              it leaks the reader's IP to every outlet in the feed and breaks
                              offline use, so images stay OFF until explicitly enabled here. -->
-                        <p class="text-[11.5px] text-gray-400 mt-1 mb-3">Off by default: article thumbnails load from arbitrary publisher domains, which leaks your IP to every outlet and breaks offline use. Turn on to load them lazily (each degrades gracefully on failure).</p>
+                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Off by default: article thumbnails load from arbitrary publisher domains, which leaks your IP to every outlet and breaks offline use. Turn on to load them lazily (each degrades gracefully on failure).</p>
                         <div class="flex items-center justify-between">
                             <span class="text-[13.5px] font-medium">Show article images</span>
                             <label class="switch"><input type="checkbox" id="cfg-images-toggle"><span class="slider"></span></label>
@@ -361,6 +498,96 @@ function esc(str) {
         .replace(/'/g, '&#39;');
 }
 
+/* =====================================================================
+   Theme ("cn.theme") — three persisted states, dark is the DEFAULT:
+     "dark"   — always dark.
+     "light"  — always light.
+     "system" — follows the device's prefers-color-scheme, live (see the
+                matchMedia listener in initTheme() below).
+   The actual paint-time switch is CSS custom properties on :root via the
+   [data-theme] attribute (see the token block at the top of <style>) — this
+   module only ever writes that attribute plus the localStorage key. The
+   pre-paint half of this lives in the inline <head> script (identical
+   resolve logic, duplicated on purpose so it can run synchronously before
+   the stylesheet/DOM exist); this half keeps it live after load and drives
+   the Configs switcher. Tone chips and the Trends sparkline read the
+   resolved theme directly (currentTheme()) since their colours are inline
+   styles, not CSS-var-driven. */
+var THEME_KEY = 'cn.theme';
+var ThemeState = { mode: 'dark' };
+
+function loadThemeMode() {
+    try {
+        var v = localStorage.getItem(THEME_KEY);
+        if (v === 'dark' || v === 'light' || v === 'system') return v;
+    } catch (e) { /* ignore */ }
+    return 'dark';
+}
+
+function resolveTheme(mode) {
+    if (mode === 'system') {
+        try { return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+        catch (e) { return 'dark'; }
+    }
+    return mode;
+}
+
+/* Currently PAINTED theme ('dark' | 'light') — what chip/sparkline colour
+   code should key off, regardless of which of the three modes chose it. */
+function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+}
+
+function applyTheme(mode) {
+    document.documentElement.setAttribute('data-theme', resolveTheme(mode));
+}
+
+function setThemeMode(mode) {
+    ThemeState.mode = mode;
+    try { localStorage.setItem(THEME_KEY, mode); } catch (e) { /* ignore */ }
+    applyTheme(mode);
+    renderThemeConfig();
+    refreshThemedViews();
+}
+
+function renderThemeConfig() {
+    var toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+    toggle.querySelectorAll('button[data-theme-mode]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.themeMode === ThemeState.mode);
+    });
+}
+
+/* Anything whose colours are computed in JS (tone chips, the sparkline
+   stroke/fill) rather than pure CSS needs an explicit re-render when the
+   painted theme changes; everything else repaints for free via the
+   [data-theme] CSS variables. */
+function refreshThemedViews() {
+    renderFeedList();
+    renderSavedList();
+    if (loadedTabs.topics) renderTopicsList();
+    if (loadedTabs.trends && trendsAvailable()) { renderSparkline(); renderToneDistribution(); }
+}
+
+function initTheme() {
+    ThemeState.mode = loadThemeMode();
+    applyTheme(ThemeState.mode);
+    document.getElementById('theme-toggle').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-theme-mode]');
+        if (!btn) return;
+        setThemeMode(btn.dataset.themeMode);
+    });
+    renderThemeConfig();
+    // Live system-theme updates: only acts while mode === 'system', but the
+    // listener stays attached the whole session so switching into 'system'
+    // later doesn't need to re-register anything.
+    try {
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () {
+            if (ThemeState.mode === 'system') { applyTheme('system'); refreshThemedViews(); }
+        });
+    } catch (e) { /* matchMedia listeners unavailable — system mode just won't live-update */ }
+}
+
 /* GDELT dates arrive as compact UTC strings ("20260810T113000Z" or
    "20260810113000"); lastFetch/epoch fields arrive as millis-since-epoch
    strings (see the bridge contract note: "Epoch-millis cross as strings").
@@ -403,16 +630,40 @@ function relTime(ms) {
    for neutral, blue/teal for positive — deliberately NOT pure red/green so
    the distinction reads for colourblind users too. The numeric value is
    always rendered alongside the colour (see toneChipHtml), never colour
-   alone. */
+   alone. Two full palettes, chosen per-theme by currentTheme() — the light
+   set was re-picked (not just carried over) because the original greys
+   (#707070-family) undershot 4.5:1 on white; every fg/bg pair below clears
+   4.5:1 (see the ratio noted on each line; computed via the standard WCAG
+   relative-luminance formula). */
+/* Index order matches the if/else ladder in toneChip() below: [0]=strong
+   negative, [1]=mild negative, [2]=neutral, [3]=mild positive, [4]=strong
+   positive. */
+var TONE_PALETTES = {
+    light: [
+        { bg: '#FBE4DA', fg: '#9E4A19', bd: '#F0C4AD' },  // strong negative — 4.99:1
+        { bg: '#FDEEE3', fg: '#A8501C', bd: '#F5D9BF' },  // mild negative   — 4.84:1
+        { bg: '#F1F1F1', fg: '#666666', bd: '#E2E2E2' },  // neutral         — 5.08:1
+        { bg: '#E1F2F1', fg: '#0C6E67', bd: '#BFE3E0' },  // mild positive   — 5.28:1
+        { bg: '#DCEBFA', fg: '#0B5E9C', bd: '#BBD8F2' }   // strong positive — 5.59:1
+    ],
+    dark: [
+        { bg: '#472313', fg: '#FF9B5C', bd: '#6B3423' },  // strong negative — 6.65:1
+        { bg: '#3A2419', fg: '#F4B27E', bd: '#5A3826' },  // mild negative   — 7.96:1
+        { bg: '#26282B', fg: '#C7CACD', bd: '#3C3F44' },  // neutral         — 8.98:1
+        { bg: '#123330', fg: '#6FE0D2', bd: '#234945' },  // mild positive   — 8.61:1
+        { bg: '#10283F', fg: '#7FC0FF', bd: '#1F3B57' }   // strong positive — 7.79:1
+    ]
+};
 function toneChip(tone) {
     var n = Number(tone);
     if (isNaN(n)) n = 0;
+    var t = TONE_PALETTES[currentTheme()] || TONE_PALETTES.dark;
     var c;
-    if (n <= -3.5) c = { bg: '#FBE4DA', fg: '#B3421A', bd: '#F0C4AD' };      // strong negative
-    else if (n <= -1) c = { bg: '#FDEEE3', fg: '#C46A2E', bd: '#F5D9BF' };  // mild negative
-    else if (n < 1) c = { bg: '#F1F1F1', fg: '#707070', bd: '#E2E2E2' };    // neutral
-    else if (n < 3.5) c = { bg: '#E1F2F1', fg: '#0E7A72', bd: '#BFE3E0' };  // mild positive
-    else c = { bg: '#DCEBFA', fg: '#0B5E9C', bd: '#BBD8F2' };               // strong positive
+    if (n <= -3.5) c = t[0];
+    else if (n <= -1) c = t[1];
+    else if (n < 1) c = t[2];
+    else if (n < 3.5) c = t[3];
+    else c = t[4];
     var label = (n >= 0 ? '+' : '') + n.toFixed(1);
     return { style: c, label: label };
 }
@@ -557,6 +808,13 @@ function callBridge(method, args) {
    people or events — so fabricated mock news can never read as real
    reporting. Demo writes (toggles, saves, added topics) stay in memory
    only; nothing here ever touches localStorage.
+
+   Also mocks sources()/activeSource()/setSource() against the same 10-entry
+   seed as the real bridge (1 gdelt-self + 9 rss), with topics/timeline/tone
+   branching on the active mock source's capabilities exactly like the real
+   app would — switching to any rss source in demo mode is the cheapest way
+   to see the capability-degradation logic (dropped tone chips, Trends'
+   empty state, the collapsed Feed pill row) without a device.
    ===================================================================== */
 var MOCK = (function () {
     var TOPIC_META = [
@@ -749,17 +1007,67 @@ var MOCK = (function () {
     var mockRefresh = { running: false, ok: TOPIC_META.length, failed: 0, messages: [], lastFetch: String(Date.now() - 15 * 60000) };
     var mockConfig = { base: 'https://api.diegonmarcos.com/news', refreshSeconds: 60, maxArticles: 50 };
 
+    /* ---- Sources — mirrors data/sources.json (via the real
+       NewsBridge.sources() seed) exactly: same ids/labels/kind/
+       queryDriven/capabilities/requiresMesh, so demo mode proves the
+       capability degradation logic without a device. gdelt-self is the
+       only entry with "timeline"/"tone", so switching to any rss entry in
+       demo mode must visibly drop tone chips and flip Trends to its empty
+       state, exactly as it would against the real bridge. Note google-news
+       IS query-driven (it's Google's search-RSS endpoint, one query per
+       topic) even though it's rss — capabilities, not kind, is what gates
+       tone/timeline, and queryDriven is independent of both. ---- */
+    var SOURCES_META = [
+        { id: 'gdelt-self', label: 'GDELT (self-hosted)', kind: 'gdelt', queryDriven: true, capabilities: ['articles', 'timeline', 'tone'], requiresMesh: true },
+        { id: 'google-news', label: 'Google News (search)', kind: 'rss', queryDriven: true, capabilities: ['articles'], requiresMesh: false },
+        { id: 'google-top', label: 'Google News (top stories)', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'bbc-world', label: 'BBC World', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'dw-en', label: 'DW (English)', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'guardian-world', label: 'The Guardian (World)', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'aljazeera', label: 'Al Jazeera', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'tagesschau', label: 'Tagesschau', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'spiegel', label: 'Der Spiegel', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false },
+        { id: 'hackernews', label: 'Hacker News', kind: 'rss', queryDriven: false, capabilities: ['articles'], requiresMesh: false }
+    ];
+    var mockActiveSourceId = 'gdelt-self';
+    function activeSourceMeta() {
+        return SOURCES_META.find(function (s) { return s.id === mockActiveSourceId; }) || SOURCES_META[0];
+    }
+    function mockHasCap(cap) { return activeSourceMeta().capabilities.indexOf(cap) !== -1; }
+
     return {
-        topics: function () { return mockTopicsMeta.map(computeTopicSummary); },
+        sources: function () { return JSON.parse(JSON.stringify(SOURCES_META)); },
+        activeSource: function () { return { id: mockActiveSourceId }; },
+        setSource: function (id) {
+            if (!SOURCES_META.some(function (s) { return s.id === id; })) return { ok: false, error: 'unknown source id' };
+            mockActiveSourceId = id;
+            return { ok: true, error: '' };
+        },
+
+        topics: function () {
+            if (!activeSourceMeta().queryDriven) {
+                // Non-query-driven sources (every seeded rss entry) are a
+                // single feed, not a set of GDELT queries — one synthetic
+                // topic (topic id == source id, matching the real bridge's
+                // effectiveTopicsForSource()) stands in for "the whole
+                // feed" so Feed/Trends can reuse the same topics() shape
+                // without a source-id special case.
+                var src = activeSourceMeta();
+                return [{ topic: src.id, label: src.label, articleCount: mockArticlesData.length, avgTone: 0, lastFetch: String(Date.now() - 5 * 60000), enabled: true }];
+            }
+            return mockTopicsMeta.map(computeTopicSummary);
+        },
 
         articles: function (topic, limit) {
             var lim = parseInt(limit, 10); if (!lim || lim <= 0) lim = 50;
-            var list = !topic ? mockArticlesData.slice() : mockArticlesData.filter(function (a) { return a._topic === topic; });
+            var qd = activeSourceMeta().queryDriven;
+            var list = (!qd || !topic) ? mockArticlesData.slice() : mockArticlesData.filter(function (a) { return a._topic === topic; });
             list = list.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
             return list.slice(0, lim).map(publicArticle);
         },
 
         timeline: function (topic) {
+            if (!mockHasCap('timeline')) return []; // rss sources carry no timeline data
             var seed = seedFromTopic(topic);
             var now = Date.now();
             var points = [];
@@ -775,6 +1083,7 @@ var MOCK = (function () {
         },
 
         tone: function (topic) {
+            if (!mockHasCap('tone')) return []; // rss sources carry no tone/sentiment data
             var list = !topic ? mockArticlesData.slice() : mockArticlesData.filter(function (a) { return a._topic === topic; });
             return list.map(function (a) { return { url: a.url, title: a.title, tone: a.tone, domain: a.domain }; });
         },
@@ -856,6 +1165,21 @@ var MOCK = (function () {
    this line should touch window.NewsBridge directly.
    ===================================================================== */
 var Api = {
+    sources: function () {
+        var r = callBridge('sources');
+        if (r.mock) return MOCK.sources();
+        return r.ok ? r.data : { error: r.error };
+    },
+    activeSource: function () {
+        var r = callBridge('activeSource');
+        if (r.mock) return MOCK.activeSource();
+        return r.ok ? r.data : { error: r.error };
+    },
+    setSource: function (id) {
+        var r = callBridge('setSource', [id]);
+        if (r.mock) return MOCK.setSource(id);
+        return r.ok ? r.data : { ok: false, error: r.error };
+    },
     topics: function () {
         var r = callBridge('topics');
         if (r.mock) return MOCK.topics();
@@ -935,6 +1259,8 @@ var Api = {
    ===================================================================== */
 var State = {
     tab: 'feed',
+    sources: [],
+    activeSourceId: null,
     topics: [],
     feed: { topic: '', items: [], limit: 50 },
     trends: { topic: '', timeline: [], tone: [] },
@@ -944,6 +1270,76 @@ var State = {
 
 function errorBanner(message) {
     return '<div class="error-banner">Couldn’t load this from the bridge: ' + esc(message) + '</div>';
+}
+
+/* =====================================================================
+   Sources — capability-driven degradation lives here. Everything that
+   cares whether tone/timeline/query-filtering is available reads
+   activeSource()/sourceHasCap(), never a hardcoded source id, so a new
+   entry added to data/sources.json later Just Works without a code
+   change on this side.
+   ===================================================================== */
+function activeSource() {
+    if (!State.activeSourceId) return null;
+    return State.sources.find(function (s) { return s.id === State.activeSourceId; }) || null;
+}
+function sourceHasCap(cap) {
+    var s = activeSource();
+    return !!(s && Array.isArray(s.capabilities) && s.capabilities.indexOf(cap) !== -1);
+}
+function sourceIsQueryDriven() {
+    var s = activeSource();
+    return !s || !!s.queryDriven; // no source resolved yet: default to the richer (query-driven) UI, not the collapsed one
+}
+
+function loadSourcesIntoState() {
+    var srcRes = Api.sources();
+    var actRes = Api.activeSource();
+    State.sources = Array.isArray(srcRes) ? srcRes : [];
+    State.activeSourceId = (actRes && actRes.id) ? actRes.id : (State.sources[0] ? State.sources[0].id : null);
+}
+
+function renderSourceChip() {
+    var mount = document.getElementById('feed-source-chip');
+    var s = activeSource();
+    if (!s) { mount.innerHTML = ''; return; }
+    mount.innerHTML = '<button type="button" id="feed-source-chip-btn" class="source-chip">' +
+        '<span class="dot"></span>' + esc(s.label) + '<span class="kind">' + esc(s.kind) + '</span>' +
+    '</button>';
+    document.getElementById('feed-source-chip-btn').addEventListener('click', function () { switchTab('configs'); });
+}
+
+function renderSourceList() {
+    var mount = document.getElementById('source-list');
+    if (!mount) return;
+    if (!State.sources.length) { mount.innerHTML = '<div class="empty-state">No sources available.</div>'; return; }
+    var checkSvg = '<svg class="source-row-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-10"/></svg>';
+    mount.innerHTML = State.sources.map(function (s) {
+        var active = s.id === State.activeSourceId;
+        var caps = (s.capabilities || []).join(', ');
+        return '<button type="button" class="source-row" data-source-id="' + esc(s.id) + '">' +
+            '<div class="flex-1 min-w-0">' +
+                '<div class="source-row-label">' + esc(s.label) + '</div>' +
+                '<div class="source-row-meta">' + esc(s.kind) + ' &middot; ' + esc(caps) + (s.requiresMesh ? ' &middot; mesh required' : '') + '</div>' +
+            '</div>' +
+            (active ? checkSvg : '') +
+        '</button>';
+    }).join('');
+    mount.querySelectorAll('[data-source-id]').forEach(function (btn) {
+        btn.addEventListener('click', function () { onSetSource(btn.dataset.sourceId); });
+    });
+}
+
+function onSetSource(id) {
+    if (id === State.activeSourceId) return;
+    var res;
+    try { res = Api.setSource(id); } catch (e) { alert('Could not switch source: ' + e.message); return; }
+    if (!res || res.ok === false) { alert('Could not switch source' + (res && res.error ? ': ' + res.error : '')); return; }
+    State.activeSourceId = id;
+    State.feed.topic = '';
+    State.trends.topic = '';
+    renderSourceList();
+    rerenderAll();
 }
 
 /* =====================================================================
@@ -984,12 +1380,15 @@ function rerenderAll() {
     if (DemoState.mode === 'auto') DemoState.autoResolved = null;
     renderDemoBanner();
 
+    loadSourcesIntoState();
+    renderSourceChip();
+    renderSourceList();
     loadTopicsIntoState();
     renderFeedPills();
     loadFeedList();
     loadSavedList();
     if (loadedTabs.topics) renderTopicsList();
-    if (loadedTabs.trends) loadTrendsData();
+    if (loadedTabs.trends && renderTrendsGate()) loadTrendsData();
     renderDemoModeConfig();
     renderRefreshStatus();
 }
@@ -1020,12 +1419,16 @@ function articleRowHtml(a) {
     if (imagesEnabled() && a.socialimage) {
         imgHtml = '<img class="article-thumb" src="' + esc(a.socialimage) + '" loading="lazy" onerror="this.remove()" alt="">';
     }
+    // Tone chip only when the active source actually has tone data — a rss
+    // source rendering "+0.0" would read as a measured neutral tone, which
+    // would be false, so absent means absent, never a zeroed chip.
+    var toneHtml = sourceHasCap('tone') ? toneChipHtml(a.tone) : '';
     return '<div class="article-row">' +
         imgHtml +
         '<div class="article-body" data-open-url="' + esc(a.url) + '">' +
             '<div class="article-domain">' + esc(a.domain) + '</div>' +
             '<div class="article-title">' + esc(a.title) + '</div>' +
-            '<div class="article-meta">' + toneChipHtml(a.tone) + '<span class="article-time">' + esc(relTime(ms)) + '</span></div>' +
+            '<div class="article-meta">' + toneHtml + '<span class="article-time">' + esc(relTime(ms)) + '</span></div>' +
         '</div>' +
         '<button class="bookmark-btn' + (saved ? ' active' : '') + '" data-bookmark-url="' + esc(a.url) + '" aria-label="Save article" type="button">' + bookmarkSvg(saved) + '</button>' +
     '</div>';
@@ -1063,6 +1466,12 @@ function onToggleSaved(article) {
    ===================================================================== */
 function renderFeedPills() {
     var mount = document.getElementById('feed-topic-pills');
+    // Non-query-driven sources (every rss source) hand back exactly one
+    // synthetic topic standing in for "the whole feed" — a pill row with
+    // only "All" next to one lonely other pill has nothing useful to
+    // filter, so collapse it entirely rather than show that.
+    if (!sourceIsQueryDriven()) { mount.innerHTML = ''; mount.style.display = 'none'; return; }
+    mount.style.display = '';
     var enabledTopics = State.topics.filter(function (t) { return t.enabled; });
     var pills = [{ topic: '', label: 'All' }].concat(enabledTopics);
     mount.innerHTML = pills.map(function (t) {
@@ -1114,11 +1523,13 @@ function loadTopicsTab() {
 function renderTopicsList() {
     var mount = document.getElementById('topics-list');
     if (!State.topics.length) { mount.innerHTML = '<div class="empty-state">No topics yet. Add one above.</div>'; return; }
+    var showTone = sourceHasCap('tone');
     mount.innerHTML = State.topics.map(function (t) {
+        var meta = t.articleCount + ' articles' + (showTone ? ' &middot; ' + toneChipHtml(t.avgTone) : '');
         return '<div class="topic-row">' +
             '<div class="flex-1 min-w-0">' +
                 '<div class="topic-row-label">' + esc(t.label) + '</div>' +
-                '<div class="topic-row-meta">' + t.articleCount + ' articles &middot; ' + toneChipHtml(t.avgTone) + '</div>' +
+                '<div class="topic-row-meta">' + meta + '</div>' +
             '</div>' +
             '<label class="switch"><input type="checkbox" data-topic-toggle="' + esc(t.topic) + '"' + (t.enabled ? ' checked' : '') + '><span class="slider"></span></label>' +
             '<button class="topic-remove-btn" data-topic-remove="' + esc(t.topic) + '" aria-label="Remove topic" type="button">&times;</button>' +
@@ -1170,9 +1581,34 @@ function initTopicsTab() {
    most-positive / most-negative. This tab is the reason the app is not
    just an RSS reader.
    ===================================================================== */
+/* RSS feeds carry no tone/sentiment data at all (verified against every
+   seeded feed) — gated on the capabilities array from sources(), never a
+   hardcoded source-id check, so a source added later with real
+   timeline/tone support Just Works without touching this file again. When
+   neither capability is present, the whole tab collapses to one explicit,
+   friendly empty state — not an empty chart, not a flat line at zero. */
+function trendsAvailable() { return sourceHasCap('timeline') || sourceHasCap('tone'); }
+
+function renderTrendsGate() {
+    var unavailMount = document.getElementById('trends-unavailable-mount');
+    var content = document.getElementById('trends-content');
+    if (!trendsAvailable()) {
+        var s = activeSource();
+        var name = s ? esc(s.label) : 'the current source';
+        unavailMount.innerHTML = '<div class="trends-unavailable"><strong>Not available for this source</strong>' +
+            'Tone and timeline data are only available from the self-hosted GDELT source. ' + name + ' does not provide it — switch source in Configs to see trends.</div>';
+        content.style.display = 'none';
+        return false;
+    }
+    unavailMount.innerHTML = '';
+    content.style.display = '';
+    return true;
+}
+
 function loadTrendsTab() {
     loadTopicsIntoState();
     if (!State.trends.topic && State.topics.length) State.trends.topic = State.topics[0].topic;
+    if (!renderTrendsGate()) return;
     renderTrendsPills();
     loadTrendsData();
 }
@@ -1194,10 +1630,14 @@ function renderTrendsPills() {
 
 function loadTrendsData() {
     var errMount = document.getElementById('trends-error-mount');
-    var tl, tn;
+    // Only ask for what the active source claims to support — never call
+    // timeline()/tone() against a source that didn't advertise the
+    // capability, and never let an unsupported call's failure block the
+    // half that IS supported.
+    var tl = [], tn = [];
     try {
-        tl = Api.timeline(State.trends.topic);
-        tn = Api.tone(State.trends.topic);
+        if (sourceHasCap('timeline')) tl = Api.timeline(State.trends.topic);
+        if (sourceHasCap('tone')) tn = Api.tone(State.trends.topic);
     } catch (e) { errMount.innerHTML = errorBanner(e.message); return; }
     if (tl && tl.error) { errMount.innerHTML = errorBanner(tl.error); return; }
     if (tn && tn.error) { errMount.innerHTML = errorBanner(tn.error); return; }
@@ -1210,6 +1650,7 @@ function loadTrendsData() {
 
 function renderSparkline() {
     var mount = document.getElementById('trends-sparkline');
+    if (!sourceHasCap('timeline')) { mount.innerHTML = '<div class="empty-state">This source doesn’t provide timeline data.</div>'; return; }
     var pts = State.trends.timeline;
     if (!pts.length) { mount.innerHTML = '<div class="empty-state">No timeline data.</div>'; return; }
     var W = 600, H = 150, PAD = 12;
@@ -1238,6 +1679,7 @@ function renderSparkline() {
 
 function renderToneDistribution() {
     var mount = document.getElementById('trends-tone-dist');
+    if (!sourceHasCap('tone')) { mount.innerHTML = '<div class="empty-state">This source doesn’t provide tone data.</div>'; return; }
     var items = State.trends.tone.slice();
     if (!items.length) { mount.innerHTML = '<div class="empty-state">No tone data for this topic yet.</div>'; return; }
     var sorted = items.slice().sort(function (a, b) { return (Number(b.tone) || 0) - (Number(a.tone) || 0); });
@@ -1312,8 +1754,8 @@ function renderRefreshStatus() {
     if (r && r.error) { mount.innerHTML = errorBanner(r.error); return; }
     var parts = [];
     parts.push('<div><strong>Status:</strong> ' + (r.running ? 'refreshing…' : ('idle — ok ' + (r.ok || 0) + ', failed ' + (r.failed || 0))) + '</div>');
-    if (r.lastFetch) parts.push('<div class="text-gray-400">Last fetch: ' + esc(relTime(parseInt(r.lastFetch, 10))) + '</div>');
-    (r.messages || []).forEach(function (m) { parts.push('<div class="text-gray-400">• ' + esc(m) + '</div>'); });
+    if (r.lastFetch) parts.push('<div style="color:var(--text-muted);">Last fetch: ' + esc(relTime(parseInt(r.lastFetch, 10))) + '</div>');
+    (r.messages || []).forEach(function (m) { parts.push('<div style="color:var(--text-muted);">• ' + esc(m) + '</div>'); });
     mount.innerHTML = parts.join('');
 }
 
@@ -1348,11 +1790,11 @@ function initConfigsTab() {
         };
         var out = document.getElementById('cfg-save-result');
         var res;
-        try { res = Api.setConfig(obj); } catch (e) { out.innerHTML = '<span style="color:#A33;">' + esc(e.message) + '</span>'; return; }
+        try { res = Api.setConfig(obj); } catch (e) { out.innerHTML = '<span style="color:var(--error-text);">' + esc(e.message) + '</span>'; return; }
         if (res && res.ok !== false) {
-            out.innerHTML = '<span style="color:#2E7D32;">Saved.</span>';
+            out.innerHTML = '<span style="color:var(--success-text);">Saved.</span>';
         } else {
-            out.innerHTML = '<span style="color:#A33;">' + esc((res && res.error) || 'Could not save.') + '</span>';
+            out.innerHTML = '<span style="color:var(--error-text);">' + esc((res && res.error) || 'Could not save.') + '</span>';
         }
     });
 
@@ -1371,6 +1813,7 @@ function initConfigsTab() {
     renderImagesToggle();
     renderDemoModeConfig();
     renderRefreshStatus();
+    renderSourceList();
 }
 
 /* =====================================================================
@@ -1393,7 +1836,7 @@ function switchTab(tab) {
         else if (tab === 'configs') { /* initConfigsTab already loaded config data on init */ }
     } else {
         if (tab === 'topics') renderTopicsList();
-        else if (tab === 'trends') { renderSparkline(); renderToneDistribution(); }
+        else if (tab === 'trends') { if (renderTrendsGate()) { renderSparkline(); renderToneDistribution(); } }
         else if (tab === 'saved') loadSavedList();
         else if (tab === 'configs') { renderRefreshStatus(); renderDemoModeConfig(); }
     }
@@ -1408,6 +1851,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (btn) switchTab(btn.dataset.tab);
     });
 
+    initTheme();
+    loadSourcesIntoState();
+    renderSourceChip();
     loadTopicsIntoState();
     renderFeedPills();
     loadFeedList();

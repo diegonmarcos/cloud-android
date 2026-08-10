@@ -8,12 +8,16 @@ import android.webkit.JavascriptInterface
 import com.diegonmarcos.superapp.news.GdeltArticle
 import com.diegonmarcos.superapp.news.NewsApiConfig
 import com.diegonmarcos.superapp.news.NewsConfigStore
+import com.diegonmarcos.superapp.news.NewsSourceConfig
+import com.diegonmarcos.superapp.news.NewsSourcesConfig
 import com.diegonmarcos.superapp.news.NewsStore
 import com.diegonmarcos.superapp.news.NewsSync
 import com.diegonmarcos.superapp.news.NewsTopicConfig
+import com.diegonmarcos.superapp.news.NewsTopicState
 import com.diegonmarcos.superapp.news.NewsTopicsConfig
 import com.diegonmarcos.superapp.news.NewsTopicsStore
 import com.diegonmarcos.superapp.news.SavedStore
+import com.diegonmarcos.superapp.news.SourceStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
@@ -57,25 +61,105 @@ class NewsBridge(private val ctx: Context) {
 
     private fun effectiveConfig(): NewsApiConfig = NewsConfigStore.effective(ctx, bakedApi())
 
-    // ---- topics -----------------------------------------------------------
+    // ---- sources (data/sources.json -> BuildConfig.SOURCES_B64) -----------
+
+    private fun bakedSourcesJson(): String =
+        String(Base64.decode(BuildConfig.SOURCES_B64, Base64.DEFAULT), Charsets.UTF_8)
+
+    private fun bakedSources(): List<NewsSourceConfig> = NewsSourcesConfig.parseSources(bakedSourcesJson())
+
+    private fun bakedDefaultSource(): String = NewsSourcesConfig.parseDefaultSource(bakedSourcesJson())
+
+    private fun activeSourceId(): String = SourceStore.active(ctx, bakedDefaultSource())
+
+    /** [bakedSources] always has at least one entry (its own fallback —
+     *  see NewsSourcesConfig.parseSources), so `.first()` below never
+     *  hits an empty list; it only fires if the persisted active id no
+     *  longer exists in a rebuilt sources.json (a source was removed
+     *  from the config after the user picked it). */
+    private fun activeSourceConfig(): NewsSourceConfig {
+        val sources = bakedSources()
+        val id = activeSourceId()
+        return sources.firstOrNull { it.id == id } ?: sources.first()
+    }
+
+    /** The topic list a refresh/articles/topics call should use for
+     *  [source]: the normal user-configurable topic list (baked
+     *  defaults + custom topics + enabled/disabled overlay — same list
+     *  regardless of source) for `gdelt` and query-driven `rss`
+     *  sources, since both take a query term per topic; a SINGLE
+     *  synthetic topic (== source.id/source.label) for a fixed rss
+     *  source, since it has no query term to vary and is always
+     *  "enabled" as itself. */
+    private fun effectiveTopicsForSource(source: NewsSourceConfig): List<NewsTopicState> =
+        if (source.isRss && !source.queryDriven) {
+            listOf(NewsTopicState(topic = source.id, label = source.label, enabled = true, custom = false))
+        } else {
+            NewsTopicsStore.effective(ctx, bakedTopics())
+        }
 
     @JavascriptInterface
+    fun sources(): String {
+        val arr = JSONArray()
+        for (s in bakedSources()) {
+            val caps = JSONArray()
+            for (c in s.capabilities) caps.put(c)
+            arr.put(JSONObject().apply {
+                put("id", s.id)
+                put("label", s.label)
+                put("kind", s.kind)
+                put("queryDriven", s.queryDriven)
+                put("capabilities", caps)
+                put("requiresMesh", s.requiresMesh)
+            })
+        }
+        return arr.toString()
+    }
+
+    @JavascriptInterface
+    fun activeSource(): String = JSONObject().apply { put("id", activeSourceId()) }.toString()
+
+    @JavascriptInterface
+    fun setSource(id: String): String {
+        val key = id.trim()
+        if (key.isEmpty()) return okErr(false, "id is required")
+        val match = bakedSources().firstOrNull { it.id == key } ?: return okErr(false, "unknown source id")
+        SourceStore.setActive(ctx, match.id)
+        return okErr(true, "")
+    }
+
+    // ---- topics -----------------------------------------------------------
+
+    /** Every method below OPERATES ON THE ACTIVE SOURCE
+     *  ([activeSourceConfig]) — same JS-facing signatures as before
+     *  sources.json existed, but reads/writes NewsStore under the
+     *  active source's id, and (for a non-query-driven rss source)
+     *  reports that source's single synthetic topic instead of the
+     *  eight GDELT topics. */
+    @JavascriptInterface
     fun topics(): String {
-        val effective = NewsTopicsStore.effective(ctx, bakedTopics())
-        val summariesByTopic = NewsStore.topicSummaries(ctx).associateBy { it.topic }
+        val source = activeSourceConfig()
+        val effective = effectiveTopicsForSource(source)
+        val summariesByTopic = if (source.isGdelt) {
+            NewsStore.topicSummaries(ctx, source.id).associateBy { it.topic }
+        } else emptyMap()
         val arr = JSONArray()
         for (state in effective) {
             val summary = summariesByTopic[state.topic]
-            val cachedArticles = if (summary == null) NewsStore.articlesFor(ctx, state.topic) else emptyList()
+            val cachedArticles = if (summary == null) NewsStore.articlesFor(ctx, source.id, state.topic) else emptyList()
             val articleCount = summary?.articleCount ?: cachedArticles.size
-            val avgTone = summary?.avgTone
-                ?: (if (cachedArticles.isNotEmpty()) cachedArticles.map { it.tone }.average() else 0.0)
+            // No 0.0 lie for a source that never measured tone (see
+            // GdeltArticle.tone's kdoc) — omit avgTone entirely (JSON
+            // null) rather than average an empty/all-null list into 0.
+            val cachedTones = cachedArticles.mapNotNull { it.tone }
+            val avgTone: Double? = summary?.avgTone
+                ?: (if (source.hasTone && cachedTones.isNotEmpty()) cachedTones.average() else null)
             arr.put(JSONObject().apply {
                 put("topic", state.topic)
                 put("label", state.label)
                 put("articleCount", articleCount)
-                put("avgTone", avgTone)
-                put("lastFetch", NewsStore.lastFetch(ctx, state.topic).toString())
+                put("avgTone", avgTone ?: JSONObject.NULL)
+                put("lastFetch", NewsStore.lastFetch(ctx, source.id, state.topic).toString())
                 put("enabled", state.enabled)
             })
         }
@@ -83,18 +167,20 @@ class NewsBridge(private val ctx: Context) {
     }
 
     /** topic "" means the merged feed across all enabled topics, newest
-     *  first (GDELT's seendate is a zero-padded string, so a plain
-     *  descending string sort is already chronological — see
+     *  first (seendate is a zero-padded string for every source —
+     *  RssParser reformats rss dates into the same shape GDELT uses —
+     *  so a plain descending string sort is already chronological, see
      *  NewsStore.replaceArticles). limit falls back to the effective
      *  config's maxArticles if blank/unparseable. */
     @JavascriptInterface
     fun articles(topic: String, limit: String): String {
+        val source = activeSourceConfig()
         val limitInt = limit.toIntOrNull()?.takeIf { it > 0 } ?: effectiveConfig().maxArticles
         val list = if (topic.isBlank()) {
-            val enabledTopics = NewsTopicsStore.effective(ctx, bakedTopics()).filter { it.enabled }.map { it.topic }
-            NewsStore.articlesFor(ctx, enabledTopics)
+            val enabledTopics = effectiveTopicsForSource(source).filter { it.enabled }.map { it.topic }
+            NewsStore.articlesFor(ctx, source.id, enabledTopics)
         } else {
-            NewsStore.articlesFor(ctx, topic)
+            NewsStore.articlesFor(ctx, source.id, topic)
         }
         val sorted = list.sortedByDescending { it.seendate }.take(limitInt)
         val arr = JSONArray()
@@ -102,19 +188,31 @@ class NewsBridge(private val ctx: Context) {
         return arr.toString()
     }
 
+    /** Empty for any source lacking "timeline" in its capabilities
+     *  (every rss source — see data/sources.json) — checked explicitly
+     *  here, on top of the cache key simply never being written for
+     *  one, so the capability is enforced even if a stale/leftover key
+     *  somehow existed. The UI is expected to check [sources]'
+     *  capabilities up front and skip asking at all, per the class
+     *  contract, but this is the hard guarantee either way. */
     @JavascriptInterface
     fun timeline(topic: String): String {
         val arr = JSONArray()
         if (topic.isBlank()) return arr.toString()
-        for (p in NewsStore.timelineFor(ctx, topic)) arr.put(p.toJson())
+        val source = activeSourceConfig()
+        if (!source.hasTimeline) return arr.toString()
+        for (p in NewsStore.timelineFor(ctx, source.id, topic)) arr.put(p.toJson())
         return arr.toString()
     }
 
+    /** Same reasoning as [timeline], gated on "tone" instead. */
     @JavascriptInterface
     fun tone(topic: String): String {
         val arr = JSONArray()
         if (topic.isBlank()) return arr.toString()
-        for (t in NewsStore.toneFor(ctx, topic)) arr.put(t.toJson())
+        val source = activeSourceConfig()
+        if (!source.hasTone) return arr.toString()
+        for (t in NewsStore.toneFor(ctx, source.id, topic)) arr.put(t.toJson())
         return arr.toString()
     }
 
@@ -134,10 +232,16 @@ class NewsBridge(private val ctx: Context) {
         return okErr(error.isEmpty(), error)
     }
 
+    /** Removing a topic drops its cache under EVERY source (not just
+     *  the active one) — a topic disabled/removed here is meant to
+     *  stop being tracked everywhere, and each source has its own
+     *  namespaced cache entry for it (see NewsStore's cacheKey kdoc). */
     @JavascriptInterface
     fun removeTopic(topic: String): String {
         val error = NewsTopicsStore.removeTopic(ctx, topic, bakedTopics())
-        if (error.isEmpty()) NewsStore.clearTopic(ctx, topic)
+        if (error.isEmpty()) {
+            for (s in bakedSources()) NewsStore.clearTopic(ctx, s.id, topic)
+        }
         return okErr(error.isEmpty(), error)
     }
 
@@ -150,8 +254,9 @@ class NewsBridge(private val ctx: Context) {
             executor.execute {
                 try {
                     val cfg = effectiveConfig()
-                    val topics = NewsTopicsStore.effective(ctx, bakedTopics())
-                    val report = NewsSync.syncAll(ctx, topics, cfg.base, cfg.maxArticles)
+                    val source = activeSourceConfig()
+                    val topics = effectiveTopicsForSource(source)
+                    val report = NewsSync.syncAll(ctx, source, topics, cfg.base, cfg.maxArticles)
                     lastOk = report.ok
                     lastFailed = report.failed
                     lastMessages = report.messages
