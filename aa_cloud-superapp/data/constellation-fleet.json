@@ -17,6 +17,21 @@
       "blocked": false
     },
     {
+      "id": "calendar",
+      "label": "cloud-calendar",
+      "package": "com.diegonmarcos.cloudcalendar",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-calendar",
+      "tag": "latest",
+      "asset": "Cloud-Calendar.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Calendar.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-calendar",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-calendar",
+      "blocked": false
+    },
+    {
       "id": "chat",
       "label": "Cloud Chat (Mattermost)",
       "package": "com.diegonmarcos.comms.chat",
@@ -62,21 +77,6 @@
       "blocked": false
     },
     {
-      "id": "keyboard",
-      "label": "cloud-keyboard",
-      "package": "com.diegonmarcos.cloudkeyboard",
-      "alt_id": null,
-      "registry": "ghcr.io",
-      "namespace": "diegonmarcos",
-      "image": "cloud-keyboard",
-      "tag": "latest",
-      "asset": "Cloud-Keyboard.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard",
-      "blocked": false
-    },
-    {
       "id": "keyboard-libs",
       "label": "cloud-keyboard-libs",
       "package": "com.diegonmarcos.cloudkeyboardlibs",
@@ -89,6 +89,21 @@
       "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard-Libs.apk",
       "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard-libs",
       "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard-libs",
+      "blocked": false
+    },
+    {
+      "id": "keyboard",
+      "label": "cloud-keyboard",
+      "package": "com.diegonmarcos.cloudkeyboard",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard",
+      "tag": "latest",
+      "asset": "Cloud-Keyboard.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard",
       "blocked": false
     },
     {
@@ -152,6 +167,21 @@
       "blocked": false
     },
     {
+      "id": "news",
+      "label": "cloud-news",
+      "package": "com.diegonmarcos.cloudnews",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-news",
+      "tag": "latest",
+      "asset": "Cloud-News.apk",
+      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-News.apk",
+      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-news",
+      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-news",
+      "blocked": false
+    },
+    {
       "id": "superapp",
       "label": "cloud-superapp",
       "package": "com.diegonmarcos.superapp",
@@ -194,21 +224,6 @@
       "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Wallet.apk",
       "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-wallet",
       "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-wallet",
-      "blocked": false
-    },
-    {
-      "id": "calendar",
-      "label": "cloud-calendar",
-      "package": "com.diegonmarcos.cloudcalendar",
-      "alt_id": null,
-      "registry": "ghcr.io",
-      "namespace": "diegonmarcos",
-      "image": "cloud-calendar",
-      "tag": "latest",
-      "asset": "Cloud-Calendar.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Calendar.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-calendar",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-calendar",
       "blocked": false
     }
   ]
