@@ -50,6 +50,25 @@ data class GdeltArticle(
      *  [videoId]. Same nullable/default-at-the-end reasoning as
      *  [videoId] — never populated for a non-YouTube article. */
     val thumbnail: String? = null,
+    /** The FEED-LEVEL (not per-article) publisher icon: RSS's
+     *  `<channel><image><url>` (RSS 1.0/RDF's document-level
+     *  `<image rdf:about="..."><url>` / self-closing `<image
+     *  rdf:resource="...">` counts as the same thing — see RssParser.kt)
+     *  or Atom's `<icon>`/`<logo>`, parsed ONCE per feed and copied onto
+     *  every [GdeltArticle] that feed produces. NULLABLE ON PURPOSE, and
+     *  genuinely null (never a fabricated favicon URL) for any feed that
+     *  simply doesn't carry one — see RssParser.kt's class kdoc for why
+     *  this app will never hit a publisher's `/favicon.ico` itself. This
+     *  is the "tweets" view's per-item SOURCE avatar: attaching it to
+     *  every article (rather than only living on [NewsChannelConfig])
+     *  is what lets a per-item avatar render with zero extra plumbing
+     *  through NewsSync/NewsStore, which only ever move [GdeltArticle]
+     *  lists around. Independent of [socialimage] (that article's own
+     *  photo) and [thumbnail] (a YouTube video's own thumbnail) —
+     *  all three can be non-empty/non-null on the same YouTube
+     *  "article" simultaneously, though in practice no sampled YouTube
+     *  Atom feed carries an `<icon>`/`<logo>` at all. */
+    val sourceImage: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("url", url)
@@ -66,6 +85,7 @@ data class GdeltArticle(
         put("tone", tone ?: JSONObject.NULL)
         put("videoId", videoId ?: JSONObject.NULL)
         put("thumbnail", thumbnail ?: JSONObject.NULL)
+        put("sourceImage", sourceImage ?: JSONObject.NULL)
     }
 
     companion object {
@@ -83,8 +103,9 @@ data class GdeltArticle(
             tone = if (o.has("tone") && !o.isNull("tone")) {
                 o.optDouble("tone").takeUnless { it.isNaN() }
             } else null,
-            videoId   = if (o.has("videoId") && !o.isNull("videoId")) o.optString("videoId").takeIf { it.isNotBlank() } else null,
-            thumbnail = if (o.has("thumbnail") && !o.isNull("thumbnail")) o.optString("thumbnail").takeIf { it.isNotBlank() } else null,
+            videoId     = if (o.has("videoId") && !o.isNull("videoId")) o.optString("videoId").takeIf { it.isNotBlank() } else null,
+            thumbnail   = if (o.has("thumbnail") && !o.isNull("thumbnail")) o.optString("thumbnail").takeIf { it.isNotBlank() } else null,
+            sourceImage = if (o.has("sourceImage") && !o.isNull("sourceImage")) o.optString("sourceImage").takeIf { it.isNotBlank() } else null,
         )
     }
 }

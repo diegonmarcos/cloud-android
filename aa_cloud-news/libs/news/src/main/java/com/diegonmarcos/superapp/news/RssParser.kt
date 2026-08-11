@@ -62,6 +62,57 @@ import java.time.format.DateTimeFormatter
  * alongside the normal itemDepth+1 walk, first occurrence wins, into
  * [GdeltArticle.thumbnail]). Both are simply absent (null) on every
  * non-YouTube feed, which every existing source already is.
+ *
+ * ARTICLE IMAGE ([GdeltArticle.socialimage], what the UI actually
+ * renders — never [GdeltArticle.thumbnail], which stays YouTube-only):
+ * real feeds carry an article's own photo in one of four different
+ * shapes, tried in this priority order, largest wins when a shape
+ * offers several sizes (`media:thumbnail`/`media:content` carry
+ * `width`/`height`):
+ *  1. `media:thumbnail url="..."` (bbc-world: one per item, but the
+ *     SAME depth-independent, any-nesting-level check as the YouTube
+ *     one above, so this also still doubles as the YouTube path).
+ *  2. `media:content url="..."` (guardian-world: several per item, one
+ *     per width) — only when it's actually an image: `medium="image"`,
+ *     or `type` starting `image/`, or (guardian-world's own feed:
+ *     verified by hand to carry NEITHER attribute on any of its 135
+ *     `media:content` elements) neither attribute present at all.
+ *     Explicitly typed non-image media (the YouTube feed's own
+ *     `media:content type="application/x-shockwave-flash"`, sitting
+ *     right next to its `media:thumbnail`) is excluded by name.
+ *  3. `enclosure url="..." type="image/..."` (spiegel) — only when
+ *     `type` starts `image/`; a podcast's `audio/mpeg` enclosure must
+ *     never be treated as an image.
+ *  4. The first `<img src="...">` inside `<description>` or
+ *     `<content:encoded>` HTML (tagesschau — its `<description>` is
+ *     plain text, only `<content:encoded>`'s CDATA carries the image).
+ * dw-en, google-news/google-search/google-tech, hackernews, and
+ * aljazeera carry NONE of the four — [GdeltArticle.socialimage] is
+ * correctly "" (never a fabricated placeholder; the UI already themes
+ * one) for those, same as before this fix, just now for the right
+ * reason (verified absence, not a field the UI never read).
+ *
+ * SOURCE AVATAR ([GdeltArticle.sourceImage], the "tweets" view's
+ * per-item publisher icon): parsed ONCE per feed, before the first
+ * `<item>`/`<entry>`, from whichever of RSS's `<channel><image><url>`
+ * (or RSS 1.0/RDF's document-level `<image rdf:about="..."><url>` /
+ * self-closing `<image rdf:resource="...">`, both handled — dw-en uses
+ * the self-closing form INSIDE `<channel>`, pointing at the same URL
+ * the document-level `<image rdf:about>` also defines) or Atom's
+ * `<icon>`/`<logo>` the feed actually offers, then copied onto every
+ * article that feed produces. Independent of whether that feed's
+ * articles carry their OWN images at all — dw-en/aljazeera both carry a
+ * channel logo despite zero per-article images. NEVER fetched over the
+ * network (no `/favicon.ico` probing, ever — see the FIX notes this
+ * shipped alongside): a feed that offers nothing here leaves
+ * [GdeltArticle.sourceImage] null, same "absent stays absent" rule as
+ * the article image.
+ *
+ * Every extracted URL is HTML-entity-decoded (`&amp;` is common inside
+ * these — see [decodeEntities]) and normalised from protocol-relative
+ * (`//host/...`) to `https://host/...`; anything that still isn't
+ * `http(s)://` after that is discarded rather than kept as an
+ * unusable/unsafe value (see [normalizeImageUrl]).
  */
 object RssParser {
 
@@ -115,6 +166,27 @@ object RssParser {
         var thumbnail = ""
         var textBuf = StringBuilder()
 
+        // Per-item article-image candidates/inputs — see class kdoc's
+        // "ARTICLE IMAGE" section for the priority order these feed
+        // [pickItemImage]. Reset per item in resetItemState(), same as
+        // every other per-item field.
+        var thumbCandidates = mutableListOf<Pair<String, Long>>()
+        var contentCandidates = mutableListOf<Pair<String, Long>>()
+        var enclosureImg = ""
+        var descBuf = ""
+        var encodedBuf = ""
+
+        // Feed-level (NOT per-item) source-avatar state — see class
+        // kdoc's "SOURCE AVATAR" section. Captured once, before the
+        // first item/entry starts, and never reset per-item.
+        var channelImage = ""
+        var channelIcon = ""
+        var channelLogo = ""
+        var insideChannelImage = false
+        var channelImageDepth = -1
+        var metaTag = ""
+        var metaBuf = StringBuilder()
+
         fun resetItemState() {
             title = StringBuilder()
             link = ""
@@ -123,6 +195,11 @@ object RssParser {
             sourceText = ""
             videoId = ""
             thumbnail = ""
+            thumbCandidates = mutableListOf()
+            contentCandidates = mutableListOf()
+            enclosureImg = ""
+            descBuf = ""
+            encodedBuf = ""
         }
 
         var eventType = runCatching { parser.eventType }.getOrDefault(XmlPullParser.END_DOCUMENT)
@@ -151,19 +228,83 @@ object RssParser {
                                 sourceUrlAttr = runCatching { parser.getAttributeValue(null, "url") }.getOrNull().orEmpty()
                             }
                         }
+                    } else if (!inItem) {
+                        // Feed-level source-avatar capture — see class
+                        // kdoc's "SOURCE AVATAR" section. Only reachable
+                        // before the first item/entry starts (or between/
+                        // after items, harmlessly, since every guard below
+                        // is itself a "first occurrence wins" check).
+                        when {
+                            name == "image" && !insideChannelImage && channelImage.isEmpty() -> {
+                                insideChannelImage = true
+                                channelImageDepth = depth
+                                // RSS 1.0/RDF: <image rdf:resource="..."/>
+                                // (self-closing, inside <channel>) or
+                                // <image rdf:about="..."> (document-level,
+                                // nested <url> handled by the branch below).
+                                val res = attr(parser, "resource") ?: attr(parser, "about")
+                                if (!res.isNullOrBlank()) channelImage = res
+                            }
+                            insideChannelImage && depth == channelImageDepth + 1 && name == "url" -> {
+                                metaTag = "chanimg"
+                                metaBuf = StringBuilder()
+                            }
+                            !insideChannelImage && name == "icon" && channelIcon.isEmpty() -> {
+                                metaTag = "icon"
+                                metaBuf = StringBuilder()
+                            }
+                            !insideChannelImage && name == "logo" && channelLogo.isEmpty() -> {
+                                metaTag = "logo"
+                                metaBuf = StringBuilder()
+                            }
+                        }
                     }
-                    // media:thumbnail lives INSIDE media:group, i.e. one
-                    // level deeper than every other captured field (see
-                    // class kdoc) — checked independently of the
-                    // itemDepth+1 branch above so it's found regardless
-                    // of nesting depth within the item. First occurrence
-                    // wins (a video normally carries just one).
-                    if (inItem && name == "thumbnail" && thumbnail.isEmpty()) {
-                        thumbnail = runCatching { parser.getAttributeValue(null, "url") }.getOrNull().orEmpty()
+                    // media:thumbnail lives INSIDE media:group on a
+                    // YouTube feed, i.e. one level deeper than every
+                    // other captured field (see class kdoc), but sits
+                    // directly under <item> on e.g. bbc-world — checked
+                    // independently of the itemDepth+1 branch above so
+                    // it's found regardless of nesting depth within the
+                    // item. `thumbnail` (YouTube's own field) keeps its
+                    // original first-occurrence-wins/unnormalised
+                    // behaviour untouched; the same url ALSO feeds
+                    // [thumbCandidates] (normalised, every occurrence,
+                    // largest wins) for the article-image priority chain.
+                    if (inItem && name == "thumbnail") {
+                        val url = attr(parser, "url")
+                        if (thumbnail.isEmpty()) thumbnail = url.orEmpty()
+                        normalizeImageUrl(url)?.let {
+                            thumbCandidates.add(it to mediaScore(attr(parser, "width"), attr(parser, "height")))
+                        }
+                    }
+                    // media:content — only ever an image candidate when
+                    // [isImageMediaContent] agrees (see class kdoc);
+                    // disambiguated from Atom's own unrelated <content>
+                    // element by requiring a `url` attribute, which only
+                    // media:content ever carries.
+                    if (inItem && name == "content") {
+                        val url = attr(parser, "url")
+                        if (!url.isNullOrBlank() && isImageMediaContent(attr(parser, "medium"), attr(parser, "type"))) {
+                            normalizeImageUrl(url)?.let {
+                                contentCandidates.add(it to mediaScore(attr(parser, "width"), attr(parser, "height")))
+                            }
+                        }
+                    }
+                    // enclosure — only when explicitly typed as an image
+                    // (a podcast's audio/mpeg enclosure must never be
+                    // mistaken for a photo). First occurrence wins.
+                    if (inItem && name == "enclosure" && enclosureImg.isEmpty()) {
+                        val url = attr(parser, "url")
+                        val type = attr(parser, "type")
+                        if (!url.isNullOrBlank() && type?.startsWith("image/", ignoreCase = true) == true) {
+                            normalizeImageUrl(url)?.let { enclosureImg = it }
+                        }
                     }
                 }
                 XmlPullParser.TEXT, XmlPullParser.CDSECT -> {
-                    if (inItem) textBuf.append(runCatching { parser.text }.getOrDefault(""))
+                    val text = runCatching { parser.text }.getOrDefault("")
+                    if (inItem) textBuf.append(text)
+                    if (metaTag.isNotEmpty()) metaBuf.append(text)
                 }
                 XmlPullParser.END_TAG -> {
                     val name = localName(runCatching { parser.name }.getOrDefault(""))
@@ -175,10 +316,47 @@ object RssParser {
                             "pubDate", "published", "updated", "date" -> if (pubDate.isEmpty()) pubDate = text.trim()
                             "source" -> if (sourceText.isEmpty()) sourceText = text.trim()
                             "videoId" -> if (videoId.isEmpty()) videoId = text.trim()
+                            // Raw (unstripped) HTML kept verbatim — only
+                            // ever consumed by [firstImgSrc] as a last-
+                            // resort article-image source (see class
+                            // kdoc); never shown to the user as text.
+                            "description" -> if (descBuf.isEmpty()) descBuf = text
+                            "encoded" -> if (encodedBuf.isEmpty()) encodedBuf = text
+                        }
+                    } else if (!inItem) {
+                        // Closes out the feed-level source-avatar capture
+                        // started in the START_TAG branch above.
+                        when {
+                            metaTag == "chanimg" && name == "url" -> {
+                                channelImage = metaBuf.toString().trim()
+                                metaTag = ""
+                            }
+                            metaTag == "icon" && name == "icon" -> {
+                                channelIcon = metaBuf.toString().trim()
+                                metaTag = ""
+                            }
+                            metaTag == "logo" && name == "logo" -> {
+                                channelLogo = metaBuf.toString().trim()
+                                metaTag = ""
+                            }
+                        }
+                        if (insideChannelImage && name == "image" && depth == channelImageDepth) {
+                            insideChannelImage = false
+                            channelImageDepth = -1
                         }
                     }
                     if (inItem && name == itemTag && depth == itemDepth) {
-                        runCatching { finishItem(title.toString(), link, pubDate, sourceUrlAttr, sourceText, videoId, thumbnail) }
+                        val itemImage = pickItemImage(thumbCandidates, contentCandidates, enclosureImg, descBuf, encodedBuf)
+                        val chanRaw: String? = when {
+                            channelImage.isNotBlank() -> channelImage
+                            channelIcon.isNotBlank() -> channelIcon
+                            channelLogo.isNotBlank() -> channelLogo
+                            else -> null
+                        }
+                        val sourceImage = normalizeImageUrl(chanRaw)
+                        runCatching {
+                            finishItem(title.toString(), link, pubDate, sourceUrlAttr, sourceText, videoId, thumbnail, itemImage, sourceImage)
+                        }
                             .getOrNull()
                             ?.let { out.add(it) }
                         inItem = false
@@ -205,6 +383,8 @@ object RssParser {
         sourceText: String,
         rawVideoId: String = "",
         rawThumbnail: String = "",
+        itemImage: String = "",
+        sourceImage: String? = null,
     ): GdeltArticle? {
         val link = rawLink.trim()
         if (link.isEmpty()) return null
@@ -234,13 +414,14 @@ object RssParser {
             url = link,
             title = title,
             seendate = parseDate(rawPubDate),
-            socialimage = "",
+            socialimage = itemImage,
             domain = domain,
             language = "",
             sourcecountry = "",
             tone = null,
             videoId = rawVideoId.trim().takeIf { it.isNotEmpty() },
             thumbnail = rawThumbnail.trim().takeIf { it.isNotEmpty() },
+            sourceImage = sourceImage,
         )
     }
 
@@ -256,6 +437,114 @@ object RssParser {
         return runCatching { URI(url.trim()).host }.getOrNull()
             ?.removePrefix("www.")
             ?.takeIf { it.isNotBlank() }
+    }
+
+    /** Namespace-prefix-tolerant attribute lookup: with
+     *  `FEATURE_PROCESS_NAMESPACES` off (see [parse]) an attribute's raw
+     *  name still carries its prefix (e.g. `rdf:resource`), so a plain
+     *  `getAttributeValue(null, "resource")` would miss it — this scans
+     *  every attribute and compares [localName]s instead. Never throws;
+     *  null for a missing attribute or an unreadable parser state. */
+    private fun attr(parser: XmlPullParser, name: String): String? {
+        val count = runCatching { parser.attributeCount }.getOrDefault(0)
+        for (i in 0 until count) {
+            val attrName = runCatching { parser.getAttributeName(i) }.getOrNull() ?: continue
+            if (localName(attrName) == name) return runCatching { parser.getAttributeValue(i) }.getOrNull()
+        }
+        return null
+    }
+
+    /** `width`/`height` -> a comparable size score for picking the
+     *  LARGEST of several `media:thumbnail`/`media:content` candidates
+     *  (see class kdoc). Both present -> area; only one present -> that
+     *  one (still orders correctly against same-shape candidates that
+     *  only ever supply one dimension, e.g. guardian-world's
+     *  width-only `media:content`); neither present -> 0, so a
+     *  dimensionless candidate never outranks a sized one but is still
+     *  usable if it's the only candidate at all. */
+    private fun mediaScore(w: String?, h: String?): Long {
+        val wi = w?.toLongOrNull()
+        val hi = h?.toLongOrNull()
+        return when {
+            wi != null && hi != null -> wi * hi
+            wi != null -> wi
+            hi != null -> hi
+            else -> 0L
+        }
+    }
+
+    /** Whether a `media:content` element is actually a photo (see class
+     *  kdoc's "ARTICLE IMAGE" section point 2) rather than some other
+     *  media type it's also legally used for. An explicit `medium`
+     *  attribute is authoritative when present; failing that an explicit
+     *  `type` must start `image/`; failing THAT (guardian-world's own
+     *  135 `media:content` elements, verified by hand, carry neither
+     *  attribute at all) default-accept — deliberately more permissive
+     *  than the strict "must be explicitly typed as an image" reading,
+     *  because that stricter reading would silently zero out a feed this
+     *  fix is specifically meant to un-break. Explicitly typed non-image
+     *  media (e.g. a YouTube feed's own `media:content
+     *  type="application/x-shockwave-flash"`, sitting right next to its
+     *  `media:thumbnail`) is still correctly excluded either way. */
+    private fun isImageMediaContent(medium: String?, type: String?): Boolean {
+        if (!medium.isNullOrBlank()) return medium.equals("image", ignoreCase = true)
+        if (!type.isNullOrBlank()) return type.startsWith("image/", ignoreCase = true)
+        return true
+    }
+
+    /** Decodes entities and normalises a protocol-relative
+     *  (`//host/path`) url to `https://host/path` (see class kdoc). Null
+     *  (never a raw/unusable string) for a blank input or anything that
+     *  still isn't `http://`/`https://` afterwards — an absent/malformed
+     *  image url is dropped, never fabricated or passed through
+     *  unusable. */
+    private fun normalizeImageUrl(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val decoded = decodeEntities(raw.trim())
+        val withScheme = if (decoded.startsWith("//")) "https:$decoded" else decoded
+        return withScheme.takeIf {
+            it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true)
+        }
+    }
+
+    private val IMG_SRC_RE = Regex("(?i)<img\\b[^>]*\\bsrc\\s*=\\s*[\"']([^\"']+)[\"']")
+
+    /** First `<img src="...">` found in raw (unstripped) HTML — the
+     *  last-resort article-image source (class kdoc point 4), e.g.
+     *  tagesschau's `<content:encoded>` CDATA. Standard XML entity
+     *  decoding (CDATA or escaped) already happened by the time this
+     *  text reached [descBuf]/[encodedBuf], so this only has to find the
+     *  tag, not decode it — but the extracted `src` VALUE may still
+     *  carry `&amp;` etc. if the source HTML itself double-escaped it,
+     *  so callers still run the result through [normalizeImageUrl]. */
+    private fun firstImgSrc(html: String): String? {
+        if (html.isBlank()) return null
+        return IMG_SRC_RE.find(html)?.groupValues?.get(1)
+    }
+
+    /** The article-image priority chain from the class kdoc's "ARTICLE
+     *  IMAGE" section: `media:thumbnail` (largest) -> `media:content`
+     *  (largest, image-typed only) -> `enclosure` (image-typed only) ->
+     *  first `<img>` in the description/content HTML -> "" (never a
+     *  fabricated placeholder — see [GdeltArticle.socialimage]'s
+     *  contract, unchanged by this fix). [thumbCandidates]/
+     *  [contentCandidates] entries are already normalised at collection
+     *  time; the HTML-sourced fallback is normalised here since
+     *  [firstImgSrc] only extracts, never cleans, the raw attribute
+     *  value. */
+    private fun pickItemImage(
+        thumbCandidates: List<Pair<String, Long>>,
+        contentCandidates: List<Pair<String, Long>>,
+        enclosureImg: String,
+        descBuf: String,
+        encodedBuf: String,
+    ): String {
+        thumbCandidates.maxByOrNull { it.second }?.let { return it.first }
+        contentCandidates.maxByOrNull { it.second }?.let { return it.first }
+        if (enclosureImg.isNotEmpty()) return enclosureImg
+        normalizeImageUrl(firstImgSrc(descBuf))?.let { return it }
+        normalizeImageUrl(firstImgSrc(encodedBuf))?.let { return it }
+        return ""
     }
 
     private val TAG_RE = Regex("<[^>]*>")
