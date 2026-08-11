@@ -60,7 +60,26 @@ do
     if [ -r "$_candidate" ]; then TOKEN_FILE="$_candidate"; break; fi
 done
 
-[ -n "${TOKEN_FILE:-}" ] && [ -r "$TOKEN_FILE" ] || { printf '%s\n' '{}'; exit 0; }
+if [ -z "${TOKEN_FILE:-}" ] || [ ! -r "$TOKEN_FILE" ]; then
+    # Say WHY on stderr. stdout must stay pure JSON (Claude Code parses it), but
+    # stderr is free, and a bare {} is near-undiagnosable: the endpoint just
+    # 403s and the server shows as "requires authentication", which reads like
+    # an OAuth problem and is not one. Two separate sessions had to reason this
+    # out from first principles before the reason was written down anywhere.
+    {
+        echo "mcp-auth-headers: no token found — c3-infra-mcp will get 403."
+        echo "  tried \$AUTHELIA_BEARER_TOKEN         : ${AUTHELIA_BEARER_TOKEN:+set}${AUTHELIA_BEARER_TOKEN:-unset}"
+        echo "  tried \$AUTHELIA_OIDC_TOKENS_DIR      : ${AUTHELIA_OIDC_TOKENS_DIR:-unset}"
+        echo "  tried \$REPO_ROOT/IV_vault             : $REPO_ROOT/IV_vault/$REL"
+        echo "  tried ~/git/vault                     : $HOME/git/vault/$REL"
+        echo "  On a host with no vault checkout (cloud container, CI, web),"
+        echo "  set AUTHELIA_BEARER_TOKEN in the environment. Prefer a narrow"
+        echo "  client (monitoring-read) over claude-admin — an environment"
+        echo "  variable is readable by every session in that environment."
+    } >&2
+    printf '%s\n' '{}'
+    exit 0
+fi
 
 # node, not jq: node is already required by every build.sh in the fleet, jq is
 # not guaranteed present. Prints ONLY the header object — the token never
