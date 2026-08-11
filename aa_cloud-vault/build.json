@@ -15,6 +15,30 @@
     "version_name": "0.1.0-dev",
     "abi_filters": ["arm64-v8a"]
   },
+  "forks": {
+    "vault": {
+      "_doc": "Bitwarden-fork rebuild of this app, REPLACING the WebView wrapper above (once CI proves it builds — build.sh's default `build`/`release` still target the WebView app; this fork is only reachable via `./build.sh materialize-fork vault` / `build-fork vault`). Uses the SAME fork machinery ea_cloud-mail's forks.mail entry uses (see cloud-mail-fork-engine.sh, ported verbatim into this app's build.sh).",
+      "app_id": "com.diegonmarcos.cloudvault",
+      "label": "Cloud Vault (Bitwarden)",
+      "image": "cloud-vault-bitwarden",
+      "upstream_repo": "https://github.com/bitwarden/android.git",
+      "tracker_dir": "ea_upstreams-sources/vault-bitwarden",
+      "pinned_tag": "v2026.7.1-bwpm",
+      "license": "GPL-3.0",
+      "primary_lang": "Kotlin",
+      "runtime": "native",
+      "priority": 1,
+      "blocked_on": null,
+      "build": {
+        "_doc": "Module `app` (applicationId com.x8bit.bitwarden upstream, com.diegonmarcos.cloudvault after patch 0001) is the password manager — NOT `authenticator`, a different product in the same repo. Flavor `fdroid` (dimension `mode`) is the Google-free flavor: Firebase/Crashlytics/ML-Kit/Play-Billing are standardImplementation-only and GoogleServices/Crashlytics tasks are disabled for fdroid in afterEvaluate. No release signingConfig is declared upstream (app/build.gradle.kts release buildType has none) so the APK comes out unsigned from gradle; build-fork's unconditional _enforce_signature re-signs it with the ONE shared constellation key regardless — no 'signing' key needed here.",
+        "gradle_task": ":app:assembleFdroidRelease",
+        "apk_glob": "app/build/outputs/apk/fdroid/release/*.apk",
+        "_build_blocker_doc": "com.bitwarden:sdk-android is resolved from https://maven.pkg.github.com/bitwarden/sdk (settings.gradle.kts dependencyResolutionManagement), which 401s without an authenticated GitHub account/token even for public artifacts — verified un-buildable in this sandbox. settings.gradle.kts reads the credential as: password = userProperties[\"gitHubToken\"] (rootDir/user.properties, gitignored, local-dev only) ?: System.getenv(\"GITHUB_TOKEN\") ; username is hardcoded to \"\" (empty). CI MUST export GITHUB_TOKEN from a secret named BITWARDEN_PACKAGES_TOKEN (a PAT/fine-grained token with read:packages on bitwarden/sdk — the default GITHUB_TOKEN this repo's own Actions runner mints is scoped to diegonmarcos/unix only and CANNOT read a different owner's GitHub Packages) before invoking `build.sh build-fork vault`. Do not set gradle_props here for this — it's a plain env var the upstream settings.gradle.kts already reads, not a project property.",
+        "gradle_props": {}
+      },
+      "comment": "Bitwarden Android (password manager). Rebrand + self-hosted-server-default + NOTICE patches in ea_cloud-vault/patches/. materialize-fork works today (pure git clone+patch, no network auth needed); build-fork is UNVERIFIED end-to-end because of the maven.pkg.github.com 401 above — the first CI run with BITWARDEN_PACKAGES_TOKEN set is the real test."
+    }
+  },
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-Wallet, Cloud-Browser, Cloud-Vault, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD.",
     "vault_keystore": "A0_keys/providers/android/release.jks",
