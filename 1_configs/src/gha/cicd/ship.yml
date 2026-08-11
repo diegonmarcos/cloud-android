@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'a_solutions/**'
-      - '1_workflows/src/**'
+      - '1_configs/src/**'
       - 'config.json'
   workflow_dispatch:
     inputs:

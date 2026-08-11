@@ -5,7 +5,7 @@
 
 # ── Secrets & Credentials (reinforces global gitignore) ──
 # KEEP IN SYNC WITH:
-#   Pre-commit hook: 1_workflows/src/hooks/pre-commit  (blocks even git add -f)
+#   Pre-commit hook: 1_configs/src/git/hooks/pre-commit  (blocks even git add -f)
 ## Decrypted secrets output
 .secrets
 *.secrets
@@ -70,7 +70,7 @@ result
 .DS_Store
 
 # ── Generated dist folders (tracked only via symlinks, never raw) ──
-1_workflows/dist/
+1_configs/dist/
 2_configs/dist/
 **/dist/.secrets
 **/dist/.secrets.d/

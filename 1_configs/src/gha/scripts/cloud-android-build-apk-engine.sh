@@ -10,7 +10,7 @@ set -eu
 
 SOLUTION_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SOLUTION_DIR/../.." && pwd)"
-. "$REPO_ROOT/1_workflows/src/scripts/cloud-android-ship-lib.sh"
+. "$REPO_ROOT/1_configs/src/gha/scripts/cloud-android-ship-lib.sh"
 
 BUILD_JSON="$SOLUTION_DIR/build.json"
 [ -f "$BUILD_JSON" ] || { log_error "Missing $BUILD_JSON"; exit 1; }

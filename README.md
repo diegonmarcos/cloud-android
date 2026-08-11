@@ -32,20 +32,20 @@ lightweight fallback.
 
 ```
 cloud-android/
-├── build.sh                     # Root dispatcher — delegates to 1_workflows/src/scripts/*
+├── build.sh                     # Root dispatcher — delegates to 1_configs/src/gha/scripts/*
 ├── config.json                  # SINGLE SOURCE OF TRUTH — devices, arch pillars, deps
 ├── .gitignore / .sops.yaml      # Secret-hygiene reinforced by pre-commit hook
 │
-├── 0_docs/                      # Specs (prod / eng / user)
+├── 0_specs/                      # Specs (prod / eng / user)
 ├── 0_tasks/                     # ROADMAP + TASK_PLAN-*.md (work queue)
 │
-├── 1_workflows/                 # UNIVERSAL BUILD ENGINE
+├── 1_configs/                 # UNIVERSAL BUILD ENGINE
 │   ├── build.sh -> src/scripts/cloud-android-ship-repo-workflow-engine.sh
 │   ├── src/
 │   │   ├── scripts/             # cloud-android-<system>-<tech>-<action>-*.sh
 │   │   ├── cicd/                # GHA workflow YAMLs (→ .github/workflows/)
 │   │   ├── actions/             # GHA composite actions (→ .github/actions/)
-│   │   ├── hooks/               # Git hooks (→ 1_workflows/dist/hooks, active via .gitconfig)
+│   │   ├── hooks/               # Git hooks (→ 1_configs/dist/hooks, active via .gitconfig)
 │   │   └── modules/             # .gitmodules template
 │   └── dist/                    # GENERATED — never edited by hand
 │
@@ -117,7 +117,7 @@ Same contract as `cloud/`:
 ```
 
 Per-solution `build.sh` is a **symlink** to
-`1_workflows/src/scripts/cloud-android-ship-container-engine.sh`, which reads
+`1_configs/src/gha/scripts/cloud-android-ship-container-engine.sh`, which reads
 `build.json` and dispatches gradle / nix / adb-install. **Never edit the
 engine symlink target per-solution** — extend `build.json` instead.
 

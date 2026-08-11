@@ -1,0 +1,8 @@
+[core]
+	hooksPath = 1_configs/dist/hooks
+[pull]
+	rebase = true
+[submodule]
+	recurse = true
+[alias]
+	sync = !sh 1_configs/dist/scripts/cloud-android-git-sync.sh

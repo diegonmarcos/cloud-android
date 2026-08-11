@@ -1,8 +1,8 @@
-# 1_workflows — cloud-android CI/CD & Build System
+# 1_configs — cloud-android CI/CD & Build System
 
 Single source of truth for **all** executable logic, GHA workflows, git hooks,
 and repo configuration in `cloud-android/`. Mirrors the pattern used in
-[`cloud/1_workflows/`](https://github.com/diegonmarcos/cloud/tree/main/1_workflows).
+[`cloud/1_configs/`](https://github.com/diegonmarcos/cloud/tree/main/1_configs).
 
 Everything under `.github/`, `.gitmodules`, and `.gitconfig` at repo root is
 **generated output** — never edited directly.
@@ -16,7 +16,7 @@ build.sh workflow   →   src/  →  dist/  →  .github/ + repo root
 ## Directory Structure
 
 ```
-1_workflows/
+1_configs/
 ├── build.sh -> src/scripts/cloud-android-ship-repo-workflow-engine.sh
 ├── README.md                   # This file
 ├── src/                        # SOURCE — edit here
@@ -85,7 +85,7 @@ cloud-android-<system>-<technology>-<action>-<tool>.sh
 
 ## Hooks (`src/hooks/`)
 
-Deployed to `1_workflows/dist/hooks/`, active via `.gitconfig` `core.hooksPath`.
+Deployed to `1_configs/dist/hooks/`, active via `.gitconfig` `core.hooksPath`.
 
 | Hook | Purpose |
 |------|---------|
@@ -100,9 +100,9 @@ Deployed to `1_workflows/dist/hooks/`, active via `.gitconfig` `core.hooksPath`.
 
 | From | To | Count |
 |------|----|-------|
-| `a_solutions/*/build.sh` | `../../1_workflows/src/scripts/cloud-android-ship-container-engine.sh` | 8 (and growing) |
-| `1_workflows/build.sh` | `src/scripts/cloud-android-ship-repo-workflow-engine.sh` | 1 |
-| `.github/workflows/scripts` | `../../1_workflows/dist/scripts` | 1 (post-build) |
+| `a_solutions/*/build.sh` | `../../1_configs/src/gha/scripts/cloud-android-ship-container-engine.sh` | 8 (and growing) |
+| `1_configs/build.sh` | `src/scripts/cloud-android-ship-repo-workflow-engine.sh` | 1 |
+| `.github/workflows/scripts` | `../../1_configs/dist/scripts` | 1 (post-build) |
 
 ---
 
@@ -110,7 +110,7 @@ Deployed to `1_workflows/dist/hooks/`, active via `.gitconfig` `core.hooksPath`.
 
 ```sh
 mkdir -p a_solutions/<category-prefix>_<name>/src
-ln -sf ../../1_workflows/src/scripts/cloud-android-ship-container-engine.sh a_solutions/<category-prefix>_<name>/build.sh
+ln -sf ../../1_configs/src/gha/scripts/cloud-android-ship-container-engine.sh a_solutions/<category-prefix>_<name>/build.sh
 cat > a_solutions/<category-prefix>_<name>/build.json <<'JSON'
 {
   "name": "<name>",

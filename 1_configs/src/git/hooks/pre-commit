@@ -2,9 +2,9 @@
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║ pre-commit — block secrets from ever reaching a commit           ║
 # ║                                                                  ║
-# ║ Source: cloud-android/1_workflows/src/hooks/pre-commit           ║
-# ║ Deploy: build.sh workflow → 1_workflows/dist/hooks/              ║
-# ║ Active: via .gitconfig [core] hooksPath = 1_workflows/dist/hooks ║
+# ║ Source: cloud-android/1_configs/src/git/hooks/pre-commit           ║
+# ║ Deploy: build.sh workflow → 1_configs/dist/hooks/              ║
+# ║ Active: via .gitconfig [core] hooksPath = 1_configs/dist/hooks ║
 # ║                                                                  ║
 # ║ KEEP IN SYNC with .gitignore patterns.                           ║
 # ║ Catches secrets even after git add -f (gitignore bypass).        ║
