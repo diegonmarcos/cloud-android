@@ -71,9 +71,16 @@ for tool in $TOOLS; do
         continue
     fi
     mkdir -p "$DF_DIST/$tool" "$REPO_ROOT/$target"
-    cp -f "$DF_SRC/$tool"/* "$DF_DIST/$tool"/ 2>/dev/null || true
-    cp -f "$DF_DIST/$tool"/* "$REPO_ROOT/$target"/ 2>/dev/null || true
-    n=$(ls -1 "$DF_DIST/$tool" 2>/dev/null | wc -l | tr -d ' ')
+    # -r, so subdirectories come along. Without it `cp -f src/*` silently drops
+    # every directory (the error is swallowed by `2>/dev/null || true`), which
+    # is how .claude/agents/ deployed as nothing while the log still said
+    # "claude -> .claude (1 files)" and looked fine.
+    #
+    # Still additive, never a purge: .claude/ and .obsidian/ mix managed config
+    # with machine state (see never_manage), so the target is never emptied.
+    cp -rf "$DF_SRC/$tool"/. "$DF_DIST/$tool"/ 2>/dev/null || true
+    cp -rf "$DF_DIST/$tool"/. "$REPO_ROOT/$target"/ 2>/dev/null || true
+    n=$(find "$DF_DIST/$tool" -type f 2>/dev/null | wc -l | tr -d ' ')
     log "dotfiles: $tool -> $target ($n files)"
 done
 
