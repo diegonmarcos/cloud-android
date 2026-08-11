@@ -338,6 +338,26 @@
         .bookmark-btn.active { color: var(--text); }
         .bookmark-btn svg { width: 19px; height: 19px; display: block; }
 
+        /* ---- Feed: Tweets mode — timeline-post layout (see tweetRowHtml()
+           in the script). Avatar is fixed-size and CIRCULAR (never the
+           rectangular .article-thumb box RSS mode uses); the article
+           image, when present, sits BELOW the text at full row width,
+           rounded, the way Twitter renders a link-card attachment. ---- */
+        .tweet-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .tweet-avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; object-fit: cover; background: var(--thumb-bg); }
+        .tweet-main { flex: 1; min-width: 0; }
+        .tweet-body { cursor: pointer; }
+        .tweet-head { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+        .tweet-source { font-weight: 700; color: var(--text); }
+        .tweet-dot, .tweet-time { color: var(--text-muted); }
+        .tweet-text { font-size: 14px; font-weight: 500; color: var(--text); margin-top: 3px; line-height: 1.4; }
+        .tweet-image { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); margin-top: 8px; background: var(--thumb-bg); }
+        /* Compound selector, same trick as .media-thumb.article-thumb-fallback
+           below — imgFallback() only ever ADDS this class onto whatever
+           image element failed, it never knows/cares which one. */
+        .tweet-image.article-thumb-fallback { object-fit: contain; max-height: 140px; padding: 16px; box-sizing: border-box; }
+        .tweet-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
         /* ---- Topics tab ---- */
         .topic-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--border); }
         .topic-row-label { font-size: 14px; font-weight: 600; color: var(--text); }
@@ -412,6 +432,23 @@
         .events-done-state, .events-empty-state { text-align: center; padding: 60px 24px; color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
         .events-done-state strong { display: block; color: var(--text); font-size: 16px; font-weight: 700; margin-bottom: 8px; }
 
+        /* ---- Feed: Cards mode — a second Tinder-style deck alongside
+           Events'. Reuses .event-stack/.event-card/.event-card.dragging/
+           .event-card-body/.event-card-cal/.event-card-title/
+           .event-card-stamp/.event-card-actions/.event-action-btn AS-IS
+           (see feedCardHtml() in the script) — the framing is pixel-
+           identical to Events, only the CONTENT differs (an image +
+           domain/title/tone instead of a calendar accent + date/
+           location), so these are the only genuinely new rules. ---- */
+        .feed-card-img-wrap { width: 100%; aspect-ratio: 16 / 9; background: var(--thumb-bg); flex-shrink: 0; overflow: hidden; }
+        .feed-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .feed-card-img.article-thumb-fallback { object-fit: contain; }
+        /* Left-swipe/drag in Cards mode means "next", NOT "reject" (unlike
+           Events' Skip) — same stamp position/shape via .skip, just a
+           neutral colour instead of the remove/negative one so it never
+           reads as a rejection. */
+        .event-card-stamp.skip.feed-next-stamp { color: var(--text-muted); border-color: var(--text-muted); }
+
         /* ---- Saved tab: month calendar (saved events) above the existing
            saved-articles list. No chart/calendar library — a plain CSS
            grid, same "hand-drawn, no dependency" rule as the Trends
@@ -472,7 +509,25 @@
             <!-- ============ FEED TAB ============ -->
             <section id="tab-feed" class="tab-panel">
                 <header class="panel-header">
-                    <h1 class="text-xl font-medium">News</h1>
+                    <div class="flex items-center justify-between gap-3">
+                        <h1 class="text-xl font-medium">News</h1>
+                        <!-- RSS/Tweets/Cards — a per-VIEWING-SESSION layout
+                             choice for the article list below (persisted as
+                             localStorage cn.feedView, default 'rss' =
+                             today's layout unchanged). Deliberately kept
+                             here, next to the nav rows, NOT in Configs —
+                             this is how you want to look at the feed right
+                             now, not a durable account setting. Hidden
+                             while Trends is showing, since it only governs
+                             article-list layout (see
+                             setFeedModeVisibility()/initFeedViewToggle()
+                             in the script). -->
+                        <div class="seg" id="feed-view-toggle" role="tablist" aria-label="Feed view">
+                            <button type="button" data-feed-view="rss">RSS</button>
+                            <button type="button" data-feed-view="tweets">Tweets</button>
+                            <button type="button" data-feed-view="cards">Cards</button>
+                        </div>
+                    </div>
                 </header>
                 <div id="feed-error-mount" class="px-6"></div>
                 <!-- Row 1: source (one pill per sources() entry). Row 2:
@@ -491,7 +546,22 @@
                 <div class="feed-refresh-bar" id="feed-nav-progress" aria-hidden="true"></div>
                 <div class="px-6" id="feed-refresh-error-mount"></div>
 
+                <!-- RSS/Tweets share this one mount (see renderFeedList()'s
+                     dispatch on State.feed.view in the script). -->
                 <div class="px-6 mt-2 panel-scroll-pad" id="feed-list"></div>
+
+                <!-- Cards mode — a second Tinder-style deck alongside
+                     Events'. See renderFeedCardsView()/feedCardHtml() in
+                     the script; drag mechanics are the SAME
+                     bindSwipeCard()/flyOutCard() helpers Events uses, not
+                     a fork. Reuses the .events-progress class purely for
+                     its (identical) visuals, not any JS coupling to the
+                     Events tab. -->
+                <div id="feed-cards-content" class="hidden">
+                    <div class="events-progress" id="feed-cards-progress"></div>
+                    <div class="px-6" id="feed-cards-stack-mount"></div>
+                    <div class="px-6 panel-scroll-pad" id="feed-cards-done-mount"></div>
+                </div>
 
                 <!-- Trends view — the former standalone Trends tab, MOVED
                      (not duplicated) here as the leftmost row-2 channel's
@@ -634,10 +704,16 @@
 
                     <div>
                         <span class="text-[11px] font-semibold tracking-widest uppercase" style="color:var(--text-secondary);">Images</span>
-                        <!-- Privacy: socialimage points at arbitrary publisher domains. Loading
-                             it leaks the reader's IP to every outlet in the feed and breaks
-                             offline use, so images stay OFF until explicitly enabled here. -->
-                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">Off by default: article thumbnails load from arbitrary publisher domains, which leaks your IP to every outlet and breaks offline use. Turn on to load them lazily (each degrades gracefully on failure).</p>
+                        <!-- DELIBERATE, user-directed change from this app's privacy-first
+                             default: images now show OUT OF THE BOX. The privacy trade-off
+                             itself is unchanged and still explained honestly below —
+                             socialimage still points at arbitrary publisher domains, loading
+                             it still leaks the reader's IP to every outlet in the feed and
+                             still breaks offline use. Turning this off is still honoured for
+                             good across restarts (see imagesEnabled()/setImagesEnabled() in
+                             the script — "never set" and "explicitly off" are tracked
+                             separately on purpose). -->
+                        <p class="text-[11.5px] mt-1 mb-3" style="color:var(--text-secondary);">On by default: article thumbnails load lazily from arbitrary publisher domains, which leaks your IP to every outlet whose thumbnail loads and breaks offline use. Turn off if you'd rather browse headline-only.</p>
                         <p class="text-[11.5px] mb-3" style="color:var(--text-muted);">Some thumbnails may still fail to load: this app blocks insecure (http://) images outright, and not every publisher serves their images over https.</p>
                         <div class="flex items-center justify-between">
                             <span class="text-[13.5px] font-medium">Show article images</span>
@@ -891,14 +967,26 @@ function bookmarkSvg(active) {
 }
 
 /* =====================================================================
-   Images ("cn.imagesEnabled") — OFF by default. socialimage points at
-   arbitrary publisher domains; loading it leaks the reader's IP to every
-   outlet in the feed and breaks offline use. See the Configs tab comment
-   for the user-facing explanation.
+   Images ("cn.imagesEnabled") — ON by default.
+
+   DELIBERATE, USER-DIRECTED CHANGE from this app's privacy-first default:
+   the original design shipped images OFF until a user opted in from
+   Configs, because socialimage points at arbitrary publisher domains and
+   loading it leaks the reader's IP to every outlet in the feed and breaks
+   offline use (still true — see the Configs tab copy, which still
+   explains this trade-off honestly, just no longer claims "off by
+   default"). The product owner explicitly asked that article images be
+   visible out of the box instead, so absence of the key now means
+   ENABLED. What must NOT regress: a user who explicitly turns this off in
+   Configs has to stay off across restarts — so "never set" and
+   "explicitly turned off" must read differently, not both collapse to
+   "off". Only the literal '0' means off; every other stored value (or no
+   stored value at all) means on. setImagesEnabled() is unchanged — it
+   still only ever writes '1' or '0'.
    ===================================================================== */
 var IMAGES_KEY = 'cn.imagesEnabled';
 function imagesEnabled() {
-    try { return localStorage.getItem(IMAGES_KEY) === '1'; } catch (e) { return false; }
+    try { return localStorage.getItem(IMAGES_KEY) !== '0'; } catch (e) { return true; }
 }
 function setImagesEnabled(v) {
     try { localStorage.setItem(IMAGES_KEY, v ? '1' : '0'); } catch (e) { /* ignore */ }
@@ -943,6 +1031,84 @@ function imgFallback(img) {
     img.onerror = null;
     img.src = placeholderThumbDataUri();
     img.classList.add('article-thumb-fallback');
+}
+
+/* =====================================================================
+   Domain-derived initials avatar — deterministic, offline, no network: a
+   colour hashed from a domain string plus its initials, rendered as an
+   inline SVG data: URI. This generator used to live only inside MOCK
+   (as its fabricated-article-thumbnail generator, since real thumbnails
+   need a network and MOCK must work with none); PROMOTED here so Feed's
+   Tweets mode (see tweetAvatarHtml() below) can reuse the exact same
+   generator for a source avatar against REAL bridge data too, instead of
+   forking a second hash/initials scheme. MOCK below now calls these
+   promoted functions instead of keeping its own copies.
+   ===================================================================== */
+function domainHash(s) {
+    var h = 0;
+    var str = s || '';
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+}
+function domainInitials(domain) {
+    var base = ((domain || '').split('.')[0] || domain || '').replace(/[^a-z0-9]/gi, '');
+    return (base.slice(0, 2) || '??').toUpperCase();
+}
+// Circular, small (avatar-sized) — distinct from mockSocialImage's square
+// 112x112 article-thumbnail SVG, which stays where it is in MOCK since
+// it's a different shape for a different purpose; both share the same
+// domainHash()/domainInitials() underneath.
+function initialsAvatarDataUri(domain) {
+    var h = domainHash(domain);
+    var hue = h % 360;
+    var bg = 'hsl(' + hue + ',48%,38%)';
+    var initials = domainInitials(domain);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
+        '<circle cx="20" cy="20" r="20" fill="' + bg + '"/>' +
+        '<text x="20" y="26" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle">' + initials + '</text>' +
+    '</svg>';
+    return 'data:image/svg+xml;base64,' + btoa(svg);
+}
+
+/* =====================================================================
+   Feed view mode ("cn.feedView") — RSS / Tweets / Cards, a per-viewing-
+   session layout choice for the Feed tab's article list (NOT a Configs
+   setting — how you want to look at the feed right now, not a durable
+   account preference). Default 'rss' preserves today's layout exactly.
+   See renderFeedList()'s dispatch and initFeedViewToggle() further down.
+   ===================================================================== */
+var FEED_VIEW_KEY = 'cn.feedView';
+function loadFeedView() {
+    try {
+        var v = localStorage.getItem(FEED_VIEW_KEY);
+        if (v === 'rss' || v === 'tweets' || v === 'cards') return v;
+    } catch (e) { /* ignore */ }
+    return 'rss';
+}
+function setFeedView(v) {
+    if (v === State.feed.view) return;
+    State.feed.view = v;
+    try { localStorage.setItem(FEED_VIEW_KEY, v); } catch (e) { /* ignore */ }
+    renderFeedViewToggle();
+    setFeedModeVisibility();
+    renderFeedList();
+}
+function renderFeedViewToggle() {
+    var mount = document.getElementById('feed-view-toggle');
+    if (!mount) return;
+    mount.querySelectorAll('button[data-feed-view]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.feedView === State.feed.view);
+    });
+}
+function initFeedViewToggle() {
+    var toggle = document.getElementById('feed-view-toggle');
+    if (!toggle) return;
+    toggle.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('button[data-feed-view]');
+        if (!btn) return;
+        setFeedView(btn.dataset.feedView);
+    });
+    renderFeedViewToggle();
 }
 
 /* =====================================================================
@@ -1197,16 +1363,10 @@ var MOCK = (function () {
        is to work with zero network, so instead each article gets a
        deterministic, self-contained inline SVG: a colour hashed from the
        publisher domain plus the domain's initials. This proves the images
-       toggle actually works offline, and never touches the network. */
-    function domainHash(s) {
-        var h = 0;
-        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-        return h;
-    }
-    function domainInitials(domain) {
-        var base = (domain.split('.')[0] || domain).replace(/[^a-z0-9]/gi, '');
-        return (base.slice(0, 2) || '??').toUpperCase();
-    }
+       toggle actually works offline, and never touches the network.
+       domainHash()/domainInitials() are promoted to top-level scope (see
+       above initialsAvatarDataUri(), which Tweets-mode avatars reuse) —
+       this closure just calls the outer versions, no local copies. */
     function mockSocialImage(domain) {
         var h = domainHash(domain);
         var hue = h % 360;
@@ -1934,7 +2094,19 @@ var State = {
     // onSelectTrendsChannel()/setFeedModeVisibility()). Independent of
     // activeChannelId, which keeps tracking the last real channel so
     // switching back to 'articles' needs no re-fetch.
-    feed: { items: [], limit: 50, settled: false, mode: 'articles' },
+    // view: 'rss' | 'tweets' | 'cards' — which article-list LAYOUT is
+    // showing, independent of `mode` above (Trends still takes over
+    // regardless of `view`; see setFeedModeVisibility()). Persisted
+    // separately (loadFeedView()) since it's a display choice, not
+    // fetched/cached data.
+    feed: { items: [], limit: 50, settled: false, mode: 'articles', view: loadFeedView() },
+    // Cards mode's own position in the deck — separate from `feed` above
+    // since it's UI/session state (which card is showing), not fetched
+    // data, exactly like events.index below. Reset on a channel/source
+    // switch (see onSetChannel()/onSetSource()) — NOT on merely toggling
+    // the view switcher, so flipping to RSS and back to Cards keeps your
+    // place in the deck.
+    feedCards: { index: 0 },
     trends: { topic: '', timeline: [], tone: [] },
     saved: { items: [] },
     savedUrls: new Set(),
@@ -2007,6 +2179,7 @@ function onSetSource(id) {
     State.activeSourceId = id;
     State.trends.topic = '';
     State.feed.settled = false;
+    State.feedCards.index = 0; // new source, new deck
     renderSourceList();
     rerenderAll(); // instant re-render from cache — row 2 may still be stale/empty
                     // here (e.g. ntfy-self before its channels are discovered);
@@ -2096,6 +2269,22 @@ function loadTopicsIntoState() {
 /* =====================================================================
    Article row rendering — shared by Feed and Saved
    ===================================================================== */
+// RSS-mode row (also used, unconditionally, by the Saved tab, which has no
+// view switcher of its own). Compact list row, image on the LEFT when the
+// article actually has one. Missing-image handling, decided once and
+// applied consistently across RSS/Tweets/Cards (see tweetRowHtml()/
+// feedCardHtml() below): a REAL thumbnail URL that fails to load (404,
+// blocked, etc.) degrades to the themed placeholderThumbDataUri() via
+// imgFallback() below — but a source that never had a thumbnail for this
+// article at all (a.socialimage falsy — true for every DW/Google News/Al
+// Jazeera item) collapses the image slot entirely rather than showing that
+// same placeholder. A source with zero images across its whole feed would
+// otherwise repeat an identical grey "broken image" icon on every single
+// row, which reads as "this is broken", not "this outlet doesn't ship
+// images" — collapsing instead reads as a deliberately denser, headline-
+// only layout (this was already this file's existing behaviour for RSS
+// mode; Tweets/Cards just extend the same rule rather than introduce a
+// third, inconsistent treatment).
 function articleRowHtml(a) {
     var ms = parseSeenDate(a.seendate);
     var saved = State.savedUrls.has(a.url);
@@ -2245,20 +2434,28 @@ function wireTrendsPill(mount) {
     if (btn) btn.addEventListener('click', onSelectTrendsChannel);
 }
 
-// Toggles which of Feed's two content areas is visible — the article list
-// (+ its refresh bar/error surface, only meaningful in article mode) or the
-// moved-in Trends view. Both stay populated in State either way; this is
-// purely a display switch.
+// Toggles which of Feed's THREE content areas is visible — the RSS/Tweets
+// list mount, the Cards deck mount, or the moved-in Trends view (Trends
+// wins regardless of State.feed.view; the view switcher itself is hidden
+// while Trends shows, since it only governs article-list layout). All
+// three stay populated in State either way; this is purely a display
+// switch, same as before — just a 3-way one now instead of 2-way.
 function setFeedModeVisibility() {
     var listEl = document.getElementById('feed-list');
+    var cardsEl = document.getElementById('feed-cards-content');
     var trendsEl = document.getElementById('feed-trends-content');
     var bar = document.getElementById('feed-nav-progress');
     var errMount = document.getElementById('feed-refresh-error-mount');
+    var viewToggle = document.getElementById('feed-view-toggle');
     var trends = State.feed.mode === 'trends';
-    if (listEl) listEl.classList.toggle('hidden', trends);
+    var cards = !trends && State.feed.view === 'cards';
+    var list = !trends && !cards;
+    if (listEl) listEl.classList.toggle('hidden', !list);
+    if (cardsEl) cardsEl.classList.toggle('hidden', !cards);
     if (trendsEl) trendsEl.classList.toggle('hidden', !trends);
     if (bar) bar.style.display = trends ? 'none' : '';
     if (errMount) errMount.style.display = trends ? 'none' : '';
+    if (viewToggle) viewToggle.style.display = trends ? 'none' : '';
 }
 
 function onSelectTrendsChannel() {
@@ -2285,6 +2482,7 @@ function onSetChannel(id) {
     renderChannelPills();
     setFeedModeVisibility();
     State.feed.settled = false;
+    State.feedCards.index = 0; // new channel, new deck
     loadFeedList(); // instant render from cache
     // Unlike a source switch, only pay for a fetch when the cache actually
     // needs it — re-fetching a channel the user is flicking back and forth
@@ -2512,11 +2710,21 @@ function feedEmptyStateHtml() {
     return '<div class="empty-state">No articles yet.</div>';
 }
 
+// Dispatches on State.feed.view: 'rss' and 'tweets' share this list mount
+// (only the per-row renderer differs — articleRowHtml vs tweetRowHtml
+// below), 'cards' renders into its own mount via renderFeedCardsView()
+// instead (see setFeedModeVisibility() for which mount is actually
+// visible at any given time). Trends has its own render path
+// (enterTrendsView()) and is skipped here entirely.
 function renderFeedList() {
+    if (State.feed.mode === 'trends') return;
+    if (State.feed.view === 'cards') { renderFeedCardsView(); return; }
     var mount = document.getElementById('feed-list');
+    if (!mount) return;
     if (!State.feed.items.length) { mount.innerHTML = feedEmptyStateHtml(); return; }
     var sorted = State.feed.items.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
-    var html = sorted.map(articleRowHtml).join('');
+    var rowHtml = State.feed.view === 'tweets' ? tweetRowHtml : articleRowHtml;
+    var html = sorted.map(rowHtml).join('');
     if (State.feed.items.length >= State.feed.limit) {
         html += '<button id="feed-load-more" class="btn-light" style="width:100%;margin-top:12px;" type="button">Load more</button>';
     }
@@ -2524,6 +2732,267 @@ function renderFeedList() {
     wireArticleRowEvents(mount, State.feed.items);
     var moreBtn = document.getElementById('feed-load-more');
     if (moreBtn) moreBtn.addEventListener('click', function () { State.feed.limit += 50; loadFeedList(); });
+}
+
+/* =====================================================================
+   Feed: Tweets mode — timeline-post row. Avatar on the LEFT (see
+   tweetAvatarHtml()/avatarFallback() below), then source/time and the
+   headline, then — only when the article actually has one — the article
+   image BELOW the text at full row width, the way Twitter renders a
+   link-card attachment. Reuses the SAME data-open-url/data-bookmark-url
+   attributes as articleRowHtml, so wireArticleRowEvents() above needs no
+   changes to support this second row shape.
+   ===================================================================== */
+function tweetRowHtml(a) {
+    var ms = parseSeenDate(a.seendate);
+    var saved = State.savedUrls.has(a.url);
+    var toneHtml = sourceHasCap('tone') ? toneChipHtml(a.tone) : '';
+    // Same missing-image policy as articleRowHtml above: collapse the
+    // slot entirely when there's no socialimage at all (or images are
+    // off) — a tweet with no attached media card is completely normal.
+    // A real failed load still degrades to the themed placeholder via
+    // imgFallback(), same as everywhere else.
+    var imageHtml = (imagesEnabled() && a.socialimage)
+        ? '<img class="tweet-image" src="' + esc(secureImageUrl(a.socialimage)) + '" loading="lazy" onerror="imgFallback(this)" alt="">'
+        : '';
+    return '<div class="tweet-row">' +
+        tweetAvatarHtml(a) +
+        '<div class="tweet-main">' +
+            '<div class="tweet-body" data-open-url="' + esc(a.url) + '">' +
+                '<div class="tweet-head"><span class="tweet-source">' + esc(a.domain) + '</span><span class="tweet-dot">&middot;</span><span class="tweet-time">' + esc(relTime(ms)) + '</span></div>' +
+                '<div class="tweet-text">' + esc(a.title) + '</div>' +
+                imageHtml +
+            '</div>' +
+            '<div class="tweet-actions">' + toneHtml +
+                '<button class="bookmark-btn' + (saved ? ' active' : '') + '" data-bookmark-url="' + esc(a.url) + '" aria-label="Save article" type="button">' + bookmarkSvg(saved) + '</button>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+/* Source avatar for Tweets mode — a REAL per-source image if the bridge
+   ever supplies one. The parallel Kotlin/data-JSON worker MAY add a
+   nullable avatar field to sources()/articles; its exact name isn't
+   finalized as of this writing, so this checks a couple of plausible keys
+   defensively and falls through cleanly if neither is present — same
+   spirit as capability/field checks elsewhere in this file (e.g.
+   sourceHasCap()). Gated by imagesEnabled() exactly like every other
+   remote image in this app: with images off, always use the generated
+   avatar below, never fetch a real one. If no real avatar is available
+   (or images are off), falls back to the SAME deterministic, offline
+   initials-avatar generator MOCK has always used for its fabricated
+   thumbnails (initialsAvatarDataUri(), promoted near imgFallback() above —
+   not a second generator). This NEVER falls back to fetching a favicon
+   from the publisher directly: that would be a per-article IP leak to
+   every outlet on every row, exactly what imagesEnabled() exists to
+   prevent. */
+function tweetAvatarHtml(a) {
+    var domain = a.domain || '';
+    // `sourceImage` is the field the bridge actually emits (GdeltArticle.sourceImage,
+    // taken from the feed's own channel <image><url> / RDF image / Atom icon|logo).
+    // sourceAvatar/avatar are kept as tolerated aliases only; neither is emitted today.
+    // Never fetch a favicon here — that is a per-article IP leak to every publisher
+    // scrolled past, which is exactly what the images setting exists to control.
+    var real = imagesEnabled() ? (a.sourceImage || a.sourceAvatar || a.avatar || null) : null;
+    if (real) {
+        return '<img class="tweet-avatar" src="' + esc(secureImageUrl(real)) + '" data-domain="' + esc(domain) + '" loading="lazy" onerror="avatarFallback(this)" alt="">';
+    }
+    return '<img class="tweet-avatar" src="' + esc(initialsAvatarDataUri(domain)) + '" alt="">';
+}
+
+// onerror for a REAL avatar that fails to load — swaps in the offline
+// initials avatar (the same one tweetAvatarHtml() would have used had no
+// real avatar been present), not the square imgFallback() placeholder,
+// which is the wrong shape/size for a round avatar.
+function avatarFallback(img) {
+    img.onerror = null;
+    img.src = initialsAvatarDataUri(img.dataset.domain || '');
+}
+
+/* =====================================================================
+   Generic swipe-card drag mechanics — factored out of the Events deck
+   (see wireEventCard() further down) so Feed's Cards mode below reuses
+   the exact same pointer-capture code instead of forking a second,
+   near-identical implementation. Both callers only differ in their
+   stamps/threshold/callbacks.
+
+   CRITICAL (learned from the Events deck): setPointerCapture() on the
+   card swallows pointerdown on any button NESTED inside it — its click
+   never fires — unless pointerdowns that originate inside
+   opts.ignoreSelector are let through untouched first. Every caller must
+   pass a selector matching its own action buttons; both callers here use
+   the shared `.event-action-btn` class for exactly that reason.
+   ===================================================================== */
+function bindSwipeCard(card, opts) {
+    var ignoreSelector = opts.ignoreSelector || '.event-action-btn';
+    var threshold = opts.threshold || 90;
+    var dragging = false, startX = 0, dx = 0;
+    function onDown(ev) {
+        if (ev.target.closest && ev.target.closest(ignoreSelector)) return;
+        dragging = true;
+        dx = 0;
+        card.classList.add('dragging');
+        startX = ev.clientX;
+        if (card.setPointerCapture && ev.pointerId != null) {
+            try { card.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+        }
+    }
+    function onMove(ev) {
+        if (!dragging) return;
+        dx = ev.clientX - startX;
+        var rot = dx / 14;
+        card.style.transform = 'translateX(' + dx + 'px) rotate(' + rot + 'deg)';
+        var op = Math.min(1, Math.abs(dx) / threshold);
+        if (opts.stampRight) opts.stampRight.style.opacity = dx > 0 ? op : 0;
+        if (opts.stampLeft) opts.stampLeft.style.opacity = dx < 0 ? op : 0;
+    }
+    function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        card.classList.remove('dragging');
+        if (dx > threshold) { opts.onRight(); }
+        else if (dx < -threshold) { opts.onLeft(); }
+        else {
+            card.style.transform = '';
+            if (opts.stampRight) opts.stampRight.style.opacity = 0;
+            if (opts.stampLeft) opts.stampLeft.style.opacity = 0;
+        }
+    }
+    card.addEventListener('pointerdown', onDown);
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerup', onUp);
+    card.addEventListener('pointercancel', onUp);
+}
+
+// Shared fly-off animation for a decided card (swipe release OR an action
+// button) — used by both the Events deck and Feed Cards below, same
+// visual affirmation either way, then invokes cb() once the animation has
+// had time to read.
+function flyOutCard(card, dir, stampEl, cb) {
+    card.classList.remove('dragging');
+    card.style.transform = 'translateX(' + (dir * 480) + 'px) rotate(' + (dir * 20) + 'deg)';
+    card.style.opacity = '0';
+    if (stampEl) stampEl.style.opacity = 1;
+    setTimeout(cb, 220);
+}
+
+/* =====================================================================
+   Feed: Cards mode — a second Tinder-style deck alongside Events', built
+   on the SAME bindSwipeCard()/flyOutCard() drag mechanics above rather
+   than a forked copy. The interaction differs from Events on purpose: a
+   LEFT swipe/drag here is ONLY pagination (advance to the next article) —
+   it never selects or rejects anything, unlike Events' Skip. A RIGHT
+   swipe saves, consistent with Events. Visible Next/Save buttons exist
+   for the same reason Events' Skip/Save buttons do: a swipe-only UI is
+   unusable for anyone who can't perform the gesture, and it's the only
+   way this flow is testable in a browser — see bindSwipeCard()'s
+   ignoreSelector guard, applied here via the same `.event-action-btn`
+   class Events uses.
+
+   Visual chrome is reused wholesale from Events too — feedCardHtml()
+   below renders into .event-card/.event-card-body/.event-card-cal/
+   .event-card-title/.event-card-stamp/.event-card-actions/
+   .event-action-btn AS-IS (same classes, not a copy), since the framing
+   is pixel-identical; only the CONTENT differs (an image + domain/title/
+   tone instead of a calendar accent + date/location), so only
+   .feed-card-img-wrap/.feed-card-img are new CSS (see <style> above).
+   ===================================================================== */
+function feedCardHtml(a) {
+    var ms = parseSeenDate(a.seendate);
+    var saved = State.savedUrls.has(a.url);
+    var imgHtml = '';
+    if (imagesEnabled() && a.socialimage) {
+        imgHtml = '<div class="feed-card-img-wrap"><img class="feed-card-img" src="' + esc(secureImageUrl(a.socialimage)) + '" loading="lazy" onerror="imgFallback(this)" alt=""></div>';
+    }
+    // Missing image: same collapse-the-slot policy as RSS/Tweets above,
+    // applied here too for consistency across all three views — a
+    // text-only card is a normal, deliberate look (the event-card body is
+    // flex:1 and grows to fill the space on its own), not a broken one.
+    var toneHtml = sourceHasCap('tone') ? toneChipHtml(a.tone) : '';
+    return '<div class="event-card" id="feed-active-card">' +
+        imgHtml +
+        '<div class="event-card-body">' +
+            '<div class="event-card-cal">' + esc(a.domain) + '</div>' +
+            '<div class="event-card-title">' + esc(a.title) + '</div>' +
+            '<div class="article-meta">' + toneHtml + '<span class="article-time">' + esc(relTime(ms)) + '</span></div>' +
+        '</div>' +
+        '<div class="event-card-stamp save" id="feed-card-stamp-save">Save</div>' +
+        '<div class="event-card-stamp skip feed-next-stamp" id="feed-card-stamp-next">Next</div>' +
+        '<div class="event-card-actions">' +
+            '<button type="button" class="event-action-btn event-action-skip" id="feed-card-next-btn">Next</button>' +
+            '<button type="button" class="event-action-btn event-action-save" id="feed-card-save-btn">' + (saved ? 'Saved ✓' : 'Save') + '</button>' +
+        '</div>' +
+    '</div>';
+}
+
+function renderFeedCardsView() {
+    var stackMount = document.getElementById('feed-cards-stack-mount');
+    var doneMount = document.getElementById('feed-cards-done-mount');
+    var progressEl = document.getElementById('feed-cards-progress');
+    if (!stackMount || !doneMount || !progressEl) return;
+    var sorted = State.feed.items.slice().sort(function (a, b) { return (parseSeenDate(b.seendate) || 0) - (parseSeenDate(a.seendate) || 0); });
+    var total = sorted.length;
+    if (!total) {
+        progressEl.textContent = '';
+        stackMount.innerHTML = '';
+        doneMount.innerHTML = '<div class="events-empty-state">' + (FeedRefresh.busy ? 'Loading…' : 'No articles for this channel.') + '</div>';
+        return;
+    }
+    // The list can shrink out from under an in-progress deck (a channel
+    // switch or a background refresh landing new results) — clamp rather
+    // than point past the end, but don't clobber a legitimate "done"
+    // state (index === total, handled just below) into looking clamped.
+    if (State.feedCards.index > total) State.feedCards.index = 0;
+    if (State.feedCards.index >= total) {
+        progressEl.textContent = '';
+        stackMount.innerHTML = '';
+        doneMount.innerHTML = '<div class="events-done-state"><strong>All caught up</strong>You’ve gone through all ' + total + ' articles in this channel.</div>';
+        return;
+    }
+    doneMount.innerHTML = '';
+    progressEl.textContent = (State.feedCards.index + 1) + ' of ' + total;
+    var a = sorted[State.feedCards.index];
+    stackMount.innerHTML = '<div class="event-stack">' + feedCardHtml(a) + '</div>';
+    wireFeedCard(a);
+}
+
+function wireFeedCard(article) {
+    var card = document.getElementById('feed-active-card');
+    if (!card) return;
+    var nextBtn = document.getElementById('feed-card-next-btn');
+    var saveBtn = document.getElementById('feed-card-save-btn');
+    if (nextBtn) nextBtn.addEventListener('click', function () { feedCardFlyOut('next', article); });
+    if (saveBtn) saveBtn.addEventListener('click', function () { feedCardFlyOut('save', article); });
+
+    bindSwipeCard(card, {
+        stampRight: document.getElementById('feed-card-stamp-save'),
+        stampLeft: document.getElementById('feed-card-stamp-next'),
+        ignoreSelector: '.event-action-btn',
+        onRight: function () { feedCardFlyOut('save', article); },
+        onLeft: function () { feedCardFlyOut('next', article); }
+    });
+}
+
+function feedCardFlyOut(kind, article) {
+    var card = document.getElementById('feed-active-card');
+    if (!card) { decideFeedCard(kind, article); return; }
+    var dir = kind === 'save' ? 1 : -1;
+    var stamp = document.getElementById(kind === 'save' ? 'feed-card-stamp-save' : 'feed-card-stamp-next');
+    flyOutCard(card, dir, stamp, function () { decideFeedCard(kind, article); });
+}
+
+function decideFeedCard(kind, article) {
+    // "next" (left swipe / Next button) ONLY advances — no bridge write,
+    // no save, no reject, purely pagination through the deck (per the
+    // spec note in the section header above; this is the one place Cards
+    // mode's interaction deliberately diverges from Events'). "save"
+    // always calls the SAME toggle the bookmark button uses everywhere
+    // else, exactly like Events' decideEvent() — including its known
+    // caveat (a right swipe on an already-saved card would un-save it)
+    // rather than inventing different, one-off save semantics here.
+    if (kind === 'save') onToggleSaved(article);
+    State.feedCards.index++;
+    renderFeedCardsView();
 }
 
 /* =====================================================================
@@ -2909,6 +3378,12 @@ function renderEventsView() {
     wireEventCard();
 }
 
+// Drag/pointer mechanics live in bindSwipeCard() (see the Feed tab section
+// above, right before Cards mode) — factored out FROM here so Feed's Cards
+// mode could reuse it instead of forking a second, near-identical
+// implementation. The pointerdown-inside-.event-action-btn guard that used
+// to live inline in this function's onDown() now lives inside
+// bindSwipeCard() itself, applied via ignoreSelector below.
 function wireEventCard() {
     var card = document.getElementById('event-active-card');
     if (!card) return;
@@ -2917,66 +3392,26 @@ function wireEventCard() {
     if (saveBtn) saveBtn.addEventListener('click', function () { flyOut('save'); });
     if (skipBtn) skipBtn.addEventListener('click', function () { flyOut('skip'); });
 
-    var stampSave = document.getElementById('event-stamp-save');
-    var stampSkip = document.getElementById('event-stamp-skip');
-    var dragging = false, startX = 0, dx = 0;
-    var DRAG_THRESHOLD = 90;
-
-    function onDown(ev) {
-        // pointerdown on the Save/Skip buttons bubbles up to the card (they're
-        // inside it) — without this guard, starting a drag here captures the
-        // pointer on the CARD and can swallow the button's own click, which
-        // would make the accessible/no-gesture path unreliable exactly where
-        // the spec requires it to work. Let button presses through untouched.
-        if (ev.target.closest && ev.target.closest('.event-action-btn')) return;
-        dragging = true;
-        dx = 0;
-        card.classList.add('dragging');
-        startX = ev.clientX;
-        if (card.setPointerCapture && ev.pointerId != null) {
-            try { card.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
-        }
-    }
-    function onMove(ev) {
-        if (!dragging) return;
-        dx = ev.clientX - startX;
-        var rot = dx / 14;
-        card.style.transform = 'translateX(' + dx + 'px) rotate(' + rot + 'deg)';
-        var op = Math.min(1, Math.abs(dx) / DRAG_THRESHOLD);
-        if (dx > 0) { stampSave.style.opacity = op; stampSkip.style.opacity = 0; }
-        else { stampSkip.style.opacity = op; stampSave.style.opacity = 0; }
-    }
-    function onUp() {
-        if (!dragging) return;
-        dragging = false;
-        card.classList.remove('dragging');
-        if (dx > DRAG_THRESHOLD) { flyOut('save'); }
-        else if (dx < -DRAG_THRESHOLD) { flyOut('skip'); }
-        else {
-            card.style.transform = '';
-            stampSave.style.opacity = 0;
-            stampSkip.style.opacity = 0;
-        }
-    }
-    card.addEventListener('pointerdown', onDown);
-    card.addEventListener('pointermove', onMove);
-    card.addEventListener('pointerup', onUp);
-    card.addEventListener('pointercancel', onUp);
+    bindSwipeCard(card, {
+        stampRight: document.getElementById('event-stamp-save'),
+        stampLeft: document.getElementById('event-stamp-skip'),
+        ignoreSelector: '.event-action-btn',
+        onRight: function () { flyOut('save'); },
+        onLeft: function () { flyOut('skip'); }
+    });
 }
 
 // Shared by swipe release AND the visible Skip/Save buttons — same fly-off
 // animation, same clear visual affirmation, either way (see the spec note
 // that the buttons exist so this flow is testable without a gesture).
+// flyOutCard() (see the Feed tab section above) does the actual animation
+// work now, shared with Feed's Cards mode.
 function flyOut(kind) {
     var card = document.getElementById('event-active-card');
     if (!card) { decideEvent(kind); return; }
     var dir = kind === 'save' ? 1 : -1;
-    card.classList.remove('dragging');
-    card.style.transform = 'translateX(' + (dir * 480) + 'px) rotate(' + (dir * 20) + 'deg)';
-    card.style.opacity = '0';
     var stamp = document.getElementById(kind === 'save' ? 'event-stamp-save' : 'event-stamp-skip');
-    if (stamp) stamp.style.opacity = 1;
-    setTimeout(function () { decideEvent(kind); }, 220);
+    flyOutCard(card, dir, stamp, function () { decideEvent(kind); });
 }
 
 function decideEvent(kind) {
@@ -3261,6 +3696,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initTheme();
     initChannelPicker();
     initSavedCalendarNav();
+    initFeedViewToggle();
     loadSourcesIntoState();
     renderSourcePills();
     renderChannelPills();
