@@ -34,13 +34,33 @@ if [ -n "${AUTHELIA_BEARER_TOKEN:-}" ]; then
     exit 0
 fi
 
-# Source 2: the vault checkout. AUTHELIA_OIDC_TOKENS_DIR is already exported by
-# unix's Claude settings (da_my-ai/src/data/claude/settings.base.json). The
-# fallback path is the standard ~/git layout.
-TOKENS_DIR="${AUTHELIA_OIDC_TOKENS_DIR:-$HOME/git/vault/A0_keys/providers/authelia/signed-bearer_jwt/tokens}"
-TOKEN_FILE="$TOKENS_DIR/claude-admin.json"
+# Source 2+: a vault checkout on disk. Tried in order; first readable wins.
+#
+# This script lives at <repo>/.claude/mcp-auth-headers.sh, so the repo root is
+# two levels up from $0 — derived rather than assumed, because the helper is
+# invoked with an absolute path from .mcp.json and the cwd is not guaranteed.
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(dirname -- "$SELF_DIR")
+REL="A0_keys/providers/authelia/signed-bearer_jwt/tokens/claude-admin.json"
 
-[ -r "$TOKEN_FILE" ] || { printf '%s\n' '{}'; exit 0; }
+# The order matters:
+#   a) $AUTHELIA_OIDC_TOKENS_DIR — explicit, wins over any guess. Exported by
+#      unix's settings.base.json.
+#   b) <repo>/IV_vault — vault is a SUBMODULE of cloud (submodule.vault.path =
+#      IV_vault). In any cloud checkout with it initialised, that is where the
+#      token actually is. Missing this is why cloning vault "into the repo" left
+#      the helper emitting {} — it only ever looked at ~/git/vault.
+#   c) ~/git/vault — the standalone layout, when the repos are siblings.
+for _candidate in \
+    "${AUTHELIA_OIDC_TOKENS_DIR:+$AUTHELIA_OIDC_TOKENS_DIR/claude-admin.json}" \
+    "$REPO_ROOT/IV_vault/$REL" \
+    "$HOME/git/vault/$REL"
+do
+    [ -n "$_candidate" ] || continue
+    if [ -r "$_candidate" ]; then TOKEN_FILE="$_candidate"; break; fi
+done
+
+[ -n "${TOKEN_FILE:-}" ] && [ -r "$TOKEN_FILE" ] || { printf '%s\n' '{}'; exit 0; }
 
 # node, not jq: node is already required by every build.sh in the fleet, jq is
 # not guaranteed present. Prints ONLY the header object — the token never
