@@ -8,7 +8,8 @@
   "mcpServers": {
     "c3-infra-mcp": {
       "type": "http",
-      "url": "https://mcp.diegonmarcos.com/c3-infra-mcp/mcp"
+      "url": "https://mcp.diegonmarcos.com/c3-infra-mcp/mcp",
+      "headersHelper": "sh \"${CLAUDE_PROJECT_DIR:-.}/.claude/mcp-auth-headers.sh\""
     },
     "c3-services-mcp": {
       "type": "http",
