@@ -1,0 +1,30 @@
+name: setup-deps
+description: Install build dependencies for cloud-android (Nix + Node + Android toolchain)
+
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+
+    - name: Install Node + tsx
+      shell: bash
+      run: |
+        command -v node >/dev/null || curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs jq rsync openssh-client
+        npm install -g tsx typescript
+
+    - name: Install system tools via Nix shell
+      shell: bash
+      run: |
+        nix profile install nixpkgs#sops nixpkgs#age || true
+
+    - name: Configure PATH
+      shell: bash
+      run: |
+        echo "$HOME/.nix-profile/bin" >> "$GITHUB_PATH"
+        echo "NODE_PATH=$HOME/.node_modules/node_modules" >> "$GITHUB_ENV"

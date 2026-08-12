@@ -1,1 +1,1 @@
-../../1_configs/src/gha/scripts/cloud-android-ship-container-engine.sh
+../../1_cicd/src/scripts/cloud-android-ship-container-engine.sh

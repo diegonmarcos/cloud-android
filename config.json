@@ -12,7 +12,7 @@
     "url": "https://github.com/diegonmarcos/cloud-android"
   },
   "ssh_key": "/home/diego/git/vault/A0_keys/ssh/id_rsa",
-  "engine_folder": "1_configs",
+  "engine_folder": "9_others",
 
   "categories": {
     "aa-eng_": "engine — parallel-space core (hooking, redirection, system-server)",

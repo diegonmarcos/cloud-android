@@ -1,0 +1,8 @@
+[submodule "cloud-data"]
+	path = I_cloud-data
+	url = https://github.com/diegonmarcos/cloud-data.git
+	ignore = all
+[submodule "tools"]
+	path = II_tools
+	url = https://github.com/diegonmarcos/tools.git
+	ignore = all

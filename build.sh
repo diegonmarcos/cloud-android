@@ -3,13 +3,13 @@
 # ║ Cloud-Android Orchestrator — pure dispatcher                     ║
 # ║                                                                  ║
 # ║ Zero logic here. All commands delegate to scripts in             ║
-# ║ 1_configs/src/gha/scripts/cloud-android-*.sh                       ║
+# ║ 1_cicd/src/scripts/cloud-android-*.sh                       ║
 # ╚══════════════════════════════════════════════════════════════════╝
 set -e
 
 CLOUD_ANDROID_ROOT="$(cd "$(dirname "$0")" && pwd)"
 export CLOUD_ANDROID_ROOT
-SCRIPTS="$CLOUD_ANDROID_ROOT/1_configs/src/gha/scripts"
+SCRIPTS="$CLOUD_ANDROID_ROOT/1_cicd/src/scripts"
 
 # Source shared library (config, helpers, deps check)
 . "$SCRIPTS/cloud-android-ship-lib.sh"
