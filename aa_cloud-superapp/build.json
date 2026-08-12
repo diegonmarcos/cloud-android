@@ -1531,6 +1531,12 @@
                 "icon": "ic_p_dialer",
                 "target": "extapp:cloud-dialer",
                 "_doc": "Opens the standalone Cloud-Dialer app (ea_cloud-dialer, com.diegonmarcos.comms.dialer, Fossify Phone) via extapp:cloud-dialer — installed → launches; absent → install via Configs ▸ Constellation. Its own constellation app now that the Cloud-Comms hub is decommissioned; same extapp mechanism as Mail / Chat / Messenger above."
+              },
+              {
+                "id": "c3-bot",
+                "label": "C3-Bot",
+                "icon": "ic_ai_chat",
+                "target": "intent://resolve?domain=Cloud_bot_C3_Infra_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_bot_C3_Infra_bot;end"
               }
             ]
           },
