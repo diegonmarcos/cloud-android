@@ -1535,7 +1535,13 @@
                 "id": "calendar",
                 "label": "Calendar",
                 "icon": "ic_calendar",
-                "target": "section:cal"
+                "target": "extapp:cloud-calendar"
+              },
+              {
+                "id": "news",
+                "label": "News",
+                "icon": "ic_rss",
+                "target": "extapp:cloud-news"
               },
               {
                 "id": "contacts",
@@ -5522,6 +5528,22 @@
         "hub_package": "com.diegonmarcos.cloudnav",
         "install_package": "com.diegonmarcos.cloudnav",
         "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
+        "forks": {}
+      },
+      {
+        "id": "cloud-calendar",
+        "label": "Cloud-Calendar",
+        "hub_package": "com.diegonmarcos.cloudcalendar",
+        "install_package": "com.diegonmarcos.cloudcalendar",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Calendar.apk",
+        "forks": {}
+      },
+      {
+        "id": "cloud-news",
+        "label": "Cloud-News",
+        "hub_package": "com.diegonmarcos.cloudnews",
+        "install_package": "com.diegonmarcos.cloudnews",
+        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-News.apk",
         "forks": {}
       },
       {
