@@ -1478,16 +1478,22 @@
             "title": "AI",
             "tiles": [
               {
-                "id": "ai-chat-web",
-                "label": "AI-Chat (web)",
+                "id": "ai-tlg-hermes",
+                "label": "AI-Tlg-Hermes",
                 "icon": "ic_ai_chat",
-                "target": "app://com.google.android.apps.bard?fallback=https%3A%2F%2Fgemini.google.com%2Fapp"
+                "target": "intent://resolve?domain=Cloud_agent_hermes_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_hermes_bot;end"
               },
               {
-                "id": "ai-chat-local",
-                "label": "AI-Chat (local)",
+                "id": "ai-tlg-goose",
+                "label": "AI-Tlg-Goose",
                 "icon": "ic_ai_chat",
-                "target": "http://10.0.0.1:8080"
+                "target": "intent://resolve?domain=Cloud_agent_goose_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_goose_bot;end"
+              },
+              {
+                "id": "ai-tmx",
+                "label": "AI-Tmx",
+                "icon": "ic_ai_sparkle",
+                "target": "app://com.termux.nix?fallback=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.termux.nix"
               },
               {
                 "id": "drive",
