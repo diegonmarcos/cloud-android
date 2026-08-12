@@ -2243,7 +2243,7 @@
     }
   },
   "release": {
-    "_doc": "Data-driven publish targets. build.sh oras-push + gh-release read this block; the GHA workflow (1_configs/src/gha/cicd/ship-cloud-nav.yml) invokes those engine commands. release.auto_update + variants[].update_tag feed libs:updater (the in-app self-updater on Configs → Update).",
+    "_doc": "Data-driven publish targets. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-nav.yml) invokes those engine commands. release.auto_update + variants[].update_tag feed libs:updater (the in-app self-updater on Configs → Update).",
     "artifact": {
       "debug": "Cloud-Nav.apk",
       "release": "Cloud-Nav-release.apk"

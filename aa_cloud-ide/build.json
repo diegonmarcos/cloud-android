@@ -55,7 +55,7 @@
     }
   },
   "release": {
-    "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as ea_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_configs/src/gha/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
+    "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as ea_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
     "abis": {
       "_doc": "ABI build axis. The hub is pure-JVM (ABI-agnostic); the ONLY native-bearing bundled app is the patched Amaze fork (Rust :file_operations). `build.sh build [abi]` / `build-fork <k> [abi]` / `bundle-forks [abi]` select one. `default:true` is what bare `build` / the CI artifact use; non-default abis get a -<abi> artifact suffix. rust_target = the rust-android-gradle cargo target key (passed as -PcloudIdeRustTargets).",
       "arm64-v8a": { "rust_target": "arm64",   "default": true },

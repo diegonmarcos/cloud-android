@@ -1,1 +1,1 @@
-../1_configs/src/gha/scripts/cloud-media-center-fork-engine.sh
+../1_cicd/src/scripts/cloud-media-center-fork-engine.sh

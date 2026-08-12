@@ -35,12 +35,12 @@ done
 
 echo "== T2: each ship workflow uploads via the engine (build.sh gh-release-fork) =="
 for pair in $FORKS; do
-  key="${pair%%:*}"; wf="$UNIX/1_configs/src/gha/cicd/ship-cloud-$key.yml"
+  key="${pair%%:*}"; wf="$UNIX/1_cicd/src/cicd/ship-cloud-$key.yml"
   grep -qF 'build.sh gh-release-fork' "$wf" 2>/dev/null \
     && ok "ship-cloud-$key.yml calls gh-release-fork" || bad "ship-cloud-$key.yml missing gh-release-fork step"
   # deployed copy must match (engine deploys src/cicd → .github/workflows)
   grep -qF 'build.sh gh-release-fork' "$UNIX/.github/workflows/ship-cloud-$key.yml" 2>/dev/null \
-    && ok ".github ship-cloud-$key.yml in sync" || bad ".github ship-cloud-$key.yml NOT redeployed (run 1_configs/build.sh)"
+    && ok ".github ship-cloud-$key.yml in sync" || bad ".github ship-cloud-$key.yml NOT redeployed (run 9_others/build.sh)"
 done
 
 echo "== T3: the fork engine actually implements gh-release-fork =="

@@ -62,7 +62,7 @@ as-is, and per FIRE rule 5/6 a hardcoded copy-paste was rejected in favor of
 naming the actual blocker.
 
 **`ea_cloud-mail/build.sh` is a symlink** to
-`~/git/unix/1_configs/src/gha/scripts/cloud-comms-fork-engine.sh`. That engine
+`~/git/unix/1_cicd/src/scripts/cloud-comms-fork-engine.sh`. That engine
 is genuinely comms-coupled, not a generic single-fork engine — evidence:
 
 - `cloud-comms-fork-engine.sh:239` / `:236` (`step_build`) —
@@ -125,7 +125,7 @@ etc. do not exist for this app — only the devShell (`nix develop`) is usable.
   yet.
 - **Media sync upload — BLOCKED on the cloud service, not just the app.**
   `user-media_photoprism` currently mounts `originals` read-only and has no
-  `import` volume at all (see `0_tasks/PLAN_cloud-media-center.md` for the
+  `import` volume at all (see `a0_tasks/PLAN_cloud-media-center.md` for the
   verified blockers and the wg_only migration in flight). No backup code can
   be written until that service is changed.
 - **`build.sh` engine choice** — see `## OPEN: engine choice` above.

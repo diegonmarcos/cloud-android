@@ -1,1 +1,1 @@
-../1_configs/src/gha/scripts/cloud-chat-fork-engine.sh
+../1_cicd/src/scripts/cloud-chat-fork-engine.sh

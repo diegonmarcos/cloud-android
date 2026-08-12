@@ -1,1 +1,1 @@
-../1_configs/src/gha/scripts/cloud-dialer-fork-engine.sh
+../1_cicd/src/scripts/cloud-dialer-fork-engine.sh

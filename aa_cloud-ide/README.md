@@ -70,7 +70,7 @@ boundary; content is reached via `openFile` / `revealInFiles` deep links.
 - **Hub sharing**: Cloud-Comms scaffolded first; extract the shared broker +
   updater into a common module once both hubs build (see `forks/README.md`).
 
-Full plan + decisions: [`../0_tasks/PLAN_cloud-ide-constellation.md`](../0_tasks/PLAN_cloud-ide-constellation.md).
+Full plan + decisions: [`../a0_tasks/PLAN_cloud-ide-constellation.md`](../a0_tasks/PLAN_cloud-ide-constellation.md).
 
 ## License
 

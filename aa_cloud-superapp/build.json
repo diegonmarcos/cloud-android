@@ -51,7 +51,7 @@
     "jdk": "17"
   },
   "upstreams": {
-    "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 1_configs/src/git/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
+    "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 0_git/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
     "mail": {
       "tracker": "ea_mail-fairmail",
       "repo": "https://github.com/M66B/FairEmail.git",
@@ -5561,7 +5561,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud Media Center — standalone gallery app (ea_cloud-media-center), a Google-Photos/Samsung-Gallery replacement: on-device MediaStore gallery + PhotoPrism cloud library (WebDAV) + camera-roll auto-backup, plus YouTube (NewPipeExtractor) and mirrored-Instagram profiles. Single-app fork (forkless), so extapp:cloud-media-center resolves straight to hub_package. NOT YET SHIPPED: ea_cloud-media-center has no build engine/CI wired yet (ship-cloud-media-center.yml EXISTS at 1_configs/src/gha/cicd/ but is not yet regenerated into .github/workflows/, and no build.sh engine exists for the app yet, so nothing builds; no release published), so install_apk_url below is the intended rolling-latest location mirrored from release.gh_release.asset_name but currently 404s until CI produces an artifact. Do not treat this URL as live.",
+        "_doc": "Cloud Media Center — standalone gallery app (ea_cloud-media-center), a Google-Photos/Samsung-Gallery replacement: on-device MediaStore gallery + PhotoPrism cloud library (WebDAV) + camera-roll auto-backup, plus YouTube (NewPipeExtractor) and mirrored-Instagram profiles. Single-app fork (forkless), so extapp:cloud-media-center resolves straight to hub_package. NOT YET SHIPPED: ea_cloud-media-center has no build engine/CI wired yet (ship-cloud-media-center.yml EXISTS at 1_cicd/src/cicd/ but is not yet regenerated into .github/workflows/, and no build.sh engine exists for the app yet, so nothing builds; no release published), so install_apk_url below is the intended rolling-latest location mirrored from release.gh_release.asset_name but currently 404s until CI produces an artifact. Do not treat this URL as live.",
         "id": "cloud-media-center",
         "label": "Cloud Media Center",
         "hub_package": "com.diegonmarcos.mediacenter",
@@ -6272,7 +6272,7 @@
     "note": "APK produced in dist/. Side-loadable via adb or shared via Filebrowser."
   },
   "release": {
-    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_configs/src/gha/cicd/ship-cloud-superapp.yml) invokes those engine commands — no hardcoded registry/tag strings in the workflow.",
+    "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-superapp.yml) invokes those engine commands — no hardcoded registry/tag strings in the workflow.",
     "artifact": {
       "_doc": "Path under dist/ to publish. The `debug` key is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — it is THE app for this stack, not a side-by-side dev variant. The `release` key exists for when a true Play-Store-style release lifecycle lands; the GHA workflow picks debug for main pushes.",
       "debug": "Cloud-SuperApp.apk",
