@@ -52,7 +52,7 @@ grep -qE 'gh-release-fork\)\s+step_gh_release_fork' "$UNIX/ea_cloud-dialer/build
 echo "== T4: SuperApp install_apk_url == the fork's rolling-'latest' asset URL =="
 for pair in $FORKS; do
   key="${pair%%:*}"; eid="${pair##*:}"
-  want="https://github.com/diegonmarcos/unix/$REL/cloud-comms-$key.apk"
+  want="https://github.com/diegonmarcos/cloud-unix/$REL/cloud-comms-$key.apk"
   got="$(jq -r --arg i "$eid" '.ui.external_apps[] | select(.id==$i) | .install_apk_url' "$BJ" 2>/dev/null)"
   [ "$got" = "$want" ] && ok "$eid install_apk_url → cloud-comms-$key.apk" \
     || bad "$eid install_apk_url mismatch (got: $got)"

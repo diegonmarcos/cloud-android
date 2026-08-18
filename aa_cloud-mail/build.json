@@ -40,7 +40,7 @@
       "media_type": "application/vnd.android.package-archive"
     },
     "gh_release": {
-      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-mail.apk stays stable. Published by `build.sh gh-release-fork mail` (ship-cloud-mail.yml), which uploads dist/cloud-comms-mail.apk with --clobber. Consumed by ea_cloud-superapp ui.external_apps[cloud-mail].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
+      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-mail.apk stays stable. Published by `build.sh gh-release-fork mail` (ship-cloud-mail.yml), which uploads dist/cloud-comms-mail.apk with --clobber. Consumed by ea_cloud-superapp ui.external_apps[cloud-mail].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
       "enabled": true,
       "rolling_tag": "latest",
       "asset_name": "cloud-comms-mail.apk",

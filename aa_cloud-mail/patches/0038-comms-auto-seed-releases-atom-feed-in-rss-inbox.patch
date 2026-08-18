@@ -26,7 +26,7 @@ index 683ca83784..e8c58f9ea9 100644
      private static final int NOTIFICATION_ID = 99001;
 +    // comms: GitHub releases Atom — all ea_* apps publish releases here on CI
 +    private static final String RELEASES_FEED_URL =
-+            "https://github.com/diegonmarcos/unix/releases.atom";
++            "https://github.com/diegonmarcos/cloud-unix/releases.atom";
 +    private static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
  
      public CommsUpdateWorker(@NonNull Context context, @NonNull WorkerParameters params) {

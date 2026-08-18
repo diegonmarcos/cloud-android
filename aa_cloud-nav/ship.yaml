@@ -1,1 +1,192 @@
-../1_cicd/src/cicd/ship-cloud-nav.yml
+name: "Ship → Cloud Nav APK (build + push to GHCR via ORAS + attach to GH Release)"
+
+# Builds the Cloud Nav APK from ea_cloud-nav/ and publishes via two channels,
+# both data-driven by ea_cloud-nav/build.json::release (mirror of the
+# ship-cloud-superapp.yml engine contract — the only "knob" here is which
+# build.sh subcommand to invoke; engine reads build.json for the rest):
+#
+#   1. ORAS push as OCI artifact → ghcr.io/diegonmarcos/cloud-nav:<tags>
+#   2. GH Release attachment     → APK on the rolling `latest` release
+#
+# One matrix job per ABI variant (build.json::release.variants[].id): arm64
+# (canonical phone build) + x86_64 (Waydroid / desktop emulators), published
+# to the SAME rolling `latest` release under distinct filenames + to GHCR
+# under tag suffix -x86_64.
+#
+# Cloud Nav has NO native (CMake/NDK) modules — libs:maps uses the prebuilt
+# MapLibre AAR — so the Android SDK setup omits cmake/ndk (unlike SuperApp,
+# which builds libs:net's libwg-go.so).
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Build variant"
+        required: false
+        type: choice
+        default: "debug"
+        options:
+          - debug
+          - release
+      push_oras:
+        description: "Push APK to GHCR via ORAS"
+        required: false
+        type: boolean
+        default: true
+      create_release:
+        description: "Create GitHub Release"
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    tags:
+      - "ea_cloud-nav-v*"
+    paths:
+      - "ea_cloud-nav/**"
+      - "1_cicd/src/cicd/ship-cloud-nav.yml"
+      # NOTE: the generated .github/workflows/ship-cloud-nav.yml is deliberately
+      # NOT watched — it's regenerated (with all sibling workflows) by
+      # 9_others/build.sh, so watching it self-triggered a rebuild on every
+      # unrelated commit that ran the generator → spurious cross-app updates.
+
+permissions:
+  contents: write   # for gh release create + tag push reads
+  packages: write   # for ghcr push (oras)
+
+env:
+  WORK_DIR: ea_cloud-nav
+
+jobs:
+  build_and_publish:
+    name: "Build APK + Push (${{ matrix.abi }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # One job per ABI variant (build.json::release.variants[].id). arm64 is
+      # the canonical phone build; x86_64 is for Waydroid / desktop emulators.
+      fail-fast: false
+      matrix:
+        abi: [arm64, x86_64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so build.sh can `git rev-parse`
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # No cmake/ndk — Cloud Nav has no native build (MapLibre ships a
+          # prebuilt AAR). Pins mirror ea_cloud-nav/flake.nix + build.json.
+          packages: "platforms;android-35 platforms;android-34 platforms;android-26 build-tools;35.0.0 build-tools;34.0.0 platform-tools"
+
+      - name: Set up Gradle 8.10.2 (cached)
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.10.2"
+
+      # ── ONE shared Cloud-constellation signing key (vault) ──────────────
+      # ALL constellation apps sign with the SAME key so cross-app
+      # signature-IPC + the in-app fleet updater never hit a signature
+      # mismatch. The raw keystore + its sops-encrypted passwords live ONLY in
+      # the private vault repo (A0_keys/providers/android/release.jks +
+      # signing.secrets.yaml). build.sh::_resolve_signing reads $VAULT_DIR +
+      # sops-decrypts (SOPS_AGE_KEY) and exports ANDROID_KEYSTORE_* for gradle.
+      # NO fallback: if the key is unavailable build.sh exits 1 (desired).
+      - name: Checkout vault (shared Android signing key)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install ORAS + sops + gh CLI + jq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          command -v gh
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          oras version
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Determine variant
+        id: variant
+        run: |
+          if   [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "variant=${{ inputs.variant }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "variant=debug" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Build via build.sh (engine) ─────────────────────────────────
+      - name: Build APK (engine)
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          # Shared Cloud-constellation signing key (vault checkout above).
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          # CLOUDNAV_VARIANT selects the ABI variant (build.json::release
+          # .variants[].id) → engine overrides ABI filter + artifact name.
+          CLOUDNAV_VARIANT: ${{ matrix.abi }}
+          # app/build.gradle shells out to `gh run list` at config phase to
+          # bake recent CI durations into BuildConfig (About → Stack).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x build.sh
+          if [ "${{ steps.variant.outputs.variant }}" = "release" ]; then
+            ./build.sh release
+          else
+            ./build.sh build
+          fi
+          ls -la dist/
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cloud-Nav-${{ matrix.abi }}-${{ steps.variant.outputs.variant }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # ── ORAS push to GHCR (engine reads build.json::release.ghcr) ──
+      - name: Login to GHCR
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push APK to GHCR via ORAS
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          CLOUDNAV_VARIANT: ${{ matrix.abi }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh oras-push
+
+      # ── GitHub Release (engine reads build.json::release.gh_release) ──
+      - name: Publish to GitHub Releases
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.create_release }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          CLOUDNAV_VARIANT: ${{ matrix.abi }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+        run: ./build.sh gh-release

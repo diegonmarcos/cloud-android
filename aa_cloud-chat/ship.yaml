@@ -1,1 +1,148 @@
-../1_cicd/src/cicd/ship-cloud-chat.yml
+name: "Ship → Cloud Chat (materialize + build + publish to GHCR)"
+
+# Independent per-app workflow for Cloud Chat (Mattermost fork).
+# Engine: 1_cicd/src/scripts/cloud-chat-fork-engine.sh (symlinked as ea_cloud-chat/build.sh).
+# Per-app build.json at ea_cloud-chat/build.json; patches at ea_cloud-chat/patches/.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "ea_cloud-chat/**"
+      - "1_cicd/src/scripts/cloud-chat-fork-engine.sh"
+      - "1_cicd/src/cicd/ship-cloud-chat.yml"
+
+permissions:
+  contents: write   # gh release create (RSS feed entries)
+  packages: write   # ghcr push (oras)
+
+env:
+  WORK_DIR: ea_cloud-chat
+  FORK: chat
+
+jobs:
+  build_and_publish:
+    name: "Materialize + build + publish (chat · ${{ matrix.combo.abi }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        combo: [{fork: "chat", abi: "arm64-v8a"}]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      COMMS_BUNDLE_ABI: ${{ matrix.combo.abi }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Node 20 (react-native fork)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Ruby + Bundler (react-native fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: false
+
+      - name: Set up Android SDK + NDK (react-native native modules / hermes)
+        uses: android-actions/setup-android@v3
+
+      - name: Checkout vault (shared Android signing key)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install ORAS + sops + jq
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          oras version
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Materialize fork (clone @ pin + patch series)
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+        run: |
+          chmod +x build.sh
+          ./build.sh materialize-fork "$FORK"
+
+      - name: Generate build stamp (baked into APK BuildConfig AND release tag)
+        run: |
+          echo "COMMS_BUILD_TIMESTAMP=$(date -u '+%Y%m%d.%H%M%S')" >> "$GITHUB_ENV"
+
+      - name: Build fork APK (fork's own gradle wrapper + constellation signing)
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          COMMS_BUILD_TIMESTAMP: ${{ env.COMMS_BUILD_TIMESTAMP }}
+        run: |
+          ./build.sh build-fork "$FORK"
+          ls -la dist/
+
+      - name: Upload fork APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-comms-chat-${{ matrix.combo.abi }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/cloud-comms-chat.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publish fork APK to GHCR
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh publish-fork "$FORK"
+
+      - name: Create GitHub Release (RSS update notification)
+        if: ${{ success() && matrix.combo.abi == 'arm64-v8a' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="cloud-comms-chat-${COMMS_BUILD_TIMESTAMP}"
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Cloud Chat · ${{ env.COMMS_BUILD_TIMESTAMP }}" \
+            --notes "New build published to ghcr.io/diegonmarcos/cloud-comms-chat:latest — install via Cloud Chat → About → Check for updates." \
+            --latest=false \
+            "${{ env.WORK_DIR }}/dist/cloud-comms-chat.apk"
+
+      # Rolling 'latest' release: upload the APK under its own name so
+      # /releases/latest/download/cloud-comms-chat.apk is a stable install URL
+      # (ea_cloud-superapp ui.external_apps[cloud-chat].install_apk_url).
+      # Engine step reads build.json::release.gh_release (rolling_tag=latest).
+      - name: Publish fork APK to rolling 'latest' release (stable install URL)
+        if: ${{ success() && matrix.combo.abi == 'arm64-v8a' }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh gh-release-fork "$FORK"

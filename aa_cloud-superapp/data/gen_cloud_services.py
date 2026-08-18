@@ -185,7 +185,7 @@ INFRA.append(("Pilots", PILOTS))   # 5 vm-pilots under Infra Apps
 # x86 = GitHub-hosted GHA runners (external link to the workflow runs).
 RUNNERS = [
     vm("runner-arm", NODE_IP.get("oci-apps", "10.0.0.6"), "ARM (Oci-Apps)"),
-    ext("x86 (GHA)", "https://github.com/diegonmarcos/unix/actions"),
+    ext("x86 (GHA)", "https://github.com/diegonmarcos/cloud-unix/actions"),
 ]
 
 

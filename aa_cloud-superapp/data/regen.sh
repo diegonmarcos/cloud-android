@@ -41,9 +41,9 @@ UNIX="$(cd "$HERE/../.." && pwd)"
 regen_constellation() {
     command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; return 1; }
     # owner/repo = the monorepo these apps ship from (invariant identity).
-    local rel="https://github.com/diegonmarcos/unix/releases"
-    local tree="https://github.com/diegonmarcos/unix/tree/main"
-    local pkg="https://github.com/diegonmarcos/unix/pkgs/container"
+    local rel="https://github.com/diegonmarcos/cloud-unix/releases"
+    local tree="https://github.com/diegonmarcos/cloud-unix/tree/main"
+    local pkg="https://github.com/diegonmarcos/cloud-unix/pkgs/container"
 
     # Scan every sibling ea_cloud-*/build.json. A dir self-registers as EITHER a
     # top-level app (has .android.application_id + .release.ghcr.image) OR a

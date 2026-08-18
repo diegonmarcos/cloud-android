@@ -2149,11 +2149,11 @@
       "repos": [
         {
           "label": "unix",
-          "url": "https://github.com/diegonmarcos/unix"
+          "url": "https://github.com/diegonmarcos/cloud-unix"
         },
         {
           "label": "cloud",
-          "url": "https://github.com/diegonmarcos/cloud"
+          "url": "https://github.com/diegonmarcos/cloud-infra"
         },
         {
           "label": "front",
@@ -2161,7 +2161,7 @@
         },
         {
           "label": "vault",
-          "url": "https://github.com/diegonmarcos/vault"
+          "url": "https://github.com/diegonmarcos/cloud-vault"
         }
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"

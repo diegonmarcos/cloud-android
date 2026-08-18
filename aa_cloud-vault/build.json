@@ -33,7 +33,7 @@
         "_doc": "Module `app` (applicationId com.x8bit.bitwarden upstream, com.diegonmarcos.cloudvault after patch 0001) is the password manager — NOT `authenticator`, a different product in the same repo. Flavor `fdroid` (dimension `mode`) is the Google-free flavor: Firebase/Crashlytics/ML-Kit/Play-Billing are standardImplementation-only and GoogleServices/Crashlytics tasks are disabled for fdroid in afterEvaluate. No release signingConfig is declared upstream (app/build.gradle.kts release buildType has none) so the APK comes out unsigned from gradle; build-fork's unconditional _enforce_signature re-signs it with the ONE shared constellation key regardless — no 'signing' key needed here.",
         "gradle_task": ":app:assembleFdroidRelease",
         "apk_glob": "app/build/outputs/apk/fdroid/release/*.apk",
-        "_build_blocker_doc": "com.bitwarden:sdk-android is resolved from https://maven.pkg.github.com/bitwarden/sdk (settings.gradle.kts dependencyResolutionManagement), which 401s without an authenticated GitHub account/token even for public artifacts — verified un-buildable in this sandbox. settings.gradle.kts reads the credential as: password = userProperties[\"gitHubToken\"] (rootDir/user.properties, gitignored, local-dev only) ?: System.getenv(\"GITHUB_TOKEN\") ; username is hardcoded to \"\" (empty). CI MUST export GITHUB_TOKEN from a secret named BITWARDEN_PACKAGES_TOKEN (a PAT/fine-grained token with read:packages on bitwarden/sdk — the default GITHUB_TOKEN this repo's own Actions runner mints is scoped to diegonmarcos/unix only and CANNOT read a different owner's GitHub Packages) before invoking `build.sh build-fork vault`. Do not set gradle_props here for this — it's a plain env var the upstream settings.gradle.kts already reads, not a project property.",
+        "_build_blocker_doc": "com.bitwarden:sdk-android is resolved from https://maven.pkg.github.com/bitwarden/sdk (settings.gradle.kts dependencyResolutionManagement), which 401s without an authenticated GitHub account/token even for public artifacts — verified un-buildable in this sandbox. settings.gradle.kts reads the credential as: password = userProperties[\"gitHubToken\"] (rootDir/user.properties, gitignored, local-dev only) ?: System.getenv(\"GITHUB_TOKEN\") ; username is hardcoded to \"\" (empty). CI MUST export GITHUB_TOKEN from a secret named BITWARDEN_PACKAGES_TOKEN (a PAT/fine-grained token with read:packages on bitwarden/sdk — the default GITHUB_TOKEN this repo's own Actions runner mints is scoped to diegonmarcos/cloud-unix only and CANNOT read a different owner's GitHub Packages) before invoking `build.sh build-fork vault`. Do not set gradle_props here for this — it's a plain env var the upstream settings.gradle.kts already reads, not a project property.",
         "gradle_props": {}
       },
       "comment": "Bitwarden Android (password manager). Rebrand + self-hosted-server-default + NOTICE patches in ea_cloud-vault/patches/. materialize-fork works today (pure git clone+patch, no network auth needed); build-fork is UNVERIFIED end-to-end because of the maven.pkg.github.com 401 above — the first CI run with BITWARDEN_PACKAGES_TOKEN set is the real test."
@@ -78,10 +78,10 @@
       "website": "linktree.diegonmarcos.com",
       "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
       "repos": [
-        { "label": "unix",  "url": "https://github.com/diegonmarcos/unix" },
-        { "label": "cloud", "url": "https://github.com/diegonmarcos/cloud" },
+        { "label": "unix",  "url": "https://github.com/diegonmarcos/cloud-unix" },
+        { "label": "cloud", "url": "https://github.com/diegonmarcos/cloud-infra" },
         { "label": "front", "url": "https://github.com/diegonmarcos/diegonmarcos.github.io" },
-        { "label": "vault", "url": "https://github.com/diegonmarcos/vault" }
+        { "label": "vault", "url": "https://github.com/diegonmarcos/cloud-vault" }
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json"
     },

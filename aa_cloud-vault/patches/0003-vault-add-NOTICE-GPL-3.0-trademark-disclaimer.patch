@@ -55,7 +55,7 @@ index 0000000..5d2a789
 +## What changed vs. upstream
 +
 +See the patch series in `ea_cloud-vault/patches/` in the
-+[diegonmarcos/unix](https://github.com/diegonmarcos/unix) repository
++[diegonmarcos/cloud-unix](https://github.com/diegonmarcos/cloud-unix) repository
 +(directory `ea_cloud-vault/`) for the exact, reviewable diff against the
 +pinned upstream tag. In summary: rebranding (this NOTICE's subject) and
 +pre-provisioning the default environment to point at this fork's own
@@ -64,7 +64,7 @@ index 0000000..5d2a789
 +
 +## Source
 +
-+- This fork's patches + build machinery: https://github.com/diegonmarcos/unix
++- This fork's patches + build machinery: https://github.com/diegonmarcos/cloud-unix
 +  (`ea_cloud-vault/`).
 +- Unmodified upstream source: https://github.com/bitwarden/android
 +  (tag `v2026.7.1-bwpm`).

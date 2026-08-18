@@ -17,13 +17,13 @@ module adds the **keyboard provider**. Both ship in one APK.
 ## Vendoring — `./build.sh sync-heliboard`
 
 ```bash
-git clone https://github.com/Helium314/HeliBoard ~/git/unix/ea_keyboard-heliboard
-cd ~/git/unix/ea_cloud-superapp
+git clone https://github.com/Helium314/HeliBoard ~/git/cloud-unix/ea_keyboard-heliboard
+cd ~/git/cloud-unix/ea_cloud-superapp
 ./build.sh sync-heliboard      # rsync mirror app/src/main → libs/keyboard/src/main
 git -C . status -s -- libs/keyboard/   # review the vendored diff, then commit
 ```
 
-The sibling clone (`~/git/unix/ea_keyboard-heliboard/`) is gitignored — the
+The sibling clone (`~/git/cloud-unix/ea_keyboard-heliboard/`) is gitignored — the
 `ea_*-*` workspace-clone convention, same as `libs:net`'s
 `ea_net-wireguard/`. Pin a specific tag in the clone for reproducibility.
 

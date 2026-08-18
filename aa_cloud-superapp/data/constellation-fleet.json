@@ -11,9 +11,9 @@
       "image": "cloud-browser",
       "tag": "latest",
       "asset": "Cloud-Browser.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Browser.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-browser",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-browser",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Browser.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-browser",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-browser",
       "blocked": false
     },
     {
@@ -26,9 +26,9 @@
       "image": "cloud-calendar",
       "tag": "latest",
       "asset": "Cloud-Calendar.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Calendar.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-calendar",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-calendar",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Calendar.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-calendar",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-calendar",
       "blocked": false
     },
     {
@@ -41,9 +41,9 @@
       "image": "cloud-comms-chat",
       "tag": "latest",
       "asset": "cloud-comms-chat.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-chat",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-comms-chat",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-chat",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-comms-chat",
       "blocked": false
     },
     {
@@ -56,9 +56,9 @@
       "image": "cloud-comms-dialer",
       "tag": "latest",
       "asset": "cloud-comms-dialer.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-dialer",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-comms-dialer",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-dialer",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-comms-dialer",
       "blocked": false
     },
     {
@@ -71,9 +71,9 @@
       "image": "cloud-ide-hub",
       "tag": "latest",
       "asset": "Cloud-IDE-Hub.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-IDE-Hub.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-ide",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-ide-hub",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-IDE-Hub.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-ide",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-ide-hub",
       "blocked": false
     },
     {
@@ -86,9 +86,9 @@
       "image": "cloud-keyboard-libs",
       "tag": "latest",
       "asset": "Cloud-Keyboard-Libs.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard-Libs.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard-libs",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard-libs",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard-Libs.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard-libs",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-keyboard-libs",
       "blocked": false
     },
     {
@@ -101,9 +101,9 @@
       "image": "cloud-keyboard",
       "tag": "latest",
       "asset": "Cloud-Keyboard.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-keyboard",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-keyboard",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-keyboard",
       "blocked": false
     },
     {
@@ -116,9 +116,9 @@
       "image": "cloud-comms-mail",
       "tag": "latest",
       "asset": "cloud-comms-mail.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-mail",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-comms-mail",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-mail",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-comms-mail",
       "blocked": false
     },
     {
@@ -131,9 +131,9 @@
       "image": "cloud-comms-matrix",
       "tag": "latest",
       "asset": "cloud-comms-matrix.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-matrix",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-comms-matrix",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-matrix",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-comms-matrix",
       "blocked": false
     },
     {
@@ -146,9 +146,9 @@
       "image": "cloud-media-center",
       "tag": "latest",
       "asset": "cloud-media-center.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-media-center.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-media-center",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-media-center",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-media-center.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-media-center",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-media-center",
       "blocked": false
     },
     {
@@ -161,9 +161,9 @@
       "image": "cloud-nav",
       "tag": "latest",
       "asset": "Cloud-Nav.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-nav",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-nav",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Nav.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-nav",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-nav",
       "blocked": false
     },
     {
@@ -176,9 +176,9 @@
       "image": "cloud-news",
       "tag": "latest",
       "asset": "Cloud-News.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-News.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-news",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-news",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-News.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-news",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-news",
       "blocked": false
     },
     {
@@ -191,9 +191,9 @@
       "image": "cloud-superapp",
       "tag": "latest",
       "asset": "Cloud-SuperApp.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-SuperApp.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-superapp",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-superapp",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-SuperApp.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-superapp",
       "blocked": false
     },
     {
@@ -206,9 +206,9 @@
       "image": "cloud-vault",
       "tag": "latest",
       "asset": "Cloud-Vault.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Vault.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-vault",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-vault",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Vault.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-vault",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-vault",
       "blocked": false
     },
     {
@@ -221,9 +221,9 @@
       "image": "cloud-wallet",
       "tag": "latest",
       "asset": "Cloud-Wallet.apk",
-      "release_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Wallet.apk",
-      "repo_url": "https://github.com/diegonmarcos/unix/tree/main/ea_cloud-wallet",
-      "ghcr_page": "https://github.com/diegonmarcos/unix/pkgs/container/cloud-wallet",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Wallet.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-wallet",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-wallet",
       "blocked": false
     }
   ]

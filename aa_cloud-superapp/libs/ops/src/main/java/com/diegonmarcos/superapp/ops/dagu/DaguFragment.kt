@@ -61,8 +61,8 @@ class DaguFragment : Fragment() {
         root.addView(header(ctx, "Dagu — Sign in"))
         root.addView(small(ctx,
             "Paste an Authelia bearer token. Generate one on the laptop with:\n" +
-                "  python ~/git/vault/A0_keys/providers/authelia/oauth/get_token.py\n" +
-                "  jq -r .access_token ~/git/vault/A0_keys/providers/authelia/oauth/authelia_tokens.json"))
+                "  python ~/git/cloud-vault/A0_keys/providers/authelia/oauth/get_token.py\n" +
+                "  jq -r .access_token ~/git/cloud-vault/A0_keys/providers/authelia/oauth/authelia_tokens.json"))
         val urlField = formField(ctx, "Server URL", prefs.serverUrl, InputType.TYPE_TEXT_VARIATION_URI)
         val tokenField = formField(ctx, "Bearer token", "",
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)

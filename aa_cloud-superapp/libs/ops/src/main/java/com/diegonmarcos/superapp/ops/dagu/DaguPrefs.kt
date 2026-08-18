@@ -18,7 +18,7 @@ import com.diegonmarcos.superapp.ops.BuildConfig
  *   • bearerToken  — Authelia OAuth bearer token; sent as
  *                    `Authorization: Bearer ...` on every Dagu
  *                    REST call. The user gets the token from
- *                    `~/git/vault/A0_keys/providers/authelia/oauth/
+ *                    `~/git/cloud-vault/A0_keys/providers/authelia/oauth/
  *                    get_token.py` and pastes it into the login
  *                    form once.
  *   • userLabel    — purely cosmetic; "logged in as N" line on the

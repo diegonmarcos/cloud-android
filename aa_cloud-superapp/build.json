@@ -4496,11 +4496,11 @@
       "repos": [
         {
           "label": "unix",
-          "url": "https://github.com/diegonmarcos/unix"
+          "url": "https://github.com/diegonmarcos/cloud-unix"
         },
         {
           "label": "cloud",
-          "url": "https://github.com/diegonmarcos/cloud"
+          "url": "https://github.com/diegonmarcos/cloud-infra"
         },
         {
           "label": "front",
@@ -4508,7 +4508,7 @@
         },
         {
           "label": "vault",
-          "url": "https://github.com/diegonmarcos/vault"
+          "url": "https://github.com/diegonmarcos/cloud-vault"
         }
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
@@ -5494,7 +5494,7 @@
         "label": "Cloud Dialer (Fossify)",
         "hub_package": "com.diegonmarcos.comms.dialer",
         "install_package": "com.diegonmarcos.comms.dialer",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-dialer.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-dialer.apk",
         "forks": {}
       },
       {
@@ -5502,7 +5502,7 @@
         "label": "Cloud Chat (Mattermost)",
         "hub_package": "com.diegonmarcos.comms.chat",
         "install_package": "com.diegonmarcos.comms.chat",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-chat.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-chat.apk",
         "forks": {}
       },
       {
@@ -5510,7 +5510,7 @@
         "label": "Cloud Mail (Fairmail)",
         "hub_package": "com.diegonmarcos.comms.mail",
         "install_package": "com.diegonmarcos.comms.mail",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-mail.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-mail.apk",
         "forks": {}
       },
       {
@@ -5518,7 +5518,7 @@
         "label": "Messenger (Element)",
         "hub_package": "com.diegonmarcos.comms.matrix",
         "install_package": "com.diegonmarcos.comms.matrix",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-comms-matrix.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-matrix.apk",
         "forks": {}
       },
       {
@@ -5526,7 +5526,7 @@
         "label": "Cloud-IDE",
         "hub_package": "com.diegonmarcos.ide",
         "install_package": "com.diegonmarcos.ide",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-IDE-Hub.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-IDE-Hub.apk",
         "forks": {
           "files": "com.diegonmarcos.ide.files",
           "utils": "com.diegonmarcos.ide.utils",
@@ -5539,7 +5539,7 @@
         "label": "Cloud-Nav",
         "hub_package": "com.diegonmarcos.cloudnav",
         "install_package": "com.diegonmarcos.cloudnav",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Nav.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Nav.apk",
         "forks": {}
       },
       {
@@ -5547,7 +5547,7 @@
         "label": "Cloud-Calendar",
         "hub_package": "com.diegonmarcos.cloudcalendar",
         "install_package": "com.diegonmarcos.cloudcalendar",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Calendar.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Calendar.apk",
         "forks": {}
       },
       {
@@ -5555,7 +5555,7 @@
         "label": "Cloud-News",
         "hub_package": "com.diegonmarcos.cloudnews",
         "install_package": "com.diegonmarcos.cloudnews",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-News.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-News.apk",
         "forks": {}
       },
       {
@@ -5564,7 +5564,7 @@
         "label": "Cloud-Keyboard",
         "hub_package": "com.diegonmarcos.cloudkeyboard",
         "install_package": "com.diegonmarcos.cloudkeyboard",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard.apk",
         "forks": {}
       },
       {
@@ -5573,7 +5573,7 @@
         "label": "Cloud-Wallet",
         "hub_package": "com.diegonmarcos.cloudwallet",
         "install_package": "com.diegonmarcos.cloudwallet",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Wallet.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Wallet.apk",
         "forks": {}
       },
       {
@@ -5582,7 +5582,7 @@
         "label": "Cloud-Browser",
         "hub_package": "com.diegonmarcos.cloudbrowser",
         "install_package": "com.diegonmarcos.cloudbrowser",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Browser.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Browser.apk",
         "forks": {}
       },
       {
@@ -5591,7 +5591,7 @@
         "label": "Cloud-Vault",
         "hub_package": "com.diegonmarcos.cloudvault",
         "install_package": "com.diegonmarcos.cloudvault",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Vault.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Vault.apk",
         "forks": {}
       },
       {
@@ -5600,7 +5600,7 @@
         "label": "Cloud Media Center",
         "hub_package": "com.diegonmarcos.mediacenter",
         "install_package": "com.diegonmarcos.mediacenter",
-        "install_apk_url": "https://github.com/diegonmarcos/unix/releases/latest/download/cloud-media-center.apk",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-media-center.apk",
         "forks": {}
       }
     ],

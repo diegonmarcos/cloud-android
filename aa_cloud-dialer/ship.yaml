@@ -1,1 +1,134 @@
-../1_cicd/src/cicd/ship-cloud-dialer.yml
+name: "Ship → Cloud Dialer (materialize + build + publish to GHCR)"
+
+# Independent per-app workflow for Cloud Dialer (Fossify Phone fork).
+# Engine: 1_cicd/src/scripts/cloud-dialer-fork-engine.sh (symlinked as ea_cloud-dialer/build.sh).
+# Per-app build.json at ea_cloud-dialer/build.json; patches at ea_cloud-dialer/patches/.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "ea_cloud-dialer/**"
+      - "1_cicd/src/scripts/cloud-dialer-fork-engine.sh"
+      - "1_cicd/src/cicd/ship-cloud-dialer.yml"
+
+permissions:
+  contents: write   # gh release create (RSS feed entries)
+  packages: write   # ghcr push (oras)
+
+env:
+  WORK_DIR: ea_cloud-dialer
+  FORK: dialer
+
+jobs:
+  build_and_publish:
+    name: "Materialize + build + publish (dialer · ${{ matrix.combo.abi }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        combo: [{fork: "dialer", abi: "arm64-v8a"}]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      COMMS_BUNDLE_ABI: ${{ matrix.combo.abi }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Checkout vault (shared Android signing key)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install ORAS + sops + jq
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          oras version
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Materialize fork (clone @ pin + patch series)
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+        run: |
+          chmod +x build.sh
+          ./build.sh materialize-fork "$FORK"
+
+      - name: Generate build stamp (baked into APK BuildConfig AND release tag)
+        run: |
+          echo "COMMS_BUILD_TIMESTAMP=$(date -u '+%Y%m%d.%H%M%S')" >> "$GITHUB_ENV"
+
+      - name: Build fork APK (fork's own gradle wrapper + constellation signing)
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          COMMS_BUILD_TIMESTAMP: ${{ env.COMMS_BUILD_TIMESTAMP }}
+        run: |
+          ./build.sh build-fork "$FORK"
+          ls -la dist/
+
+      - name: Upload fork APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-comms-dialer-${{ matrix.combo.abi }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/cloud-comms-dialer.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publish fork APK to GHCR
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh publish-fork "$FORK"
+
+      - name: Create GitHub Release (RSS update notification)
+        if: ${{ success() && matrix.combo.abi == 'arm64-v8a' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="cloud-comms-dialer-${COMMS_BUILD_TIMESTAMP}"
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Cloud Dialer · ${{ env.COMMS_BUILD_TIMESTAMP }}" \
+            --notes "New build published to ghcr.io/diegonmarcos/cloud-comms-dialer:latest — install via Cloud Dialer → About → Check for updates." \
+            --latest=false \
+            "${{ env.WORK_DIR }}/dist/cloud-comms-dialer.apk"
+
+      # Rolling 'latest' release: upload the APK under its own name so
+      # /releases/latest/download/cloud-comms-dialer.apk is a stable install URL
+      # (ea_cloud-superapp ui.external_apps[cloud-dialer].install_apk_url).
+      # Engine step reads build.json::release.gh_release (rolling_tag=latest).
+      - name: Publish fork APK to rolling 'latest' release (stable install URL)
+        if: ${{ success() && matrix.combo.abi == 'arm64-v8a' }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh gh-release-fork "$FORK"

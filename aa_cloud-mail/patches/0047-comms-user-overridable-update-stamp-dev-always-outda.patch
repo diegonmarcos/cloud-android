@@ -32,7 +32,7 @@ index 3249e5217f..f04131ddfa 100644
  import androidx.work.Constraints;
  import androidx.work.ExistingPeriodicWorkPolicy;
 @@ -75,10 +77,35 @@ public class CommsUpdateWorker extends Worker {
-             "https://github.com/diegonmarcos/unix/releases.atom";
+             "https://github.com/diegonmarcos/cloud-unix/releases.atom";
      private static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
  
 +    // comms: user-overridable installed stamp (About → Update channel override)

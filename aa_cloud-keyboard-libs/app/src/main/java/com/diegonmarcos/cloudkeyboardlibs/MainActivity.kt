@@ -40,7 +40,7 @@ class MainActivity : Activity() {
             setOnClickListener {
                 startActivity(
                     Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard-Libs.apk"))
+                        Uri.parse("https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard-Libs.apk"))
                 )
             }
         })

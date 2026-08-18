@@ -101,7 +101,7 @@ fun MainSettingsScreen(
                                 updateCtx.startActivity(
                                     android.content.Intent(
                                         android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse("https://github.com/diegonmarcos/unix/releases/latest/download/Cloud-Keyboard.apk")
+                                        android.net.Uri.parse("https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard.apk")
                                     ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                                 )
                             }
