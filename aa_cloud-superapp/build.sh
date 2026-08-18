@@ -108,7 +108,7 @@ _resolve_signing() {
     errlog "  Set both paths in build.json::signing. Refusing to build with any other key."
     exit 1
   fi
-  vault="${VAULT_DIR:-$HOME/git/vault}"
+  vault="${VAULT_DIR:-$HOME/git/cloud-vault}"
   ks="$vault/$ks_rel"
   if [ ! -f "$ks" ]; then
     errlog "FATAL signing: the ONE shared constellation keystore is missing at $ks"
@@ -167,7 +167,7 @@ _resolve_media_keys() {
   local sec_rel vault sec
   sec_rel="$(_release_var '.keyboard_media.vault_secrets')"
   [ -z "$sec_rel" ] && return 0
-  vault="${VAULT_DIR:-$HOME/git/vault}"
+  vault="${VAULT_DIR:-$HOME/git/cloud-vault}"
   sec="$vault/$sec_rel"
   [ -f "$sec" ] || { log "media: no GIF key file at vault/$sec_rel — GIF tab off (stickers unaffected)"; return 0; }
   command -v sops >/dev/null 2>&1 || { log "media: sops not on PATH — skipping GIF API keys"; return 0; }
@@ -185,7 +185,7 @@ _ensure_firestack() {
   outdir="$SCRIPT_DIR/libs/firewall/firestack"
   [ -f "$outdir/$aarout" ] && return 0
   log "firestack: aar missing → building once (libs:firewall depends on it)"
-  tracker="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
+  tracker="${UNIX_REPO:-$HOME/git/cloud-unix}/$(_release_var '.upstreams.firestack.tracker')"
   [ -d "$tracker/.git" ] || step_sync_firestack
   step_firestack
 }
@@ -583,7 +583,7 @@ step_sync_qrcodes() {
 # Cherry-picks the embeddable `tunnel/` module of upstream
 # wireguard-android (https://github.com/WireGuard/wireguard-android,
 # Apache-2.0) into libs/net/. The upstream clone lives at
-# ${UNIX_REPO:-$HOME/git/unix}/ea_net-wireguard/ (gitignored per the
+# ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_net-wireguard/ (gitignored per the
 # ea_*-*/ workspace-clone convention); this command copies a fixed
 # include-list into the in-tree gradle module so CI can build the
 # native libwg-go.so + libwg.so + libwg-quick.so without the sibling
@@ -592,7 +592,7 @@ step_sync_qrcodes() {
 # Idempotent — rsync --delete on the destinations, so a fresh upstream
 # pull → one `./build.sh sync-net` → clear `git diff` for review.
 step_sync_net() {
-  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_net-wireguard/tunnel"
+  local upstream="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_net-wireguard/tunnel"
   local dst="$SCRIPT_DIR/libs/net"
   [ -d "$upstream" ] || { errlog "sync-net: upstream not found: $upstream (clone https://github.com/WireGuard/wireguard-android.git there, or set UNIX_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-net: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
@@ -652,7 +652,7 @@ step_sync_net() {
 # browse and hand-cherry-pick its DNS / firestack engine into
 # libs/firewall later. Registered in build.json::upstreams.firewall.
 step_sync_firewall() {
-  local ref="${UNIX_REPO:-$HOME/git/unix}/ea_net-rethinkdns"
+  local ref="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_net-rethinkdns"
   local url="https://github.com/celzero/rethink-app.git"
   command -v git >/dev/null 2>&1 || { errlog "sync-firewall: git is required"; exit 1; }
   if [ -d "$ref/.git" ]; then
@@ -677,7 +677,7 @@ step_sync_firestack() {
   local repo branch ref
   repo="$(_release_var '.upstreams.firestack.repo')"
   branch="$(_release_var '.upstreams.firestack.ref')"
-  ref="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
+  ref="${UNIX_REPO:-$HOME/git/cloud-unix}/$(_release_var '.upstreams.firestack.tracker')"
   command -v git >/dev/null 2>&1 || { errlog "sync-firestack: git is required"; exit 1; }
   if [ -d "$ref/.git" ]; then
     log "sync-firestack: updating firestack clone ($branch): $ref"
@@ -691,7 +691,7 @@ step_sync_firestack() {
 
 step_firestack() {
   local tracker gover gosha target aarbuilt aarout outdir cache api tags gt variant
-  tracker="${UNIX_REPO:-$HOME/git/unix}/$(_release_var '.upstreams.firestack.tracker')"
+  tracker="${UNIX_REPO:-$HOME/git/cloud-unix}/$(_release_var '.upstreams.firestack.tracker')"
   gover="$(_release_var '.upstreams.firestack.build.go_version')"
   gosha="$(_release_var '.upstreams.firestack.build.go_sha256_linux_amd64')"
   target="$(_release_var '.upstreams.firestack.build.make_target')"
@@ -765,7 +765,7 @@ _verify_firestack_aar() {
 # Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
 # GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
 # self-contained keyboard provider. Upstream clone lives at
-# ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-heliboard/ (gitignored sibling,
+# ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-heliboard/ (gitignored sibling,
 # ea_*-* workspace-clone convention).
 #
 # Copies app/src/main VERBATIM (java/kotlin + res + assets + jni + the
@@ -787,9 +787,9 @@ _verify_firestack_aar() {
 # Idempotent — rsync --delete. Fresh upstream pull -> one
 # `./build.sh sync-heliboard` -> clear `git diff` for review.
 step_sync_heliboard() {
-  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-heliboard/app/src/main"
+  local upstream="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-heliboard/app/src/main"
   local dst="$SCRIPT_DIR/libs/keyboard"
-  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-heliboard, or set UNIX_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-heliboard, or set UNIX_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-heliboard: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
 
   mkdir -p "$dst/src/main"
@@ -870,13 +870,13 @@ step_brand_rename() {
 # animal/variant each tool uses from build.json::status_pets.tools and copies
 # exactly those 4-gait GIFs into app/src/main/assets/zoomies/. Adding/retuning
 # a pet = edit build.json + re-run this; no hardcoded animal list in the engine.
-# Upstream clone lives at ${UNIX_REPO:-$HOME/git/unix}/ea_zoomies-pets/
+# Upstream clone lives at ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_zoomies-pets/
 # (gitignored sibling, ea_*-* convention).
 step_sync_zoomies() {
-  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_zoomies-pets/Sources/Zoomies/Pets"
+  local upstream="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_zoomies-pets/Sources/Zoomies/Pets"
   local dst="$SCRIPT_DIR/app/src/main/assets/zoomies"
   local bj="$SCRIPT_DIR/build.json"
-  [ -d "$upstream" ] || { errlog "sync-zoomies: upstream not found: $upstream (clone https://github.com/KartikLabhshetwar/zoomies to ${UNIX_REPO:-$HOME/git/unix}/ea_zoomies-pets, or set UNIX_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-zoomies: upstream not found: $upstream (clone https://github.com/KartikLabhshetwar/zoomies to ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_zoomies-pets, or set UNIX_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-zoomies: jq required"; exit 1; }
 
   rm -rf "$dst"; mkdir -p "$dst"
@@ -916,12 +916,12 @@ step_sync_zoomies() {
 # build.json::keyboard_dicts (locales[] × types[].{type,dir}). ADDITIVE (no --delete):
 # composes with the HeliBoard mirror, so run AFTER sync-heliboard (which rsync
 # --delete's the mirror and would otherwise drop these). Upstream clone:
-# ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
+# ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
 step_sync_keyboard_dicts() {
-  local upstream="${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts"
+  local upstream="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-dicts"
   local dst="$SCRIPT_DIR/libs/keyboard/dicts-data"  # OUT of the asset tree: only the companion bundles these; cloud-keyboard reads them at runtime
   local bj="$SCRIPT_DIR/build.json"
-  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${UNIX_REPO:-$HOME/git/unix}/ea_keyboard-dicts, or set UNIX_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-dicts, or set UNIX_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-keyboard-dicts: jq required"; exit 1; }
 
   mkdir -p "$dst"

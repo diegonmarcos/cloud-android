@@ -62,7 +62,7 @@ as-is, and per FIRE rule 5/6 a hardcoded copy-paste was rejected in favor of
 naming the actual blocker.
 
 **`ea_cloud-mail/build.sh` is a symlink** to
-`~/git/unix/1_cicd/src/scripts/cloud-comms-fork-engine.sh`. That engine
+`~/git/cloud-unix/1_cicd/src/scripts/cloud-comms-fork-engine.sh`. That engine
 is genuinely comms-coupled, not a generic single-fork engine — evidence:
 
 - `cloud-comms-fork-engine.sh:239` / `:236` (`step_build`) —

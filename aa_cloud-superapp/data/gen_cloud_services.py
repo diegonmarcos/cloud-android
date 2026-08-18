@@ -16,7 +16,7 @@ import json, glob, os, sys, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 AROOT = os.environ.get("A_SOLUTIONS",
-    os.path.expanduser("~/git/cloud/a_solutions"))
+    os.path.expanduser("~/git/cloud-infra/a_solutions"))
 
 # ── pull dns + app port + api display-name from every build.json ──────────
 APP = {}        # name -> (dns, port)

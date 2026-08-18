@@ -52,7 +52,7 @@ _resolve_signing() {
     errlog "  ALL constellation apps MUST sign with the ONE shared key (vault/A0_keys/providers/android/release.jks)."
     exit 1
   fi
-  vault="${VAULT_DIR:-$HOME/git/vault}"
+  vault="${VAULT_DIR:-$HOME/git/cloud-vault}"
   ks="$vault/$ks_rel"
   [ -f "$ks" ] || { errlog "FATAL signing: shared keystore missing at $ks (check out vault / set VAULT_DIR). No fallback."; exit 1; }
   command -v sops >/dev/null 2>&1 || { errlog "FATAL signing: sops not on PATH; cannot decrypt the shared key. Refusing to build."; exit 1; }

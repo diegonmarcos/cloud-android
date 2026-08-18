@@ -18,7 +18,7 @@
 #
 # Static wiring tester (no device): asserts the exact source markers.
 set -u
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"   # → ~/git/unix
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"   # → ~/git/cloud-unix
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }

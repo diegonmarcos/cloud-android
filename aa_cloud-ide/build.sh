@@ -145,7 +145,7 @@ _resolve_signing() {
     errlog "  Set both paths in build.json::signing. Refusing to build with any other key."
     exit 1
   fi
-  vault="${VAULT_DIR:-$HOME/git/vault}"
+  vault="${VAULT_DIR:-$HOME/git/cloud-vault}"
   ks="$vault/$ks_rel"
   if [ ! -f "$ks" ]; then
     errlog "FATAL signing: the ONE shared constellation keystore is missing at $ks"

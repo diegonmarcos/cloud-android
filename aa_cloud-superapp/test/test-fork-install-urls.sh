@@ -12,7 +12,7 @@
 # instead of the "not installed" snack.
 set -u
 APP="$(cd "$(dirname "$0")/.." && pwd)"          # → ea_cloud-superapp
-UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/unix
+UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/cloud-unix
 BJ="$APP/build.json"
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }

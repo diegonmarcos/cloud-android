@@ -115,17 +115,17 @@ LINKTREE="${3:-}"
 
 if [ -z "$CONSOLIDATED" ]; then
     for cand in \
-        "$HOME/git/cloud/2_configs/dist/_cloud-data-consolidated.json" \
-        "$HOME/git/cloud/I_cloud-data/_cloud-data-consolidated.json" \
+        "$HOME/git/cloud-infra/2_configs/dist/_cloud-data-consolidated.json" \
+        "$HOME/git/cloud-infra/I_cloud-data/_cloud-data-consolidated.json" \
         "$HOME/git/cloud-data/_cloud-data-consolidated.json" \
-        "$HOME/git/unix/cloud-data/_cloud-data-consolidated.json"; do
+        "$HOME/git/cloud-unix/cloud-data/_cloud-data-consolidated.json"; do
         [ -f "$cand" ] && { CONSOLIDATED="$cand"; break; }
     done
 fi
 if [ -z "$MESH" ]; then
     for cand in \
-        "$HOME/git/cloud/2_configs/dist/mesh-snapshot.json" \
-        "$HOME/git/cloud/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json" \
+        "$HOME/git/cloud-infra/2_configs/dist/mesh-snapshot.json" \
+        "$HOME/git/cloud-infra/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json" \
         "$HOME/git/cloud-data/cloud-data-wg-mesh-snapshot.json"; do
         [ -f "$cand" ] && { MESH="$cand"; break; }
     done

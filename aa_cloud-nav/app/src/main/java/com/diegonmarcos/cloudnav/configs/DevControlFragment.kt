@@ -1403,7 +1403,7 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Gradle config phase", "%d ms".format(BuildConfig.STACK_GRADLE_CONFIG_MS))
             row(ctx, it, "Build SHA",      BuildConfig.GIT_SHORT_SHA)
 
-            // Folder tree — 2 levels under ~/git/unix/, showing every
+            // Folder tree — 2 levels under ~/git/cloud-unix/, showing every
             // ea_* sibling clone and its immediate sub-dirs.
             it.addView(small(ctx, "Folder tree (depth 3, ea_* siblings only):"))
             val treeB64 = BuildConfig.UI_STACK_FOLDER_TREE_B64
