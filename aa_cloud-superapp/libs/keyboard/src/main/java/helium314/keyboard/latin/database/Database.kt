@@ -12,11 +12,13 @@ import java.io.File
 
 class Database private constructor(context: Context, name: String = NAME) : SQLiteOpenHelper(context, name, null, VERSION) {
     override fun onCreate(db: SQLiteDatabase) {
+        Log.i(TAG, "onCreate: creating FRESH heliboard.db — prior clipboard data absent or wiped")
         db.execSQL(ClipboardDao.CREATE_TABLE)
         onUpgrade(db, 0, VERSION)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        Log.i(TAG, "onUpgrade: heliboard.db $oldVersion -> $newVersion")
         if (oldVersion <= 1) {
             db.execSQL(GestureDataDao.CREATE_TABLE)
         }

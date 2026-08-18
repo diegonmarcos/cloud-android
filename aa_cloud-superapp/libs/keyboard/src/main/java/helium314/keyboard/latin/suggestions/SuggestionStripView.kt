@@ -159,10 +159,14 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // toolbar keys setup
         if (mToolbarMode == ToolbarMode.TOOLBAR_KEYS || mToolbarMode == ToolbarMode.EXPANDABLE) {
             for (key in getEnabledToolbarKeys(context.prefs())) {
-                val button = createToolbarKey(context, key)
-                button.layoutParams = toolbarKeyLayoutParams
-                setupKey(button, colors)
-                toolbar.addView(button)
+                try {
+                    val button = createToolbarKey(context, key)
+                    button.layoutParams = toolbarKeyLayoutParams
+                    setupKey(button, colors)
+                    toolbar.addView(button)
+                } catch (t: Throwable) {
+                    Log.e("SuggestionStripView", "failed building toolbar key $key", t)
+                }
             }
         }
         if (!isGone && !Settings.getValues().mSuggestionStripHiddenPerUserSettings) {
@@ -182,6 +186,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // when there are no toolbar keys to show (e.g. ToolbarMode.HIDDEN) so we
         // don't reserve an empty row. When shown, keep both rows populated.
         toolbarRow.isVisible = toolbar.childCount > 0
+        if (toolbar.childCount == 0) Log.w("SuggestionStripView", "toolbar_row hidden: 0 toolbar keys built")
         if (toolbar.childCount > 0) setToolbarVisibility(true)
         // The expand/collapse arrow is hidden authoritatively in updateKeys()
         // (it re-evaluates visibility, so hiding it here would not stick).

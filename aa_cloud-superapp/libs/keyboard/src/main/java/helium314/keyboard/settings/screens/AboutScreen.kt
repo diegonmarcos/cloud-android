@@ -28,6 +28,7 @@ import helium314.keyboard.latin.common.Links
 import helium314.keyboard.latin.settings.DebugSettings
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.utils.LogTakeout
 import helium314.keyboard.latin.utils.SpannableStringUtils
 import helium314.keyboard.latin.utils.getActivity
 import helium314.keyboard.latin.utils.prefs
@@ -58,6 +59,7 @@ fun AboutScreen(
         SettingsWithoutKey.GITHUB_WIKI,
         SettingsWithoutKey.GITHUB,
         SettingsWithoutKey.SAVE_LOG,
+        SettingsWithoutKey.SAVE_LOG_INTERNAL,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,
@@ -189,6 +191,17 @@ fun createAboutSettings(context: Context) = listOf(
                     )
                     .setType("text/plain")
                 launcher.launch(intent)
+            },
+            icon = R.drawable.ic_settings_about_log
+        )
+    },
+    Setting(context, SettingsWithoutKey.SAVE_LOG_INTERNAL, R.string.save_log_internal) { setting ->
+        val ctx = LocalContext.current
+        Preference(
+            name = setting.title,
+            description = setting.description,
+            onClick = {
+                LogTakeout.dump(ctx, "cloud-keyboard-log.log")
             },
             icon = R.drawable.ic_settings_about_log
         )

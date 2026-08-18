@@ -79,6 +79,7 @@ object SettingsWithoutKey {
     const val GITHUB = "github"
     const val GITHUB_WIKI = "github_wiki"
     const val SAVE_LOG = "save_log"
+    const val SAVE_LOG_INTERNAL = "save_log_internal"
     const val BACKUP_RESTORE = "backup_restore"
     const val DEBUG_SETTINGS = "screen_debug"
     const val LOAD_GESTURE_LIB = "load_gesture_library"

@@ -57,6 +57,7 @@ class ClipboardDao private constructor(private val db: Database) {
             }
         }
         sort()
+        Log.i(TAG, "cache loaded ${size} entries from db")
     }
 
     fun addClip(timestamp: Long, pinned: Boolean, text: String) = synchronized(this) {
@@ -223,6 +224,7 @@ class ClipboardDao private constructor(private val db: Database) {
         if (retentionTime > 120) return
         val minTime = System.currentTimeMillis() - retentionTime * 60 * 1000L
         val toRemove = cache.filter { it.timeStamp < minTime && !it.isPinned }
+        if (toRemove.isNotEmpty()) Log.i(TAG, "clearOldClips: purging ${toRemove.size} unpinned clips older than $retentionTime min")
         delete(toRemove)
     }
 
@@ -234,12 +236,14 @@ class ClipboardDao private constructor(private val db: Database) {
         }
         if (indicesToRemove.isEmpty())
             return // nothing to remove
+        Log.i(TAG, "clearNonPinned: removing ${indicesToRemove.size} clips")
         delete(cache.filter { !it.isPinned })
         listener?.onClipsRemoved(indicesToRemove[0], indicesToRemove.size)
     }
 
     fun clear() {
         if (count() == 0) return
+        Log.i(TAG, "clear: wiping all ${count()} clips")
         cache.clear()
         listener?.onClipsRemoved(0, count())
         db.writableDatabase.delete(TABLE, null, null)

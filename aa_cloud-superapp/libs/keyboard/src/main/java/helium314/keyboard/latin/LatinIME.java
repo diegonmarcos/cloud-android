@@ -79,6 +79,7 @@ import helium314.keyboard.latin.utils.JniUtils;
 import helium314.keyboard.latin.utils.KtxKt;
 import helium314.keyboard.latin.utils.LeakGuardHandlerWrapper;
 import helium314.keyboard.latin.utils.Log;
+import helium314.keyboard.latin.utils.LogTakeout;
 import helium314.keyboard.latin.utils.BackgroundGatheringCache;
 import helium314.keyboard.latin.utils.RecapitalizeMode;
 import helium314.keyboard.latin.utils.StatsUtils;
@@ -702,6 +703,7 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onDestroy() {
+        try { LogTakeout.INSTANCE.dump(this, "cloud-keyboard-log.log"); } catch (Throwable ignored) { }
         mClipboardHistoryManager.onDestroy();
         mDictionaryFacilitator.closeDictionaries();
         mSettings.onDestroy();
@@ -914,6 +916,7 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onFinishInputView(final boolean finishingInput) {
+        try { LogTakeout.INSTANCE.dump(this, "cloud-keyboard-log.log"); } catch (Throwable ignored) { }
         StatsUtils.onFinishInputView();
         mHandler.onFinishInputView(finishingInput);
         mStatsUtilsManager.onFinishInputView();
