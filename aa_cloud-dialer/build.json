@@ -19,9 +19,9 @@
         "rationale": "spam/robocall defence by default; saved contacts ring normally, everything else is silently rejected and logged to the in-app screened-call history"
       },
       "build": {
-        "_doc": "Fossify Phone. gradle task + keystore signing. apk_glob finds the assembleRelease output under the typical Fossify build path.",
-        "gradle_task": "assembleRelease",
-        "apk_glob": "app/build/outputs/apk/release/*.apk",
+        "_doc": "Fossify Phone. gradle task + keystore signing. 1.11.1 has productFlavors {core,foss,gplay} (dimension 'variants') — build ONLY the foss flavor (no GMS; the fork self-updates via GHCR) and glob its flavored output dir. CI 32144280344 proved assembleRelease builds all 3 flavors and the flavorless apk/release/ glob matches nothing.",
+        "gradle_task": "assembleFossRelease",
+        "apk_glob": "app/build/outputs/apk/foss/release/*.apk",
         "signing": "keystore_properties"
       },
       "comment": "Fossify Phone dialer fork."
