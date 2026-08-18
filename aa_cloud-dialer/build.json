@@ -6,12 +6,18 @@
       "image": "cloud-comms-dialer",
       "upstream_repo": "https://github.com/FossifyOrg/Phone.git",
       "tracker_dir": "ea_upstreams-sources/dialer-fossify",
-      "pinned_tag": "1.7.0",
+      "pinned_tag": "1.11.1",
       "license": "GPL-3.0",
       "primary_lang": "Kotlin",
       "runtime": "native",
       "priority": 4,
       "blocked_on": null,
+      "call_screening": {
+        "_doc": "Owner contract for the CallScreeningService patches (0007/0012/0013). default_mode MUST equal the code's first-run seed (App.onCreate). Patch 0013 adds the screened-call history + per-number allowlist (allowed numbers always ring, overriding every mode).",
+        "modes": ["contacts_only", "block_known_spam", "allow_all"],
+        "default_mode": "contacts_only",
+        "rationale": "spam/robocall defence by default; saved contacts ring normally, everything else is silently rejected and logged to the in-app screened-call history"
+      },
       "build": {
         "_doc": "Fossify Phone. gradle task + keystore signing. apk_glob finds the assembleRelease output under the typical Fossify build path.",
         "gradle_task": "assembleRelease",

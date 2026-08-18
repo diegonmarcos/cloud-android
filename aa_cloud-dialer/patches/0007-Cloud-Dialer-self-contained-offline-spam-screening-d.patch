@@ -1,7 +1,7 @@
-From 1d5e28a531bd46fe0cbee960ebff17bdb434e345 Mon Sep 17 00:00:00 2001
+From 62cfba0fe016eb25db2282d7d3233a2b76af8401 Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Wed, 1 Jul 2026 12:39:16 +0200
-Subject: [PATCH 07/12] Cloud-Dialer: self-contained offline spam screening
+Subject: [PATCH 07/14] Cloud-Dialer: self-contained offline spam screening
  (data-driven patterns + toggle)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -330,5 +330,5 @@ index 00000000..285d5a96
 +    }
 +}
 -- 
-2.44.2
+2.50.1
 

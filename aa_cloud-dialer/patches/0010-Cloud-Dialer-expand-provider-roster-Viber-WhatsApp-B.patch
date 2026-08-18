@@ -1,7 +1,7 @@
-From ee78f1ecaa92fde0cab7eeb496515f9ebe048b85 Mon Sep 17 00:00:00 2001
+From 4578f9b74632ed65145eaf48920002f20b81ee50 Mon Sep 17 00:00:00 2001
 From: Diego <me@diegonmarcos.com>
 Date: Fri, 3 Jul 2026 15:06:28 +0300
-Subject: [PATCH 10/12] Cloud-Dialer: expand provider roster (+Viber, WhatsApp
+Subject: [PATCH 10/14] Cloud-Dialer: expand provider roster (+Viber, WhatsApp
  Business, Messenger, Threema, LINE) + fix package visibility
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -99,5 +99,5 @@ index 76e021d9..a923e270 100644
    }
  ]
 -- 
-2.44.2
+2.50.1
 

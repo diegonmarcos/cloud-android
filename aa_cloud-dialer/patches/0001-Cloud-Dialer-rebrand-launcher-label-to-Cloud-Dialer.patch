@@ -1,7 +1,7 @@
-From 05d487b6c4c6ec59c6e3eb46e6c08d0b1b72622a Mon Sep 17 00:00:00 2001
+From a3e2c641f089f71b29574a7b57f20c0b39344aa6 Mon Sep 17 00:00:00 2001
 From: cloud-comms-engine <engine@diegonmarcos.com>
 Date: Fri, 26 Jun 2026 22:16:38 +0200
-Subject: [PATCH 01/12] Cloud Dialer: rebrand launcher label to 'Cloud Dialer'
+Subject: [PATCH 01/14] Cloud Dialer: rebrand launcher label to 'Cloud Dialer'
 
 ---
  app/src/main/res/values/strings.xml | 2 +-
@@ -20,5 +20,5 @@ index 1fa84f2b..8da70a07 100644
      <string name="allow_displaying_over_other_apps">Please allow displaying over other apps for reliable behaviour</string>
  
 -- 
-2.44.2
+2.50.1
 

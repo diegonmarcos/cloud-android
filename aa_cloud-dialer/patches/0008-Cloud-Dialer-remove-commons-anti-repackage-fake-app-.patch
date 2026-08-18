@@ -1,7 +1,7 @@
-From e5be512ce6c9c10c9a9f93b52d0b56a25d5c6065 Mon Sep 17 00:00:00 2001
+From 51ba90c3af02b3d4d09da1e424c081a243abf388 Mon Sep 17 00:00:00 2001
 From: Diego <me@diegonmarcos.com>
 Date: Fri, 3 Jul 2026 15:04:22 +0300
-Subject: [PATCH 08/12] Cloud-Dialer: remove commons anti-repackage 'fake app'
+Subject: [PATCH 08/14] Cloud-Dialer: remove commons anti-repackage 'fake app'
  dialog (false positive on our fork)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -91,5 +91,5 @@ index 35a3f373..8c1efea0 100644
          binding.dialpadWrapper.apply {
              if (config.hideDialpadNumbers) {
 -- 
-2.44.2
+2.50.1
 

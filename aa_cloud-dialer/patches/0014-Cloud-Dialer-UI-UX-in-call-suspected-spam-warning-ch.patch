@@ -1,0 +1,195 @@
+From 9fee64fd8f187f2c8921e221f71245986d7e7e15 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Tue, 18 Aug 2026 15:37:39 +0200
+Subject: [PATCH 14/14] =?UTF-8?q?Cloud-Dialer:=20UI/UX=20=E2=80=94=20in-ca?=
+ =?UTF-8?q?ll=20suspected-spam=20warning=20chip=20+=20spam-flagged=20recen?=
+ =?UTF-8?q?ts?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Call screen: a red rounded warning chip under the caller number
+  ("Suspected spam · <category>") whenever the number matches the offline
+  spam DB but screening let it ring (allow_all / filter off) — decline
+  before answering instead of finding out mid-call.
+- Recents list: non-contact numbers matching the spam DB render with a red
+  name + "Suspected spam" line, so robocalls stand out at a glance.
+- Same fail-open asset loading as the screening service; zero behavior
+  change for clean numbers.
+---
+ .../fossify/phone/activities/CallActivity.kt  | 22 +++++++++++++++
+ .../phone/adapters/RecentCallsAdapter.kt      | 24 +++++++++++++++++
+ .../res/drawable/spam_warning_background.xml  |  6 +++++
+ app/src/main/res/layout/activity_call.xml     | 27 +++++++++++++++++--
+ 4 files changed, 77 insertions(+), 2 deletions(-)
+ create mode 100644 app/src/main/res/drawable/spam_warning_background.xml
+
+diff --git a/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
+index c56a57bb..0af4f850 100644
+--- a/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
++++ b/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
+@@ -37,6 +37,7 @@ import org.fossify.phone.extensions.*
+ import org.fossify.phone.helpers.*
+ import org.fossify.phone.models.AudioRoute
+ import org.fossify.phone.models.CallContact
++import org.fossify.phone.spam.SpamMatcher
+ import kotlin.math.max
+ import kotlin.math.min
+ 
+@@ -55,6 +56,14 @@ class CallActivity : SimpleActivity() {
+     private var isMicrophoneOff = false
+     private var isCallEnded = false
+     private var callContact: CallContact? = null
++
++    // Cloud Dialer (patch 0014): offline spam rules for the in-call suspected-spam
++    // warning — same asset + fail-open loading as SimpleCallScreeningService.
++    private val spamRules: List<SpamMatcher.Rule> by lazy {
++        runCatching {
++            assets.open("spam_patterns.json").bufferedReader().use { it.readText() }
++        }.map { SpamMatcher.parse(it) }.getOrDefault(emptyList())
++    }
+     private var proximityWakeLock: PowerManager.WakeLock? = null
+     private var screenOnWakeLock: PowerManager.WakeLock? = null
+     private var callDuration = 0
+@@ -589,6 +598,19 @@ class CallActivity : SimpleActivity() {
+                 callerNumber.beGone()
+             }
+ 
++            // Cloud Dialer (patch 0014): warn about suspected-spam numbers that
++            // screening let through (allow_all / spam filter off), so the user
++            // can decline before answering.
++            val spamRule = SpamMatcher.match(number, spamRules)
++            callerSpamWarning.beVisibleIf(spamRule != null)
++            if (spamRule != null) {
++                callerSpamWarning.text = if (spamRule.category.isEmpty()) {
++                    getString(R.string.suspected_spam)
++                } else {
++                    "${getString(R.string.suspected_spam)} · ${spamRule.category}"
++                }
++            }
++
+             callerAvatar.apply {
+                 if (avatarUri.isNullOrEmpty()) {
+                     val bgColor = getProperPrimaryColor()
+diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
+index f956d664..0a338538 100644
+--- a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
++++ b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
+@@ -27,6 +27,7 @@ import org.fossify.commons.extensions.addLockedLabelIfNeeded
+ import org.fossify.commons.extensions.adjustAlpha
+ import org.fossify.commons.extensions.adjustForContrast
+ import org.fossify.commons.extensions.applyColorFilter
++import org.fossify.commons.extensions.beVisible
+ import org.fossify.commons.extensions.beVisibleIf
+ import org.fossify.commons.extensions.copyToClipboard
+ import org.fossify.commons.extensions.formatDateOrTime
+@@ -66,6 +67,7 @@ import org.fossify.phone.helpers.RecentsHelper
+ import org.fossify.phone.interfaces.RefreshItemsListener
+ import org.fossify.phone.models.CallLogItem
+ import org.fossify.phone.models.RecentCall
++import org.fossify.phone.spam.SpamMatcher
+ import org.joda.time.DateTime
+ import java.util.Locale
+ 
+@@ -92,6 +94,14 @@ class RecentCallsAdapter(
+     private var phoneNumberOfflineGeocoderInstance: PhoneNumberOfflineGeocoder = PhoneNumberOfflineGeocoder.getInstance()
+     private val cachedSimColors = HashMap<Pair<Int,Int>, Int>()
+ 
++    // Cloud Dialer (patch 0014): offline spam rules for flagging suspected-spam
++    // entries in the list — same asset + fail-open loading as the screening service.
++    private val spamRules: List<SpamMatcher.Rule> by lazy {
++        runCatching {
++            activity.assets.open("spam_patterns.json").bufferedReader().use { it.readText() }
++        }.map { SpamMatcher.parse(it) }.getOrDefault(emptyList())
++    }
++
+     init {
+         initDrawables()
+         setupDragListener(true)
+@@ -570,6 +580,20 @@ class RecentCallsAdapter(
+                     )
+                 }
+ 
++                // Cloud Dialer (patch 0014): suspected-spam flag straight in the
++                // list — red name + warning line for non-contact numbers matching
++                // the offline spam DB.
++                // ponytail: rules re-evaluated per bind; precompile per-rule Regex
++                // if the DB ever grows past dozens of rules.
++                if (matchingContact == null && SpamMatcher.isSpam(call.phoneNumber, spamRules)) {
++                    itemRecentsName.setTextColor(missedCallColor)
++                    itemRecentsLocation.apply {
++                        text = context.getString(R.string.suspected_spam)
++                        setTextColor(missedCallColor)
++                        beVisible()
++                    }
++                }
++
+                 itemRecentsSimImage.beVisibleIf(areMultipleSIMsAvailable && call.simID != -1)
+                 itemRecentsSimId.beVisibleIf(areMultipleSIMsAvailable && call.simID != -1)
+                 if (areMultipleSIMsAvailable && call.simID != -1) {
+diff --git a/app/src/main/res/drawable/spam_warning_background.xml b/app/src/main/res/drawable/spam_warning_background.xml
+new file mode 100644
+index 00000000..cab44a9e
+--- /dev/null
++++ b/app/src/main/res/drawable/spam_warning_background.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="rectangle">
++    <solid android:color="@color/color_missed_call" />
++    <corners android:radius="16dp" />
++</shape>
+diff --git a/app/src/main/res/layout/activity_call.xml b/app/src/main/res/layout/activity_call.xml
+index 7d40f83d..93165c4e 100644
+--- a/app/src/main/res/layout/activity_call.xml
++++ b/app/src/main/res/layout/activity_call.xml
+@@ -98,13 +98,36 @@
+         android:layout_marginTop="@dimen/normal_margin"
+         android:gravity="center_horizontal"
+         android:textSize="@dimen/call_status_text_size"
+-        app:layout_constraintBottom_toTopOf="@id/call_status_label"
++        app:layout_constraintBottom_toTopOf="@id/caller_spam_warning"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintStart_toStartOf="parent"
+         app:layout_constraintTop_toBottomOf="@+id/caller_name_label"
+         android:textDirection="firstStrongLtr"
+         tools:text="+1 (123) 456-7890" />
+ 
++    <!-- Cloud Dialer (patch 0014): suspected-spam warning chip — visible when the
++         caller number matches the offline spam DB but screening let it ring. -->
++    <TextView
++        android:id="@+id/caller_spam_warning"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="@dimen/normal_margin"
++        android:background="@drawable/spam_warning_background"
++        android:paddingStart="@dimen/normal_margin"
++        android:paddingTop="@dimen/small_margin"
++        android:paddingEnd="@dimen/normal_margin"
++        android:paddingBottom="@dimen/small_margin"
++        android:textColor="@android:color/white"
++        android:textSize="@dimen/call_status_text_size"
++        android:textStyle="bold"
++        android:visibility="gone"
++        app:layout_constraintBottom_toTopOf="@id/call_status_label"
++        app:layout_constraintEnd_toEndOf="parent"
++        app:layout_constraintStart_toStartOf="parent"
++        app:layout_constraintTop_toBottomOf="@+id/caller_number"
++        tools:text="@string/suspected_spam"
++        tools:visibility="visible" />
++
+     <org.fossify.commons.views.MyTextView
+         android:id="@+id/call_status_label"
+         android:layout_width="wrap_content"
+@@ -115,7 +138,7 @@
+         app:layout_constraintBottom_toTopOf="@id/hold_status_label"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toBottomOf="@+id/caller_number"
++        app:layout_constraintTop_toBottomOf="@+id/caller_spam_warning"
+         tools:text="Is Calling" />
+ 
+     <TextView
+-- 
+2.50.1
+

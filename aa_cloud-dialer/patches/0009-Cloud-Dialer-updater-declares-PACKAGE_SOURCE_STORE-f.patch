@@ -1,7 +1,7 @@
-From 6e8ab4de2501185d91b1e29044dfe8b72a66de06 Mon Sep 17 00:00:00 2001
+From 21bf017efbd282c3449489e33c8e52f96c3badd2 Mon Sep 17 00:00:00 2001
 From: Diego <me@diegonmarcos.com>
 Date: Fri, 3 Jul 2026 15:05:03 +0300
-Subject: [PATCH 09/12] Cloud-Dialer: updater declares PACKAGE_SOURCE_STORE
+Subject: [PATCH 09/14] Cloud-Dialer: updater declares PACKAGE_SOURCE_STORE
  (fix ECM 'restricted setting' role denial)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -41,5 +41,5 @@ index 756c2d80..fcdb1143 100644
          val sessionId = installer.createSession(params)
          installer.openSession(sessionId).use { session ->
 -- 
-2.44.2
+2.50.1
 

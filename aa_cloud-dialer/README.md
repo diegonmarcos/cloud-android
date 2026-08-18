@@ -12,7 +12,15 @@
   export; no endpoint in `data/comms-endpoints.json`. It joins the constellation
   for ownership (our signing key, our nav bar, our updater), not for IPC data.
 
-## Status
+## Status (2026-08-18)
+
+14-patch series on pin 1.11.1 (build.json::pinned_tag — was wrongly 1.7.0
+after the per-app split, which kept CI red on patch 0003). Spam/call
+filtering is full-featured: tri-mode screening (0012), offline spam DB v2
+(0007/0013), screened-call history + per-number allowlist (0013), in-call
+suspected-spam warning + spam-flagged recents (0014).
+
+## Original scaffold notes
 
 Registry entry + pin landed. Next steps for the dev agent:
 

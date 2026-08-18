@@ -1,7 +1,7 @@
-From faa8f07e3a6ad82c955aa26bfac631bb723e8c85 Mon Sep 17 00:00:00 2001
+From bce8c33c843855d0bd5fdafbc89d458e57a78ba0 Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Wed, 1 Jul 2026 11:00:10 +0200
-Subject: [PATCH 05/12] Cloud-Dialer: self-contained in-app updater
+Subject: [PATCH 05/14] Cloud-Dialer: self-contained in-app updater
  (GHCR/WorkManager) + Check-for-updates UI
 
 ---
@@ -881,5 +881,5 @@ index 00000000..90fa982b
 +    }
 +}
 -- 
-2.44.2
+2.50.1
 

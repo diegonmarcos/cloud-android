@@ -1,7 +1,7 @@
-From e4cd99747c9de822ceadef9030d8d04e4a749db4 Mon Sep 17 00:00:00 2001
+From f33966dfd3993e75a6a36a728af462a6905f046f Mon Sep 17 00:00:00 2001
 From: Diego <me@diegonmarcos.com>
 Date: Fri, 3 Jul 2026 15:16:16 +0300
-Subject: [PATCH 12/12] Cloud-Dialer: tri-mode call-screening selector
+Subject: [PATCH 12/14] Cloud-Dialer: tri-mode call-screening selector
  (contract: build.json call_screening)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -223,5 +223,5 @@ index 2561ef58..4abcba5f 100644
  
      <!-- FAQ -->
 -- 
-2.44.2
+2.50.1
 
