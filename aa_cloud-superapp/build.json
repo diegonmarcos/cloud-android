@@ -1172,12 +1172,12 @@
             "repos": [
               {
                 "owner": "diegonmarcos",
-                "repo": "unix",
+                "repo": "cloud-unix",
                 "label": "unix"
               },
               {
                 "owner": "diegonmarcos",
-                "repo": "cloud",
+                "repo": "cloud-infra",
                 "label": "cloud"
               },
               {
@@ -1195,12 +1195,12 @@
             "repos": [
               {
                 "owner": "diegonmarcos",
-                "repo": "unix",
+                "repo": "cloud-unix",
                 "label": "unix"
               },
               {
                 "owner": "diegonmarcos",
-                "repo": "cloud",
+                "repo": "cloud-infra",
                 "label": "cloud"
               },
               {

@@ -19,7 +19,7 @@
         "signing": "keystore_properties",
         "gradle_props": {
           "COMMS_GH_OWNER": "diegonmarcos",
-          "COMMS_GH_REPO": "unix",
+          "COMMS_GH_REPO": "cloud-unix",
           "COMMS_RELEASE_ASSET_NAME": "cloud-comms-mail.apk",
           "COMMS_BUILD_TIMESTAMP": "$ENV:COMMS_BUILD_TIMESTAMP",
           "_COMMS_RSS_BASE_doc": "SUPER RSS READER default feed root (wg0-only rss-gateway, feed_auth=none). Baked into BuildConfig.COMMS_RSS_BASE; WorkerFeedSync auto-provisions the channel tree from <base>/channels.json on first run \u2014 no manual Cloud Feeds dialog needed.",
