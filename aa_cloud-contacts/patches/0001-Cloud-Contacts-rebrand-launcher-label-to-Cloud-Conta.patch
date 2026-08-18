@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Tue, 18 Aug 2026 15:34:37 +0200
+Subject: [PATCH 1/4] Cloud Contacts: rebrand launcher label to 'Cloud
+ Contacts'
+
+---
+ app/src/main/res/values/strings.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index a536344f..7806ef6d 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="app_launcher_name">Contacts</string>
++    <string name="app_launcher_name">Cloud Contacts</string>
+     <string name="address">Address</string>
+     <string name="street">Street</string>
+     <string name="neighborhood">Appartment or suite number</string>
+-- 
+2.50.1
+

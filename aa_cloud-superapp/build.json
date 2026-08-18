@@ -1556,10 +1556,11 @@
                 "target": "extapp:cloud-news"
               },
               {
+                "_doc": "Opens the standalone Cloud-Contacts app (ea_cloud-contacts, com.diegonmarcos.comms.contacts, Fossify Contacts) via extapp:cloud-contacts — installed → launches; absent → install via Configs ▸ Constellation. Replaces the old Google Contacts launcher.",
                 "id": "contacts",
                 "label": "Contacts",
                 "icon": "ic_p_sol_personal",
-                "target": "app://com.google.android.contacts?fallback=https%3A%2F%2Fcontacts.google.com"
+                "target": "extapp:cloud-contacts"
               },
               {
                 "id": "notes",
@@ -5498,6 +5499,15 @@
         "forks": {}
       },
       {
+        "_doc": "Cloud Contacts — standalone Fossify Contacts fork (ea_cloud-contacts). The constellation address book: native local + synced-account (Gmail) contacts, LinkedIn Connections.csv / Instagram followers-following JSON import (patch 0004 converts to vCard). Call/mail actions land in cloud-dialer / cloud-mail via standard intents. install_apk_url mirrors ea_cloud-contacts/build.json::release.gh_release (asset cloud-comms-contacts.apk, published by ship-cloud-contacts.yml). Signs with the shared constellation key.",
+        "id": "cloud-contacts",
+        "label": "Cloud Contacts (Fossify)",
+        "hub_package": "com.diegonmarcos.comms.contacts",
+        "install_package": "com.diegonmarcos.comms.contacts",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-contacts.apk",
+        "forks": {}
+      },
+      {
         "id": "cloud-chat",
         "label": "Cloud Chat (Mattermost)",
         "hub_package": "com.diegonmarcos.comms.chat",
@@ -5871,6 +5881,10 @@
             {
               "label": "Dialer",
               "target": "app:com.diegonmarcos.comms.dialer"
+            },
+            {
+              "label": "Contacts",
+              "target": "app:com.diegonmarcos.comms.contacts"
             }
           ]
         },

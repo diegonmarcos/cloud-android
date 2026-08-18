@@ -1,0 +1,47 @@
+{
+  "forks": {
+    "contacts": {
+      "app_id": "com.diegonmarcos.comms.contacts",
+      "label": "Cloud Contacts (Fossify)",
+      "image": "cloud-comms-contacts",
+      "upstream_repo": "https://github.com/FossifyOrg/Contacts.git",
+      "tracker_dir": "ea_upstreams-sources/contacts-fossify",
+      "pinned_tag": "1.6.0",
+      "license": "GPL-3.0",
+      "primary_lang": "Kotlin",
+      "runtime": "native",
+      "priority": 4,
+      "blocked_on": null,
+      "build": {
+        "_doc": "Fossify Contacts. gradle task + keystore signing. apk_glob finds the assembleRelease output under the typical Fossify build path. APPLICATION_ID is passed as -P so patch 0002's findProperty override installs the fork under its own unique package (namespace/code stays org.fossify.contacts).",
+        "gradle_task": "assembleRelease",
+        "apk_glob": "app/build/outputs/apk/release/*.apk",
+        "signing": "keystore_properties",
+        "gradle_props": {
+          "APPLICATION_ID": "com.diegonmarcos.comms.contacts"
+        }
+      },
+      "comment": "Fossify Contacts fork — the constellation address book. Merges local phone + synced-account (Gmail) contacts natively via ContactsContract; patch series adds LinkedIn/Instagram social import (export files → vCard → existing importer) so social handles live on each contact as tappable profile URLs. Call/SMS/mail actions fire standard intents, landing in cloud-dialer / cloud-mail as the constellation default handlers."
+    }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "ghcr": {
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "media_type": "application/vnd.android.package-archive"
+    },
+    "gh_release": {
+      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-contacts.apk stays stable. Published by `build.sh gh-release-fork contacts` (ship-cloud-contacts.yml), which uploads dist/cloud-comms-contacts.apk with --clobber. Consumed by ea_cloud-superapp ui.external_apps[cloud-contacts].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "cloud-comms-contacts.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

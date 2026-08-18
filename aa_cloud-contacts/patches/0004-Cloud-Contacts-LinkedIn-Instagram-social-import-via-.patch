@@ -1,0 +1,295 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Tue, 18 Aug 2026 15:39:48 +0200
+Subject: [PATCH 4/4] Cloud Contacts: LinkedIn/Instagram social import via the
+ stock vCard pipeline
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+'Import contacts' (Settings) and shared/opened files now also accept:
+- LinkedIn Connections.csv (Data privacy -> Get a copy of your data)
+- Instagram followers_1.json / following.json (Download your information)
+
+SocialImporter content-sniffs the picked file (the picker's temp copy is
+always renamed *.vcf, so extensions are meaningless), converts social rows
+to a temporary vCard 3.0 file, and hands it to the unchanged
+ImportContactsDialog/VcfImporter pipeline — the user still picks the target
+source (phone storage or a synced account such as Gmail). Profile URLs land
+as website entries, so the contact detail view renders tappable links that
+app-link into the installed LinkedIn/Instagram app. Real vCards and
+unrecognized files pass through untouched.
+
+The GET_CONTENT picker widens from text/x-vcard to a vcard/csv/json
+EXTRA_MIME_TYPES set. Verified by a JVM harness driving
+SocialImporter.maybeConvertToVcf over sample exports (2 LinkedIn rows with
+quoted commas + preamble, both Instagram shapes, vCard/garbage passthrough).
+---
+ .../contacts/activities/SettingsActivity.kt   |  15 +-
+ .../fossify/contacts/extensions/Activity.kt   |   7 +-
+ .../contacts/helpers/SocialImporter.kt        | 204 ++++++++++++++++++
+ 3 files changed, 224 insertions(+), 2 deletions(-)
+ create mode 100644 app/src/main/kotlin/org/fossify/contacts/helpers/SocialImporter.kt
+
+diff --git a/app/src/main/kotlin/org/fossify/contacts/activities/SettingsActivity.kt b/app/src/main/kotlin/org/fossify/contacts/activities/SettingsActivity.kt
+index e937a355..485e98d6 100644
+--- a/app/src/main/kotlin/org/fossify/contacts/activities/SettingsActivity.kt
++++ b/app/src/main/kotlin/org/fossify/contacts/activities/SettingsActivity.kt
+@@ -308,7 +308,20 @@ class SettingsActivity : SimpleActivity() {
+         if (isQPlus()) {
+             Intent(Intent.ACTION_GET_CONTENT).apply {
+                 addCategory(Intent.CATEGORY_OPENABLE)
+-                type = "text/x-vcard"
++                // Cloud Contacts: besides vCards, accept LinkedIn Connections.csv and
++                // Instagram followers/following JSON exports (converted to vCard by
++                // SocialImporter before the stock import dialog).
++                type = "*/*"
++                putExtra(
++                    Intent.EXTRA_MIME_TYPES,
++                    arrayOf(
++                        "text/x-vcard",
++                        "text/vcard",
++                        "text/csv",
++                        "text/comma-separated-values",
++                        "application/json"
++                    )
++                )
+ 
+                 try {
+                     startActivityForResult(this, PICK_IMPORT_SOURCE_INTENT)
+diff --git a/app/src/main/kotlin/org/fossify/contacts/extensions/Activity.kt b/app/src/main/kotlin/org/fossify/contacts/extensions/Activity.kt
+index 977adc8b..4df0c636 100644
+--- a/app/src/main/kotlin/org/fossify/contacts/extensions/Activity.kt
++++ b/app/src/main/kotlin/org/fossify/contacts/extensions/Activity.kt
+@@ -34,6 +34,7 @@ import org.fossify.contacts.activities.SimpleActivity
+ import org.fossify.contacts.activities.ViewContactActivity
+ import org.fossify.contacts.dialogs.ImportContactsDialog
+ import org.fossify.contacts.helpers.DEFAULT_FILE_NAME
++import org.fossify.contacts.helpers.SocialImporter
+ import org.fossify.contacts.helpers.VcfExporter
+ 
+ fun SimpleActivity.startCallIntent(recipient: String) {
+@@ -207,5 +208,9 @@ fun SimpleActivity.tryImportContactsFromFile(uri: Uri, callback: (Boolean) -> Un
+ }
+ 
+ fun SimpleActivity.showImportContactsDialog(path: String, callback: (Boolean) -> Unit) {
+-    ImportContactsDialog(this, path, callback)
++    // Cloud Contacts: LinkedIn Connections.csv / Instagram followers-following
++    // JSON exports are converted to a temp vCard first (content-sniffed — the
++    // picker's temp copy is always named *.vcf), then ride the stock
++    // VcfImporter pipeline. Real vCards pass through untouched.
++    ImportContactsDialog(this, SocialImporter.maybeConvertToVcf(path, cacheDir), callback)
+ }
+diff --git a/app/src/main/kotlin/org/fossify/contacts/helpers/SocialImporter.kt b/app/src/main/kotlin/org/fossify/contacts/helpers/SocialImporter.kt
+new file mode 100644
+index 00000000..0d51e830
+--- /dev/null
++++ b/app/src/main/kotlin/org/fossify/contacts/helpers/SocialImporter.kt
+@@ -0,0 +1,204 @@
++package org.fossify.contacts.helpers
++
++import org.json.JSONArray
++import org.json.JSONObject
++import java.io.File
++
++/**
++ * Cloud Contacts: converts LinkedIn / Instagram data-export files into a
++ * temporary vCard so the stock VcfImporter pipeline (ImportContactsDialog)
++ * ingests them like any other .vcf — merged into whichever contact source the
++ * user picks (phone storage or a synced account such as Gmail).
++ *
++ * Supported inputs, detected by CONTENT (the picker copies content:// files to
++ * a temp file named *.vcf, so the extension is meaningless):
++ *  - LinkedIn "Connections.csv"  (Settings → Data privacy → Get a copy of your data)
++ *  - Instagram "followers_1.json" / "following.json"
++ *    (Accounts Center → Your information and permissions → Download your information)
++ *
++ * Each row becomes a contact whose profile URL is stored as a website, so the
++ * contact detail view renders a tappable link that Android app-links straight
++ * into the installed LinkedIn / Instagram app. Anything that is not a
++ * recognized social export (i.e. a real vCard) is returned untouched.
++ */
++object SocialImporter {
++
++    fun maybeConvertToVcf(path: String, cacheDir: File): String {
++        return try {
++            val text = File(path).readText()
++            val head = text.trimStart('\uFEFF', ' ', '\t', '\r', '\n')
++            val cards = when {
++                head.startsWith("BEGIN:VCARD", ignoreCase = true) -> return path
++                (head.startsWith("[") || head.startsWith("{")) && text.contains("string_list_data") ->
++                    parseInstagramJson(head)
++
++                looksLikeLinkedInCsv(head) -> parseLinkedInCsv(text)
++                else -> return path
++            }
++            if (cards.isEmpty()) {
++                return path
++            }
++
++            val out = File.createTempFile("social-import-", ".vcf", cacheDir)
++            out.writeText(cards.joinToString(""))
++            out.absolutePath
++        } catch (e: Exception) {
++            // not a recognized social export — let VcfImporter report the format error
++            path
++        }
++    }
++
++    private fun looksLikeLinkedInCsv(text: String) = text.lineSequence()
++        .take(10)
++        .any { it.contains("First Name") && it.contains("Last Name") }
++
++    // ── LinkedIn Connections.csv ────────────────────────────────────────
++    // Columns (by header name, order-independent): First Name, Last Name, URL,
++    // Email Address, Company, Position, Connected On. Exports carry a "Notes:"
++    // preamble before the header line — rows before the header are skipped.
++    private fun parseLinkedInCsv(text: String): List<String> {
++        val rows = parseCsv(text)
++        val headerIndex = rows.indexOfFirst { row ->
++            row.any { it.trim() == "First Name" } && row.any { it.trim() == "Last Name" }
++        }
++        if (headerIndex == -1) {
++            return emptyList()
++        }
++
++        val header = rows[headerIndex].map { it.trim() }
++        fun col(row: List<String>, name: String) =
++            header.indexOf(name).takeIf { it >= 0 && it < row.size }?.let { row[it].trim() } ?: ""
++
++        return rows.drop(headerIndex + 1).mapNotNull { row ->
++            val first = col(row, "First Name")
++            val last = col(row, "Last Name")
++            if (first.isEmpty() && last.isEmpty()) {
++                return@mapNotNull null
++            }
++
++            buildVcard(
++                firstName = first,
++                lastName = last,
++                email = col(row, "Email Address"),
++                organization = col(row, "Company"),
++                title = col(row, "Position"),
++                url = col(row, "URL")
++            )
++        }
++    }
++
++    // Minimal RFC-4180 CSV: quoted fields, "" escapes, commas/newlines inside quotes.
++    private fun parseCsv(text: String): List<List<String>> {
++        val rows = ArrayList<List<String>>()
++        val row = ArrayList<String>()
++        val field = StringBuilder()
++        var inQuotes = false
++        var i = 0
++        while (i < text.length) {
++            val c = text[i]
++            when {
++                inQuotes -> when {
++                    c == '"' && i + 1 < text.length && text[i + 1] == '"' -> {
++                        field.append('"'); i++
++                    }
++
++                    c == '"' -> inQuotes = false
++                    else -> field.append(c)
++                }
++
++                c == '"' -> inQuotes = true
++                c == ',' -> {
++                    row.add(field.toString()); field.setLength(0)
++                }
++
++                c == '\r' -> {}
++                c == '\n' -> {
++                    row.add(field.toString()); field.setLength(0)
++                    rows.add(ArrayList(row)); row.clear()
++                }
++
++                else -> field.append(c)
++            }
++            i++
++        }
++        if (field.isNotEmpty() || row.isNotEmpty()) {
++            row.add(field.toString())
++            rows.add(ArrayList(row))
++        }
++        return rows
++    }
++
++    // ── Instagram followers_1.json / following.json ─────────────────────
++    // followers_1.json is a top-level array of {string_list_data:[{href,value}]};
++    // following.json wraps the same array under "relationships_following".
++    private fun parseInstagramJson(text: String): List<String> {
++        val array = if (text.startsWith("[")) {
++            JSONArray(text)
++        } else {
++            val obj = JSONObject(text)
++            obj.keys().asSequence()
++                .map { obj.opt(it) }
++                .filterIsInstance<JSONArray>()
++                .firstOrNull() ?: return emptyList()
++        }
++
++        val cards = ArrayList<String>(array.length())
++        for (i in 0 until array.length()) {
++            val entry = array.optJSONObject(i) ?: continue
++            val data = entry.optJSONArray("string_list_data") ?: continue
++            val item = data.optJSONObject(0) ?: continue
++            val username = item.optString("value")
++            if (username.isEmpty()) {
++                continue
++            }
++
++            cards.add(
++                buildVcard(
++                    firstName = username,
++                    lastName = "",
++                    email = "",
++                    organization = "",
++                    title = "",
++                    url = item.optString("href")
++                )
++            )
++        }
++        return cards
++    }
++
++    // ── vCard 3.0 emission ──────────────────────────────────────────────
++    private fun buildVcard(
++        firstName: String,
++        lastName: String,
++        email: String,
++        organization: String,
++        title: String,
++        url: String,
++    ): String {
++        val sb = StringBuilder()
++        sb.append("BEGIN:VCARD\r\nVERSION:3.0\r\n")
++        sb.append("N:${esc(lastName)};${esc(firstName)};;;\r\n")
++        sb.append("FN:${esc(listOf(firstName, lastName).filter { it.isNotEmpty() }.joinToString(" "))}\r\n")
++        if (organization.isNotEmpty()) {
++            sb.append("ORG:${esc(organization)}\r\n")
++        }
++        if (title.isNotEmpty()) {
++            sb.append("TITLE:${esc(title)}\r\n")
++        }
++        if (email.isNotEmpty()) {
++            sb.append("EMAIL:${esc(email)}\r\n")
++        }
++        if (url.isNotEmpty()) {
++            sb.append("URL:${esc(url)}\r\n")
++        }
++        sb.append("END:VCARD\r\n")
++        return sb.toString()
++    }
++
++    private fun esc(value: String) = value
++        .replace("\\", "\\\\")
++        .replace(";", "\\;")
++        .replace(",", "\\,")
++        .replace("\n", "\\n")
++        .replace("\r", "")
++}
+-- 
+2.50.1
+

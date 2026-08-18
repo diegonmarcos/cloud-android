@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Tue, 18 Aug 2026 15:34:48 +0200
+Subject: [PATCH 2/4] Cloud Contacts: unique applicationId
+ (com.diegonmarcos.comms.contacts) via -PAPPLICATION_ID
+
+The rebrand only changes the launcher label; without this the APK would still
+install as org.fossify.contacts, colliding with a stock Fossify Contacts
+install. applicationId now comes from -PAPPLICATION_ID (build.json
+gradle_props), giving the fork its own package that matches
+forks.contacts.app_id. namespace (R/BuildConfig package) stays
+org.fossify.contacts so the code/manifest are unchanged.
+---
+ app/build.gradle.kts | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 15989d57..c0c6b1a4 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -27,7 +27,13 @@ android {
+     compileSdk = project.libs.versions.app.build.compileSDKVersion.get().toInt()
+ 
+     defaultConfig {
+-        applicationId = project.property("APP_ID").toString()
++        // Cloud Contacts: the INSTALLED package id. Defaults to APP_ID (stock
++        // org.fossify.contacts) but the engine passes -PAPPLICATION_ID=
++        // com.diegonmarcos.comms.contacts (build.json::forks.contacts.build.gradle_props)
++        // so our fork has its OWN unique package — it never collides with a
++        // stock Fossify Contacts install. The `namespace` (R/BuildConfig
++        // package) intentionally stays APP_ID = org.fossify.contacts (the code pkg).
++        applicationId = (project.findProperty("APPLICATION_ID") ?: project.property("APP_ID")).toString()
+         minSdk = project.libs.versions.app.build.minimumSDK.get().toInt()
+         targetSdk = project.libs.versions.app.build.targetSDK.get().toInt()
+         versionName = project.property("VERSION_NAME").toString()
+-- 
+2.50.1
+
