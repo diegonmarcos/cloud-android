@@ -1,4 +1,4 @@
-From aa55062334ff868fe9190a6f44428eaa795cb850 Mon Sep 17 00:00:00 2001
+From 59c47727b630bff1f00bc8c115bb643ac4b4130e Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Tue, 18 Aug 2026 15:36:19 +0200
 Subject: [PATCH 13/14] =?UTF-8?q?Cloud-Dialer:=20proper=20call=20filtering?=
@@ -97,7 +97,7 @@ index f3b84128..3ee8aff7 100644
  }
 diff --git a/app/src/main/kotlin/org/fossify/phone/activities/ScreeningLogActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/ScreeningLogActivity.kt
 new file mode 100644
-index 00000000..db96596b
+index 00000000..a2f68064
 --- /dev/null
 +++ b/app/src/main/kotlin/org/fossify/phone/activities/ScreeningLogActivity.kt
 @@ -0,0 +1,138 @@
@@ -231,7 +231,7 @@ index 00000000..db96596b
 +            holder.itemBinding.apply {
 +                itemScreenedNumber.text = entry.number.ifEmpty { getString(R.string.reason_hidden_number) }
 +                val time = (entry.timestamp / 1000).toInt()
-+                    .formatDateOrTime(this@ScreeningLogActivity, hideTimeOnOtherDays = false, showCurrentYear = true, hideTodaysDate = false)
++                    .formatDateOrTime(this@ScreeningLogActivity, hideTimeAtOtherDays = false, showYearEvenIfCurrent = true)
 +                itemScreenedDetails.text = "$time • ${reasonText(entry.reason)}"
 +                root.setOnClickListener { showEntryActions(entry) }
 +            }

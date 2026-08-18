@@ -1,4 +1,4 @@
-From 62cfba0fe016eb25db2282d7d3233a2b76af8401 Mon Sep 17 00:00:00 2001
+From 48992be45f0c33c54fc82955b6aac4fa37299eb2 Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Wed, 1 Jul 2026 12:39:16 +0200
 Subject: [PATCH 07/14] Cloud-Dialer: self-contained offline spam screening

@@ -1,4 +1,4 @@
-From bce8c33c843855d0bd5fdafbc89d458e57a78ba0 Mon Sep 17 00:00:00 2001
+From a212a02ae158bd17fb3f21bce1a928a1ab3ebd2b Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Wed, 1 Jul 2026 11:00:10 +0200
 Subject: [PATCH 05/14] Cloud-Dialer: self-contained in-app updater

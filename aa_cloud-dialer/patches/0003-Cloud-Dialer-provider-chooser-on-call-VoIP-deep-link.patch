@@ -1,4 +1,4 @@
-From ac157917dce5bc9f243cbde4340147ed246fad50 Mon Sep 17 00:00:00 2001
+From 2deb0f4ffe60f561f245917dc76ca26c740afb31 Mon Sep 17 00:00:00 2001
 From: cloud-comms-engine <engine@diegonmarcos.com>
 Date: Fri, 26 Jun 2026 22:35:06 +0200
 Subject: [PATCH 03/14] Cloud Dialer: provider chooser on call (VoIP +
