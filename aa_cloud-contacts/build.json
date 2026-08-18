@@ -13,9 +13,9 @@
       "priority": 4,
       "blocked_on": null,
       "build": {
-        "_doc": "Fossify Contacts. gradle task + keystore signing. apk_glob finds the assembleRelease output under the typical Fossify build path. APPLICATION_ID is passed as -P so patch 0002's findProperty override installs the fork under its own unique package (namespace/code stays org.fossify.contacts).",
-        "gradle_task": "assembleRelease",
-        "apk_glob": "app/build/outputs/apk/release/*.apk",
+        "_doc": "Fossify Contacts. gradle task + keystore signing. Unlike Fossify Phone, Contacts dimensions by flavor (core/foss/gplay), so the task pins the FOSS release variant (self-distributed, no Play deps) and apk_glob matches its flavored output path — the flavorless apk/release/*.apk glob matched nothing (GHA 32143946025). APPLICATION_ID is passed as -P so patch 0002's findProperty override installs the fork under its own unique package (namespace/code stays org.fossify.contacts).",
+        "gradle_task": "assembleFossRelease",
+        "apk_glob": "app/build/outputs/apk/foss/release/*.apk",
         "signing": "keystore_properties",
         "gradle_props": {
           "APPLICATION_ID": "com.diegonmarcos.comms.contacts"
