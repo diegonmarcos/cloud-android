@@ -1,12 +1,14 @@
 # Cloud Vault
 
-Standalone Android password-manager client. Two build paths live in this app
-now — `build.sh`'s default commands (`build`/`release`/`ship`/...) are
-**unchanged** and still produce the in-tree WebView wrapper around
-`vault.diegonmarcos.com` (a self-hosted Vaultwarden instance). A second,
-opt-in path builds a rebranded **source fork of Bitwarden's Android app**,
-intended to eventually replace the WebView wrapper once it's proven to
-build in CI.
+Standalone Android password-manager client. Two build paths live in this
+app. **The shipping app (since 2026-08-18) is the rebranded source fork of
+Bitwarden's Android app** — CI's push-triggered job builds it and publishes
+it as `Cloud-Vault.apk` (GHCR `:latest` + the GH release rolling tag), which
+is the URL the superapp's constellation store points at. `build.sh`'s
+default commands (`build`/`release`/`ship`/...) still produce the legacy
+in-tree WebView wrapper around `vault.diegonmarcos.com` (self-hosted
+Vaultwarden), now a manual-only CI fallback (`build_webview=true` on
+workflow dispatch).
 
 ## Fork: vault (Bitwarden Android — password manager)
 
