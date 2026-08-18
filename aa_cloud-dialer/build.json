@@ -22,6 +22,12 @@
         "_doc": "Fossify Phone. gradle task + keystore signing. 1.11.1 has productFlavors {core,foss,gplay} (dimension 'variants') — build ONLY the foss flavor (no GMS; the fork self-updates via GHCR) and glob its flavored output dir. CI 32144280344 proved assembleRelease builds all 3 flavors and the flavorless apk/release/ glob matches nothing.",
         "gradle_task": "assembleFossRelease",
         "apk_glob": "app/build/outputs/apk/foss/release/*.apk",
+        "gradle_props": {
+          "_doc": "-P props patch 0005/0006 read. APPLICATION_ID is MANDATORY — without it the APK builds as stock org.fossify.phone and identity-assert refuses to publish (CI 32145181294). Updater props have safe in-repo defaults; we enable auto-update explicitly (fleet updater is the point of the fork).",
+          "APPLICATION_ID": "com.diegonmarcos.comms.dialer",
+          "AUTO_UPDATE_ENABLED": "true",
+          "GIT_SHORT_SHA": "$ENV:GITHUB_SHA"
+        },
         "signing": "keystore_properties"
       },
       "comment": "Fossify Phone dialer fork."
