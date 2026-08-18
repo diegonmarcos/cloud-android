@@ -49,12 +49,12 @@ REL="A0_keys/providers/authelia/signed-bearer_jwt/tokens/claude-admin.json"
 #   b) <repo>/IV_vault — vault is a SUBMODULE of cloud (submodule.vault.path =
 #      IV_vault). In any cloud checkout with it initialised, that is where the
 #      token actually is. Missing this is why cloning vault "into the repo" left
-#      the helper emitting {} — it only ever looked at ~/git/vault.
-#   c) ~/git/vault — the standalone layout, when the repos are siblings.
+#      the helper emitting {} — it only ever looked at ~/git/cloud-vault.
+#   c) ~/git/cloud-vault — the standalone layout, when the repos are siblings.
 for _candidate in \
     "${AUTHELIA_OIDC_TOKENS_DIR:+$AUTHELIA_OIDC_TOKENS_DIR/claude-admin.json}" \
     "$REPO_ROOT/IV_vault/$REL" \
-    "$HOME/git/vault/$REL"
+    "$HOME/git/cloud-vault/$REL"
 do
     [ -n "$_candidate" ] || continue
     if [ -r "$_candidate" ]; then TOKEN_FILE="$_candidate"; break; fi
@@ -71,7 +71,7 @@ if [ -z "${TOKEN_FILE:-}" ] || [ ! -r "$TOKEN_FILE" ]; then
         echo "  tried \$AUTHELIA_BEARER_TOKEN         : ${AUTHELIA_BEARER_TOKEN:+set}${AUTHELIA_BEARER_TOKEN:-unset}"
         echo "  tried \$AUTHELIA_OIDC_TOKENS_DIR      : ${AUTHELIA_OIDC_TOKENS_DIR:-unset}"
         echo "  tried \$REPO_ROOT/IV_vault             : $REPO_ROOT/IV_vault/$REL"
-        echo "  tried ~/git/vault                     : $HOME/git/vault/$REL"
+        echo "  tried ~/git/cloud-vault                     : $HOME/git/cloud-vault/$REL"
         echo "  On a host with no vault checkout (cloud container, CI, web),"
         echo "  set AUTHELIA_BEARER_TOKEN in the environment. Prefer a narrow"
         echo "  client (monitoring-read) over claude-admin — an environment"
