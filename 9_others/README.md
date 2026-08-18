@@ -2,7 +2,7 @@
 
 Single source of truth for **all** executable logic, GHA workflows, git hooks,
 and repo configuration in `cloud-android/`. Mirrors the pattern used in
-[`cloud/9_others/`](https://github.com/diegonmarcos/cloud/tree/main/9_others).
+[`cloud/9_others/`](https://github.com/diegonmarcos/cloud-infra/tree/main/9_others).
 
 Everything under `.github/`, `.gitmodules`, and `.gitconfig` at repo root is
 **generated output** — never edited directly.

@@ -4,5 +4,5 @@
 	ignore = all
 [submodule "tools"]
 	path = II_tools
-	url = https://github.com/diegonmarcos/tools.git
+	url = https://github.com/diegonmarcos/cloud-mykonsole-dtk.git
 	ignore = all

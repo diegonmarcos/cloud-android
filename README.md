@@ -1,7 +1,7 @@
 # cloud-android
 
 Android **Parallel Space / Virtual Engine** workspace — data-ownership tooling
-built on the same declarative framework as [`cloud/`](https://github.com/diegonmarcos/cloud).
+built on the same declarative framework as [`cloud/`](https://github.com/diegonmarcos/cloud-infra).
 
 > **Mission**: "You paid for the device. The OS treats you as a guest in your
 > own apps. This repo is a sub-OS that sits between real Android and a guest
