@@ -1,0 +1,311 @@
+From 31230992de759566dc2583ea4291486f521d0f37 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Tue, 18 Aug 2026 15:41:49 +0200
+Subject: [PATCH] =?UTF-8?q?comms:=20nav=20drawer=20folder=20tree=20?=
+ =?UTF-8?q?=E2=80=94=20nested=20collapse/expand=20+=20RSS=20channels=20sto?=
+ =?UTF-8?q?p=20flooding=20the=20drawer?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+1. Nav drawer folder tree (AdapterNavAccountFolder): folders now render as a
+   name-based hierarchy — indented per level, chevron on folders that have
+   nav-visible children, tap chevron (or a non-selectable group row) to
+   collapse/expand. State persists in folder.collapsed (existing column +
+   DAO setter). Separator defaults to '/' for local (RSS) folders that have
+   none; IMAP subfolders use their server separator, so mail accounts get
+   the tree too. Subtrees under a collapsed ancestor are filtered in set().
+2. Query: liveAccountFolder now carries folder.selectable + folder.collapsed
+   (NULL placeholders on the account half of the UNION).
+3. RSS drawer flood fix: group folders are now nav-drawer containers created
+   navigation=true + collapsed=true, so a provisioned channel tree shows as
+   a few collapsed groups instead of every channel flat. One-shot 0062
+   migration in ensureFeedTree (pref comms_nav_tree_0062) upgrades existing
+   installs' group folders the same way.
+4. Respect per-channel choices: the 0056 'parity upgrade' in repairRssAccount
+   forced notify/navigation back on for every feed folder on EVERY app start,
+   silently undoing the user's per-channel hide/mute selections. Removed —
+   defaults are set at folder creation only; 'show in navigation menu' in the
+   folder list is now the authoritative per-channel selector.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ .../email/AdapterNavAccountFolder.java        | 69 ++++++++++++++++++-
+ .../java/eu/faircode/email/CommsAccounts.java | 39 +++++++----
+ .../java/eu/faircode/email/DaoAccount.java    |  2 +
+ .../email/FragmentDialogCloudFeeds.java       |  2 +-
+ .../eu/faircode/email/TupleAccountFolder.java | 10 +++
+ .../eu/faircode/email/WorkerFeedSync.java     |  2 +-
+ 6 files changed, 108 insertions(+), 16 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/AdapterNavAccountFolder.java b/app/src/main/java/eu/faircode/email/AdapterNavAccountFolder.java
+index 13d6432a81..f330b615f8 100644
+--- a/app/src/main/java/eu/faircode/email/AdapterNavAccountFolder.java
++++ b/app/src/main/java/eu/faircode/email/AdapterNavAccountFolder.java
+@@ -107,16 +107,18 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
+             view.setOnClickListener(this);
+             view.setOnLongClickListener(this);
+             ivWarning.setOnClickListener(this);
++            ivExtra.setOnClickListener(this);
+         }
+ 
+         private void unwire() {
+             view.setOnClickListener(null);
+             view.setOnLongClickListener(null);
+             ivWarning.setOnClickListener(null);
++            ivExtra.setOnClickListener(null);
+         }
+ 
+         private void bindTo(TupleAccountFolder account) {
+-            int start = (account.folderName == null ? 0 : (expanded ? dp12 : dp6));
++            int start = (account.folderName == null ? 0 : (expanded ? dp12 * (1 + account.folderLevel) : dp6));
+             view.setPaddingRelative(start, 0, 0, 0);
+ 
+             if (account.folderName == null) {
+@@ -197,7 +199,14 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
+                 tvItemExtra.setVisibility(nav_count && expanded ? View.VISIBLE : View.GONE);
+             }
+ 
+-            ivExtra.setVisibility(View.GONE);
++            // comms: expand/collapse chevron for folders with (nav-visible) children
++            if (account.folderName != null && account.folderHasChildren && expanded) {
++                ivExtra.setImageResource(Boolean.TRUE.equals(account.folderCollapsed)
++                        ? R.drawable.twotone_expand_more_24
++                        : R.drawable.twotone_expand_less_24);
++                ivExtra.setVisibility(View.VISIBLE);
++            } else
++                ivExtra.setVisibility(View.GONE);
+ 
+             Integer percent = account.getQuotaPercentage();
+ 
+@@ -225,6 +234,31 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
+             if (account == null)
+                 return;
+ 
++            // comms: chevron tap — or row tap on a non-selectable group folder —
++            // toggles collapse (persisted in folder.collapsed; live query refreshes)
++            if (account.folderName != null &&
++                    (v.getId() == R.id.ivExtra ||
++                            (account.folderHasChildren && Boolean.FALSE.equals(account.folderSelectable)))) {
++                Bundle args = new Bundle();
++                args.putLong("folder", account.folderId);
++                args.putBoolean("collapsed", !Boolean.TRUE.equals(account.folderCollapsed));
++
++                new SimpleTask<Void>() {
++                    @Override
++                    protected Void onExecute(Context context, Bundle args) {
++                        DB db = DB.getInstance(context);
++                        db.folder().setFolderCollapsed(args.getLong("folder"), args.getBoolean("collapsed"));
++                        return null;
++                    }
++
++                    @Override
++                    protected void onException(Bundle args, Throwable ex) {
++                        Log.e(ex);
++                    }
++                }.execute(context, owner, args, "nav:collapse");
++                return;
++            }
++
+             LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
+ 
+             if (account.folderName != null)
+@@ -334,6 +368,34 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
+                     accounts.add(item);
+         }
+ 
++        // comms: name-based folder tree — indent by ancestor count, chevron on
++        // parents, hide subtrees of collapsed ancestors (folder.collapsed).
++        // Separator defaults to '/' for local (RSS) folders that have none.
++        List<TupleAccountFolder> tree = new ArrayList<>();
++        for (TupleAccountFolder item : accounts) {
++            item.folderLevel = 0;
++            item.folderHasChildren = false;
++            if (item.folderName == null) {
++                tree.add(item);
++                continue;
++            }
++            char sep = (item.folderSeparator == null ? '/' : item.folderSeparator);
++            boolean hidden = false;
++            for (TupleAccountFolder other : accounts) {
++                if (other == item || other.folderName == null || !Objects.equals(other.id, item.id))
++                    continue;
++                if (item.folderName.startsWith(other.folderName + sep)) {
++                    item.folderLevel++;
++                    if (Boolean.TRUE.equals(other.folderCollapsed))
++                        hidden = true;
++                } else if (other.folderName.startsWith(item.folderName + sep))
++                    item.folderHasChildren = true;
++            }
++            if (!hidden)
++                tree.add(item);
++        }
++        accounts = tree;
++
+         DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffCallback(items, accounts), false);
+ 
+         this.expanded = expanded;
+@@ -427,6 +489,9 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
+                     Objects.equals(a1.last_connected, a2.last_connected) &&
+                     Objects.equals(a1.error, a2.error) &&
+                     // Folder
++                    Objects.equals(a1.folderCollapsed, a2.folderCollapsed) &&
++                    a1.folderLevel == a2.folderLevel &&
++                    a1.folderHasChildren == a2.folderHasChildren &&
+                     a1.equals(a2);
+         }
+     }
+diff --git a/app/src/main/java/eu/faircode/email/CommsAccounts.java b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+index 42b74fe455..46d092cf4d 100644
+--- a/app/src/main/java/eu/faircode/email/CommsAccounts.java
++++ b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+@@ -19,9 +19,13 @@ package eu.faircode.email;
+     Copyright 2018-2026 by Marcel Bokhorst (M66B)
+ */
+ 
++import android.content.Context;
++import android.content.SharedPreferences;
+ import android.net.Uri;
+ import android.text.TextUtils;
+ 
++import androidx.preference.PreferenceManager;
++
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Set;
+@@ -142,18 +146,11 @@ public class CommsAccounts {
+             db.account().setAccountNotify(rss.id, true);
+         List<EntityFolder> folders = db.folder().getFolders(rss.id, false, false);
+         if (folders != null)
+-            for (EntityFolder f : folders) {
++            for (EntityFolder f : folders)
++                // 0062: the 0056 "parity upgrade" (force notify/navigation back
++                // on) ran on EVERY start, silently undoing per-channel choices.
++                // Defaults are set at creation; existing flags are left alone.
+                 db.operation().deleteOperations(f.id, null);
+-                // parity upgrade for pre-0056 installs: give existing feed leaf
+-                // folders the notify + nav-shortcut flags (group nodes are not
+-                // selectable → leave them alone).
+-                if (f.feed_url != null && Boolean.TRUE.equals(f.selectable)) {
+-                    if (!Boolean.TRUE.equals(f.notify))
+-                        db.folder().setFolderNotify(f.id, true);
+-                    if (!Boolean.TRUE.equals(f.navigation))
+-                        db.folder().setFolderNavigation(f.id, true);
+-                }
+-            }
+         Log.i("comms:rss-repair Feeds account synchronize=true notify=true folders="
+                 + (folders == null ? 0 : folders.size()));
+     }
+@@ -248,8 +245,22 @@ public class CommsAccounts {
+     // folder.name = full path (satisfies the (account,name) unique index and
+     // avoids leaf-label collisions like Logs/gitea vs Apps/gitea); the drawer
+     // shows folder.display.
+-    static int ensureFeedTree(DB db, List<CommsChannel> channels, String baseUrl) {
++    static int ensureFeedTree(Context context, DB db, List<CommsChannel> channels, String baseUrl) {
+         EntityAccount rss = ensureRssAccount(db);
++        // one-shot 0062 migration: pre-existing group folders enter the nav
++        // drawer as collapsed containers. Guarded by a pref so later user
++        // choices (hide a group, keep it expanded) are never fought again.
++        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
++        if (!prefs.getBoolean("comms_nav_tree_0062", false)) {
++            List<EntityFolder> existing = db.folder().getFolders(rss.id, false, false);
++            if (existing != null)
++                for (EntityFolder f : existing)
++                    if (f.feed_url == null && !Boolean.TRUE.equals(f.selectable)) {
++                        db.folder().setFolderNavigation(f.id, true);
++                        db.folder().setFolderCollapsed(f.id, true);
++                    }
++            prefs.edit().putBoolean("comms_nav_tree_0062", true).apply();
++        }
+         String origin = originOf(baseUrl);
+         Set<String> liveFeeds = new HashSet<>();
+         int n = 0;
+@@ -288,6 +299,10 @@ public class CommsAccounts {
+             f.synchronize = false;
+             f.subscribed = true;
+             f.selectable = false;   // group node — holds no messages
++            // groups are the nav-drawer tree skeleton: shown, but collapsed by
++            // default so the drawer stays compact until the user expands them
++            f.navigation = true;
++            f.collapsed = true;
+             f.sync_days = EntityFolder.DEFAULT_SYNC;
+             f.keep_days = EntityFolder.DEFAULT_KEEP;
+             return db.folder().insertFolder(f);
+diff --git a/app/src/main/java/eu/faircode/email/DaoAccount.java b/app/src/main/java/eu/faircode/email/DaoAccount.java
+index 97a96a2f5f..16c24beb2b 100644
+--- a/app/src/main/java/eu/faircode/email/DaoAccount.java
++++ b/app/src/main/java/eu/faircode/email/DaoAccount.java
+@@ -58,6 +58,7 @@ public interface DaoAccount {
+             ", NULL AS folderId, NULL AS folderSeparator" +
+             ", NULL AS folderType, -1 AS folderOrder" +
+             ", NULL AS folderName, NULL AS folderDisplay, NULL AS folderColor" +
++            ", NULL AS folderSelectable, NULL AS folderCollapsed" +
+             ", 0 AS folderSync, NULL AS folderState, NULL AS folderSyncState" +
+             ", 0 AS executing" +
+             ", 0 AS messages" +
+@@ -96,6 +97,7 @@ public interface DaoAccount {
+             ", folder.id AS folderId, folder.separator AS folderSeparator" +
+             ", folder.type AS folderType, folder.`order` AS folderOrder" +
+             ", folder.name AS folderName, folder.display AS folderDisplay, folder.color AS folderColor" +
++            ", folder.selectable AS folderSelectable, folder.collapsed AS folderCollapsed" +
+             ", folder.synchronize AS folderSync, folder.state AS foldeState, folder.sync_state AS folderSyncState" +
+             ", COUNT(operation.id) AS executing" +
+             ", (SELECT COUNT(message.id) FROM message" +
+diff --git a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+index 9f87de94a2..1b38e4cd6c 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
++++ b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+@@ -236,7 +236,7 @@ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+                 int n;
+                 try {
+                     db.beginTransaction();
+-                    n = CommsAccounts.ensureFeedTree(db, channels, root.optString("base", b));
++                    n = CommsAccounts.ensureFeedTree(ctx, db, channels, root.optString("base", b));
+                     db.setTransactionSuccessful();
+                 } finally {
+                     db.endTransaction();
+diff --git a/app/src/main/java/eu/faircode/email/TupleAccountFolder.java b/app/src/main/java/eu/faircode/email/TupleAccountFolder.java
+index 9d60245a51..163a2ebfd1 100644
+--- a/app/src/main/java/eu/faircode/email/TupleAccountFolder.java
++++ b/app/src/main/java/eu/faircode/email/TupleAccountFolder.java
+@@ -21,6 +21,8 @@ package eu.faircode.email;
+ 
+ import android.content.Context;
+ 
++import androidx.room.Ignore;
++
+ import java.text.Collator;
+ import java.util.Collections;
+ import java.util.Comparator;
+@@ -40,7 +42,15 @@ public class TupleAccountFolder extends EntityAccount {
+     public String folderName;
+     public String folderDisplay;
+     public Integer folderColor;
++    public Boolean folderSelectable;
++    public Boolean folderCollapsed;
+     public boolean folderSync;
++
++    // comms: nav-drawer folder tree, computed in AdapterNavAccountFolder.set()
++    @Ignore
++    public int folderLevel;
++    @Ignore
++    public boolean folderHasChildren;
+     public String folderState;
+     public String folderSyncState;
+     public int executing;
+diff --git a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+index 02dcf44ca6..b7eec772c2 100644
+--- a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
++++ b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+@@ -168,7 +168,7 @@ public class WorkerFeedSync extends Worker {
+                     o.optString("id"), o.optString("title"),
+                     o.optString("path"), o.optString("feed")));
+         }
+-        int n = CommsAccounts.ensureFeedTree(db, channels, root.optString("base", base));
++        int n = CommsAccounts.ensureFeedTree(context, db, channels, root.optString("base", base));
+         EntityLog.log(context, "comms: RSS channel tree provisioned channels=" + n);
+     }
+ 
+-- 
+2.50.1
+
