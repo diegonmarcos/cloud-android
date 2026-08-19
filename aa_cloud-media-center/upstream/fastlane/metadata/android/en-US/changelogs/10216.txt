@@ -1,0 +1,13 @@
+What's Changed
+
+- Added Settings Screen
+- Added Translations for: English, Chinese-Simplified, Galician, Romanian, Spanish and Turkish
+- Bug Fixes
+- Improved App Bar
+- Added support for launching Gallery from Camera app
+- Added Album pinning feature
+- Animate Photos Screen
+- Improve media grouping in Photos Screen
+
+
+Full Changelog: "https://github.com/IacobIonut01/Gallery/releases/tag/v1.0.2

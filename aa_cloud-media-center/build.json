@@ -53,7 +53,8 @@
     "media-center": {
       "_doc": "Plural 'forks.<key>' map — same shape as ea_cloud-mail/build.json::forks.mail (and chat/dialer/matrix), reconciled 2026-07-26 to match the engine's existing forks-keyed step_build_fork/step_materialize_fork loop instead of a bespoke singular block. This app has exactly one key ('media-center') because it IS the fork (no separate thin hub) — see top-level mode:'single-app'.",
       "upstream_repo": "https://github.com/IacobIonut01/ReFra.git",
-      "tracker_dir": "ea_upstreams-sources/media-refra",
+      "tracker_dir": "ea_cloud-media-center/upstream",
+      "tracker_dir_note": "vendored in-repo (2026-08-19) — full patched source committed, no network clone at build time (ml-models/src/ WithML model binaries excluded — unused by our NoML build flavor). upstream_repo/pinned_tag are provenance only now; bump pinned_tag + re-run materialize-fork to re-vendor a newer upstream tag.",
       "pinned_tag": "5.1.1-51101-nightly",
       "_doc_pinned_tag": "Re-verified 2026-07-26 via GitHub API tag list: there is NO tag literally named '5.1.0' — a prior scaffold pass fabricated it. Real tags (newest first): 5.1.1-51101-nightly, 5.1.0-51005-nightly, 5.1.0-51004-nightly, 5.1.0-51003-nightly, 5.1.0-51002-nightly, 5.1.0-51001-nightly, 5.0.3-50301-nightly, 5.0.2-50201-nightly, 5.0.0-50002-nightly, 4.3.1-43101-nightly, 4.3.0. Upstream ships nightlies as its de facto release channel — there is no recent non-nightly tag; 4.3.0 is the last plain-semver tag. Pinned to the newest tag, 5.1.1-51101-nightly, deviating from house convention (ea_cloud-mail pins a stable FairEmail tag) only because no recent stable tag exists. REVIEW this pin whenever upstream cuts an actual stable release.",
       "license": "Apache-2.0",

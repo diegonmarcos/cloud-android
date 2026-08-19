@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Cleartext (HTTP) traffic is permitted so users can connect to self-hosted servers
+    (e.g. Immich) that are reached over trusted tunnels such as Tailscale/WireGuard or a
+    local network, which frequently expose plain HTTP endpoints (#990). The cloud setup
+    wizard warns the user before creating an HTTP connection. HTTPS connections continue
+    to validate against the system trust anchors as normal.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

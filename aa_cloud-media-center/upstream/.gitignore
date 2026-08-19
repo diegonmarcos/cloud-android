@@ -1,0 +1,9 @@
+# Vendored ReFra (Gallery) source (see ea_cloud-media-center/README.md).
+# Committed as plain files — these local build/IDE artifacts must never be
+# re-added. ml-models/src/ (WithML-only model binaries, ~322M) is deliberately
+# excluded too: our build uses the NoML flavor, which never references it.
+build/
+.gradle/
+.idea/
+.cxx/
+ml-models/src/
