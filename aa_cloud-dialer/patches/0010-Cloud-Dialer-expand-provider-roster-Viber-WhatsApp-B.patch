@@ -1,4 +1,4 @@
-From 84cfd5c52e37a4661e96aa43a7bc7cea8c3e70bc Mon Sep 17 00:00:00 2001
+From e309253ff5ae8f3dea67eb416470391433379789 Mon Sep 17 00:00:00 2001
 From: Diego <me@diegonmarcos.com>
 Date: Fri, 3 Jul 2026 15:06:28 +0300
 Subject: [PATCH 10/15] Cloud-Dialer: expand provider roster (+Viber, WhatsApp

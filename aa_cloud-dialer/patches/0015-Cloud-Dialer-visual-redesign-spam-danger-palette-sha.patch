@@ -1,4 +1,4 @@
-From d6d7e247f0119acd980190feb79e5890368fb3f3 Mon Sep 17 00:00:00 2001
+From a160a54296c1865483b88787b2cedb854075463b Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Wed, 19 Aug 2026 11:02:36 +0200
 Subject: [PATCH 15/15] =?UTF-8?q?Cloud-Dialer:=20visual=20redesign=20?=
@@ -90,7 +90,7 @@ index 0af4f850..2cf9c528 100644
                  if (avatarUri.isNullOrEmpty()) {
                      val bgColor = getProperPrimaryColor()
 diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
-index 0a338538..8a7dd8f8 100644
+index 0a338538..2f4c622f 100644
 --- a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
 +++ b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
 @@ -580,18 +580,24 @@ class RecentCallsAdapter(
@@ -109,7 +109,7 @@ index 0a338538..8a7dd8f8 100644
                  // if the DB ever grows past dozens of rules.
                  if (matchingContact == null && SpamMatcher.isSpam(call.phoneNumber, spamRules)) {
 -                    itemRecentsName.setTextColor(missedCallColor)
-+                    val spamColor = context.getColor(R.color.spam_danger_red)
++                    val spamColor = activity.getColor(R.color.spam_danger_red)
 +                    itemRecentsHolder.setBackgroundResource(R.drawable.item_recents_card_spam_background)
 +                    itemRecentsName.setTextColor(spamColor)
                      itemRecentsLocation.apply {
