@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/menu_search"
+        android:icon="@drawable/twotone_search_24"
+        android:title="@string/title_search"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="collapseActionView|always" />
+
+    <item
+        android:id="@+id/menu_help"
+        android:icon="@drawable/twotone_help_24"
+        android:title="@string/title_setup_help"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/menu_junk"
+        android:checkable="true"
+        android:icon="@drawable/twotone_report_24"
+        android:title="@string/title_spam" />
+
+    <item
+        android:id="@+id/menu_account"
+        android:icon="@drawable/twotone_account_circle_24"
+        android:title="@string/title_setup_select_account" />
+
+    <item
+        android:id="@+id/menu_import"
+        android:icon="@drawable/twotone_unarchive_24"
+        android:title="@string/title_import_contacts" />
+
+    <item
+        android:id="@+id/menu_export"
+        android:icon="@drawable/twotone_unarchive_24"
+        android:title="@string/title_export_contacts" />
+
+    <item
+        android:id="@+id/menu_delete_all"
+        android:icon="@drawable/twotone_delete_24"
+        android:title="@string/title_delete_all"
+        app:showAsAction="ifRoom" />
+</menu>

@@ -1,0 +1,3 @@
+[submodule "qcolorpicker"]
+	path = qcolorpicker
+	url = https://github.com/QuadFlask/colorpicker.git
