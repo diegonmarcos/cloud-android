@@ -1,0 +1,35 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`components/custom_status/custom_status_emoji should match snapshot 1`] = `
+<Text
+  style={
+    [
+      undefined,
+      undefined,
+      {
+        "color": "#000",
+        "fontSize": 16,
+      },
+    ]
+  }
+>
+  📆
+</Text>
+`;
+
+exports[`components/custom_status/custom_status_emoji should match snapshot with props 1`] = `
+<Text
+  style={
+    [
+      undefined,
+      undefined,
+      {
+        "color": "#000",
+        "fontSize": 34,
+      },
+    ]
+  }
+>
+  📆
+</Text>
+`;

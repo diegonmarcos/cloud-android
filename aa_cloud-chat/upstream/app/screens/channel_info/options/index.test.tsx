@@ -1,0 +1,81 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import React, {type ComponentProps} from 'react';
+
+import {General} from '@constants';
+import DatabaseManager from '@database/manager';
+import PlaybookRunsOption from '@playbooks/components/channel_actions/playbook_runs_option';
+import {renderWithEverything} from '@test/intl-test-helper';
+
+import MyAutotranslation from './my_autotranslation';
+
+import ChannelInfoOptions from './';
+
+import type {Database} from '@nozbe/watermelondb';
+
+const serverUrl = 'some.server.url';
+
+jest.mock('@playbooks/components/channel_actions/playbook_runs_option');
+jest.mocked(PlaybookRunsOption).mockImplementation((props) => {
+    return React.createElement('PlaybookRunsOption', {...props, testID: 'playbook-runs-option'});
+});
+
+jest.mock('./my_autotranslation');
+jest.mocked(MyAutotranslation).mockImplementation((props) => {
+    return React.createElement('MyAutotranslation', {...props, testID: 'my-autotranslation-option'});
+});
+
+describe('ChannelInfoOptions', () => {
+    let database: Database;
+
+    function getBaseProps(): ComponentProps<typeof ChannelInfoOptions> {
+        return {
+            channelId: 'channel-id',
+            callsEnabled: false,
+            canManageMembers: false,
+            isCRTEnabled: false,
+            isPlaybooksEnabled: true,
+            hasChannelSettingsActions: false,
+            isAutotranslationEnabledForThisChannel: true,
+            channelDisplayName: 'Channel 1',
+        };
+    }
+    beforeEach(async () => {
+        await DatabaseManager.init([serverUrl]);
+        const serverDatabaseAndOperator = DatabaseManager.getServerDatabaseAndOperator(serverUrl);
+        database = serverDatabaseAndOperator.database;
+    });
+    it('should pass the channel id correctly to the PlaybookRunsOption', () => {
+        const props = getBaseProps();
+        const {getByTestId, rerender} = renderWithEverything(<ChannelInfoOptions {...props}/>, {database});
+        expect(getByTestId('playbook-runs-option')).toHaveProp('channelId', 'channel-id');
+        expect(getByTestId('playbook-runs-option')).toHaveProp('location', 'channel_actions');
+
+        props.channelId = 'channel-id-2';
+        rerender(<ChannelInfoOptions {...props}/>);
+        expect(getByTestId('playbook-runs-option')).toHaveProp('channelId', 'channel-id-2');
+    });
+    it('should not show playbook runs option when is DM or GM', () => {
+        const props = getBaseProps();
+        props.type = General.DM_CHANNEL;
+        const {queryByTestId, rerender} = renderWithEverything(<ChannelInfoOptions {...props}/>, {database});
+        expect(queryByTestId('playbook-runs-option')).toBeNull();
+
+        props.type = General.GM_CHANNEL;
+        rerender(<ChannelInfoOptions {...props}/>);
+        expect(queryByTestId('playbook-runs-option')).toBeNull();
+    });
+    it('should not show my autotranslation option when isAutotranslationEnabledForThisChannel is false', () => {
+        const props = getBaseProps();
+        props.isAutotranslationEnabledForThisChannel = false;
+        const {queryByTestId} = renderWithEverything(<ChannelInfoOptions {...props}/>, {database});
+        expect(queryByTestId('my-autotranslation-option')).toBeNull();
+    });
+    it('should show my autotranslation option when isAutotranslationEnabledForThisChannel is true', () => {
+        const props = getBaseProps();
+        props.isAutotranslationEnabledForThisChannel = true;
+        const {getByTestId} = renderWithEverything(<ChannelInfoOptions {...props}/>, {database});
+        expect(getByTestId('my-autotranslation-option')).toBeTruthy();
+    });
+});

@@ -1,0 +1,502 @@
+name: Detox iOS E2E Tests Template
+
+on:
+  workflow_call:
+    inputs:
+      MM_TEST_SERVER_URL:
+        description: "The test server URL (SITE_1)"
+        required: false
+        type: string
+      MM_TEST_SERVER_URL_2:
+        description: "The second test server URL (SITE_2); optional, no automatic fallback"
+        required: false
+        type: string
+      MM_TEST_SERVER_URL_3:
+        description: "The third test server URL (SITE_3); optional, no automatic fallback"
+        required: false
+        type: string
+      MM_TEST_USER_NAME:
+        description: "The admin username of the test instance"
+        required: false
+        type: string
+      MM_TEST_PASSWORD:
+        description: "The admin password of the test instance"
+        required: false
+        type: string
+      MOBILE_VERSION:
+        description: "The mobile version to test"
+        required: false
+        default: ${{ github.head_ref || github.ref }}
+        type: string
+      run-type:
+        type: string
+        required: false
+        default: "PR"
+      testcase_failure_fatal:
+        description: "Should failures be considered fatal"
+        required: false
+        type: boolean
+        default: false
+      record_tests_in_zephyr:
+        description: "Record test results in Zephyr, typically for nightly and release runs"
+        required: false
+        type: string
+        default: 'false'
+      ios_device_name:
+        description: "iPhone simulator name"
+        required: false
+        type: string
+        default: "iPhone 17 Pro"
+      ios_device_os_name:
+        description: "iPhone simulator OS version"
+        required: false
+        type: string
+        default: "iOS 26.2"
+      low_bandwidth_mode:
+        description: "Enable low bandwidth mode"
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      STATUS:
+        value: ${{ jobs.generate-report.outputs.STATUS }}
+      TARGET_URL:
+        value: ${{ jobs.generate-report.outputs.TARGET_URL }}
+      FAILURES:
+        value: ${{ jobs.generate-report.outputs.FAILURES }}
+
+env:
+  AWS_REGION: "us-east-1"
+  ADMIN_EMAIL: ${{ secrets.MM_MOBILE_E2E_ADMIN_EMAIL }}
+  ADMIN_USERNAME: ${{ secrets.MM_MOBILE_E2E_ADMIN_USERNAME }}
+  ADMIN_PASSWORD: ${{ secrets.MM_MOBILE_E2E_ADMIN_PASSWORD }}
+  BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+  COMMIT_HASH: ${{ github.sha }}
+  DEVICE_NAME: ${{ inputs.ios_device_name }}
+  DEVICE_OS_VERSION: ${{ inputs.ios_device_os_name }}
+  DETOX_AWS_S3_BUCKET: "mattermost-detox-report"
+  HEADLESS: "true"
+  TYPE: ${{ inputs.run-type }}
+  PULL_REQUEST: "https://github.com/mattermost/mattermost-mobile/pull/${{ github.event.number }}"
+  SITE_1_URL: ${{ inputs.MM_TEST_SERVER_URL }}
+  SITE_2_URL: ${{ inputs.MM_TEST_SERVER_URL_2 }}
+  SITE_3_URL: ${{ inputs.MM_TEST_SERVER_URL_3 }}
+  ZEPHYR_ENABLE: ${{ inputs.record_tests_in_zephyr }}
+  JIRA_PROJECT_KEY: "MM"
+  ZEPHYR_API_KEY: ${{ secrets.MM_MOBILE_E2E_ZEPHYR_API_KEY }}
+  ZEPHYR_FOLDER_ID: "3233873"
+  TEST_CYCLE_LINK_PREFIX: ${{ secrets.MM_MOBILE_E2E_TEST_CYCLE_LINK_PREFIX }}
+  WEBHOOK_URL: ${{ secrets.MM_MOBILE_E2E_WEBHOOK_URL }}
+  FAILURE_MESSAGE: "Something has failed"
+  IOS: "true"
+  RUNNING_E2E: "true"
+
+jobs:
+  generate-specs:
+    runs-on: ubuntu-22.04
+    outputs:
+      specs: ${{ steps.generate-specs.outputs.specs }}
+      build_id: ${{ steps.resolve-device.outputs.BUILD_ID }}
+      mobile_sha: ${{ steps.resolve-device.outputs.MOBILE_SHA }}
+      mobile_ref: ${{ steps.resolve-device.outputs.MOBILE_REF }}
+      workflow_hash: ${{ steps.resolve-device.outputs.WORKFLOW_HASH }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.MOBILE_VERSION }}
+
+      - name: Set Build ID
+        id: resolve-device
+        run: |
+          BUILD_ID="${{ github.run_id }}-${{ env.DEVICE_NAME }}-${{ env.DEVICE_OS_VERSION}}"
+          WORKFLOW_HASH=$(tr -dc a-z0-9 </dev/urandom | head -c 10)
+
+          ## We need that hash to separate the artifacts
+          echo "WORKFLOW_HASH=${WORKFLOW_HASH}" >> ${GITHUB_OUTPUT}
+
+          echo "BUILD_ID=$(echo ${BUILD_ID} | sed 's/ /_/g')" >> ${GITHUB_OUTPUT}
+          echo "MOBILE_SHA=$(git rev-parse HEAD)" >> ${GITHUB_OUTPUT}
+          echo "MOBILE_REF=$(git rev-parse --abbrev-ref HEAD)" >> ${GITHUB_OUTPUT}
+
+      - name: Generate Test Specs
+        id: generate-specs
+        uses: ./.github/actions/generate-specs
+        with:
+          parallelism: 10
+          search_path: detox/e2e/test
+          device_name: ${{ env.DEVICE_NAME }}
+          device_os_version: ${{ env.DEVICE_OS_VERSION }}
+
+  e2e-ios:
+    name: machine-${{ matrix.runId }}-os-${{ matrix.deviceOsVersion }}
+    runs-on: macos-15
+    continue-on-error: true
+    timeout-minutes: ${{ inputs.low_bandwidth_mode && 240 || 180 }}
+    env:
+      IOS: true
+    needs:
+      - generate-specs
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.generate-specs.outputs.specs) }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.MOBILE_VERSION }}
+
+      - name: ci/prepare-node-deps
+        uses: ./.github/actions/prepare-node-deps
+
+      - name: Install Homebrew Dependencies
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+
+      - name: Download iOS Simulator Build
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: ios-build-simulator-${{ github.run_id }}
+          path: mobile-artifacts
+
+      - name: Unzip iOS Simulator Build
+        run: |
+          unzip -o mobile-artifacts/*.zip -d mobile-artifacts/
+          # delete zip file
+          rm -f mobile-artifacts/*.zip
+
+      - name: Prepare Low Bandwidth Environment
+        id: prepare-low-bandwidth
+        uses: ./.github/actions/prepare-low-bandwidth
+        if: ${{ inputs.low_bandwidth_mode }}
+        with:
+          test_server_url: ${{ env.SITE_1_URL }}
+          device_name: ${{ env.DEVICE_NAME }}
+          # all these value should be configurable
+          download_speed: "3300"
+          upload_speed: "3300"
+          latency: "500"
+
+      - name: Install Detox Dependencies
+        run: cd detox && npm i
+
+      - name: Pre-boot iOS Simulator
+        run: |
+          set -e
+
+          echo "Looking for simulator: ${{ env.DEVICE_NAME }} with ${{ env.DEVICE_OS_VERSION }}"
+
+          # Find or create the simulator
+          SIMULATOR_ID=$(xcrun simctl list devices | grep "${{ env.DEVICE_NAME }}" | grep "${{ env.DEVICE_OS_VERSION }}" | head -1 | grep -oE '([0-9A-F-]{36})' || true)
+
+          if [ -z "$SIMULATOR_ID" ]; then
+            echo "Simulator not found. Creating simulator ${{ env.DEVICE_NAME }} with ${{ env.DEVICE_OS_VERSION }}"
+
+            # Get device type (use exact match with parentheses to avoid partial matches)
+            DEVICE_TYPE=$(xcrun simctl list devicetypes | grep "${{ env.DEVICE_NAME }} (" | head -1 | awk -F'[()]' '{print $(NF-1)}')
+            if [ -z "$DEVICE_TYPE" ]; then
+              echo "Error: Could not find device type for ${{ env.DEVICE_NAME }}"
+              exit 1
+            fi
+            echo "Found device type: $DEVICE_TYPE"
+
+            # Get runtime (extract the identifier after the last " - ")
+            RUNTIME=$(xcrun simctl list runtimes | grep "${{ env.DEVICE_OS_VERSION }}" | head -1 | sed 's/.* - \(.*\)/\1/')
+            if [ -z "$RUNTIME" ]; then
+              echo "Error: Could not find runtime for ${{ env.DEVICE_OS_VERSION }}"
+              exit 1
+            fi
+            echo "Found runtime: $RUNTIME"
+
+            # Create simulator
+            SIMULATOR_ID=$(xcrun simctl create "CI-${{ env.DEVICE_NAME }}" "$DEVICE_TYPE" "$RUNTIME")
+            echo "Created simulator with ID: $SIMULATOR_ID"
+          else
+            echo "Found existing simulator: $SIMULATOR_ID"
+          fi
+
+          # Boot simulator first to initialize directory structure
+          echo "Initializing simulator directories (first boot)..."
+          xcrun simctl boot "$SIMULATOR_ID"
+          xcrun simctl bootstatus "$SIMULATOR_ID"
+
+          # Shut down to apply password autofill restrictions
+          echo "Shutting down to apply password autofill restrictions..."
+          xcrun simctl shutdown "$SIMULATOR_ID"
+          sleep 3
+
+          echo "Disabling password autofill (simulator is shut down)"
+
+          # Ensure the directory exists (should now exist after first boot)
+          SETTINGS_DIR="$HOME/Library/Developer/CoreSimulator/Devices/$SIMULATOR_ID/data/Containers/Shared/SystemGroup/systemgroup.com.apple.configurationprofiles/Library/ConfigurationProfiles"
+          mkdir -p "$SETTINGS_DIR"
+
+          # Use the JavaScript utility to disable password autofill
+          cd detox
+          node utils/disable_ios_autofill.js --simulator-id "$SIMULATOR_ID"
+
+          if [ $? -ne 0 ]; then
+            echo "⚠️ Failed to disable password autofill"
+            exit 1
+          fi
+
+          cd ..
+
+          echo "Booting simulator with password autofill disabled..."
+          xcrun simctl boot "$SIMULATOR_ID"
+
+          # Wait for boot to complete
+          xcrun simctl bootstatus "$SIMULATOR_ID"
+
+          # Open Simulator.app in background to speed up UI rendering
+          open -a Simulator --args -CurrentDeviceUDID "$SIMULATOR_ID"
+
+          # Give Simulator.app time to fully initialize UI (iOS 26.2 needs more time)
+          sleep 5
+
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+
+      - name: Start Proxy
+        if: ${{ inputs.low_bandwidth_mode }}
+        id: start-proxy
+        uses: ./.github/actions/start-proxy
+        with:
+          test_server_url: ${{ env.SITE_1_URL }}
+
+      - name: Set .env with RUNNING_E2E=true
+        run: |
+          echo "RUNNING_E2E=true" > .env
+
+      - name: Verify Simulator Health
+        run: |
+          echo "Verifying simulator health before running tests..."
+
+          # Check if simulator is still responsive
+          if ! xcrun simctl bootstatus "$SIMULATOR_ID" -b 2>/dev/null; then
+            echo "⚠️ Simulator not responsive, attempting recovery..."
+
+            # Try to shutdown and reboot
+            xcrun simctl shutdown "$SIMULATOR_ID" || true
+            sleep 3
+            xcrun simctl boot "$SIMULATOR_ID"
+            xcrun simctl bootstatus "$SIMULATOR_ID"
+          fi
+
+          echo "✅ Simulator is healthy and ready"
+
+      - name: Start Metro Bundler and Run Detox E2E Tests
+        continue-on-error: true # We want to run all the tests
+        run: |
+          # Start Metro bundler in background
+          npm run start > metro.log 2>&1 &
+          METRO_PID=$!
+          echo "Metro PID: $METRO_PID"
+          echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
+
+          # Wait for Metro to be ready with health check endpoint polling
+          timeout=120
+          elapsed=0
+          echo "Waiting for Metro bundler to be ready..."
+          while [ $elapsed -lt $timeout ]; do
+            # Try health check endpoint first (more reliable)
+            if curl -s http://localhost:8081/status 2>/dev/null | grep -q "packager-status:running"; then
+              echo "✅ Metro bundler is ready after ${elapsed}s (verified via health check)"
+              break
+            # Fallback to log checking
+            elif grep -q "Fast - Scalable - Integrated" metro.log 2>/dev/null; then
+              echo "✅ Metro bundler is ready after ${elapsed}s (verified via logs)"
+              break
+            fi
+
+            # Show progress every 10 seconds
+            if [ $((elapsed % 10)) -eq 0 ] && [ $elapsed -gt 0 ]; then
+              echo "Still waiting for Metro... (${elapsed}s elapsed)"
+            fi
+
+            sleep 2
+            elapsed=$((elapsed + 2))
+          done
+
+          if [ $elapsed -ge $timeout ]; then
+            echo "⚠️ Warning: Metro bundler may not be fully ready after ${timeout}s, proceeding anyway"
+            echo "Metro process status:"
+            ps aux | grep -E "metro|node.*start" | grep -v grep || echo "Metro process not found"
+            echo ""
+            echo "Last 30 lines of metro.log:"
+            tail -30 metro.log
+          else
+            echo "Metro is serving on http://localhost:8081"
+            # Give Metro extra time to fully initialize for iOS 26.2 (React Native bridge needs more time)
+            echo "Allowing Metro to fully stabilize..."
+            sleep 8
+          fi
+
+          cd detox
+          npm run detox:config-gen
+          npm run e2e:ios-test -- ${{ matrix.specs }}
+        env:
+          DETOX_DISABLE_HIERARCHY_DUMP: "YES"
+          DETOX_DISABLE_SCREENSHOT_TRACKING: "YES"
+          DETOX_LOGLEVEL: "debug"
+          DETOX_DEVICE_TYPE: ${{ env.DEVICE_NAME }}
+          DETOX_OS_VERSION: ${{ env.DEVICE_OS_VERSION }}
+          LOW_BANDWIDTH_MODE: ${{ inputs.low_bandwidth_mode }}
+
+      - name: Cleanup Simulator State
+        if: always()
+        run: |
+          echo "Cleaning up simulator state after tests..."
+
+          # Stop Metro bundler if still running
+          if [ ! -z "$METRO_PID" ]; then
+            echo "Stopping Metro bundler (PID: $METRO_PID)..."
+            kill -9 "$METRO_PID" 2>/dev/null || true
+          fi
+
+          # Terminate app gracefully
+          if [ ! -z "$SIMULATOR_ID" ]; then
+            echo "Terminating app on simulator..."
+            xcrun simctl terminate "$SIMULATOR_ID" com.mattermost.rnbeta 2>/dev/null || true
+            sleep 2
+          fi
+
+          echo "✅ Simulator cleanup complete"
+
+      - name: reset network settings
+        if: ${{ inputs.low_bandwidth_mode || failure() }}
+        run: |
+          networksetup -setwebproxystate Ethernet "off"
+          networksetup -setsecurewebproxystate Ethernet "off"
+
+          if (sudo pfctl -q -sa | grep 'Status: Enabled') then sudo pfctl -d; fi
+          if (command  -v pm2 &> /dev/null) then pm2 stop mitmdump; fi
+
+          sleep 5;
+
+      - name: Upload mitmdump Flow Output
+        if: ${{ inputs.low_bandwidth_mode }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-mitmdump-flow-output-${{ needs.generate-specs.outputs.workflow_hash }}-${{ matrix.runId }}
+          path: |
+            /Users/runner/work/mattermost-mobile/mattermost-mobile/flow-output.csv
+            /Users/runner/work/mattermost-mobile/mattermost-mobile/mitmdump.log
+
+      - name: Upload iOS Test Report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-results-${{ needs.generate-specs.outputs.workflow_hash }}-${{ matrix.runId }}
+          path: detox/artifacts/
+
+  generate-report:
+    runs-on: ubuntu-22.04
+    needs:
+      - generate-specs
+      - e2e-ios
+    outputs:
+      TARGET_URL: ${{ steps.set-url.outputs.TARGET_URL }}
+      STATUS: ${{ steps.determine-status.outputs.STATUS }}
+      FAILURES: ${{ steps.summary.outputs.FAILURES }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.MOBILE_VERSION }}
+
+      - name: ci/prepare-node-deps
+        uses: ./.github/actions/prepare-node-deps
+
+      - name: Download iOS Artifacts
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          path: detox/artifacts/
+          pattern: ios-results-${{ needs.generate-specs.outputs.workflow_hash }}-*
+
+      - name: Generate Report Path
+        id: s3
+        run: |
+          path="${{ needs.generate-specs.outputs.build_id }}-${{ needs.generate-specs.outputs.mobile_sha }}-${{ needs.generate-specs.outputs.mobile_ref }}"
+          echo "path=$(echo "${path}" | sed 's/\./-/g')" >> ${GITHUB_OUTPUT}
+
+      - name: Save report Detox Dependencies
+        id: report-link
+        run: |
+          cd detox
+          npm ci
+          npm run e2e:save-report
+        env:
+          DETOX_AWS_ACCESS_KEY_ID: ${{ secrets.MM_MOBILE_DETOX_AWS_ACCESS_KEY_ID }}
+          DETOX_AWS_SECRET_ACCESS_KEY: ${{ secrets.MM_MOBILE_DETOX_AWS_SECRET_ACCESS_KEY }}
+          BUILD_ID: ${{ needs.generate-specs.outputs.build_id }}
+          REPORT_PATH: ${{ steps.s3.outputs.path }}
+          ## These are needed for the MM Webhook report
+          COMMIT_HASH: ${{ needs.generate-specs.outputs.mobile_sha }}
+          BRANCH: ${{ needs.generate-specs.outputs.mobile_ref }}
+
+      - name: Calculate failures
+        id: summary
+        run: |
+          echo "FAILURES=$(cat detox/artifacts/summary.json | jq .stats.failures)" >> ${GITHUB_OUTPUT}
+          echo "PASSES=$(cat detox/artifacts/summary.json | jq .stats.passes)" >> ${GITHUB_OUTPUT}
+          echo "SKIPPED=$(cat detox/artifacts/summary.json | jq .stats.skipped)" >> ${GITHUB_OUTPUT}
+          echo "TOTAL=$(cat detox/artifacts/summary.json | jq .stats.tests)" >> ${GITHUB_OUTPUT}
+          echo "ERRORS=$(cat detox/artifacts/summary.json | jq .stats.errors)" >> ${GITHUB_OUTPUT}
+          echo "PERCENTAGE=$(cat detox/artifacts/summary.json | jq .stats.passPercent)" >> ${GITHUB_OUTPUT}
+
+      - name: Set Target URL
+        id: set-url
+        run: |
+            echo "TARGET_URL=https://${{ env.DETOX_AWS_S3_BUCKET }}.s3.amazonaws.com/${{ steps.s3.outputs.path }}/jest-stare/ios-report.html" >> ${GITHUB_OUTPUT}
+
+      - name: Determine Status
+        id: determine-status
+        run: |
+          if [[ ${{ steps.summary.outputs.failures }} -gt 0 && "${{ inputs.testcase_failure_fatal }}" == "true" ]]; then
+            echo "STATUS=failure" >> ${GITHUB_OUTPUT}
+          else
+            echo "STATUS=success" >> ${GITHUB_OUTPUT}
+          fi
+
+      - name: Generate Summary
+        run: |
+          echo "| Tests | Passed :white_check_mark: | Failed :x: | Skipped :fast_forward: | Errors :warning: | " >> ${GITHUB_STEP_SUMMARY}
+          echo "|:---:|:---:|:---:|:---:|:---:|" >> ${GITHUB_STEP_SUMMARY}
+          echo "| ${{ steps.summary.outputs.TOTAL }} | ${{ steps.summary.outputs.PASSES }} | ${{ steps.summary.outputs.FAILURES }} | ${{ steps.summary.outputs.SKIPPED }} | ${{ steps.summary.outputs.ERRORS }} |" >> ${GITHUB_STEP_SUMMARY}
+          echo "" >> ${GITHUB_STEP_SUMMARY}
+          echo "You can check the full report [here](${{ steps.set-url.outputs.TARGET_URL }})" >> ${GITHUB_STEP_SUMMARY}
+          echo "There was **${{ steps.summary.outputs.PERCENTAGE }}%** success rate." >> ${GITHUB_STEP_SUMMARY}
+
+      - name: Comment report on the PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+
+            const commentBody = `**iOS E2E Test Report**: ${process.env.MOBILE_SHA} | ${process.env.PERCENTAGE}% (${process.env.PASSES}/${process.env.TOTAL}) | [full report](${process.env.TARGET_URL})
+              | Tests | Passed ✅ | Failed ❌ | Skipped ⏭️ | Errors ⚠️ |
+              |:---:|:---:|:---:|:---:|:---:|
+              | ${process.env.TOTAL} | ${process.env.PASSES} | ${process.env.FAILURES} | ${process.env.SKIPPED} | ${process.env.ERRORS} |
+              `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody,
+            });
+        env:
+          STATUS: ${{ steps.determine-status.outputs.STATUS }}
+          FAILURES: ${{ steps.summary.outputs.FAILURES }}
+          PASSES: ${{ steps.summary.outputs.PASSES }}
+          SKIPPED: ${{ steps.summary.outputs.SKIPPED }}
+          TOTAL: ${{ steps.summary.outputs.TOTAL }}
+          ERRORS: ${{ steps.summary.outputs.ERRORS }}
+          PERCENTAGE: ${{ steps.summary.outputs.PERCENTAGE }}
+          BUILD_ID: ${{ needs.generate-specs.outputs.build_id }}
+          RUN_TYPE: ${{ inputs.run-type }}
+          MOBILE_REF: ${{ needs.generate-specs.outputs.mobile_ref }}
+          MOBILE_SHA: ${{ needs.generate-specs.outputs.mobile_sha }}
+          TARGET_URL: ${{ steps.set-url.outputs.TARGET_URL }}
