@@ -1,7 +1,7 @@
-From d33d0ee66b14a5979dcefe2e44c492ffef65d8dd Mon Sep 17 00:00:00 2001
+From 52b8051c3c5abbe670c05baf07bbd6b556bb2f44 Mon Sep 17 00:00:00 2001
 From: Diego <me@diegonmarcos.com>
 Date: Fri, 3 Jul 2026 15:05:03 +0300
-Subject: [PATCH 09/14] Cloud-Dialer: updater declares PACKAGE_SOURCE_STORE
+Subject: [PATCH 09/15] Cloud-Dialer: updater declares PACKAGE_SOURCE_STORE
  (fix ECM 'restricted setting' role denial)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

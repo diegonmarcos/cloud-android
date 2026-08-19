@@ -1,0 +1,428 @@
+From d6d7e247f0119acd980190feb79e5890368fb3f3 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Wed, 19 Aug 2026 11:02:36 +0200
+Subject: [PATCH 15/15] =?UTF-8?q?Cloud-Dialer:=20visual=20redesign=20?=
+ =?UTF-8?q?=E2=80=94=20spam-danger=20palette,=20shape=20system,=20elevated?=
+ =?UTF-8?q?=20cards?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Research-grounded pass (Google Phone Material 3 Expressive, Truecaller spam
+color legend, iOS Phone, Material 3 system tokens) applied only where safe
+against this appʼs real, locally-editable resources — no blind overrides of
+unverified org.fossify:commons AAR resources.
+
+- New spam-danger palette (light+dark): distinct from color_missed_call —
+  Truecaller reserves red exclusively for spam, never a lesser state.
+- In-call screen: bigger bold caller name (34->40sp), dedicated caller-number
+  size, spam chip escalated to a filled pill (icon + all-caps + own danger
+  colors), thin red ring around the avatar on suspected-spam calls, bigger
+  avatar (172->208dp), in-call action-button grid reshaped from circles to
+  squircles (local circle_button_background_ripple.xml, corner-radius
+  token) with mic/speaker/hold moved onto it too (adds ripple feedback they
+  previously lacked).
+- Recents list: rows are now elevated tonal cards (own background/margins),
+  bigger circular avatars, bold names; spam rows get a dedicated tonal-red
+  card + color (previously reused color_missed_call — conflated missed vs.
+  spam). Fixed a real recycling bug: card background is now explicitly
+  reset on non-spam bind, not just set on the spam branch.
+- Dialpad digits: bold weight for hierarchy against the alpha-0.8 letters.
+- Main FAB + in-call buttons share one squircle shape language via a new
+  DialerFabShape style.
+- Settings: spam section label gets a small tinted warning glyph, visually
+  linking it to the new in-call/recents spam treatment.
+
+New assets: ic_warning_vector (standard Material warning glyph — the one
+genuinely new icon needed), avatar_ring_frame, three recents-card
+drawables. Everything else reshapes/retints existing local files.
+---
+ .../fossify/phone/activities/CallActivity.kt   | 10 ++++++++++
+ .../phone/adapters/RecentCallsAdapter.kt       | 16 +++++++++++-----
+ .../main/res/drawable/avatar_ring_frame.xml    |  5 +++++
+ .../circle_button_background_ripple.xml        |  4 ++--
+ .../main/res/drawable/ic_warning_vector.xml    |  3 +++
+ .../drawable/item_recents_card_background.xml  |  6 ++++++
+ .../item_recents_card_ripple_background.xml    |  5 +++++
+ .../item_recents_card_spam_background.xml      |  6 ++++++
+ .../res/drawable/spam_warning_background.xml   |  4 ++--
+ app/src/main/res/layout/activity_call.xml      | 18 ++++++++++++------
+ app/src/main/res/layout/activity_main.xml      |  1 +
+ app/src/main/res/layout/activity_settings.xml  |  3 +++
+ app/src/main/res/layout/item_recent_call.xml   | 10 ++++++++--
+ app/src/main/res/values-night/colors.xml       |  6 ++++++
+ app/src/main/res/values/colors.xml             | 11 +++++++++++
+ app/src/main/res/values/dimens.xml             | 12 +++++++++++-
+ app/src/main/res/values/styles.xml             |  8 ++++++++
+ 17 files changed, 110 insertions(+), 18 deletions(-)
+ create mode 100644 app/src/main/res/drawable/avatar_ring_frame.xml
+ create mode 100644 app/src/main/res/drawable/ic_warning_vector.xml
+ create mode 100644 app/src/main/res/drawable/item_recents_card_background.xml
+ create mode 100644 app/src/main/res/drawable/item_recents_card_ripple_background.xml
+ create mode 100644 app/src/main/res/drawable/item_recents_card_spam_background.xml
+
+diff --git a/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt b/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
+index 0af4f850..2cf9c528 100644
+--- a/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
++++ b/app/src/main/kotlin/org/fossify/phone/activities/CallActivity.kt
+@@ -20,6 +20,7 @@ import android.view.WindowManager
+ import android.view.animation.AccelerateDecelerateInterpolator
+ import android.view.animation.OvershootInterpolator
+ import android.widget.ImageView
++import androidx.core.content.ContextCompat
+ import androidx.core.content.res.ResourcesCompat
+ import androidx.core.os.postDelayed
+ import androidx.core.view.children
+@@ -611,6 +612,15 @@ class CallActivity : SimpleActivity() {
+                 }
+             }
+ 
++            // Cloud Dialer (patch 0015): a thin red ring around the avatar itself —
++            // Truecaller's "identification at a glance" pattern — mirrors the chip
++            // above without a full Calling-Card background rebuild.
++            callerAvatar.foreground = if (spamRule != null) {
++                ContextCompat.getDrawable(this@CallActivity, R.drawable.avatar_ring_frame)
++            } else {
++                null
++            }
++
+             callerAvatar.apply {
+                 if (avatarUri.isNullOrEmpty()) {
+                     val bgColor = getProperPrimaryColor()
+diff --git a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
+index 0a338538..8a7dd8f8 100644
+--- a/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
++++ b/app/src/main/kotlin/org/fossify/phone/adapters/RecentCallsAdapter.kt
+@@ -580,18 +580,24 @@ class RecentCallsAdapter(
+                     )
+                 }
+ 
+-                // Cloud Dialer (patch 0014): suspected-spam flag straight in the
+-                // list — red name + warning line for non-contact numbers matching
+-                // the offline spam DB.
++                // Cloud Dialer (patch 0015): suspected-spam flag straight in the
++                // list — tonal card + red name + warning line for non-contact
++                // numbers matching the offline spam DB. Recycled views need an
++                // explicit non-spam reset since bind() is the only place that
++                // touches the row background.
+                 // ponytail: rules re-evaluated per bind; precompile per-rule Regex
+                 // if the DB ever grows past dozens of rules.
+                 if (matchingContact == null && SpamMatcher.isSpam(call.phoneNumber, spamRules)) {
+-                    itemRecentsName.setTextColor(missedCallColor)
++                    val spamColor = context.getColor(R.color.spam_danger_red)
++                    itemRecentsHolder.setBackgroundResource(R.drawable.item_recents_card_spam_background)
++                    itemRecentsName.setTextColor(spamColor)
+                     itemRecentsLocation.apply {
+                         text = context.getString(R.string.suspected_spam)
+-                        setTextColor(missedCallColor)
++                        setTextColor(spamColor)
+                         beVisible()
+                     }
++                } else {
++                    itemRecentsHolder.setBackgroundResource(R.drawable.item_recents_card_ripple_background)
+                 }
+ 
+                 itemRecentsSimImage.beVisibleIf(areMultipleSIMsAvailable && call.simID != -1)
+diff --git a/app/src/main/res/drawable/avatar_ring_frame.xml b/app/src/main/res/drawable/avatar_ring_frame.xml
+new file mode 100644
+index 00000000..c5624d6e
+--- /dev/null
++++ b/app/src/main/res/drawable/avatar_ring_frame.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="oval">
++    <stroke android:width="3dp" android:color="@color/spam_danger_red" />
++</shape>
+diff --git a/app/src/main/res/drawable/circle_button_background_ripple.xml b/app/src/main/res/drawable/circle_button_background_ripple.xml
+index 92073d65..0a893843 100644
+--- a/app/src/main/res/drawable/circle_button_background_ripple.xml
++++ b/app/src/main/res/drawable/circle_button_background_ripple.xml
+@@ -4,9 +4,9 @@
+     <item android:id="@+id/button_background_holder">
+         <layer-list>
+             <item android:id="@+id/button_background_shape">
+-                <shape android:shape="oval">
++                <shape android:shape="rectangle">
+                     <solid android:color="?attr/colorPrimary" />
+-                    <corners android:radius="@dimen/material_button_corner_radius" />
++                    <corners android:radius="@dimen/call_button_corner_radius" />
+                 </shape>
+             </item>
+         </layer-list>
+diff --git a/app/src/main/res/drawable/ic_warning_vector.xml b/app/src/main/res/drawable/ic_warning_vector.xml
+new file mode 100644
+index 00000000..477a101b
+--- /dev/null
++++ b/app/src/main/res/drawable/ic_warning_vector.xml
+@@ -0,0 +1,3 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white" android:pathData="M1,21h22L12,2 1,21zM13,18h-2v-2h2v2zM13,14h-2v-4h2v4z" />
++</vector>
+diff --git a/app/src/main/res/drawable/item_recents_card_background.xml b/app/src/main/res/drawable/item_recents_card_background.xml
+new file mode 100644
+index 00000000..69d1be2a
+--- /dev/null
++++ b/app/src/main/res/drawable/item_recents_card_background.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="rectangle">
++    <solid android:color="@color/call_surface_container" />
++    <corners android:radius="@dimen/card_corner_radius" />
++</shape>
+diff --git a/app/src/main/res/drawable/item_recents_card_ripple_background.xml b/app/src/main/res/drawable/item_recents_card_ripple_background.xml
+new file mode 100644
+index 00000000..1ed8962f
+--- /dev/null
++++ b/app/src/main/res/drawable/item_recents_card_ripple_background.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<ripple xmlns:android="http://schemas.android.com/apk/res/android"
++    android:color="?attr/colorControlHighlight">
++    <item android:drawable="@drawable/item_recents_card_background" />
++</ripple>
+diff --git a/app/src/main/res/drawable/item_recents_card_spam_background.xml b/app/src/main/res/drawable/item_recents_card_spam_background.xml
+new file mode 100644
+index 00000000..3502af83
+--- /dev/null
++++ b/app/src/main/res/drawable/item_recents_card_spam_background.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="rectangle">
++    <solid android:color="@color/spam_danger_surface" />
++    <corners android:radius="@dimen/card_corner_radius" />
++</shape>
+diff --git a/app/src/main/res/drawable/spam_warning_background.xml b/app/src/main/res/drawable/spam_warning_background.xml
+index cab44a9e..b0bee2b8 100644
+--- a/app/src/main/res/drawable/spam_warning_background.xml
++++ b/app/src/main/res/drawable/spam_warning_background.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <shape xmlns:android="http://schemas.android.com/apk/res/android"
+     android:shape="rectangle">
+-    <solid android:color="@color/color_missed_call" />
+-    <corners android:radius="16dp" />
++    <solid android:color="@color/spam_danger_red" />
++    <corners android:radius="@dimen/spam_chip_corner_radius" />
+ </shape>
+diff --git a/app/src/main/res/layout/activity_call.xml b/app/src/main/res/layout/activity_call.xml
+index 93165c4e..4b959a70 100644
+--- a/app/src/main/res/layout/activity_call.xml
++++ b/app/src/main/res/layout/activity_call.xml
+@@ -84,6 +84,7 @@
+         android:paddingStart="@dimen/medium_margin"
+         android:paddingEnd="@dimen/medium_margin"
+         android:textSize="@dimen/caller_name_text_size"
++        android:textStyle="bold"
+         app:layout_constraintBottom_toTopOf="@id/caller_number"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintStart_toStartOf="parent"
+@@ -97,7 +98,7 @@
+         android:layout_height="wrap_content"
+         android:layout_marginTop="@dimen/normal_margin"
+         android:gravity="center_horizontal"
+-        android:textSize="@dimen/call_status_text_size"
++        android:textSize="@dimen/caller_number_text_size"
+         app:layout_constraintBottom_toTopOf="@id/caller_spam_warning"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintStart_toStartOf="parent"
+@@ -113,12 +114,17 @@
+         android:layout_height="wrap_content"
+         android:layout_marginTop="@dimen/normal_margin"
+         android:background="@drawable/spam_warning_background"
++        android:drawableStart="@drawable/ic_warning_vector"
++        android:drawablePadding="@dimen/small_margin"
++        android:gravity="center_vertical"
+         android:paddingStart="@dimen/normal_margin"
+         android:paddingTop="@dimen/small_margin"
+         android:paddingEnd="@dimen/normal_margin"
+         android:paddingBottom="@dimen/small_margin"
+-        android:textColor="@android:color/white"
+-        android:textSize="@dimen/call_status_text_size"
++        android:textAllCaps="true"
++        android:textColor="@color/spam_danger_on_red"
++        android:textSize="@dimen/spam_chip_text_size"
++        android:letterSpacing="0.05"
+         android:textStyle="bold"
+         android:visibility="gone"
+         app:layout_constraintBottom_toTopOf="@id/call_status_label"
+@@ -229,7 +235,7 @@
+             android:id="@+id/call_toggle_microphone"
+             android:layout_width="0dp"
+             android:layout_height="0dp"
+-            android:background="@drawable/circle_background"
++            android:background="@drawable/circle_button_background_ripple"
+             android:contentDescription="@string/turn_microphone_off"
+             android:padding="@dimen/activity_margin"
+             android:src="@drawable/ic_microphone_off_vector"
+@@ -240,7 +246,7 @@
+             android:id="@+id/call_toggle_speaker"
+             android:layout_width="0dp"
+             android:layout_height="0dp"
+-            android:background="@drawable/circle_background"
++            android:background="@drawable/circle_button_background_ripple"
+             android:contentDescription="@string/turn_speaker_on"
+             android:padding="@dimen/activity_margin"
+             android:src="@drawable/ic_volume_up_vector"
+@@ -261,7 +267,7 @@
+             android:id="@+id/call_toggle_hold"
+             android:layout_width="0dp"
+             android:layout_height="0dp"
+-            android:background="@drawable/circle_background"
++            android:background="@drawable/circle_button_background_ripple"
+             android:contentDescription="@string/hold_call"
+             android:padding="@dimen/activity_margin"
+             android:src="@drawable/ic_pause_vector"
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+index b06478e5..f88a722d 100644
+--- a/app/src/main/res/layout/activity_main.xml
++++ b/app/src/main/res/layout/activity_main.xml
+@@ -37,6 +37,7 @@
+             android:padding="@dimen/activity_margin"
+             android:src="@drawable/ic_dialpad_vector"
+             app:backgroundTint="@color/color_primary"
++            app:shapeAppearanceOverlay="@style/DialerFabShape"
+             app:layout_constraintBottom_toTopOf="@+id/main_tabs_holder"
+             app:layout_constraintEnd_toEndOf="parent"
+             app:rippleColor="@color/pressed_item_foreground" />
+diff --git a/app/src/main/res/layout/activity_settings.xml b/app/src/main/res/layout/activity_settings.xml
+index af72eab3..37c1c156 100644
+--- a/app/src/main/res/layout/activity_settings.xml
++++ b/app/src/main/res/layout/activity_settings.xml
+@@ -525,6 +525,9 @@
+                 style="@style/SettingsSectionLabelStyle"
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
++                android:drawableStart="@drawable/ic_warning_vector"
++                android:drawablePadding="@dimen/small_margin"
++                android:drawableTint="@color/spam_danger_red"
+                 android:text="@string/call_screening" />
+ 
+             <RelativeLayout
+diff --git a/app/src/main/res/layout/item_recent_call.xml b/app/src/main/res/layout/item_recent_call.xml
+index d0a6d55b..fa5d41d7 100644
+--- a/app/src/main/res/layout/item_recent_call.xml
++++ b/app/src/main/res/layout/item_recent_call.xml
+@@ -5,15 +5,20 @@
+     android:id="@+id/item_recents_holder"
+     android:layout_width="match_parent"
+     android:layout_height="wrap_content"
++    android:background="@drawable/item_recents_card_ripple_background"
+     android:clickable="true"
+     android:focusable="true"
++    android:layout_marginStart="@dimen/card_margin_horizontal"
++    android:layout_marginEnd="@dimen/card_margin_horizontal"
++    android:layout_marginTop="@dimen/card_margin_vertical"
++    android:layout_marginBottom="@dimen/card_margin_vertical"
+     android:paddingTop="@dimen/medium_margin"
+     android:paddingBottom="@dimen/medium_margin">
+ 
+     <ImageView
+         android:id="@+id/item_recents_image"
+-        android:layout_width="@dimen/normal_icon_size"
+-        android:layout_height="@dimen/normal_icon_size"
++        android:layout_width="@dimen/recents_avatar_size"
++        android:layout_height="@dimen/recents_avatar_size"
+         android:layout_centerVertical="true"
+         android:layout_marginStart="@dimen/normal_margin"
+         android:layout_marginEnd="@dimen/small_margin"
+@@ -34,6 +39,7 @@
+         android:marqueeRepeatLimit="3"
+         android:scrollHorizontally="true"
+         android:singleLine="true"
++        android:textStyle="bold"
+         android:textAlignment="viewStart"
+         android:textDirection="firstStrongLtr"
+         android:textSize="@dimen/bigger_text_size"
+diff --git a/app/src/main/res/values-night/colors.xml b/app/src/main/res/values-night/colors.xml
+index 61a274e6..1603acd1 100644
+--- a/app/src/main/res/values-night/colors.xml
++++ b/app/src/main/res/values-night/colors.xml
+@@ -3,4 +3,10 @@
+     <color name="color_missed_call">@color/md_red_400</color>
+     <color name="color_outgoing_call">@color/md_green_300</color>
+     <color name="color_incoming_call">@color/md_blue_300</color>
++
++    <color name="spam_danger_red">#FFB4A9</color>
++    <color name="spam_danger_on_red">#680003</color>
++    <color name="spam_danger_surface">#3A0906</color>
++
++    <color name="call_surface_container">#211F26</color>
+ </resources>
+diff --git a/app/src/main/res/values/colors.xml b/app/src/main/res/values/colors.xml
+index ce9da31b..5e8fab24 100644
+--- a/app/src/main/res/values/colors.xml
++++ b/app/src/main/res/values/colors.xml
+@@ -4,4 +4,15 @@
+     <color name="color_missed_call">@color/md_red_500_dark</color>
+     <color name="color_outgoing_call">@color/md_green_600</color>
+     <color name="color_incoming_call">@color/md_blue_600</color>
++
++    <!-- Cloud Dialer redesign: spam gets its own danger palette, distinct from
++         color_missed_call — Truecaller's own color legend reserves red exclusively
++         for spam, never a lesser/unrelated state (research-grounded, patch 0015). -->
++    <color name="spam_danger_red">#C4281C</color>
++    <color name="spam_danger_on_red">#FFFFFF</color>
++    <color name="spam_danger_surface">#FBE9E7</color>
++
++    <!-- Recents card fill (Material 3 surface-container equivalent, hand-authored
++         since this app doesn't use the Material3 dynamic color role system). -->
++    <color name="call_surface_container">#F2F0F4</color>
+ </resources>
+diff --git a/app/src/main/res/values/dimens.xml b/app/src/main/res/values/dimens.xml
+index dacf1a28..2e3a95b0 100644
+--- a/app/src/main/res/values/dimens.xml
++++ b/app/src/main/res/values/dimens.xml
+@@ -5,7 +5,7 @@
+     <dimen name="incoming_call_arrow_size">50dp</dimen>
+     <dimen name="incoming_call_button_size">72dp</dimen>
+     <dimen name="call_notification_button_size">40dp</dimen>
+-    <dimen name="caller_avatar_max_size">172dp</dimen>
++    <dimen name="caller_avatar_max_size">208dp</dimen>
+     <dimen name="end_call_button_margin">34dp</dimen>
+     <dimen name="dialpad_bottom_padding">114dp</dimen>
+     <dimen name="call_control_max_height">240dp</dimen>
+@@ -15,6 +15,16 @@
+     <dimen name="caller_name_text_size">34sp</dimen>
+     <dimen name="call_status_text_size">20sp</dimen>
+ 
++    <!-- Cloud Dialer redesign (patch 0015) -->
++    <dimen name="caller_number_text_size">18sp</dimen>
++    <dimen name="spam_chip_text_size">14sp</dimen>
++    <dimen name="spam_chip_corner_radius">999dp</dimen>
++    <dimen name="card_corner_radius">16dp</dimen>
++    <dimen name="card_margin_horizontal">12dp</dimen>
++    <dimen name="card_margin_vertical">4dp</dimen>
++    <dimen name="recents_avatar_size">40dp</dimen>
++    <dimen name="call_button_corner_radius">24dp</dimen>
++
+     <!-- keep these 2 values in dp to avoid scaling -->
+     <dimen name="dialpad_text_size">28dp</dimen>
+     <dimen name="dialpad_letters_text_size">12dp</dimen>
+diff --git a/app/src/main/res/values/styles.xml b/app/src/main/res/values/styles.xml
+index e5e257a8..4ad4ba23 100644
+--- a/app/src/main/res/values/styles.xml
++++ b/app/src/main/res/values/styles.xml
+@@ -12,9 +12,17 @@
+     <style name="DialpadNumberStyle">
+         <item name="android:includeFontPadding">false</item>
+         <item name="android:textSize">@dimen/dialpad_text_size</item>
++        <item name="android:textStyle">bold</item>
+         <item name="android:layout_centerHorizontal">true</item>
+     </style>
+ 
++    <!-- Cloud Dialer redesign (patch 0015): squircle shape for the main FAB,
++         matching the in-call action-button grid's shape language. -->
++    <style name="DialerFabShape">
++        <item name="cornerFamily">rounded</item>
++        <item name="cornerSize">@dimen/call_button_corner_radius</item>
++    </style>
++
+     <style name="DialpadLetterStyle">
+         <item name="android:textSize">@dimen/dialpad_letters_text_size</item>
+         <item name="android:alpha">0.8</item>
+-- 
+2.50.1
+

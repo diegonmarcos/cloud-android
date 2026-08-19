@@ -1,7 +1,7 @@
-From 9abf07bf593c6a411886cd2937b10eefbf2e653b Mon Sep 17 00:00:00 2001
+From 9a089dd1b85b75a041e1ee1c2ba0ff9fb8d46cd7 Mon Sep 17 00:00:00 2001
 From: cloud-comms-engine <engine@diegonmarcos.com>
 Date: Fri, 26 Jun 2026 22:31:49 +0200
-Subject: [PATCH 02/14] Cloud Dialer: call-provider model + data asset + unit
+Subject: [PATCH 02/15] Cloud Dialer: call-provider model + data asset + unit
  test
 
 Data-driven provider list (assets/call_providers.json) parsed via kotlinx.serialization.

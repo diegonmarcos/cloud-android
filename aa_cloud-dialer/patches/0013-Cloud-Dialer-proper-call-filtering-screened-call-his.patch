@@ -1,7 +1,7 @@
-From 59c47727b630bff1f00bc8c115bb643ac4b4130e Mon Sep 17 00:00:00 2001
+From 7fbab493577d5f7a8062e04bb8262f4e93d2519b Mon Sep 17 00:00:00 2001
 From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
 Date: Tue, 18 Aug 2026 15:36:19 +0200
-Subject: [PATCH 13/14] =?UTF-8?q?Cloud-Dialer:=20proper=20call=20filtering?=
+Subject: [PATCH 13/15] =?UTF-8?q?Cloud-Dialer:=20proper=20call=20filtering?=
  =?UTF-8?q?=20=E2=80=94=20screened-call=20history,=20per-number=20allowlis?=
  =?UTF-8?q?t,=20spam=20categories,=20expanded=20offline=20spam=20DB?=
 MIME-Version: 1.0

@@ -1,7 +1,7 @@
-From 2deb0f4ffe60f561f245917dc76ca26c740afb31 Mon Sep 17 00:00:00 2001
+From ab043d2d3cf08a7421d95e386eece24e012ab00b Mon Sep 17 00:00:00 2001
 From: cloud-comms-engine <engine@diegonmarcos.com>
 Date: Fri, 26 Jun 2026 22:35:06 +0200
-Subject: [PATCH 03/14] Cloud Dialer: provider chooser on call (VoIP +
+Subject: [PATCH 03/15] Cloud Dialer: provider chooser on call (VoIP +
  deep-link + cellular)
 
 New startCallWithProviderChooser() shows a RadioGroupDialog of Cellular + each available
