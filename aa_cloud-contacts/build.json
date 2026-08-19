@@ -1,47 +1,107 @@
 {
-  "forks": {
-    "contacts": {
-      "app_id": "com.diegonmarcos.comms.contacts",
-      "label": "Cloud Contacts (Fossify)",
-      "image": "cloud-comms-contacts",
-      "upstream_repo": "https://github.com/FossifyOrg/Contacts.git",
-      "tracker_dir": "ea_upstreams-sources/contacts-fossify",
-      "pinned_tag": "1.6.0",
-      "license": "GPL-3.0",
-      "primary_lang": "Kotlin",
-      "runtime": "native",
-      "priority": 4,
-      "blocked_on": null,
-      "build": {
-        "_doc": "Fossify Contacts. gradle task + keystore signing. Unlike Fossify Phone, Contacts dimensions by flavor (core/foss/gplay), so the task pins the FOSS release variant (self-distributed, no Play deps) and apk_glob matches its flavored output path — the flavorless apk/release/*.apk glob matched nothing (GHA 32143946025). APPLICATION_ID is passed as -P so patch 0002's findProperty override installs the fork under its own unique package (namespace/code stays org.fossify.contacts).",
-        "gradle_task": "assembleFossRelease",
-        "apk_glob": "app/build/outputs/apk/foss/release/*.apk",
-        "signing": "keystore_properties",
-        "gradle_props": {
-          "APPLICATION_ID": "com.diegonmarcos.comms.contacts"
-        }
-      },
-      "comment": "Fossify Contacts fork — the constellation address book. Merges local phone + synced-account (Gmail) contacts natively via ContactsContract; patch series adds LinkedIn/Instagram social import (export files → vCard → existing importer) so social handles live on each contact as tappable profile URLs. Call/SMS/mail actions fire standard intents, landing in cloud-dialer / cloud-mail as the constellation default handlers."
-    }
+  "name": "cloud-contacts",
+  "description": "Diego's Cloud Contacts — standalone Android multi-channel people hub. NOT a dialer-first address book: each person is a set of reachable CHANNELS (WhatsApp, Telegram, SMS, Cloud Mail, Cloud Dialer, Matrix, Cloud Chat, LinkedIn, Instagram) and the person screen is a channel switchboard — tapping a channel opens that conversation in its app; there is no default call action. Sources merged into one identity: device contacts (local phone + synced accounts such as Gmail) read from ContactsContract, plus LinkedIn Connections.csv and Instagram followers/following JSON imports parsed natively. WebView UI over HTML/Tailwind (cloud-news pattern). Build via Nix devShell, one APK out.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.cloudcontacts",
+    "compile_sdk": 36,
+    "min_sdk": 26,
+    "target_sdk": 35,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "abi_filters": ["arm64-v8a"]
   },
   "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. KEY LOCATION: A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml.",
     "vault_keystore": "A0_keys/providers/android/release.jks",
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
+  "diagnostics": {
+    "_doc": "On-device DevControlServer diagnostics → cloud sink.",
+    "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
+    "log_sink_stream": "cloud-contacts"
+  },
+  "modules": {
+    "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list.",
+    "app": {
+      "type": "application",
+      "depends_on": ["libs:core", "libs:updater", "libs:contacts"]
+    },
+    "libs:core": { "type": "library" },
+    "libs:updater": { "type": "library" },
+    "libs:contacts": { "type": "library" }
+  },
+  "channels": {
+    "_doc": "THE data-driven multi-channel registry — the app's whole identity. Baked into app BuildConfig as CHANNELS_B64 (app/build.gradle) and rendered by libs:contacts Channels + the switchboard UI. Adding a channel is a JSON edit, never Kotlin. kind decides which person datum makes the channel available and feeds its URI placeholders: 'phone' (any phone; {phone}=raw, {phone_digits}=digits-only E.164-ish), 'email' ({email}), 'url:<domain>' (a website containing <domain>; {url}), 'handle:<key>' (person.handles[<key>]; {handle}). package is a soft hint — the bridge tries it first, then falls back to the system chooser, so absent constellation apps degrade gracefully. order drives switchboard sorting; no channel is a default action by design.",
+    "registry": [
+      { "id": "whatsapp",  "label": "WhatsApp",     "kind": "phone",              "color": "#25D366", "glyph": "WA", "order": 10, "actions": [ { "id": "chat", "label": "Message", "uri": "https://wa.me/{phone_digits}" } ] },
+      { "id": "telegram",  "label": "Telegram",     "kind": "handle:telegram",    "color": "#229ED9", "glyph": "TG", "order": 20, "actions": [ { "id": "chat", "label": "Message", "uri": "https://t.me/{handle}" } ] },
+      { "id": "matrix",    "label": "Matrix",       "kind": "handle:matrix",      "color": "#0DBD8B", "glyph": "[m]", "order": 30, "package": "com.diegonmarcos.comms.matrix", "actions": [ { "id": "chat", "label": "Message", "uri": "https://matrix.to/#/{handle_raw}" } ] },
+      { "id": "mattermost", "label": "Cloud Chat",  "kind": "handle:mattermost",  "color": "#1E6FEB", "glyph": "MM", "order": 40, "package": "com.diegonmarcos.comms.chat", "actions": [ { "id": "chat", "label": "Open", "uri": "https://chat.diegonmarcos.com/cloud/messages/@{handle}" } ] },
+      { "id": "email",     "label": "Cloud Mail",   "kind": "email",              "color": "#60A5FA", "glyph": "@",  "order": 50, "package": "com.diegonmarcos.comms.mail", "actions": [ { "id": "mail", "label": "Write", "uri": "mailto:{email}" } ] },
+      { "id": "sms",       "label": "SMS",          "kind": "phone",              "color": "#A3E635", "glyph": "SMS", "order": 60, "actions": [ { "id": "text", "label": "Text", "uri": "smsto:{phone}" } ] },
+      { "id": "phone",     "label": "Cloud Dialer", "kind": "phone",              "color": "#4ADE80", "glyph": "TEL", "order": 70, "package": "com.diegonmarcos.comms.dialer", "actions": [ { "id": "call", "label": "Call", "uri": "tel:{phone}" } ] },
+      { "id": "linkedin",  "label": "LinkedIn",     "kind": "url:linkedin.com",   "color": "#0A66C2", "glyph": "in", "order": 80, "actions": [ { "id": "profile", "label": "Profile", "uri": "{url}" } ] },
+      { "id": "instagram", "label": "Instagram",    "kind": "url:instagram.com",  "color": "#E4405F", "glyph": "IG", "order": 90, "actions": [ { "id": "profile", "label": "Profile", "uri": "{url}" } ] }
+    ]
+  },
   "release": {
+    "artifact": {
+      "debug": "Cloud-Contacts.apk",
+      "release": "Cloud-Contacts-release.apk"
+    },
+    "variants": [
+      {
+        "id": "arm64",
+        "abis": ["arm64-v8a"],
+        "supported_abis": ["arm64-v8a", "armeabi-v7a"],
+        "artifact_debug": "Cloud-Contacts.apk",
+        "gh_asset": "Cloud-Contacts.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": ["x86_64"],
+        "supported_abis": ["x86_64", "x86"],
+        "artifact_debug": "Cloud-Contacts-x86_64.apk",
+        "gh_asset": "Cloud-Contacts-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ],
+    "auto_update": {
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "install_mode": "silent"
+    },
     "ghcr": {
+      "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
-      "media_type": "application/vnd.android.package-archive"
+      "image": "cloud-contacts",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": ["latest", "sha-{sha}", "v{version_name}"]
     },
     "gh_release": {
-      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-contacts.apk stays stable. Published by `build.sh gh-release-fork contacts` (ship-cloud-contacts.yml), which uploads dist/cloud-comms-contacts.apk with --clobber. Consumed by ea_cloud-superapp ui.external_apps[cloud-contacts].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
       "enabled": true,
       "rolling_tag": "latest",
-      "asset_name": "cloud-comms-contacts.apk",
+      "asset_name": "Cloud-Contacts.apk",
       "draft": false,
       "prerelease": false,
       "generate_release_notes": false
+    },
+    "phone_install": {
+      "default_tag": "latest",
+      "target_dir": "~/storage/downloads",
+      "asset_name": "Cloud-Contacts.apk"
     }
   }
 }

@@ -1,55 +1,46 @@
-# Cloud Contacts (Fossify Contacts fork)
+# Cloud Contacts — the multi-channel people hub
 
-The constellation address book: one app that merges every contact source and
-hands "call / text / mail" off to the right constellation app.
+Native constellation app (NOT a fork). A person is a set of **channels**, and
+the person screen is a **channel switchboard**: WhatsApp, Telegram, Matrix
+(→ cloud-matrix), Cloud Chat (Mattermost), Cloud Mail, SMS, Cloud Dialer,
+LinkedIn, Instagram — tap a channel, land in that conversation in that app.
+There is deliberately **no default call action**: calling is one channel among
+many, not the app's identity.
 
-- **Upstream**: [FossifyOrg/Contacts](https://github.com/FossifyOrg/Contacts)
-  (GPL-3.0), pinned in `build.json::forks.contacts.pinned_tag`, materialized
-  into the gitignored tracker `../ea_upstreams-sources/contacts-fossify/` and
-  rebuilt from `patches/` on every build — never a long-lived divergent clone.
-- **Identity**: `com.diegonmarcos.comms.contacts`, signed with the ONE shared
-  constellation key (vault `A0_keys/providers/android/release.jks`).
-- **CI**: `ship.yaml` → `1_cicd/src/cicd/ship-cloud-contacts.yml` publishes
-  `ghcr.io/diegonmarcos/cloud-comms-contacts:latest` + the rolling
-  `releases/latest/download/cloud-comms-contacts.apk` asset consumed by
-  `ea_cloud-superapp ui.external_apps[cloud-contacts]`.
+## Architecture (cloud-news pattern)
 
-## Where the "merge" comes from
+- `app/` — thin WebView shell: `MainActivity` (31-line class: WebView +
+  permission/SAF launchers) + `ContactsBridge` (Kotlin↔JS, JSON-string API) +
+  `assets/contacts.html` (the whole UI, HTML/Tailwind, offline, dark).
+- `libs/contacts` — the domain: `DeviceContacts` (ContactsContract reader:
+  local + synced accounts such as Gmail), `SocialImport` (LinkedIn
+  `Connections.csv` + Instagram followers/following JSON, content-sniffed),
+  `SocialStore` (JSON file store), `MergeEngine` (union-find identity merge by
+  normalized email/phone/name), `Channels` (registry resolution).
+- `libs/core`, `libs/updater` — shared constellation libs (GHCR self-updater,
+  data-driven from `build.json::release`).
+- **`build.json::channels.registry`** — THE channel registry: kind
+  (phone/email/url:domain/handle:key), brand color, glyph, action URI
+  templates, optional constellation package hint. Baked into
+  `BuildConfig.CHANNELS_B64`; adding a channel is a JSON edit, never Kotlin.
 
-| Source | How it lands |
+## Sources merged into one identity
+
+| Source | How |
 |---|---|
-| Local phone | Native — Fossify reads ContactsContract + its private local store. |
-| Gmail / Google | Native — the synced Google account appears as a contact source (view, edit, and import-target). |
-| LinkedIn | Patch 0004 — import `Connections.csv` (Settings → Import contacts, or share the file to the app). |
-| Instagram | Patch 0004 — import `followers_1.json` / `following.json` the same way. |
+| Local phone | ContactsContract (runtime READ_CONTACTS; app works without it) |
+| Gmail / accounts | Same query — synced accounts appear as `gmail:<account>` provenance |
+| LinkedIn | Import `Connections.csv` (Settings → Data privacy → Get a copy of your data) |
+| Instagram | Import `followers_1.json` / `following.json` (Accounts Center → Download your information) |
 
-Social rows are converted to vCards (content-sniffed, then fed to the stock
-VcfImporter), so the user picks the target source per import and the profile
-URL lands as a tappable website that app-links into LinkedIn / Instagram.
-
-## Where "call/text in each app" comes from
-
-No custom IPC needed — actions fire standard intents, and the constellation
-apps hold the roles: calls land in **cloud-dialer** (ROLE_DIALER, which itself
-offers the VoIP/deep-link provider chooser), `mailto:` lands in **cloud-mail**,
-SMS in the default SMS app, and WhatsApp/Signal/Telegram actions appear
-natively via their ContactsContract sync entries.
-
-## Patch series
-
-1. `0001` rebrand launcher label → "Cloud Contacts"
-2. `0002` unique applicationId via `-PAPPLICATION_ID` (namespace stays `org.fossify.contacts`)
-3. `0003` remove commons' anti-repackage "fake app" dialog (false positive by construction)
-4. `0004` LinkedIn/Instagram social import → stock vCard pipeline
-
-## Build
+## Build / ship
 
 ```bash
-./build.sh materialize-fork contacts   # clone upstream @ pin + apply patches
-./build.sh build-fork contacts         # fork's own gradlew + constellation sign (needs SDK/vault)
-./build.sh publish-fork contacts       # oras push → ghcr.io/diegonmarcos/cloud-comms-contacts
+./build.sh build          # Nix devShell → signed debug APK (dist/Cloud-Contacts.apk)
+./build.sh ship           # build + oras-push (GHCR) + gh-release
 ```
 
-Deferred (add when needed): in-app self-updater patch (dialer patch 0005
-pattern) — until then updates flow through the SuperApp Constellation
-installer; CardDAV/Radicale sync — DAVx5/the cal stack already covers it.
+CI: `1_cicd/src/cicd/ship-cloud-contacts.yml` → `ghcr.io/diegonmarcos/cloud-contacts`
++ rolling `releases/latest/download/Cloud-Contacts.apk` (consumed by
+`ea_cloud-superapp ui.external_apps[cloud-contacts]`). Same shared
+constellation signing key (`cloud-vault A0_keys/providers/android/`).

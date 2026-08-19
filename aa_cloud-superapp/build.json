@@ -1556,7 +1556,7 @@
                 "target": "extapp:cloud-news"
               },
               {
-                "_doc": "Opens the standalone Cloud-Contacts app (ea_cloud-contacts, com.diegonmarcos.comms.contacts, Fossify Contacts) via extapp:cloud-contacts — installed → launches; absent → install via Configs ▸ Constellation. Replaces the old Google Contacts launcher.",
+                "_doc": "Opens the standalone Cloud-Contacts app (ea_cloud-contacts, com.diegonmarcos.cloudcontacts, native multi-channel people hub) via extapp:cloud-contacts — installed → launches; absent → install via Configs ▸ Constellation. Replaces the old Google Contacts launcher.",
                 "id": "contacts",
                 "label": "Contacts",
                 "icon": "ic_p_sol_personal",
@@ -5499,12 +5499,12 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud Contacts — standalone Fossify Contacts fork (ea_cloud-contacts). The constellation address book: native local + synced-account (Gmail) contacts, LinkedIn Connections.csv / Instagram followers-following JSON import (patch 0004 converts to vCard). Call/mail actions land in cloud-dialer / cloud-mail via standard intents. install_apk_url mirrors ea_cloud-contacts/build.json::release.gh_release (asset cloud-comms-contacts.apk, published by ship-cloud-contacts.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud Contacts — standalone NATIVE multi-channel people hub (ea_cloud-contacts, WebView/Tailwind, cloud-news pattern — NOT a Fossify fork). Merges device (local + Gmail) contacts with LinkedIn/Instagram imports; the person screen is a channel switchboard (WhatsApp/Telegram/Matrix/Cloud Chat/Cloud Mail/SMS/Cloud Dialer/LinkedIn/Instagram) driven by build.json::channels — no default call action. install_apk_url mirrors ea_cloud-contacts/build.json::release.gh_release (asset Cloud-Contacts.apk, published by ship-cloud-contacts.yml). Signs with the shared constellation key.",
         "id": "cloud-contacts",
-        "label": "Cloud Contacts (Fossify)",
-        "hub_package": "com.diegonmarcos.comms.contacts",
-        "install_package": "com.diegonmarcos.comms.contacts",
-        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/cloud-comms-contacts.apk",
+        "label": "Cloud Contacts",
+        "hub_package": "com.diegonmarcos.cloudcontacts",
+        "install_package": "com.diegonmarcos.cloudcontacts",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Contacts.apk",
         "forks": {}
       },
       {
@@ -5884,7 +5884,7 @@
             },
             {
               "label": "Contacts",
-              "target": "app:com.diegonmarcos.comms.contacts"
+              "target": "app:com.diegonmarcos.cloudcontacts"
             }
           ]
         },
