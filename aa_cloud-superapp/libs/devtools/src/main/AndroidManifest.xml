@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  libs:devtools ships no components of its own — the loopback control server
+  and its UI stay app-owned. Only the app-agnostic half lives here.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

@@ -1,4 +1,9 @@
 package com.diegonmarcos.superapp.devcontrol
+
+import com.diegonmarcos.superapp.devtools.BuildConfig as DevBuildConfig
+import com.diegonmarcos.superapp.devtools.DevControlBridge
+import com.diegonmarcos.superapp.devtools.DevControlPrefs
+import com.diegonmarcos.superapp.devtools.DiagnosticsPush
 import com.diegonmarcos.superapp.battery.EnergyStore
 import com.diegonmarcos.superapp.system.Trace
 import com.diegonmarcos.superapp.system.ShizukuUserService
@@ -192,7 +197,7 @@ object DevControlServer {
                 }
                 "diagnostics/push" -> {
                     val code = DiagnosticsPush.pushToCloud(diagnosticRecord(ctx))
-                    reply(writer, "200 OK", """{"posted":${code in 200..299},"http":$code,"sink":"${jsonEscape(BuildConfig.LOG_SINK_URL)}"}""", "application/json"); return
+                    reply(writer, "200 OK", """{"posted":${code in 200..299},"http":$code,"sink":"${jsonEscape(DevBuildConfig.LOG_SINK_URL)}"}""", "application/json"); return
                 }
                 "system/about" -> { reply(writer, "200 OK", aboutJson(), "application/json"); return }
             }

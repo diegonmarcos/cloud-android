@@ -15,15 +15,18 @@ dependencyResolutionManagement {
 
 rootProject.name = "cloud-keyboard"
 
-include(":app")
-
-// Keyboard libs shared from ea_cloud-superapp/libs/ — compiled once,
-// referenced by relative path. No code duplication.
-include(":libs:keyboard")
-project(":libs:keyboard").projectDir = file("../ea_cloud-superapp/libs/keyboard")
-include(":libs:media")
-project(":libs:media").projectDir = file("../ea_cloud-superapp/libs/media")
-include(":libs:translate")
-project(":libs:translate").projectDir = file("../ea_cloud-superapp/libs/translate")
-include(":libs:voice")
-project(":libs:voice").projectDir = file("../ea_cloud-superapp/libs/voice")
+// Data-driven from build.json::modules (FIRE RULE #6: never hardcode lists).
+// The module graph used to be a hardcoded include/projectDir pair per module
+// right here, so it lived in two places and neither knew about the other.
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return  // skip _doc keys
+    include ":${name}"
+    // Map gradle path :libs:foo -> libs/foo/  (vs. :app -> app/), unless the
+    // module declares a `dir` in build.json. `dir` is how a module is SHARED by
+    // reference instead of copy-pasted: the module lives once in
+    // ea_cloud-superapp/libs/ and every app points at that one directory, so a
+    // fix lands in all of them at build time and copies cannot drift.
+    def path = _spec?.dir ?: name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}

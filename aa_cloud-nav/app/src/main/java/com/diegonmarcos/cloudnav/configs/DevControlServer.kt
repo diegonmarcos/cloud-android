@@ -1,5 +1,10 @@
 package com.diegonmarcos.cloudnav.configs
 
+import com.diegonmarcos.superapp.devtools.BuildConfig as DevBuildConfig
+import com.diegonmarcos.superapp.devtools.DevControlBridge
+import com.diegonmarcos.superapp.devtools.DevControlPrefs
+import com.diegonmarcos.superapp.devtools.DiagnosticsPush
+
 import android.content.Context
 import android.util.Log
 import com.diegonmarcos.cloudnav.BuildConfig
@@ -170,7 +175,7 @@ object DevControlServer {
                 }
                 "diagnostics/push" -> {
                     val code = DiagnosticsPush.pushToCloud(diagnosticRecord(ctx))
-                    reply(writer, "200 OK", """{"posted":${code in 200..299},"http":$code,"sink":"${jsonEscape(BuildConfig.LOG_SINK_URL)}"}""", "application/json"); return
+                    reply(writer, "200 OK", """{"posted":${code in 200..299},"http":$code,"sink":"${jsonEscape(DevBuildConfig.LOG_SINK_URL)}"}""", "application/json"); return
                 }
             }
 

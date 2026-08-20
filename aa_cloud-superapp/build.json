@@ -175,6 +175,9 @@
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
     },
+    "libs:devtools": {
+            "type": "library"
+        },
     "libs:updater": {
       "type": "library",
       "depends_on": [
@@ -188,13 +191,6 @@
         "libs:core"
       ],
       "comment": "Mail — FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ea_mail-fairmail/."
-    },
-    "libs:cal": {
-      "type": "library",
-      "depends_on": [
-        "libs:core"
-      ],
-      "comment": "Calendar/contacts — CalDAV/CardDAV against Radicale (cal.diegonmarcos.com)."
     },
     "libs:feed": {
       "type": "library",
@@ -216,13 +212,6 @@
         "libs:core"
       ],
       "comment": "Cloud ops dashboard — c3-api, health checks, dagu trigger, container control."
-    },
-    "libs:vault": {
-      "type": "library",
-      "depends_on": [
-        "libs:core"
-      ],
-      "comment": "Passwords + TOTP. Could integrate with Vaultwarden (vault.diegonmarcos.com)."
     },
     "libs:chat": {
       "type": "library",

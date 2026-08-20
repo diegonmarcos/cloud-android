@@ -1,5 +1,9 @@
 package com.diegonmarcos.cloudnav.configs
 
+import com.diegonmarcos.superapp.devtools.BuildConfig as DevBuildConfig
+import com.diegonmarcos.superapp.devtools.DevControlPrefs
+import com.diegonmarcos.superapp.devtools.DiagnosticsPush
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -391,8 +395,8 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Build",   BuildConfig.VERSION_NAME)
             row(ctx, it, "Sha",     BuildConfig.GIT_SHORT_SHA)
             row(ctx, it, "Code",    BuildConfig.VERSION_CODE.toString())
-            row(ctx, it, "c3 sink", BuildConfig.LOG_SINK_URL.ifBlank { "(disabled)" })
-            it.addView(small(ctx, "Capture = identity + last 500 logcat lines + trace + crashes. Copy → clipboard · Share → any app · Send → c3 log sink (stream: ${BuildConfig.LOG_SINK_STREAM}) · Save → Downloads."))
+            row(ctx, it, "c3 sink", DevBuildConfig.LOG_SINK_URL.ifBlank { "(disabled)" })
+            it.addView(small(ctx, "Capture = identity + last 500 logcat lines + trace + crashes. Copy → clipboard · Share → any app · Send → c3 log sink (stream: ${DevBuildConfig.LOG_SINK_STREAM}) · Save → Downloads."))
 
             val out = TextView(ctx).apply {
                 text = "(tap Capture to fill)"

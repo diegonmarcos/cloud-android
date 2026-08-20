@@ -17,16 +17,19 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-// Data-driven model registry: single source of truth is build.json::voice.
-// libs/voice is two levels under the repo root (voice -> libs -> root), so the
-// root build.json is ../../ (app/build.gradle uses ../ only because app/ is one
-// level down).
-def buildJson = new JsonSlurper().parse(file('../../build.json'))
-def voiceModelsJson = JsonOutput.toJson(buildJson.voice.models)
+// Data-driven model registry from build.json::voice.
+// rootDir is the CONSUMING app's build.json - this module is shared by
+// reference into cloud-keyboard-libs as well as superapp, and a
+// module-relative path would hand every consumer superapp's registry.
+// Consumers that declare no `voice` block fall back to this module's own
+// repo, which owns the constellation-wide default set.
+def appJson = new JsonSlurper().parse(file("${rootDir}/build.json"))
+def voice = appJson.voice ?: new JsonSlurper().parse(file('../../build.json')).voice
+def voiceModelsJson = JsonOutput.toJson(voice.models)
 def voiceModelsB64 = voiceModelsJson.bytes.encodeBase64().toString()
-def voiceDefaultLang = buildJson.voice.default_language
-def voiceTranslateTo = buildJson.voice.translate_to
-def voiceTranslateTargets = buildJson.voice.translate_targets.join(',')
+def voiceDefaultLang = voice.default_language
+def voiceTranslateTo = voice.translate_to
+def voiceTranslateTargets = voice.translate_targets.join(',')
 
 android {
     namespace 'com.diegonmarcos.superapp.voice'

@@ -1,4 +1,6 @@
 package com.diegonmarcos.superapp.devcontrol
+
+import com.diegonmarcos.superapp.devtools.DevControlPrefs
 import com.diegonmarcos.superapp.system.Trace
 import com.diegonmarcos.superapp.system.ScreenLocker
 import com.diegonmarcos.superapp.system.CrashLogger

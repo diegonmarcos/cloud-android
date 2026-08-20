@@ -5,7 +5,9 @@
   "android": {
     "application_id": "com.diegonmarcos.cloudkeyboardlibs",
     "_doc_abi_filters": "Native-library ABIs shipped in the APK. Vosk + JNA ship ~25MB of .so PER ABI; with no filter AGP bundled all 7 the deps carry (x86_64, x86, arm64-v8a, armeabi-v7a, mips, mips64, armeabi) = 99.5MB of a 129.7MB APK. mips/mips64 were removed from the NDK in 2018 and are dead weight. arm64-v8a only mirrors ea_cloud-superapp + ea_cloud-vault and lands the APK at ~55MB. Add 'x86_64' here for Waydroid/emulator and rebuild — no gradle edits needed.",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "toolchain": {
     "agp": "8.13.2",
@@ -15,16 +17,35 @@
     "jdk": "17"
   },
   "modules": {
-    "_doc": "Feature libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle.",
     "app": {
-      "type": "application",
-      "depends_on": [
-        "libs:media",
-        "libs:translate",
-        "libs:voice"
-      ],
-      "comment": "Thin launcher shell. All feature lib components come from the shared libs via manifest merge."
-    }
+      "type": "application"
+    },
+    "libs:media": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ea_cloud-superapp/libs/media"
+    },
+    "libs:translate": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ea_cloud-superapp/libs/translate"
+    },
+    "libs:translate-mlkit": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ea_cloud-superapp/libs/translate-mlkit"
+    },
+    "libs:voice": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ea_cloud-superapp/libs/voice"
+    },
+    "libs:voice-vosk": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ea_cloud-superapp/libs/voice-vosk"
+    },
+    "_doc": "Feature libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle."
   },
   "keyboard_media": {
     "_doc": "Same block as ea_cloud-superapp and ea_cloud-keyboard — shared vault secret. build.sh sops-decrypts vault_secrets → GIPHY_API_KEY env var → Gradle BuildConfig → MediaRuntime.configure().",

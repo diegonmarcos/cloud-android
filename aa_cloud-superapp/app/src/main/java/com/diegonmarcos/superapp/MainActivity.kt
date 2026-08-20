@@ -24,7 +24,7 @@ import com.diegonmarcos.superapp.launcher.DetailPlaceholderFragment
 import com.diegonmarcos.superapp.launcher.GroupedTilesFragment
 import com.diegonmarcos.superapp.launcher.AppDrawerSheetFragment
 import com.diegonmarcos.superapp.launcher.AggregatorStackFragment
-import com.diegonmarcos.superapp.devcontrol.DevControlBridge
+import com.diegonmarcos.superapp.devtools.DevControlBridge
 import com.diegonmarcos.superapp.settings.LauncherProfiles
 import com.diegonmarcos.superapp.settings.LauncherTheme
 import com.diegonmarcos.superapp.settings.LauncherThemes
@@ -102,7 +102,7 @@ import com.diegonmarcos.superapp.launcher.BackHandler
 class MainActivity : AppCompatActivity(),
     HomeDrawerFragment.NavigationListener,
     TileGridFragment.TileClickListener,
-    com.diegonmarcos.superapp.devcontrol.DevControlBridge.ActivityHost,
+    com.diegonmarcos.superapp.devtools.DevControlBridge.ActivityHost,
     MailHost,
     SearchOpener,
     com.diegonmarcos.superapp.apptabs.AppTabsHost,
@@ -1813,7 +1813,7 @@ class MainActivity : AppCompatActivity(),
         // circle never shows here (the in-app trigger is the Sirius Star).
         com.diegonmarcos.superapp.floatingnav.FloatingNavService.hostForeground = true
         com.diegonmarcos.superapp.floatingnav.FloatingNavService.startIfPermitted(this)
-        com.diegonmarcos.superapp.devcontrol.DevControlBridge.register(this)
+        com.diegonmarcos.superapp.devtools.DevControlBridge.register(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener { state ->
             runOnUiThread { handleUpdateState(state) }
         }
@@ -1832,7 +1832,7 @@ class MainActivity : AppCompatActivity(),
     override fun onPause() {
         // We're leaving SuperApp → the floating circle may now appear.
         com.diegonmarcos.superapp.floatingnav.FloatingNavService.hostForeground = false
-        com.diegonmarcos.superapp.devcontrol.DevControlBridge.unregister(this)
+        com.diegonmarcos.superapp.devtools.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
         if (::toolbarFx.isInitialized) toolbarFx.pause()
         musicIsland.pause()
