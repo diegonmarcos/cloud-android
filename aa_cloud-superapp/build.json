@@ -176,8 +176,8 @@
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
     },
     "libs:devtools": {
-            "type": "library"
-        },
+      "type": "library"
+    },
     "libs:updater": {
       "type": "library",
       "depends_on": [
@@ -6385,7 +6385,9 @@
       "require_unmetered_network": true,
       "require_charging": false,
       "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions, user-overridable via AutoUpdatePrefs). 'silent' → installer commits with USER_ACTION_NOT_REQUIRED (no install prompt) once the one-time 'Install unknown apps' grant is given; without the grant Android transparently falls back to a prompt. 'prompt' → always USER_ACTION_REQUIRED.",
-      "install_mode": "silent"
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     }
   }
 }

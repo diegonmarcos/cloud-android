@@ -58,7 +58,7 @@
       ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
@@ -66,12 +66,12 @@
       "type": "library"
     },
     "libs:devtools": {
-            "type": "library",
-            "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. DevControlBridge, DevControlPrefs and DiagnosticsPush were byte-identical copies in superapp and nav; the loopback server and its UI stay app-owned because they have genuinely diverged. LOG_SINK_URL/STREAM are baked by this module from the CONSUMING app's build.json::diagnostics.",
-            "dir": "../ea_cloud-superapp/libs/devtools"
-        },
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. DevControlBridge, DevControlPrefs and DiagnosticsPush were byte-identical copies in superapp and nav; the loopback server and its UI stay app-owned because they have genuinely diverged. LOG_SINK_URL/STREAM are baked by this module from the CONSUMING app's build.json::diagnostics.",
+      "dir": "../ea_cloud-superapp/libs/devtools"
+    },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/updater",
       "type": "library"
     }
@@ -420,7 +420,14 @@
       "nature": {
         "green_color": "#3fa34d",
         "opacity": 0.55,
-        "classes": ["wood", "grass", "park", "forest", "meadow", "grassland"],
+        "classes": [
+          "wood",
+          "grass",
+          "park",
+          "forest",
+          "meadow",
+          "grassland"
+        ],
         "minzoom": 5
       }
     },
@@ -2296,7 +2303,9 @@
       "require_unmetered_network": false,
       "require_charging": false,
       "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions). 'silent' → USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' → always USER_ACTION_REQUIRED.",
-      "install_mode": "silent"
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     },
     "ghcr": {
       "_doc": "ORAS push as an OCI artifact (APK blob, not a container). one :latest + per-sha + per-version tags; per-variant suffix -x86_64 for the x86 artifact.",

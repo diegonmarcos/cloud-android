@@ -88,6 +88,25 @@ internal class UpdateInstaller(private val context: Context) {
     }
 
     /**
+     * How many new install sessions it is safe to open right now.
+     *
+     * Reaps first, then reports the remaining headroom under [NEAR_CAP]. A
+     * background pass asks this before deciding how many apps to install,
+     * because the sessions it opens are NOT short-lived: it cannot show the
+     * system install dialog (Android 10+ blocks background activity starts), so
+     * each one becomes a tap-to-install notification that holds its session
+     * until the user answers it. Capping the batch alone would not be enough -
+     * passes repeat every few hours and on every launch, so without a budget
+     * the held sessions still creep up to Android's 50-session limit.
+     */
+    internal fun freeSessionSlots(): Int {
+        val installer = context.packageManager.packageInstaller
+        reapStaleSessions(installer)
+        val held = runCatching { installer.mySessions.size }.getOrElse { return 0 }
+        return (NEAR_CAP - HEADROOM - held).coerceAtLeast(0)
+    }
+
+    /**
      * Abandon our own leftover sessions before opening a new one.
      *
      * Android caps an installer that lacks INSTALL_PACKAGES (signature|privileged

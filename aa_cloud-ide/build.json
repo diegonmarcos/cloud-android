@@ -20,7 +20,9 @@
     "version_code": 1,
     "version_name": "0.1.0-dev",
     "_doc_abi_filters": "Hub is pure-JVM (no native libs) so ABI filtering is irrelevant to it; kept for schema parity with ea_cloud-superapp / ea_cloud-comms. The forks declare their own abi_filters.",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key — it never generates or substitutes a random/legacy key.",
@@ -58,8 +60,13 @@
     "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as ea_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
     "abis": {
       "_doc": "ABI build axis. The hub is pure-JVM (ABI-agnostic); the ONLY native-bearing bundled app is the patched Amaze fork (Rust :file_operations). `build.sh build [abi]` / `build-fork <k> [abi]` / `bundle-forks [abi]` select one. `default:true` is what bare `build` / the CI artifact use; non-default abis get a -<abi> artifact suffix. rust_target = the rust-android-gradle cargo target key (passed as -PcloudIdeRustTargets).",
-      "arm64-v8a": { "rust_target": "arm64",   "default": true },
-      "x86_64":    { "rust_target": "x86_64" }
+      "arm64-v8a": {
+        "rust_target": "arm64",
+        "default": true
+      },
+      "x86_64": {
+        "rust_target": "x86_64"
+      }
     },
     "artifact": {
       "_doc": "Path under dist/ to publish. `debug` is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — THE hub app, not a side-by-side variant. asset_name matches `debug` so the engine skips a redundant copy.",
@@ -73,7 +80,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-ide-hub",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "_doc": "GitHub Release attachment. rolling_tag is canonical: one release (default `latest`) the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-IDE-Hub.apk is a stable URL. tag_pattern stays for immutable per-tag releases under a tag push (rolling release publishes alongside).",
@@ -100,7 +111,9 @@
       "require_unmetered_network": false,
       "require_charging": false,
       "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions). 'silent' → USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' → always USER_ACTION_REQUIRED.",
-      "install_mode": "silent"
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     }
   }
 }

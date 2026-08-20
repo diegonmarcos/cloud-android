@@ -47,6 +47,16 @@ android {
         buildConfigField "String",  "AUTO_UPDATE_TAG_MAP",  "\"${auTagMap}\""
         buildConfigField "long",    "AUTO_UPDATE_INTERVAL_HOURS",  "${au.interval_hours}L"
         buildConfigField "boolean", "AUTO_UPDATE_ENABLED",         "${au.enabled}"
+        // Most install sessions ONE unattended background pass may open. The
+        // background pass cannot show the system install dialog (Android 10+
+        // blocks background activity starts), so each install it starts leaves a
+        // tap-to-install notification holding a PackageInstaller session until
+        // the user answers it. Unbounded, a pass over a 40-entry fleet opens 40
+        // at once and the installer hits Android's 50-session cap - "Too many
+        // active sessions for UID". User-initiated "Update all" is NOT capped:
+        // it runs in the foreground where the dialog appears and sessions
+        // resolve immediately.
+        buildConfigField "int", "AU_MAX_PER_PASS", "${au.max_installs_per_pass ?: 3}"
         buildConfigField "boolean", "AU_REQUIRE_UNMETERED",        "${au.require_unmetered_network}"
         buildConfigField "boolean", "AU_REQUIRE_CHARGING",         "${au.require_charging}"
         buildConfigField "String",  "AU_INSTALL_MODE",             "\"${au.install_mode}\""

@@ -13,7 +13,9 @@
     "target_sdk": 35,
     "version_code": 1,
     "version_name": "0.1.0-dev",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. KEY LOCATION: A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml.",
@@ -29,32 +31,168 @@
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list.",
     "app": {
       "type": "application",
-      "depends_on": ["libs:core", "libs:updater", "libs:contacts"]
+      "depends_on": [
+        "libs:core",
+        "libs:updater",
+        "libs:contacts"
+      ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/updater",
       "type": "library"
     },
-    "libs:contacts": { "type": "library" }
+    "libs:contacts": {
+      "type": "library"
+    }
   },
   "channels": {
     "_doc": "THE data-driven multi-channel registry — the app's whole identity. Baked into app BuildConfig as CHANNELS_B64 (app/build.gradle) and rendered by libs:contacts Channels + the switchboard UI. Adding a channel is a JSON edit, never Kotlin. kind decides which person datum makes the channel available and feeds its URI placeholders: 'phone' (any phone; {phone}=raw, {phone_digits}=digits-only E.164-ish), 'email' ({email}), 'url:<domain>' (a website containing <domain>; {url}), 'handle:<key>' (person.handles[<key>]; {handle}). package is a soft hint — the bridge tries it first, then falls back to the system chooser, so absent constellation apps degrade gracefully. order drives switchboard sorting; no channel is a default action by design.",
     "registry": [
-      { "id": "whatsapp",  "label": "WhatsApp",     "kind": "phone",              "color": "#25D366", "glyph": "WA", "order": 10, "actions": [ { "id": "chat", "label": "Message", "uri": "https://wa.me/{phone_digits}" } ] },
-      { "id": "telegram",  "label": "Telegram",     "kind": "handle:telegram",    "color": "#229ED9", "glyph": "TG", "order": 20, "actions": [ { "id": "chat", "label": "Message", "uri": "https://t.me/{handle}" } ] },
-      { "id": "matrix",    "label": "Matrix",       "kind": "handle:matrix",      "color": "#0DBD8B", "glyph": "[m]", "order": 30, "package": "com.diegonmarcos.comms.matrix", "actions": [ { "id": "chat", "label": "Message", "uri": "https://matrix.to/#/{handle_raw}" } ] },
-      { "id": "mattermost", "label": "Cloud Chat",  "kind": "handle:mattermost",  "color": "#1E6FEB", "glyph": "MM", "order": 40, "package": "com.diegonmarcos.comms.chat", "actions": [ { "id": "chat", "label": "Open", "uri": "https://chat.diegonmarcos.com/cloud/messages/@{handle}" } ] },
-      { "id": "email",     "label": "Cloud Mail",   "kind": "email",              "color": "#60A5FA", "glyph": "@",  "order": 50, "package": "com.diegonmarcos.comms.mail", "actions": [ { "id": "mail", "label": "Write", "uri": "mailto:{email}" } ] },
-      { "id": "sms",       "label": "SMS",          "kind": "phone",              "color": "#A3E635", "glyph": "SMS", "order": 60, "actions": [ { "id": "text", "label": "Text", "uri": "smsto:{phone}" } ] },
-      { "id": "phone",     "label": "Cloud Dialer", "kind": "phone",              "color": "#4ADE80", "glyph": "TEL", "order": 70, "package": "com.diegonmarcos.comms.dialer", "actions": [ { "id": "call", "label": "Call", "uri": "tel:{phone}" } ] },
-      { "id": "linkedin",  "label": "LinkedIn",     "kind": "url:linkedin.com",   "color": "#0A66C2", "glyph": "in", "order": 80, "actions": [ { "id": "profile", "label": "Profile", "uri": "{url}" } ] },
-      { "id": "instagram", "label": "Instagram",    "kind": "url:instagram.com",  "color": "#E4405F", "glyph": "IG", "order": 90, "actions": [ { "id": "profile", "label": "Profile", "uri": "{url}" } ] }
+      {
+        "id": "whatsapp",
+        "label": "WhatsApp",
+        "kind": "phone",
+        "color": "#25D366",
+        "glyph": "WA",
+        "order": 10,
+        "actions": [
+          {
+            "id": "chat",
+            "label": "Message",
+            "uri": "https://wa.me/{phone_digits}"
+          }
+        ]
+      },
+      {
+        "id": "telegram",
+        "label": "Telegram",
+        "kind": "handle:telegram",
+        "color": "#229ED9",
+        "glyph": "TG",
+        "order": 20,
+        "actions": [
+          {
+            "id": "chat",
+            "label": "Message",
+            "uri": "https://t.me/{handle}"
+          }
+        ]
+      },
+      {
+        "id": "matrix",
+        "label": "Matrix",
+        "kind": "handle:matrix",
+        "color": "#0DBD8B",
+        "glyph": "[m]",
+        "order": 30,
+        "package": "com.diegonmarcos.comms.matrix",
+        "actions": [
+          {
+            "id": "chat",
+            "label": "Message",
+            "uri": "https://matrix.to/#/{handle_raw}"
+          }
+        ]
+      },
+      {
+        "id": "mattermost",
+        "label": "Cloud Chat",
+        "kind": "handle:mattermost",
+        "color": "#1E6FEB",
+        "glyph": "MM",
+        "order": 40,
+        "package": "com.diegonmarcos.comms.chat",
+        "actions": [
+          {
+            "id": "chat",
+            "label": "Open",
+            "uri": "https://chat.diegonmarcos.com/cloud/messages/@{handle}"
+          }
+        ]
+      },
+      {
+        "id": "email",
+        "label": "Cloud Mail",
+        "kind": "email",
+        "color": "#60A5FA",
+        "glyph": "@",
+        "order": 50,
+        "package": "com.diegonmarcos.comms.mail",
+        "actions": [
+          {
+            "id": "mail",
+            "label": "Write",
+            "uri": "mailto:{email}"
+          }
+        ]
+      },
+      {
+        "id": "sms",
+        "label": "SMS",
+        "kind": "phone",
+        "color": "#A3E635",
+        "glyph": "SMS",
+        "order": 60,
+        "actions": [
+          {
+            "id": "text",
+            "label": "Text",
+            "uri": "smsto:{phone}"
+          }
+        ]
+      },
+      {
+        "id": "phone",
+        "label": "Cloud Dialer",
+        "kind": "phone",
+        "color": "#4ADE80",
+        "glyph": "TEL",
+        "order": 70,
+        "package": "com.diegonmarcos.comms.dialer",
+        "actions": [
+          {
+            "id": "call",
+            "label": "Call",
+            "uri": "tel:{phone}"
+          }
+        ]
+      },
+      {
+        "id": "linkedin",
+        "label": "LinkedIn",
+        "kind": "url:linkedin.com",
+        "color": "#0A66C2",
+        "glyph": "in",
+        "order": 80,
+        "actions": [
+          {
+            "id": "profile",
+            "label": "Profile",
+            "uri": "{url}"
+          }
+        ]
+      },
+      {
+        "id": "instagram",
+        "label": "Instagram",
+        "kind": "url:instagram.com",
+        "color": "#E4405F",
+        "glyph": "IG",
+        "order": 90,
+        "actions": [
+          {
+            "id": "profile",
+            "label": "Profile",
+            "uri": "{url}"
+          }
+        ]
+      }
     ]
   },
   "release": {
@@ -65,8 +203,13 @@
     "variants": [
       {
         "id": "arm64",
-        "abis": ["arm64-v8a"],
-        "supported_abis": ["arm64-v8a", "armeabi-v7a"],
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "artifact_debug": "Cloud-Contacts.apk",
         "gh_asset": "Cloud-Contacts.apk",
         "ghcr_tag_suffix": "",
@@ -74,8 +217,13 @@
       },
       {
         "id": "x86_64",
-        "abis": ["x86_64"],
-        "supported_abis": ["x86_64", "x86"],
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
         "artifact_debug": "Cloud-Contacts-x86_64.apk",
         "gh_asset": "Cloud-Contacts-x86_64.apk",
         "ghcr_tag_suffix": "-x86_64",
@@ -88,7 +236,9 @@
       "interval_hours": 6,
       "require_unmetered_network": false,
       "require_charging": false,
-      "install_mode": "silent"
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     },
     "ghcr": {
       "enabled": true,
@@ -96,7 +246,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-contacts",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "enabled": true,

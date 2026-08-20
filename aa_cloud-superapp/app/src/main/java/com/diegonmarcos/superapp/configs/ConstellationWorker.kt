@@ -50,7 +50,15 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             // install posts a tap-to-confirm notification (PackageInstallerReceiver).
             // Fleet.status catches its own per-app errors so one bad image can't
             // throw here (the old 'forever looping' bug); always return success.
-            val acted = Fleet.installAll(applicationContext, apps, Fleet.Mode.UPDATES)
+            // Capped: this pass runs unattended, so every install it starts
+            // leaves a tap-to-install notification holding a PackageInstaller
+            // session until the user answers it. Whatever it does not take is
+            // picked up by the next pass. build.json::release.auto_update
+            // .max_installs_per_pass drives the number.
+            val acted = Fleet.installAll(
+                applicationContext, apps, Fleet.Mode.UPDATES,
+                limit = AuConfig.AU_MAX_PER_PASS,
+            )
             Log.i(TAG, "auto-update: acted on $acted app(s)")
             if (acted > 0) notifyUpdates(applicationContext, acted)
         } catch (t: Throwable) {
@@ -99,7 +107,14 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             // cancel the periodic work (manual checks still work).
             if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)
                 || !com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("fleet_check")) {
-                WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME); return
+                // Cancel the one-shot too. start() is what the Auto-update
+                // toggle calls to reconcile, and a kick already sitting on its
+                // 30s delay would otherwise still fire after the user turned
+                // auto-update off (doWork re-checks and bails, but leaving
+                // queued work behind makes the toggle look like it did nothing).
+                WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+                WorkManager.getInstance(context).cancelUniqueWork("$WORK_NAME-now")
+                return
             }
             val constraints = Constraints.Builder().apply {
                 if (AuConfig.AU_REQUIRE_UNMETERED) setRequiredNetworkType(NetworkType.UNMETERED)

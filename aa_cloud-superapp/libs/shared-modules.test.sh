@@ -216,6 +216,35 @@ for root, dirs, files in os.walk('.'):
 PYSESS
 )
 
+# 13. Every repo that declares release.auto_update must also declare
+#     max_installs_per_pass. An unattended pass cannot show the install dialog,
+#     so each install it starts holds a PackageInstaller session until the user
+#     answers a notification; uncapped, one pass over the fleet exhausts
+#     Android's 50-session limit and NOTHING installs until they are reclaimed.
+while read -r line; do note FAIL "$line"; done < <(python3 - <<'PYCAP'
+import json, glob
+for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+    try:
+        au = (json.load(open(bj)).get('release') or {}).get('auto_update')
+    except Exception:
+        continue
+    if isinstance(au, dict) and 'max_installs_per_pass' not in au:
+        print(f"{bj} declares release.auto_update without max_installs_per_pass "
+              f"- an uncapped background pass exhausts the install-session limit")
+PYCAP
+)
+note ok "every auto_update declares a per-pass install cap"
+
+# 14. The unattended pass must actually PASS that cap to installAll. The
+#     parameter defaults to unlimited (correct for the user-initiated
+#     "Update all"), so a worker that forgets it silently reverts to uncapped.
+WORKER=ea_cloud-superapp/app/src/main/java/com/diegonmarcos/superapp/configs/ConstellationWorker.kt
+if [ -f "$WORKER" ]; then
+    command grep -q 'limit = AuConfig.AU_MAX_PER_PASS' "$WORKER" \
+        && note ok "background fleet pass is capped" \
+        || note FAIL "$WORKER calls installAll without limit= - the background pass is uncapped"
+fi
+
 echo
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."

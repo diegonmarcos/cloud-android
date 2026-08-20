@@ -13,7 +13,9 @@
     "target_sdk": 35,
     "version_code": 3,
     "version_name": "0.3.0-dev",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. KEY LOCATION: A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml.",
@@ -29,19 +31,25 @@
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list.",
     "app": {
       "type": "application",
-      "depends_on": ["libs:core", "libs:updater", "libs:cal"]
+      "depends_on": [
+        "libs:core",
+        "libs:updater",
+        "libs:cal"
+      ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/updater",
       "type": "library"
     },
-    "libs:cal": { "type": "library" }
+    "libs:cal": {
+      "type": "library"
+    }
   },
   "release": {
     "artifact": {
@@ -51,8 +59,13 @@
     "variants": [
       {
         "id": "arm64",
-        "abis": ["arm64-v8a"],
-        "supported_abis": ["arm64-v8a", "armeabi-v7a"],
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
         "artifact_debug": "Cloud-Calendar.apk",
         "gh_asset": "Cloud-Calendar.apk",
         "ghcr_tag_suffix": "",
@@ -60,8 +73,13 @@
       },
       {
         "id": "x86_64",
-        "abis": ["x86_64"],
-        "supported_abis": ["x86_64", "x86"],
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
         "artifact_debug": "Cloud-Calendar-x86_64.apk",
         "gh_asset": "Cloud-Calendar-x86_64.apk",
         "ghcr_tag_suffix": "-x86_64",
@@ -74,7 +92,9 @@
       "interval_hours": 6,
       "require_unmetered_network": false,
       "require_charging": false,
-      "install_mode": "silent"
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     },
     "ghcr": {
       "enabled": true,
@@ -82,7 +102,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-calendar",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "enabled": true,

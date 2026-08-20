@@ -173,7 +173,12 @@ object Fleet {
      * (PackageInstaller sessions mustn't collide); per-app failures don't abort
      * the rest. Returns how many were acted on.
      */
-    fun installAll(ctx: Context, apps: List<App>, mode: Mode = Mode.ALL): Int {
+    fun installAll(
+        ctx: Context,
+        apps: List<App>,
+        mode: Mode = Mode.ALL,
+        limit: Int = Int.MAX_VALUE,
+    ): Int {
         // Decide the work-list FIRST (status checks, no overlay yet) so the
         // batch header can show a correct "N/total" — otherwise the overlay's
         // bar just resets 0→100 per app with no context (scrambled-progress bug).
@@ -185,9 +190,27 @@ object Fleet {
                 else -> false
             }
         }
+        // Cap the batch. [limit] is Int.MAX_VALUE for user-initiated "Update
+        // all"/"Install all" - those run in the foreground, the system dialog
+        // appears, and each session resolves within seconds. A BACKGROUND pass
+        // passes a real limit, and is additionally held to whatever session
+        // headroom actually remains: its installs cannot show a dialog, so each
+        // leaves a notification holding a PackageInstaller session until the
+        // user answers it. Unbounded over a 40-entry fleet that is 40 sessions
+        // from one pass, and Android refuses new ones past 50 with "Too many
+        // active sessions for UID".
+        val batch = if (limit >= todo.size) todo
+                    else todo.take(minOf(limit, UpdateInstaller(ctx).freeSessionSlots()))
+        if (batch.size < todo.size) {
+            // Never a silent cap: the rest are picked up by the next pass, and
+            // the log has to say so or "acted on 3 apps" reads as "3 needed it".
+            Log.i(TAG, "installAll capped at ${batch.size} of ${todo.size} app(s) " +
+                       "(limit=$limit, session headroom decides the rest); " +
+                       "remainder deferred to the next pass")
+        }
         UpdateProgress.beginDownload() // disarm any stale cancel before the batch
         var acted = 0
-        todo.forEachIndexed { i, app ->
+        batch.forEachIndexed { i, app ->
             // Cancel between apps: stop launching new installs the moment the
             // user hits Cancel (the in-flight blob loop bails on its own poll).
             if (UpdateProgress.cancelRequested) {
@@ -195,7 +218,7 @@ object Fleet {
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
                 return acted
             }
-            UpdateProgress.beginBatch(app.label, i + 1, todo.size)
+            UpdateProgress.beginBatch(app.label, i + 1, batch.size)
             try {
                 install(ctx, app)
                 acted++

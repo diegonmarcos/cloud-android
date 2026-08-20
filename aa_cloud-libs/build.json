@@ -2,33 +2,29 @@
   "name": "cloud-libs",
   "description": "Ships every constellation library module as its own installable APK.",
   "category": "libs",
-
   "_doc": "ea_cloud-keyboard-libs bundles five modules into ONE companion APK. This repo is the general case: one APK per library module, so each lib is installable, updatable and inspectable on its own. Nothing here names a module - the set comes from scanning lib_apks.scan, so a new module in ea_cloud-superapp/libs/ ships an APK with no edit to this file (FIRE RULE #6).",
-
   "lib_apks": {
     "_doc_scan": "Every directory under this path that contains a build.gradle is a library module and gets an APK. Relative to this repo's root.",
     "scan": "../ea_cloud-superapp/libs",
-
     "_doc_exclude": "Modules that must NOT ship as a standalone APK, each with the reason. An exclusion is a claim about install-time behaviour, so it belongs in data next to the scan rule rather than as a silent skip in gradle.",
     "exclude": {
       "keyboard": "Already ships as its own APK (Cloud-Keyboard.apk, ea_cloud-keyboard). A second package carrying the same LatinIME service would register a duplicate input method, and its clipboard/gesture ContentProvider authorities come from string resources that both packages would claim - INSTALL_FAILED_CONFLICTING_PROVIDER."
     },
-
     "_doc_ids": "Flavor applicationId = <application_id_prefix>.<module name with '-' stripped>; release asset = <asset_prefix><Module-Name>.apk. Derived, never listed.",
     "application_id_prefix": "com.diegonmarcos.cloudlib",
     "asset_prefix": "Cloud-Lib-"
   },
-
   "android": {
     "application_id": "com.diegonmarcos.cloudlib",
     "_doc_abi_filters": "Mirrors ea_cloud-keyboard-libs. Only voice-vosk/translate-mlkit carry .so payloads; the rest are unaffected by this filter. Add 'x86_64' for Waydroid/emulator and rebuild - no gradle edits needed.",
-    "abi_filters": ["arm64-v8a"],
+    "abi_filters": [
+      "arm64-v8a"
+    ],
     "version_code": 1,
     "version_name": "1.0",
     "min_sdk": 26,
     "target_sdk": 35
   },
-
   "toolchain": {
     "agp": "8.13.2",
     "gradle": "8.14",
@@ -36,22 +32,18 @@
     "compile_sdk": 36,
     "jdk": "17"
   },
-
   "modules": {
     "_doc": "Only the wrapper lives here. The :libs:* modules are appended by settings.gradle from the lib_apks scan above, each pointing at the one canonical directory in ea_cloud-superapp/libs/.",
     "app": {}
   },
-
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. build.sh::_resolve_signing resolves $VAULT_DIR + sops-decrypts the passwords. NO fallback.",
     "vault_keystore": "A0_keys/providers/android/release.jks",
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
-
   "release": {
     "_doc_kind": "'lib' = a companion APK that ships engines/behaviour rather than UI. data/regen.sh files these under the SuperApp Constellation page's Libs tab instead of Apps. This repo produces MANY of them, so regen.sh expands lib_apks into one fleet entry per module.",
     "kind": "lib",
-
     "_doc_auto_update": "libs:updater is itself one of the shipped modules and reads release.auto_update from the CONSUMING repo. Disabled here on purpose: each library APK has its own GHCR image, while the updater carries a single image name, so a self-update would pull the wrong artifact. Library APKs are updated by the SuperApp's Constellation page (Libs tab), which knows each one's asset.",
     "auto_update": {
       "enabled": false,
@@ -59,9 +51,10 @@
       "interval_hours": 24,
       "require_unmetered_network": true,
       "require_charging": false,
-      "install_mode": "prompt"
+      "install_mode": "prompt",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     },
-
     "ghcr": {
       "enabled": true,
       "registry": "ghcr.io",
@@ -70,7 +63,10 @@
       "image_prefix": "cloud-lib-",
       "image": "cloud-libs",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}"]
+      "tags": [
+        "latest",
+        "sha-{sha}"
+      ]
     },
     "gh_release": {
       "enabled": true,

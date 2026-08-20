@@ -26,9 +26,13 @@ class UpdateWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (!BuildConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext))
-            return@withContext Result.success()
         val force = inputData.getBoolean(KEY_FORCE, false)
+        // The toggle governs UNATTENDED updates, not the user asking directly.
+        // This check used to run BEFORE `force` was read, so turning auto-update
+        // off also silently killed "Check for updates": the worker returned
+        // success without touching the network and the UI showed nothing.
+        if (!force && (!BuildConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext)))
+            return@withContext Result.success()
         UpdateProgress.beginDownload() // disarm any stale cancel from a prior run
         try {
             val available = UpdateChecker(applicationContext).available()

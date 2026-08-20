@@ -13,7 +13,9 @@
     "target_sdk": 35,
     "version_code": 1,
     "version_name": "0.1.0-dev",
-    "abi_filters": ["arm64-v8a"]
+    "abi_filters": [
+      "arm64-v8a"
+    ]
   },
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-Wallet, Cloud-Browser, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD.",
@@ -37,20 +39,24 @@
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list.",
     "app": {
       "type": "application",
-      "depends_on": ["libs:core", "libs:browser", "libs:updater"]
+      "depends_on": [
+        "libs:core",
+        "libs:browser",
+        "libs:updater"
+      ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:browser": {
-            "type": "library",
-            "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. browser was three byte-identical trees (superapp, browser, vault); nothing kept them in step, so a WebView fix had to be pasted three times or it silently reached one app.",
-            "dir": "../ea_cloud-superapp/libs/browser"
-        },
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. browser was three byte-identical trees (superapp, browser, vault); nothing kept them in step, so a WebView fix had to be pasted three times or it silently reached one app.",
+      "dir": "../ea_cloud-superapp/libs/browser"
+    },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/updater",
       "type": "library"
     }
@@ -65,43 +71,68 @@
       "website": "linktree.diegonmarcos.com",
       "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
       "repos": [
-        { "label": "unix",  "url": "https://github.com/diegonmarcos/cloud-unix" },
-        { "label": "cloud", "url": "https://github.com/diegonmarcos/cloud-infra" },
-        { "label": "front", "url": "https://github.com/diegonmarcos/diegonmarcos.github.io" },
-        { "label": "vault", "url": "https://github.com/diegonmarcos/cloud-vault" }
+        {
+          "label": "unix",
+          "url": "https://github.com/diegonmarcos/cloud-unix"
+        },
+        {
+          "label": "cloud",
+          "url": "https://github.com/diegonmarcos/cloud-infra"
+        },
+        {
+          "label": "front",
+          "url": "https://github.com/diegonmarcos/diegonmarcos.github.io"
+        },
+        {
+          "label": "vault",
+          "url": "https://github.com/diegonmarcos/cloud-vault"
+        }
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json"
     },
     "permissions": {
       "runtime": [
-        { "label": "Notifications", "perm": "android.permission.POST_NOTIFICATIONS" }
+        {
+          "label": "Notifications",
+          "perm": "android.permission.POST_NOTIFICATIONS"
+        }
       ],
       "roles": []
     }
   },
   "release": {
     "artifact": {
-      "debug":   "Cloud-Browser.apk",
+      "debug": "Cloud-Browser.apk",
       "release": "Cloud-Browser-release.apk"
     },
     "variants": [
       {
         "id": "arm64",
-        "abis": ["arm64-v8a"],
-        "supported_abis": ["arm64-v8a", "armeabi-v7a"],
-        "artifact_debug":    "Cloud-Browser.apk",
-        "gh_asset":          "Cloud-Browser.apk",
-        "ghcr_tag_suffix":   "",
-        "update_tag":        "latest"
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "artifact_debug": "Cloud-Browser.apk",
+        "gh_asset": "Cloud-Browser.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
       },
       {
         "id": "x86_64",
-        "abis": ["x86_64"],
-        "supported_abis": ["x86_64", "x86"],
-        "artifact_debug":    "Cloud-Browser-x86_64.apk",
-        "gh_asset":          "Cloud-Browser-x86_64.apk",
-        "ghcr_tag_suffix":   "-x86_64",
-        "update_tag":        "latest-x86_64"
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
+        "artifact_debug": "Cloud-Browser-x86_64.apk",
+        "gh_asset": "Cloud-Browser-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
       }
     ],
     "auto_update": {
@@ -110,7 +141,9 @@
       "interval_hours": 6,
       "require_unmetered_network": false,
       "require_charging": false,
-      "install_mode": "silent"
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
     },
     "ghcr": {
       "enabled": true,
@@ -118,7 +151,11 @@
       "namespace": "diegonmarcos",
       "image": "cloud-browser",
       "media_type": "application/vnd.android.package-archive",
-      "tags": ["latest", "sha-{sha}", "v{version_name}"]
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
     },
     "gh_release": {
       "enabled": true,
