@@ -10,6 +10,14 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Same set ea_cloud-superapp declares, because these are superapp's
+        // modules: libs:shizuku-adb-debug-tools resolves libadb-android from
+        // JitPack, and libs:firewall picks up the prebuilt firestack.aar from a
+        // flat directory. FAIL_ON_PROJECT_REPOS means a module cannot declare
+        // either for itself - they have to be here or the module does not
+        // resolve, which is exactly how this build first failed.
+        maven { url 'https://jitpack.io' }
+        flatDir { dirs "${rootDir}/${new groovy.json.JsonSlurper().parse(new File(rootDir, 'build.json')).lib_apks.scan}/firewall/firestack" }
     }
 }
 
