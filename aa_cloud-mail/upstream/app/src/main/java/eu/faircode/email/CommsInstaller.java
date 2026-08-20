@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 
 public class CommsInstaller {
     private static final String TAG = "CommsInstall";
@@ -87,6 +88,7 @@ public class CommsInstaller {
             // source — our updater IS Cloud Mail's app store.
             params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE);
 
+        reapStaleSessions(installer);
         int sessionId = installer.createSession(params);
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
             try (InputStream in = new FileInputStream(apk);
@@ -103,7 +105,76 @@ public class CommsInstaller {
                     new Intent(ctx, CommsInstallReceiver.class).setPackage(ctx.getPackageName()),
                     piFlags);
             session.commit(pending.getIntentSender());
+        } catch (Throwable t) {
+            // close() on the try-with-resources session only releases OUR handle.
+            // The session itself stays alive in the system until it is committed
+            // or abandoned, and survives reboots in
+            // /data/system/install_sessions.xml. So every failed install burned
+            // one of the 50 slots Android allows an installer without
+            // INSTALL_PACKAGES, permanently, until installs died with "Too many
+            // active sessions for UID <uid>". Abandon on the way out; the throw
+            // still propagates so the caller reports failure exactly as before.
+            try {
+                installer.abandonSession(sessionId);
+            } catch (Throwable ignored) {
+                Log.w(TAG + " could not abandon session " + sessionId);
+            }
+            throw t;
         }
         Log.i(TAG + " committed session " + sessionId + " silent=" + silent);
     }
+
+    /**
+     * Abandon our own leftover sessions before opening a new one.
+     *
+     * Android caps an installer that lacks INSTALL_PACKAGES (signature|privileged
+     * - a sideloaded APK can never hold it) at 50 concurrent sessions, then
+     * refuses every new one. The catch above stops NEW leaks; this clears what a
+     * device already carries, so an affected phone heals itself on the next
+     * install instead of needing `pm install-abandon` over adb.
+     *
+     * Only sessions we own are visible here (getMySessions), so this can never
+     * disturb another installer's work.
+     */
+    private static void reapStaleSessions(PackageInstaller installer) {
+        List<PackageInstaller.SessionInfo> mine;
+        try {
+            mine = installer.getMySessions();
+        } catch (Throwable t) {
+            return;
+        }
+        if (mine == null || mine.isEmpty())
+            return;
+        long now = System.currentTimeMillis();
+        int reaped = 0;
+        for (PackageInstaller.SessionInfo info : mine) {
+            // isActive = a client currently has it open, i.e. an install really
+            // is in flight. Never touch those.
+            if (info.isActive())
+                continue;
+            boolean stale;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                // A committed session waiting on the user's Install prompt is
+                // inactive too, so age is what separates "user is deciding" from
+                // "leaked hours ago". No prompt lives for an hour.
+                stale = now - info.getCreatedMillis() > STALE_SESSION_MS;
+            else
+                // getCreatedMillis is API 29+. Below that age is unknowable, so
+                // only step in when the cap is actually the problem.
+                stale = mine.size() >= NEAR_CAP;
+            if (!stale)
+                continue;
+            try {
+                installer.abandonSession(info.getSessionId());
+                reaped++;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (reaped > 0)
+            Log.w(TAG + " abandoned " + reaped + " stale install session(s) of " + mine.size());
+    }
+
+    /** Android's own limit for an installer without INSTALL_PACKAGES is 50. */
+    private static final int NEAR_CAP = 40;
+    private static final long STALE_SESSION_MS = 60L * 60L * 1000L;
 }

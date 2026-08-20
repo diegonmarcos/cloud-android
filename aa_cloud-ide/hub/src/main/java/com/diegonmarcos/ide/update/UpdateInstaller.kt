@@ -38,21 +38,80 @@ internal class UpdateInstaller(private val context: Context) {
                 setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
             }
         }
+        reapStaleSessions(installer)
         val sessionId = installer.createSession(params)
-        installer.openSession(sessionId).use { session ->
-            apk.inputStream().use { input ->
-                session.openWrite("base.apk", 0, apk.length()).use { output ->
-                    input.copyTo(output)
-                    session.fsync(output)
+        try {
+            installer.openSession(sessionId).use { session ->
+                apk.inputStream().use { input ->
+                    session.openWrite("base.apk", 0, apk.length()).use { output ->
+                        input.copyTo(output)
+                        session.fsync(output)
+                    }
                 }
+                val callback = PendingIntent.getBroadcast(
+                    context, sessionId,
+                    Intent(context, PackageInstallerReceiver::class.java).apply { setPackage(context.packageName) },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+                )
+                session.commit(callback.intentSender)
             }
-            val callback = PendingIntent.getBroadcast(
-                context, sessionId,
-                Intent(context, PackageInstallerReceiver::class.java).apply { setPackage(context.packageName) },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-            )
-            session.commit(callback.intentSender)
+        } catch (t: Throwable) {
+            // Session.close() (what `use` does) only releases OUR handle - the
+            // session itself stays alive in the system until it is committed or
+            // abandoned, and survives reboots in /data/system/install_sessions.xml.
+            // So every failed install burned one of the 50 slots Android allows an
+            // installer without INSTALL_PACKAGES, permanently, until the fleet
+            // install died with "Too many active sessions for UID <uid>". Abandon
+            // on the way out; the throw still propagates so the caller reports
+            // Failed exactly as before.
+            runCatching { installer.abandonSession(sessionId) }
+                .onFailure { Log.w(tag, "could not abandon session $sessionId", it) }
+            throw t
         }
         Log.i(tag, "PackageInstaller session $sessionId committed for ${apk.name}")
+    }
+
+    /**
+     * Abandon our own leftover sessions before opening a new one.
+     *
+     * Android caps an installer that lacks INSTALL_PACKAGES (signature|privileged
+     * - a sideloaded APK can never hold it) at 50 concurrent sessions, then
+     * refuses every new one with "Too many active sessions for UID <uid>". The
+     * catch above stops NEW leaks; this clears what a device already carries, so
+     * an affected phone heals itself on the next install instead of needing
+     * `pm install-abandon` over adb.
+     *
+     * Only sessions we own are visible here (mySessions), so this can never
+     * disturb another installer's work.
+     */
+    private fun reapStaleSessions(installer: PackageInstaller) {
+        val mine = runCatching { installer.mySessions }.getOrNull().orEmpty()
+        if (mine.isEmpty()) return
+        val now = System.currentTimeMillis()
+        var reaped = 0
+        for (info in mine) {
+            // isActive = a client currently has it open, i.e. an install really
+            // is in flight. Never touch those.
+            if (info.isActive) continue
+            val stale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // A committed session waiting on the user's Install prompt is
+                // inactive too, so age is what separates "user is deciding" from
+                // "leaked hours ago". No prompt lives for an hour.
+                now - info.createdMillis > STALE_SESSION_MS
+            } else {
+                // createdMillis is API 29+. Below that age is unknowable, so only
+                // step in when the cap is actually the problem.
+                mine.size >= NEAR_CAP
+            }
+            if (!stale) continue
+            if (runCatching { installer.abandonSession(info.sessionId) }.isSuccess) reaped++
+        }
+        if (reaped > 0) Log.w(tag, "abandoned $reaped stale install session(s) of ${mine.size}")
+    }
+
+    private companion object {
+        /** Android's own limit for an installer without INSTALL_PACKAGES is 50. */
+        const val NEAR_CAP = 40
+        const val STALE_SESSION_MS = 60L * 60L * 1000L
     }
 }

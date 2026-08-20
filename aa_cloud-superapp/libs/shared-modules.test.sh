@@ -182,6 +182,40 @@ PY
 )
 fi
 
+# 12. Every PackageInstaller.createSession must have an abandonSession on the
+#     failure path IN THE SAME FILE. A session that is neither committed nor
+#     abandoned stays alive in the system across reboots and permanently burns
+#     one of the 50 slots Android gives an installer without INSTALL_PACKAGES
+#     (which is signature|privileged, so a sideloaded APK can never hold it).
+#     The whole constellation had one createSession and zero abandonSession,
+#     and the fleet install died with "Too many active sessions for UID <uid>".
+while read -r f; do
+    command grep -q 'abandonSession' "$f" \
+        && note ok "$(basename "$f") abandons install sessions" \
+        || note FAIL "$f calls createSession but never abandonSession — every failed install leaks a session slot forever"
+done < <(python3 - <<'PYSESS'
+import os, re
+# Only PackageInstaller sessions. 'createSession' is a common name - ONNX Runtime
+# (media-center's vision search) and the spell-checker API both have one - so the
+# file must actually touch PackageInstaller to be in scope.
+for root, dirs, files in os.walk('.'):
+    dirs[:] = [d for d in dirs if d not in ('build', '.git', 'z_archive')]
+    rel = root.lstrip('./')
+    if not rel.startswith('ea_cloud-'):
+        continue
+    for f in files:
+        if not f.endswith(('.kt', '.java')):
+            continue
+        p = os.path.join(root, f)
+        try:
+            src = open(p, encoding='utf-8', errors='ignore').read()
+        except OSError:
+            continue
+        if 'PackageInstaller' in src and re.search(r'\bcreateSession\s*\(', src):
+            print(p[2:] if p.startswith('./') else p)
+PYSESS
+)
+
 echo
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
