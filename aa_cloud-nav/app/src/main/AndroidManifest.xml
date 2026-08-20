@@ -73,7 +73,7 @@
             android:theme="@style/Theme.CloudNav" />
 
         <receiver
-            android:name="com.diegonmarcos.cloudnav.updater.PackageInstallerReceiver"
+            android:name="com.diegonmarcos.superapp.updater.PackageInstallerReceiver"
             android:exported="false" />
     </application>
 </manifest>

@@ -31,8 +31,16 @@
       "type": "application",
       "depends_on": ["libs:core", "libs:updater", "libs:news"]
     },
-    "libs:core": { "type": "library" },
-    "libs:updater": { "type": "library" },
+    "libs:core": {
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../ea_cloud-superapp/libs/core",
+      "type": "library"
+    },
+    "libs:updater": {
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../ea_cloud-superapp/libs/updater",
+      "type": "library"
+    },
     "libs:news": { "type": "library" }
   },
   "release": {

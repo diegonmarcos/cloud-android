@@ -6,7 +6,12 @@ plugins {
 
 // Inject build.json::release into BuildConfig — runtime code uses the same
 // source of truth as build.sh oras-push / phone-install. No hardcoded URLs.
-def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+// rootDir, NOT '../../': this module is shared by reference (projectDir) into
+// every constellation app, so it must read the CONSUMING app's build.json.
+// A module-relative path would resolve to superapp's build.json and hand every
+// app superapp's GHCR image + auto_update block — i.e. cloud-browser would
+// update itself into cloud-superapp.
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
 def ghcr = buildJson.release.ghcr
 def au   = buildJson.release.auto_update
 // Short git sha = code-identity stamp (matches build.sh oras-push manifest

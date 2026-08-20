@@ -11,7 +11,7 @@ import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.cloudnav.configs.ConfigsFragment
 import com.diegonmarcos.cloudnav.maps.MapsTimelineTabsFragment
-import com.diegonmarcos.cloudnav.updater.Updater
+import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.cloudnav.places.PlacesFragment
 import com.diegonmarcos.cloudnav.routes.NavigationFragment
 import com.diegonmarcos.cloudnav.routes.RoutesFragment

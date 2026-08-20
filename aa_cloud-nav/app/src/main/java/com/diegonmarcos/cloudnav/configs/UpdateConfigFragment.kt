@@ -12,10 +12,10 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.cloudnav.maps.MapsStopsFragment
-import com.diegonmarcos.cloudnav.updater.AbiUpdateTag
-import com.diegonmarcos.cloudnav.updater.BuildConfig as UpdBuildConfig
-import com.diegonmarcos.cloudnav.updater.UpdateProgress
-import com.diegonmarcos.cloudnav.updater.Updater
+import com.diegonmarcos.superapp.updater.AbiUpdateTag
+import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
+import com.diegonmarcos.superapp.updater.UpdateProgress
+import com.diegonmarcos.superapp.updater.Updater
 import com.google.android.material.button.MaterialButton
 
 /**

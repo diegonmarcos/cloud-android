@@ -23,7 +23,11 @@ def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
 buildJson.modules.each { name, _spec ->
     if (name.startsWith('_')) return  // skip _doc keys
     include ":${name}"
-    // Map gradle path :libs:foo → libs/foo/  (vs. :app → app/)
-    def path = name.replace(':', '/')
+    // Map gradle path :libs:foo → libs/foo/  (vs. :app → app/), unless the
+    // module declares a `dir` in build.json. `dir` is how a module is SHARED by
+    // reference instead of copy-pasted: libs:core and libs:updater live once in
+    // ea_cloud-superapp/libs/ and every app points at that one directory, so a
+    // fix lands in all of them at build time and copies cannot drift.
+    def path = _spec?.dir ?: name.replace(':', '/')
     project(":${name}").projectDir = file(path)
 }

@@ -661,19 +661,19 @@ class DevControlFragment : Fragment() {
             //    granted below — Android transparently prompts without it.
             it.addView(small(ctx, "Auto-update — silent self-update (default ON). Grant 'Install unknown apps' to skip the install prompt:"))
             row(ctx, it, "Auto-update (silent)",
-                if (com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.silent(ctxAny())) "✓ ON" else "✗ OFF")
+                if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) "✓ ON" else "✗ OFF")
             row(ctx, it, "Install unknown apps",
-                if (com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) "✓ Granted" else "◯ Not granted")
+                if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) "✓ Granted" else "◯ Not granted")
             it.addView(permButtonRow(ctx,
-                permButton(ctx, "Auto-update: " + (if (com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.silent(ctxAny())) "ON" else "OFF"),
-                           com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.silent(ctxAny())) {
-                    val now = !com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.silent(ctxAny())
-                    com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.setSilent(ctxAny(), now)
+                permButton(ctx, "Auto-update: " + (if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) "ON" else "OFF"),
+                           com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())) {
+                    val now = !com.diegonmarcos.superapp.updater.AutoUpdatePrefs.silent(ctxAny())
+                    com.diegonmarcos.superapp.updater.AutoUpdatePrefs.setSilent(ctxAny(), now)
                     Toast.makeText(ctxAny(), "Auto-update " + (if (now) "ON (silent)" else "OFF (prompt)"), Toast.LENGTH_SHORT).show()
                     rebuildFragment()
                 },
                 permButton(ctx, "Set Install-unknown-apps",
-                           com.diegonmarcos.cloudnav.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) { openUnknownAppSourcesSettings() },
+                           com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) { openUnknownAppSourcesSettings() },
             ))
             // ── Copy the full status block (matches what's rendered above).
             //    Utility action (not a pending grant) → darker violet.
