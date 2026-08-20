@@ -47,6 +47,21 @@
       "blocked": false
     },
     {
+      "id": "contacts",
+      "label": "cloud-contacts",
+      "package": "com.diegonmarcos.cloudcontacts",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-contacts",
+      "tag": "latest",
+      "asset": "Cloud-Contacts.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Contacts.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-contacts",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-contacts",
+      "blocked": false
+    },
+    {
       "id": "dialer",
       "label": "Cloud Dialer (Fossify)",
       "package": "com.diegonmarcos.comms.dialer",
