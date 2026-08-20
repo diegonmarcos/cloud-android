@@ -8,7 +8,15 @@ plugins {
 // so the login screen can pre-fill the discovery URL without any caller
 // passing it in. Data-driven — change the default in build.json, get a
 // rebuilt BuildConfig.JMAP_DEFAULT_SERVER on the next gradle run.
-def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+// Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
+// repos (ea_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// app's build.json first - a module-relative path always resolves to superapp's
+// and the consumer's config would be silently ignored. The `ui` block is
+// superapp-owned content that a wrapper repo has no reason to redeclare, so when
+// the consumer does not define it we fall back to this module's home repo (same
+// pattern as libs/voice).
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+if (buildJson.ui == null) buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def mailSection = buildJson.ui.sections.find { it.id == 'mail' }
 def jmapDefault = mailSection?.jmap_default_server ?: ''
 

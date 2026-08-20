@@ -6,7 +6,15 @@ plugins {
 // Bake build.json::ui.kde_connect into BuildConfig as base64-JSON so the
 // module reads a single source of truth at runtime — no hardcoded IPs /
 // package names. Mirrors how libs:mail bakes jmap_default_server.
-def buildJson  = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+// Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
+// repos (ea_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// app's build.json first - a module-relative path always resolves to superapp's
+// and the consumer's config would be silently ignored. The `ui` block is
+// superapp-owned content that a wrapper repo has no reason to redeclare, so when
+// the consumer does not define it we fall back to this module's home repo (same
+// pattern as libs/voice).
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+if (buildJson.ui == null) buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def kdeConnect = buildJson.ui.kde_connect ?: [:]
 def kdeJson    = groovy.json.JsonOutput.toJson(kdeConnect)
 def kdeB64     = kdeJson.bytes.encodeBase64().toString()

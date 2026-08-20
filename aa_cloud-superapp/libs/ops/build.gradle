@@ -9,7 +9,15 @@ plugins {
 // in build.json, get a rebuilt BuildConfig.DAGU_DEFAULT_SERVER on the
 // next gradle run. Same pattern libs/mail uses for JMAP_DEFAULT_SERVER
 // and libs/chat for MATTERMOST_DEFAULT_SERVER.
-def buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+// Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
+// repos (ea_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// app's build.json first - a module-relative path always resolves to superapp's
+// and the consumer's config would be silently ignored. The `ui` block is
+// superapp-owned content that a wrapper repo has no reason to redeclare, so when
+// the consumer does not define it we fall back to this module's home repo (same
+// pattern as libs/voice).
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+if (buildJson.ui == null) buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def c3Section = buildJson.ui.sections.find { it.id == 'c3' }
 def daguPage = c3Section?.pages?.find { it.id == 'dagu-events' }
 def daguServer = daguPage?.dagu_default_server ?: ''

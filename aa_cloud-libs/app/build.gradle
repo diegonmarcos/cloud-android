@@ -1,0 +1,91 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// One APK per library module, from ONE wrapper module: each lib gets a product
+// flavor with its own applicationId, and only that flavor depends on that lib.
+// The alternative - a physical wrapper module per lib - would be 24 near-identical
+// directories to keep in step, which is the duplication this whole sweep removed.
+//
+// settings.gradle already scanned lib_apks.scan and published the result, so the
+// list is discovered in exactly one place.
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+def libCfg    = buildJson.lib_apks
+def shipped   = gradle.ext.shippedLibs
+
+// module dir name -> gradle-legal flavor name:  translate-mlkit -> translateMlkit
+static String flavorOf(String name) {
+    def parts = name.split('-')
+    parts[0] + parts.drop(1).collect { it.capitalize() }.join('')
+}
+
+android {
+    namespace 'com.diegonmarcos.cloudlib'
+    compileSdk buildJson.toolchain.compile_sdk
+
+    defaultConfig {
+        minSdk    buildJson.android.min_sdk
+        targetSdk buildJson.android.target_sdk
+        versionCode buildJson.android.version_code
+        versionName buildJson.android.version_name
+        ndk {
+            abiFilters.addAll((buildJson.android?.abi_filters ?: ['arm64-v8a']) as List)
+        }
+    }
+
+    signingConfigs {
+        // Shared Cloud-constellation signing key (vault). Same key as every other
+        // app, which is what makes libs:core's signature-level CONSTELLATION_DATA
+        // permission grant automatically between these APKs and the apps.
+        release {
+            storeFile     = System.getenv("ANDROID_KEYSTORE_FILE") ? file(System.getenv("ANDROID_KEYSTORE_FILE")) : null
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASS") ?: ""
+            keyAlias      = System.getenv("ANDROID_KEY_ALIAS")     ?: ""
+            keyPassword   = System.getenv("ANDROID_KEY_PASS")      ?: ""
+        }
+    }
+
+    buildTypes {
+        debug { }
+        release {
+            minifyEnabled false
+            def sc = signingConfigs.release
+            signingConfig = (sc.storeFile != null) ? sc : signingConfigs.debug
+        }
+    }
+
+    flavorDimensions += 'lib'
+    productFlavors {
+        shipped.each { name ->
+            register(flavorOf(name)) {
+                dimension 'lib'
+                // '-' is illegal in an applicationId segment, so it is stripped
+                // rather than replaced: translate-mlkit -> ...cloudlib.translatemlkit.
+                applicationId "${libCfg.application_id_prefix}.${name.replace('-', '')}"
+            }
+        }
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    buildFeatures {
+        buildConfig = true
+        aidl true
+    }
+}
+
+dependencies {
+    // Each flavor pulls in exactly its own module. `<flavor>Implementation` is
+    // the flavor-scoped configuration AGP creates for every product flavor, so
+    // the cloudlib.core APK carries libs:core and nothing else.
+    shipped.each { name ->
+        add("${flavorOf(name)}Implementation", project(":libs:${name}"))
+    }
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+}

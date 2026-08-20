@@ -13,7 +13,15 @@ plugins {
 // start to render the 8 metric tiles + drill-downs in Summary /
 // Timeline / Configs. Adding/removing a metric = one entry in
 // build.json::ui.sections[id=health].metrics[] — no Kotlin edit.
-def healthBuildJson  = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+// Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
+// repos (ea_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// app's build.json first - a module-relative path always resolves to superapp's
+// and the consumer's config would be silently ignored. The `ui` block is
+// superapp-owned content that a wrapper repo has no reason to redeclare, so when
+// the consumer does not define it we fall back to this module's home repo (same
+// pattern as libs/voice).
+def healthBuildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+if (healthBuildJson.ui == null) healthBuildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def healthSectionDef = healthBuildJson.ui.sections.find { it.id == 'health' }
 def healthMetricsRaw = healthSectionDef?.metrics ?: []
 def healthMetricsJson = groovy.json.JsonOutput.toJson(healthMetricsRaw)

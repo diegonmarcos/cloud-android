@@ -147,6 +147,41 @@ PY
 )
 note ok "every project() dependency names a declared module"
 
+# 11. ea_cloud-libs ships one APK per library module. Three places derive that
+#     set from build.json::lib_apks — settings.gradle (the gradle modules),
+#     build.sh (the asset names) and data/regen.sh (the Libs tab). They must
+#     agree, or the store lists an APK the build never produced and the install
+#     button 404s on the release asset.
+LIBS_BJ=ea_cloud-libs/build.json
+if [ -f "$LIBS_BJ" ]; then
+    # LC_ALL=C: python sorts by byte, GNU sort by locale, and they disagree on
+    # '-' vs '.' (Cloud-Lib-Voice-Vosk.apk vs Cloud-Lib-Voice.apk).
+    shipped=$(bash ea_cloud-libs/build.sh list 2>/dev/null | command awk '{print $3}' | LC_ALL=C sort)
+    fleeted=$(python3 - <<'PY'
+import json
+d=json.load(open('ea_cloud-superapp/data/constellation-fleet.json'))
+a=d['apps'] if isinstance(d,dict) else d
+print('\n'.join(sorted(x['asset'] for x in a
+                       if x.get('kind')=='lib' and x.get('id','').startswith('lib-'))))
+PY
+)
+    if [ "$shipped" = "$fleeted" ]; then
+        note ok "ea_cloud-libs: $(printf '%s\n' "$shipped" | command grep -c . ) lib APKs, build and fleet agree"
+    else
+        note FAIL "ea_cloud-libs: build.sh and constellation-fleet.json disagree — rerun ea_cloud-superapp/data/regen.sh"
+        diff <(printf '%s\n' "$shipped") <(printf '%s\n' "$fleeted") | command head -10
+    fi
+    # An excluded module must say why. A bare exclusion is indistinguishable from
+    # a module someone silently dropped because it would not build.
+    while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
+import json
+for k,v in json.load(open('ea_cloud-libs/build.json'))['lib_apks'].get('exclude',{}).items():
+    if not isinstance(v,str) or len(v) < 20:
+        print(f"ea_cloud-libs excludes {k} without a reason — say why it cannot ship")
+PY
+)
+fi
+
 echo
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."

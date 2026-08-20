@@ -1,0 +1,68 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "cloud-libs"
+
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+
+// The wrapper module, same data-driven loop every constellation repo uses.
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return  // skip _doc keys
+    include ":${name}"
+    def path = _spec?.dir ?: name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}
+
+// Every library module in the constellation, shared BY REFERENCE from the one
+// canonical directory. Discovered, never listed: a directory with a build.gradle
+// under lib_apks.scan is a module, and gets an APK unless lib_apks.exclude says
+// why not. Adding a module to ea_cloud-superapp/libs/ therefore ships an APK
+// with no edit here (FIRE RULE #6: never hardcode lists).
+def libCfg   = buildJson.lib_apks
+def libsRoot = file(libCfg.scan)
+if (!libsRoot.isDirectory()) {
+    throw new GradleException("lib_apks.scan=${libCfg.scan} is not a directory (resolved ${libsRoot})")
+}
+def excluded = (libCfg.exclude ?: [:]).keySet()
+gradle.ext.shippedLibs = libsRoot.listFiles()
+        .findAll { it.isDirectory() && new File(it, 'build.gradle').isFile() }
+        .collect { it.name }
+        .findAll { !excluded.contains(it) }
+        .sort()
+if (gradle.ext.shippedLibs.isEmpty()) {
+    // A silent empty scan would produce a repo that builds zero APKs and still
+    // reports success - the exact failure mode the CI engine's glob guard exists
+    // to prevent. Fail loudly instead.
+    throw new GradleException("no library modules found under ${libsRoot} - nothing to ship")
+}
+gradle.ext.shippedLibs.each { name ->
+    include ":libs:${name}"
+    project(":libs:${name}").projectDir = new File(libsRoot, name)
+}
+
+// Inter-module dependencies: a shipped module may depend on a module we excluded
+// (or on one outside the scan), and gradle would only say "Project with path
+// ':libs:x' could not be found". Include any such module too - it is compiled
+// into the APK that needs it, it just gets no APK of its own.
+def included = gradle.ext.shippedLibs.toSet()
+libsRoot.listFiles().findAll { it.isDirectory() && new File(it, 'build.gradle').isFile() }.each { dir ->
+    new File(dir, 'build.gradle').text.findAll(/project\(':libs:([\w-]+)'\)/) { _m, dep ->
+        if (!included.contains(dep) && new File(libsRoot, "${dep}/build.gradle").isFile()) {
+            included << dep
+            include ":libs:${dep}"
+            project(":libs:${dep}").projectDir = new File(libsRoot, dep)
+        }
+    }
+}

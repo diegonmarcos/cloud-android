@@ -8,7 +8,15 @@ plugins {
 // block, and expose it as BuildConfig.ONEHAND_CONFIG_B64. OneHandConfig
 // decodes it once at runtime. Tuning the edge handle / gesture→action
 // map is a build.json edit — no Kotlin change (Pillar: DATA-DRIVEN).
-def ohBuildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+// Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
+// repos (ea_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// app's build.json first - a module-relative path always resolves to superapp's
+// and the consumer's config would be silently ignored. The `onehand` block is
+// superapp-owned content that a wrapper repo has no reason to redeclare, so when
+// the consumer does not define it we fall back to this module's home repo (same
+// pattern as libs/voice).
+def ohBuildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+if (ohBuildJson.onehand == null) ohBuildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def ohCfg       = ohBuildJson.onehand ?: [:]
 def ohCfgB64    = groovy.json.JsonOutput.toJson(ohCfg).bytes.encodeBase64().toString()
 

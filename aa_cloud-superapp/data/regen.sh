@@ -58,7 +58,47 @@ regen_constellation() {
     for bj in "$UNIX"/ea_cloud-*/build.json; do
         [ -f "$bj" ] || continue
         dir="$(basename "$(dirname "$bj")")"; id="${dir#ea_cloud-}"
-        if jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1; then
+        if jq -e '.lib_apks.scan' "$bj" >/dev/null 2>&1; then
+            # ── Multi-lib repo (ea_cloud-libs) ────────────────────────────────
+            # One repo, one APK per library module, so it expands into MANY fleet
+            # entries instead of one. The module set is not listed anywhere: it is
+            # the same scan+exclude that settings.gradle and build.sh apply, so a
+            # new module under ea_cloud-superapp/libs/ appears in the Libs tab
+            # automatically. Everything else here is derived from the dir name.
+            local lscan lexcl lprefix laprefix limgprefix lmod lasset
+            lscan="$(dirname "$bj")/$(jq -r '.lib_apks.scan' "$bj")"
+            lexcl="$(jq -r '(.lib_apks.exclude // {}) | keys[]' "$bj" 2>/dev/null | tr '\n' ' ')"
+            lprefix="$(jq -r '.lib_apks.application_id_prefix' "$bj")"
+            laprefix="$(jq -r '.lib_apks.asset_prefix' "$bj")"
+            limgprefix="$(jq -r '.release.ghcr.image_prefix' "$bj")"
+            for lmod in $(ls -1 "$lscan" 2>/dev/null | sort); do
+                [ -f "$lscan/$lmod/build.gradle" ] || continue
+                case " $lexcl " in *" $lmod "*) continue ;; esac
+                # Cloud-Lib-Translate-Mlkit.apk — each '-' segment capitalised,
+                # matching build.sh's asset naming exactly.
+                lasset="$laprefix$(echo "$lmod" | awk -F- '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}}1' OFS=-).apk"
+                apps="$(jq --argjson acc "$apps" --arg id "lib-$lmod" --arg dir "$dir" \
+                           --arg mod "$lmod" --arg asset "$lasset" \
+                           --arg pkgid "$lprefix.$(echo "$lmod" | tr -d '-')" \
+                           --arg img "$limgprefix$lmod" \
+                           --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
+                    ($rel + "/latest/download/" + $asset) as $url
+                    | $acc + [ { id: $id,
+                                 label: ("Lib: " + $mod),
+                                 package: $pkgid,
+                                 alt_id: null,
+                                 registry: .release.ghcr.registry,
+                                 namespace: .release.ghcr.namespace,
+                                 image: $img,
+                                 tag: (.release.auto_update.tag // "latest"),
+                                 asset: $asset,
+                                 release_url: $url,
+                                 repo_url: ($tree + "/ea_cloud-superapp/libs/" + $mod),
+                                 ghcr_page: ($pkg + "/" + $img),
+                                 blocked: false,
+                                 kind: "lib" } ]' "$bj")"
+            done
+        elif jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1; then
             # ── Top-level app (browser/vault/wallet/superapp/nav/ide) ─────────
             # Publishes a rolling `latest` release → stable direct-download URL.
             apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$dir" \
