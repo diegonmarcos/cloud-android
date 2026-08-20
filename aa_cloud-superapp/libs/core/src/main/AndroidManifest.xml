@@ -1,2 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<!--
+  libs:core is shared BY REFERENCE into every constellation app (each app's
+  build.json points :libs:core at this one directory), so whatever is declared
+  here manifest-merges into ALL of them. That is what makes a single
+  constellation-wide permission possible without repeating it per app.
+
+  CONSTELLATION_DATA is the "Cloud Perms" grant surfaced in the SuperApp's
+  Constellation → Perms tab. protectionLevel="signature" means Android grants
+  it AT INSTALL TIME to any package signed with the same key — and the whole
+  constellation shares one signing key. So our apps can talk to each other
+  freely by default, with no prompt, no toggle and no user action, while any
+  APK signed by anyone else is refused by the OS itself.
+
+  Both tags are required and neither is redundant: <permission> DEFINES it,
+  <uses-permission> REQUESTS it. An app that only defines it can be read from
+  but cannot read others.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <permission
+        android:name="com.diegonmarcos.cloud.permission.CONSTELLATION_DATA"
+        android:label="Cloud constellation data"
+        android:description="@string/perm_constellation_data"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.diegonmarcos.cloud.permission.CONSTELLATION_DATA" />
+
+</manifest>
