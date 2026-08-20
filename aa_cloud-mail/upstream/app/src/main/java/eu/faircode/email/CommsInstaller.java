@@ -40,6 +40,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class CommsInstaller {
@@ -145,25 +148,47 @@ public class CommsInstaller {
         }
         if (mine == null || mine.isEmpty())
             return;
-        long now = System.currentTimeMillis();
+
+        // Never touch a session a client currently has open - that is a real
+        // install in flight. Everything else is ours to reclaim.
+        List<PackageInstaller.SessionInfo> idle = new ArrayList<>();
+        for (PackageInstaller.SessionInfo info : mine)
+            if (!info.isActive())
+                idle.add(info);
+        if (idle.isEmpty())
+            return;
+
+        List<PackageInstaller.SessionInfo> victims = new ArrayList<>();
+        if (mine.size() >= NEAR_CAP) {
+            // AT THE CAP the cap IS the problem: createSession fails outright,
+            // so waiting for sessions to age out just means more failed
+            // installs. Oldest first, freeing enough slots to work in and
+            // keeping the newest, which is the one the user is most likely
+            // looking at. Losing a pending prompt is recoverable; a
+            // permanently stuck installer is not.
+            Collections.sort(idle, new Comparator<PackageInstaller.SessionInfo>() {
+                @Override
+                public int compare(PackageInstaller.SessionInfo a, PackageInstaller.SessionInfo b) {
+                    return Long.compare(createdAt(a), createdAt(b));
+                }
+            });
+            int free = idle.size() - (NEAR_CAP - HEADROOM);
+            if (free < 1)
+                free = 1;
+            victims.addAll(idle.subList(0, Math.min(free, idle.size())));
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Below the cap there is no urgency, so only reclaim sessions old
+            // enough that they cannot still be a prompt awaiting an answer.
+            long now = System.currentTimeMillis();
+            for (PackageInstaller.SessionInfo info : idle)
+                if (now - info.getCreatedMillis() > STALE_SESSION_MS)
+                    victims.add(info);
+        }
+        // else: getCreatedMillis is API 29+; with no age to test, do nothing
+        // until the at-cap branch above takes over.
+
         int reaped = 0;
-        for (PackageInstaller.SessionInfo info : mine) {
-            // isActive = a client currently has it open, i.e. an install really
-            // is in flight. Never touch those.
-            if (info.isActive())
-                continue;
-            boolean stale;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                // A committed session waiting on the user's Install prompt is
-                // inactive too, so age is what separates "user is deciding" from
-                // "leaked hours ago". No prompt lives for an hour.
-                stale = now - info.getCreatedMillis() > STALE_SESSION_MS;
-            else
-                // getCreatedMillis is API 29+. Below that age is unknowable, so
-                // only step in when the cap is actually the problem.
-                stale = mine.size() >= NEAR_CAP;
-            if (!stale)
-                continue;
+        for (PackageInstaller.SessionInfo info : victims) {
             try {
                 installer.abandonSession(info.getSessionId());
                 reaped++;
@@ -171,10 +196,16 @@ public class CommsInstaller {
             }
         }
         if (reaped > 0)
-            Log.w(TAG + " abandoned " + reaped + " stale install session(s) of " + mine.size());
+            Log.w(TAG + " abandoned " + reaped + " of " + mine.size() + " install session(s)");
+    }
+
+    private static long createdAt(PackageInstaller.SessionInfo info) {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? info.getCreatedMillis() : 0L;
     }
 
     /** Android's own limit for an installer without INSTALL_PACKAGES is 50. */
     private static final int NEAR_CAP = 40;
+    /** Slots to free when we are already at the cap. */
+    private static final int HEADROOM = 8;
     private static final long STALE_SESSION_MS = 60L * 60L * 1000L;
 }
