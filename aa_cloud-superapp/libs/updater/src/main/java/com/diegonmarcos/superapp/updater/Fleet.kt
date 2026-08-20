@@ -43,6 +43,10 @@ object Fleet {
         val repoUrl: String,
         val ghcrPage: String,
         val blocked: Boolean,
+        // "app" (default) or "lib" — a companion APK that ships engines behind
+        // AIDL bound services instead of UI. Data-driven from each app's
+        // build.json::release.kind; splits the Constellation page's Apps/Libs tabs.
+        val kind: String,
     )
 
     /** Live state of one app on this device vs. its GHCR image. */
@@ -75,6 +79,7 @@ object Fleet {
                     repoUrl = o.optString("repo_url", ""),
                     ghcrPage = o.optString("ghcr_page", ""),
                     blocked = o.optBoolean("blocked", false),
+                    kind = o.optString("kind", "app").takeIf { it.isNotEmpty() } ?: "app",
                 )
             }
         } catch (t: Throwable) {

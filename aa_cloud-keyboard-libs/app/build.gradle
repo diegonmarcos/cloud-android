@@ -20,6 +20,13 @@ android {
         targetSdk 35
         versionCode 1
         versionName '1.0'
+        // Native-library ABI filter — declared in build.json::android.abi_filters
+        // so the choice stays data-driven (mirrors superapp + vault). Vosk/JNA
+        // ship ~25MB of .so per ABI; unfiltered AGP bundled all 7 the deps carry
+        // (incl. dead mips/mips64) = 99.5MB of a 129.7MB APK.
+        ndk {
+            abiFilters.addAll((buildJson.android?.abi_filters ?: ['arm64-v8a']) as List)
+        }
         buildConfigField "String", "MEDIA_CONFIG_B64", "\"${keyboardMediaB64}\""
         buildConfigField "String", "GIPHY_API_KEY",   "\"${giphyApiKey}\""
         buildConfigField "String", "DEFAULT_LOCALES", "\"${defaultLocales}\""

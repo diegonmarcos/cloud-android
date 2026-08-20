@@ -76,7 +76,8 @@ regen_constellation() {
                              release_url: $url,
                              repo_url: ($tree + "/" + $dir),
                              ghcr_page: ($pkg + "/" + .release.ghcr.image),
-                             blocked: false } ]' "$bj")"
+                             blocked: false,
+                             kind: (.release.kind // "app") } ]' "$bj")"
         elif jq -e '(.forks // {}) | to_entries
                     | map(select(.key != "_doc" and (.value|type=="object")))
                     | length > 0' "$bj" >/dev/null 2>&1; then
@@ -103,7 +104,8 @@ regen_constellation() {
                              release_url: $rel,
                              repo_url: ($tree + "/" + $dir),
                              ghcr_page: ($pkg + "/" + $f.image),
-                             blocked: ($f.blocked_on != null) } ]' "$bj")"
+                             blocked: ($f.blocked_on != null),
+                             kind: (.release.kind // "app") } ]' "$bj")"
         fi
     done
 

@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp.configs
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
@@ -31,11 +32,19 @@ import kotlin.concurrent.thread
  */
 class ConstellationFragment : Fragment() {
 
-    private val apps by lazy { Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64) }
+    private val fleet by lazy { Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64) }
+    // Tabs are a VIEW over the one fleet list — kind comes from each app's
+    // build.json::release.kind via data/regen.sh, never a hardcoded list here.
+    private val apps by lazy { fleet.filter { it.kind != "lib" } }
+    private val libs by lazy { fleet.filter { it.kind == "lib" } }
+
     private val statusViews = HashMap<String, TextView>()
     private val actionRows = HashMap<String, LinearLayout>()
     private val installBtns = HashMap<String, TextView>()
     private lateinit var headerControls: LinearLayout
+    private lateinit var body: LinearLayout
+    private val tabBtns = ArrayList<TextView>()
+    private var tab = 0
 
     // amber, green, grey, red, orange, blue
     private val cUp = 0xFF48BB78.toInt(); private val cUpd = 0xFFED8936.toInt()
@@ -52,16 +61,63 @@ class ConstellationFragment : Fragment() {
         scroll.addView(col)
 
         col.addView(title(ctx, "Constellation AppStore"))
-        col.addView(caption(ctx, "${apps.size} apps · superapp is the fleet manager"))
+        col.addView(caption(ctx, "${apps.size} apps · ${libs.size} libs · superapp is the fleet manager"))
 
-        headerControls = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        col.addView(headerControls)
-        renderHeader(ctx)
-
-        for (app in apps) col.addView(appCard(ctx, app))
-
-        checkAll(ctx)
+        col.addView(tabBar(ctx))
+        body = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(body)
+        renderTab(ctx)
         return scroll
+    }
+
+    // ── tabs: Apps | Libs | Perms ────────────────────────────────────────────
+    private fun tabBar(ctx: Context): View {
+        val bar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.setMargins(0, 0, 0, dp(ctx, 8)); layoutParams = lp
+        }
+        tabBtns.clear()
+        listOf("Apps", "Libs", "Perms").forEachIndexed { i, label ->
+            val t = TextView(ctx).apply {
+                text = label; gravity = Gravity.CENTER; textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(dp(ctx, 8), dp(ctx, 9), dp(ctx, 8), dp(ctx, 9))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                isClickable = true
+                setOnClickListener { if (tab != i) { tab = i; paintTabs(); renderTab(ctx) } }
+            }
+            tabBtns.add(t); bar.addView(t)
+        }
+        paintTabs()
+        return bar
+    }
+
+    private fun paintTabs() = tabBtns.forEachIndexed { i, t ->
+        t.setBackgroundColor(if (i == tab) 0xFF7C3AED.toInt() else 0xFF2A2A33.toInt())
+        t.setTextColor(if (i == tab) 0xFFFFFFFF.toInt() else cDim)
+    }
+
+    private fun renderTab(ctx: Context) {
+        body.removeAllViews()
+        statusViews.clear(); actionRows.clear(); installBtns.clear()
+        when (tab) {
+            0 -> renderFleet(ctx, apps, "Full constellation apps — install, update, open, remove.")
+            1 -> renderFleet(ctx, libs,
+                "Companion APKs that ship engines behind AIDL bound services instead of UI. " +
+                "Updated independently of the apps that bind them; an app degrades gracefully when its lib is absent.")
+            else -> renderPerms(ctx)
+        }
+    }
+
+    private fun renderFleet(ctx: Context, list: List<Fleet.App>, blurb: String) {
+        body.addView(caption(ctx, blurb))
+        headerControls = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(headerControls)
+        renderHeader(ctx)
+        if (list.isEmpty()) { body.addView(caption(ctx, "Nothing here yet.")); return }
+        for (app in list) body.addView(appCard(ctx, app))
+        checkAll(ctx, list)
     }
 
     // ── header: Update-all / Check-all + auto-update toggle + grant ──────────
@@ -155,9 +211,12 @@ class ConstellationFragment : Fragment() {
         return card
     }
 
+    /** The fleet slice the visible tab operates on (Perms falls back to apps). */
+    private fun current(): List<Fleet.App> = if (tab == 1) libs else apps
+
     // ── concurrent status — one thread per app, independent + non-blocking ───
-    private fun checkAll(ctx: Context) {
-        for (app in apps) {
+    private fun checkAll(ctx: Context, list: List<Fleet.App> = current()) {
+        for (app in list) {
             statusViews[app.id]?.let { tv -> tv.post { tv.text = "checking…"; tv.setTextColor(cDim) } }
             thread(name = "fleet-check-${app.id}") {
                 val st = Fleet.status(ctx, app)
@@ -195,7 +254,7 @@ class ConstellationFragment : Fragment() {
     private fun updateAll(ctx: Context) {
         Toast.makeText(ctx, "Updating installed apps…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-update-all") {
-            val n = Fleet.installAll(ctx, apps, Fleet.Mode.UPDATES)
+            val n = Fleet.installAll(ctx, current(), Fleet.Mode.UPDATES)
             view?.post {
                 Toast.makeText(ctx, if (n == 0) "Everything up to date" else "$n update(s) queued",
                     Toast.LENGTH_LONG).show()
@@ -208,7 +267,7 @@ class ConstellationFragment : Fragment() {
     private fun installMissing(ctx: Context) {
         Toast.makeText(ctx, "Installing missing apps…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-install-all") {
-            val n = Fleet.installAll(ctx, apps, Fleet.Mode.MISSING)
+            val n = Fleet.installAll(ctx, current(), Fleet.Mode.MISSING)
             view?.post {
                 Toast.makeText(ctx, if (n == 0) "All apps already installed" else "$n install(s) queued",
                     Toast.LENGTH_LONG).show()
@@ -216,6 +275,77 @@ class ConstellationFragment : Fragment() {
             checkAll(ctx)
         }
     }
+
+    // ── Perms tab ────────────────────────────────────────────────────────────
+    // The constellation is a trusted environment because every APK is signed
+    // with the SAME key. That is what makes signature-level permissions usable
+    // between our apps: an app exposes a ContentProvider guarded by a
+    // `signature` permission, and only same-key packages can bind/read it.
+    //
+    // This tab is the REGISTRY for that — it shows, per app, whether it is
+    // installed and whether its signature matches ours (i.e. whether it is
+    // eligible for cross-app data access at all). It deliberately does NOT
+    // fake a master switch: a toggle here cannot grant access on its own,
+    // because each publishing app must declare the provider + permission in
+    // its own manifest. Android's own runtime permissions (camera, location,
+    // contacts…) stay per-app in that app's Configs → Perms, as designed —
+    // the row's "Perms ↗" opens exactly that system screen.
+    private fun renderPerms(ctx: Context) {
+        body.addView(caption(ctx,
+            "One signing key across the constellation = signature-level trust. " +
+            "Same-signature apps are eligible to read each other's data through " +
+            "signature-guarded ContentProviders. Android's own runtime perms stay " +
+            "per-app — tap Perms ↗ for the system screen."))
+
+        val me = ctx.packageName
+        for (app in fleet) {
+            if (app.pkg == me) continue
+            val card = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundColor(0xFF1C1C24.toInt())
+                val ph = dp(ctx, 12); val pv = dp(ctx, 8)
+                setPadding(ph, pv, ph, pv)
+                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(0, dp(ctx, 4), 0, dp(ctx, 4)); layoutParams = lp
+            }
+            val pkg = Fleet.installedId(ctx, app)
+            val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            row.addView(TextView(ctx).apply {
+                text = app.label + (if (app.kind == "lib") "  ·  lib" else "")
+                textSize = 15f; setTextColor(0xFFFFFFFF.toInt()); typeface = Typeface.DEFAULT_BOLD
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            card.addView(row)
+            card.addView(mono(ctx, pkg ?: app.pkg))
+
+            val trust = TextView(ctx).apply {
+                textSize = 12f; setPadding(0, dp(ctx, 3), 0, dp(ctx, 2))
+            }
+            when {
+                pkg == null -> { trust.setTextColor(cMiss); trust.text = "◯ not installed" }
+                sameSignature(ctx, pkg) -> { trust.setTextColor(cUp); trust.text = "🔑 same key  ·  eligible for signature-level data access" }
+                else -> { trust.setTextColor(cBlk); trust.text = "⚠ different signature  ·  NOT eligible — reinstall from our release" }
+            }
+            card.addView(trust)
+
+            if (pkg != null) {
+                card.addView(buttonRow(ctx, btn(ctx, "Perms ↗", 0xFF2A2A33.toInt()) {
+                    runCatching {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", pkg, null)))
+                    }.onFailure { Toast.makeText(ctx, "No settings screen", Toast.LENGTH_SHORT).show() }
+                }))
+            }
+            body.addView(card)
+        }
+    }
+
+    /** True when [pkg] is signed with the same key as us — the whole basis of
+     *  `signature`-level permissions inside the constellation. */
+    @Suppress("DEPRECATION")
+    private fun sameSignature(ctx: Context, pkg: String): Boolean = runCatching {
+        ctx.packageManager.checkSignatures(ctx.packageName, pkg) == PackageManager.SIGNATURE_MATCH
+    }.getOrDefault(false)
 
     private fun openApp(ctx: Context, pkg: String) {
         val i = ctx.packageManager.getLaunchIntentForPackage(pkg)

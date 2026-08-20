@@ -3,7 +3,9 @@
   "description": "Cloud Keyboard — Feature Pack APK. Bundles libs:media (stickers/GIF), libs:translate (ML Kit), and libs:voice (Vosk) as a companion APK updatable independently of the keyboard.",
   "category": "keyboard",
   "android": {
-    "application_id": "com.diegonmarcos.cloudkeyboardlibs"
+    "application_id": "com.diegonmarcos.cloudkeyboardlibs",
+    "_doc_abi_filters": "Native-library ABIs shipped in the APK. Vosk + JNA ship ~25MB of .so PER ABI; with no filter AGP bundled all 7 the deps carry (x86_64, x86, arm64-v8a, armeabi-v7a, mips, mips64, armeabi) = 99.5MB of a 129.7MB APK. mips/mips64 were removed from the NDK in 2018 and are dead weight. arm64-v8a only mirrors ea_cloud-superapp + ea_cloud-vault and lands the APK at ~55MB. Add 'x86_64' here for Waydroid/emulator and rebuild — no gradle edits needed.",
+    "abi_filters": ["arm64-v8a"]
   },
   "toolchain": {
     "agp": "8.13.2",
@@ -83,6 +85,8 @@
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
   "release": {
+    "_doc_kind": "'lib' = a companion APK that ships engines behind AIDL bound services instead of UI. data/regen.sh copies this into constellation-fleet.json; the SuperApp's Constellation page files it under the Libs tab instead of Apps. Absent/anything else = 'app'.",
+    "kind": "lib",
     "artifact": {
       "debug": "Cloud-Keyboard-Libs.apk",
       "release": "Cloud-Keyboard-Libs-release.apk"
