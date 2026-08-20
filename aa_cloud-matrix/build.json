@@ -14,10 +14,10 @@
       "runtime": "native",
       "priority": 3,
       "blocked_on": null,
-      "_blocked_on_history": "Was 'matrix-chat-bridge-stack-ship' (continuwuity + mautrix-whatsapp + element stack). Unblocked 2026-07-09 to publish the standalone GHCR APK for the Constellation AppStore \u2014 the resigned upstream Element X APK installs independent of the homeserver; the app is non-functional until the Matrix backend stack is deployed.",
-      "comment": "Element X Android (Kotlin + Rust matrix-sdk FFI). Exporter reads via the Rust-SDK Kotlin BINDINGS, never raw store files. Push via UnifiedPush with our ntfy (rss.diegonmarcos.com) as distributor \u2014 Element X supports it natively.",
+      "_blocked_on_history": "Was 'matrix-chat-bridge-stack-ship' (continuwuity + mautrix-whatsapp + element stack). Unblocked 2026-07-09 to publish the standalone GHCR APK for the Constellation AppStore — the resigned upstream Element X APK installs independent of the homeserver; the app is non-functional until the Matrix backend stack is deployed.",
+      "comment": "Element X Android (Kotlin + Rust matrix-sdk FFI). Exporter reads via the Rust-SDK Kotlin BINDINGS, never raw store files. Push via UnifiedPush with our ntfy (rss.diegonmarcos.com) as distributor — Element X supports it natively.",
       "upstream_apk": {
-        "_doc": "Pinned UPSTREAM RELEASE APK \u2014 bundle fallback (owner directive 2026-06-12: ALL apps ship inside the hub NOW). bundle-forks embeds this sha256-verified APK whenever our own fork image isn't on GHCR yet; the patched fork replaces it the moment its CI lands. resign=true \u2192 the engine zipalign+apksigner's it with the constellation key (Mattermost publishes unsigned APKs \u2014 unsigned can't install; our key also makes it IPC-compatible). NOTE: blocked_on gates OUR fork build (homeserver work), not stock-client bundling \u2014 Element X is a generic Matrix client.",
+        "_doc": "Pinned UPSTREAM RELEASE APK — bundle fallback (owner directive 2026-06-12: ALL apps ship inside the hub NOW). bundle-forks embeds this sha256-verified APK whenever our own fork image isn't on GHCR yet; the patched fork replaces it the moment its CI lands. resign=true → the engine zipalign+apksigner's it with the constellation key (Mattermost publishes unsigned APKs — unsigned can't install; our key also makes it IPC-compatible). NOTE: blocked_on gates OUR fork build (homeserver work), not stock-client bundling — Element X is a generic Matrix client.",
         "url": "https://github.com/element-hq/element-x-android/releases/download/v26.06.2/app-fdroid-arm64-v8a-release-signed.apk",
         "sha256": "7735b5193d4bea1b350de2616f9faecb21c01cfdb9effb6ac5be4668783d5889",
         "resign": true,
@@ -26,7 +26,8 @@
           "_doc": "Per-ABI upstream assets. bundle-forks picks abi_variants[$COMMS_BUNDLE_ABI] when set (default arm64-v8a uses the top-level url/sha256). x86_64 = Waydroid debug builds.",
           "x86_64": {
             "url": "https://github.com/element-hq/element-x-android/releases/download/v26.06.2/app-fdroid-x86_64-release-signed.apk",
-            "sha256": "33f8baf3878da0638f0cd919ce16f5c6b6406c289b7a359824275d8bfc4aa260"
+            "sha256": "a2b626ec067ecfb199a5129ef419db945388a3cf966e415ca798bcdf504f1a16",
+            "_doc_sha256": "Re-pinned 2026-08-20. element-hq REPLACED this release asset in place: the URL now serves a2b626ec... where the pin said 33f8baf3..., and every ship-cloud-matrix run since 2026-08-18 died on the mismatch. Re-pinned only after checking provenance, not to make CI pass: the arm64-v8a asset from the SAME tag still matches its pin byte-for-byte (so the release was not wholesale re-uploaded); the new file carries the same upstream git revision 337528bce386f1731701f9ac2d0cbc190e244e02 and versionName 26.06.2 as that known-good arm64 APK; and both are signed by the same certificate, New Vector Ltd./element.io, SHA-256 6A:2F:DC:31:48:04:9C:E0:D5:C6:E8:50:10:72:3B:83:FB:20:7D:20:C7:47:7F:5C:22:AC:53:C8:77:E9:2D:47. If a future mismatch does NOT satisfy all four checks, do not re-pin - investigate."
           }
         }
       }

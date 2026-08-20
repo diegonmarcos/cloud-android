@@ -14,14 +14,20 @@
       "priority": 3,
       "blocked_on": null,
       "build": {
-        "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open \u2014 prevents 20+ react-native arm64+x86_64.'",
-        "prepare": ["npm ci --ignore-scripts", "node_modules/.bin/patch-package", "bash scripts/postinstall.sh"],
+        "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open — prevents 20+ react-native arm64+x86_64.'",
+        "prepare": [
+          "[ -f android/app/debug.keystore ] || keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Android Debug,O=Android,C=US'",
+          "npm ci --ignore-scripts",
+          "node_modules/.bin/patch-package",
+          "bash scripts/postinstall.sh"
+        ],
         "command": "node node_modules/.bin/react-native build-android --mode=release --tasks assembleRelease 2>&1",
         "apk_glob": "android/app/build/outputs/apk/release/*.apk",
         "resign_unsigned": true,
-        "signing": "resign_post_build"
+        "signing": "resign_post_build",
+        "_doc_debug_keystore": "The React Native template's android/app/debug.keystore is matched by the repo-wide '*.keystore' ignore, so it exists on a developer disk and has never been in the repo. CI then died at ':app:validateSigningRelease' - \"Keystore file .../debug.keystore not found for signing config 'debug'\" - because Mattermost's release buildType falls back to the debug config. Generated here rather than vendored, which is what the gitignore's own note says keystores must be. It is the standard, public AOSP debug identity and it never reaches the shipped artifact: signing=resign_post_build + resign_unsigned means build-fork apksigner-resigns the APK with the ONE shared constellation key afterwards, so this throwaway key only exists to satisfy gradle's validation."
       },
-      "comment": "Mattermost Mobile. RN build; harder than mail \u2014 needs node 20 + ruby for Podfile lock."
+      "comment": "Mattermost Mobile. RN build; harder than mail — needs node 20 + ruby for Podfile lock."
     }
   },
   "signing": {
