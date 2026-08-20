@@ -15,11 +15,11 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.diegonmarcos.cloudkeyboard'
+        applicationId buildJson.android.application_id
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '1.0'
+        versionCode buildJson.android.version_code
+        versionName buildJson.android.version_name
         buildConfigField "String", "MEDIA_CONFIG_B64", "\"${keyboardMediaB64}\""
         buildConfigField "String", "GIPHY_API_KEY",   "\"${giphyApiKey}\""
         buildConfigField "String", "DEFAULT_LOCALES", "\"${defaultLocales}\""

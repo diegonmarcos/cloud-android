@@ -64,6 +64,10 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation 'androidx.core:core-ktx:1.13.1'
+    // UpdateOverlayFragment lives here now (it was four vendored copies in the
+    // app modules and browser/vault/wallet were stale); the module owns the UI
+    // for its own progress states, so it owns the fragment dependency too.
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'

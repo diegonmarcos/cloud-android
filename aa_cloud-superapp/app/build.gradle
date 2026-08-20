@@ -665,7 +665,6 @@ dependencies {
     implementation project(':libs:updater')
     implementation project(':libs:devtools')
     implementation project(':libs:mail')
-    implementation project(':libs:cal')
     implementation project(':libs:feed')
     implementation project(':libs:net')
     // libs:keyboard + libs:media MOVED to ea_cloud-keyboard (standalone constellation APK).

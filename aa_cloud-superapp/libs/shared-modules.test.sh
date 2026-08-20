@@ -131,6 +131,22 @@ PY
 )
 note ok "every declared module has source"
 
+# 10. Every project(':libs:x') dependency must name a module the build declares.
+#     Dropping a dead module from build.json leaves the dependency line behind,
+#     and gradle only says "Project with path ':libs:x' could not be found".
+while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
+import json,glob,re,os
+for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+    app=bj.split('/')[0]
+    declared=set(json.load(open(bj)).get('modules',{}))
+    for bg in glob.glob(f'{app}/*/build.gradle'):
+        for m in re.findall(r"project\(':([\w:-]+)'\)", open(bg).read()):
+            if m not in declared:
+                print(f"{bg} depends on :{m}, which {bj} does not declare")
+PY
+)
+note ok "every project() dependency names a declared module"
+
 echo
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."

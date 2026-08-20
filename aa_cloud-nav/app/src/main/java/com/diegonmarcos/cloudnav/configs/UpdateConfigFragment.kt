@@ -111,6 +111,10 @@ class UpdateConfigFragment : Fragment() {
         is UpdateProgress.State.Installing       -> "Installing — confirm the system prompt…"
         is UpdateProgress.State.Done             -> "Up to date / installed ✓"
         is UpdateProgress.State.Failed           -> "Failed: ${state.message}"
+        // Both arrived with the shared libs:updater; nav's vendored copy of the
+        // updater never had them, so this when had no branch for either.
+        is UpdateProgress.State.UpdateAvailable   -> "Update ready — held back on a metered network"
+        is UpdateProgress.State.Cancelled        -> "Cancelled"
     }
 
     private fun openUnknownSourcesSettings() {

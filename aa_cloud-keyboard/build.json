@@ -3,7 +3,10 @@
   "description": "Cloud Keyboard — HeliBoard IME with on-device translation, voice input, and bundled sticker packs. Standalone constellation APK.",
   "category": "keyboard",
   "android": {
-    "application_id": "com.diegonmarcos.cloudkeyboard"
+    "application_id": "com.diegonmarcos.cloudkeyboard",
+    "version_code": 1,
+    "version_name": "1.0",
+    "_doc_version": "version_code/version_name live here, not in app/build.gradle. libs/keyboard is shared by reference and reads ${rootDir}/build.json, so these are what the keyboard APK's BuildConfig reports - they used to resolve to ea_cloud-superapp's because the module read a relative path."
   },
   "toolchain": {
     "agp": "8.13.2",

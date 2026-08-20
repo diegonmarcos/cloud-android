@@ -15,7 +15,7 @@ import androidx.fragment.app.Fragment
 /**
  * Fullscreen overlay shown while the in-app updater is checking,
  * downloading, or installing. Driven by [UpdateProgress] state
- * transitions (subscribed by the host Activity).
+ * transitions (subscribed by the host activity).
  *
  *   CheckingManifest → indeterminate spinner + "Checking…"
  *   Downloading      → percent bar + "Downloading 42%" + bytes/total
@@ -29,10 +29,12 @@ class UpdateOverlayFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private lateinit var dismissButton: TextView
     private lateinit var cancelButton: TextView
+    private lateinit var updateNowButton: TextView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         val root = FrameLayout(ctx).apply {
+            // Solid dark scrim so the overlay is unambiguously the focus.
             setBackgroundColor(0xE6000000.toInt())
             isClickable = true; isFocusable = true
             layoutParams = ViewGroup.LayoutParams(
@@ -67,6 +69,11 @@ class UpdateOverlayFragment : Fragment() {
             setTextAppearance(android.R.style.TextAppearance_Material_Body1)
             text = ""
         }
+        // Dismiss control — shown ONLY on terminal states (Failed / Done) so
+        // the user can read the error and hand controls back. During an active
+        // check/download/install it stays hidden (the scrim blocks input on
+        // purpose). Tapping it drives UpdateProgress → Idle, which makes
+        // the host activity remove this overlay.
         dismissButton = TextView(ctx).apply {
             text = "OK"
             gravity = Gravity.CENTER
@@ -82,6 +89,9 @@ class UpdateOverlayFragment : Fragment() {
             ).apply { topMargin = dp(28) }
             setOnClickListener { UpdateProgress.reset() }
         }
+        // Cancel control — shown DURING an active check/download/install so a
+        // stuck update can always be aborted (the reported "can't cancel when it
+        // gets stuck" bug). Aborts the worker + flips state to Cancelled.
         cancelButton = TextView(ctx).apply {
             text = "Cancel"
             gravity = Gravity.CENTER
@@ -97,10 +107,28 @@ class UpdateOverlayFragment : Fragment() {
             ).apply { topMargin = dp(20) }
             setOnClickListener { runCatching { Updater.cancelNow(requireContext()) } }
         }
+        // "Update now" — shown ONLY on the metered UpdateAvailable prompt. Grants
+        // consent to download over mobile data; kicks a forced one-shot check.
+        updateNowButton = TextView(ctx).apply {
+            text = "Update now"
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF7C3AED.toInt())
+            setPadding(dp(28), dp(12), dp(28), dp(12))
+            isClickable = true; isFocusable = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(20) }
+            setOnClickListener { runCatching { Updater.downloadNow(requireContext()) } }
+        }
         column.addView(titleView)
         column.addView(progressBar)
         column.addView(detailView)
         column.addView(cancelButton)
+        column.addView(updateNowButton)
         column.addView(dismissButton)
         root.addView(column)
 
@@ -109,15 +137,26 @@ class UpdateOverlayFragment : Fragment() {
     }
 
     fun applyState(state: UpdateProgress.State) {
+        // Terminal states (Failed / Done) get the OK button + hidden bar;
+        // in-progress states show the bar and hide the button.
         val terminal = state is UpdateProgress.State.Failed || state is UpdateProgress.State.Done
         val active = state is UpdateProgress.State.CheckingManifest ||
             state is UpdateProgress.State.Downloading || state is UpdateProgress.State.Installing
-        dismissButton.visibility = if (terminal) View.VISIBLE else View.GONE
+        // Metered "ask before download" prompt: Update now (primary) + Later
+        // (the reused dismiss button, which resets → dismisses the overlay).
+        val prompt = state is UpdateProgress.State.UpdateAvailable
+        dismissButton.visibility = if (terminal || prompt) View.VISIBLE else View.GONE
         cancelButton.visibility = if (active) View.VISIBLE else View.GONE
-        progressBar.visibility = if (terminal) View.GONE else View.VISIBLE
+        updateNowButton.visibility = if (prompt) View.VISIBLE else View.GONE
+        progressBar.visibility = if (terminal || prompt) View.GONE else View.VISIBLE
         when (state) {
             is UpdateProgress.State.Idle -> { /* about to dismiss */ }
-            is UpdateProgress.State.Cancelled -> { UpdateProgress.reset() }
+            is UpdateProgress.State.Cancelled -> { UpdateProgress.reset() /* dismiss */ }
+            is UpdateProgress.State.UpdateAvailable -> {
+                titleView.text = "Update available"
+                detailView.text = "${state.totalBytes.toMib()} MiB · you're on mobile data. Download now?"
+                dismissButton.text = "Later"
+            }
             is UpdateProgress.State.CheckingManifest -> {
                 titleView.text = batch("Checking for updates…")
                 detailView.text = "Reading GHCR manifest"
@@ -147,6 +186,8 @@ class UpdateOverlayFragment : Fragment() {
         }
     }
 
+    /** Prefix an active-state title with the "Chat · 2/5" batch header when a
+     *  multi-app "Update all" is running; plain title for single installs. */
     private fun batch(title: String): String =
         UpdateProgress.batchLabel?.let { "$it\n$title" } ?: title
 
