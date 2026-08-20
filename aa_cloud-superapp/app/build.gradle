@@ -171,8 +171,21 @@ def cloudSvcFile     = file("../data/cloud_services.json")
 def cloudSvcJson     = cloudSvcFile.exists() ? cloudSvcFile.text : "{}"
 def cloudSvcB64      = cloudSvcJson.bytes.encodeBase64().toString()
 // Constellation AppStore fleet registry — every constellation APK + its GHCR
-// image, auto-scanned from each app's own build.json by data/regen.sh. The
-// Constellation page + libs:fleet engine read CONSTELLATION_FLEET_B64.
+// image, auto-scanned from each app's own build.json by data/regen.sh. Run
+// on every build so committing a new ea_cloud-* app is enough by itself —
+// nobody has to remember to re-run regen.sh (that was the bug: cloud-contacts
+// existed for a while with no fleet entry because this step was manual).
+// Only depends on sibling repos (always present), so failure here is a real
+// problem, not a missing-optional-file case — degrade to the last committed
+// snapshot and warn rather than break the build outright.
+try {
+    providers.exec {
+        workingDir file("../data")
+        commandLine "bash", "regen.sh", "--constellation-only"
+    }.result.get()
+} catch (Throwable t) {
+    logger.warn("constellation-fleet.json regen failed (${t.message}) — using last committed snapshot")
+}
 def constellationFleetFile = file("../data/constellation-fleet.json")
 def constellationFleetJson = constellationFleetFile.exists() ? constellationFleetFile.text : "{\"version\":1,\"apps\":[]}"
 def constellationFleetB64  = constellationFleetJson.bytes.encodeBase64().toString()

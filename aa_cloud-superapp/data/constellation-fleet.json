@@ -92,21 +92,6 @@
       "blocked": false
     },
     {
-      "id": "keyboard-libs",
-      "label": "cloud-keyboard-libs",
-      "package": "com.diegonmarcos.cloudkeyboardlibs",
-      "alt_id": null,
-      "registry": "ghcr.io",
-      "namespace": "diegonmarcos",
-      "image": "cloud-keyboard-libs",
-      "tag": "latest",
-      "asset": "Cloud-Keyboard-Libs.apk",
-      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard-Libs.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard-libs",
-      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-keyboard-libs",
-      "blocked": false
-    },
-    {
       "id": "keyboard",
       "label": "cloud-keyboard",
       "package": "com.diegonmarcos.cloudkeyboard",
@@ -119,6 +104,21 @@
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard.apk",
       "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-keyboard",
+      "blocked": false
+    },
+    {
+      "id": "keyboard-libs",
+      "label": "cloud-keyboard-libs",
+      "package": "com.diegonmarcos.cloudkeyboardlibs",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard-libs",
+      "tag": "latest",
+      "asset": "Cloud-Keyboard-Libs.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Keyboard-Libs.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard-libs",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-keyboard-libs",
       "blocked": false
     },
     {

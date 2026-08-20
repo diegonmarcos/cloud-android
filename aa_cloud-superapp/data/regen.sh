@@ -18,6 +18,10 @@
 # Usage:
 #   ./regen.sh                       # auto-discover upstream paths
 #   ./regen.sh <consolidated.json> <mesh.json>
+#   ./regen.sh --constellation-only  # just constellation-fleet.json (no
+#                                     # gitignored upstream files needed —
+#                                     # this is what app/build.gradle runs
+#                                     # automatically on every build)
 
 set -euo pipefail
 
@@ -108,6 +112,8 @@ regen_constellation() {
     echo "constellation apps: $(jq '.apps | length' "$HERE/constellation-fleet.json")"
 }
 regen_constellation
+
+[ "${1:-}" = "--constellation-only" ] && exit 0
 
 CONSOLIDATED="${1:-}"
 MESH="${2:-}"
