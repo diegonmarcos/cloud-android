@@ -4,6 +4,13 @@ plugins {
 }
 
 android {
+
+    buildFeatures {
+        // IDataBackend: the shared contract for engine libraries that ship
+        // as their own APK. Declared here because every app already links core.
+        aidl true
+    }
+
     namespace 'com.diegonmarcos.superapp.core'
     compileSdk 36
 
