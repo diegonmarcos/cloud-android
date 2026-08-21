@@ -84,34 +84,34 @@ class CalEngine(context: Context) {
     /** Writes locally first, then to the server when a config is supplied, so
      *  a task is never lost to a failed round trip. */
     fun saveTodo(todoJson: String, cfgJson: String?): String {
+        // CalTodo.fromJson is the model's own parser - it knows every field
+        // (priority, percentComplete, the RFC timestamps, unknownLines that
+        // must round-trip back to the server untouched). Hand-rolling the
+        // constructor here dropped five of them and silently discarded the
+        // unknown-line passthrough.
         val o = JSONObject(todoJson)
-        val local = CalTodo(
-            uid = o.optString("uid").ifBlank { java.util.UUID.randomUUID().toString() },
-            collectionId = o.optString("projectId"),
-            href = o.optString("href"),
-            etag = o.optString("etag"),
-            summary = o.optString("summary"),
-            description = o.optString("description"),
-            status = o.optString("status").ifBlank { "NEEDS-ACTION" },
-            dueUtcMillis = if (o.has("due") && !o.isNull("due")) o.optLong("due") else null,
-            dueIsDate = o.optBoolean("dueIsDate", false),
-        )
+        if (o.optString("uid").isBlank()) o.put("uid", java.util.UUID.randomUUID().toString())
+        val local = CalTodo.fromJson(o)
         TodoStore.upsertTodo(ctx, local)
         val c = cfg(cfgJson) ?: return JSONObject().put("ok", true).put("synced", false).toString()
         return runCatching {
             val saved = CalDav.putTodo(c, local.collectionId, local, local.href.isBlank())
             TodoStore.upsertTodo(ctx, saved)
-            JSONObject().put("ok", true).put("synced", true).put("todo", todoJson(saved)).toString()
+            JSONObject().put("ok", true).put("synced", true).put("todo", saved.toJson()).toString()
         }.getOrElse { t ->
-            // Local write already landed; report the server failure honestly
-            // instead of pretending the task saved everywhere.
+            // The local write already landed; report the server failure
+            // honestly instead of pretending the task saved everywhere.
             JSONObject().put("ok", true).put("synced", false)
                 .put("error", t.message ?: t.toString()).toString()
         }
     }
 
-    fun setTodoStatus(projectId: String, uid: String, done: Boolean, cfgJson: String?): String {
-        val existing = TodoStore.todosFor(ctx, projectId).firstOrNull { it.uid == uid }
+    fun setTodoStatus(bridgeId: String, done: Boolean, cfgJson: String?): String {
+        // The UI holds an opaque bridgeId, not (collectionId, uid) - encoding
+        // is the model's job, so decode with its own helper.
+        val (collectionId, uid) = CalTodo.decodeBridgeId(bridgeId)
+            ?: return JSONObject().put("error", "bad_id").toString()
+        val existing = TodoStore.todosFor(ctx, collectionId).firstOrNull { it.uid == uid }
             ?: return JSONObject().put("error", "not_found").toString()
         val updated = existing.copy(status = if (done) "COMPLETED" else "NEEDS-ACTION")
         TodoStore.upsertTodo(ctx, updated)
@@ -125,9 +125,11 @@ class CalEngine(context: Context) {
         }
     }
 
-    fun deleteTodo(projectId: String, uid: String, cfgJson: String?): String {
-        val existing = TodoStore.todosFor(ctx, projectId).firstOrNull { it.uid == uid }
-        TodoStore.removeTodo(ctx, projectId, uid)
+    fun deleteTodo(bridgeId: String, cfgJson: String?): String {
+        val (collectionId, uid) = CalTodo.decodeBridgeId(bridgeId)
+            ?: return JSONObject().put("error", "bad_id").toString()
+        val existing = TodoStore.todosFor(ctx, collectionId).firstOrNull { it.uid == uid }
+        TodoStore.removeTodo(ctx, collectionId, uid)
         val c = cfg(cfgJson)
         if (c == null || existing == null || existing.href.isBlank())
             return JSONObject().put("ok", true).put("synced", false).toString()
@@ -167,11 +169,7 @@ class CalEngine(context: Context) {
         }
     }
 
-    private fun todoJson(t: CalTodo): JSONObject = JSONObject()
-        .put("uid", t.uid).put("projectId", t.collectionId)
-        .put("href", t.href).put("etag", t.etag)
-        .put("summary", t.summary).put("description", t.description)
-        .put("status", t.status)
-        .put("due", t.dueUtcMillis ?: JSONObject.NULL)
-        .put("dueIsDate", t.dueIsDate)
+    /** The model's own serializer - it already emits bridgeId and every
+     *  field the UI reads. */
+    private fun todoJson(t: CalTodo): JSONObject = t.toJson()
 }

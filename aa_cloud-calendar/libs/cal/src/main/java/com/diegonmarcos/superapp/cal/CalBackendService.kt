@@ -28,12 +28,11 @@ class CalBackendService : DataBackendService() {
         "todos"     -> engine.todos(args.getOrNull(0).orEmpty())
         "saveTodo"  -> engine.saveTodo(args.getOrNull(0).orEmpty(), args.getOrNull(1))
         "setTodoStatus" -> engine.setTodoStatus(
-            args.getOrNull(0).orEmpty(), args.getOrNull(1).orEmpty(),
-            args.getOrNull(2)?.toBoolean() ?: false, args.getOrNull(3),
+            args.getOrNull(0).orEmpty(),
+            args.getOrNull(1)?.toBoolean() ?: false,
+            args.getOrNull(2),
         )
-        "deleteTodo" -> engine.deleteTodo(
-            args.getOrNull(0).orEmpty(), args.getOrNull(1).orEmpty(), args.getOrNull(2),
-        )
+        "deleteTodo" -> engine.deleteTodo(args.getOrNull(0).orEmpty(), args.getOrNull(1))
         "syncTodos"  -> engine.syncTodos(args.getOrNull(0))
         "testCaldav" -> engine.testCaldav(args.getOrNull(0))
         else -> throw IllegalArgumentException("unknown method: $method")
