@@ -2,7 +2,6 @@ package com.diegonmarcos.cloudcalendar
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Base64
 import android.webkit.JavascriptInterface
 import com.diegonmarcos.superapp.core.DataBackendClient
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -79,10 +78,6 @@ class CalBridge(private val ctx: Context) {
         // retried, not silently skipped forever.
         if (ok) prefs.edit().putBoolean("seeded", true).apply()
     }
-
-    private fun subscriptions() = Calendars.parse(
-        String(Base64.decode(BuildConfig.CALENDARS_B64, Base64.DEFAULT), Charsets.UTF_8)
-    )
 
     @JavascriptInterface
     fun calendars(): String {
