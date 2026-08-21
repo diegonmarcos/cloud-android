@@ -210,6 +210,53 @@ class NewsEngine(context: Context) {
         }
     }.toString()
 
+    /**
+     * The media grid: cached items across every configured channel (or one),
+     * newest first, de-duplicated by URL.
+     *
+     * Pure cache read - no network. `sync` is what keeps NewsStore warm, and
+     * that separation is why this stays fast offline.
+     */
+    fun mediaItems(channel: String, limit: Int): String {
+        val channels = MediaConfig.parseChannels(mediaJson)
+        val max = limit.takeIf { it > 0 } ?: api().maxArticles
+        val targets = if (channel.isBlank()) channels else channels.filter { it.id == channel }
+        // LinkedHashMap + putIfAbsent: the same video can appear under more
+        // than one channel; first wins, and insertion order is kept stable
+        // before the sort.
+        val merged = LinkedHashMap<String, Pair<GdeltArticle, String>>()
+        targets.forEach { c ->
+            NewsStore.articlesFor(ctx, MediaConfig.SOURCE_ID, c.id).forEach { a ->
+                if (a.url.isNotBlank()) merged.putIfAbsent(a.url, a to c.label)
+            }
+        }
+        return JSONArray().apply {
+            merged.values.sortedByDescending { it.first.seendate }.take(max)
+                .forEach { (a, channelLabel) ->
+                    put(JSONObject()
+                        .put("videoId", a.videoId ?: "")
+                        .put("title", a.title)
+                        .put("url", a.url)
+                        .put("thumbnail", a.thumbnail ?: "")
+                        .put("published", seendateToMillis(a.seendate).toString())
+                        .put("channelLabel", channelLabel))
+                }
+        }.toString()
+    }
+
+    /** GDELT stamps look like 20260821T143000Z. 0 for anything unparseable -
+     *  a bad timestamp must not drop the item from the grid. */
+    private fun seendateToMillis(seendate: String): Long {
+        if (seendate.isBlank()) return 0L
+        return runCatching {
+            java.time.LocalDateTime.parse(seendate, GDELT_FMT)
+                .atOffset(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        }.getOrDefault(0L)
+    }
+
+    private val GDELT_FMT: java.time.format.DateTimeFormatter =
+        java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
+
     private fun articleJson(a: GdeltArticle) = JSONObject()
         .put("url", a.url).put("title", a.title).put("seendate", a.seendate)
         .put("socialimage", a.socialimage).put("domain", a.domain)

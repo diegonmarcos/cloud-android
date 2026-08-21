@@ -11,7 +11,7 @@ class NewsBackendService : DataBackendService() {
         "topics", "articles", "timeline", "sync",
         "saved", "toggleSaved", "events", "mediaChannels", "seed", "hasData",
         "tone", "sources", "setTopicEnabled", "addTopic", "removeTopic",
-        "savedEvents", "isEventSaved", "saveEvent",
+        "savedEvents", "isEventSaved", "saveEvent", "mediaItems",
     )
 
     override fun dispatch(method: String, args: Array<String>): String = when (method) {
@@ -35,6 +35,8 @@ class NewsBackendService : DataBackendService() {
         "savedEvents"   -> engine.savedEvents()
         "isEventSaved"  -> engine.isEventSaved(args.getOrNull(0).orEmpty())
         "saveEvent"     -> engine.saveEvent(args.getOrNull(0).orEmpty())
+        "mediaItems"    -> engine.mediaItems(
+            args.getOrNull(0).orEmpty(), args.getOrNull(1)?.toIntOrNull() ?: 0)
         // Cutover handoff for saved articles - see NewsEngine.seed.
         "seed"          -> engine.seed(args.getOrNull(0).orEmpty())
         "hasData"       -> engine.hasData()
