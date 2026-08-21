@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// libs:net — WireGuard tunnel engine, cherry-picked from
-// github.com/WireGuard/wireguard-android (tunnel/) by `./build.sh sync-net`.
+// libs:net — WireGuard CONTRACT. Config/crypto parsing, the Backend and
+// Tunnel interfaces, Statistics, and the AIDL client that talks to the
+// engine in another APK.
 //
-// Java/Kotlin compile + CMake-driven libwg-go.so build. Upstream's
-// publishing/signing/junit blocks are dropped — we ship the engine in
-// the app APK, not as a Maven artifact.
+// The engine (GoBackend + the 8.5MB libwg-go.so built from src/main/cpp)
+// moved to libs:net-wg, which ships as Cloud-Lib-Net-Wg.apk. That single
+// split is what takes ~8.5MB off every app that only needs to drive a
+// tunnel rather than implement one - the same shape as
+// libs:voice / libs:voice-vosk and libs:translate / libs:translate-mlkit.
 //
-// CMakeLists.txt at src/main/cpp/CMakeLists.txt is the slim Cloud-SuperApp
-// version (libwg-go.so only); see comment at the top of that file.
+// So: NO CMake, NO NDK, no native output. Pure Java/Kotlin. If a native
+// dependency ever appears here again the split has been undone.
 
 plugins {
     id 'com.android.library'
@@ -18,7 +21,6 @@ plugins {
 android {
     namespace 'com.diegonmarcos.superapp.net'
     compileSdk 36
-    ndkVersion '26.1.10909125'
 
     defaultConfig {
         minSdk 26
@@ -30,36 +32,9 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
 
-    externalNativeBuild {
-        cmake {
-            path 'src/main/cpp/CMakeLists.txt'
-        }
-    }
-
-    buildTypes {
-        all {
-            externalNativeBuild {
-                cmake {
-                    targets 'libwg-go.so'
-                    arguments "-DGRADLE_USER_HOME=${project.gradle.gradleUserHomeDir}"
-                    arguments '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
-                }
-            }
-        }
-        release {
-            externalNativeBuild {
-                cmake {
-                    arguments '-DANDROID_PACKAGE_NAME=com.diegonmarcos.superapp'
-                }
-            }
-        }
-        debug {
-            externalNativeBuild {
-                cmake {
-                    arguments '-DANDROID_PACKAGE_NAME=com.diegonmarcos.superapp.debug'
-                }
-            }
-        }
+    buildFeatures {
+        // The Backend contract crosses a process boundary now.
+        aidl true
     }
 
     lint {

@@ -284,6 +284,28 @@ if [ -f "$WORKER" ]; then
 fi
 
 echo
+# 15. The libs:net / libs:net-wg split is the whole 8.5MB saving, and it is one
+#     careless `implementation project(':libs:net-wg')` away from being undone
+#     without anything failing - the app would just quietly grow libwg-go.so
+#     back. Two invariants: the contract carries no native build, and no app
+#     links the engine (only ea_cloud-libs, which turns it into its own APK).
+if [ -d ea_cloud-superapp/libs/net ]; then
+    if command grep -qE 'externalNativeBuild|ndkVersion|cmake' ea_cloud-superapp/libs/net/build.gradle; then
+        note FAIL "libs:net declares a native build - the engine belongs in libs:net-wg, or every consumer carries libwg-go.so again"
+    else
+        note ok "libs:net is contract-only (no NDK/CMake)"
+    fi
+    engine_consumers=$(command grep -rln "project(':libs:net-wg')" --include=build.gradle . 2>/dev/null \
+        | command grep -v '/build/' | command grep -v 'libs/net-wg/build.gradle' || true)
+    if [ -z "$engine_consumers" ]; then
+        note ok "no app links libs:net-wg directly"
+    else
+        while read -r f; do
+            [ -n "$f" ] && note FAIL "$f links :libs:net-wg - that re-embeds the 8.5MB engine; link :libs:net and bind AidlBackend instead"
+        done <<< "$engine_consumers"
+    fi
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
 exit "$fail"

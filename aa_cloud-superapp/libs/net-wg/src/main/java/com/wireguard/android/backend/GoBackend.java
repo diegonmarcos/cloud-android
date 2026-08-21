@@ -114,66 +114,28 @@ public final class GoBackend implements Backend {
      * @return {@link Statistics} associated with the given tunnel.
      */
     @Override
-    public Statistics getStatistics(final Tunnel tunnel) {
-        final Statistics stats = new Statistics();
+    /**
+     * The engine's raw {@code wgGetConfig} text for {@code tunnel}, or "" when
+     * it is not the running tunnel.
+     *
+     * Exists for NetBackendService: Statistics is not parcelable, and inventing
+     * an AIDL type for it would mean keeping a parcelable in step with a class
+     * we re-sync from upstream WireGuard. Shipping the raw text and parsing it
+     * on the far side with {@link Statistics#parse} avoids that entirely.
+     */
+    public String getStatisticsRaw(final Tunnel tunnel) {
         if (tunnel != currentTunnel || currentTunnelHandle == -1)
-            return stats;
+            return "";
         final String config = wgGetConfig(currentTunnelHandle);
-        if (config == null)
-            return stats;
-        Key key = null;
-        long rx = 0;
-        long tx = 0;
-        long latestHandshakeMSec = 0;
-        for (final String line : config.split("\\n")) {
-            if (line.startsWith("public_key=")) {
-                if (key != null)
-                    stats.add(key, rx, tx, latestHandshakeMSec);
-                rx = 0;
-                tx = 0;
-                latestHandshakeMSec = 0;
-                try {
-                    key = Key.fromHex(line.substring(11));
-                } catch (final KeyFormatException ignored) {
-                    key = null;
-                }
-            } else if (line.startsWith("rx_bytes=")) {
-                if (key == null)
-                    continue;
-                try {
-                    rx = Long.parseLong(line.substring(9));
-                } catch (final NumberFormatException ignored) {
-                    rx = 0;
-                }
-            } else if (line.startsWith("tx_bytes=")) {
-                if (key == null)
-                    continue;
-                try {
-                    tx = Long.parseLong(line.substring(9));
-                } catch (final NumberFormatException ignored) {
-                    tx = 0;
-                }
-            } else if (line.startsWith("last_handshake_time_sec=")) {
-                if (key == null)
-                    continue;
-                try {
-                    latestHandshakeMSec += Long.parseLong(line.substring(24)) * 1000;
-                } catch (final NumberFormatException ignored) {
-                    latestHandshakeMSec = 0;
-                }
-            } else if (line.startsWith("last_handshake_time_nsec=")) {
-                if (key == null)
-                    continue;
-                try {
-                    latestHandshakeMSec += Long.parseLong(line.substring(25)) / 1000000;
-                } catch (final NumberFormatException ignored) {
-                    latestHandshakeMSec = 0;
-                }
-            }
-        }
-        if (key != null)
-            stats.add(key, rx, tx, latestHandshakeMSec);
-        return stats;
+        return config == null ? "" : config;
+    }
+
+    public Statistics getStatistics(final Tunnel tunnel) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return Statistics.parse(null);
+        // Parsing lives in Statistics so the AIDL client, which cannot see
+        // this class, reads the same text with the same code.
+        return Statistics.parse(wgGetConfig(currentTunnelHandle));
     }
 
     /**

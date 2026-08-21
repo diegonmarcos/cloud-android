@@ -2,7 +2,7 @@ package com.diegonmarcos.superapp.network
 import com.diegonmarcos.superapp.settings.LauncherProfiles
 
 import android.content.Context
-import com.wireguard.android.backend.GoBackend
+import com.diegonmarcos.superapp.net.AidlBackend
 import com.wireguard.android.backend.Tunnel
 
 /**
@@ -22,7 +22,7 @@ import com.wireguard.android.backend.Tunnel
  * Tunnel *object identity* is fixed.
  */
 object WgState {
-    @Volatile private var backendRef: GoBackend? = null
+    @Volatile private var backendRef: AidlBackend? = null
     @Volatile private var prefsRef: WireGuardPrefs? = null
 
     /** The single Tunnel instance — name resolved on demand. */
@@ -31,14 +31,26 @@ object WgState {
         override fun onStateChange(newState: Tunnel.State) = Unit
     }
 
-    fun backend(ctx: Context): GoBackend {
+    /**
+     * The tunnel engine. Used to be a GoBackend compiled into this APK; it is
+     * now [AidlBackend], which drives the same GoBackend inside
+     * Cloud-Lib-Net-Wg.apk. The singleton reason is unchanged and still
+     * applies - the engine tracks the active tunnel by identity, so a fresh
+     * client per call would report empty statistics for a running tunnel -
+     * and the binder connection is worth holding for the same reason.
+     *
+     * Returns a working object even when the engine APK is absent: every call
+     * then reports DOWN rather than throwing. Ask [AidlBackend.isEngineInstalled]
+     * before offering to connect.
+     */
+    fun backend(ctx: Context): AidlBackend {
         val app = ctx.applicationContext
         var b = backendRef
         if (b == null) {
             synchronized(this) {
                 b = backendRef
                 if (b == null) {
-                    b = GoBackend(app)
+                    b = AidlBackend(app)
                     backendRef = b
                 }
             }

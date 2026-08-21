@@ -434,6 +434,22 @@
       "kind": "lib"
     },
     {
+      "id": "lib-net-wg",
+      "label": "Lib: net-wg",
+      "package": "com.diegonmarcos.cloudlib.netwg",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-net-wg",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Net-Wg.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Net-Wg.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/net-wg",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-net-wg",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
       "id": "lib-news",
       "label": "Lib: news",
       "package": "com.diegonmarcos.cloudlib.news",

@@ -14,9 +14,9 @@ import org.json.JSONObject
 
 /**
  * WireGuard tunnel persistence — Interface + a list of Peers used by
- * libs:net's [com.wireguard.android.backend.GoBackend]. Plain
+ * libs:net's Config, driven through libs:net's AidlBackend. Plain
  * SharedPreferences (the form ships persisted values back through
- * GoBackend at Connect time; pre-shared key + private key are
+ * the engine at Connect time; pre-shared key + private key are
  * sensitive but stored here unencrypted to match the rest of the
  * Configs UX — the threat model for a phone with a granted VPN
  * profile is already root-equivalent).

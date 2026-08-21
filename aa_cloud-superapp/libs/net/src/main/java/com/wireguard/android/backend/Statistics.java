@@ -8,6 +8,7 @@ package com.wireguard.android.backend;
 import android.os.SystemClock;
 
 import com.wireguard.crypto.Key;
+import com.wireguard.crypto.KeyFormatException;
 import com.wireguard.util.NonNullForAll;
 
 import java.util.HashMap;
@@ -26,6 +27,74 @@ public class Statistics {
     private long lastTouched = SystemClock.elapsedRealtime();
 
     Statistics() {
+    }
+
+    /**
+     * Build a Statistics from the engine's raw {@code wgGetConfig} output.
+     *
+     * Lifted out of GoBackend so BOTH sides of the process boundary use one
+     * parser: the engine produces this text, and AidlBackend - which cannot
+     * see GoBackend at all any more - turns it back into an object here. A
+     * null or blank input yields empty statistics, which is the correct
+     * answer for a tunnel that is down or an engine APK that is absent.
+     */
+    public static Statistics parse(@Nullable final String rawConfig) {
+        final Statistics stats = new Statistics();
+        if (rawConfig == null || rawConfig.isEmpty())
+            return stats;
+        Key key = null;
+        long rx = 0;
+        long tx = 0;
+        long latestHandshakeMSec = 0;
+        for (final String line : rawConfig.split("\\n")) {
+            if (line.startsWith("public_key=")) {
+                if (key != null)
+                    stats.add(key, rx, tx, latestHandshakeMSec);
+                rx = 0;
+                tx = 0;
+                latestHandshakeMSec = 0;
+                try {
+                    key = Key.fromHex(line.substring(11));
+                } catch (final KeyFormatException ignored) {
+                    key = null;
+                }
+            } else if (line.startsWith("rx_bytes=")) {
+                if (key == null)
+                    continue;
+                try {
+                    rx = Long.parseLong(line.substring(9));
+                } catch (final NumberFormatException ignored) {
+                    rx = 0;
+                }
+            } else if (line.startsWith("tx_bytes=")) {
+                if (key == null)
+                    continue;
+                try {
+                    tx = Long.parseLong(line.substring(9));
+                } catch (final NumberFormatException ignored) {
+                    tx = 0;
+                }
+            } else if (line.startsWith("last_handshake_time_sec=")) {
+                if (key == null)
+                    continue;
+                try {
+                    latestHandshakeMSec += Long.parseLong(line.substring(24)) * 1000;
+                } catch (final NumberFormatException ignored) {
+                    latestHandshakeMSec = 0;
+                }
+            } else if (line.startsWith("last_handshake_time_nsec=")) {
+                if (key == null)
+                    continue;
+                try {
+                    latestHandshakeMSec += Long.parseLong(line.substring(25)) / 1000000;
+                } catch (final NumberFormatException ignored) {
+                    latestHandshakeMSec = 0;
+                }
+            }
+        }
+        if (key != null)
+            stats.add(key, rx, tx, latestHandshakeMSec);
+        return stats;
     }
 
     /**

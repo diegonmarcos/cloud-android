@@ -5,6 +5,13 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The engine runs the tunnel as a foreground VPN, so the permissions
+         follow the service into this APK instead of being required of every
+         app that merely wants to switch a tunnel on. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application>
         <service
             android:name="com.wireguard.android.backend.GoBackend$VpnService"
@@ -14,5 +21,21 @@
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
+
+        <!-- exported: this is the whole point of the APK. Guarded by the
+             constellation's signature-level permission, so only APKs signed
+             with the Cloud key can drive the tunnel - an outside app that
+             finds the component cannot bind it. -->
+        <service
+            android:name="com.diegonmarcos.superapp.netwg.NetBackendService"
+            android:exported="true"
+            android:permission="com.diegonmarcos.cloud.permission.CONSTELLATION_DATA" />
+
+        <activity
+            android:name="com.diegonmarcos.superapp.netwg.VpnConsentActivity"
+            android:exported="true"
+            android:permission="com.diegonmarcos.cloud.permission.CONSTELLATION_DATA"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>

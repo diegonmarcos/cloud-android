@@ -19,7 +19,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import com.wireguard.android.backend.GoBackend
+import com.diegonmarcos.superapp.net.AidlBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
 import com.wireguard.crypto.KeyPair
@@ -31,7 +31,7 @@ import java.io.InputStreamReader
  * [WireGuardPrefs]. Auto-saves on every text change. Extra controls:
  * Generate Keypair (fills private + public), Import .conf (parses
  * upstream wg-quick format — multi-peer aware), Export .conf (writes
- * wg-quick), Connect/Disconnect Switch (drives [GoBackend]). Add Peer
+ * wg-quick), Connect/Disconnect Switch (drives [AidlBackend]). Add Peer
  * / Remove buttons let the user grow or shrink the peer list at
  * runtime.
  *
@@ -40,8 +40,9 @@ import java.io.InputStreamReader
 class WireGuardFragment : Fragment() {
 
     private lateinit var prefs: WireGuardPrefs
-    /** Shared process-wide GoBackend + Tunnel — see [WgState]. */
-    private val goBackend: GoBackend? get() = context?.let { WgState.backend(it) }
+    /** Shared process-wide tunnel client + Tunnel — see [WgState]. The engine
+     *  itself lives in Cloud-Lib-Net-Wg.apk; this is the binder client. */
+    private val goBackend: AidlBackend? get() = context?.let { WgState.backend(it) }
     private val tunnel get() = WgState.tunnel
 
     /** Re-attach to redraw fields after structural changes (Generate,
@@ -364,8 +365,22 @@ class WireGuardFragment : Fragment() {
     }
 
     private fun requestConnect() {
-        val intent = GoBackend.VpnService.prepare(requireContext().applicationContext)
+        val backend = goBackend
+        if (backend == null || !backend.isEngineInstalled()) {
+            // VpnService.prepare() only grants consent to the package owning
+            // the service, and that package is the engine APK now - so with it
+            // absent there is nothing to ask and nothing to start. Say which
+            // APK and where to get it rather than failing silently.
+            Toast.makeText(requireContext(),
+                "WireGuard engine not installed — install Cloud-Lib-Net-Wg from Configs → Constellation → Libs",
+                Toast.LENGTH_LONG).show()
+            return
+        }
+        val intent = backend.consentIntent()
         if (intent != null) {
+            // The engine's consent activity returns RESULT_OK once the system
+            // dialog is answered; the existing launcher already brings the
+            // tunnel up on OK.
             vpnConsentLauncher.launch(intent)
         } else {
             bringTunnelUp()
