@@ -65,6 +65,12 @@ class NetBackendService : Service() {
 
         override fun getVersion(): String =
             runCatching { backend.version }.getOrElse { "unknown" }
+
+        override fun isAlwaysOn(): Boolean =
+            runCatching { backend.isAlwaysOn }.getOrDefault(false)
+
+        override fun isLockdownEnabled(): Boolean =
+            runCatching { backend.isLockdownEnabled }.getOrDefault(false)
     }
 
     override fun onBind(intent: Intent?): IBinder = binder

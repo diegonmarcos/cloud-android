@@ -306,6 +306,26 @@ if [ -d ea_cloud-superapp/libs/net ]; then
     fi
 fi
 
+# 15b. AidlBackend must implement EVERY Backend member. Backend is re-synced
+#      from upstream WireGuard, so a new method appears there without anyone
+#      touching our code, and the failure lands in CI five minutes later. This
+#      is exactly how the split first broke: isAlwaysOn/isLockdownEnabled were
+#      missed because the interface was grepped instead of read.
+BACKEND_JAVA=ea_cloud-superapp/libs/net/src/main/java/com/wireguard/android/backend/Backend.java
+AIDL_CLIENT=ea_cloud-superapp/libs/net/src/main/java/com/diegonmarcos/superapp/net/AidlBackend.kt
+if [ -f "$BACKEND_JAVA" ] && [ -f "$AIDL_CLIENT" ]; then
+    missing=""
+    while read -r m; do
+        [ -z "$m" ] && continue
+        command grep -q "override fun ${m}(" "$AIDL_CLIENT" || missing="$missing $m"
+    done < <(command sed -nE 's/^[[:space:]]+[A-Za-z<>,.[:space:]]+ ([a-zA-Z]+)\(.*;$/\1/p' "$BACKEND_JAVA")
+    if [ -z "$missing" ]; then
+        note ok "AidlBackend implements every Backend member"
+    else
+        note FAIL "AidlBackend does not implement:$missing — libs:net will not compile"
+    fi
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
 exit "$fail"

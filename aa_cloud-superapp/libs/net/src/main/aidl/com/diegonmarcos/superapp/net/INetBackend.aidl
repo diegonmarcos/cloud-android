@@ -27,4 +27,14 @@ interface INetBackend {
 
     /** Engine version, for diagnostics. */
     String getVersion();
+
+    /**
+     * Always-on / lockdown are properties of the VPN profile the SYSTEM holds
+     * against the package that owns the VpnService - which is the engine APK,
+     * not the caller. So they have to be asked across the boundary too; the
+     * app cannot read its own settings and get the right answer any more.
+     */
+    boolean isAlwaysOn();
+
+    boolean isLockdownEnabled();
 }

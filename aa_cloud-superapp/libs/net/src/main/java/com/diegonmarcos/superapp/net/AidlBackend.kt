@@ -105,6 +105,17 @@ class AidlBackend(context: Context) : Backend {
     override fun getVersion(): String =
         runCatching { remote()?.version }.getOrNull() ?: "unavailable"
 
+    /**
+     * Always-on and lockdown describe the system VPN profile bound to the
+     * package that OWNS the service, so only the engine can answer. False when
+     * it is absent, which is correct: no engine, no VPN profile.
+     */
+    override fun isAlwaysOn(): Boolean =
+        runCatching { remote()?.isAlwaysOn }.getOrNull() ?: false
+
+    override fun isLockdownEnabled(): Boolean =
+        runCatching { remote()?.isLockdownEnabled }.getOrNull() ?: false
+
     override fun getRunningTunnelNames(): MutableSet<String> = mutableSetOf()
 
     fun unbind() {
