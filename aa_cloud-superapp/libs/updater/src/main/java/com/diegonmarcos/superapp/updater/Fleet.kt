@@ -158,6 +158,10 @@ object Fleet {
             UpdateProgress.update(UpdateProgress.State.Failed("digest mismatch for ${app.label}"))
             error("digest mismatch: $dl != ${layer.digest}")
         }
+        // Keep the verified APK, drop this app's superseded ones. Keeping it
+        // means a retry after a failed install reuses the download instead of
+        // pulling the blob again.
+        client.pruneCache("fleet-${app.id}-", target)
         UpdateInstaller(ctx).install(target, app.pkg)
         Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
     }

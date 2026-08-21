@@ -87,6 +87,7 @@ internal class UpdateChecker(private val context: Context) {
                     "digest mismatch: $downloadedSha != ${a.remoteDigest}"))
                 error("downloaded digest $downloadedSha != manifest ${a.remoteDigest}")
             }
+            client.pruneCache("update-", target)
             return target
         } catch (c: java.util.concurrent.CancellationException) {
             // Cancel button: cancelNow() already set state to Cancelled — don't

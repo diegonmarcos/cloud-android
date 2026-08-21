@@ -77,6 +77,16 @@ internal class GhcrClient(
         shouldCancel: () -> Boolean = { false },
         onProgress: ((bytesRead: Long, totalBytes: Long) -> Unit)? = null,
     ) {
+        // Content-addressed cache HIT. Both callers name `target` after the
+        // digest, so a file already sitting there with that exact content IS
+        // this blob - re-downloading 35MB to produce bytes we already have is
+        // pure waste, and worse, the old code opened `target` for writing
+        // FIRST, so a failed or cancelled retry truncated the good copy it was
+        // about to replace. That is why a failed install "lost" the download.
+        if (target.isFile && runCatching { "sha256:" + sha256(target) == digest }.getOrDefault(false)) {
+            onProgress?.invoke(target.length(), target.length())
+            return
+        }
         val url = URL("https://$registry/v2/$repo/blobs/$digest")
         val headers = mapOf("Authorization" to "Bearer $token")
         val conn = openConn(url, headers)
@@ -85,8 +95,13 @@ internal class GhcrClient(
             throw java.io.IOException("HTTP ${conn.responseCode} for $url: $msg")
         }
         val total = conn.contentLengthLong
+        // Download to a sibling and rename on success, so `target` is either
+        // absent or complete-and-verified - never a half-written APK that the
+        // cache check above would then have to distrust.
+        val part = File(target.parentFile, target.name + ".part")
+        try {
         conn.inputStream.use { input ->
-            target.outputStream().use { output ->
+            part.outputStream().use { output ->
                 val buf = ByteArray(64 * 1024)
                 var read: Int
                 var soFar = 0L
@@ -107,6 +122,32 @@ internal class GhcrClient(
                 onProgress?.invoke(soFar, total)
             }
         }
+        if (!part.renameTo(target)) {
+            // Rename can only fail across filesystems; both live in cacheDir,
+            // but copy rather than fail the whole update if it ever does.
+            part.copyTo(target, overwrite = true)
+        }
+        } finally {
+            part.delete()
+        }
+    }
+
+    /** Drop older cache entries for the same app - [prefix] is per-app and the
+     *  rest of the name is the digest, so anything matching but not [keep] is a
+     *  superseded version. Without this the cache grows one APK per release
+     *  until Android evicts the whole directory, taking the current one too. */
+    fun pruneCache(prefix: String, keep: File) {
+        keep.parentFile?.listFiles { f: File -> f.name.startsWith(prefix) && f != keep }
+            ?.forEach { it.delete() }
+    }
+
+    private fun sha256(f: File): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { ins ->
+            val buf = ByteArray(64 * 1024)
+            while (true) { val n = ins.read(buf); if (n < 0) break; md.update(buf, 0, n) }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun openConn(url: URL, headers: Map<String, String>): HttpURLConnection =

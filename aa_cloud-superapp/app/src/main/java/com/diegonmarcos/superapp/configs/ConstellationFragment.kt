@@ -17,6 +17,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.superapp.adbdebug.PackageVerifier
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.Fleet
 import kotlin.concurrent.thread
@@ -161,6 +162,34 @@ class ConstellationFragment : Fragment() {
         headerControls.addView(caption(ctx,
             if (AutoUpdatePrefs.canInstallSilently(ctx)) "Silent installs enabled."
             else "Grant 'Install unknown apps' for no-tap updates."))
+
+        // Row 3 - the OTHER dialog. "Install unknown apps" above is per-installer
+        // and one-time; this is Play Protect's per-INSTALL scan prompt, which no
+        // installer can opt out of from inside its own process. Writing the
+        // verifier settings needs WRITE_SECURE_SETTINGS, so it goes through the
+        // shell channel (Shizuku / embedded adb). Reading is unprivileged, so the
+        // label is always the device's real state even with no channel present.
+        val scan = PackageVerifier.state(ctx)
+        headerControls.addView(buttonRow(ctx,
+            btn(ctx, "Play Protect scan: " + (if (scan.on) "ON" else "OFF"),
+                if (scan.on) 0xFF4A4A55.toInt() else 0xFF2F855A.toInt()) {
+                Toast.makeText(ctx, "Asking the shell channel...", Toast.LENGTH_SHORT).show()
+                // setScanning binds Shizuku, which blocks - never on the main thread.
+                thread(name = "play-protect-toggle") {
+                    val r = PackageVerifier.setScanning(ctx, !scan.on)
+                    headerControls.post {
+                        Toast.makeText(ctx,
+                            if (r.ok) r.state.describe() + " - via " + r.channel else r.output,
+                            Toast.LENGTH_LONG).show()
+                        renderHeader(ctx)
+                    }
+                }
+            },
+        ))
+        headerControls.addView(caption(ctx,
+            if (!scan.on) "No install-scan prompt - fleet installs go straight through."
+            else "Play Protect prompts on every install. Turning it off needs Shizuku " +
+                 "or the embedded adb channel; it is device-wide and survives uninstall."))
     }
 
     // ── one card per app ─────────────────────────────────────────────────────
