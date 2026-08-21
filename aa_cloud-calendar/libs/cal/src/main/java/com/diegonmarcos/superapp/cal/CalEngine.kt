@@ -68,6 +68,38 @@ class CalEngine(context: Context) {
             .put("messages", JSONArray(r.messages)).toString()
     }
 
+    /**
+     * One-time handoff of the tasks a re-sync CANNOT rebuild.
+     *
+     * TodoStore lives in PRIVATE app storage, so moving this engine into
+     * Cloud-Lib-Cal.apk moves the data directory with it. Almost everything
+     * there is a cache of server state and repopulates on the next sync - the
+     * exception is a task created offline that was never PUT, which has a
+     * blank href and exists nowhere else. Without this handoff those vanish
+     * silently on cutover.
+     *
+     * Deliberately narrow: seeding the server-derived tasks too would risk
+     * resurrecting ones deleted on another client. Only the unrecoverable
+     * slice moves; sync rebuilds the rest.
+     */
+    fun seed(todosJson: String): String {
+        val arr = runCatching { JSONArray(todosJson) }.getOrNull()
+            ?: return JSONObject().put("ok", false).put("error", "bad payload").toString()
+        var taken = 0
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val t = runCatching { CalTodo.fromJson(o) }.getOrNull() ?: continue
+            // Server-derived tasks are re-synced, not seeded.
+            if (t.href.isNotBlank()) continue
+            TodoStore.upsertTodo(ctx, t); taken++
+        }
+        return JSONObject().put("ok", true).put("taken", taken).toString()
+    }
+
+    /** Whether this engine already holds tasks - lets the app skip the seed. */
+    fun hasData(): String =
+        JSONObject().put("hasData", TodoStore.allTodos(ctx).isNotEmpty()).toString()
+
     fun projects(): String = JSONArray().apply {
         TodoStore.collections(ctx).forEach { c ->
             put(JSONObject()

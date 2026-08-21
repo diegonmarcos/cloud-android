@@ -9,7 +9,7 @@ class NewsBackendService : DataBackendService() {
 
     override fun methodNames(): Array<String> = arrayOf(
         "topics", "articles", "timeline", "sync",
-        "saved", "toggleSaved", "events", "mediaChannels",
+        "saved", "toggleSaved", "events", "mediaChannels", "seed", "hasData",
     )
 
     override fun dispatch(method: String, args: Array<String>): String = when (method) {
@@ -24,6 +24,9 @@ class NewsBackendService : DataBackendService() {
             args.getOrNull(1)?.toLongOrNull() ?: Long.MAX_VALUE,
         )
         "mediaChannels" -> engine.mediaChannels()
+        // Cutover handoff for saved articles - see NewsEngine.seed.
+        "seed"          -> engine.seed(args.getOrNull(0).orEmpty())
+        "hasData"       -> engine.hasData()
         else -> throw IllegalArgumentException("unknown method: $method")
     }
 }

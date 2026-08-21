@@ -104,6 +104,43 @@ class NewsEngine(context: Context) {
         return JSONObject().put("saved", SavedStore.toggle(ctx, a)).toString()
     }
 
+    /**
+     * One-time handoff of the articles a re-fetch CANNOT rebuild.
+     *
+     * NewsStore lives in PRIVATE app storage and is a cache - the next sync
+     * repopulates it. SavedStore is not: an article the user saved is their
+     * own state, and once the engine's data directory replaces the app's it
+     * exists nowhere the app can see. Only that slice is seeded.
+     */
+    fun seed(savedJson: String): String {
+        val arr = runCatching { JSONArray(savedJson) }.getOrNull()
+            ?: return JSONObject().put("ok", false).put("error", "bad payload").toString()
+        var taken = 0
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val url = o.optString("url")
+            if (url.isBlank()) continue
+            val a = GdeltArticle(
+                url = url,
+                title = o.optString("title"),
+                seendate = o.optString("seendate"),
+                socialimage = o.optString("socialimage"),
+                domain = o.optString("domain"),
+                language = o.optString("language"),
+                sourcecountry = o.optString("sourcecountry"),
+                tone = if (o.has("tone") && !o.isNull("tone")) o.optDouble("tone") else null,
+            )
+            // toggle() flips state, so only call it for something not already
+            // saved here - seeding twice would UNSAVE everything.
+            if (!SavedStore.isSaved(ctx, url)) { SavedStore.toggle(ctx, a); taken++ }
+        }
+        return JSONObject().put("ok", true).put("taken", taken).toString()
+    }
+
+    /** Whether this engine already holds saved articles. */
+    fun hasData(): String =
+        JSONObject().put("hasData", SavedStore.saved(ctx).isNotEmpty()).toString()
+
     // ── events ───────────────────────────────────────────────────────────────
 
     fun events(fromUtc: Long, toUtc: Long): String {

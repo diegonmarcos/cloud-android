@@ -15,6 +15,7 @@ class CalBackendService : DataBackendService() {
     override fun methodNames(): Array<String> = arrayOf(
         "calendars", "events", "sync", "projects", "todos",
         "saveTodo", "setTodoStatus", "deleteTodo", "syncTodos", "testCaldav",
+        "seed", "hasData",
     )
 
     override fun dispatch(method: String, args: Array<String>): String = when (method) {
@@ -35,6 +36,9 @@ class CalBackendService : DataBackendService() {
         "deleteTodo" -> engine.deleteTodo(args.getOrNull(0).orEmpty(), args.getOrNull(1))
         "syncTodos"  -> engine.syncTodos(args.getOrNull(0))
         "testCaldav" -> engine.testCaldav(args.getOrNull(0))
+        // Cutover handoff for tasks a re-sync cannot rebuild - see CalEngine.seed.
+        "seed"       -> engine.seed(args.getOrNull(0).orEmpty())
+        "hasData"    -> engine.hasData()
         else -> throw IllegalArgumentException("unknown method: $method")
     }
 }
