@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -45,6 +46,20 @@ class ConstellationFragment : Fragment() {
     private val libs by lazy { fleet.filter { it.kind == "lib" } }
 
     private val statusViews = HashMap<String, TextView>()
+    // The collapsed row shows a one-line summary; the full status line lives in
+    // the detail pane, so both need painting from the same state.
+    private val fullStatusViews = HashMap<String, TextView>()
+    private val dots = HashMap<String, TextView>()
+    private val quickBtns = HashMap<String, TextView>()
+    // Last known state per app, kept so the filter chips can re-slice the list
+    // WITHOUT re-hitting the network - re-checking 24 libs to hide 21 of them
+    // would make filtering slower than scrolling.
+    private val states = HashMap<String, Fleet.State>()
+    private val expanded = HashSet<String>()
+    private var filter = 0
+    private lateinit var summaryView: TextView
+    private lateinit var listHost: LinearLayout
+    private val filterChips = ArrayList<TextView>()
     private val actionRows = HashMap<String, LinearLayout>()
     private val installBtns = HashMap<String, TextView>()
     private lateinit var headerControls: LinearLayout
@@ -93,7 +108,7 @@ class ConstellationFragment : Fragment() {
                 setPadding(dp(ctx, 8), dp(ctx, 9), dp(ctx, 8), dp(ctx, 9))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 isClickable = true
-                setOnClickListener { if (tab != i) { tab = i; paintTabs(); renderTab(ctx) } }
+                setOnClickListener { if (tab != i) { tab = i; filter = 0; paintTabs(); renderTab(ctx) } }
             }
             tabBtns.add(t); bar.addView(t)
         }
@@ -109,6 +124,7 @@ class ConstellationFragment : Fragment() {
     private fun renderTab(ctx: Context) {
         body.removeAllViews()
         statusViews.clear(); actionRows.clear(); installBtns.clear()
+        fullStatusViews.clear(); dots.clear(); quickBtns.clear(); filterChips.clear()
         when (tab) {
             0 -> renderFleet(ctx, apps, "Full constellation apps — install, update, open, remove.")
             1 -> renderFleet(ctx, libs,
@@ -124,8 +140,82 @@ class ConstellationFragment : Fragment() {
         body.addView(headerControls)
         renderHeader(ctx)
         if (list.isEmpty()) { body.addView(caption(ctx, "Nothing here yet.")); return }
-        for (app in list) body.addView(appCard(ctx, app))
+        summaryView = TextView(ctx).apply {
+            textSize = 12f; setTextColor(cDim); setPadding(0, dp(ctx, 2), 0, dp(ctx, 6))
+        }
+        body.addView(summaryView)
+        body.addView(filterBar(ctx, list))
+        listHost = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(listHost)
+        renderList(ctx, list)
         checkAll(ctx, list)
+    }
+
+    /** Filter chips. With two dozen libs the answer to "too much scrolling" is
+     *  to stop scrolling: pick the slice you came for. Counts come from the
+     *  cached [states], so a chip is instant and never re-checks. */
+    private fun filterBar(ctx: Context, list: List<Fleet.App>): View {
+        val bar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, dp(ctx, 6)) }
+        }
+        filterChips.clear()
+        listOf("All", "⬆ Updates", "◯ Missing", "✓ Installed").forEachIndexed { i, label ->
+            val c = TextView(ctx).apply {
+                text = label; textSize = 11f; gravity = Gravity.CENTER
+                setTextColor(0xFFFFFFFF.toInt())
+                setPadding(dp(ctx, 6), dp(ctx, 6), dp(ctx, 6), dp(ctx, 6))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(if (i == 0) 0 else dp(ctx, 4), 0, 0, 0) }
+                isClickable = true
+                setOnClickListener { if (filter != i) { filter = i; paintFilter(); renderList(ctx, list) } }
+            }
+            filterChips.add(c); bar.addView(c)
+        }
+        paintFilter()
+        return bar
+    }
+
+    private fun paintFilter() = filterChips.forEachIndexed { i, c ->
+        c.setBackgroundColor(if (i == filter) 0xFF7C3AED.toInt() else 0xFF2A2A33.toInt())
+    }
+
+    /** True when [app] belongs in the current filter. An app whose state has not
+     *  landed yet only shows under "All" - guessing would flicker it in and out. */
+    private fun inFilter(app: Fleet.App): Boolean = when (filter) {
+        1 -> states[app.id] is Fleet.State.UpdateAvailable
+        2 -> states[app.id] is Fleet.State.Missing
+        3 -> states[app.id] is Fleet.State.Installed
+        else -> true
+    }
+
+    private fun renderList(ctx: Context, list: List<Fleet.App>) {
+        listHost.removeAllViews()
+        statusViews.clear(); actionRows.clear(); installBtns.clear()
+        fullStatusViews.clear(); dots.clear(); quickBtns.clear()
+        val shown = list.filter { inFilter(it) }
+        if (shown.isEmpty()) { listHost.addView(caption(ctx, "Nothing in this filter.")); return }
+        for (app in shown) listHost.addView(fleetRow(ctx, app))
+        // Repaint from cache so a filtered rebuild shows real state immediately
+        // instead of 24 rows saying "checking..." for a list already checked.
+        for (app in shown) states[app.id]?.let { paint(app.id, it) }
+        updateSummary(list)
+    }
+
+    private fun updateSummary(list: List<Fleet.App>) {
+        if (!::summaryView.isInitialized) return
+        val known = list.mapNotNull { states[it.id] }
+        val upd = known.count { it is Fleet.State.UpdateAvailable }
+        val miss = known.count { it is Fleet.State.Missing }
+        val bytes = known.sumOf { it.bytes }
+        summaryView.text = buildString {
+            append("${list.size} total")
+            if (known.size < list.size) append("  ·  ${list.size - known.size} checking")
+            if (upd > 0) append("  ·  $upd update${if (upd == 1) "" else "s"}")
+            if (miss > 0) append("  ·  $miss missing")
+            if (bytes > 0) append("  ·  ${human(bytes)}")
+        }
     }
 
     // ── header: Update-all / Check-all + auto-update toggle + grant ──────────
@@ -192,45 +282,93 @@ class ConstellationFragment : Fragment() {
                  "or the embedded adb channel; it is device-wide and survives uninstall."))
     }
 
-    // ── one card per app ─────────────────────────────────────────────────────
-    private fun appCard(ctx: Context, app: Fleet.App): View {
+    // ── one COLLAPSED row per app; the full card is one tap away ─────────────
+    // Seven lines per entry x 24 libs was twelve screens of scrolling. The row
+    // keeps what you scan by (state, name, version, size) and defers what you
+    // only ever inspect (package, image, sha, links, permissions) into a detail
+    // pane. Nothing is dropped - it moves behind the chevron.
+    private fun fleetRow(ctx: Context, app: Fleet.App): View {
         val card = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFF1C1C24.toInt())
-            val ph = dp(ctx, 12); val pv = dp(ctx, 8)
-            setPadding(ph, pv, ph, pv)
             val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            lp.setMargins(0, dp(ctx, 4), 0, dp(ctx, 4)); layoutParams = lp
+            lp.setMargins(0, dp(ctx, 2), 0, dp(ctx, 2)); layoutParams = lp
         }
 
-        // ── title row: label (left) + link chips (right) ─────────────────
-        val titleRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
-        titleRow.addView(TextView(ctx).apply {
-            text = app.label; textSize = 15f; setTextColor(0xFFFFFFFF.toInt()); typeface = Typeface.DEFAULT_BOLD
+        val head = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(ctx, 12), dp(ctx, 9), dp(ctx, 12), dp(ctx, 9))
+            isClickable = true
+        }
+        val dot = TextView(ctx).apply {
+            text = "·"; textSize = 13f; setTextColor(cDim); setPadding(0, 0, dp(ctx, 8), 0)
+        }
+        val name = TextView(ctx).apply {
+            text = app.label; textSize = 14f; setTextColor(0xFFFFFFFF.toInt())
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1; ellipsize = TextUtils.TruncateAt.END
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
+        }
+        val meta = TextView(ctx).apply { text = "checking…"; textSize = 11f; setTextColor(cDim); maxLines = 1 }
+        // The per-app action, on the collapsed row on purpose: updating ONE app
+        // is the common case, and making it expand-then-tap would cost two taps
+        // for the thing people do most. Hidden when the app is up to date, so
+        // the column only ever shows actionable rows.
+        val quick = TextView(ctx).apply {
+            textSize = 13f; gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setPadding(dp(ctx, 11), dp(ctx, 4), dp(ctx, 11), dp(ctx, 4))
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(ctx, 8), 0, 0, 0) }
+            setOnClickListener { install(ctx, app) }
+        }
+        val chev = TextView(ctx).apply {
+            text = if (expanded.contains(app.id)) "⌄" else "›"
+            textSize = 15f; setTextColor(cDim); setPadding(dp(ctx, 10), 0, 0, 0)
+        }
+        head.addView(dot); head.addView(name); head.addView(meta); head.addView(quick); head.addView(chev)
+
+        val detail = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(ctx, 12), 0, dp(ctx, 12), dp(ctx, 10))
+            visibility = if (expanded.contains(app.id)) View.VISIBLE else View.GONE
+        }
+        detailBody(ctx, app, detail)
+        head.setOnClickListener {
+            val open = !expanded.contains(app.id)
+            if (open) expanded.add(app.id) else expanded.remove(app.id)
+            detail.visibility = if (open) View.VISIBLE else View.GONE
+            chev.text = if (open) "⌄" else "›"
+        }
+
+        dots[app.id] = dot; statusViews[app.id] = meta; quickBtns[app.id] = quick
+        card.addView(head); card.addView(detail)
+        return card
+    }
+
+    /** Everything the old always-visible card carried, now behind the chevron. */
+    private fun detailBody(ctx: Context, app: Fleet.App, into: LinearLayout) {
         fun linkChip(label: String, url: String) = TextView(ctx).apply {
             text = label; textSize = 11f; setTextColor(cMiss)
-            setPadding(dp(ctx, 8), dp(ctx, 2), dp(ctx, 2), dp(ctx, 2)); isClickable = true
+            setPadding(0, dp(ctx, 2), dp(ctx, 10), dp(ctx, 2)); isClickable = true
             setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
         }
-        if (app.releaseUrl.isNotEmpty()) titleRow.addView(linkChip("APK↗", app.releaseUrl))
-        if (app.repoUrl.isNotEmpty())    titleRow.addView(linkChip("GH↗",  app.repoUrl))
-        if (app.ghcrPage.isNotEmpty())   titleRow.addView(linkChip("PKG↗", app.ghcrPage))
-        card.addView(titleRow)
+        val links = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        if (app.releaseUrl.isNotEmpty()) links.addView(linkChip("APK↗", app.releaseUrl))
+        if (app.repoUrl.isNotEmpty())    links.addView(linkChip("GH↗",  app.repoUrl))
+        if (app.ghcrPage.isNotEmpty())   links.addView(linkChip("PKG↗", app.ghcrPage))
+        if (links.childCount > 0) into.addView(links)
 
-        // ── pkg · image (mono, compact) ───────────────────────────────────
-        card.addView(mono(ctx, app.pkg + "  ·  " + app.image))
+        into.addView(mono(ctx, app.pkg + "  ·  " + app.image))
 
-        // ── status ────────────────────────────────────────────────────────
         val status = TextView(ctx).apply {
             textSize = 12f; setTextColor(cDim); text = "checking…"
-            setPadding(0, dp(ctx, 3), 0, dp(ctx, 2))
+            setPadding(0, dp(ctx, 3), 0, dp(ctx, 4))
         }
-        statusViews[app.id] = status
-        card.addView(status)
+        fullStatusViews[app.id] = status
+        into.addView(status)
 
-        // ── action buttons (Open · Install/Update · Uninstall) ────────────
         val actions = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         actionRows[app.id] = actions
         actions.addView(btn(ctx, "Open", 0xFF2A2A33.toInt()) { openApp(ctx, Fleet.installedId(ctx, app) ?: app.pkg) })
@@ -243,10 +381,8 @@ class ConstellationFragment : Fragment() {
             runCatching { Fleet.uninstall(ctx, Fleet.installedId(ctx, app) ?: app.pkg) }
                 .onFailure { Toast.makeText(ctx, "Uninstall: ${it.message}", Toast.LENGTH_LONG).show() }
         })
-        card.addView(actions)
-        return card
+        into.addView(actions)
     }
-
     /** The fleet slice the visible tab operates on (Perms falls back to apps). */
     private fun current(): List<Fleet.App> = if (tab == 1) libs else apps
 
@@ -256,29 +392,65 @@ class ConstellationFragment : Fragment() {
             statusViews[app.id]?.let { tv -> tv.post { tv.text = "checking…"; tv.setTextColor(cDim) } }
             thread(name = "fleet-check-${app.id}") {
                 val st = Fleet.status(ctx, app)
-                statusViews[app.id]?.let { tv -> tv.post { paint(tv, st, app.id) } }
+                // Post on `body`, not on the row: a filtered-out app still has a
+                // state worth recording, and it has no row to post to.
+                body.post { paint(app.id, st); updateSummary(list) }
             }
         }
     }
 
-    private fun paint(tv: TextView, s: Fleet.State, appId: String) {
+    /** One state -> dot, collapsed meta line, quick button, full status line.
+     *  Tolerates absent views: the app may be filtered out of the visible list
+     *  while its check thread is still in flight. */
+    private fun paint(appId: String, s: Fleet.State) {
+        states[appId] = s
+        val (glyph, color) = when (s) {
+            is Fleet.State.Installed       -> "✓" to cUp
+            is Fleet.State.UpdateAvailable -> "⬆" to cUpd
+            is Fleet.State.Missing         -> "◯" to cMiss
+            is Fleet.State.Blocked         -> "⛔" to cBlk
+            is Fleet.State.Error           -> "⚠" to cErr
+        }
+        val size = if (s.bytes > 0) human(s.bytes) else ""
+        dots[appId]?.let { it.text = glyph; it.setTextColor(color) }
+
+        // Collapsed line: only what you scan by. Version and size stay; the sha
+        // and the remote digest are inspection, so they live in the detail.
+        statusViews[appId]?.let { tv ->
+            tv.setTextColor(color)
+            tv.text = listOf(when (s) {
+                is Fleet.State.Installed       -> "v${s.versionName}"
+                is Fleet.State.UpdateAvailable -> "v${s.versionName ?: "—"} → new"
+                is Fleet.State.Missing         -> "not installed"
+                is Fleet.State.Blocked         -> "not published"
+                is Fleet.State.Error           -> s.message
+            }, size).filter { it.isNotEmpty() }.joinToString("  ·  ")
+        }
+
+        fullStatusViews[appId]?.let { tv ->
+            tv.setTextColor(color)
+            val sz = if (size.isEmpty()) "" else "  ·  $size"
+            tv.text = when (s) {
+                is Fleet.State.Installed       -> "✓ up to date  ·  v${s.versionName} (${s.versionCode})  ·  sha ${s.sha12}$sz"
+                is Fleet.State.UpdateAvailable -> "⬆ update available  ·  installed v${s.versionName ?: "—"} → ${s.remoteDigest12}$sz"
+                is Fleet.State.Missing         -> "◯ not installed  ·  tap Install$sz"
+                is Fleet.State.Blocked         -> "⛔ not published yet"
+                is Fleet.State.Error           -> "⚠ ${s.message}"
+            }
+        }
+
+        quickBtns[appId]?.let { b ->
+            when (s) {
+                is Fleet.State.UpdateAvailable -> { b.visibility = View.VISIBLE; b.text = "⬆"; b.setBackgroundColor(cUpd) }
+                is Fleet.State.Missing         -> { b.visibility = View.VISIBLE; b.text = "⬇"; b.setBackgroundColor(0xFF2B6CB0.toInt()) }
+                else                           -> b.visibility = View.GONE
+            }
+        }
+
         val installed = s is Fleet.State.Installed
         installBtns[appId]?.let {
             it.setBackgroundColor(if (installed) 0xFF4A4A55.toInt() else 0xFF7C3AED.toInt())
             it.isClickable = !installed
-        }
-        // Size is on the base class, so it appends the same way for every state
-        // rather than being threaded into five separate strings. It reads as the
-        // DOWNLOAD size when the manifest was reached and as the installed APK's
-        // own size when it wasn't, which is what "how big is this" means in both
-        // situations; blank when genuinely unknown.
-        val size = if (s.bytes > 0) "  ·  " + human(s.bytes) else ""
-        when (s) {
-            is Fleet.State.Installed       -> { tv.setTextColor(cUp);  tv.text = "✓ up to date  ·  v${s.versionName} (${s.versionCode})  ·  sha ${s.sha12}$size" }
-            is Fleet.State.UpdateAvailable -> { tv.setTextColor(cUpd); tv.text = "⬆ update available  ·  installed v${s.versionName ?: "—"} → ${s.remoteDigest12}$size" }
-            is Fleet.State.Missing         -> { tv.setTextColor(cMiss); tv.text = "◯ not installed  ·  tap Install$size" }
-            is Fleet.State.Blocked         -> { tv.setTextColor(cBlk); tv.text = "⛔ not published yet" }
-            is Fleet.State.Error           -> { tv.setTextColor(cErr); tv.text = "⚠ ${s.message}" }
         }
     }
 
@@ -294,7 +466,8 @@ class ConstellationFragment : Fragment() {
             com.diegonmarcos.superapp.updater.UpdateProgress.beginDownload()
             try { Fleet.install(ctx, app) }
             catch (t: Throwable) { view?.post { Toast.makeText(ctx, "${app.label}: ${t.message}", Toast.LENGTH_LONG).show() } }
-            statusViews[app.id]?.let { tv -> val st = Fleet.status(ctx, app); tv.post { paint(tv, st, app.id) } }
+            val st = Fleet.status(ctx, app)
+            body.post { paint(app.id, st); updateSummary(current()) }
         }
     }
 
