@@ -22,7 +22,23 @@ internal class UpdateInstaller(private val context: Context) {
      * companion installs (Cloud-Comms / Cloud-IDE hubs) pass the foreign
      * package so PackageInstaller disambiguates correctly.
      */
+    /**
+     * Install [apk]. Blocks until the install settles.
+     *
+     * Serialised process-wide by [InstallGate]: commit() only HANDS OVER a
+     * session and returns, so without this every caller that starts an install
+     * on its own thread - the Constellation list's per-row button, a fleet
+     * batch, ApkInstallWorker - would have theirs running concurrently.
+     * Enforcing it HERE rather than at each call site is the point: a new
+     * caller cannot forget to.
+     */
     fun install(apk: File, targetPackage: String = context.packageName) {
+        InstallGate.serialised(targetPackage, InstallGate.SETTLE_MS) {
+            installLocked(apk, targetPackage)
+        }
+    }
+
+    private fun installLocked(apk: File, targetPackage: String) {
         UpdateProgress.update(UpdateProgress.State.Installing)
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {

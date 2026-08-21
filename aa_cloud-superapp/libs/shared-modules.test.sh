@@ -326,18 +326,21 @@ if [ -f "$BACKEND_JAVA" ] && [ -f "$AIDL_CLIENT" ]; then
     fi
 fi
 
-# 16. A fleet batch must WAIT for each install. PackageInstaller.commit() only
-#     hands the session over and returns, so a loop of commits starts every
-#     install at once - colliding sessions, stacked confirm dialogs, and N
-#     sessions against Android's 50-session cap. Fleet.kt therefore arms an
-#     InstallGate before commit and awaits it after; if either disappears the
-#     batch silently goes back to racing and nothing fails.
-FLEET_KT=ea_cloud-superapp/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt
-if [ -f "$FLEET_KT" ]; then
-    if command grep -q 'InstallGate.arm' "$FLEET_KT" && command grep -q 'InstallGate.await' "$FLEET_KT"; then
-        note ok "fleet batch serialises installs (arm + await)"
+# 16. EVERY install path must be serialised, not just the fleet batch.
+#     PackageInstaller.commit() hands the session over and returns, so any two
+#     callers that start installs on their own threads run concurrently:
+#     colliding sessions, stacked confirm dialogs, and sessions piling up
+#     against Android's 50-session cap. The Constellation list's per-row button
+#     spawns a thread per tap and never went through the batch, which is how
+#     three taps started three installs at once.
+#     The guarantee therefore lives in UpdateInstaller.install - the one place
+#     every caller passes through - so a new call site cannot forget it.
+UI_KT=ea_cloud-superapp/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/UpdateInstaller.kt
+if [ -f "$UI_KT" ]; then
+    if command grep -q 'InstallGate.serialised' "$UI_KT"; then
+        note ok "every install is serialised at UpdateInstaller.install"
     else
-        note FAIL "Fleet.kt commits installs without InstallGate arm/await — the batch races and can exhaust install sessions"
+        note FAIL "UpdateInstaller.install does not go through InstallGate.serialised — concurrent callers will race and can exhaust install sessions"
     fi
 fi
 

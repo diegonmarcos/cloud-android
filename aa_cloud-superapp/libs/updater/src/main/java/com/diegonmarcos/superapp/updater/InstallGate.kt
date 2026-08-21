@@ -4,6 +4,8 @@ import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 /**
  * Serialises fleet installs for real.
@@ -29,6 +31,49 @@ import java.util.concurrent.TimeUnit
 internal object InstallGate {
 
     private val gates = ConcurrentHashMap<String, CountDownLatch>()
+
+    /**
+     * Process-wide: ONE install at a time, whoever started it.
+     *
+     * Per-batch serialisation was not enough. Three other paths start installs
+     * and none of them went through the batch:
+     *   - the Constellation list's per-row install button, which spawns a
+     *     thread per tap, so three taps started three installs at once;
+     *   - ApkInstallWorker and UpdateWorker, which can fire while a batch or a
+     *     manual install is already running.
+     * All of them collide the same way: concurrent sessions, stacked confirm
+     * dialogs, and sessions piling up against Android's 50-session cap.
+     */
+    private val installLock = ReentrantLock()
+
+    /**
+     * Run [commitSession] as the only install in flight, and wait for it to
+     * settle before releasing the next caller.
+     *
+     * This is the single choke point: it lives in UpdateInstaller.install, so
+     * every path - batch, per-row button, worker - is serialised without each
+     * having to remember to do it.
+     */
+    fun serialised(pkg: String, timeoutMs: Long, commitSession: () -> Unit) {
+        installLock.withLock {
+            // Armed inside the lock and before commit: the result can arrive
+            // before commit() returns, and a gate armed afterwards would wait
+            // for an event that already happened.
+            arm(pkg)
+            try {
+                commitSession()
+            } catch (t: Throwable) {
+                open(pkg)   // never strand the next caller on a failed commit
+                throw t
+            }
+            await(pkg, timeoutMs)
+        }
+    }
+
+    /** How long one install may hold the queue. The user may be answering a
+     *  system dialog, so it is generous; it exists only so a receiver that
+     *  never fires cannot wedge every later install. */
+    const val SETTLE_MS = 3L * 60L * 1000L
 
     /** Arm before commit, so a result that arrives fast cannot be missed. */
     fun arm(pkg: String) {

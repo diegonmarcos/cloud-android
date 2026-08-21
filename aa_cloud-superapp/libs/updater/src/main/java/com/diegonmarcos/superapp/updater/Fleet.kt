@@ -284,21 +284,14 @@ object Fleet {
             }
             UpdateProgress.beginBatch(app.label, i + 1, staged.size)
             try {
-                // Arm BEFORE commit: the result can arrive before commit()
-                // even returns, and a gate armed afterwards would then wait
-                // for an event that already happened.
-                InstallGate.arm(app.pkg)
+                // commit() blocks until this install settles: UpdateInstaller
+                // runs every install through InstallGate, so the batch does not
+                // arm/await itself any more. That moved the guarantee to the
+                // one place EVERY caller passes through - including the
+                // per-row install buttons, which never came through here.
                 commit(ctx, app, apk)
                 acted++
-                // commit() only hands the session over - the install runs
-                // asynchronously. Without this wait the loop would start every
-                // install at once: colliding sessions, stacked confirm dialogs
-                // with no way to tell which app each belongs to, and N sessions
-                // held against the 50-session cap. Wait for this one to settle
-                // (or for its prompt to become the user's problem) first.
-                InstallGate.await(app.pkg, INSTALL_SETTLE_MS)
             } catch (t: Throwable) {
-                InstallGate.open(app.pkg)
                 // The APK stays in the cache, so a retry reuses it - the whole
                 // reason downloads are content-addressed.
                 Log.w(TAG, "installAll commit ${app.label}: ${t.message}")
@@ -309,11 +302,6 @@ object Fleet {
         UpdateProgress.endBatch()
         return acted
     }
-
-    /** How long one install may hold the batch. Generous because the user may
-     *  be answering a system dialog; a backstop only, so a receiver that never
-     *  fires cannot wedge the batch forever. */
-    private const val INSTALL_SETTLE_MS = 3L * 60L * 1000L
 
     /** Uninstall [pkg] via PackageInstaller (system confirm dialog). */
     fun uninstall(ctx: Context, pkg: String) {
