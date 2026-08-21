@@ -81,6 +81,50 @@ class NewsEngine(context: Context) {
             .toString()
     }
 
+    fun tone(sourceId: String, topic: String): String = JSONArray().apply {
+        NewsStore.toneFor(ctx, sourceId, topic).forEach { e ->
+            put(JSONObject().put("date", e.date).put("tone", e.tone))
+        }
+    }.toString()
+
+    fun sources(): String = JSONArray().apply {
+        sources.forEach { src ->
+            put(JSONObject().put("id", src.id).put("label", src.label))
+        }
+    }.toString()
+
+    // ── topic mutations ──────────────────────────────────────────────────────
+    // Baked defaults are needed to distinguish a custom topic from a disabled
+    // built-in, so they are passed from here rather than re-read by the store.
+
+    fun setTopicEnabled(topic: String, enabled: Boolean): String {
+        NewsTopicsStore.setEnabled(ctx, topic, enabled)
+        return """{"ok":true}"""
+    }
+
+    fun addTopic(topic: String, label: String): String =
+        JSONObject().put("topic", NewsTopicsStore.addTopic(ctx, topic, label, bakedTopics)).toString()
+
+    fun removeTopic(topic: String): String =
+        JSONObject().put("topic", NewsTopicsStore.removeTopic(ctx, topic, bakedTopics)).toString()
+
+    // ── saved events ─────────────────────────────────────────────────────────
+
+    fun savedEvents(): String = JSONArray().apply {
+        SavedEventsStore.saved(ctx).forEach { put(it.toJson()) }
+    }.toString()
+
+    fun isEventSaved(id: String): String =
+        JSONObject().put("saved", SavedEventsStore.isSaved(ctx, id)).toString()
+
+    /** Returns the NEW state, like toggleSaved - the caller re-renders from
+     *  truth rather than assuming its optimistic guess landed. */
+    fun saveEvent(eventJson: String): String {
+        val e = runCatching { SavedEvent.fromJson(JSONObject(eventJson)) }.getOrNull()
+            ?: return JSONObject().put("error", "bad payload").toString()
+        return JSONObject().put("saved", SavedEventsStore.toggle(ctx, e)).toString()
+    }
+
     // ── saved ────────────────────────────────────────────────────────────────
 
     fun saved(): String = JSONArray().apply {
