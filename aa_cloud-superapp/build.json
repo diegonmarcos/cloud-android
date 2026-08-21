@@ -6311,7 +6311,7 @@
   "release": {
     "_doc": "Data-driven publish targets for the APK. build.sh oras-push + build.sh gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-superapp.yml) invokes those engine commands — no hardcoded registry/tag strings in the workflow.",
     "artifact": {
-      "_doc": "Path under dist/ to publish. The `debug` key is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — it is THE app for this stack, not a side-by-side dev variant. The `release` key exists for when a true Play-Store-style release lifecycle lands; the GHA workflow picks debug for main pushes.",
+      "_doc": "Path under dist/ to publish. The `debug` key is the daily-driver build (R8 shrink-only since 2026-08-21 - minifyEnabled true with -dontobfuscate, so names/line numbers and therefore real stacktraces survive while unreachable library code is dropped; debug keystore) — it is THE app for this stack, not a side-by-side dev variant. The `release` key exists for when a true Play-Store-style release lifecycle lands; the GHA workflow picks debug for main pushes.",
       "debug": "Cloud-SuperApp.apk",
       "release": "Cloud-SuperApp-release.apk"
     },

@@ -637,6 +637,15 @@ android {
             // (com.diegonmarcos.superapp) so the in-app updater keeps the
             // upgrade chain stable.
             debuggable true
+            // R8 in shrink-only mode. This variant is what actually ships, so
+            // it is the only place minification can save anything - enabling it
+            // on `release` below would have changed nothing about the APK on
+            // the phone. proguard-rules.pro sets -dontobfuscate, so names and
+            // line numbers survive and the reason this variant ships (real
+            // stacktraces) is preserved; what goes is unreachable library code,
+            // which was most of a ~20MB dex.
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
         }
         release {
