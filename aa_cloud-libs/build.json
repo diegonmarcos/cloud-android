@@ -30,7 +30,20 @@
     "version_code": 1,
     "version_name": "1.0",
     "min_sdk": 26,
-    "target_sdk": 35
+    "target_sdk": 35,
+    "_doc_packaging_excludes": "Duplicate files that must not reach the APK. This repo packages 29 unrelated dependency sets through ONE wrapper module, so license/notice collisions are the normal case rather than an exception: libs:wallet pulls com.sun.mail:android-mail AND android-activation, which both carry META-INF/NOTICE.md, and mergeWalletDebugJavaResource failed the WHOLE build - one flavor taking all 29 APKs down with it. ea_cloud-wallet has carried the same block for its own APK all along. Data, not gradle, so the next collision is a one-line edit here. Never add *.kotlin_module: dropping those breaks Kotlin reflection at runtime, silently.",
+    "packaging_excludes": [
+      "META-INF/NOTICE",
+      "META-INF/NOTICE.txt",
+      "META-INF/NOTICE.md",
+      "META-INF/LICENSE",
+      "META-INF/LICENSE.txt",
+      "META-INF/LICENSE.md",
+      "META-INF/DEPENDENCIES",
+      "META-INF/AL2.0",
+      "META-INF/LGPL2.1",
+      "META-INF/INDEX.LIST"
+    ]
   },
   "toolchain": {
     "agp": "8.13.2",

@@ -67,6 +67,14 @@ android {
         }
     }
 
+    packaging {
+        resources {
+            // See build.json::android._doc_packaging_excludes - one flavor's
+            // duplicate license file failed the build for all 29 APKs.
+            excludes += (buildJson.android?.packaging_excludes ?: []) as List
+        }
+    }
+
     compileOptions {
         coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
