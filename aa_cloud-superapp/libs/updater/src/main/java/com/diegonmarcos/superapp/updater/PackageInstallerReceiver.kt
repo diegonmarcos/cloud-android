@@ -26,6 +26,27 @@ class PackageInstallerReceiver : BroadcastReceiver() {
     private val NOTIF_CHANNEL = "superapp-updater"
     private val NOTIF_ID = 0xC10D
 
+    /**
+     * Delete the cached APK once the install is CONFIRMED successful.
+     *
+     * This is the only point where success is actually known: committing a
+     * session only means the bytes were handed over, and a user who declines
+     * the system prompt still needs them to retry - deleting any earlier turns
+     * every declined dialog into a fresh 10-80MB download.
+     *
+     * Best-effort: a failed delete costs disk, never correctness.
+     */
+    private fun reapCachedApk(context: Context, path: String?) {
+        if (path.isNullOrEmpty()) return
+        val f = java.io.File(path)
+        // Only ever touch our own cache - never a file some other caller
+        // pointed the installer at.
+        if (!f.isFile || f.parentFile != context.cacheDir) return
+        val size = f.length()
+        if (runCatching { f.delete() }.getOrDefault(false))
+            Log.i(TAG, "reaped cached ${f.name}, freed ${size / 1_000_000}MB")
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: ""
@@ -63,6 +84,12 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> {
+                // Drop the cached APK now that it is genuinely installed. This
+                // is the ONLY point where success is known: commit() only means
+                // the session was handed over, and a user who declines the
+                // prompt still needs the bytes for a retry. Deleting earlier
+                // would turn every declined dialog into a re-download.
+                if (!isUninstall) reapCachedApk(context, intent.getStringExtra(EXTRA_APK_PATH))
                 // Resolve the install overlay (it sat on "Installing…" while the
                 // system installer was up). MainActivity auto-dismisses on Done.
                 // Uninstall never raised the overlay, so leave it alone.
@@ -167,5 +194,8 @@ class PackageInstallerReceiver : BroadcastReceiver() {
          *  (long-press menu) from an install/update and message accordingly. */
         const val EXTRA_OP = "com.diegonmarcos.superapp.updater.OP"
         const val OP_UNINSTALL = "uninstall"
+
+        /** Absolute path of the cached APK, deleted on confirmed success. */
+        const val EXTRA_APK_PATH = "apk_path"
     }
 }

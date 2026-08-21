@@ -146,6 +146,18 @@ object Fleet {
 
     /** Download the GHCR blob, verify sha, install/update [app] (foreign pkg). */
     fun install(ctx: Context, app: App) {
+        commit(ctx, app, download(ctx, app))
+    }
+
+    /**
+     * Fetch and verify [app]'s APK, WITHOUT installing it. Returns the file.
+     *
+     * Separate from [commit] because a batch downloads everything first and
+     * only then starts installing: an install prompt blocks on the user, so
+     * interleaving the two made every tap wait on the next app's network
+     * fetch. Downloading first means the prompts run back to back.
+     */
+    fun download(ctx: Context, app: App): File {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         val client = GhcrClient(app.registry, app.namespace, app.image)
         val token = client.token()
@@ -169,7 +181,12 @@ object Fleet {
         // means a retry after a failed install reuses the download instead of
         // pulling the blob again.
         client.pruneCache("fleet-${app.id}-", target)
-        UpdateInstaller(ctx).install(target, app.pkg)
+        return target
+    }
+
+    /** Hand a verified APK to the installer. Cheap; the work was the download. */
+    fun commit(ctx: Context, app: App, apk: File) {
+        UpdateInstaller(ctx).install(apk, app.pkg)
         Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
     }
 
@@ -220,26 +237,59 @@ object Fleet {
                        "remainder deferred to the next pass")
         }
         UpdateProgress.beginDownload() // disarm any stale cancel before the batch
-        var acted = 0
+
+        // ── PHASE 1: download everything, install nothing ───────────────────
+        // An install prompt blocks on the user. Interleaved, every tap was
+        // followed by a wait for the NEXT app's blob, so a ten-app batch spent
+        // most of its time with the user watching a spinner between dialogs.
+        // Fetching first means phase 2 is pure prompts, back to back.
+        //
+        // It also makes the batch atomic in the way that matters: a network
+        // that dies half way now fails BEFORE anything was installed, instead
+        // of leaving the fleet half-updated.
+        val staged = ArrayList<Pair<App, File>>(batch.size)
         batch.forEachIndexed { i, app ->
-            // Cancel between apps: stop launching new installs the moment the
-            // user hits Cancel (the in-flight blob loop bails on its own poll).
             if (UpdateProgress.cancelRequested) {
-                Log.i(TAG, "installAll cancelled by user after $acted app(s)")
+                Log.i(TAG, "installAll cancelled by user during download")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                return 0
+            }
+            UpdateProgress.beginBatch("↓ ${app.label}", i + 1, batch.size)
+            try {
+                staged += app to download(ctx, app)
+            } catch (c: java.util.concurrent.CancellationException) {
+                Log.i(TAG, "download ${app.label} cancelled")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                UpdateProgress.endBatch()
+                return 0
+            } catch (t: Throwable) {
+                // One dead image must not cost the other nine their update.
+                Log.w(TAG, "installAll download ${app.label}: ${t.message}")
+            }
+        }
+        if (staged.isEmpty()) {
+            UpdateProgress.endBatch()
+            return 0
+        }
+
+        // ── PHASE 2: install, strictly one at a time ────────────────────────
+        // Sequential is not a style choice: PackageInstaller sessions collide,
+        // and each unanswered prompt holds a session against the 50-session cap.
+        var acted = 0
+        staged.forEachIndexed { i, (app, apk) ->
+            if (UpdateProgress.cancelRequested) {
+                Log.i(TAG, "installAll cancelled by user after $acted install(s)")
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
                 return acted
             }
-            UpdateProgress.beginBatch(app.label, i + 1, batch.size)
+            UpdateProgress.beginBatch(app.label, i + 1, staged.size)
             try {
-                install(ctx, app)
+                commit(ctx, app, apk)
                 acted++
-            } catch (c: java.util.concurrent.CancellationException) {
-                Log.i(TAG, "install ${app.label} cancelled")
-                UpdateProgress.update(UpdateProgress.State.Cancelled)
-                UpdateProgress.endBatch()
-                return acted
             } catch (t: Throwable) {
-                Log.w(TAG, "installAll ${app.label}: ${t.message}")
+                // The APK stays in the cache, so a retry reuses it - the whole
+                // reason downloads are content-addressed.
+                Log.w(TAG, "installAll commit ${app.label}: ${t.message}")
             }
         }
         // Clear the batch context; the async install commits still drive the

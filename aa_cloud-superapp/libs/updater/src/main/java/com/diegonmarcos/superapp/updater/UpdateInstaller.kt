@@ -66,6 +66,12 @@ internal class UpdateInstaller(private val context: Context) {
                     sessionId,
                     Intent(context, PackageInstallerReceiver::class.java).apply {
                         setPackage(context.packageName)
+                        // The receiver deletes this file once the install is
+                        // CONFIRMED. Carrying the exact path beats having the
+                        // receiver re-derive it: it needs no fleet lookup (the
+                        // fleet list lives in the app's BuildConfig, not this
+                        // module's) and it cannot delete the wrong APK.
+                        putExtra(PackageInstallerReceiver.EXTRA_APK_PATH, apk.absolutePath)
                     },
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
                 )
