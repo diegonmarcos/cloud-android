@@ -61,6 +61,16 @@ class PackageInstallerReceiver : BroadcastReceiver() {
         // menu fires PackageInstaller.uninstall with op=uninstall). Uninstall
         // shows no in-app overlay, so it must NOT touch UpdateProgress.
         val isUninstall = intent.getStringExtra(EXTRA_OP) == OP_UNINSTALL
+        // Let the batch start the next install. Every branch below is either a
+        // terminal outcome or a prompt that is now the user's to answer; in
+        // both cases holding the batch any longer serves nothing. Done first so
+        // an early `return` in a branch cannot strand a waiting batch.
+        if (!isUninstall) {
+            // Prefer the package we armed the gate with; EXTRA_PACKAGE_NAME is
+            // a fallback for sessions started outside the batch.
+            val gateKey = intent.getStringExtra(EXTRA_TARGET_PKG).orEmpty().ifEmpty { pkg }
+            if (gateKey.isNotEmpty()) InstallGate.open(gateKey)
+        }
         val verb = if (isUninstall) "Uninstall" else "Install"
         Log.i(TAG, "status=$status msg=$message pkg=$pkg op=${if (isUninstall) "uninstall" else "install"}")
 
@@ -197,5 +207,8 @@ class PackageInstallerReceiver : BroadcastReceiver() {
 
         /** Absolute path of the cached APK, deleted on confirmed success. */
         const val EXTRA_APK_PATH = "apk_path"
+
+        /** Package this session installs, used as the InstallGate key. */
+        const val EXTRA_TARGET_PKG = "target_pkg"
     }
 }

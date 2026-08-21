@@ -72,6 +72,11 @@ internal class UpdateInstaller(private val context: Context) {
                         // fleet list lives in the app's BuildConfig, not this
                         // module's) and it cannot delete the wrong APK.
                         putExtra(PackageInstallerReceiver.EXTRA_APK_PATH, apk.absolutePath)
+                        // The gate is keyed by the package we ARMED. Android's
+                        // EXTRA_PACKAGE_NAME is not populated on every status,
+                        // and a blank one would leave the batch waiting out the
+                        // full timeout for an event it already received.
+                        putExtra(PackageInstallerReceiver.EXTRA_TARGET_PKG, targetPackage)
                     },
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
                 )

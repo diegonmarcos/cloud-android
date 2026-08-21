@@ -326,6 +326,21 @@ if [ -f "$BACKEND_JAVA" ] && [ -f "$AIDL_CLIENT" ]; then
     fi
 fi
 
+# 16. A fleet batch must WAIT for each install. PackageInstaller.commit() only
+#     hands the session over and returns, so a loop of commits starts every
+#     install at once - colliding sessions, stacked confirm dialogs, and N
+#     sessions against Android's 50-session cap. Fleet.kt therefore arms an
+#     InstallGate before commit and awaits it after; if either disappears the
+#     batch silently goes back to racing and nothing fails.
+FLEET_KT=ea_cloud-superapp/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt
+if [ -f "$FLEET_KT" ]; then
+    if command grep -q 'InstallGate.arm' "$FLEET_KT" && command grep -q 'InstallGate.await' "$FLEET_KT"; then
+        note ok "fleet batch serialises installs (arm + await)"
+    else
+        note FAIL "Fleet.kt commits installs without InstallGate arm/await — the batch races and can exhaust install sessions"
+    fi
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
 exit "$fail"
