@@ -267,14 +267,26 @@ class ConstellationFragment : Fragment() {
             it.setBackgroundColor(if (installed) 0xFF4A4A55.toInt() else 0xFF7C3AED.toInt())
             it.isClickable = !installed
         }
+        // Size is on the base class, so it appends the same way for every state
+        // rather than being threaded into five separate strings. It reads as the
+        // DOWNLOAD size when the manifest was reached and as the installed APK's
+        // own size when it wasn't, which is what "how big is this" means in both
+        // situations; blank when genuinely unknown.
+        val size = if (s.bytes > 0) "  ·  " + human(s.bytes) else ""
         when (s) {
-            is Fleet.State.Installed       -> { tv.setTextColor(cUp);  tv.text = "✓ up to date  ·  v${s.versionName} (${s.versionCode})  ·  sha ${s.sha12}" }
-            is Fleet.State.UpdateAvailable -> { tv.setTextColor(cUpd); tv.text = "⬆ update available  ·  installed v${s.versionName ?: "—"} → ${s.remoteDigest12}" }
-            Fleet.State.Missing            -> { tv.setTextColor(cMiss); tv.text = "◯ not installed  ·  tap Install" }
-            Fleet.State.Blocked            -> { tv.setTextColor(cBlk); tv.text = "⛔ not published yet" }
+            is Fleet.State.Installed       -> { tv.setTextColor(cUp);  tv.text = "✓ up to date  ·  v${s.versionName} (${s.versionCode})  ·  sha ${s.sha12}$size" }
+            is Fleet.State.UpdateAvailable -> { tv.setTextColor(cUpd); tv.text = "⬆ update available  ·  installed v${s.versionName ?: "—"} → ${s.remoteDigest12}$size" }
+            is Fleet.State.Missing         -> { tv.setTextColor(cMiss); tv.text = "◯ not installed  ·  tap Install$size" }
+            is Fleet.State.Blocked         -> { tv.setTextColor(cBlk); tv.text = "⛔ not published yet" }
             is Fleet.State.Error           -> { tv.setTextColor(cErr); tv.text = "⚠ ${s.message}" }
         }
     }
+
+    /** Bytes as MB/KB. Decimal MB, matching what GitHub and the Play Store show
+     *  for the same APK - a binary-MiB figure here would read as a mismatch. */
+    private fun human(b: Long): String =
+        if (b >= 1_000_000) String.format(java.util.Locale.US, "%.1f MB", b / 1_000_000.0)
+        else String.format(java.util.Locale.US, "%.0f KB", b / 1000.0)
 
     private fun install(ctx: Context, app: Fleet.App) {
         Toast.makeText(ctx, "Installing ${app.label}…", Toast.LENGTH_SHORT).show()

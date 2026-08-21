@@ -50,12 +50,19 @@ object Fleet {
     )
 
     /** Live state of one app on this device vs. its GHCR image. */
-    sealed class State {
-        data class Installed(val versionName: String, val versionCode: Long, val sha12: String) : State()
-        data class UpdateAvailable(val versionName: String?, val remoteDigest12: String) : State()
-        object Missing : State()
-        object Blocked : State()
-        data class Error(val message: String) : State()
+    sealed class State(
+        /** APK size in bytes: the DOWNLOAD size when the manifest was reached,
+         *  otherwise the installed APK's own size, and 0 when neither is known
+         *  (blocked, or the check failed before either was available). Carried
+         *  on the base class because every variant has a size to show and the
+         *  UI should not have to branch to find it. */
+        val bytes: Long,
+    ) {
+        class Installed(val versionName: String, val versionCode: Long, val sha12: String, bytes: Long = 0L) : State(bytes)
+        class UpdateAvailable(val versionName: String?, val remoteDigest12: String, bytes: Long = 0L) : State(bytes)
+        class Missing(bytes: Long = 0L) : State(bytes)
+        class Blocked : State(0L)
+        class Error(val message: String) : State(0L)
     }
 
     /** Decode BuildConfig.CONSTELLATION_FLEET_B64 (base64 JSON) into apps. */
@@ -104,14 +111,14 @@ object Fleet {
 
     /** Compute install/update status for one app. Network per call. */
     fun status(ctx: Context, app: App): State {
-        if (app.blocked) return State.Blocked
+        if (app.blocked) return State.Blocked()
         val installed = installedInfo(ctx, app)
         return try {
             val client = GhcrClient(app.registry, app.namespace, app.image)
             val layer = remoteLayer(app, client, client.token())
             val remote12 = layer.digest.substringAfter(':').take(12)
             // Valid manifest ⇒ remote APK exists. Not installed ⇒ offer install.
-            if (installed == null) return State.Missing
+            if (installed == null) return State.Missing(layer.size)
             // Code-identity short-circuit for the SELF entry: builds are not
             // byte-reproducible, so a same-commit rebuild has a different APK
             // sha and would show a phantom "update available". When this is our
@@ -120,19 +127,19 @@ object Fleet {
             // expose their revision, so sha comparison remains their signal.)
             if (app.pkg == ctx.packageName && layer.revision != null &&
                 layer.revision == BuildConfig.GIT_SHORT_SHA) {
-                return State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12))
+                return State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12), layer.size)
             }
             val currentSha = "sha256:" + installed.sha
             if (currentSha == layer.digest)
-                State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12))
+                State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12), layer.size)
             else
-                State.UpdateAvailable(installed.versionName, remote12)
+                State.UpdateAvailable(installed.versionName, remote12, layer.size)
         } catch (e: GhcrClient.HttpException) {
             if (e.code == 404)
-                installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12)) } ?: State.Missing
+                installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) } ?: State.Missing()
             else State.Error("HTTP ${e.code}")
         } catch (t: Throwable) {
-            installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12)) }
+            installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) }
                 ?: State.Error(t.message ?: t.toString())
         }
     }
@@ -190,7 +197,7 @@ object Fleet {
             if (app.blocked) return@filter false
             when (status(ctx, app)) {
                 is State.UpdateAvailable -> mode != Mode.MISSING
-                State.Missing -> mode != Mode.UPDATES
+                is State.Missing -> mode != Mode.UPDATES
                 else -> false
             }
         }
@@ -252,7 +259,7 @@ object Fleet {
         ctx.packageManager.packageInstaller.uninstall(pkg, pi.intentSender)
     }
 
-    private data class Installed(val versionName: String, val versionCode: Long, val sha: String)
+    private data class Installed(val versionName: String, val versionCode: Long, val sha: String, val bytes: Long)
 
     /** The package actually on the device for this app — pkg if present, else
      *  the stock upstream altId. null when neither is installed. Used by the UI
@@ -272,7 +279,9 @@ object Fleet {
             val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pi.longVersionCode
             else @Suppress("DEPRECATION") pi.versionCode.toLong()
             val path = pi.applicationInfo?.sourceDir
-            Installed(pi.versionName ?: "—", code, if (path != null) sha256(File(path)) else "")
+            Installed(pi.versionName ?: "—", code,
+                if (path != null) sha256(File(path)) else "",
+                if (path != null) File(path).length() else 0L)
         } catch (_: PackageManager.NameNotFoundException) {
             null
         }
