@@ -100,6 +100,53 @@ class ContactsEngine(context: Context) {
             .put("channels", channelsArr)
     }
 
+    /**
+     * One-time handoff of the app's existing social imports.
+     *
+     * SocialStore writes to PRIVATE app storage, so moving this engine into
+     * Cloud-Lib-Contacts.apk also moves the data directory: without this the
+     * engine would start empty and everything the user had imported would be
+     * orphaned - present on disk, invisible to the app. The app seeds us once
+     * with what it already had, guarded by its own pref so it happens exactly
+     * once.
+     *
+     * Returns how many sources were taken, so the app only marks the seed done
+     * when it actually landed.
+     */
+    fun seed(rawJson: String): JSONObject {
+        val arr = runCatching { JSONArray(rawJson) }.getOrNull()
+            ?: return JSONObject().put("ok", false).put("error", "bad payload")
+        var sources = 0
+        // Group by source: replaceSource is per-source and wholesale.
+        val bySource = LinkedHashMap<String, MutableList<RawContact>>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            // RawContact has no JSON codec of its own - SocialStore's are
+            // private - so the shape is spelled out here, matching the app's
+            // export side exactly.
+            val c = RawContact(
+                source  = o.optString("source").ifBlank { "imported" },
+                name    = o.optString("name"),
+                phones  = o.optJSONArray("phones").toStringList(),
+                emails  = o.optJSONArray("emails").toStringList(),
+                org     = o.optString("org"),
+                title   = o.optString("title"),
+                urls    = o.optJSONArray("urls").toStringList(),
+                handles = o.optJSONObject("handles").toStringMap(),
+            )
+            if (c.name.isBlank() && c.phones.isEmpty() && c.emails.isEmpty()) continue
+            bySource.getOrPut(c.source) { mutableListOf() }.add(c)
+        }
+        bySource.forEach { (source, contacts) ->
+            store.replaceSource(source, contacts); sources++
+        }
+        invalidate()
+        return JSONObject().put("ok", true).put("sources", sources)
+    }
+
+    /** Whether this engine already holds data - lets the app skip the seed. */
+    fun hasData(): Boolean = store.all().isNotEmpty()
+
     fun removeSource(source: String): JSONObject {
         store.removeSource(source)
         invalidate()
@@ -107,6 +154,18 @@ class ContactsEngine(context: Context) {
     }
 
     fun count(readDevice: Boolean): Int = people(readDevice).size
+
+    private fun org.json.JSONArray?.toStringList(): List<String> {
+        if (this == null) return emptyList()
+        return (0 until length()).mapNotNull { optString(it).takeIf { s -> s.isNotBlank() } }
+    }
+
+    private fun JSONObject?.toStringMap(): Map<String, String> {
+        if (this == null) return emptyMap()
+        val out = LinkedHashMap<String, String>()
+        keys().forEach { k -> optString(k).takeIf { it.isNotBlank() }?.let { out[k] = it } }
+        return out
+    }
 
     private fun initials(name: String): String =
         name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }

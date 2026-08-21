@@ -17,7 +17,7 @@ class ContactsBackendService : DataBackendService() {
     private val engine by lazy { ContactsEngine(applicationContext) }
 
     override fun methodNames(): Array<String> =
-        arrayOf("state", "people", "person", "removeSource", "invalidate")
+        arrayOf("state", "people", "person", "removeSource", "invalidate", "seed", "hasData")
 
     override fun dispatch(method: String, args: Array<String>): String {
         // arg 0 is uniformly the caller's READ_CONTACTS grant.
@@ -32,6 +32,10 @@ class ContactsBackendService : DataBackendService() {
             "person"       -> engine.person(args.getOrNull(1).orEmpty(), readDevice).toString()
             "removeSource" -> engine.removeSource(args.getOrNull(1).orEmpty()).toString()
             "invalidate"   -> { engine.invalidate(); """{"ok":true}""" }
+            // One-time handoff so the cutover cannot orphan imports - see
+            // ContactsEngine.seed.
+            "seed"         -> engine.seed(args.getOrNull(1).orEmpty()).toString()
+            "hasData"      -> JSONObject().put("hasData", engine.hasData()).toString()
             else -> throw IllegalArgumentException("unknown method: $method")
         }
     }
