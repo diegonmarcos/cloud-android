@@ -100,10 +100,18 @@ class CalEngine(context: Context) {
     fun hasData(): String =
         JSONObject().put("hasData", TodoStore.allTodos(ctx).isNotEmpty()).toString()
 
+    /** openCount/totalCount are part of the contract: the projects list shows
+     *  "n of m" per collection, so omitting them renders empty counters rather
+     *  than failing. */
     fun projects(): String = JSONArray().apply {
         TodoStore.collections(ctx).forEach { c ->
+            val todos = TodoStore.todosFor(ctx, c.href)
             put(JSONObject()
-                .put("id", c.href).put("name", c.displayName).put("color", c.color))
+                .put("id", c.href)
+                .put("name", c.displayName)
+                .put("color", c.color)
+                .put("openCount", todos.count { it.status != "COMPLETED" })
+                .put("totalCount", todos.size))
         }
     }.toString()
 
@@ -191,13 +199,26 @@ class CalEngine(context: Context) {
         return JSONObject().put("ok", ok).put("failed", failed).put("messages", messages).toString()
     }
 
+    /**
+     * `collections` is an ARRAY of {id, name}, not a count — the Configs
+     * screen lists what it found. Returning the size would have handed the UI
+     * a number to iterate, which fails silently rather than loudly.
+     * `error` is always present, empty on success, for the same reason.
+     */
     fun testCaldav(cfgJson: String?): String {
-        val c = cfg(cfgJson)
-            ?: return JSONObject().put("ok", false).put("error", "no config").toString()
+        val c = cfg(cfgJson) ?: return JSONObject()
+            .put("ok", false).put("error", "CalDAV is not configured")
+            .put("collections", JSONArray()).toString()
         return runCatching {
-            JSONObject().put("ok", true).put("collections", CalDav.discoverCollections(c).size).toString()
+            val arr = JSONArray()
+            CalDav.discoverCollections(c).forEach {
+                arr.put(JSONObject().put("id", it.href).put("name", it.displayName))
+            }
+            JSONObject().put("ok", true).put("error", "").put("collections", arr).toString()
         }.getOrElse { t ->
-            JSONObject().put("ok", false).put("error", t.message ?: t.toString()).toString()
+            JSONObject().put("ok", false)
+                .put("error", t.message ?: t.javaClass.simpleName)
+                .put("collections", JSONArray()).toString()
         }
     }
 
