@@ -16,7 +16,8 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.feed.RssClient
+import com.diegonmarcos.superapp.rss.FeedItem
+import com.diegonmarcos.superapp.rss.RemoteFeed
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -35,7 +36,7 @@ class NewsFeedFragment : Fragment() {
 
     private val executor = Executors.newFixedThreadPool(3)
     /** url → cached items so re-expand doesn't re-fetch. */
-    private val cache = ConcurrentHashMap<String, List<RssClient.Item>>()
+    private val cache = ConcurrentHashMap<String, List<FeedItem>>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -153,8 +154,12 @@ class NewsFeedFragment : Fragment() {
         }
         body.addView(spinner); body.addView(statusView)
 
+        // `ctx` is captured on the main thread; requireContext() from the
+        // executor would throw if the fragment detached mid-fetch - which the
+        // isAdded check below already anticipates.
+        val appCtx = ctx.applicationContext
         executor.execute {
-            val result = runCatching { RssClient.fetch(feed.url) }
+            val result = runCatching { RemoteFeed.fetch(appCtx, feed.url) }
             requireActivity().runOnUiThread {
                 if (!isAdded) return@runOnUiThread
                 body.removeAllViews()
@@ -172,7 +177,7 @@ class NewsFeedFragment : Fragment() {
         }
     }
 
-    private fun itemRow(ctx: android.content.Context, item: RssClient.Item): View {
+    private fun itemRow(ctx: android.content.Context, item: FeedItem): View {
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val pad = dp(8); setPadding(pad, dp(8), pad, dp(8))

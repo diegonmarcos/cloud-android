@@ -674,7 +674,10 @@ dependencies {
     implementation project(':libs:updater')
     implementation project(':libs:devtools')
     implementation project(':libs:mail')
-    implementation project(':libs:feed')
+    // libs:feed is NOT linked: it ships as Cloud-Lib-Feed.apk and the app
+    // reaches it through core's DataBackendClient (see rss/RemoteFeed.kt).
+    // Re-adding this line puts the fetcher back in the app and makes the
+    // engine APK dead weight.
     implementation project(':libs:net')
     // libs:keyboard + libs:media MOVED to ea_cloud-keyboard (standalone constellation APK).
     implementation project(':libs:ops')

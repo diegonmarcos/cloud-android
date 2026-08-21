@@ -129,8 +129,17 @@ class ConstellationFragment : Fragment() {
         when (tab) {
             0 -> renderFleet(ctx, apps, "Full constellation apps — install, update, open, remove.")
             1 -> renderFleet(ctx, libs,
-                "Companion APKs that ship engines behind AIDL bound services instead of UI. " +
-                "Updated independently of the apps that bind them; an app degrades gracefully when its lib is absent.")
+                // Say what is actually true. Most of these are still compiled
+                // INTO the apps that use them, so installing one here does not
+                // shrink anything or change behaviour - it makes the module
+                // installable and inspectable on its own. Only the engines
+                // listed below are genuinely bound across a process boundary,
+                // and only those degrade when absent.
+                "One APK per library module — installable and inspectable on its own. " +
+                "Most are also compiled into the apps that use them, so installing one here " +
+                "does not change how those apps behave. The exceptions are true out-of-process " +
+                "engines their app binds over AIDL and needs installed: net-wg (WireGuard), " +
+                "voice-vosk and translate-mlkit (the keyboard's engines).")
             else -> renderPerms(ctx)
         }
     }

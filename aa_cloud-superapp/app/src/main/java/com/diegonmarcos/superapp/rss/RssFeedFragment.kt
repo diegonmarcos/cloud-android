@@ -1,5 +1,4 @@
 package com.diegonmarcos.superapp.rss
-import com.diegonmarcos.superapp.feed.RssClient
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.cloud.CloudData
 

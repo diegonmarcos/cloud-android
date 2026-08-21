@@ -1,2 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The engine does the fetching now, so INTERNET follows it here instead
+         of being required of every app that wants to show a feed. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <!-- Guarded by the constellation's signature-level permission: only
+             APKs signed with the Cloud key can bind it. -->
+        <service
+            android:name="com.diegonmarcos.superapp.feed.FeedBackendService"
+            android:exported="true"
+            android:permission="com.diegonmarcos.cloud.permission.CONSTELLATION_DATA" />
+    </application>
+</manifest>
