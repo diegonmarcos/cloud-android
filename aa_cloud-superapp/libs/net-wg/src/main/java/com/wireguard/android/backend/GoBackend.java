@@ -108,13 +108,6 @@ public final class GoBackend implements Backend {
     }
 
     /**
-     * Get the associated {@link Statistics} for a given {@link Tunnel}.
-     *
-     * @param tunnel The tunnel to retrieve statistics for.
-     * @return {@link Statistics} associated with the given tunnel.
-     */
-    @Override
-    /**
      * The engine's raw {@code wgGetConfig} text for {@code tunnel}, or "" when
      * it is not the running tunnel.
      *
@@ -122,6 +115,8 @@ public final class GoBackend implements Backend {
      * an AIDL type for it would mean keeping a parcelable in step with a class
      * we re-sync from upstream WireGuard. Shipping the raw text and parsing it
      * on the far side with {@link Statistics#parse} avoids that entirely.
+     *
+     * Not an @Override - Backend does not declare it.
      */
     public String getStatisticsRaw(final Tunnel tunnel) {
         if (tunnel != currentTunnel || currentTunnelHandle == -1)
@@ -130,6 +125,13 @@ public final class GoBackend implements Backend {
         return config == null ? "" : config;
     }
 
+    /**
+     * Get the associated {@link Statistics} for a given {@link Tunnel}.
+     *
+     * @param tunnel The tunnel to retrieve statistics for.
+     * @return {@link Statistics} associated with the given tunnel.
+     */
+    @Override
     public Statistics getStatistics(final Tunnel tunnel) {
         if (tunnel != currentTunnel || currentTunnelHandle == -1)
             return Statistics.parse(null);
