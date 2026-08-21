@@ -4,15 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
 import android.webkit.JavascriptInterface
+import com.diegonmarcos.superapp.core.DataBackendClient
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.diegonmarcos.superapp.cal.CalDav
-import com.diegonmarcos.superapp.cal.CalDavConfig
-import com.diegonmarcos.superapp.cal.CalSync
-import com.diegonmarcos.superapp.cal.CalTodo
-import com.diegonmarcos.superapp.cal.CalendarStore
-import com.diegonmarcos.superapp.cal.Calendars
-import com.diegonmarcos.superapp.cal.TodoStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -43,23 +37,56 @@ class CalBridge(private val ctx: Context) {
     @Volatile private var todoLastFailed = 0
     @Volatile private var todoLastMessages: List<String> = emptyList()
 
+    // ── the engine ───────────────────────────────────────────────────────────
+    // Calendar data work lives in Cloud-Lib-Cal.apk now; this class is the
+    // front end. Credentials are NOT sent there to live - they stay in this
+    // app's EncryptedSharedPreferences and ride along on the calls that need
+    // them, so nothing is orphaned by the engine having its own storage.
+    private val client by lazy {
+        DataBackendClient(ctx, "com.diegonmarcos.cloudlib.cal",
+                          "com.diegonmarcos.superapp.cal.CalBackendService")
+    }
+
+    /** Call the engine. Seeds once, first time, before anything else. */
+    private fun engine(method: String, vararg args: String): String {
+        seedOnce()
+        return client.call(method, *args)
+    }
+
+    private fun cfgJson(): String = CaldavPrefs.getJson(ctx) ?: ""
+
+    /**
+     * Hand the engine the tasks a re-sync cannot rebuild, exactly once.
+     *
+     * TodoStore moved into the engine's private storage with it. Almost all of
+     * it re-syncs; a task created offline and never PUT (blank href) does not.
+     * Guarded by a pref AND by the engine's own hasData, so a reinstall of
+     * either side cannot double-seed or clobber newer data.
+     */
+    @Volatile private var seeded = false
+    @Synchronized
+    private fun seedOnce() {
+        if (seeded) return
+        seeded = true
+        val prefs = ctx.getSharedPreferences("cal_bridge", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("seeded", false)) return
+        val legacy = ctx.getSharedPreferences("cal_legacy_todos", Context.MODE_PRIVATE)
+            .getString("todos", null)
+        if (legacy.isNullOrBlank()) { prefs.edit().putBoolean("seeded", true).apply(); return }
+        val ok = runCatching { JSONObject(client.call("seed", legacy)).optBoolean("ok") }
+            .getOrDefault(false)
+        // Only mark it done when it actually landed - a failed seed must be
+        // retried, not silently skipped forever.
+        if (ok) prefs.edit().putBoolean("seeded", true).apply()
+    }
+
     private fun subscriptions() = Calendars.parse(
         String(Base64.decode(BuildConfig.CALENDARS_B64, Base64.DEFAULT), Charsets.UTF_8)
     )
 
     @JavascriptInterface
     fun calendars(): String {
-        val arr = JSONArray()
-        for (sub in subscriptions()) {
-            arr.put(JSONObject().apply {
-                put("id", sub.id)
-                put("name", sub.name)
-                put("category", sub.category)
-                put("color", sub.color)
-                put("enabled", sub.enabled)
-            })
-        }
-        return arr.toString()
+        return engine("calendars")
     }
 
     // fromUtcMillis/toUtcMillis are taken as String and parsed to Long here:
@@ -68,39 +95,24 @@ class CalBridge(private val ctx: Context) {
     // them before passing across the bridge.
     @JavascriptInterface
     fun events(fromUtcMillis: String, toUtcMillis: String): String {
-        val from = fromUtcMillis.toLongOrNull() ?: 0L
-        val to = toUtcMillis.toLongOrNull() ?: 0L
-        val ids = subscriptions().map { it.id }
-        val arr = JSONArray()
-        for (e in CalendarStore.eventsFor(ctx, ids, from, to)) {
-            arr.put(JSONObject().apply {
-                put("id", e.id)
-                put("calendarId", e.calendarId)
-                put("title", e.title)
-                put("start", e.startUtcMillis)
-                put("end", e.endUtcMillis)
-                put("allDay", e.allDay)
-                put("location", e.location)
-            })
-        }
-        return arr.toString()
+        return engine("events", fromUtcMillis, toUtcMillis)
     }
 
     @JavascriptInterface
     fun sync(): String {
-        if (!syncRunning) {
-            syncRunning = true
-            executor.execute {
-                try {
-                    val report = CalSync.syncAll(ctx, subscriptions())
-                    lastOk = report.ok
-                    lastSkipped = report.skipped
-                    lastFailed = report.failed
-                    lastMessages = report.messages
-                } finally {
-                    syncRunning = false
-                }
-            }
+        // Kick the engine off our own executor and keep the UI-state flags
+        // here: "is a sync running" is what the spinner reads, and the engine
+        // deliberately returns a report rather than tracking it.
+        if (syncRunning) return JSONObject().put("started", false).toString()
+        syncRunning = true
+        executor.execute {
+            try {
+                val r = JSONObject(engine("sync"))
+                lastOk = r.optInt("ok"); lastSkipped = r.optInt("skipped")
+                lastFailed = r.optInt("failed")
+                lastMessages = (0 until (r.optJSONArray("messages")?.length() ?: 0))
+                    .map { r.optJSONArray("messages")!!.optString(it) }
+            } finally { syncRunning = false }
         }
         return JSONObject().put("started", true).toString()
     }
@@ -128,28 +140,14 @@ class CalBridge(private val ctx: Context) {
      *  offline. Call [syncTodos] to refresh from the server. */
     @JavascriptInterface
     fun projects(): String {
-        val arr = JSONArray()
-        for (col in TodoStore.collections(ctx)) {
-            val todos = TodoStore.todosFor(ctx, col.href)
-            arr.put(JSONObject().apply {
-                put("id", col.href)
-                put("name", col.displayName)
-                put("color", col.color)
-                put("openCount", todos.count { it.status != "COMPLETED" })
-                put("totalCount", todos.size)
-            })
-        }
-        return arr.toString()
+        return engine("projects")
     }
 
     /** projectId "" means all projects. Cache-only read, same reasoning
      *  as [projects]. */
     @JavascriptInterface
     fun todos(projectId: String): String {
-        val all = if (projectId.isBlank()) TodoStore.allTodos(ctx) else TodoStore.todosFor(ctx, projectId)
-        val arr = JSONArray()
-        for (t in all) arr.put(t.toBridgeJson())
-        return arr.toString()
+        return engine("todos", projectId)
     }
 
     /** Create (id empty) or update (id set) one task. This performs the
@@ -163,100 +161,31 @@ class CalBridge(private val ctx: Context) {
      *  network wait on the bridge thread, worth flagging explicitly. */
     @JavascriptInterface
     fun saveTodo(json: String): String {
-        var id = ""
-        try {
-            val o = JSONObject(json)
-            id = o.optString("id", "")
-            val cfg = CaldavPrefs.get(ctx)
-                ?: return saveResult(false, "", "CalDAV is not configured")
-
-            val existing = if (id.isBlank()) null else TodoStore.findById(ctx, id)
-            if (id.isNotBlank() && existing == null) {
-                return saveResult(false, id, "task not found in local cache")
-            }
-            val isCreate = existing == null
-
-            val projectId = if (isCreate) o.optString("projectId", "") else existing.collectionId
-            if (projectId.isBlank()) return saveResult(false, "", "projectId is required to create a task")
-
-            val dueMillis = o.optString("due", "").toLongOrNull()
-            val merged = CalTodo(
-                uid = existing?.uid ?: UUID.randomUUID().toString(),
-                collectionId = projectId,
-                href = existing?.href ?: "",
-                etag = existing?.etag ?: "",
-                summary = if (o.has("summary")) o.optString("summary", "") else existing?.summary ?: "",
-                description = if (o.has("description")) o.optString("description", "") else existing?.description ?: "",
-                status = if (o.has("status")) o.optString("status", "NEEDS-ACTION") else existing?.status ?: "NEEDS-ACTION",
-                dueUtcMillis = if (o.has("due")) dueMillis else existing?.dueUtcMillis,
-                dueIsDate = existing?.dueIsDate ?: false,
-                priority = if (o.has("priority")) o.optInt("priority", 0) else existing?.priority ?: 0,
-                percentComplete = existing?.percentComplete,
-                createdUtcMillis = existing?.createdUtcMillis,
-                lastModifiedUtcMillis = existing?.lastModifiedUtcMillis,
-                completedUtcMillis = existing?.completedUtcMillis,
-                unknownLines = existing?.unknownLines ?: emptyList(),
-            )
-
-            val saved = CalDav.putTodo(cfg, projectId, merged, isCreate)
-            TodoStore.upsertTodo(ctx, saved)
-            return saveResult(true, saved.bridgeId, "")
-        } catch (e: Exception) {
-            return saveResult(false, id, e.message ?: e.javaClass.simpleName)
-        }
+        return engine("saveTodo", json, cfgJson())
     }
 
     /** done is "true"/"false" (bridge string convention, see [events]). */
     @JavascriptInterface
     fun setTodoStatus(id: String, done: String): String {
-        val cfg = CaldavPrefs.get(ctx) ?: return okErr(false, "CalDAV is not configured")
-        val existing = TodoStore.findById(ctx, id) ?: return okErr(false, "task not found in local cache")
-        val markDone = done == "true"
-        val now = System.currentTimeMillis()
-        val updated = existing.copy(
-            status = if (markDone) "COMPLETED" else "NEEDS-ACTION",
-            percentComplete = if (markDone) 100 else existing.percentComplete,
-            completedUtcMillis = if (markDone) now else null,
-        )
-        return try {
-            val saved = CalDav.putTodo(cfg, existing.collectionId, updated, isCreate = false)
-            TodoStore.upsertTodo(ctx, saved)
-            okErr(true, "")
-        } catch (e: Exception) {
-            okErr(false, e.message ?: e.javaClass.simpleName)
-        }
+        return engine("setTodoStatus", id, done, cfgJson())
     }
 
     @JavascriptInterface
     fun deleteTodo(id: String): String {
-        val cfg = CaldavPrefs.get(ctx) ?: return okErr(false, "CalDAV is not configured")
-        val existing = TodoStore.findById(ctx, id) ?: return okErr(false, "task not found in local cache")
-        return try {
-            CalDav.deleteTodo(cfg, existing)
-            TodoStore.removeTodo(ctx, existing.collectionId, existing.uid)
-            okErr(true, "")
-        } catch (e: Exception) {
-            okErr(false, e.message ?: e.javaClass.simpleName)
-        }
+        return engine("deleteTodo", id, cfgJson())
     }
 
     @JavascriptInterface
     fun syncTodos(): String {
-        val cfg = CaldavPrefs.get(ctx)
-        if (!todoSyncRunning && cfg != null) {
-            todoSyncRunning = true
-            executor.execute {
-                try {
-                    val report = CalDav.syncAll(ctx, cfg)
-                    todoLastOk = report.ok
-                    todoLastFailed = report.failed
-                    todoLastMessages = report.messages
-                } finally {
-                    todoSyncRunning = false
-                }
-            }
-        } else if (cfg == null) {
-            todoLastMessages = listOf("CalDAV is not configured")
+        if (todoSyncRunning) return JSONObject().put("started", false).toString()
+        todoSyncRunning = true
+        executor.execute {
+            try {
+                val r = JSONObject(engine("syncTodos", cfgJson()))
+                todoLastOk = r.optInt("ok"); todoLastFailed = r.optInt("failed")
+                todoLastMessages = (0 until (r.optJSONArray("messages")?.length() ?: 0))
+                    .map { r.optJSONArray("messages")!!.optString(it) }
+            } finally { todoSyncRunning = false }
         }
         return JSONObject().put("started", true).toString()
     }
@@ -311,21 +240,7 @@ class CalBridge(private val ctx: Context) {
      *  the same reason [saveTodo] is — see its kdoc. */
     @JavascriptInterface
     fun testCaldav(): String {
-        val cfg = CaldavPrefs.get(ctx) ?: return JSONObject().apply {
-            put("ok", false); put("error", "CalDAV is not configured"); put("collections", JSONArray())
-        }.toString()
-        return try {
-            val collections = CalDav.discoverCollections(cfg)
-            val arr = JSONArray()
-            for (c in collections) arr.put(JSONObject().apply { put("id", c.href); put("name", c.displayName) })
-            JSONObject().apply { put("ok", true); put("error", ""); put("collections", arr) }.toString()
-        } catch (e: Exception) {
-            JSONObject().apply {
-                put("ok", false)
-                put("error", e.message ?: e.javaClass.simpleName)
-                put("collections", JSONArray())
-            }.toString()
-        }
+        return engine("testCaldav", cfgJson())
     }
 
     // ---- small JSON helpers -----------------------------------------------
@@ -383,13 +298,18 @@ class CalBridge(private val ctx: Context) {
             }
         }
 
-        fun get(ctx: Context): CalDavConfig? {
+        /** The CalDAV config as the wire JSON the engine expects, or null.
+         *  Returns JSON rather than a library type because the app no longer
+         *  links libs:cal - credentials stay HERE and travel per call. */
+        fun getJson(ctx: Context): String? {
             val p = prefs(ctx)
             val url = p.getString(KEY_URL, "") ?: ""
             if (url.isBlank()) return null
-            val username = p.getString(KEY_USERNAME, "") ?: ""
-            val password = p.getString(KEY_PASSWORD, "") ?: ""
-            return CalDavConfig(url, username, password)
+            return JSONObject()
+                .put("baseUrl", url)
+                .put("username", p.getString(KEY_USERNAME, "") ?: "")
+                .put("password", p.getString(KEY_PASSWORD, "") ?: "")
+                .toString()
         }
 
         fun urlAndUsername(ctx: Context): Pair<String, String> {

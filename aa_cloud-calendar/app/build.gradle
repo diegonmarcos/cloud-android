@@ -184,7 +184,10 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation project(':libs:updater')
-    implementation project(':libs:cal')
+    // libs:cal is NOT linked: it ships as Cloud-Lib-Cal.apk and the app
+    // reaches it through core's DataBackendClient (see CalBridge). Re-adding
+    // this line puts the calendar engine back in the app and makes the engine
+    // APK dead weight.
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
