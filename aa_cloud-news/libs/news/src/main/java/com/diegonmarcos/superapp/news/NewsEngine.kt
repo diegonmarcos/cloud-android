@@ -28,11 +28,42 @@ class NewsEngine(context: Context) {
     private val mediaJson   by lazy { decode(BuildConfig.MEDIA_B64) }
     private val eventsJson  by lazy { decode(BuildConfig.EVENTS_B64) }
 
+    /** Must match the bridge's sentinel EXACTLY - it is a magic channel id,
+     *  not a readable name, and "all" would simply never match. */
+    private val ALL_CHANNEL_ID = "__all::channels__"
+
     private val bakedTopics by lazy { NewsTopicsConfig.parseTopics(topicsJson) }
     private val bakedApi    by lazy { NewsTopicsConfig.parseApi(topicsJson) }
     private val sources     by lazy { NewsSourcesConfig.parseSources(sourcesJson) }
 
     private fun api(): NewsApiConfig = NewsConfigStore.effective(ctx, bakedApi)
+
+    /** The active source, resolved HERE: SourceStore is lib-stored, so after
+     *  cutover this prefs entry lives in the engine. That is what lets these
+     *  signatures match the bridge's - the caller does not pass a source. */
+    private fun activeSource(): NewsSourceConfig {
+        val id = SourceStore.active(ctx, NewsSourcesConfig.parseDefaultSource(sourcesJson))
+        return sources.firstOrNull { it.id == id } ?: sources.first()
+    }
+
+    fun activeSourceId(): String =
+        JSONObject().put("id", activeSource().id).toString()
+
+    fun setSource(id: String): String {
+        if (id.isBlank()) return JSONObject().put("ok", false).put("error", "id is required").toString()
+        SourceStore.setActive(ctx, id.trim())
+        return JSONObject().put("ok", true).toString()
+    }
+
+    fun activeChannelId(): String {
+        val src = activeSource()
+        return JSONObject().put("id", ChannelStore.active(ctx, src.id, ALL_CHANNEL_ID)).toString()
+    }
+
+    fun setChannel(id: String): String {
+        ChannelStore.setActive(ctx, activeSource().id, id.trim())
+        return JSONObject().put("ok", true).toString()
+    }
 
     private fun source(id: String): NewsSourceConfig? =
         sources.firstOrNull { it.id == id }
@@ -51,12 +82,33 @@ class NewsEngine(context: Context) {
 
     // ── articles ─────────────────────────────────────────────────────────────
 
-    fun articles(sourceId: String, topic: String): String = JSONArray().apply {
-        NewsStore.articlesFor(ctx, sourceId, topic).forEach { put(articleJson(it)) }
-    }.toString()
+    /**
+     * Matches the bridge's contract exactly: (channel, limit), with the active
+     * source resolved here.
+     *
+     * The query-driven + "all channels" case fans out across every ENABLED
+     * topic and merges - reading one topic instead would silently return a
+     * fraction of the feed, which is what an earlier signature of this method
+     * would have done.
+     */
+    fun articles(channel: String, limit: Int): String {
+        val src = activeSource()
+        val max = limit.takeIf { it > 0 } ?: api().maxArticles
+        val chanId = channel.ifBlank { ChannelStore.active(ctx, src.id, ALL_CHANNEL_ID) }
+        val list = if (src.queryDriven && chanId == ALL_CHANNEL_ID) {
+            NewsStore.articlesFor(ctx, src.id,
+                NewsTopicsStore.effective(ctx, bakedTopics).filter { it.enabled }.map { it.topic })
+        } else {
+            NewsStore.articlesFor(ctx, src.id, chanId)
+        }
+        return JSONArray().apply {
+            list.sortedByDescending { it.seendate }.take(max).forEach { put(it.toJson()) }
+        }.toString()
+    }
 
-    fun timeline(sourceId: String, topic: String): String = JSONArray().apply {
-        NewsStore.timelineFor(ctx, sourceId, topic).forEach { p ->
+
+    fun timeline(topic: String): String = JSONArray().apply {
+        NewsStore.timelineFor(ctx, activeSource().id, topic).forEach { p ->
             put(JSONObject().put("date", p.date).put("value", p.value))
         }
     }.toString()
@@ -65,9 +117,8 @@ class NewsEngine(context: Context) {
      * Blocking, networked. Returns the report; "is a sync running" is UI state
      * and stays with whoever drew the spinner.
      */
-    fun sync(sourceId: String, activeChannel: String): String {
-        val src = source(sourceId)
-            ?: return JSONObject().put("error", "no source configured").toString()
+    fun sync(activeChannel: String): String {
+        val src = activeSource()
         val cfg = api()
         val r = NewsSync.syncAll(
             ctx, src,
@@ -81,8 +132,8 @@ class NewsEngine(context: Context) {
             .toString()
     }
 
-    fun tone(sourceId: String, topic: String): String = JSONArray().apply {
-        NewsStore.toneFor(ctx, sourceId, topic).forEach { e ->
+    fun tone(topic: String): String = JSONArray().apply {
+        NewsStore.toneFor(ctx, activeSource().id, topic).forEach { e ->
             put(JSONObject().put("date", e.date).put("tone", e.tone))
         }
     }.toString()
