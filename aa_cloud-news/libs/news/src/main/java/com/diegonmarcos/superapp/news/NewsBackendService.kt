@@ -12,7 +12,7 @@ class NewsBackendService : DataBackendService() {
         "saved", "toggleSaved", "events", "mediaChannels", "seed", "hasData",
         "tone", "sources", "setTopicEnabled", "addTopic", "removeTopic",
         "savedEvents", "isEventSaved", "saveEvent", "mediaItems",
-        "activeSource", "setSource", "activeChannel", "setChannel",
+        "activeSource", "setSource", "activeChannel", "setChannel", "config", "setConfig",
     )
 
     override fun dispatch(method: String, args: Array<String>): String = when (method) {
@@ -37,6 +37,8 @@ class NewsBackendService : DataBackendService() {
         "savedEvents"   -> engine.savedEvents()
         "isEventSaved"  -> engine.isEventSaved(args.getOrNull(0).orEmpty())
         "saveEvent"     -> engine.saveEvent(args.getOrNull(0).orEmpty())
+        "config"        -> engine.config()
+        "setConfig"     -> engine.setConfig(args.getOrNull(0).orEmpty())
         "activeSource"  -> engine.activeSourceId()
         "setSource"     -> engine.setSource(args.getOrNull(0).orEmpty())
         "activeChannel" -> engine.activeChannelId()

@@ -199,7 +199,10 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation project(':libs:updater')
-    implementation project(':libs:news')
+    // libs:news is NOT linked: it ships as Cloud-Lib-News.apk and the app
+    // reaches it through core's DataBackendClient (see NewsBridge). Re-adding
+    // this line puts the news engine back in the app and makes the engine APK
+    // dead weight.
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'

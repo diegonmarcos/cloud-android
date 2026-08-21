@@ -46,6 +46,33 @@ class NewsEngine(context: Context) {
         return sources.firstOrNull { it.id == id } ?: sources.first()
     }
 
+    /** NewsConfigStore is lib-stored, so the effective config lives here too. */
+    fun config(): String {
+        val c = api()
+        return JSONObject()
+            .put("base", c.base)
+            .put("refreshSeconds", c.refreshSeconds)
+            .put("maxArticles", c.maxArticles)
+            .toString()
+    }
+
+    fun setConfig(json: String): String {
+        val o = runCatching { JSONObject(json) }.getOrNull()
+            ?: return JSONObject().put("ok", false).put("error", "bad payload").toString()
+        val base = o.optString("base", "").trim()
+        // Same guard the bridge enforced - a base that is not http(s) would
+        // make every later fetch fail with nothing pointing at the cause.
+        if (base.isNotEmpty() && !base.startsWith("http://", true) && !base.startsWith("https://", true))
+            return JSONObject().put("ok", false).put("error", "base must be http:// or https://").toString()
+        NewsConfigStore.setOverride(
+            ctx,
+            base.takeIf { it.isNotEmpty() },
+            if (o.has("refreshSeconds")) o.optInt("refreshSeconds") else null,
+            if (o.has("maxArticles")) o.optInt("maxArticles") else null,
+        )
+        return JSONObject().put("ok", true).toString()
+    }
+
     fun activeSourceId(): String =
         JSONObject().put("id", activeSource().id).toString()
 
@@ -119,11 +146,14 @@ class NewsEngine(context: Context) {
      */
     fun sync(activeChannel: String): String {
         val src = activeSource()
+        // Blank means "whatever is active" - resolved here so the caller does
+        // not need a second round trip just to name the channel it is on.
+        val channel = activeChannel.ifBlank { ChannelStore.active(ctx, src.id, ALL_CHANNEL_ID) }
         val cfg = api()
         val r = NewsSync.syncAll(
             ctx, src,
             NewsTopicsStore.effective(ctx, bakedTopics).filter { it.enabled },
-            cfg.base, cfg.maxArticles, activeChannel,
+            cfg.base, cfg.maxArticles, channel,
         )
         return JSONObject()
             .put("ok", r.ok).put("failed", r.failed)

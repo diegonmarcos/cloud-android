@@ -1,6 +1,6 @@
 {
   "name": "cloud-news",
-  "description": "Diego's Cloud News — standalone Android news app. WebView UI over GDELT-backed topic feeds (economy, technology, geopolitics, climate, finance, AI, energy, health): per-topic article lists, tone/sentiment timelines, and rolling topic summaries against a self-hosted GDELT proxy. Build via Nix devShell, one APK out.",
+  "description": "Diego's Cloud News \u2014 standalone Android news app. WebView UI over GDELT-backed topic feeds (economy, technology, geopolitics, climate, finance, AI, energy, health): per-topic article lists, tone/sentiment timelines, and rolling topic summaries against a self-hosted GDELT proxy. Build via Nix devShell, one APK out.",
   "category": "android",
   "build": {
     "type": "gradle",
@@ -23,7 +23,7 @@
     "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
   },
   "diagnostics": {
-    "_doc": "On-device DevControlServer diagnostics → cloud sink.",
+    "_doc": "On-device DevControlServer diagnostics \u2192 cloud sink.",
     "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-news"
   },
@@ -38,17 +38,18 @@
       ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ \u2014 settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
       "dir": "../ea_cloud-superapp/libs/updater",
       "type": "library"
     },
     "libs:news": {
-      "type": "library"
+      "type": "library",
+      "_doc_not_linked": "Declared so gradle resolves the module tree, but the APP no longer depends on it: libs:news ships as Cloud-Lib-News.apk and is reached through core's DataBackendClient (NewsBridge). Active source/channel and the effective config moved with it because their stores are lib-owned."
     }
   },
   "release": {

@@ -5,32 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import android.webkit.JavascriptInterface
-import com.diegonmarcos.superapp.news.CalEvent
-import com.diegonmarcos.superapp.news.ChannelStore
-import com.diegonmarcos.superapp.news.DynamicChannelStore
-import com.diegonmarcos.superapp.news.EventCalendarConfig
-import com.diegonmarcos.superapp.news.EventCalendars
-import com.diegonmarcos.superapp.news.EventsStore
-import com.diegonmarcos.superapp.news.EventsSync
-import com.diegonmarcos.superapp.news.GdeltArticle
-import com.diegonmarcos.superapp.news.MediaChannelConfig
-import com.diegonmarcos.superapp.news.MediaConfig
-import com.diegonmarcos.superapp.news.MediaRotationStore
-import com.diegonmarcos.superapp.news.NewsApiConfig
-import com.diegonmarcos.superapp.news.NewsChannelConfig
-import com.diegonmarcos.superapp.news.NewsConfigStore
-import com.diegonmarcos.superapp.news.NewsSourceConfig
-import com.diegonmarcos.superapp.news.NewsSourcesConfig
-import com.diegonmarcos.superapp.news.NewsStore
-import com.diegonmarcos.superapp.news.NewsSync
-import com.diegonmarcos.superapp.news.NewsTopicConfig
-import com.diegonmarcos.superapp.news.NewsTopicState
-import com.diegonmarcos.superapp.news.NewsTopicsConfig
-import com.diegonmarcos.superapp.news.NewsTopicsStore
-import com.diegonmarcos.superapp.news.SavedEvent
-import com.diegonmarcos.superapp.news.SavedEventsStore
-import com.diegonmarcos.superapp.news.SavedStore
-import com.diegonmarcos.superapp.news.SourceStore
+import com.diegonmarcos.superapp.core.DataBackendClient
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDateTime
@@ -87,52 +62,69 @@ class NewsBridge(private val ctx: Context) {
     @Volatile private var lastMessages: List<String> = emptyList()
     @Volatile private var lastFetchMillis = 0L
 
+    // ── the engine ───────────────────────────────────────────────────────────
+    // News data work lives in Cloud-Lib-News.apk now; this class is the front
+    // end. Active source/channel moved with it (SourceStore/ChannelStore are
+    // lib-stored), which is what lets these forwards keep the bridge's exact
+    // signatures.
+    private val client by lazy {
+        DataBackendClient(ctx, "com.diegonmarcos.cloudlib.news",
+                          "com.diegonmarcos.superapp.news.NewsBackendService")
+    }
+
+    private fun engine(method: String, vararg args: String): String {
+        seedOnce()
+        return client.call(method, *args)
+    }
+
+    /**
+     * Hand over the one thing a re-fetch cannot rebuild: saved articles.
+     *
+     * Cached articles re-fetch on the next sync; SavedStore is the user's own
+     * state and moved into the engine's private storage with it. Marked done
+     * only when the engine confirms, so a failed seed is retried rather than
+     * skipped forever.
+     */
+    @Volatile private var seeded = false
+    @Synchronized
+    private fun seedOnce() {
+        if (seeded) return
+        seeded = true
+        val prefs = ctx.getSharedPreferences("news_bridge", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("seeded", false)) return
+        val legacy = ctx.getSharedPreferences("news_legacy_saved", Context.MODE_PRIVATE)
+            .getString("saved", null)
+        if (legacy.isNullOrBlank()) { prefs.edit().putBoolean("seeded", true).apply(); return }
+        val ok = runCatching { JSONObject(client.call("seed", legacy)).optBoolean("ok") }
+            .getOrDefault(false)
+        if (ok) prefs.edit().putBoolean("seeded", true).apply()
+    }
+
     // ---- baked config (data/topics.json -> BuildConfig.TOPICS_B64) ------
 
-    private fun bakedJson(): String =
-        String(Base64.decode(BuildConfig.TOPICS_B64, Base64.DEFAULT), Charsets.UTF_8)
 
-    private fun bakedTopics(): List<NewsTopicConfig> = NewsTopicsConfig.parseTopics(bakedJson())
 
-    private fun bakedApi(): NewsApiConfig = NewsTopicsConfig.parseApi(bakedJson())
 
-    private fun effectiveConfig(): NewsApiConfig = NewsConfigStore.effective(ctx, bakedApi())
 
     // ---- sources (data/sources.json -> BuildConfig.SOURCES_B64) -----------
 
-    private fun bakedSourcesJson(): String =
-        String(Base64.decode(BuildConfig.SOURCES_B64, Base64.DEFAULT), Charsets.UTF_8)
 
-    private fun bakedSources(): List<NewsSourceConfig> = NewsSourcesConfig.parseSources(bakedSourcesJson())
 
-    private fun bakedDefaultSource(): String = NewsSourcesConfig.parseDefaultSource(bakedSourcesJson())
 
-    private fun activeSourceId(): String = SourceStore.active(ctx, bakedDefaultSource())
 
     // ---- media (data/media.json -> BuildConfig.MEDIA_B64) -----------------
 
-    private fun bakedMediaJson(): String =
-        String(Base64.decode(BuildConfig.MEDIA_B64, Base64.DEFAULT), Charsets.UTF_8)
 
-    private fun bakedMediaChannels(): List<MediaChannelConfig> = MediaConfig.parseChannels(bakedMediaJson())
 
     // ---- events (data/events.json -> BuildConfig.EVENTS_B64) --------------
 
-    private fun bakedEventsJson(): String =
-        String(Base64.decode(BuildConfig.EVENTS_B64, Base64.DEFAULT), Charsets.UTF_8)
 
-    private fun bakedEventCalendars(): List<EventCalendarConfig> = EventCalendars.parse(bakedEventsJson())
 
     /** [bakedSources] always has at least one entry (its own fallback —
      *  see NewsSourcesConfig.parseSources), so `.first()` below never
      *  hits an empty list; it only fires if the persisted active id no
      *  longer exists in a rebuilt sources.json (a source was removed
      *  from the config after the user picked it). */
-    private fun activeSourceConfig(): NewsSourceConfig {
-        val sources = bakedSources()
-        val id = activeSourceId()
-        return sources.firstOrNull { it.id == id } ?: sources.first()
-    }
 
     /** The topic list a refresh/topics call should use for [source]:
      *  the normal user-configurable topic list (baked defaults + custom
@@ -144,14 +136,6 @@ class NewsBridge(private val ctx: Context) {
      *  and its cache is keyed by (source, channel) same as everything
      *  else (see NewsStore's cacheKey kdoc: "channel" IS "topic" here,
      *  channel==topic collapses naturally). */
-    private fun effectiveTopicsForSource(source: NewsSourceConfig): List<NewsTopicState> =
-        if (source.isRss && !source.queryDriven) {
-            val channelId = activeChannelId(source)
-            val label = channelsForSource(source).firstOrNull { it.id == channelId }?.label ?: source.label
-            listOf(NewsTopicState(topic = channelId, label = label, enabled = true, custom = false))
-        } else {
-            NewsTopicsStore.effective(ctx, bakedTopics())
-        }
 
     // ---- channels -----------------------------------------------------------
 
@@ -183,79 +167,36 @@ class NewsBridge(private val ctx: Context) {
      *  vs Business section, ntfy-self's independent topics), not facets
      *  of one query set — merging them isn't what the old "All" meant,
      *  and isn't asked for here. */
-    private fun channelsForSource(source: NewsSourceConfig): List<NewsChannelConfig> {
-        val channels = when {
-            source.queryDriven -> {
-                val topicChannels = NewsTopicsStore.effective(ctx, bakedTopics())
-                    .map { NewsChannelConfig(id = it.topic, label = it.label) }
-                listOf(NewsChannelConfig(id = ALL_CHANNEL_ID, label = "All")) + topicChannels
-            }
-            source.dynamicChannels -> DynamicChannelStore.channelsFor(ctx, source.id)
-            else -> source.channels
-        }
-        return channels.ifEmpty { listOf(NewsChannelConfig(id = source.id, label = source.label, url = source.url)) }
-    }
 
     /** The channel a refresh()/articles("") call should use: the
      *  per-source persisted choice (see [ChannelStore]), defaulting to
      *  [source]'s first channel — never blank, since
      *  [channelsForSource] always returns at least one entry. */
-    private fun activeChannelId(source: NewsSourceConfig): String {
-        val fallback = channelsForSource(source).first().id
-        return ChannelStore.active(ctx, source.id, fallback)
-    }
 
     /** `channels` is ALWAYS populated (never an empty array) — see
      *  [channelsForSource] — so the UI's second nav row always has
      *  something to render the moment a source is picked. */
     @JavascriptInterface
     fun sources(): String {
-        val arr = JSONArray()
-        for (s in bakedSources()) {
-            val caps = JSONArray()
-            for (c in s.capabilities) caps.put(c)
-            val channelsArr = JSONArray()
-            for (c in channelsForSource(s)) {
-                channelsArr.put(JSONObject().apply {
-                    put("id", c.id)
-                    put("label", c.label)
-                    // Optional — only ever set for a dynamic-channel
-                    // (ntfy-self) entry whose discovery payload itself
-                    // carried a group/category field. Omitted entirely
-                    // (not JSON null) when absent, so `channel.group` on
-                    // the JS side reads as plain `undefined`.
-                    if (!c.group.isNullOrBlank()) put("group", c.group)
-                })
-            }
-            arr.put(JSONObject().apply {
-                put("id", s.id)
-                put("label", s.label)
-                put("kind", s.kind)
-                put("queryDriven", s.queryDriven)
-                put("capabilities", caps)
-                put("requiresMesh", s.requiresMesh)
-                put("channels", channelsArr)
-            })
-        }
-        return arr.toString()
+        return engine("sources")
     }
 
     @JavascriptInterface
-    fun activeSource(): String = JSONObject().apply { put("id", activeSourceId()) }.toString()
+    fun activeSource(): String = JSONObject().apply {
+        return engine("activeSource")
+    }.toString()
 
     @JavascriptInterface
     fun setSource(id: String): String {
-        val key = id.trim()
-        if (key.isEmpty()) return okErr(false, "id is required")
-        val match = bakedSources().firstOrNull { it.id == key } ?: return okErr(false, "unknown source id")
-        SourceStore.setActive(ctx, match.id)
-        return okErr(true, "")
+        return engine("setSource", id)
     }
 
     /** The active source's active channel — see [activeChannelId]. */
     @JavascriptInterface
     fun activeChannel(): String =
-        JSONObject().apply { put("id", activeChannelId(activeSourceConfig())) }.toString()
+        JSONObject().apply {
+        return engine("activeChannel")
+    }.toString()
 
     /** Persists [id] as the active source's active channel — see
      *  [ChannelStore]. Rejects an id that isn't one of the active
@@ -265,12 +206,7 @@ class NewsBridge(private val ctx: Context) {
      *  channel. */
     @JavascriptInterface
     fun setChannel(id: String): String {
-        val key = id.trim()
-        if (key.isEmpty()) return okErr(false, "id is required")
-        val source = activeSourceConfig()
-        if (channelsForSource(source).none { it.id == key }) return okErr(false, "unknown channel id")
-        ChannelStore.setActive(ctx, source.id, key)
-        return okErr(true, "")
+        return engine("setChannel", id)
     }
 
     // ---- topics -----------------------------------------------------------
@@ -283,32 +219,7 @@ class NewsBridge(private val ctx: Context) {
      *  CHANNEL — instead of the user's GDELT/query topic list. */
     @JavascriptInterface
     fun topics(): String {
-        val source = activeSourceConfig()
-        val effective = effectiveTopicsForSource(source)
-        val summariesByTopic = if (source.isGdelt) {
-            NewsStore.topicSummaries(ctx, source.id).associateBy { it.topic }
-        } else emptyMap()
-        val arr = JSONArray()
-        for (state in effective) {
-            val summary = summariesByTopic[state.topic]
-            val cachedArticles = if (summary == null) NewsStore.articlesFor(ctx, source.id, state.topic) else emptyList()
-            val articleCount = summary?.articleCount ?: cachedArticles.size
-            // No 0.0 lie for a source that never measured tone (see
-            // GdeltArticle.tone's kdoc) — omit avgTone entirely (JSON
-            // null) rather than average an empty/all-null list into 0.
-            val cachedTones = cachedArticles.mapNotNull { it.tone }
-            val avgTone: Double? = summary?.avgTone
-                ?: (if (source.hasTone && cachedTones.isNotEmpty()) cachedTones.average() else null)
-            arr.put(JSONObject().apply {
-                put("topic", state.topic)
-                put("label", state.label)
-                put("articleCount", articleCount)
-                put("avgTone", avgTone ?: JSONObject.NULL)
-                put("lastFetch", NewsStore.lastFetch(ctx, source.id, state.topic).toString())
-                put("enabled", state.enabled)
-            })
-        }
-        return arr.toString()
+        return engine("topics")
     }
 
     /** `channel` (the former `topic` param — same bridge slot, new
@@ -333,21 +244,7 @@ class NewsBridge(private val ctx: Context) {
      *  topic rather than the newest N of just the first topic. */
     @JavascriptInterface
     fun articles(channel: String, limit: String): String {
-        val source = activeSourceConfig()
-        val limitInt = limit.toIntOrNull()?.takeIf { it > 0 } ?: effectiveConfig().maxArticles
-        val chanId = channel.ifBlank { activeChannelId(source) }
-        val list = if (source.queryDriven && chanId == ALL_CHANNEL_ID) {
-            val enabledTopics = NewsTopicsStore.effective(ctx, bakedTopics())
-                .filter { it.enabled }
-                .map { it.topic }
-            NewsStore.articlesFor(ctx, source.id, enabledTopics)
-        } else {
-            NewsStore.articlesFor(ctx, source.id, chanId)
-        }
-        val sorted = list.sortedByDescending { it.seendate }.take(limitInt)
-        val arr = JSONArray()
-        for (a in sorted) arr.put(a.toJson())
-        return arr.toString()
+        return engine("articles", channel, limit)
     }
 
     /** Empty for any source lacking "timeline" in its capabilities
@@ -359,23 +256,13 @@ class NewsBridge(private val ctx: Context) {
      *  contract, but this is the hard guarantee either way. */
     @JavascriptInterface
     fun timeline(topic: String): String {
-        val arr = JSONArray()
-        if (topic.isBlank()) return arr.toString()
-        val source = activeSourceConfig()
-        if (!source.hasTimeline) return arr.toString()
-        for (p in NewsStore.timelineFor(ctx, source.id, topic)) arr.put(p.toJson())
-        return arr.toString()
+        return engine("timeline", topic)
     }
 
     /** Same reasoning as [timeline], gated on "tone" instead. */
     @JavascriptInterface
     fun tone(topic: String): String {
-        val arr = JSONArray()
-        if (topic.isBlank()) return arr.toString()
-        val source = activeSourceConfig()
-        if (!source.hasTone) return arr.toString()
-        for (t in NewsStore.toneFor(ctx, source.id, topic)) arr.put(t.toJson())
-        return arr.toString()
+        return engine("tone", topic)
     }
 
     /** enabled is "true"/"false" (bridge string convention, see
@@ -383,15 +270,12 @@ class NewsBridge(private val ctx: Context) {
      *  in the sibling app). */
     @JavascriptInterface
     fun setTopicEnabled(topic: String, enabled: String): String {
-        if (topic.isBlank()) return okErr(false, "topic is required")
-        NewsTopicsStore.setEnabled(ctx, topic, enabled == "true")
-        return okErr(true, "")
+        return engine("setTopicEnabled", topic, enabled)
     }
 
     @JavascriptInterface
     fun addTopic(topic: String, label: String): String {
-        val error = NewsTopicsStore.addTopic(ctx, topic, label, bakedTopics())
-        return okErr(error.isEmpty(), error)
+        return engine("addTopic", topic, label)
     }
 
     /** Removing a topic drops its cache under EVERY source (not just
@@ -400,11 +284,7 @@ class NewsBridge(private val ctx: Context) {
      *  namespaced cache entry for it (see NewsStore's cacheKey kdoc). */
     @JavascriptInterface
     fun removeTopic(topic: String): String {
-        val error = NewsTopicsStore.removeTopic(ctx, topic, bakedTopics())
-        if (error.isEmpty()) {
-            for (s in bakedSources()) NewsStore.clearTopic(ctx, s.id, topic)
-        }
-        return okErr(error.isEmpty(), error)
+        return engine("removeTopic", topic)
     }
 
     // ---- refresh ------------------------------------------------------------
@@ -440,48 +320,20 @@ class NewsBridge(private val ctx: Context) {
      */
     @JavascriptInterface
     fun refresh(): String {
-        if (!syncRunning) {
-            syncRunning = true
-            executor.execute {
-                try {
-                    val cfg = effectiveConfig()
-
-                    val source = activeSourceConfig()
-                    val topics = effectiveTopicsForSource(source)
-                    val channel = activeChannelId(source)
-                    val newsReport = NewsSync.syncAll(ctx, source, topics, cfg.base, cfg.maxArticles, channel)
-
-                    var ok = newsReport.ok
-                    var failed = newsReport.failed
-                    val messages = newsReport.messages.toMutableList()
-                    var latestFetch = newsReport.lastFetch
-
-                    val mediaChannels = bakedMediaChannels()
-                    MediaRotationStore.nextChannel(ctx, mediaChannels)?.let { mc ->
-                        val mediaSource = MediaConfig.asSource(bakedMediaJson())
-                        // topics/base are unused by the fixed-rss sync
-                        // path this dispatches to — see NewsSync.kt's
-                        // syncRssFixed kdoc.
-                        val mediaReport = NewsSync.syncAll(ctx, mediaSource, emptyList(), "", cfg.maxArticles, mc.id)
-                        ok += mediaReport.ok
-                        failed += mediaReport.failed
-                        messages += mediaReport.messages.map { "media: $it" }
-                        if (mediaReport.lastFetch > latestFetch) latestFetch = mediaReport.lastFetch
-                    }
-
-                    val eventsReport = EventsSync.syncAll(ctx, bakedEventCalendars())
-                    ok += eventsReport.ok
-                    failed += eventsReport.failed
-                    messages += eventsReport.messages.map { "events: $it" }
-
-                    lastOk = ok
-                    lastFailed = failed
-                    lastMessages = messages
-                    if (latestFetch > 0) lastFetchMillis = latestFetch
-                } finally {
-                    syncRunning = false
-                }
-            }
+        // The running flag and last-result fields stay HERE: refreshStatus is
+        // what the spinner polls, and the engine deliberately returns a report
+        // rather than tracking state. Field names are the bridge's existing
+        // ones - refreshStatus already reads them.
+        if (syncRunning) return JSONObject().put("started", false).toString()
+        syncRunning = true
+        executor.execute {
+            try {
+                val r = JSONObject(engine("sync", ""))
+                lastOk = r.optInt("ok"); lastFailed = r.optInt("failed")
+                lastFetchMillis = r.optLong("lastFetch")
+                val msgs = r.optJSONArray("messages")
+                lastMessages = (0 until (msgs?.length() ?: 0)).map { msgs!!.optString(it) }
+            } finally { syncRunning = false }
         }
         return JSONObject().put("started", true).toString()
     }
@@ -508,17 +360,7 @@ class NewsBridge(private val ctx: Context) {
      *  no network here), or "" before that channel has ever synced once. */
     @JavascriptInterface
     fun media(): String {
-        val arr = JSONArray()
-        for (c in bakedMediaChannels()) {
-            val latest = NewsStore.articlesFor(ctx, MediaConfig.SOURCE_ID, c.id).maxByOrNull { it.seendate }
-            arr.put(JSONObject().apply {
-                put("id", c.id)
-                put("label", c.label)
-                put("channelId", c.channelId)
-                put("thumbnail", latest?.thumbnail ?: "")
-            })
-        }
-        return arr.toString()
+        return engine("mediaChannels")
     }
 
     /** `channel` "" merges every configured channel's cached videos,
@@ -533,30 +375,7 @@ class NewsBridge(private val ctx: Context) {
      *  cache stores a timestamp in. */
     @JavascriptInterface
     fun mediaItems(channel: String, limit: String): String {
-        val channels = bakedMediaChannels()
-        val limitInt = limit.toIntOrNull()?.takeIf { it > 0 } ?: effectiveConfig().maxArticles
-        val targets = if (channel.isBlank()) channels else channels.filter { it.id == channel }
-
-        val merged = LinkedHashMap<String, Pair<GdeltArticle, String>>()
-        for (c in targets) {
-            for (a in NewsStore.articlesFor(ctx, MediaConfig.SOURCE_ID, c.id)) {
-                if (a.url.isNotBlank()) merged.putIfAbsent(a.url, a to c.label)
-            }
-        }
-
-        val sorted = merged.values.sortedByDescending { it.first.seendate }.take(limitInt)
-        val arr = JSONArray()
-        for ((a, channelLabel) in sorted) {
-            arr.put(JSONObject().apply {
-                put("videoId", a.videoId ?: "")
-                put("title", a.title)
-                put("url", a.url)
-                put("thumbnail", a.thumbnail ?: "")
-                put("published", seendateToMillis(a.seendate).toString())
-                put("channelLabel", channelLabel)
-            })
-        }
-        return arr.toString()
+        return engine("mediaItems", channel, limit)
     }
 
     // ---- events (ICS calendar feeds) ------------------------------------------
@@ -570,14 +389,7 @@ class NewsBridge(private val ctx: Context) {
      *  see [CalEvent]'s kdoc in EventsModels.kt). */
     @JavascriptInterface
     fun events(fromUtcMillis: String, toUtcMillis: String): String {
-        val from = fromUtcMillis.toLongOrNull() ?: 0L
-        val to = toUtcMillis.toLongOrNull() ?: Long.MAX_VALUE
-        val calendars = bakedEventCalendars().filter { it.enabled }
-        val byId = calendars.associateBy { it.id }
-        val list = EventsStore.eventsFor(ctx, calendars.map { it.id }, from, to)
-        val arr = JSONArray()
-        for (e in list) arr.put(eventJson(e, byId[e.calendarId]))
-        return arr.toString()
+        return engine("events", fromUtcMillis, toUtcMillis)
     }
 
     /** Toggles a saved event by id — same add-if-absent/remove-if-
@@ -590,70 +402,22 @@ class NewsBridge(private val ctx: Context) {
      *  see [SavedEvent]'s kdoc. */
     @JavascriptInterface
     fun saveEvent(json: String): String {
-        return try {
-            val o = JSONObject(json)
-            val id = o.optString("id", "").trim()
-            if (id.isEmpty()) {
-                JSONObject().apply { put("ok", false); put("saved", false); put("error", "id is required") }.toString()
-            } else {
-                val calendarId = o.optString("calendarId", "")
-                val event = SavedEvent(
-                    id = id,
-                    calendarId = calendarId,
-                    calendarLabel = o.optString("calendarLabel", calendarId),
-                    color = o.optString("color", "#888888"),
-                    title = o.optString("title", ""),
-                    location = o.optString("location", ""),
-                    startUtcMillis = o.optString("start", "0").toLongOrNull() ?: 0L,
-                    endUtcMillis = o.optString("end", "0").toLongOrNull() ?: 0L,
-                    allDay = o.optBoolean("allDay", false),
-                )
-                val nowSaved = SavedEventsStore.toggle(ctx, event)
-                JSONObject().apply { put("ok", true); put("saved", nowSaved); put("error", "") }.toString()
-            }
-        } catch (e: Exception) {
-            JSONObject().apply {
-                put("ok", false); put("saved", false); put("error", e.message ?: e.javaClass.simpleName)
-            }.toString()
-        }
+        return engine("saveEvent", json)
     }
 
     /** Same response shape as [events] — a saved event renders through
      *  the exact same UI card either way. */
     @JavascriptInterface
     fun savedEvents(): String {
-        val arr = JSONArray()
-        for (e in SavedEventsStore.saved(ctx)) {
-            arr.put(JSONObject().apply {
-                put("id", e.id)
-                put("calendarId", e.calendarId)
-                put("calendarLabel", e.calendarLabel)
-                put("color", e.color)
-                put("title", e.title)
-                put("location", e.location)
-                put("start", e.startUtcMillis.toString())
-                put("end", e.endUtcMillis.toString())
-                put("allDay", e.allDay)
-            })
-        }
-        return arr.toString()
+        return engine("savedEvents")
     }
 
     @JavascriptInterface
     fun isEventSaved(id: String): String =
-        JSONObject().apply { put("saved", SavedEventsStore.isSaved(ctx, id)) }.toString()
+        JSONObject().apply {
+        return engine("isEventSaved", id)
+    }.toString()
 
-    private fun eventJson(e: CalEvent, cal: EventCalendarConfig?): JSONObject = JSONObject().apply {
-        put("id", e.id)
-        put("calendarId", e.calendarId)
-        put("calendarLabel", cal?.label ?: e.calendarId)
-        put("color", cal?.color ?: "#888888")
-        put("title", e.title)
-        put("location", e.location)
-        put("start", e.startUtcMillis.toString())
-        put("end", e.endUtcMillis.toString())
-        put("allDay", e.allDay)
-    }
 
     private val GDELT_MILLIS_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
 
@@ -662,50 +426,24 @@ class NewsBridge(private val ctx: Context) {
      *  epoch millis for [mediaItems]' `published` field. 0 (never
      *  throws) for a blank/unparseable seendate (an article whose date
      *  never parsed at all — see RssParser.parseDate). */
-    private fun seendateToMillis(seendate: String): Long {
-        if (seendate.isBlank()) return 0L
-        return runCatching {
-            LocalDateTime.parse(seendate, GDELT_MILLIS_FMT).atOffset(ZoneOffset.UTC).toInstant().toEpochMilli()
-        }.getOrDefault(0L)
-    }
 
     // ---- saved --------------------------------------------------------------
 
     @JavascriptInterface
     fun saved(): String {
-        val arr = JSONArray()
-        for (a in SavedStore.saved(ctx)) arr.put(a.toJson())
-        return arr.toString()
+        return engine("saved")
     }
 
     @JavascriptInterface
     fun toggleSaved(json: String): String {
-        return try {
-            val o = JSONObject(json)
-            val article = GdeltArticle.fromJson(o)
-            if (article.url.isBlank()) {
-                JSONObject().apply { put("ok", false); put("saved", false); put("error", "url is required") }.toString()
-            } else {
-                val nowSaved = SavedStore.toggle(ctx, article)
-                JSONObject().apply { put("ok", true); put("saved", nowSaved); put("error", "") }.toString()
-            }
-        } catch (e: Exception) {
-            JSONObject().apply {
-                put("ok", false); put("saved", false); put("error", e.message ?: e.javaClass.simpleName)
-            }.toString()
-        }
+        return engine("toggleSaved", json)
     }
 
     // ---- config ---------------------------------------------------------------
 
     @JavascriptInterface
     fun config(): String {
-        val cfg = effectiveConfig()
-        return JSONObject().apply {
-            put("base", cfg.base)
-            put("refreshSeconds", cfg.refreshSeconds)
-            put("maxArticles", cfg.maxArticles)
-        }.toString()
+        return engine("config")
     }
 
     /**
@@ -719,22 +457,9 @@ class NewsBridge(private val ctx: Context) {
      */
     @JavascriptInterface
     fun setConfig(json: String): String {
-        return try {
-            val o = JSONObject(json)
-            val base = if (o.has("base")) o.optString("base", "").trim() else null
-            if (base != null && base.isNotEmpty() &&
-                !base.startsWith("http://", ignoreCase = true) &&
-                !base.startsWith("https://", ignoreCase = true)
-            ) {
-                return okErr(false, "base must be http:// or https://")
-            }
-            val refreshSeconds = if (o.has("refreshSeconds")) o.optInt("refreshSeconds", -1).takeIf { it > 0 } else null
-            val maxArticles = if (o.has("maxArticles")) o.optInt("maxArticles", -1).takeIf { it > 0 } else null
-            NewsConfigStore.setOverride(ctx, base?.takeIf { it.isNotEmpty() }, refreshSeconds, maxArticles)
-            okErr(true, "")
-        } catch (e: Exception) {
-            okErr(false, e.message ?: e.javaClass.simpleName)
-        }
+        // Validation moved WITH the setter: the engine rejects a base that is
+        // not http(s), so the rule lives next to the store it protects.
+        return engine("setConfig", json)
     }
 
     // ---- external links ---------------------------------------------------------
