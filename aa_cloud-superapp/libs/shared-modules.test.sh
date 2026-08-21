@@ -341,6 +341,22 @@ if [ -f "$FLEET_KT" ]; then
     fi
 fi
 
+# 17. A buildConfigField that interpolates ${x} needs a `def x` in the same
+#     build.gradle. Gradle only fails at CONFIGURATION time with "Could not get
+#     unknown property", which no local check catches and which costs a full CI
+#     round trip - exactly how libs:contacts shipped a field referencing a
+#     variable that was never added.
+while read -r bg; do
+    [ -z "$bg" ] && continue
+    while read -r var; do
+        [ -z "$var" ] && continue
+        command grep -qE "^[[:space:]]*def[[:space:]]+${var}[[:space:]]*=" "$bg" \
+            || note FAIL "$bg interpolates \${${var}} in a buildConfigField but never defines it — gradle fails at configuration time"
+    done < <(command grep -o 'buildConfigField[^\n]*\${[A-Za-z_][A-Za-z0-9_]*}' "$bg" \
+             | command sed -E 's/.*\$\{([A-Za-z_][A-Za-z0-9_]*)\}.*/\1/' | command sort -u)
+done < <(command find . -name build.gradle -not -path '*/build/*' -not -path './.git/*' 2>/dev/null)
+note ok "every interpolated buildConfigField variable is defined"
+
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
 exit "$fail"

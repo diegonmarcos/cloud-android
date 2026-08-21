@@ -3,6 +3,15 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// The channel registry is baked into THIS module now, not only the app's
+// BuildConfig: ContactsEngine ships inside Cloud-Lib-Contacts.apk and cannot
+// see the app's. '../../build.json' resolves against this module's own
+// directory, so it stays ea_cloud-contacts/build.json whether the module is
+// built by the app or shared by reference into ea_cloud-libs.
+def buildJson   = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def channelsB64 = groovy.json.JsonOutput.toJson(buildJson.channels?.registry ?: [])
+                        .bytes.encodeBase64().toString()
+
 android {
     namespace 'com.diegonmarcos.superapp.contacts'
     compileSdk 36
