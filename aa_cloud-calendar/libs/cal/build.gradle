@@ -3,13 +3,27 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// CalEngine ships inside Cloud-Lib-Cal.apk and cannot see the app's
+// BuildConfig, so the subscription list is baked into THIS module. The path is
+// relative to this module's own directory, so it stays
+// ea_cloud-calendar/data/calendars.json whether the module is built by the app
+// or shared by reference into ea_cloud-libs.
+def calendarsFile = file('../../data/calendars.json')
+def calendarsB64  = (calendarsFile.exists() ? calendarsFile.text : '{}')
+                        .bytes.encodeBase64().toString()
+
 android {
     namespace 'com.diegonmarcos.superapp.cal'
     compileSdk 36
 
     defaultConfig {
+        buildConfigField "String", "CALENDARS_B64", "\"${calendarsB64}\""
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
@@ -20,7 +34,8 @@ android {
 }
 
 dependencies {
-    implementation project(':libs:core')
+    // api: CalBackendService extends core's DataBackendService.
+    api project(':libs:core')
 
     implementation 'androidx.core:core-ktx:1.13.1'
 }
