@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.adbdebug.PackageVerifier
+import com.diegonmarcos.superapp.adbdebug.ShellAccess
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.Fleet
 import kotlin.concurrent.thread
@@ -266,13 +267,24 @@ class ConstellationFragment : Fragment() {
                 Toast.makeText(ctx, "Asking the shell channel...", Toast.LENGTH_SHORT).show()
                 // setScanning binds Shizuku, which blocks - never on the main thread.
                 thread(name = "play-protect-toggle") {
-                    val r = PackageVerifier.setScanning(ctx, !scan.on)
-                    headerControls.post {
+                    val want = !scan.on
+                    fun apply(): PackageVerifier.Result = PackageVerifier.setScanning(ctx, want)
+                    fun report(r: PackageVerifier.Result) = headerControls.post {
                         Toast.makeText(ctx,
                             if (r.ok) r.state.describe() + " - via " + r.channel else r.output,
                             Toast.LENGTH_LONG).show()
                         renderHeader(ctx)
                     }
+                    val first = apply()
+                    if (first.channel != "none") { report(first); return@thread }
+                    // No channel yet: START the flow that grants one instead of
+                    // telling the user to go find it. If the grant lands without
+                    // another screen (the Shizuku prompt), finish the toggle
+                    // ourselves - the tap that got us here already said what to do.
+                    val msg = ShellAccess.ensure(ctx) {
+                        thread(name = "play-protect-retry") { report(apply()) }
+                    }
+                    headerControls.post { Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show() }
                 }
             },
         ))

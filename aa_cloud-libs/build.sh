@@ -34,13 +34,26 @@ import json, os, sys
 root = sys.argv[1]
 cfg  = json.load(open(os.path.join(root, 'build.json')))
 lc   = cfg['lib_apks']
-scan = os.path.normpath(os.path.join(root, lc['scan']))
+# scan is a LIST of roots - library modules live beside the app that grew them.
+roots = lc['scan'] if isinstance(lc['scan'], list) else [lc['scan']]
+roots = [os.path.normpath(os.path.join(root, r)) for r in roots]
 excl = set(lc.get('exclude', {}))
 img  = cfg['release']['ghcr']['image_prefix']
-names = sorted(d for d in os.listdir(scan)
-               if os.path.isfile(os.path.join(scan, d, 'build.gradle')) and d not in excl)
+seen = {}
+for scan in roots:
+    if not os.path.isdir(scan):
+        sys.exit(f"FATAL: lib_apks.scan names a path that is not a directory: {scan}")
+    for d in os.listdir(scan):
+        if not os.path.isfile(os.path.join(scan, d, 'build.gradle')) or d in excl:
+            continue
+        # The module name is the gradle path AND the applicationId suffix, so a
+        # collision across roots would give two libraries the same APK identity.
+        if d in seen and seen[d] != scan:
+            sys.exit(f"FATAL: module '{d}' provided by two scan roots: {seen[d]} and {scan}")
+        seen[d] = scan
+names = sorted(seen)
 if not names:
-    sys.exit(f"FATAL: no library modules under {scan}")
+    sys.exit(f"FATAL: no library modules under {roots}")
 for n in names:
     parts  = n.split('-')
     flavor = parts[0] + ''.join(p.capitalize() for p in parts[1:])

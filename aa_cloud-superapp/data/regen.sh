@@ -28,7 +28,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 # ── constellation-fleet.json — the Constellation AppStore's app registry.
-# Auto-scanned from each sibling ea_cloud-*/build.json (self-registering, DRY),
+# Auto-scanned from each sibling */build.json that declares constellation
+# membership in its data (self-registering, DRY),
 # in TWO shapes, no hand-maintained list (FIRE 4/6):
 #   • top-level apps (browser/vault/wallet/superapp/nav/ide) — identity at
 #     .android.application_id + .release.ghcr.image.
@@ -49,14 +50,21 @@ regen_constellation() {
     local tree="https://github.com/diegonmarcos/cloud-unix/tree/main"
     local pkg="https://github.com/diegonmarcos/cloud-unix/pkgs/container"
 
-    # Scan every sibling ea_cloud-*/build.json. A dir self-registers as EITHER a
-    # top-level app (has .android.application_id + .release.ghcr.image) OR a
-    # fork-app (no top-level marker, but a real .forks.<key> entry). id = the dir
-    # basename sans the ea_cloud- prefix. Nothing is hand-listed; archiving a dir
-    # (e.g. ea_cloud-comms → z_archive/) drops it from the fleet automatically.
+    # Scan EVERY sibling repo's build.json, not just ea_cloud-*/. Membership is a
+    # property of the DATA, not of the directory name: a dir self-registers as a
+    # top-level app (.android.application_id + .release.ghcr), a multi-lib repo
+    # (.lib_apks) or a fork-app (a real .forks.<key> entry), and anything else is
+    # skipped. The old ea_cloud-* glob made the prefix load-bearing, so
+    # cloud-unix-termux-boot - named for the host it targets - was invisible to
+    # the store no matter what its build.json said. This predicate admits exactly
+    # the same repos the glob did, plus any correctly-declared one.
+    # id = dir basename sans an ea_cloud- prefix if it has one.
     local apps="[]" bj id dir
-    for bj in "$UNIX"/ea_cloud-*/build.json; do
+    for bj in "$UNIX"/*/build.json; do
         [ -f "$bj" ] || continue
+        jq -e '(.lib_apks != null) or (.forks != null)
+               or (.android.application_id != null and .release.ghcr != null)' \
+           "$bj" >/dev/null 2>&1 || continue
         dir="$(basename "$(dirname "$bj")")"; id="${dir#ea_cloud-}"
         if jq -e '.lib_apks.scan' "$bj" >/dev/null 2>&1; then
             # ── Multi-lib repo (ea_cloud-libs) ────────────────────────────────
@@ -65,14 +73,27 @@ regen_constellation() {
             # the same scan+exclude that settings.gradle and build.sh apply, so a
             # new module under ea_cloud-superapp/libs/ appears in the Libs tab
             # automatically. Everything else here is derived from the dir name.
-            local lscan lexcl lprefix laprefix limgprefix lmod lasset
-            lscan="$(dirname "$bj")/$(jq -r '.lib_apks.scan' "$bj")"
+            local lroot lscan lrel lpair lexcl lprefix laprefix limgprefix lmod lasset
             lexcl="$(jq -r '(.lib_apks.exclude // {}) | keys[]' "$bj" 2>/dev/null | tr '\n' ' ')"
             lprefix="$(jq -r '.lib_apks.application_id_prefix' "$bj")"
             laprefix="$(jq -r '.lib_apks.asset_prefix' "$bj")"
             limgprefix="$(jq -r '.release.ghcr.image_prefix' "$bj")"
-            for lmod in $(ls -1 "$lscan" 2>/dev/null | sort); do
-                [ -f "$lscan/$lmod/build.gradle" ] || continue
+            # lib_apks.scan is a LIST of roots (library modules live beside the
+            # app that grew them), so flatten to "<module>|<repo-relative dir>"
+            # first: the directory is what repo_url has to point at, and it is
+            # no longer always ea_cloud-superapp/libs.
+            for lpair in $(
+                for lroot in $(jq -r '.lib_apks.scan | if type == "array" then .[] else . end' "$bj"); do
+                    lscan="$(dirname "$bj")/$lroot"
+                    [ -d "$lscan" ] || continue
+                    lrel="$(realpath --relative-to="$UNIX" "$lscan")"
+                    for lmod in $(ls -1 "$lscan" 2>/dev/null); do
+                        [ -f "$lscan/$lmod/build.gradle" ] || continue
+                        printf '%s|%s\n' "$lmod" "$lrel"
+                    done
+                done | sort
+            ); do
+                lmod="${lpair%%|*}"; lrel="${lpair##*|}"
                 case " $lexcl " in *" $lmod "*) continue ;; esac
                 # Cloud-Lib-Translate-Mlkit.apk — each '-' segment capitalised,
                 # matching build.sh's asset naming exactly.
@@ -81,7 +102,8 @@ regen_constellation() {
                            --arg mod "$lmod" --arg asset "$lasset" \
                            --arg pkgid "$lprefix.$(echo "$lmod" | tr -d '-')" \
                            --arg img "$limgprefix$lmod" \
-                           --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
+                           --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" \
+                           --arg libdir "$lrel" '
                     ($rel + "/latest/download/" + $asset) as $url
                     | $acc + [ { id: $id,
                                  label: ("Lib: " + $mod),
@@ -93,7 +115,7 @@ regen_constellation() {
                                  tag: (.release.auto_update.tag // "latest"),
                                  asset: $asset,
                                  release_url: $url,
-                                 repo_url: ($tree + "/ea_cloud-superapp/libs/" + $mod),
+                                 repo_url: ($tree + "/" + $libdir + "/" + $mod),
                                  ghcr_page: ($pkg + "/" + $img),
                                  blocked: false,
                                  kind: "lib" } ]' "$bj")"

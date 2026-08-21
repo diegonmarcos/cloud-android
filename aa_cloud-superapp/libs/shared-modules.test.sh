@@ -48,7 +48,25 @@ while read -r sg; do
     command grep -q '_spec?.dir' "$sg" \
         && note ok "$sg honours dir" \
         || note FAIL "$sg ignores build.json::modules.dir"
-done < <(command ls -1 ea_cloud-*/settings.gradle)
+done < <(python3 - <<'PYSG'
+import json, glob, os
+# Only repos that actually declare modules in build.json. A repo with no
+# build.json (or no modules map) has no `dir` to honour, so demanding the
+# data-driven loop there reports a failure that cannot be fixed by fixing
+# anything. Kept scoped rather than universal because a repo can legitimately
+# ship a gradle project with no build.json.
+for sg in sorted(glob.glob('ea_cloud-*/settings.gradle')):
+    bj = os.path.join(os.path.dirname(sg), 'build.json')
+    if not os.path.isfile(bj):
+        continue
+    try:
+        if not json.load(open(bj)).get('modules'):
+            continue
+    except ValueError:
+        continue
+    print(sg)
+PYSG
+)
 
 # 5. No two apps may hold their own copy of the same module name — that is the
 #    exact shape the drift came in. One name, one directory, everywhere.
@@ -171,6 +189,26 @@ PY
         note FAIL "ea_cloud-libs: build.sh and constellation-fleet.json disagree — rerun ea_cloud-superapp/data/regen.sh"
         diff <(printf '%s\n' "$shipped") <(printf '%s\n' "$fleeted") | command head -10
     fi
+    # The CI trigger has to repeat the scan roots, because GitHub Actions cannot
+    # read a path list out of build.json. Drift is silent and expensive: a lib
+    # module changes, no workflow matches, and no APK is ever rebuilt.
+    root_drift=$(python3 - <<'PYROOTS'
+import json, re
+cfg   = json.load(open('ea_cloud-libs/build.json'))['lib_apks']
+roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
+want  = {r.lstrip('./').replace('../', '').rstrip('/') + '/**' for r in roots}
+yml   = open('1_cicd/src/cicd/ship-cloud-libs.yml').read()
+have  = set(re.findall(r'^\s*-\s*"([^"]+/\*\*)"', yml, re.M))
+for m in sorted(want - have):
+    print(f"ship-cloud-libs.yml has no trigger for {m} - changes there would ship no APK")
+PYROOTS
+)
+    if [ -z "$root_drift" ]; then
+        note ok "ship-cloud-libs.yml triggers on every lib_apks.scan root"
+    else
+        while read -r line; do note FAIL "$line"; done <<< "$root_drift"
+    fi
+
     # An excluded module must say why. A bare exclusion is indistinguishable from
     # a module someone silently dropped because it would not build.
     while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'

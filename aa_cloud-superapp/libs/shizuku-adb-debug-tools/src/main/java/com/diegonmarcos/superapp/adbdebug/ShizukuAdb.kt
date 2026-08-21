@@ -61,7 +61,23 @@ object ShizukuAdb {
         Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     }.getOrDefault(false)
 
-    fun requestPermission() {
+    /**
+     * Ask the user for Shizuku permission. The answer arrives asynchronously on
+     * a binder thread, so [onGranted] is how a caller finishes the job it was
+     * already trying to do instead of making the user come back and tap again.
+     * The listener removes itself, so a declined prompt leaks nothing.
+     */
+    fun requestPermission(onGranted: (() -> Unit)? = null) {
+        if (onGranted != null) runCatching {
+            Shizuku.addRequestPermissionResultListener(
+                object : Shizuku.OnRequestPermissionResultListener {
+                    override fun onRequestPermissionResult(code: Int, grantResult: Int) {
+                        if (code != PERMISSION_REQUEST_CODE) return
+                        runCatching { Shizuku.removeRequestPermissionResultListener(this) }
+                        if (grantResult == PackageManager.PERMISSION_GRANTED) onGranted()
+                    }
+                })
+        }
         runCatching { Shizuku.requestPermission(PERMISSION_REQUEST_CODE) }
     }
 

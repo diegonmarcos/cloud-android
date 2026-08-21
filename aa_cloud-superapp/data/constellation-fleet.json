@@ -2,6 +2,22 @@
   "version": 1,
   "apps": [
     {
+      "id": "cloud-unix-termux-boot",
+      "label": "cloud-unix-termux-boot",
+      "package": "com.termux.nix.boot",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-unix-termux-boot",
+      "tag": "latest",
+      "asset": "Cloud-Unix-Termux-Boot.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Unix-Termux-Boot.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/cloud-unix-termux-boot",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-unix-termux-boot",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
       "id": "browser",
       "label": "cloud-browser",
       "package": "com.diegonmarcos.cloudbrowser",
@@ -178,6 +194,22 @@
       "kind": "lib"
     },
     {
+      "id": "lib-cal",
+      "label": "Lib: cal",
+      "package": "com.diegonmarcos.cloudlib.cal",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-cal",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Cal.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Cal.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-calendar/libs/cal",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-cal",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
       "id": "lib-chat",
       "label": "Lib: chat",
       "package": "com.diegonmarcos.cloudlib.chat",
@@ -190,6 +222,22 @@
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Chat.apk",
       "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/chat",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-chat",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
+      "id": "lib-contacts",
+      "label": "Lib: contacts",
+      "package": "com.diegonmarcos.cloudlib.contacts",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-contacts",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Contacts.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Contacts.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-contacts/libs/contacts",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-contacts",
       "blocked": false,
       "kind": "lib"
     },
@@ -338,6 +386,22 @@
       "kind": "lib"
     },
     {
+      "id": "lib-maps",
+      "label": "Lib: maps",
+      "package": "com.diegonmarcos.cloudlib.maps",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-maps",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Maps.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Maps.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-nav/libs/maps",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-maps",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
       "id": "lib-media",
       "label": "Lib: media",
       "package": "com.diegonmarcos.cloudlib.media",
@@ -366,6 +430,22 @@
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Net.apk",
       "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/net",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-net",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
+      "id": "lib-news",
+      "label": "Lib: news",
+      "package": "com.diegonmarcos.cloudlib.news",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-news",
+      "tag": "latest",
+      "asset": "Cloud-Lib-News.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-News.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-news/libs/news",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-news",
       "blocked": false,
       "kind": "lib"
     },
@@ -494,6 +574,22 @@
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Voice-Vosk.apk",
       "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/voice-vosk",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-voice-vosk",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
+      "id": "lib-wallet",
+      "label": "Lib: wallet",
+      "package": "com.diegonmarcos.cloudlib.wallet",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-wallet",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Wallet.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Wallet.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-wallet/libs/wallet",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-wallet",
       "blocked": false,
       "kind": "lib"
     },
