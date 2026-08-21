@@ -135,9 +135,7 @@ class NewsEngine(context: Context) {
 
 
     fun timeline(topic: String): String = JSONArray().apply {
-        NewsStore.timelineFor(ctx, activeSource().id, topic).forEach { p ->
-            put(JSONObject().put("date", p.date).put("value", p.value))
-        }
+        NewsStore.timelineFor(ctx, activeSource().id, topic).forEach { put(it.toJson()) }
     }.toString()
 
     /**
@@ -162,10 +160,11 @@ class NewsEngine(context: Context) {
             .toString()
     }
 
+    // ToneEntry is url/title/tone/domain — NOT date/value like TimelinePoint.
+    // Use the model's own serializer, which is what the bridge emitted; my
+    // hand-rolled keys guessed a `date` field that does not exist.
     fun tone(topic: String): String = JSONArray().apply {
-        NewsStore.toneFor(ctx, activeSource().id, topic).forEach { e ->
-            put(JSONObject().put("date", e.date).put("tone", e.tone))
-        }
+        NewsStore.toneFor(ctx, activeSource().id, topic).forEach { put(it.toJson()) }
     }.toString()
 
     fun sources(): String = JSONArray().apply {
@@ -209,7 +208,7 @@ class NewsEngine(context: Context) {
     // ── saved ────────────────────────────────────────────────────────────────
 
     fun saved(): String = JSONArray().apply {
-        SavedStore.saved(ctx).forEach { put(articleJson(it)) }
+        SavedStore.saved(ctx).forEach { put(it.toJson()) }
     }.toString()
 
     /** Returns the NEW saved state, so the caller re-renders from the truth
@@ -338,9 +337,7 @@ class NewsEngine(context: Context) {
     private val GDELT_FMT: java.time.format.DateTimeFormatter =
         java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
 
-    private fun articleJson(a: GdeltArticle) = JSONObject()
-        .put("url", a.url).put("title", a.title).put("seendate", a.seendate)
-        .put("socialimage", a.socialimage).put("domain", a.domain)
-        .put("language", a.language).put("sourcecountry", a.sourcecountry)
-        .put("tone", a.tone ?: JSONObject.NULL)
+    // No hand-rolled article serializer: GdeltArticle.toJson() also emits
+    // videoId and thumbnail, which mine dropped - saved YouTube items would
+    // have rendered without their thumbnails, with nothing reporting why.
 }

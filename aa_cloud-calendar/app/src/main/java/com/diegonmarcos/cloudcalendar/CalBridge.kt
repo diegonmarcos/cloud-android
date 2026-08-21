@@ -245,18 +245,6 @@ class CalBridge(private val ctx: Context) {
 
     // ---- small JSON helpers -----------------------------------------------
 
-    private fun CalTodo.toBridgeJson(): JSONObject = JSONObject().apply {
-        put("id", bridgeId)
-        put("uid", uid)
-        put("projectId", collectionId)
-        put("summary", summary)
-        put("description", description)
-        put("status", status)
-        put("due", dueUtcMillis?.toString() ?: "")
-        put("priority", priority)
-        put("completedAt", completedUtcMillis?.toString() ?: "")
-    }
-
     private fun saveResult(ok: Boolean, id: String, error: String): String =
         JSONObject().apply { put("ok", ok); put("id", id); put("error", error) }.toString()
 

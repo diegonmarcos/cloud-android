@@ -129,7 +129,7 @@ class CalEngine(context: Context) {
         return runCatching {
             val saved = CalDav.putTodo(c, local.collectionId, local, local.href.isBlank())
             TodoStore.upsertTodo(ctx, saved)
-            JSONObject().put("ok", true).put("synced", true).put("todo", saved.toJson()).toString()
+            JSONObject().put("ok", true).put("synced", true).put("todo", todoJson(saved)).toString()
         }.getOrElse { t ->
             // The local write already landed; report the server failure
             // honestly instead of pretending the task saved everywhere.
@@ -201,7 +201,27 @@ class CalEngine(context: Context) {
         }
     }
 
-    /** The model's own serializer - it already emits bridgeId and every
-     *  field the UI reads. */
-    private fun todoJson(t: CalTodo): JSONObject = t.toJson()
+    /**
+     * The shape the UI reads — NOT CalTodo.toJson().
+     *
+     * They differ in ways that would fail silently: the UI keys tasks by `id`
+     * (the opaque bridgeId), which toJson does not emit at all, and reads
+     * `projectId`/`due`/`completedAt` where toJson writes
+     * `collectionId`/`dueUtcMillis`/`completedUtcMillis`. Handing it toJson
+     * renders a task list with no ids and no due dates — no error anywhere.
+     *
+     * toJson stays the wire format for storage and CalDAV round trips; this is
+     * the view model.
+     */
+    private fun todoJson(t: CalTodo): JSONObject = JSONObject().apply {
+        put("id", t.bridgeId)
+        put("uid", t.uid)
+        put("projectId", t.collectionId)
+        put("summary", t.summary)
+        put("description", t.description)
+        put("status", t.status)
+        put("due", t.dueUtcMillis?.toString() ?: "")
+        put("priority", t.priority)
+        put("completedAt", t.completedUtcMillis?.toString() ?: "")
+    }
 }
