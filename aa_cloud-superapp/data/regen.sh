@@ -211,13 +211,6 @@ fi
 : "${MESH:?mesh.json not found; pass as arg 2}"
 : "${LINKTREE:?projects.json not found; pass as arg 3}"
 
-# Auto-discover cloud-fleet-containers-declared.json (lives next to consolidated).
-FLEET="${FLEET:-$(dirname "$CONSOLIDATED")/cloud-fleet-containers-declared.json}"
-if [ ! -f "$FLEET" ]; then
-  echo "WARN: cloud-fleet-containers-declared.json not found alongside consolidated — cloud_services.json will not be regenerated" >&2
-  FLEET=""
-fi
-
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; exit 1; }
 
 echo "→ mesh:         $MESH"
@@ -275,47 +268,3 @@ echo "mesh peers:       $(jq '.peers | length' "$HERE/mesh.json")"
 echo "public services:  $(jq length    "$HERE/services_public.json")"
 echo "private services: $(jq length    "$HERE/services_private.json")"
 echo "linktree slides:  $(jq '.slides | length' "$HERE/linktree.json")"
-
-# Derive cloud_services.json from cloud-fleet-containers-declared.json.
-# Populates the groups/subgroups/services arrays that the CloudDash data model reads.
-if [ -n "$FLEET" ]; then
-  jq '
-    def make_group(group_id; group_label; group_key):
-      { id: group_id, label: group_label, subgroups:
-        [ .fleet.containers[group_key]
-          | group_by(.subgroup)[]
-          | { label: .[0].subgroup, services: map({
-                id:         .id,
-                name:       .name,
-                vm:         .vm,
-                port:       .port,
-                public_url: .public_url
-              })
-          }
-        ]
-      };
-    {
-      version: 2,
-      groups: [
-        make_group("infra"; "Infra Apps"; "infra-apps"),
-        make_group("user";  "User Apps";  "user-apps"),
-        { id: "providers", label: "Providers (VPS)", subgroups: [
-            { label: "VMs",     services: ( .fleet.vms["vm-x86"] + .fleet.vms["vm-arm"] | map({ id: .id, name: (.alias // .id), arch: .arch }) ) },
-            { label: "Runners", services: .categories.runners | map({ id: .id, name: .name }) }
-          ]
-        },
-        { id: "dbs", label: "DBs (storage)", subgroups: [
-            { label: "DBs", services: .categories["db-hd"] | map({ id: .id, engine: .engine, service: .service }) },
-            { label: "S3",  services: .categories["db-s3"] | map({ id: .id, name: .name, region: .region }) }
-          ]
-        },
-        { id: "mcpapi", label: "MCP & API", subgroups: [
-            { label: "MCPs", services: .categories.mcps | map({ id: .id, name: .name, port: .port, public_url: .public_url }) },
-            { label: "APIs", services: .categories.apis | map({ id: .id, name: .name, port: .port, public_url: .public_url }) }
-          ]
-        }
-      ]
-    }
-  ' "$FLEET" > "$HERE/cloud_services.json"
-  echo "cloud_services:   $(jq '[.groups[].subgroups[].services | length] | add' "$HERE/cloud_services.json") services across $(jq '.groups | length' "$HERE/cloud_services.json") groups"
-fi
