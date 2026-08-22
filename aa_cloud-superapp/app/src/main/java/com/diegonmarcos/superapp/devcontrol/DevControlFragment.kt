@@ -238,10 +238,9 @@ class DevControlFragment : Fragment() {
 
         addLogcatSection(ctx, column)
 
-        // ══ CLOUD macro section — who/what this device is in the cloud
-        //    mesh: the owner profile + repos + consolidated config, and
-        //    the live WireGuard/mesh reachability.
-        column.addView(macroHeader(ctx, "☁  CLOUD"))
+        // ══ CLOUD macro section — who/what this device is in the cloud mesh: the
+        //    owner profile + repos + consolidated config, and live WireGuard/mesh reachability.
+        column.addView(macroHeader(ctx, "☁  CLOUD IDENTITY"))
 
         section(ctx, column, "Profile") {
             val prof = ProfilePrefs(ctxAny())
@@ -261,9 +260,9 @@ class DevControlFragment : Fragment() {
 
         section(ctx, column, "VPN / WireGuard / Mesh") { renderVpnMesh(ctx, it) }
 
-        // ══ PHONE macro section — everything about THIS Android device:
-        //    the app build, perms, battery, memory, network, etc.
-        column.addView(macroHeader(ctx, "📱  PHONE"))
+        // ══ APP & BUILD macro section — this APK's identity: package/version,
+        //    release channel, signing, provenance, declared sections, and the full stack scan.
+        column.addView(macroHeader(ctx, "📱  APP & BUILD"))
 
         section(ctx, column, "App") {
             row(ctx, it, "Name",         BuildConfig.APPLICATION_ID)
@@ -323,687 +322,6 @@ class DevControlFragment : Fragment() {
             }
         }
 
-        section(ctx, column, "Device / stack") {
-            row(ctx, it, "Manufacturer", android.os.Build.MANUFACTURER)
-            row(ctx, it, "Model",        android.os.Build.MODEL)
-            row(ctx, it, "Brand",        android.os.Build.BRAND)
-            row(ctx, it, "Device",       android.os.Build.DEVICE)
-            row(ctx, it, "Hardware",     android.os.Build.HARDWARE)
-            row(ctx, it, "Android",      "${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
-            row(ctx, it, "ABIs",         android.os.Build.SUPPORTED_ABIS.joinToString(", "))
-            row(ctx, it, "Locale",       java.util.Locale.getDefault().toLanguageTag())
-        }
-
-        section(ctx, column, "Storage") {
-            val ctxAny = requireContext()
-            val pm = ctxAny.packageManager
-            @Suppress("DEPRECATION")
-            val pkg = pm.getPackageInfo(ctxAny.packageName, 0)
-            // PackageInfo.applicationInfo is @Nullable as of API 35;
-            // null-guard once, then degrade gracefully per field —
-            // APK size to 0 (visible "—" in the row), dataDir to
-            // Context.getDataDir() which is always non-null.
-            val appInfo   = pkg.applicationInfo
-            val apkBytes  = runCatching { File(appInfo?.sourceDir ?: "").length() }.getOrDefault(0L)
-            // "Datos" = the app's private data root — includes filesDir,
-            // databases, shared_prefs, and everything else the app
-            // persists outside of cacheDir.
-            val dataDir   = appInfo?.dataDir?.let { File(it) } ?: ctxAny.dataDir
-            val cacheDir  = ctxAny.cacheDir
-            val cacheBytes = dirSize(cacheDir)
-            // dataDir contains cacheDir; subtract to get pure "data".
-            val dataBytes  = (dirSize(dataDir) - cacheBytes).coerceAtLeast(0L)
-            val totalBytes = apkBytes + dataBytes + cacheBytes
-
-            // Paths first.
-            row(ctx, it, "Files dir",   ctxAny.filesDir.absolutePath)
-            row(ctx, it, "Cache dir",   cacheDir.absolutePath)
-            row(ctx, it, "Data root",   dataDir.absolutePath)
-            row(ctx, it, "External",    ctxAny.getExternalFilesDir(null)?.absolutePath ?: "—")
-            row(ctx, it, "Trace log",   sizeStr(File(ctxAny.getExternalFilesDir(null), "trace/trace.log").length()))
-            it.addView(small(ctx, "Breakdown — same buckets Android system settings shows:"))
-            row(ctx, it, "Aplicación",  sizeStr(apkBytes))
-            row(ctx, it, "Datos",       sizeStr(dataBytes))
-            row(ctx, it, "Caché",       sizeStr(cacheBytes))
-            row(ctx, it, "Total",       sizeStr(totalBytes))
-        }
-
-        // Permissions section moved to PermissionsFragment (config/perms tab).
-
-        section(ctx, column, "Battery & Usage") {
-            // Everything in this block is what the app CAN read about
-            // itself without privileged permissions. Per-app battery mAh
-            // + screen-on / background time split / wakelocks count etc.
-            // live in BatteryStatsManager which is system-only. The
-            // "Open battery usage details" button below jumps to the
-            // OS screen the user pasted from for the full picture.
-            val ctxAny = requireContext()
-            val pkg = ctxAny.packageManager.getPackageInfo(ctxAny.packageName, 0)
-            val myUid = ctxAny.applicationInfo.uid
-
-            // App-side crash count — files in CrashLogger's private dir
-            // (getExternalFilesDir/crashes/crash-<ts>.txt).
-            val crashDir = File(ctxAny.getExternalFilesDir(null), "crashes")
-            val crashes  = crashDir.listFiles { f -> f.name.startsWith("crash-") }?.size ?: 0
-            val mostRecent = crashDir.listFiles { f -> f.name.startsWith("crash-") }
-                ?.maxByOrNull { it.lastModified() }
-            row(ctx, it, "Crash count",  crashes.toString())
-            row(ctx, it, "Last crash",   mostRecent?.let { fmtMillis(it.lastModified()) } ?: "—")
-            row(ctx, it, "Crashes dir",  crashDir.absolutePath)
-
-            // Process uptime since this Application's onCreate.
-            val uptimeMs = android.os.SystemClock.elapsedRealtime() -
-                AppProcessUptime.startedAtElapsed
-            row(ctx, it, "Process uptime", fmtDuration(uptimeMs))
-            row(ctx, it, "First install",  fmtMillis(pkg.firstInstallTime))
-            row(ctx, it, "Last update",    fmtMillis(pkg.lastUpdateTime))
-
-            // Network bytes RX/TX since boot (TrafficStats is per-UID;
-            // resets on reboot). Captures all sockets this UID has used.
-            val rx = android.net.TrafficStats.getUidRxBytes(myUid)
-            val tx = android.net.TrafficStats.getUidTxBytes(myUid)
-            val rxMobile = android.net.TrafficStats.getMobileRxBytes()
-            val txMobile = android.net.TrafficStats.getMobileTxBytes()
-            row(ctx, it, "Net RX (all)",    sizeStr(if (rx < 0) 0L else rx))
-            row(ctx, it, "Net TX (all)",    sizeStr(if (tx < 0) 0L else tx))
-            row(ctx, it, "Mobile RX (UID)", if (rxMobile < 0) "—" else sizeStr(rxMobile))
-            row(ctx, it, "Mobile TX (UID)", if (txMobile < 0) "—" else sizeStr(txMobile))
-
-            // Per-app foreground / background screen time — needs
-            // PACKAGE_USAGE_STATS (Settings.ACTION_USAGE_ACCESS_SETTINGS).
-            val (fgMs, bgMs) = readUsageStats(ctxAny)
-            row(ctx, it, "Screen-on",   if (fgMs < 0) "Needs Usage Access" else fmtDuration(fgMs))
-            row(ctx, it, "Background",  if (bgMs < 0) "Needs Usage Access" else fmtDuration(bgMs))
-            row(ctx, it, "Total used",  if (fgMs < 0 || bgMs < 0) "—" else fmtDuration(fgMs + bgMs))
-
-            // ── Since-last-charge battery analytics ───────────────
-            // Read current battery level + charging status, persist
-            // the "last unplug" anchor in SharedPreferences, derive
-            // the three user-requested rows.
-            // Battery-session math (anchor lifecycle + rate + ETA) lives
-            // in BatterySessionStats — same source the status-strip
-            // BatteryEstimatePopup reads from when the user taps the
-            // icon. Single calc, two surfaces.
-            val bs = com.diegonmarcos.superapp.battery.BatterySessionStats.read(ctxAny)
-            // Row labels auto-flip on charging state. Discharging: "Since
-            // last charge / % battery/min consumed / Estimated battery last
-            // / ETA battery drained". Charging: same shape, charge-flavoured
-            // wording + ETA-to-full math. Same underlying snapshot fields,
-            // unified formatters in BatterySessionStats decide the wording.
-            val labelSince = if (bs.isCharging) "Since plugged in"        else "Since last charge"
-            val labelRate  = if (bs.isCharging) "% battery/h gained"      else "% battery/h consumed"
-            // Honest rename — this is BATTERY storage (V × I into the
-            // cell), NOT the charger input. Android doesn't expose the
-            // charger live input via public API; the "Charger input"
-            // row below shows the dumpsys-reported max negotiated spec.
-            val labelPower = if (bs.isCharging) "Battery storage (live)" else "Battery drain (live)"
-            val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
-            val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
-            row(ctx, it, labelSince,
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtSinceAnchor(bs))
-            row(ctx, it, labelRate,
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtRateUnified(bs))
-            row(ctx, it, labelPower,
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtPowerRow(bs))
-            if (bs.isCharging) {
-                row(ctx, it, "Charger input",
-                    com.diegonmarcos.superapp.battery.BatterySessionStats.fmtChargerSpec(bs))
-                val phone = com.diegonmarcos.superapp.battery.BatterySessionStats.fmtPhoneConsumption(bs)
-                if (phone.isNotEmpty()) {
-                    row(ctx, it, "Phone consumption", "$phone  (charger − battery)")
-                }
-            }
-            row(ctx, it, labelEta,
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtEtaDuration(bs))
-            row(ctx, it, labelWall,
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtEtaWallClock(bs))
-            // BatteryManager / sticky-intent surface — works on hardened
-            // Samsung where /sys/class/power_supply/* is SELinux-blocked.
-            row(ctx, it, "Battery temp",
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtBatteryTemp(bs))
-            row(ctx, it, "Cycle count",
-                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtCycleCount(bs))
-            // Debug rows so the user can see WHICH path the power
-            // figure came from + the anchor provenance.
-            row(ctx, it, "Power source",      bs.powerWSource)
-            row(ctx, it, "Unplug anchor src", bs.unplugAnchorSource)
-            row(ctx, it, "Plug anchor src",   bs.plugAnchorSource)
-            it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
-            // Deep BatteryManager / sticky-intent dump — merged in from
-            // the former separate "Battery (deep)" section (one Battery
-            // section, not two).
-            it.addView(small(ctx, "— Deep (BatteryManager + sticky intent) —"))
-            renderBatteryDeep(ctx, it)
-            // AccuBattery-style energy page — device state→draw
-            // attribution, per-foreground-app draw, and our own subsystem
-            // ledger (what INSIDE the app costs). Backed by the
-            // EnergyWatchdog Tier-1 sampler + EnergyLedger.
-            it.addView(actionButton(ctx, "Battery Usage Details", GRAY) {
-                runCatching {
-                    com.diegonmarcos.superapp.battery.EnergyUsageDialog()
-                        .show(parentFragmentManager, com.diegonmarcos.superapp.battery.EnergyUsageDialog.TAG)
-                }
-            })
-        }
-
-        section(ctx, column, "Firewall") {
-            // No-root per-app firewall (local VpnService, :libs:firewall).
-            // Info rows read WITHOUT any privileged permission via
-            // ConnectivityManager / Settings. The gray button opens the control
-            // screen (master toggle + per-app preset picker). The firestack
-            // merge (per-app filtering + WireGuard in one tunnel) is staged at
-            // libs/firewall/phase3-firestack/ (upstreams.firestack).
-            val fw = com.diegonmarcos.superapp.firewall.FirewallInfo.read(ctx)
-            row(ctx, it, "State", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtState(fw))
-            row(ctx, it, "Apps with rules", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtBlocked(fw))
-            row(ctx, it, "Active transport", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtTransport(fw))
-            row(ctx, it, "System VPN", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtVpn(fw))
-            row(ctx, it, "Private DNS", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtPrivateDns(fw))
-            it.addView(small(ctx, "Single VPN slot — per-app rules apply while on; firestack merge (WG-unified) is staged."))
-            it.addView(actionButton(ctx, "Firewall Details", GRAY) {
-                runCatching {
-                    com.diegonmarcos.superapp.firewall.FirewallDialog()
-                        .show(parentFragmentManager, com.diegonmarcos.superapp.firewall.FirewallDialog.TAG)
-                }
-            })
-        }
-
-        section(ctx, column, "Memory & CPU Usage") {
-            // All metrics are process-attributable + readable WITHOUT any
-            // privileged permission. JVM heap from Runtime; PSS from
-            // Debug.MemoryInfo (Android's accounting for shared-page
-            // proportional set size); RSS from /proc/self/statm (raw
-            // kernel view). System totals come from ActivityManager.
-            // CPU comes from /proc/self/stat (utime + stime in jiffies)
-            // normalised against process wall-time for an avg %.
-            val ctxAny = requireContext()
-            val rt = Runtime.getRuntime()
-
-            val heapMax   = rt.maxMemory()
-            val heapTotal = rt.totalMemory()
-            val heapFree  = rt.freeMemory()
-            val heapUsed  = heapTotal - heapFree
-            val heapPct   = if (heapMax > 0) (heapUsed * 100 / heapMax).toInt() else -1
-            row(ctx, it, "JVM heap used",
-                "${sizeStr(heapUsed)} / ${sizeStr(heapMax)}" +
-                    (if (heapPct >= 0) " ($heapPct%)" else ""))
-            row(ctx, it, "JVM heap total", sizeStr(heapTotal))
-            row(ctx, it, "JVM heap free",  sizeStr(heapFree))
-
-            val mi = android.os.Debug.MemoryInfo()
-            android.os.Debug.getMemoryInfo(mi)
-            row(ctx, it, "PSS total",     sizeStr(mi.totalPss.toLong()        * 1024L))
-            row(ctx, it, "PSS dalvik",    sizeStr(mi.dalvikPss.toLong()       * 1024L))
-            row(ctx, it, "PSS native",    sizeStr(mi.nativePss.toLong()       * 1024L))
-            row(ctx, it, "PSS other",     sizeStr(mi.otherPss.toLong()        * 1024L))
-            row(ctx, it, "Private dirty", sizeStr(mi.totalPrivateDirty.toLong() * 1024L))
-
-            // RSS via /proc/self/statm field 2 (resident pages).
-            val pageSize = runCatching {
-                android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE)
-            }.getOrDefault(4096L)
-            val rssBytes = runCatching {
-                val parts = File("/proc/self/statm").readText().trim().split(' ')
-                parts.getOrNull(1)?.toLongOrNull()?.let { it * pageSize } ?: -1L
-            }.getOrDefault(-1L)
-            row(ctx, it, "RSS", if (rssBytes < 0) "—" else sizeStr(rssBytes))
-
-            val am = ctxAny.getSystemService(Context.ACTIVITY_SERVICE)
-                as? android.app.ActivityManager
-            val sysMi = android.app.ActivityManager.MemoryInfo()
-            am?.getMemoryInfo(sysMi)
-            row(ctx, it, "System avail",      sizeStr(sysMi.availMem))
-            row(ctx, it, "System total",      sizeStr(sysMi.totalMem))
-            row(ctx, it, "System low-memory", sysMi.lowMemory.toString())
-            row(ctx, it, "Heap class limit",  am?.memoryClass?.let { "$it MB" } ?: "—")
-            row(ctx, it, "Heap class (large)",
-                am?.largeMemoryClass?.let { "$it MB" } ?: "—")
-
-            // CPU: utime (field 14) + stime (field 15) in jiffies. The
-            // comm field is parenthesised and may contain spaces — strip
-            // it before tokenising so field indices stay aligned.
-            val statRaw = runCatching { File("/proc/self/stat").readText() }.getOrNull()
-            val fields = statRaw?.let { raw ->
-                val open  = raw.indexOf('(')
-                val close = raw.lastIndexOf(')')
-                if (open < 0 || close < 0 || close <= open) null
-                else (raw.substring(0, open) + raw.substring(close + 1))
-                    .trim().split(Regex("\\s+"))
-            }
-            val tck   = runCatching {
-                android.system.Os.sysconf(android.system.OsConstants._SC_CLK_TCK)
-            }.getOrDefault(100L)
-            val utime = fields?.getOrNull(13)?.toLongOrNull() ?: -1L
-            val stime = fields?.getOrNull(14)?.toLongOrNull() ?: -1L
-            val cpuJif = if (utime < 0 || stime < 0) -1L else utime + stime
-
-            val uptimeMs = android.os.SystemClock.elapsedRealtime() -
-                AppProcessUptime.startedAtElapsed
-            val uptimeSec = uptimeMs / 1000.0
-
-            row(ctx, it, "CPU user-time",
-                if (utime < 0 || tck <= 0) "—"
-                else "%.2fs".format(utime.toDouble() / tck))
-            row(ctx, it, "CPU sys-time",
-                if (stime < 0 || tck <= 0) "—"
-                else "%.2fs".format(stime.toDouble() / tck))
-            row(ctx, it, "CPU total",
-                if (cpuJif < 0 || tck <= 0) "—"
-                else "%.2fs".format(cpuJif.toDouble() / tck))
-
-            val cores = rt.availableProcessors()
-            val avgPctSingle = if (cpuJif < 0 || uptimeSec <= 0 || tck <= 0) -1.0
-                else (cpuJif.toDouble() / tck / uptimeSec) * 100.0
-            val avgPctPerCore = if (avgPctSingle < 0 || cores <= 0) -1.0
-                else avgPctSingle / cores
-            row(ctx, it, "CPU avg % (1-thread)",
-                if (avgPctSingle < 0) "—" else "%.2f%%".format(avgPctSingle))
-            row(ctx, it, "CPU avg % (per-core)",
-                if (avgPctPerCore < 0) "—" else "%.2f%%".format(avgPctPerCore))
-            row(ctx, it, "Cores online", cores.toString())
-
-            // ── Phone storage ─────────────────────────────────────
-            // StatFs against the data partition is the right anchor —
-            // that's where the app, its caches, and DB live; "phone
-            // storage" colloquially means user-data partition free space.
-            // External / SD is separate but reported next to it so the
-            // user has both numbers in one place.
-            val dataDir = android.os.Environment.getDataDirectory().absolutePath
-            val (dataFree, dataTotal) = statFsBytes(dataDir)
-            val dataPct = if (dataTotal > 0) ((dataTotal - dataFree) * 100 / dataTotal).toInt() else -1
-            row(ctx, it, "Data free",
-                "${sizeStr(dataFree)} / ${sizeStr(dataTotal)}" +
-                    (if (dataPct >= 0) " (${100 - dataPct}% free)" else ""))
-
-            val extDir = ctxAny.getExternalFilesDir(null)?.absolutePath
-            if (extDir != null) {
-                val (extFree, extTotal) = statFsBytes(extDir)
-                row(ctx, it, "External free",
-                    "${sizeStr(extFree)} / ${sizeStr(extTotal)}")
-            }
-
-            // ── Phone swap (zRAM / disk) ──────────────────────────
-            // /proc/meminfo SwapTotal + SwapFree are kB, space-padded.
-            // Some kernels disable swap entirely → SwapTotal:0; report
-            // "disabled" so the row isn't misread as "everything's used".
-            val (swapTotal, swapFree) = readSwapBytes()
-            val swapUsed = if (swapTotal < 0 || swapFree < 0) -1L else swapTotal - swapFree
-            row(ctx, it, "Swap total",
-                if (swapTotal < 0) "—"
-                else if (swapTotal == 0L) "disabled"
-                else sizeStr(swapTotal))
-            row(ctx, it, "Swap free",
-                if (swapFree < 0 || swapTotal == 0L) "—" else sizeStr(swapFree))
-            row(ctx, it, "Swap used",
-                if (swapUsed < 0 || swapTotal == 0L) "—" else sizeStr(swapUsed))
-
-            it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak. Storage = data partition (where the app + caches live). Swap is typically zRAM on Android — counts AGAINST physical RAM but appears as virtual."))
-        }
-
-        // (VPN / WireGuard / Mesh moved up under the "Cloud" macro header,
-        //  rendered via renderVpnMesh — see the reorg right after the title.)
-
-        // IPC Contract — the cross-app intent/IPC surface Cloud SuperApp
-        // exposes/consumes (the constellation hub ↔ ea_cloud-comms /
-        // ea_cloud-ide contract). Always rendered, even when nothing is
-        // declared yet, so the surface is discoverable.
-        section(ctx, column, "IPC Contract") {
-            val entries = collectIpcContract(requireContext())
-            if (entries.isEmpty()) {
-                it.addView(small(ctx, "No IPC contract declared yet — no exported/consumed cross-app intents, services, or providers beyond the framework defaults."))
-            } else {
-                for ((k, v) in entries) row(ctx, it, k, v)
-            }
-        }
-
-        section(ctx, column, "Network") {
-            val cm = ctxAny().getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-            val active = cm?.activeNetwork
-            val caps = active?.let { runCatching { cm.getNetworkCapabilities(it) }.getOrNull() }
-            val link = active?.let { runCatching { cm.getLinkProperties(it) }.getOrNull() }
-
-            val transports = mutableListOf<String>()
-            caps?.let { c ->
-                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI))      transports.add("Wi-Fi")
-                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR))  transports.add("Cellular")
-                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET))  transports.add("Ethernet")
-                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN))       transports.add("VPN")
-                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH)) transports.add("Bluetooth")
-            }
-            row(ctx, it, "Transport",     if (transports.isEmpty()) "—" else transports.joinToString(", "))
-            row(ctx, it, "Validated",     caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)?.toString() ?: "—")
-            row(ctx, it, "Captive portal", caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)?.toString() ?: "—")
-            row(ctx, it, "Metered",       cm?.isActiveNetworkMetered?.toString() ?: "—")
-            caps?.let { c ->
-                row(ctx, it, "Link down",     "${c.linkDownstreamBandwidthKbps} kbps")
-                row(ctx, it, "Link up",       "${c.linkUpstreamBandwidthKbps} kbps")
-            }
-            link?.let { lp ->
-                row(ctx, it, "Iface",  lp.interfaceName ?: "—")
-                row(ctx, it, "MTU",    lp.mtu.toString())
-                row(ctx, it, "DNS",    lp.dnsServers.joinToString(", ") { it.hostAddress ?: "" }.ifBlank { "—" })
-                val v4 = lp.linkAddresses.mapNotNull { la -> la.address.hostAddress }.filter { ":" !in it }
-                val v6 = lp.linkAddresses.mapNotNull { la -> la.address.hostAddress }.filter { ":" in it }
-                row(ctx, it, "IPv4",   v4.joinToString(", ").ifBlank { "—" })
-                row(ctx, it, "IPv6",   v6.joinToString(", ").ifBlank { "—" })
-                val gw = lp.routes.firstOrNull { r -> r.isDefaultRoute }?.gateway?.hostAddress
-                row(ctx, it, "Default gw", gw ?: "—")
-            }
-        }
-
-        section(ctx, column, "Wi-Fi") {
-            // SSID/BSSID require ACCESS_FINE_LOCATION on Android 10+
-            // AND a connected Wi-Fi network; we already declare both.
-            // If location isn't granted yet, SSID comes back as
-            // "<unknown ssid>" — surface that as the user-facing hint.
-            val wm = ctxAny().applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-            if (wm == null || !wm.isWifiEnabled) {
-                it.addView(small(ctx, "Wi-Fi is off."))
-            } else {
-                @Suppress("DEPRECATION")
-                val info = runCatching { wm.connectionInfo }.getOrNull()
-                if (info == null) {
-                    it.addView(small(ctx, "No Wi-Fi connection info."))
-                } else {
-                    val ssid = info.ssid?.trim('"').orEmpty()
-                    row(ctx, it, "SSID",       if (ssid.isBlank() || ssid == "<unknown ssid>") "Needs location permission" else ssid)
-                    row(ctx, it, "BSSID",      info.bssid ?: "—")
-                    row(ctx, it, "RSSI",       "${info.rssi} dBm")
-                    row(ctx, it, "Link speed", "${info.linkSpeed} Mbps")
-                    row(ctx, it, "Tx speed",   "${info.txLinkSpeedMbps} Mbps")
-                    if (android.os.Build.VERSION.SDK_INT >= 29) {
-                        row(ctx, it, "Rx speed", "${info.rxLinkSpeedMbps} Mbps")
-                    }
-                    row(ctx, it, "Frequency",  "${info.frequency} MHz")
-                    row(ctx, it, "Hidden SSID", info.hiddenSSID.toString())
-                }
-            }
-        }
-
-        section(ctx, column, "Sections (from build.json)") {
-            val all = Sections.all()
-            row(ctx, it, "Total",       all.size.toString())
-            row(ctx, it, "Bottom-nav",  all.count { s -> s.bottomNav }.toString())
-            row(ctx, it, "Aggregators", all.count { s -> s.isAggregator }.toString())
-            row(ctx, it, "Default mode", Sections.defaultMode())
-            row(ctx, it, "Default section", Sections.defaultSectionId())
-        }
-
-        section(ctx, column, "Dev Control - Http (API) & SSH (Termux)") {
-            val prefs = DevControlPrefs(requireContext())
-            val running = DevControlServer.isRunning()
-            val bound   = DevControlServer.boundHost()
-            val loopback = DevControlServer.isLoopbackOnly()
-            row(ctx, it, "Endpoint", "http://${bound ?: "127.0.0.1"}:${prefs.port}")
-            row(ctx, it, "Status",   if (running) "Running" else "Stopped")
-            row(ctx, it, "Bound to", bound ?: "—")
-            row(ctx, it, "Bind scope", when {
-                !running       -> "—"
-                loopback       -> "✓ Loopback only (127.0.0.1) — unreachable from LAN"
-                else           -> "✗ Reachable from LAN — bind addr ${bound ?: "?"}"
-            })
-            row(ctx, it, "Token",    prefs.token)
-            it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints follow /api/{group}/{op} (e.g. /api/system/info, /api/diagnostics/logcat, /api/tracker/counts). Full catalog: GET /api/docs."))
-
-            // ── SSH (Termux & co.) — detect installed terminal emulators and
-            //    whether each is running an sshd we can reach on localhost.
-            //    Installed-check is synchronous (PackageManager); the port
-            //    probe is async (no network on the main thread).
-            it.addView(small(ctx, "SSH servers on this device — terminal apps + whether their sshd is listening on localhost (probes 127.0.0.1 across common ports)."))
-            for (term in SSH_TERMINALS) {
-                val installed = isPackageInstalled(ctx, term.pkg)
-                val portList = term.ports.joinToString(",")
-                val valueView = row(ctx, it, term.label,
-                    if (!installed) "not installed" else "installed · probing :$portList…")
-                if (installed) viewLifecycleOwner.lifecycleScope.launch {
-                    val open = withContext(Dispatchers.IO) { term.ports.filter { p -> portOpen("127.0.0.1", p) } }
-                    if (open.isNotEmpty()) {
-                        valueView.text = "installed · sshd ✓ up :${open.joinToString(",")}"
-                        valueView.setTextColor(0xFF8BE9A0.toInt())
-                    } else {
-                        valueView.text = "installed · sshd ✗ down (tried :$portList)"
-                        valueView.setTextColor(0xFFFFB199.toInt())
-                    }
-                }
-            }
-
-            // Toggle Switch: persists pref + start/stop the server live.
-            it.addView(android.widget.Switch(ctx).apply {
-                text = "API enabled"
-                isChecked = prefs.enabled
-                val pad = dp(6); setPadding(pad, pad, pad, pad)
-                setOnCheckedChangeListener { _, checked ->
-                    prefs.enabled = checked
-                    if (checked) {
-                        DevControlServer.start(requireContext().applicationContext)
-                    } else {
-                        DevControlServer.stop()
-                    }
-                    // Re-render so Status/Bound/scope reflect the new state.
-                    parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
-                    parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
-                }
-            })
-
-            // Regenerate the bearer token. Rotates the cached value AND
-            // restarts the server so the new token is bound to the
-            // accept loop instead of the stale one captured at start().
-            it.addView(actionButton(ctx, "Regenerate API token", GRAY) {
-                val fresh = prefs.resetToken()
-                // Bounce the server so the in-memory token (captured at
-                // start) is replaced by the fresh value.
-                if (DevControlServer.isRunning()) {
-                    DevControlServer.stop()
-                    DevControlServer.start(requireContext().applicationContext)
-                }
-                Toast.makeText(requireContext(),
-                    "New token: ${fresh.take(8)}…", Toast.LENGTH_SHORT).show()
-                // Re-render so the new token + restarted server status
-                // populate immediately.
-                parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
-                parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
-            })
-            // Self-contained ADB (libs:shizuku-adb-debug-tools): jump to
-            // Developer options to flip Wireless Debugging ON, then read the
-            // pairing/connect ports for /api/adb/pair + /api/adb/connect. The
-            // OS toggle can't be flipped by an app (no API) — this is a
-            // deep-link. Lives here next to the HTTP API it feeds.
-            it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
-            it.addView(actionButton(ctx, "Open Wireless Debugging", GRAY) { openWirelessDebuggingSettings() })
-
-            // ── Self-contained ADB how-to (embedded adb client, no Shizuku
-            //    app, no PC; works with WireGuard ON). Long-press any row to
-            //    copy. Documented here next to the button that enables it.
-            val adbPort = DevControlPrefs(requireContext()).port
-            val adbTok  = prefs.token
-            it.addView(small(ctx, "Self-contained ADB (embedded libadb — no Shizuku app, no PC, works with WireGuard ON). Steps:"))
-            it.addView(small(ctx, "1) Tap 'Open Wireless Debugging' → turn it ON. 2) 'Pair device with pairing code' → note the 6-digit code + that dialog's port (=pairport). 3) Main screen → the IP:port there is the connectport."))
-            it.addView(small(ctx, "⚠ HOST GOTCHA: use your Wi-Fi LAN IP (e.g. 192.168.x.x), NOT the 10.x the dialog shows — that 10.x is the WireGuard tun0 and gets ECONNREFUSED. Find the real wlan0 IP with /api/adb/netinfo."))
-            row(ctx, it, "0 NetInfo",  "curl -H 'Authorization: Bearer $adbTok' http://127.0.0.1:$adbPort/api/adb/netinfo   # find wlan0 IPv4")
-            row(ctx, it, "1 Pair",     "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/pair?host=<wlan-ip>&port=<pairport>&code=<6digits>'")
-            row(ctx, it, "2 Connect",  "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/connect?host=<wlan-ip>&port=<connectport>'")
-            row(ctx, it, "3 Status",   "curl -H 'Authorization: Bearer $adbTok' http://127.0.0.1:$adbPort/api/adb/status   # embedded-adb ready=true")
-            row(ctx, it, "4 Charger",  "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/diagnostics?bundle=charger'")
-            row(ctx, it, "Bundles",    "charger | battery | usb | thermal | pd   (build.json::shizuku_diagnostics)")
-            row(ctx, it, "Exec",       "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/exec?cmd=dumpsys%20battery'")
-            it.addView(small(ctx, "Pairing/connect bind the socket to the Wi-Fi Network so it bypasses wg0. Pairing is once per boot (Android law; only root removes it). Pair port lives only while the pairing dialog is open — keep it open until step 1 returns ok."))
-        }
-
-        section(ctx, column, "Curl shortcuts") {
-            val port = DevControlPrefs(requireContext()).port
-            val tok  = DevControlPrefs(requireContext()).token
-            // Endpoint catalog moved to /api/{group}/{op} layout in
-            // commit fb2bc62; the flat aliases still resolve but the
-            // documented form is the grouped one. Source of truth for
-            // the full list is GET /api/docs (machine-readable JSON,
-            // generated from the same Spec list the routing uses so it
-            // can't drift). These shortcuts cover the most-used probes.
-            row(ctx, it, "Docs",     "curl http://127.0.0.1:$port/api/docs")
-            row(ctx, it, "Logcat",   "curl http://127.0.0.1:$port/api/diagnostics/logcat?n=500")
-            row(ctx, it, "Trace",    "curl http://127.0.0.1:$port/api/diagnostics/trace")
-            row(ctx, it, "Crashes",  "curl http://127.0.0.1:$port/api/diagnostics/crashes")
-            row(ctx, it, "Bundle",   "curl http://127.0.0.1:$port/api/diagnostics/bundle")
-            row(ctx, it, "Download logs", "curl http://127.0.0.1:$port/api/diagnostics/download")
-            row(ctx, it, "Send logs → cloud", "curl http://127.0.0.1:$port/api/diagnostics/push")
-            row(ctx, it, "Info",     "curl http://127.0.0.1:$port/api/system/info")
-            row(ctx, it, "State",    "curl -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/state")
-            row(ctx, it, "Haptic",   "curl -XPOST -H 'Authorization: Bearer $tok' 'http://127.0.0.1:$port/api/haptic?preset=gemini_stream'")
-            row(ctx, it, "Update",   "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/system/update")
-            row(ctx, it, "Restart",  "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/system/restart")
-            row(ctx, it, "Tracker",  "curl http://127.0.0.1:$port/api/tracker/counts")
-        }
-
-        section(ctx, column, "SoC / CPU") {
-            if (android.os.Build.VERSION.SDK_INT >= 31) {
-                row(ctx, it, "SoC mfr",   android.os.Build.SOC_MANUFACTURER)
-                row(ctx, it, "SoC model", android.os.Build.SOC_MODEL)
-            }
-            row(ctx, it, "Bootloader", android.os.Build.BOOTLOADER)
-            @Suppress("DEPRECATION")
-            row(ctx, it, "Radio",      android.os.Build.getRadioVersion() ?: "—")
-            row(ctx, it, "Board",      android.os.Build.BOARD)
-            row(ctx, it, "Fingerprint", android.os.Build.FINGERPRINT)
-            row(ctx, it, "CPU cores",  Runtime.getRuntime().availableProcessors().toString())
-            val cpuModel = runCatching {
-                File("/proc/cpuinfo").useLines { lines ->
-                    lines.firstOrNull { it.startsWith("Hardware") || it.contains("model name") }
-                        ?.substringAfter(':')?.trim()
-                }
-            }.getOrNull()
-            row(ctx, it, "CPU model",  cpuModel ?: "—")
-            val curFreq = runCatching {
-                File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq").readText().trim().toLong()
-            }.getOrNull()
-            row(ctx, it, "Cur freq",   curFreq?.let { "%d MHz".format(it / 1000) } ?: "—")
-            val gov = runCatching {
-                File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").readText().trim()
-            }.getOrNull()
-            row(ctx, it, "Governor",   gov ?: "—")
-        }
-
-        section(ctx, column, "Thermal zones") {
-            val zones = runCatching {
-                File("/sys/class/thermal").listFiles { f -> f.name.startsWith("thermal_zone") }
-                    ?.sortedBy { it.name }
-            }.getOrNull()
-            if (zones.isNullOrEmpty()) {
-                it.addView(small(ctx, "No thermal zones readable (kernel restricts /sys/class/thermal on most modern devices)."))
-            } else {
-                for (z in zones) {
-                    val type = runCatching { File(z, "type").readText().trim() }.getOrDefault(z.name)
-                    val tempMilliC = runCatching { File(z, "temp").readText().trim().toLong() }.getOrDefault(0L)
-                    row(ctx, it, z.name, "$type — %.1f °C".format(tempMilliC / 1000.0))
-                }
-            }
-        }
-
-        // SYSFS-PROC — the no-perm kernel-telemetry dump. Every field
-        // here comes from a world-readable /sys or /proc file (the
-        // same path AccuBattery, Termux's top, and friends use). No
-        // DUMP, no QUERY_ALL_PACKAGES, no signature perm required.
-        // The reader (SysfsProc.kt) returns (key, formatted-value)
-        // pairs per subsystem; we paint sub-group headers via small()
-        // so the section is one big scrollable table the user can
-        // long-press individual rows to copy.
-        section(ctx, column, "SYSFS-PROC") {
-            it.addView(small(ctx, "Raw kernel-side telemetry — no runtime permission needed. World-readable /sys/class/* and /proc/* paths. Use this as the audit surface; promote interesting rows to dedicated UI elsewhere."))
-
-            it.addView(small(ctx, "── /sys/class/power_supply/battery/"))
-            for ((k, v) in SysfsProc.battery()) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /sys/class/power_supply/{usb,ac,wireless,main}/"))
-            val chargerRows = SysfsProc.chargers()
-            if (chargerRows.isEmpty()) it.addView(small(ctx, "(no charger nodes readable)"))
-            for ((k, v) in chargerRows) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /proc/loadavg + /proc/uptime  (CPU load in seconds)"))
-            for ((k, v) in SysfsProc.cpuLoadRows()) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /proc/stat  (cumulative jiffies → seconds, ALL cores)"))
-            for ((k, v) in SysfsProc.procStatRows()) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /sys/devices/system/cpu/cpu*/cpufreq/"))
-            for ((k, v) in SysfsProc.cpuFreqs()) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /sys/class/thermal/thermal_zone*/"))
-            val thermalRows = SysfsProc.thermal()
-            if (thermalRows.isEmpty()) it.addView(small(ctx, "(no zones readable — vendor restriction)"))
-            for ((k, v) in thermalRows) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /proc/meminfo  (selected)"))
-            for ((k, v) in SysfsProc.memInfo()) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /sys/class/net/*/statistics/"))
-            for ((k, v) in SysfsProc.network()) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /proc/diskstats"))
-            val diskRows = SysfsProc.diskstats()
-            if (diskRows.isEmpty()) it.addView(small(ctx, "(no diskstats readable)"))
-            for ((k, v) in diskRows) row(ctx, it, k, v)
-
-            it.addView(small(ctx, "── /proc/self/  (this app's own kernel-side stats)"))
-            for ((k, v) in SysfsProc.selfProc()) row(ctx, it, k, v)
-        }
-
-        section(ctx, column, "Kernel / OS") {
-            row(ctx, it, "Kernel",   System.getProperty("os.version") ?: "—")
-            row(ctx, it, "Security patch", android.os.Build.VERSION.SECURITY_PATCH)
-            row(ctx, it, "Codename", android.os.Build.VERSION.CODENAME)
-            row(ctx, it, "Incremental", android.os.Build.VERSION.INCREMENTAL)
-            row(ctx, it, "/proc/version", runCatching { File("/proc/version").readText().trim() }.getOrDefault("—"))
-            row(ctx, it, "VM",       "${System.getProperty("java.vm.name")} ${System.getProperty("java.vm.version")}")
-            row(ctx, it, "VM heap",  "${sizeStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())} / ${sizeStr(Runtime.getRuntime().maxMemory())}")
-            val nativeHeap = android.os.Debug.getNativeHeapAllocatedSize()
-            row(ctx, it, "Native heap", sizeStr(nativeHeap))
-        }
-
-        section(ctx, column, "Memory") {
-            val am = ctxAny().getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
-            val mi = android.app.ActivityManager.MemoryInfo()
-            am?.getMemoryInfo(mi)
-            row(ctx, it, "Total RAM",  sizeStr(mi.totalMem))
-            row(ctx, it, "Available",  sizeStr(mi.availMem))
-            row(ctx, it, "Threshold",  sizeStr(mi.threshold))
-            row(ctx, it, "Low memory", mi.lowMemory.toString())
-            val pids = intArrayOf(android.os.Process.myPid())
-            val procInfo = runCatching { am?.getProcessMemoryInfo(pids) }.getOrNull()?.firstOrNull()
-            if (procInfo != null) {
-                row(ctx, it, "App PSS",  sizeStr(procInfo.totalPss * 1024L))
-                row(ctx, it, "Java heap", sizeStr(procInfo.getMemoryStat("summary.java-heap")?.toLongOrNull()?.times(1024L) ?: 0L))
-                row(ctx, it, "Native heap (proc)", sizeStr(procInfo.getMemoryStat("summary.native-heap")?.toLongOrNull()?.times(1024L) ?: 0L))
-            }
-            val fdCount = runCatching {
-                File("/proc/self/fd").listFiles()?.size ?: 0
-            }.getOrDefault(0)
-            row(ctx, it, "Open FDs", fdCount.toString())
-            row(ctx, it, "Threads",  Thread.activeCount().toString())
-        }
-
-        section(ctx, column, "Display") {
-            val wm = ctxAny().getSystemService(Context.WINDOW_SERVICE) as? android.view.WindowManager
-            val dm = resources.displayMetrics
-            row(ctx, it, "Resolution", "${dm.widthPixels} × ${dm.heightPixels}")
-            row(ctx, it, "Density",    "${dm.density}x · ${dm.densityDpi} dpi")
-            @Suppress("DEPRECATION")
-            val display = wm?.defaultDisplay
-            row(ctx, it, "Refresh",    display?.refreshRate?.let { "%.1f Hz".format(it) } ?: "—")
-            if (android.os.Build.VERSION.SDK_INT >= 23) {
-                val modes = display?.supportedModes?.map { "%.0f Hz @ %dx%d".format(it.refreshRate, it.physicalWidth, it.physicalHeight) }
-                row(ctx, it, "Modes", modes?.joinToString(", ") ?: "—")
-            }
-            if (android.os.Build.VERSION.SDK_INT >= 24) {
-                row(ctx, it, "HDR",       display?.hdrCapabilities?.supportedHdrTypes?.joinToString(",") ?: "—")
-            }
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                row(ctx, it, "Wide gamut", display?.isWideColorGamut?.toString() ?: "—")
-            }
-            val cfg = resources.configuration
-            val dark = (cfg.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-            row(ctx, it, "Dark mode", dark.toString())
-            row(ctx, it, "Font scale", "${cfg.fontScale}x")
-        }
-
         section(ctx, column, "APK provenance") {
             val pm = ctxAny().packageManager
             val pkg = ctxAny().packageName
@@ -1045,51 +363,13 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Native libs", nativeLibs?.joinToString(", ") ?: "—")
         }
 
-        section(ctx, column, "Sensors") {
-            val sm = ctxAny().getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
-            val all = sm?.getSensorList(android.hardware.Sensor.TYPE_ALL) ?: emptyList()
-            row(ctx, it, "Count", all.size.toString())
-            for ((idx, s) in all.withIndex()) {
-                row(ctx, it, "Sensor ${idx + 1}", "${s.name} — ${s.vendor}")
-            }
-        }
-
-        section(ctx, column, "Security posture") {
-            val cr = ctxAny().contentResolver
-            val devMode = runCatching {
-                android.provider.Settings.Global.getInt(cr,
-                    android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED) == 1
-            }.getOrDefault(false)
-            val adbEnabled = runCatching {
-                android.provider.Settings.Global.getInt(cr,
-                    android.provider.Settings.Global.ADB_ENABLED) == 1
-            }.getOrDefault(false)
-            row(ctx, it, "Dev options", devMode.toString())
-            row(ctx, it, "USB ADB",     adbEnabled.toString())
-            if (android.os.Build.VERSION.SDK_INT >= 30) {
-                val adbWifi = runCatching {
-                    android.provider.Settings.Global.getInt(cr, "adb_wifi_enabled") == 1
-                }.getOrDefault(false)
-                row(ctx, it, "Wireless ADB", adbWifi.toString())
-            }
-            val km = ctxAny().getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
-            row(ctx, it, "Device secure",  (km?.isDeviceSecure ?: false).toString())
-            row(ctx, it, "Keyguard locked", (km?.isKeyguardLocked ?: false).toString())
-            if (android.os.Build.VERSION.SDK_INT >= 29) {
-                val bm = ctxAny().getSystemService(Context.BIOMETRIC_SERVICE)
-                    as? android.hardware.biometrics.BiometricManager
-                val biometric = runCatching {
-                    @Suppress("DEPRECATION")
-                    bm?.canAuthenticate() ?: -1
-                }.getOrDefault(-1)
-                row(ctx, it, "Biometric ready", when (biometric) {
-                    android.hardware.biometrics.BiometricManager.BIOMETRIC_SUCCESS              -> "Yes"
-                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED  -> "No (not enrolled)"
-                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE    -> "No (no hardware)"
-                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "Hardware unavailable"
-                    else -> "Unknown"
-                })
-            }
+        section(ctx, column, "Sections (from build.json)") {
+            val all = Sections.all()
+            row(ctx, it, "Total",       all.size.toString())
+            row(ctx, it, "Bottom-nav",  all.count { s -> s.bottomNav }.toString())
+            row(ctx, it, "Aggregators", all.count { s -> s.isAggregator }.toString())
+            row(ctx, it, "Default mode", Sections.defaultMode())
+            row(ctx, it, "Default section", Sections.defaultSectionId())
         }
 
         section(ctx, column, "Stack") {
@@ -1285,6 +565,119 @@ class DevControlFragment : Fragment() {
             scrollers.forEach { box.addView(it) }
         }
 
+        // ══ DEVICE macro section — the physical/OS device this build is running on.
+        column.addView(macroHeader(ctx, "🖥️  DEVICE"))
+
+        section(ctx, column, "Device / stack") {
+            row(ctx, it, "Manufacturer", android.os.Build.MANUFACTURER)
+            row(ctx, it, "Model",        android.os.Build.MODEL)
+            row(ctx, it, "Brand",        android.os.Build.BRAND)
+            row(ctx, it, "Device",       android.os.Build.DEVICE)
+            row(ctx, it, "Hardware",     android.os.Build.HARDWARE)
+            row(ctx, it, "Android",      "${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
+            row(ctx, it, "ABIs",         android.os.Build.SUPPORTED_ABIS.joinToString(", "))
+            row(ctx, it, "Locale",       java.util.Locale.getDefault().toLanguageTag())
+        }
+
+        section(ctx, column, "Kernel / OS") {
+            row(ctx, it, "Kernel",   System.getProperty("os.version") ?: "—")
+            row(ctx, it, "Security patch", android.os.Build.VERSION.SECURITY_PATCH)
+            row(ctx, it, "Codename", android.os.Build.VERSION.CODENAME)
+            row(ctx, it, "Incremental", android.os.Build.VERSION.INCREMENTAL)
+            row(ctx, it, "/proc/version", runCatching { File("/proc/version").readText().trim() }.getOrDefault("—"))
+            row(ctx, it, "VM",       "${System.getProperty("java.vm.name")} ${System.getProperty("java.vm.version")}")
+            row(ctx, it, "VM heap",  "${sizeStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())} / ${sizeStr(Runtime.getRuntime().maxMemory())}")
+            val nativeHeap = android.os.Debug.getNativeHeapAllocatedSize()
+            row(ctx, it, "Native heap", sizeStr(nativeHeap))
+        }
+
+        section(ctx, column, "SoC / CPU") {
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                row(ctx, it, "SoC mfr",   android.os.Build.SOC_MANUFACTURER)
+                row(ctx, it, "SoC model", android.os.Build.SOC_MODEL)
+            }
+            row(ctx, it, "Bootloader", android.os.Build.BOOTLOADER)
+            @Suppress("DEPRECATION")
+            row(ctx, it, "Radio",      android.os.Build.getRadioVersion() ?: "—")
+            row(ctx, it, "Board",      android.os.Build.BOARD)
+            row(ctx, it, "Fingerprint", android.os.Build.FINGERPRINT)
+            row(ctx, it, "CPU cores",  Runtime.getRuntime().availableProcessors().toString())
+            val cpuModel = runCatching {
+                File("/proc/cpuinfo").useLines { lines ->
+                    lines.firstOrNull { it.startsWith("Hardware") || it.contains("model name") }
+                        ?.substringAfter(':')?.trim()
+                }
+            }.getOrNull()
+            row(ctx, it, "CPU model",  cpuModel ?: "—")
+            val curFreq = runCatching {
+                File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq").readText().trim().toLong()
+            }.getOrNull()
+            row(ctx, it, "Cur freq",   curFreq?.let { "%d MHz".format(it / 1000) } ?: "—")
+            val gov = runCatching {
+                File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").readText().trim()
+            }.getOrNull()
+            row(ctx, it, "Governor",   gov ?: "—")
+        }
+
+        section(ctx, column, "Thermal zones") {
+            val zones = runCatching {
+                File("/sys/class/thermal").listFiles { f -> f.name.startsWith("thermal_zone") }
+                    ?.sortedBy { it.name }
+            }.getOrNull()
+            if (zones.isNullOrEmpty()) {
+                it.addView(small(ctx, "No thermal zones readable (kernel restricts /sys/class/thermal on most modern devices)."))
+            } else {
+                for (z in zones) {
+                    val type = runCatching { File(z, "type").readText().trim() }.getOrDefault(z.name)
+                    val tempMilliC = runCatching { File(z, "temp").readText().trim().toLong() }.getOrDefault(0L)
+                    row(ctx, it, z.name, "$type — %.1f °C".format(tempMilliC / 1000.0))
+                }
+            }
+        }
+
+        // SYSFS-PROC — the no-perm kernel-telemetry dump. Every field
+        // here comes from a world-readable /sys or /proc file (the
+        // same path AccuBattery, Termux's top, and friends use). No
+        // DUMP, no QUERY_ALL_PACKAGES, no signature perm required.
+        // The reader (SysfsProc.kt) returns (key, formatted-value)
+        // pairs per subsystem; we paint sub-group headers via small()
+        // so the section is one big scrollable table the user can
+        // long-press individual rows to copy.
+
+        section(ctx, column, "Display") {
+            val wm = ctxAny().getSystemService(Context.WINDOW_SERVICE) as? android.view.WindowManager
+            val dm = resources.displayMetrics
+            row(ctx, it, "Resolution", "${dm.widthPixels} × ${dm.heightPixels}")
+            row(ctx, it, "Density",    "${dm.density}x · ${dm.densityDpi} dpi")
+            @Suppress("DEPRECATION")
+            val display = wm?.defaultDisplay
+            row(ctx, it, "Refresh",    display?.refreshRate?.let { "%.1f Hz".format(it) } ?: "—")
+            if (android.os.Build.VERSION.SDK_INT >= 23) {
+                val modes = display?.supportedModes?.map { "%.0f Hz @ %dx%d".format(it.refreshRate, it.physicalWidth, it.physicalHeight) }
+                row(ctx, it, "Modes", modes?.joinToString(", ") ?: "—")
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 24) {
+                row(ctx, it, "HDR",       display?.hdrCapabilities?.supportedHdrTypes?.joinToString(",") ?: "—")
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                row(ctx, it, "Wide gamut", display?.isWideColorGamut?.toString() ?: "—")
+            }
+            val cfg = resources.configuration
+            val dark = (cfg.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            row(ctx, it, "Dark mode", dark.toString())
+            row(ctx, it, "Font scale", "${cfg.fontScale}x")
+        }
+
+        section(ctx, column, "Sensors") {
+            val sm = ctxAny().getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+            val all = sm?.getSensorList(android.hardware.Sensor.TYPE_ALL) ?: emptyList()
+            row(ctx, it, "Count", all.size.toString())
+            for ((idx, s) in all.withIndex()) {
+                row(ctx, it, "Sensor ${idx + 1}", "${s.name} — ${s.vendor}")
+            }
+        }
+
         section(ctx, column, "Locale & time") {
             val locales = if (android.os.Build.VERSION.SDK_INT >= 24)
                 (0 until resources.configuration.locales.size()).joinToString(", ") {
@@ -1307,6 +700,630 @@ class DevControlFragment : Fragment() {
             val bootWall = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
             row(ctx, it, "Booted",   fmtMillis(bootWall))
             row(ctx, it, "System uptime", fmtDuration(android.os.SystemClock.elapsedRealtime()))
+        }
+
+        // ══ RESOURCES macro section — storage, battery, memory and raw kernel telemetry.
+        column.addView(macroHeader(ctx, "🔋  RESOURCES"))
+
+        section(ctx, column, "Storage") {
+            val ctxAny = requireContext()
+            val pm = ctxAny.packageManager
+            @Suppress("DEPRECATION")
+            val pkg = pm.getPackageInfo(ctxAny.packageName, 0)
+            // PackageInfo.applicationInfo is @Nullable as of API 35;
+            // null-guard once, then degrade gracefully per field —
+            // APK size to 0 (visible "—" in the row), dataDir to
+            // Context.getDataDir() which is always non-null.
+            val appInfo   = pkg.applicationInfo
+            val apkBytes  = runCatching { File(appInfo?.sourceDir ?: "").length() }.getOrDefault(0L)
+            // "Datos" = the app's private data root — includes filesDir,
+            // databases, shared_prefs, and everything else the app
+            // persists outside of cacheDir.
+            val dataDir   = appInfo?.dataDir?.let { File(it) } ?: ctxAny.dataDir
+            val cacheDir  = ctxAny.cacheDir
+            val cacheBytes = dirSize(cacheDir)
+            // dataDir contains cacheDir; subtract to get pure "data".
+            val dataBytes  = (dirSize(dataDir) - cacheBytes).coerceAtLeast(0L)
+            val totalBytes = apkBytes + dataBytes + cacheBytes
+
+            // Paths first.
+            row(ctx, it, "Files dir",   ctxAny.filesDir.absolutePath)
+            row(ctx, it, "Cache dir",   cacheDir.absolutePath)
+            row(ctx, it, "Data root",   dataDir.absolutePath)
+            row(ctx, it, "External",    ctxAny.getExternalFilesDir(null)?.absolutePath ?: "—")
+            row(ctx, it, "Trace log",   sizeStr(File(ctxAny.getExternalFilesDir(null), "trace/trace.log").length()))
+            it.addView(small(ctx, "Breakdown — same buckets Android system settings shows:"))
+            row(ctx, it, "Aplicación",  sizeStr(apkBytes))
+            row(ctx, it, "Datos",       sizeStr(dataBytes))
+            row(ctx, it, "Caché",       sizeStr(cacheBytes))
+            row(ctx, it, "Total",       sizeStr(totalBytes))
+        }
+
+        // Permissions section moved to PermissionsFragment (config/perms tab).
+
+        section(ctx, column, "Battery & Usage") {
+            // Everything in this block is what the app CAN read about
+            // itself without privileged permissions. Per-app battery mAh
+            // + screen-on / background time split / wakelocks count etc.
+            // live in BatteryStatsManager which is system-only. The
+            // "Open battery usage details" button below jumps to the
+            // OS screen the user pasted from for the full picture.
+            val ctxAny = requireContext()
+            val pkg = ctxAny.packageManager.getPackageInfo(ctxAny.packageName, 0)
+            val myUid = ctxAny.applicationInfo.uid
+
+            // App-side crash count — files in CrashLogger's private dir
+            // (getExternalFilesDir/crashes/crash-<ts>.txt).
+            val crashDir = File(ctxAny.getExternalFilesDir(null), "crashes")
+            val crashes  = crashDir.listFiles { f -> f.name.startsWith("crash-") }?.size ?: 0
+            val mostRecent = crashDir.listFiles { f -> f.name.startsWith("crash-") }
+                ?.maxByOrNull { it.lastModified() }
+            row(ctx, it, "Crash count",  crashes.toString())
+            row(ctx, it, "Last crash",   mostRecent?.let { fmtMillis(it.lastModified()) } ?: "—")
+            row(ctx, it, "Crashes dir",  crashDir.absolutePath)
+
+            // Process uptime since this Application's onCreate.
+            val uptimeMs = android.os.SystemClock.elapsedRealtime() -
+                AppProcessUptime.startedAtElapsed
+            row(ctx, it, "Process uptime", fmtDuration(uptimeMs))
+            row(ctx, it, "First install",  fmtMillis(pkg.firstInstallTime))
+            row(ctx, it, "Last update",    fmtMillis(pkg.lastUpdateTime))
+
+            // Network bytes RX/TX since boot (TrafficStats is per-UID;
+            // resets on reboot). Captures all sockets this UID has used.
+            val rx = android.net.TrafficStats.getUidRxBytes(myUid)
+            val tx = android.net.TrafficStats.getUidTxBytes(myUid)
+            val rxMobile = android.net.TrafficStats.getMobileRxBytes()
+            val txMobile = android.net.TrafficStats.getMobileTxBytes()
+            row(ctx, it, "Net RX (all)",    sizeStr(if (rx < 0) 0L else rx))
+            row(ctx, it, "Net TX (all)",    sizeStr(if (tx < 0) 0L else tx))
+            row(ctx, it, "Mobile RX (UID)", if (rxMobile < 0) "—" else sizeStr(rxMobile))
+            row(ctx, it, "Mobile TX (UID)", if (txMobile < 0) "—" else sizeStr(txMobile))
+
+            // Per-app foreground / background screen time — needs
+            // PACKAGE_USAGE_STATS (Settings.ACTION_USAGE_ACCESS_SETTINGS).
+            val (fgMs, bgMs) = readUsageStats(ctxAny)
+            row(ctx, it, "Screen-on",   if (fgMs < 0) "Needs Usage Access" else fmtDuration(fgMs))
+            row(ctx, it, "Background",  if (bgMs < 0) "Needs Usage Access" else fmtDuration(bgMs))
+            row(ctx, it, "Total used",  if (fgMs < 0 || bgMs < 0) "—" else fmtDuration(fgMs + bgMs))
+
+            // ── Since-last-charge battery analytics ───────────────
+            // Read current battery level + charging status, persist
+            // the "last unplug" anchor in SharedPreferences, derive
+            // the three user-requested rows.
+            // Battery-session math (anchor lifecycle + rate + ETA) lives
+            // in BatterySessionStats — same source the status-strip
+            // BatteryEstimatePopup reads from when the user taps the
+            // icon. Single calc, two surfaces.
+            val bs = com.diegonmarcos.superapp.battery.BatterySessionStats.read(ctxAny)
+            // Row labels auto-flip on charging state. Discharging: "Since
+            // last charge / % battery/min consumed / Estimated battery last
+            // / ETA battery drained". Charging: same shape, charge-flavoured
+            // wording + ETA-to-full math. Same underlying snapshot fields,
+            // unified formatters in BatterySessionStats decide the wording.
+            val labelSince = if (bs.isCharging) "Since plugged in"        else "Since last charge"
+            val labelRate  = if (bs.isCharging) "% battery/h gained"      else "% battery/h consumed"
+            // Honest rename — this is BATTERY storage (V × I into the
+            // cell), NOT the charger input. Android doesn't expose the
+            // charger live input via public API; the "Charger input"
+            // row below shows the dumpsys-reported max negotiated spec.
+            val labelPower = if (bs.isCharging) "Battery storage (live)" else "Battery drain (live)"
+            val labelEta   = if (bs.isCharging) "Estimated time to full"  else "Estimated battery last"
+            val labelWall  = if (bs.isCharging) "ETA full charge"         else "ETA battery drained"
+            row(ctx, it, labelSince,
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtSinceAnchor(bs))
+            row(ctx, it, labelRate,
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtRateUnified(bs))
+            row(ctx, it, labelPower,
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtPowerRow(bs))
+            if (bs.isCharging) {
+                row(ctx, it, "Charger input",
+                    com.diegonmarcos.superapp.battery.BatterySessionStats.fmtChargerSpec(bs))
+                val phone = com.diegonmarcos.superapp.battery.BatterySessionStats.fmtPhoneConsumption(bs)
+                if (phone.isNotEmpty()) {
+                    row(ctx, it, "Phone consumption", "$phone  (charger − battery)")
+                }
+            }
+            row(ctx, it, labelEta,
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtEtaDuration(bs))
+            row(ctx, it, labelWall,
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtEtaWallClock(bs))
+            // BatteryManager / sticky-intent surface — works on hardened
+            // Samsung where /sys/class/power_supply/* is SELinux-blocked.
+            row(ctx, it, "Battery temp",
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtBatteryTemp(bs))
+            row(ctx, it, "Cycle count",
+                com.diegonmarcos.superapp.battery.BatterySessionStats.fmtCycleCount(bs))
+            // Debug rows so the user can see WHICH path the power
+            // figure came from + the anchor provenance.
+            row(ctx, it, "Power source",      bs.powerWSource)
+            row(ctx, it, "Unplug anchor src", bs.unplugAnchorSource)
+            row(ctx, it, "Plug anchor src",   bs.plugAnchorSource)
+            it.addView(small(ctx, "Battery-stats internals (mAh per-component, wakelocks, wakeups) are system-only. Grant Usage Access + Set Battery No Optimization shortcuts live in the Permissions section above."))
+            // Deep BatteryManager / sticky-intent dump — merged in from
+            // the former separate "Battery (deep)" section (one Battery
+            // section, not two).
+            it.addView(small(ctx, "— Deep (BatteryManager + sticky intent) —"))
+            renderBatteryDeep(ctx, it)
+            // AccuBattery-style energy page — device state→draw
+            // attribution, per-foreground-app draw, and our own subsystem
+            // ledger (what INSIDE the app costs). Backed by the
+            // EnergyWatchdog Tier-1 sampler + EnergyLedger.
+            it.addView(actionButton(ctx, "Battery Usage Details", GRAY) {
+                runCatching {
+                    com.diegonmarcos.superapp.battery.EnergyUsageDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.battery.EnergyUsageDialog.TAG)
+                }
+            })
+        }
+
+        section(ctx, column, "Memory") {
+            val am = ctxAny().getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            val mi = android.app.ActivityManager.MemoryInfo()
+            am?.getMemoryInfo(mi)
+            row(ctx, it, "Total RAM",  sizeStr(mi.totalMem))
+            row(ctx, it, "Available",  sizeStr(mi.availMem))
+            row(ctx, it, "Threshold",  sizeStr(mi.threshold))
+            row(ctx, it, "Low memory", mi.lowMemory.toString())
+            val pids = intArrayOf(android.os.Process.myPid())
+            val procInfo = runCatching { am?.getProcessMemoryInfo(pids) }.getOrNull()?.firstOrNull()
+            if (procInfo != null) {
+                row(ctx, it, "App PSS",  sizeStr(procInfo.totalPss * 1024L))
+                row(ctx, it, "Java heap", sizeStr(procInfo.getMemoryStat("summary.java-heap")?.toLongOrNull()?.times(1024L) ?: 0L))
+                row(ctx, it, "Native heap (proc)", sizeStr(procInfo.getMemoryStat("summary.native-heap")?.toLongOrNull()?.times(1024L) ?: 0L))
+            }
+            val fdCount = runCatching {
+                File("/proc/self/fd").listFiles()?.size ?: 0
+            }.getOrDefault(0)
+            row(ctx, it, "Open FDs", fdCount.toString())
+            row(ctx, it, "Threads",  Thread.activeCount().toString())
+        }
+
+        section(ctx, column, "Memory & CPU Usage") {
+            // All metrics are process-attributable + readable WITHOUT any
+            // privileged permission. JVM heap from Runtime; PSS from
+            // Debug.MemoryInfo (Android's accounting for shared-page
+            // proportional set size); RSS from /proc/self/statm (raw
+            // kernel view). System totals come from ActivityManager.
+            // CPU comes from /proc/self/stat (utime + stime in jiffies)
+            // normalised against process wall-time for an avg %.
+            val ctxAny = requireContext()
+            val rt = Runtime.getRuntime()
+
+            val heapMax   = rt.maxMemory()
+            val heapTotal = rt.totalMemory()
+            val heapFree  = rt.freeMemory()
+            val heapUsed  = heapTotal - heapFree
+            val heapPct   = if (heapMax > 0) (heapUsed * 100 / heapMax).toInt() else -1
+            row(ctx, it, "JVM heap used",
+                "${sizeStr(heapUsed)} / ${sizeStr(heapMax)}" +
+                    (if (heapPct >= 0) " ($heapPct%)" else ""))
+            row(ctx, it, "JVM heap total", sizeStr(heapTotal))
+            row(ctx, it, "JVM heap free",  sizeStr(heapFree))
+
+            val mi = android.os.Debug.MemoryInfo()
+            android.os.Debug.getMemoryInfo(mi)
+            row(ctx, it, "PSS total",     sizeStr(mi.totalPss.toLong()        * 1024L))
+            row(ctx, it, "PSS dalvik",    sizeStr(mi.dalvikPss.toLong()       * 1024L))
+            row(ctx, it, "PSS native",    sizeStr(mi.nativePss.toLong()       * 1024L))
+            row(ctx, it, "PSS other",     sizeStr(mi.otherPss.toLong()        * 1024L))
+            row(ctx, it, "Private dirty", sizeStr(mi.totalPrivateDirty.toLong() * 1024L))
+
+            // RSS via /proc/self/statm field 2 (resident pages).
+            val pageSize = runCatching {
+                android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE)
+            }.getOrDefault(4096L)
+            val rssBytes = runCatching {
+                val parts = File("/proc/self/statm").readText().trim().split(' ')
+                parts.getOrNull(1)?.toLongOrNull()?.let { it * pageSize } ?: -1L
+            }.getOrDefault(-1L)
+            row(ctx, it, "RSS", if (rssBytes < 0) "—" else sizeStr(rssBytes))
+
+            val am = ctxAny.getSystemService(Context.ACTIVITY_SERVICE)
+                as? android.app.ActivityManager
+            val sysMi = android.app.ActivityManager.MemoryInfo()
+            am?.getMemoryInfo(sysMi)
+            row(ctx, it, "System avail",      sizeStr(sysMi.availMem))
+            row(ctx, it, "System total",      sizeStr(sysMi.totalMem))
+            row(ctx, it, "System low-memory", sysMi.lowMemory.toString())
+            row(ctx, it, "Heap class limit",  am?.memoryClass?.let { "$it MB" } ?: "—")
+            row(ctx, it, "Heap class (large)",
+                am?.largeMemoryClass?.let { "$it MB" } ?: "—")
+
+            // CPU: utime (field 14) + stime (field 15) in jiffies. The
+            // comm field is parenthesised and may contain spaces — strip
+            // it before tokenising so field indices stay aligned.
+            val statRaw = runCatching { File("/proc/self/stat").readText() }.getOrNull()
+            val fields = statRaw?.let { raw ->
+                val open  = raw.indexOf('(')
+                val close = raw.lastIndexOf(')')
+                if (open < 0 || close < 0 || close <= open) null
+                else (raw.substring(0, open) + raw.substring(close + 1))
+                    .trim().split(Regex("\\s+"))
+            }
+            val tck   = runCatching {
+                android.system.Os.sysconf(android.system.OsConstants._SC_CLK_TCK)
+            }.getOrDefault(100L)
+            val utime = fields?.getOrNull(13)?.toLongOrNull() ?: -1L
+            val stime = fields?.getOrNull(14)?.toLongOrNull() ?: -1L
+            val cpuJif = if (utime < 0 || stime < 0) -1L else utime + stime
+
+            val uptimeMs = android.os.SystemClock.elapsedRealtime() -
+                AppProcessUptime.startedAtElapsed
+            val uptimeSec = uptimeMs / 1000.0
+
+            row(ctx, it, "CPU user-time",
+                if (utime < 0 || tck <= 0) "—"
+                else "%.2fs".format(utime.toDouble() / tck))
+            row(ctx, it, "CPU sys-time",
+                if (stime < 0 || tck <= 0) "—"
+                else "%.2fs".format(stime.toDouble() / tck))
+            row(ctx, it, "CPU total",
+                if (cpuJif < 0 || tck <= 0) "—"
+                else "%.2fs".format(cpuJif.toDouble() / tck))
+
+            val cores = rt.availableProcessors()
+            val avgPctSingle = if (cpuJif < 0 || uptimeSec <= 0 || tck <= 0) -1.0
+                else (cpuJif.toDouble() / tck / uptimeSec) * 100.0
+            val avgPctPerCore = if (avgPctSingle < 0 || cores <= 0) -1.0
+                else avgPctSingle / cores
+            row(ctx, it, "CPU avg % (1-thread)",
+                if (avgPctSingle < 0) "—" else "%.2f%%".format(avgPctSingle))
+            row(ctx, it, "CPU avg % (per-core)",
+                if (avgPctPerCore < 0) "—" else "%.2f%%".format(avgPctPerCore))
+            row(ctx, it, "Cores online", cores.toString())
+
+            // ── Phone storage ─────────────────────────────────────
+            // StatFs against the data partition is the right anchor —
+            // that's where the app, its caches, and DB live; "phone
+            // storage" colloquially means user-data partition free space.
+            // External / SD is separate but reported next to it so the
+            // user has both numbers in one place.
+            val dataDir = android.os.Environment.getDataDirectory().absolutePath
+            val (dataFree, dataTotal) = statFsBytes(dataDir)
+            val dataPct = if (dataTotal > 0) ((dataTotal - dataFree) * 100 / dataTotal).toInt() else -1
+            row(ctx, it, "Data free",
+                "${sizeStr(dataFree)} / ${sizeStr(dataTotal)}" +
+                    (if (dataPct >= 0) " (${100 - dataPct}% free)" else ""))
+
+            val extDir = ctxAny.getExternalFilesDir(null)?.absolutePath
+            if (extDir != null) {
+                val (extFree, extTotal) = statFsBytes(extDir)
+                row(ctx, it, "External free",
+                    "${sizeStr(extFree)} / ${sizeStr(extTotal)}")
+            }
+
+            // ── Phone swap (zRAM / disk) ──────────────────────────
+            // /proc/meminfo SwapTotal + SwapFree are kB, space-padded.
+            // Some kernels disable swap entirely → SwapTotal:0; report
+            // "disabled" so the row isn't misread as "everything's used".
+            val (swapTotal, swapFree) = readSwapBytes()
+            val swapUsed = if (swapTotal < 0 || swapFree < 0) -1L else swapTotal - swapFree
+            row(ctx, it, "Swap total",
+                if (swapTotal < 0) "—"
+                else if (swapTotal == 0L) "disabled"
+                else sizeStr(swapTotal))
+            row(ctx, it, "Swap free",
+                if (swapFree < 0 || swapTotal == 0L) "—" else sizeStr(swapFree))
+            row(ctx, it, "Swap used",
+                if (swapUsed < 0 || swapTotal == 0L) "—" else sizeStr(swapUsed))
+
+            it.addView(small(ctx, "PSS = process-attributable RSS after sharing. JVM heap is the growable section of the Dalvik PSS bucket. CPU avg % is utime+stime / wall-time × 100 — 1-thread (100% = one core saturated) or per-core (100% = ALL cores saturated). Sustained > 50% with the screen off may indicate a background work leak. Storage = data partition (where the app + caches live). Swap is typically zRAM on Android — counts AGAINST physical RAM but appears as virtual."))
+        }
+
+        // (VPN / WireGuard / Mesh moved up under the "Cloud" macro header,
+        //  rendered via renderVpnMesh — see the reorg right after the title.)
+
+        // IPC Contract — the cross-app intent/IPC surface Cloud SuperApp
+        // exposes/consumes (the constellation hub ↔ ea_cloud-comms /
+        // ea_cloud-ide contract). Always rendered, even when nothing is
+        // declared yet, so the surface is discoverable.
+
+        section(ctx, column, "SYSFS-PROC") {
+            it.addView(small(ctx, "Raw kernel-side telemetry — no runtime permission needed. World-readable /sys/class/* and /proc/* paths. Use this as the audit surface; promote interesting rows to dedicated UI elsewhere."))
+
+            it.addView(small(ctx, "── /sys/class/power_supply/battery/"))
+            for ((k, v) in SysfsProc.battery()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/class/power_supply/{usb,ac,wireless,main}/"))
+            val chargerRows = SysfsProc.chargers()
+            if (chargerRows.isEmpty()) it.addView(small(ctx, "(no charger nodes readable)"))
+            for ((k, v) in chargerRows) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/loadavg + /proc/uptime  (CPU load in seconds)"))
+            for ((k, v) in SysfsProc.cpuLoadRows()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/stat  (cumulative jiffies → seconds, ALL cores)"))
+            for ((k, v) in SysfsProc.procStatRows()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/devices/system/cpu/cpu*/cpufreq/"))
+            for ((k, v) in SysfsProc.cpuFreqs()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/class/thermal/thermal_zone*/"))
+            val thermalRows = SysfsProc.thermal()
+            if (thermalRows.isEmpty()) it.addView(small(ctx, "(no zones readable — vendor restriction)"))
+            for ((k, v) in thermalRows) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/meminfo  (selected)"))
+            for ((k, v) in SysfsProc.memInfo()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /sys/class/net/*/statistics/"))
+            for ((k, v) in SysfsProc.network()) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/diskstats"))
+            val diskRows = SysfsProc.diskstats()
+            if (diskRows.isEmpty()) it.addView(small(ctx, "(no diskstats readable)"))
+            for ((k, v) in diskRows) row(ctx, it, k, v)
+
+            it.addView(small(ctx, "── /proc/self/  (this app's own kernel-side stats)"))
+            for ((k, v) in SysfsProc.selfProc()) row(ctx, it, k, v)
+        }
+
+        // ══ NETWORK macro section — connectivity, Wi-Fi, the IPC contract and the
+        //    no-root per-app firewall.
+        column.addView(macroHeader(ctx, "🌐  NETWORK"))
+
+        section(ctx, column, "Network") {
+            val cm = ctxAny().getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val active = cm?.activeNetwork
+            val caps = active?.let { runCatching { cm.getNetworkCapabilities(it) }.getOrNull() }
+            val link = active?.let { runCatching { cm.getLinkProperties(it) }.getOrNull() }
+
+            val transports = mutableListOf<String>()
+            caps?.let { c ->
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI))      transports.add("Wi-Fi")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR))  transports.add("Cellular")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET))  transports.add("Ethernet")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN))       transports.add("VPN")
+                if (c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH)) transports.add("Bluetooth")
+            }
+            row(ctx, it, "Transport",     if (transports.isEmpty()) "—" else transports.joinToString(", "))
+            row(ctx, it, "Validated",     caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)?.toString() ?: "—")
+            row(ctx, it, "Captive portal", caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)?.toString() ?: "—")
+            row(ctx, it, "Metered",       cm?.isActiveNetworkMetered?.toString() ?: "—")
+            caps?.let { c ->
+                row(ctx, it, "Link down",     "${c.linkDownstreamBandwidthKbps} kbps")
+                row(ctx, it, "Link up",       "${c.linkUpstreamBandwidthKbps} kbps")
+            }
+            link?.let { lp ->
+                row(ctx, it, "Iface",  lp.interfaceName ?: "—")
+                row(ctx, it, "MTU",    lp.mtu.toString())
+                row(ctx, it, "DNS",    lp.dnsServers.joinToString(", ") { it.hostAddress ?: "" }.ifBlank { "—" })
+                val v4 = lp.linkAddresses.mapNotNull { la -> la.address.hostAddress }.filter { ":" !in it }
+                val v6 = lp.linkAddresses.mapNotNull { la -> la.address.hostAddress }.filter { ":" in it }
+                row(ctx, it, "IPv4",   v4.joinToString(", ").ifBlank { "—" })
+                row(ctx, it, "IPv6",   v6.joinToString(", ").ifBlank { "—" })
+                val gw = lp.routes.firstOrNull { r -> r.isDefaultRoute }?.gateway?.hostAddress
+                row(ctx, it, "Default gw", gw ?: "—")
+            }
+        }
+
+        section(ctx, column, "Wi-Fi") {
+            // SSID/BSSID require ACCESS_FINE_LOCATION on Android 10+
+            // AND a connected Wi-Fi network; we already declare both.
+            // If location isn't granted yet, SSID comes back as
+            // "<unknown ssid>" — surface that as the user-facing hint.
+            val wm = ctxAny().applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+            if (wm == null || !wm.isWifiEnabled) {
+                it.addView(small(ctx, "Wi-Fi is off."))
+            } else {
+                @Suppress("DEPRECATION")
+                val info = runCatching { wm.connectionInfo }.getOrNull()
+                if (info == null) {
+                    it.addView(small(ctx, "No Wi-Fi connection info."))
+                } else {
+                    val ssid = info.ssid?.trim('"').orEmpty()
+                    row(ctx, it, "SSID",       if (ssid.isBlank() || ssid == "<unknown ssid>") "Needs location permission" else ssid)
+                    row(ctx, it, "BSSID",      info.bssid ?: "—")
+                    row(ctx, it, "RSSI",       "${info.rssi} dBm")
+                    row(ctx, it, "Link speed", "${info.linkSpeed} Mbps")
+                    row(ctx, it, "Tx speed",   "${info.txLinkSpeedMbps} Mbps")
+                    if (android.os.Build.VERSION.SDK_INT >= 29) {
+                        row(ctx, it, "Rx speed", "${info.rxLinkSpeedMbps} Mbps")
+                    }
+                    row(ctx, it, "Frequency",  "${info.frequency} MHz")
+                    row(ctx, it, "Hidden SSID", info.hiddenSSID.toString())
+                }
+            }
+        }
+
+        section(ctx, column, "IPC Contract") {
+            val entries = collectIpcContract(requireContext())
+            if (entries.isEmpty()) {
+                it.addView(small(ctx, "No IPC contract declared yet — no exported/consumed cross-app intents, services, or providers beyond the framework defaults."))
+            } else {
+                for ((k, v) in entries) row(ctx, it, k, v)
+            }
+        }
+
+        section(ctx, column, "Firewall") {
+            // No-root per-app firewall (local VpnService, :libs:firewall).
+            // Info rows read WITHOUT any privileged permission via
+            // ConnectivityManager / Settings. The gray button opens the control
+            // screen (master toggle + per-app preset picker). The firestack
+            // merge (per-app filtering + WireGuard in one tunnel) is staged at
+            // libs/firewall/phase3-firestack/ (upstreams.firestack).
+            val fw = com.diegonmarcos.superapp.firewall.FirewallInfo.read(ctx)
+            row(ctx, it, "State", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtState(fw))
+            row(ctx, it, "Apps with rules", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtBlocked(fw))
+            row(ctx, it, "Active transport", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtTransport(fw))
+            row(ctx, it, "System VPN", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtVpn(fw))
+            row(ctx, it, "Private DNS", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtPrivateDns(fw))
+            it.addView(small(ctx, "Single VPN slot — per-app rules apply while on; firestack merge (WG-unified) is staged."))
+            it.addView(actionButton(ctx, "Firewall Details", GRAY) {
+                runCatching {
+                    com.diegonmarcos.superapp.firewall.FirewallDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.firewall.FirewallDialog.TAG)
+                }
+            })
+        }
+
+        // ══ SECURITY macro section — device lock state, ADB/dev-options exposure, biometrics.
+        column.addView(macroHeader(ctx, "🔐  SECURITY"))
+
+        section(ctx, column, "Security posture") {
+            val cr = ctxAny().contentResolver
+            val devMode = runCatching {
+                android.provider.Settings.Global.getInt(cr,
+                    android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED) == 1
+            }.getOrDefault(false)
+            val adbEnabled = runCatching {
+                android.provider.Settings.Global.getInt(cr,
+                    android.provider.Settings.Global.ADB_ENABLED) == 1
+            }.getOrDefault(false)
+            row(ctx, it, "Dev options", devMode.toString())
+            row(ctx, it, "USB ADB",     adbEnabled.toString())
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val adbWifi = runCatching {
+                    android.provider.Settings.Global.getInt(cr, "adb_wifi_enabled") == 1
+                }.getOrDefault(false)
+                row(ctx, it, "Wireless ADB", adbWifi.toString())
+            }
+            val km = ctxAny().getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+            row(ctx, it, "Device secure",  (km?.isDeviceSecure ?: false).toString())
+            row(ctx, it, "Keyguard locked", (km?.isKeyguardLocked ?: false).toString())
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                val bm = ctxAny().getSystemService(Context.BIOMETRIC_SERVICE)
+                    as? android.hardware.biometrics.BiometricManager
+                val biometric = runCatching {
+                    @Suppress("DEPRECATION")
+                    bm?.canAuthenticate() ?: -1
+                }.getOrDefault(-1)
+                row(ctx, it, "Biometric ready", when (biometric) {
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_SUCCESS              -> "Yes"
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED  -> "No (not enrolled)"
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE    -> "No (no hardware)"
+                    android.hardware.biometrics.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "Hardware unavailable"
+                    else -> "Unknown"
+                })
+            }
+        }
+
+        // ══ DEV TOOLS macro section — on-device HTTP/SSH control surface + curl shortcuts.
+        column.addView(macroHeader(ctx, "🛠️  DEV TOOLS"))
+
+        section(ctx, column, "Dev Control - Http (API) & SSH (Termux)") {
+            val prefs = DevControlPrefs(requireContext())
+            val running = DevControlServer.isRunning()
+            val bound   = DevControlServer.boundHost()
+            val loopback = DevControlServer.isLoopbackOnly()
+            row(ctx, it, "Endpoint", "http://${bound ?: "127.0.0.1"}:${prefs.port}")
+            row(ctx, it, "Status",   if (running) "Running" else "Stopped")
+            row(ctx, it, "Bound to", bound ?: "—")
+            row(ctx, it, "Bind scope", when {
+                !running       -> "—"
+                loopback       -> "✓ Loopback only (127.0.0.1) — unreachable from LAN"
+                else           -> "✗ Reachable from LAN — bind addr ${bound ?: "?"}"
+            })
+            row(ctx, it, "Token",    prefs.token)
+            it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints follow /api/{group}/{op} (e.g. /api/system/info, /api/diagnostics/logcat, /api/tracker/counts). Full catalog: GET /api/docs."))
+
+            // ── SSH (Termux & co.) — detect installed terminal emulators and
+            //    whether each is running an sshd we can reach on localhost.
+            //    Installed-check is synchronous (PackageManager); the port
+            //    probe is async (no network on the main thread).
+            it.addView(small(ctx, "SSH servers on this device — terminal apps + whether their sshd is listening on localhost (probes 127.0.0.1 across common ports)."))
+            for (term in SSH_TERMINALS) {
+                val installed = isPackageInstalled(ctx, term.pkg)
+                val portList = term.ports.joinToString(",")
+                val valueView = row(ctx, it, term.label,
+                    if (!installed) "not installed" else "installed · probing :$portList…")
+                if (installed) viewLifecycleOwner.lifecycleScope.launch {
+                    val open = withContext(Dispatchers.IO) { term.ports.filter { p -> portOpen("127.0.0.1", p) } }
+                    if (open.isNotEmpty()) {
+                        valueView.text = "installed · sshd ✓ up :${open.joinToString(",")}"
+                        valueView.setTextColor(0xFF8BE9A0.toInt())
+                    } else {
+                        valueView.text = "installed · sshd ✗ down (tried :$portList)"
+                        valueView.setTextColor(0xFFFFB199.toInt())
+                    }
+                }
+            }
+
+            // Toggle Switch: persists pref + start/stop the server live.
+            it.addView(android.widget.Switch(ctx).apply {
+                text = "API enabled"
+                isChecked = prefs.enabled
+                val pad = dp(6); setPadding(pad, pad, pad, pad)
+                setOnCheckedChangeListener { _, checked ->
+                    prefs.enabled = checked
+                    if (checked) {
+                        DevControlServer.start(requireContext().applicationContext)
+                    } else {
+                        DevControlServer.stop()
+                    }
+                    // Re-render so Status/Bound/scope reflect the new state.
+                    parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
+                    parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
+                }
+            })
+
+            // Regenerate the bearer token. Rotates the cached value AND
+            // restarts the server so the new token is bound to the
+            // accept loop instead of the stale one captured at start().
+            it.addView(actionButton(ctx, "Regenerate API token", GRAY) {
+                val fresh = prefs.resetToken()
+                // Bounce the server so the in-memory token (captured at
+                // start) is replaced by the fresh value.
+                if (DevControlServer.isRunning()) {
+                    DevControlServer.stop()
+                    DevControlServer.start(requireContext().applicationContext)
+                }
+                Toast.makeText(requireContext(),
+                    "New token: ${fresh.take(8)}…", Toast.LENGTH_SHORT).show()
+                // Re-render so the new token + restarted server status
+                // populate immediately.
+                parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
+                parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
+            })
+            // Self-contained ADB (libs:shizuku-adb-debug-tools): jump to
+            // Developer options to flip Wireless Debugging ON, then read the
+            // pairing/connect ports for /api/adb/pair + /api/adb/connect. The
+            // OS toggle can't be flipped by an app (no API) — this is a
+            // deep-link. Lives here next to the HTTP API it feeds.
+            it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
+            it.addView(actionButton(ctx, "Open Wireless Debugging", GRAY) { openWirelessDebuggingSettings() })
+
+            // ── Self-contained ADB how-to (embedded adb client, no Shizuku
+            //    app, no PC; works with WireGuard ON). Long-press any row to
+            //    copy. Documented here next to the button that enables it.
+            val adbPort = DevControlPrefs(requireContext()).port
+            val adbTok  = prefs.token
+            it.addView(small(ctx, "Self-contained ADB (embedded libadb — no Shizuku app, no PC, works with WireGuard ON). Steps:"))
+            it.addView(small(ctx, "1) Tap 'Open Wireless Debugging' → turn it ON. 2) 'Pair device with pairing code' → note the 6-digit code + that dialog's port (=pairport). 3) Main screen → the IP:port there is the connectport."))
+            it.addView(small(ctx, "⚠ HOST GOTCHA: use your Wi-Fi LAN IP (e.g. 192.168.x.x), NOT the 10.x the dialog shows — that 10.x is the WireGuard tun0 and gets ECONNREFUSED. Find the real wlan0 IP with /api/adb/netinfo."))
+            row(ctx, it, "0 NetInfo",  "curl -H 'Authorization: Bearer $adbTok' http://127.0.0.1:$adbPort/api/adb/netinfo   # find wlan0 IPv4")
+            row(ctx, it, "1 Pair",     "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/pair?host=<wlan-ip>&port=<pairport>&code=<6digits>'")
+            row(ctx, it, "2 Connect",  "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/connect?host=<wlan-ip>&port=<connectport>'")
+            row(ctx, it, "3 Status",   "curl -H 'Authorization: Bearer $adbTok' http://127.0.0.1:$adbPort/api/adb/status   # embedded-adb ready=true")
+            row(ctx, it, "4 Charger",  "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/diagnostics?bundle=charger'")
+            row(ctx, it, "Bundles",    "charger | battery | usb | thermal | pd   (build.json::shizuku_diagnostics)")
+            row(ctx, it, "Exec",       "curl -H 'Authorization: Bearer $adbTok' 'http://127.0.0.1:$adbPort/api/adb/exec?cmd=dumpsys%20battery'")
+            it.addView(small(ctx, "Pairing/connect bind the socket to the Wi-Fi Network so it bypasses wg0. Pairing is once per boot (Android law; only root removes it). Pair port lives only while the pairing dialog is open — keep it open until step 1 returns ok."))
+        }
+
+        section(ctx, column, "Curl shortcuts") {
+            val port = DevControlPrefs(requireContext()).port
+            val tok  = DevControlPrefs(requireContext()).token
+            // Endpoint catalog moved to /api/{group}/{op} layout in
+            // commit fb2bc62; the flat aliases still resolve but the
+            // documented form is the grouped one. Source of truth for
+            // the full list is GET /api/docs (machine-readable JSON,
+            // generated from the same Spec list the routing uses so it
+            // can't drift). These shortcuts cover the most-used probes.
+            row(ctx, it, "Docs",     "curl http://127.0.0.1:$port/api/docs")
+            row(ctx, it, "Logcat",   "curl http://127.0.0.1:$port/api/diagnostics/logcat?n=500")
+            row(ctx, it, "Trace",    "curl http://127.0.0.1:$port/api/diagnostics/trace")
+            row(ctx, it, "Crashes",  "curl http://127.0.0.1:$port/api/diagnostics/crashes")
+            row(ctx, it, "Bundle",   "curl http://127.0.0.1:$port/api/diagnostics/bundle")
+            row(ctx, it, "Download logs", "curl http://127.0.0.1:$port/api/diagnostics/download")
+            row(ctx, it, "Send logs → cloud", "curl http://127.0.0.1:$port/api/diagnostics/push")
+            row(ctx, it, "Info",     "curl http://127.0.0.1:$port/api/system/info")
+            row(ctx, it, "State",    "curl -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/state")
+            row(ctx, it, "Haptic",   "curl -XPOST -H 'Authorization: Bearer $tok' 'http://127.0.0.1:$port/api/haptic?preset=gemini_stream'")
+            row(ctx, it, "Update",   "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/system/update")
+            row(ctx, it, "Restart",  "curl -XPOST -H 'Authorization: Bearer $tok' http://127.0.0.1:$port/api/system/restart")
+            row(ctx, it, "Tracker",  "curl http://127.0.0.1:$port/api/tracker/counts")
         }
 
         // Tail-anchor: snapshot the entire About page to the clipboard.
