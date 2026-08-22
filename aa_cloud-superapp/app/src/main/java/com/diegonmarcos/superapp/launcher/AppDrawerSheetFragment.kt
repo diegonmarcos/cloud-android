@@ -4,8 +4,7 @@ import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.ui.Haptics
 import com.diegonmarcos.superapp.ui.ShimmerBorderView
-import com.diegonmarcos.superapp.apps.PhoneAppClassifier
-import com.diegonmarcos.superapp.apps.PhoneAppsFragment
+import com.diegonmarcos.superapp.apps.SuitePhoneAppsFragment
 import com.diegonmarcos.superapp.search.SearchOpener
 
 import android.os.Bundle
@@ -112,10 +111,12 @@ class AppDrawerSheetFragment : Fragment() {
         // Browser-tab chip strip removed — tabs live in Cloud-Browser (ea_cloud-browser).
 
         // ── Body tabs (Cloud | Phone) — data-driven from build.json::ui.home_apps_tabs.
-        // Cloud = HomeGroupedFragment (cloud-services tile grid derived
-        // from build.json::ui.home_groups). Phone = PhoneAppsFragment
-        // (Android-launcher folder grid of installed apps, classified by
-        // PhoneAppClassifier against build.json::ui.phone_folders).
+        // Cloud = GroupedTilesFragment("suite") and Phone =
+        // SuitePhoneAppsFragment — the same merged Quickmarks + All Apps +
+        // Smart Folders pages the Suite section uses, so the swipe-up
+        // drawer and Suite tab show identical content instead of the
+        // Suite tab being "the new one page" and the drawer staying on
+        // the old bare Home/Phone grids.
         // Re-opening the sheet always lands on the first tab (Cloud),
         // matching the user's One UI muscle memory.
         val tabs = HomeAppsTabs.loadFromBuildConfig()
@@ -153,8 +154,8 @@ class AppDrawerSheetFragment : Fragment() {
 
         fun showTab(id: String) {
             val frag: androidx.fragment.app.Fragment = when (id) {
-                "phone" -> PhoneAppsFragment.newInstance()
-                else    -> HomeGroupedFragment.newInstance()  // "cloud" + default
+                "phone" -> SuitePhoneAppsFragment.newInstance()
+                else    -> GroupedTilesFragment.newInstance("suite")  // "cloud" + default
             }
             childFragmentManager.beginTransaction()
                 .replace(host.id, frag)
