@@ -61,15 +61,17 @@ class PackageInstallerReceiver : BroadcastReceiver() {
         // menu fires PackageInstaller.uninstall with op=uninstall). Uninstall
         // shows no in-app overlay, so it must NOT touch UpdateProgress.
         val isUninstall = intent.getStringExtra(EXTRA_OP) == OP_UNINSTALL
-        // Let the batch start the next install. Every branch below is either a
-        // terminal outcome or a prompt that is now the user's to answer; in
-        // both cases holding the batch any longer serves nothing. Done first so
-        // an early `return` in a branch cannot strand a waiting batch.
-        if (!isUninstall) {
-            // Prefer the package we armed the gate with; EXTRA_PACKAGE_NAME is
-            // a fallback for sessions started outside the batch.
-            val gateKey = intent.getStringExtra(EXTRA_TARGET_PKG).orEmpty().ifEmpty { pkg }
-            if (gateKey.isNotEmpty()) InstallGate.open(gateKey)
+        // Prefer the package we armed the gate with; EXTRA_PACKAGE_NAME is a
+        // fallback for sessions started outside a batch.
+        val gateKey = intent.getStringExtra(EXTRA_TARGET_PKG).orEmpty().ifEmpty { pkg }
+        // NOTE: the gate is NOT opened here. Releasing on every status - which
+        // this used to do - released it on STATUS_PENDING_USER_ACTION too, so
+        // the next install committed while the current one's dialog was still
+        // on screen. With Play Protect adding a second dialog on top of the
+        // install confirm, that reliably collapsed to one successful install
+        // per run. Each branch below decides for itself.
+        fun releaseGate() {
+            if (!isUninstall && gateKey.isNotEmpty()) InstallGate.open(gateKey)
         }
         val verb = if (isUninstall) "Uninstall" else "Install"
         Log.i(TAG, "status=$status msg=$message pkg=$pkg op=${if (isUninstall) "uninstall" else "install"}")
@@ -77,7 +79,11 @@ class PackageInstallerReceiver : BroadcastReceiver() {
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
-                val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
+                // No confirm Intent means this session cannot proceed at all;
+                // releasing first is what stops it stranding the queue behind a
+                // dialog that will never appear.
+                val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                    ?: run { releaseGate(); return }
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 // The 6h auto-update runs in WorkManager. Android 10+ BLOCKS
                 // background activity starts but does NOT throw — startActivity
@@ -87,13 +93,26 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 // background → a tap-to-install notification (the only
                 // background-safe launch path).
                 if (isForeground(context)) {
+                    // The dialog is going up NOW and this install has not
+                    // finished. Keep the gate SHUT: the next commit must wait
+                    // for the user to answer, or its dialog stacks on top of
+                    // this one and Play Protect's scan prompt lands between
+                    // them. The gate's timeout is the backstop if the user
+                    // simply walks away.
                     context.startActivity(confirm)
                 } else {
+                    // Background: we cannot show a dialog, so this session now
+                    // waits on a notification the user may never tap. Release -
+                    // otherwise one unanswered notification wedges every later
+                    // install until the timeout. What bounds these is the
+                    // per-pass cap, not the gate.
                     Log.w(TAG, "confirm launch deferred to notification (app backgrounded)")
                     notifyConfirm(context, confirm)
+                    releaseGate()
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> {
+                releaseGate()   // terminal: the next install may start
                 // Drop the cached APK now that it is genuinely installed. This
                 // is the ONLY point where success is known: commit() only means
                 // the session was handed over, and a user who declines the
@@ -108,6 +127,7 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                     severity = NotificationStore.Sev.INFO)
             }
             else -> {
+                releaseGate()   // terminal (failure/abort): unblock the queue
                 val label = when (status) {
                     PackageInstaller.STATUS_FAILURE             -> "FAILURE"
                     PackageInstaller.STATUS_FAILURE_ABORTED     -> "ABORTED"
