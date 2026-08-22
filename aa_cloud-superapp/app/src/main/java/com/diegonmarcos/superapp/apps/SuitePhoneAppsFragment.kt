@@ -179,11 +179,13 @@ class SuitePhoneAppsFragment : Fragment() {
         //    rendering PhoneAppsFragment uses standalone (the Phone tab
         //    of the swipe-up app drawer); embedded inline here instead
         //    of navigating to a separate "more" screen.
+        root.addView(sectionDivider(ctx))
         root.addView(subhead(ctx, "All Apps"))
         PhoneAppsFragment.renderAllApps(ctx, root)
 
         // ── Smart Folders — dynamic folders (Samsung, Google, Recent 7,
         //    …), same shared renderer as PhoneAppsFragment. Self-headed.
+        root.addView(sectionDivider(ctx))
         PhoneAppsFragment.renderSmartFolders(ctx, root)
 
         return scroll
@@ -231,6 +233,15 @@ class SuitePhoneAppsFragment : Fragment() {
         }
         out
     }.getOrDefault(emptyList())
+
+    /** Thin separator line between the Quickmarks / All Apps / Smart
+     *  Folders sections on the merged page. */
+    private fun sectionDivider(ctx: Context) = View(ctx).apply {
+        setBackgroundColor(0x33FFFFFF)
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(ctx, 1),
+        ).apply { topMargin = dp(ctx, 16); bottomMargin = dp(ctx, 4) }
+    }
 
     private fun subhead(ctx: Context, t: String) = TextView(ctx).apply {
         text = t

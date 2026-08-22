@@ -62,6 +62,7 @@ class GroupedTilesFragment : Fragment() {
             // ── All Apps — the same grouped-by-purpose rendering the real
             //    Home tab (HomeGroupedFragment) uses, embedded inline
             //    instead of navigating to a separate "more" screen.
+            col.addView(sectionDivider(ctx))
             col.addView(groupHeader(ctx, "All Apps"))
             HomeGroupedFragment.buildInto(ctx, inflater, col)
 
@@ -70,14 +71,24 @@ class GroupedTilesFragment : Fragment() {
             //    apps do — this is the one real per-tile signal
             //    available (RecentCloudTiles, recorded centrally from
             //    MainActivity.onTileClicked), so it's the sole Smart
-            //    Folders subsection for now.
+            //    Folders subsection for now. Always shown (with an
+            //    empty-state line) so the section doesn't disappear
+            //    entirely before the user has opened any Cloud tiles.
+            col.addView(sectionDivider(ctx))
             val allTiles = Sections.all().flatMap { it.tileGroups }.flatMap { it.tiles }
                 .associateBy { it.target }
             val recent = RecentCloudTiles.recent(ctx).mapNotNull { allTiles[it] }
+            col.addView(groupHeader(ctx, "Smart Folders"))
+            col.addView(groupHeader(ctx, "Recently Used"))
             if (recent.isNotEmpty()) {
-                col.addView(groupHeader(ctx, "Smart Folders"))
-                col.addView(groupHeader(ctx, "Recently Used"))
                 col.addView(tileRow(ctx, recent))
+            } else {
+                col.addView(TextView(ctx).apply {
+                    text = "Open a few Cloud tiles and they'll show up here"
+                    setTextColor(0x99FFFFFF.toInt())
+                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                    setPadding(dp(4), 0, dp(4), dp(8))
+                })
             }
         }
         return scroll
@@ -90,6 +101,16 @@ class GroupedTilesFragment : Fragment() {
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
             setPadding(dp(4), dp(12), 0, dp(4))
+        }
+
+    /** Thin separator line between the Quickmarks / All Apps / Smart
+     *  Folders sections on the merged page. */
+    private fun sectionDivider(ctx: android.content.Context): View =
+        View(ctx).apply {
+            setBackgroundColor(0x33FFFFFF)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(1),
+            ).apply { topMargin = dp(16); bottomMargin = dp(4) }
         }
 
     /** One horizontally-scrollable strip per group — tiles stay on a
