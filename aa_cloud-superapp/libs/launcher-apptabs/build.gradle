@@ -1,4 +1,4 @@
-// libs:apptabs — "App Tabs" feature. Last-6 opened SuperApp
+// libs:launcher-apptabs — "App Tabs" feature. Last-6 opened SuperApp
 // sections / pages / external apps card grid. Sister module to
 // libs:browser; same 2-col GRID UI shape, different content model
 // (SectionEntry | PageEntry | ExternalAppEntry instead of URL tabs).

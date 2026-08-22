@@ -2,7 +2,7 @@
 # Tester: no unresolved git merge/stash conflict markers in SuperApp source.
 #
 # Commit 598eb1c6 committed stash-pop conflict markers straight into
-# app/build.gradle (around the libs:zoomies / libs:devcontrol deps). Groovy
+# app/build.gradle (around the libs:launcher-zoomies / libs:devcontrol deps). Groovy
 # can't parse `<<<<<<<`/`=======`/`>>>>>>>`, so every ship-cloud-superapp build
 # died at configuration ("Unexpected input: '{'" at `dependencies {`). This
 # guards against that whole class: a conflict marker in any buildable source

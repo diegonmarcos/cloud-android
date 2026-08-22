@@ -159,14 +159,14 @@
         "libs:chat",
         "libs:health",
         "libs:fin",
-        "libs:apptabs",
+        "libs:launcher-apptabs",
         "libs:kde-connect",
         "libs:shizuku-adb-debug-tools",
         "libs:firewall",
         "libs:battery",
         "libs:datamanager",
-        "libs:onehand",
-        "libs:zoomies"
+        "libs:launcher-onehand",
+        "libs:launcher-zoomies"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
@@ -239,12 +239,12 @@
       ],
       "comment": "MyFin \u2014 personal finance dashboard. Beta renders from build.json::ui.myfin_mock (accounts, monthly stats, top expense categories, recent transactions, net worth) \u2014 all data-driven so the user can iterate the layout by editing JSON without rebuilding Kotlin. Real aggregator (Plaid / GoCardless / SaltEdge / manual OFX import) lands in a follow-up. MyFinDashboardFragment is the only surface for now; pages: dashboard."
     },
-    "libs:apptabs": {
+    "libs:launcher-apptabs": {
       "type": "library",
       "depends_on": [
         "libs:core"
       ],
-      "comment": "App Tabs \u2014 last-6 opened SuperApp entries (sections, pages, external apps) rendered as a 2-col GRID. Sister module to libs:browser; same card-grid UX, different content (sealed Entry: SectionEntry | PageEntry | ExternalAppEntry). AppTabPrefs is SharedPreferences-backed ('app_tabs' file, strict LRU cap=6). Producers call AppTabPrefs.recordSection / recordPage / recordExternalApp on every successful navigation; the GRID re-renders on onResume so flipping back to Tabs always shows the freshest LRU. AppTabsHost is the callback interface MainActivity implements to handle card-tap re-navigation without libs:apptabs reaching back into app/."
+      "comment": "App Tabs \u2014 last-6 opened SuperApp entries (sections, pages, external apps) rendered as a 2-col GRID. Sister module to libs:browser; same card-grid UX, different content (sealed Entry: SectionEntry | PageEntry | ExternalAppEntry). AppTabPrefs is SharedPreferences-backed ('app_tabs' file, strict LRU cap=6). Producers call AppTabPrefs.recordSection / recordPage / recordExternalApp on every successful navigation; the GRID re-renders on onResume so flipping back to Tabs always shows the freshest LRU. AppTabsHost is the callback interface MainActivity implements to handle card-tap re-navigation without libs:launcher-apptabs reaching back into app/."
     },
     "libs:kde-connect": {
       "type": "library",
@@ -282,7 +282,7 @@
       ],
       "comment": "The 'data-manager' \u2014 pure per-app DATA providers, no UI. AppUsageProvider (UsageStatsManager: recency / active-window / launch-count) + AppNetworkProvider (NetworkStatsManager: per-app bytes), both gated on the PACKAGE_USAGE_STATS special-access already granted for the Battery & Usage screen. Sibling to libs:battery (the 'battery-manager', per-app energy). Providers return ranked package-name lists; app/apps maps them onto the launchable-app set for the Phone smart folders (Recent / Active 48h / Most Opened / Most Network) and the Suite/Phone 'Active Apps' section. Every query runCatching\u2192empty so a missing grant just hides the folder."
     },
-    "libs:onehand": {
+    "libs:launcher-onehand": {
       "type": "library",
       "depends_on": [
         "libs:core",
@@ -290,16 +290,16 @@
       ],
       "comment": "One-Hand edge-gesture overlay (Samsung One Hand Operation+ style). A foreground EdgeOverlayService draws a thin near-invisible handle on the configured screen edge (WindowManager TYPE_APPLICATION_OVERLAY) and turns swipes into global actions (Back/Home/Recents/Notifications/QuickSettings) performed by OneHandAccessibilityService. Two user-granted special perms (SYSTEM_ALERT_WINDOW + Accessibility) \u2014 OneHandController does the deep-linking + start/stop; app/ (Configs/Onehand) is just the toggle. Fully data-driven from build.json::onehand (edge, handle size, gesture\u2192action map baked to BuildConfig.ONEHAND_CONFIG_B64). PURE SwipeClassifier is JVM-tested. Home also has THREE stars atop this module: Sirius (SiriusStar, full circular-menu), Canopus (CanopusStar, arc-menu over Configs), and Centauri (CentaurusStar, SAME arc-menu, content = last 9 recently-opened Android apps via libs:datamanager's AppUsageProvider). ALL THREE star widget classes now live HERE (moved from app/launcher on request \u2014 'ALL STARS in one-hand'), because ArcMenu/CircularMenu already define the app-agnostic Host boundary. Centauri needs no app callback at all (recent-apps + app icons + launch are pure platform APIs), so it takes no Host. Sirius/Canopus's CONTENT is still app-specific (Sections/SectionPages/CircularMenuTree), so THOSE classes take a Host (+ a twinkleEnabled callback for Sirius) injected from MainActivity, which builds it from its own app-side classes \u2014 the star mechanics (glyph, size, touch-forwarding, position, visibility) are generic and lib-side; only the content adapters stay in MainActivity."
     },
-    "libs:zoomies": {
+    "libs:launcher-zoomies": {
       "type": "library",
       "depends_on": [],
       "comment": "Zoomies pets \u2014 the animated status-bar companion. PetStrengthView (an AppCompatImageView) plays a per-tool animal whose gait (idle\u2192walk\u2192walk_fast\u2192run) tracks the tool's strength, decoded from the vendored zoomies GIFs at assets/zoomies/<animal>/<variant>_<gait>.gif (CC BY-ND, used unmodified). Pure view module: no build.json config, no inter-lib deps \u2014 only androidx.appcompat. Consumed by app/launcher (LauncherStatusStripView instantiates one PetStrengthView per tool)."
     }
   },
   "onehand": {
-    "_doc": "One-Hand edge-gesture config for libs:onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge \u2192 `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor \u2014 never a Kotlin change (Pillar: DATA-DRIVEN).",
+    "_doc": "One-Hand edge-gesture config for libs:launcher-onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/launcher-onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge \u2192 `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor \u2014 never a Kotlin change (Pillar: DATA-DRIVEN).",
     "circular_menu": {
-      "_doc": "Sirius-star radial pie \u2014 the libs:onehand 'circular-menu', sibling to the edge-menu. Tapping the home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and dragging past its ring DESCENDS into that node's children (which recenter and fan out again); releasing on a leaf navigates. Descent is RECURSIVE and arbitrary-depth: a node's `section` is its childKey \u2014 the app injects navigate(target) + iconBitmap(name) + childrenOf(key) (see app CircularMenuTree) so the lib stays app-agnostic and the tree mirrors the live sections. Example: Suite \u2192 {Cloud, Phone} \u2192 (Phone) {Home, More}; Comms/Infos \u2192 {Apps, Admin}; Labs/Configs \u2192 their pages. A node with `section:null` (Home Apps) is terminal. Star + nodes are data-driven \u2014 remap with a one-line edit, never Kotlin.",
+      "_doc": "Sirius-star radial pie \u2014 the libs:launcher-onehand 'circular-menu', sibling to the edge-menu. Tapping the home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and dragging past its ring DESCENDS into that node's children (which recenter and fan out again); releasing on a leaf navigates. Descent is RECURSIVE and arbitrary-depth: a node's `section` is its childKey \u2014 the app injects navigate(target) + iconBitmap(name) + childrenOf(key) (see app CircularMenuTree) so the lib stays app-agnostic and the tree mirrors the live sections. Example: Suite \u2192 {Cloud, Phone} \u2192 (Phone) {Home, More}; Comms/Infos \u2192 {Apps, Admin}; Labs/Configs \u2192 their pages. A node with `section:null` (Home Apps) is terminal. Star + nodes are data-driven \u2014 remap with a one-line edit, never Kotlin.",
       "enabled": true,
       "star": {
         "glyph": "\u2726",
@@ -439,7 +439,7 @@
         "package": "com.google.android.apps.maps"
       }
     ],
-    "_doc_radial": "Two-finger radial menu (libs:onehand, OBSERVE-ONLY via the accessibility service's onMotionEvent \u2014 needs Android 14+). Hold TWO fingers anywhere ~still for two_finger_hold_ms \u2192 a ring of icons opens at that point; release to one finger and move it to the icon (arrow follows), lift to fire. Because it only observes touches, the app underneath also sees the fingers (may pinch) \u2014 that's the cost of not intercepting. items[] are actions: `app:<pkg>` or a global action id (back|home|recents|notifications|quick_settings|...). radius_dp = ring radius; slop_dp = how far the 2-finger centroid may drift before the hold cancels.",
+    "_doc_radial": "Two-finger radial menu (libs:launcher-onehand, OBSERVE-ONLY via the accessibility service's onMotionEvent \u2014 needs Android 14+). Hold TWO fingers anywhere ~still for two_finger_hold_ms \u2192 a ring of icons opens at that point; release to one finger and move it to the icon (arrow follows), lift to fire. Because it only observes touches, the app underneath also sees the fingers (may pinch) \u2014 that's the cost of not intercepting. items[] are actions: `app:<pkg>` or a global action id (back|home|recents|notifications|quick_settings|...). radius_dp = ring radius; slop_dp = how far the 2-finger centroid may drift before the hold cancels.",
     "radial": {
       "_doc_security": "enabled=false by DEFAULT on purpose: the radial menu works by OBSERVING ALL touches system-wide (FLAG_SEND_MOTION_EVENTS), which is a genuine privacy/security capability \u2014 it can see taps anywhere, including over a password manager. Turn it on ONLY as a conscious opt-in. While disabled, the service never requests motion-event observation at all.",
       "enabled": false,
@@ -2785,7 +2785,7 @@
             "action": "action:constellation"
           },
           {
-            "_doc": "One-Hand edge-gesture overlay (libs:onehand). OneHandFragment hosts the master toggle + the two special-permission deep-links (Draw over other apps, Accessibility). Data-driven engine config lives in build.json::onehand.",
+            "_doc": "One-Hand edge-gesture overlay (libs:launcher-onehand). OneHandFragment hosts the master toggle + the two special-permission deep-links (Draw over other apps, Accessibility). Data-driven engine config lives in build.json::onehand.",
             "id": "onehand",
             "label": "One-Hand",
             "icon": "ic_onehand"
@@ -3017,7 +3017,7 @@
     "_doc_dynamic_island_action": "What happens when the user taps the dynamic-island pill in the toolbar. Format: `app:<packageName>` opens that app's launcher activity, `notifications` opens the Notification Centre (legacy default), `shortcut:<id>` fires one of MainActivity's shortcut intents. Falls back to a silent Toast if the target app isn't installed \u2014 does NOT silently re-open notifications, to keep the user's explicit binding the source of truth.",
     "dynamic_island_action": "app:com.termux.nix",
     "_doc_home_apps_tabs": "Tabs at the top of the Home Apps swipe-up sheet (AppDrawerSheetFragment). Cloud = the existing HomeGroupedFragment (cloud-service tile grid derived from home_groups). Phone = PhoneAppsFragment (Android-launcher folder grid of installed apps grouped by phone_folders). Order = display order.",
-    "_doc_app_tabs": "App Tabs (libs:apptabs) \u2014 the last-N opened SuperApp entries (sections, pages incl. sub-pages, external apps) as an LRU grid. `cap` = how many to keep; MainActivity sets AppTabPrefs.cap from BuildConfig.UI_APP_TABS_CAP at startup.",
+    "_doc_app_tabs": "App Tabs (libs:launcher-apptabs) \u2014 the last-N opened SuperApp entries (sections, pages incl. sub-pages, external apps) as an LRU grid. `cap` = how many to keep; MainActivity sets AppTabPrefs.cap from BuildConfig.UI_APP_TABS_CAP at startup.",
     "app_tabs": {
       "cap": 10
     },

@@ -29,7 +29,7 @@ import com.diegonmarcos.superapp.settings.HomeSwipePrefs
  * centralized Configs > Permissions page.
  *
  * This module also owns the THREE home-screen stars (see MainActivity /
- * libs:onehand — not editable from this screen, this is descriptive only):
+ * libs:launcher-onehand — not editable from this screen, this is descriptive only):
  *   - Sirius   — full multi-level circular-menu (Suite/Infos/Labs/Configs…)
  *   - Canopus  — single-level arc-menu over the Configs section's pages
  *   - Centauri — SAME arc-menu as Canopus, showing the last 9 recently-opened

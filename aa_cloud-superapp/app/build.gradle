@@ -704,11 +704,11 @@ dependencies {
     // libs:datamanager — per-app usage + network DATA providers (feeds the
     // Phone smart folders + Suite/Phone Active Apps). Sibling of libs:battery.
     implementation project(':libs:datamanager')
-    // libs:onehand — One-Hand edge-gesture overlay engine (Configs/Onehand toggle).
-    implementation project(':libs:onehand')
-    // libs:zoomies — animated status-bar pet (PetStrengthView + zoomies GIF assets),
+    // libs:launcher-onehand — One-Hand edge-gesture overlay engine (Configs/Onehand toggle).
+    implementation project(':libs:launcher-onehand')
+    // libs:launcher-zoomies — animated status-bar pet (PetStrengthView + zoomies GIF assets),
     // extracted from app/launcher. Consumed by LauncherStatusStripView.
-    implementation project(':libs:zoomies')
+    implementation project(':libs:launcher-zoomies')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
@@ -726,11 +726,11 @@ dependencies {
     // libs:browser MOVED to ea_cloud-browser (constellation APK).
     // launchUri http/https now fires ACTION_VIEW → com.diegonmarcos.cloudbrowser.
 
-    // libs:apptabs — the App Tabs (last-6 LRU shelf) feature.
-    // MainActivity implements AppTabsHost (defined in libs:apptabs)
-    // so the card-tap callback can re-navigate without libs:apptabs
+    // libs:launcher-apptabs — the App Tabs (last-6 LRU shelf) feature.
+    // MainActivity implements AppTabsHost (defined in libs:launcher-apptabs)
+    // so the card-tap callback can re-navigate without libs:launcher-apptabs
     // reaching back into app/'s MainActivity by name.
-    implementation project(':libs:apptabs')
+    implementation project(':libs:launcher-apptabs')
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.drawerlayout:drawerlayout:1.2.0'

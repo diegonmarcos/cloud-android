@@ -11,7 +11,7 @@ import android.widget.TextView
  * Home-screen Canopus star — triggers [ArcMenu] (the bottom half-moon menu)
  * on touch.
  *
- * Lives in libs:onehand along with Sirius and Centauri — ALL THREE home
+ * Lives in libs:launcher-onehand along with Sirius and Centauri — ALL THREE home
  * stars are lib-side. Canopus's CONTENT is app-specific (a build.json
  * section's pages), so unlike Centauri it cannot be fully self-contained:
  * the app supplies an [ArcMenu.Host] (built from its own SectionPages) and

@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity(),
     /** Navigation policy + walk-list state; the Activity is its view host. */
     private val nav = LauncherNavController(this)
 
-    /** [AppTabsHost] — card-tap callback from libs:apptabs. Routes a
+    /** [AppTabsHost] — card-tap callback from libs:launcher-apptabs. Routes a
      *  recorded LRU entry back to its original destination. Sections
      *  go through goSection; pages through openSectionPage; external
      *  apps fire a normal launch intent. */
@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity(),
         }
     override var currentLabel:   String = ""
 
-    // All THREE home stars live in libs:onehand — Sirius/Canopus/Centauri are
+    // All THREE home stars live in libs:launcher-onehand — Sirius/Canopus/Centauri are
     // all generic widget classes there now. Sirius and Canopus need app-side
     // content (the section/page tree), so MainActivity builds their Host here
     // and injects it; Centauri needs none (pure platform API), so it takes no
@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity(),
             },
         )
     }
-    // Centauri lives in libs:onehand (like Sirius/Canopus) — its content
+    // Centauri lives in libs:launcher-onehand (like Sirius/Canopus) — its content
     // (last 9 recent apps) is pure platform API, no app Host needed, so it
     // takes the star View + island anchor directly instead of a Host.
     private val centauriStar by lazy {

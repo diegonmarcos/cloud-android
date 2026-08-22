@@ -16,7 +16,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * The libs:onehand "circular-menu" — a two-level radial pie, sibling to the
+ * The libs:launcher-onehand "circular-menu" — a two-level radial pie, sibling to the
  * edge-menu. Triggered by the SIRIUS home star (SiriusStar.kt, this package —
  * corrected: an earlier version of this comment said Canopus, which actually
  * triggers ArcMenu instead): a ring of top-level nodes with a centre arrow

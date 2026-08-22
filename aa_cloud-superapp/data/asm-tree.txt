@@ -212,7 +212,7 @@ DRAWER SECTIONS  (not in bottom nav)
     Open Tabs        ← BrowserHostFragment (GRID of open-tab cards / DETAIL fullscreen WebView)
     Linktree         → https://linktree.diegonmarcos.com/
 
-[APP TABS]  libs:apptabs · LRU shelf ─────────────────────────────────────────────
+[APP TABS]  libs:launcher-apptabs · LRU shelf ─────────────────────────────────────────────
     Tabs             ← AppTabsFragment  (last-6 sections / pages / external apps; 2-col grid)
 
 [MYFIN]  libs:fin · personal finance ─────────────────────────────────────────────

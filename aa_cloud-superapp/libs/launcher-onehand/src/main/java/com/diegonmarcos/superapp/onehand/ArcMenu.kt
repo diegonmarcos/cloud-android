@@ -16,7 +16,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * ARC-MENU — libs:onehand bottom-arc menu. Triggered by TWO home stars, both
+ * ARC-MENU — libs:launcher-onehand bottom-arc menu. Triggered by TWO home stars, both
  * lib-side (CanopusStar.kt / CentaurusStar.kt, this package):
  *   - Canopus  : items = children of build.json::onehand.arc_menu.section
  *     (default "config") — its Host is app-supplied (built in MainActivity

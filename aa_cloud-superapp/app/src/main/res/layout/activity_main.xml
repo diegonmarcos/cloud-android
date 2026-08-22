@@ -91,7 +91,7 @@
 
         <!-- Canopus star — the 2nd-brightest. Sits UNDER the cube (translationY
              set in code), a touch bigger than Sirius. Tapping it opens the
-             libs:onehand circular-menu. Glyph/size data-driven from
+             libs:launcher-onehand circular-menu. Glyph/size data-driven from
              build.json::onehand.circular_menu.star. VISIBLE only on `home`. -->
         <TextView
             android:id="@+id/canopus_star"
@@ -111,7 +111,7 @@
             android:elevation="16dp"
             android:visibility="gone" />
 
-        <!-- Centauri star — the 3rd star (libs:onehand CentaurusStar), sitting
+        <!-- Centauri star — the 3rd star (libs:launcher-onehand CentaurusStar), sitting
              EXACTLY between Sirius (screen centre) and Canopus (near the
              bottom-nav island) — translationY = half of Canopus's own
              island-anchored offset, set in code. Opens the SAME arc-menu as

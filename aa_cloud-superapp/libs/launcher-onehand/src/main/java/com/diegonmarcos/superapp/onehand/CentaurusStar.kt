@@ -20,7 +20,7 @@ import com.diegonmarcos.superapp.datamanager.AppUsageProvider
  * recently-opened Android apps (icon + tap-to-launch), not a build.json
  * section.
  *
- * Lives HERE in libs:onehand — unlike Sirius/Canopus (app/launcher package),
+ * Lives HERE in libs:launcher-onehand — unlike Sirius/Canopus (app/launcher package),
  * Centauri needs no app-side callback at all. Its content (recent packages,
  * app icons, launching an app) is pure platform API
  * (LauncherApps/AppUsageProvider/PackageManager), so it is fully

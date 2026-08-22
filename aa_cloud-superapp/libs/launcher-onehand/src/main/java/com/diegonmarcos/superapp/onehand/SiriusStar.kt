@@ -11,7 +11,7 @@ import android.widget.TextView
 /**
  * Home-screen Sirius star — triggers [CircularMenu] on touch.
  *
- * Lives in libs:onehand along with Canopus and Centauri — ALL THREE home
+ * Lives in libs:launcher-onehand along with Canopus and Centauri — ALL THREE home
  * stars are lib-side. Sirius's CONTENT is app-specific (the section/page
  * tree), so unlike Centauri it cannot be fully self-contained: the app
  * supplies a [CircularMenu.Host] (built from its own Sections/CircularMenuTree)
