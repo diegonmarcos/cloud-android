@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Install other APKs via PackageInstaller (user prompt). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Declared HERE, not per app: every consumer of libs:updater installs
+         fleet APKs, so every one of them needs this or its updates prompt.
+         ea_cloud-ide was the app that proved the point - it uses the updater
+         and was the only fleet app missing the permission. Manifest merge now
+         gives it to all of them, and a new consumer cannot forget. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Foreground notification for download progress. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />

@@ -31,6 +31,15 @@ internal class UpdateInstaller(private val context: Context) {
                     else PackageInstaller.SessionParams.USER_ACTION_REQUIRED
                 )
             }
+            if (Build.VERSION.SDK_INT >= 34) {
+                // Claim update ownership (Android 14+). This hub carries its
+                // OWN copy of UpdateInstaller rather than linking libs:updater,
+                // so the fix has to land twice - see the same block there.
+                // Without it, UPDATE_PACKAGES_WITHOUT_USER_ACTION (already
+                // declared in this module's manifest) does nothing whenever
+                // something else installed the app last.
+                setRequestUpdateOwnership(true)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 // Android 14/15 ECM restricts apps installed without an explicit
                 // package source (Settings denies them protected roles with the

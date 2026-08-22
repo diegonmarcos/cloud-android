@@ -57,6 +57,23 @@ internal class UpdateInstaller(private val context: Context) {
                     else PackageInstaller.SessionParams.USER_ACTION_REQUIRED
                 )
             }
+            if (Build.VERSION.SDK_INT >= 34) {
+                // Claim UPDATE OWNERSHIP (Android 14+).
+                //
+                // UPDATE_PACKAGES_WITHOUT_USER_ACTION only silences the confirm
+                // dialog when we are the installer of record / update owner for
+                // that package. Without this, ownership sits with whatever
+                // installed the app last - Files, adb, another store - and every
+                // later update prompts again no matter what permission we hold.
+                // That is the real reason a fleet update still shows a dialog
+                // per app; serialising the queue only makes the dialogs orderly.
+                //
+                // Trade-off, deliberately accepted: if another installer already
+                // owns the package, REQUESTING ownership forces user action for
+                // THIS install. So the first update after adopting an app still
+                // prompts, and every one after it is silent.
+                setRequestUpdateOwnership(true)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 // Without an explicit package source, Android 14/15 Enhanced
                 // Confirmation Mode treats the install as an untrusted sideload

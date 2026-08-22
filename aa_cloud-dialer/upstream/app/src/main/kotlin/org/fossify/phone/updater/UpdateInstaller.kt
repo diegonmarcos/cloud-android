@@ -21,6 +21,13 @@ internal class UpdateInstaller(private val context: Context) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(targetPackage)
+            if (Build.VERSION.SDK_INT >= 34) {
+                // Claim update ownership (Android 14+), same as the constellation's
+                // other installers. Without it UPDATE_PACKAGES_WITHOUT_USER_ACTION is
+                // inert whenever something else installed this app last, and every
+                // update prompts again.
+                setRequestUpdateOwnership(true)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
             }

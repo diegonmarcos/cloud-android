@@ -360,6 +360,27 @@ while read -r bg; do
 done < <(command find . -name build.gradle -not -path '*/build/*' -not -path './.git/*' 2>/dev/null)
 note ok "every interpolated buildConfigField variable is defined"
 
+# 18. Any file that builds PackageInstaller.SessionParams must claim update
+#     ownership. UPDATE_PACKAGES_WITHOUT_USER_ACTION only silences the confirm
+#     dialog while we are the installer of record; without
+#     setRequestUpdateOwnership, ownership sits with whatever installed the app
+#     last (Files, adb, another store) and every update prompts again. There is
+#     more than one installer in this tree - ea_cloud-ide keeps its own copy
+#     instead of linking libs:updater - so this must hold in each.
+while read -r f; do
+    [ -z "$f" ] && continue
+    command grep -q 'setRequestUpdateOwnership' "$f" \
+        && note ok "$(basename "$f") claims update ownership" \
+        || note FAIL "$f builds SessionParams without setRequestUpdateOwnership — its updates will keep prompting"
+done < <(command grep -rl 'PackageInstaller.SessionParams(' --include=*.kt --include=*.java . 2>/dev/null \
+         | command grep -v '/build/' \
+         | command grep -v '^./z_archive/' \
+         | command grep -v '^./ea_upstreams-sources/' \
+         | command sort)
+# z_archive is retired; ea_upstreams-sources holds the fork TRACKER clones,
+# which are regenerated from upstream + patches - editing them is reverted on
+# the next sync (feedback: submodules/forks, edit the source).
+
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
 exit "$fail"

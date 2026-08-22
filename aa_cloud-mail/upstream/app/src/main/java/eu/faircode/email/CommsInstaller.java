@@ -82,6 +82,13 @@ public class CommsInstaller {
         PackageInstaller.SessionParams params =
                 new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(ctx.getPackageName());
+        if (Build.VERSION.SDK_INT >= 34) {
+            // Claim update ownership (Android 14+), same as the constellation's
+            // other installers. Without it UPDATE_PACKAGES_WITHOUT_USER_ACTION
+            // is inert whenever something else installed this app last, and
+            // every update prompts again.
+            params.setRequestUpdateOwnership(true);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             params.setRequireUserAction(silent
                     ? PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
