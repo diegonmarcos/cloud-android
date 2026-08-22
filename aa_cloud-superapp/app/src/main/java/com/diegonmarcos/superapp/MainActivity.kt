@@ -35,7 +35,7 @@ import com.diegonmarcos.superapp.settings.LauncherConfigFragment
 import com.diegonmarcos.superapp.settings.ImportConfigsFragment
 import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
-import com.diegonmarcos.superapp.launcher.HomeGroupedFragment
+import com.diegonmarcos.superapp.launcher.RecentCloudTiles
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
 import com.diegonmarcos.superapp.battery.BatterySessionWorker
 import com.diegonmarcos.superapp.search.SearchSheetFragment
@@ -603,7 +603,7 @@ class MainActivity : AppCompatActivity(),
             }
             "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
             "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
-            // Target-string actions (e.g. "tab:phone:suite", "action:open_suite_phone_all")
+            // Target-string actions (e.g. "tab:phone:suite", "action:open_home_apps")
             // route through the same dispatch grammar as tile taps.
             else             -> if (action.contains(':')) onTileClicked(action) else openAppDrawerSheet()
         }
@@ -1364,6 +1364,12 @@ class MainActivity : AppCompatActivity(),
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
         }
+        // Suite → Cloud "Recently Used" smart folder — the one real
+        // per-tile signal Cloud tiles have (no pin/favorite/most-used
+        // tracking exists otherwise). Recorded here, the single dispatch
+        // chokepoint, so every surface that fires a tile click
+        // contributes, not just the Suite page itself.
+        RecentCloudTiles.recordOpen(this, tileId)
         // App Tabs capture — the single dispatch chokepoint. `action:`/`tab:`/
         // `mode:` destinations are real "pages" (Constellation, Suite·All, the
         // Suite tabs) but aren't recorded by goSection/openSectionPage, so they
@@ -1486,29 +1492,6 @@ class MainActivity : AppCompatActivity(),
             actionType == "open_home_apps_phone" -> {
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet("phone")
-            }
-            // Suite · Cloud "More" → the full Cloud page as a dedicated screen
-            // (no Cloud|Phone tab strip). build.json page id `suite-cloud-all`.
-            actionType == "open_suite_cloud_all" -> {
-                val frag = HomeGroupedFragment.newInstance()
-                applyChrome(frag)
-                supportFragmentManager.beginTransaction()
-                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-                    .replace(R.id.fragment_container, frag)
-                    .addToBackStack(null)
-                    .commit()
-            }
-            // Suite · Phone "More" (footer tap + pull-past-bottom) → the full
-            // Phone apps page as a dedicated screen (no tab strip). Page id
-            // `suite-phone-all`. This is the fix for "Phone More opened Cloud".
-            actionType == "open_suite_phone_all" -> {
-                val frag = PhoneAppsFragment.newInstance()
-                applyChrome(frag)
-                supportFragmentManager.beginTransaction()
-                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-                    .replace(R.id.fragment_container, frag)
-                    .addToBackStack(null)
-                    .commit()
             }
             // Cloud Notification Center — same surface the top-bar bell
             // icon opens. Wiring it here means any data-driven entry

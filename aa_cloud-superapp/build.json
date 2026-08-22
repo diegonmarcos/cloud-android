@@ -464,7 +464,7 @@
     },
     "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
     "home_swipes": {
-      "swipe_up": "action:open_suite_phone_all",
+      "swipe_up": "action:open_home_apps",
       "swipe_left": "open_last_superapp_page",
       "swipe_right": "open_last_android_app",
       "swipe_down": "tab:phone:suite"
@@ -1339,26 +1339,13 @@
             "target": "section:suite"
           }
         ],
-        "_doc_footers": "Centered 'More' affordance rendered below the LAST group on each Suite surface. section_footer \u2192 Suite/Cloud (GroupedTilesFragment, below 'Tools Dashboards'); phone_footer \u2192 Suite/Phone (SuitePhoneAppsFragment, below 'Configs'). Each is a tile {id,label,icon,target} dispatched through the same onTileClicked grammar as any tile. Targets jump to the full Home Apps drawer: action:open_home_apps lands on the Cloud tab; action:open_home_apps_phone lands on the Phone tab.",
-        "section_footer": {
-          "id": "more-cloud",
-          "label": "More",
-          "icon": "ic_p_more",
-          "target": "action:open_suite_cloud_all"
-        },
-        "phone_footer": {
-          "id": "more-phone",
-          "label": "More",
-          "icon": "ic_p_more",
-          "target": "action:open_suite_phone_all"
-        },
-        "_doc_active_apps": "Suite/Phone-only 'Active Apps' section rendered BELOW the last curated group (Configs) and ABOVE the More footer. Lists the `limit` most-recently-used apps (libs:datamanager AppUsageProvider.recentUsed \u2192 same UsageStatsManager data as the Phone 'Recent 7' smart folder). Empty (section hidden) when usage-access is not granted. Baked to scalar BuildConfig fields UI_SUITE_ACTIVE_APPS_{ENABLED,TITLE,LIMIT}.",
+        "_doc_active_apps": "Suite/Phone-only 'Active Apps' section rendered BELOW the last curated group (Configs) and ABOVE the All Apps / Smart Folders sections (SuitePhoneAppsFragment renders all three inline on one scrollable page now \u2014 no separate 'more' screen). Lists the `limit` most-recently-used apps (libs:datamanager AppUsageProvider.recentUsed \u2192 same UsageStatsManager data as the Phone 'Recent 7' smart folder). Empty (section hidden) when usage-access is not granted. Baked to scalar BuildConfig fields UI_SUITE_ACTIVE_APPS_{ENABLED,TITLE,LIMIT}.",
         "active_apps": {
           "enabled": true,
           "title": "Active Apps",
           "limit": 8
         },
-        "_doc_long_press": "Long-press the Suite bottom-nav item. `tab:<cloud|phone>` (MainActivity.onTileClicked) re-opens Suite on that SuiteCloudPhoneTabsFragment tab; More mirrors phone_footer's target (the Phone tab's own More subpage).",
+        "_doc_long_press": "Long-press the Suite bottom-nav item. `tab:<cloud|phone>` (MainActivity.onTileClicked) re-opens Suite on that SuiteCloudPhoneTabsFragment tab; More opens the standalone Home Apps drawer's Phone tab (action:open_home_apps_phone).",
         "long_press": [
           {
             "id": "cloud",
@@ -6258,22 +6245,10 @@
         "target": "tab:cloud:suite"
       },
       {
-        "id": "suite-cloud-all",
-        "label": "Cloud \u00b7 All",
-        "icon": "ic_suite",
-        "target": "action:open_suite_cloud_all"
-      },
-      {
         "id": "suite-phone-quickmarks",
         "label": "Suite \u00b7 Phone",
         "icon": "ic_suite",
         "target": "tab:phone:suite"
-      },
-      {
-        "id": "suite-phone-all",
-        "label": "Phone \u00b7 All",
-        "icon": "ic_mode_apps",
-        "target": "action:open_suite_phone_all"
       },
       {
         "id": "constellation",

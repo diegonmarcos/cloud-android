@@ -1,9 +1,5 @@
 package com.diegonmarcos.superapp.apps
 import com.diegonmarcos.superapp.BuildConfig
-import com.diegonmarcos.superapp.ui.Haptics
-import com.diegonmarcos.superapp.launcher.TileGridFragment
-import com.diegonmarcos.superapp.launcher.Sections
-import com.diegonmarcos.superapp.launcher.GroupedTilesFragment
 import com.diegonmarcos.superapp.launcher.AppLongPressMenu
 import com.diegonmarcos.superapp.App
 import com.diegonmarcos.superapp.R
@@ -18,7 +14,6 @@ import android.os.Process
 import android.util.Base64
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -63,31 +58,23 @@ class SuitePhoneAppsFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
-        // "More" footer tile (build.json::sections[id=suite].phone_footer) —
-        // reused for BOTH the tap-target footer below AND the pull-past-the-
-        // -bottom gesture wired into the custom scroll view.
-        val footer = Sections.byId("suite")?.phoneFooter
-        val scroll = EdgePullScrollView(ctx).apply {
+        val scroll = ScrollView(ctx).apply {
             isFillViewport = true
-            overScrollMode = View.OVER_SCROLL_ALWAYS
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
-            // Drag up past the end → auto-tap "More" (open Home Apps · Phone),
-            // the same target as the footer tile.
-            footer?.let { f ->
-                onPullPastBottom = {
-                    Haptics.tap(this)
-                    (activity as? TileGridFragment.TileClickListener)?.onTileClicked(f.target)
-                }
-            }
         }
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val pad = dp(ctx, 8); setPadding(pad, pad, pad, dp(ctx, 96))
         }
         scroll.addView(root)
+
+        // ── Quickmarks — the curated groups/folders/active-apps content
+        //    that used to be this fragment's entire page. Now the first
+        //    of three stacked sections on one scrollable page.
+        root.addView(subhead(ctx, "Quickmarks"))
 
         val groups = parseGroups()
         val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
@@ -188,44 +175,18 @@ class SuitePhoneAppsFragment : Fragment() {
             }
         }
 
-        // Centered "More" affordance below the last group (data-driven via
-        // build.json::sections[id=suite].phone_footer) — routes to the full
-        // Home Apps drawer (Phone tab) through the activity's TileClickListener.
-        footer?.let { root.addView(moreFooter(ctx, it)) }
-        return scroll
-    }
+        // ── All Apps — every installed app grouped by purpose. Same
+        //    rendering PhoneAppsFragment uses standalone (the Phone tab
+        //    of the swipe-up app drawer); embedded inline here instead
+        //    of navigating to a separate "more" screen.
+        root.addView(subhead(ctx, "All Apps"))
+        PhoneAppsFragment.renderAllApps(ctx, root)
 
-    private fun moreFooter(ctx: Context, tile: Sections.AggTile): View {
-        val wrap = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(ctx, 20); bottomMargin = dp(ctx, 12) }
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                Haptics.tap(it)
-                (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tile.target)
-            }
-        }
-        val iconRes = Sections.iconResFor(ctx, tile.iconName)
-        if (iconRes != 0) {
-            wrap.addView(ImageView(ctx).apply {
-                setImageResource(iconRes)
-                imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
-                val sz = dp(ctx, 32)
-                layoutParams = LinearLayout.LayoutParams(sz, sz)
-            })
-        }
-        wrap.addView(TextView(ctx).apply {
-            text = tile.label
-            setTextColor(0xCCFFFFFF.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(ctx, 4), 0, 0)
-        })
-        return wrap
+        // ── Smart Folders — dynamic folders (Samsung, Google, Recent 7,
+        //    …), same shared renderer as PhoneAppsFragment. Self-headed.
+        PhoneAppsFragment.renderSmartFolders(ctx, root)
+
+        return scroll
     }
 
     private fun parseGroups(): List<Group> = runCatching {
@@ -507,48 +468,4 @@ class SuitePhoneAppsFragment : Fragment() {
     private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
 
     companion object { fun newInstance() = SuitePhoneAppsFragment() }
-}
-
-/**
- * ScrollView that fires [onPullPastBottom] once when the user drags UP past
- * the bottom edge by more than a threshold — the Suite/Phone "kick the end
- * of the page to auto-open More" gesture. Accumulated overshoot (not a
- * single delta) debounces accidental flings; resets on finger-up so each
- * fresh pull can re-trigger. overScrollMode = ALWAYS (set by the caller) so
- * it fires even when the content is shorter than the viewport.
- */
-private class EdgePullScrollView(ctx: Context) : ScrollView(ctx) {
-    var onPullPastBottom: (() -> Unit)? = null
-    private val triggerPx = 140f * ctx.resources.displayMetrics.density
-    private var overshoot = 0f
-    private var fired = false
-
-    override fun overScrollBy(
-        deltaX: Int, deltaY: Int, scrollX: Int, scrollY: Int,
-        scrollRangeX: Int, scrollRangeY: Int,
-        maxOverScrollX: Int, maxOverScrollY: Int, isTouchEvent: Boolean,
-    ): Boolean {
-        // Dragging content up (deltaY > 0) while already at/below the bottom
-        // edge = pulling past the end. Accumulate and fire once past trigger.
-        if (isTouchEvent && deltaY > 0 && scrollY >= scrollRangeY) {
-            overshoot += deltaY
-            if (!fired && overshoot >= triggerPx) {
-                fired = true
-                onPullPastBottom?.invoke()
-            }
-        }
-        return super.overScrollBy(
-            deltaX, deltaY, scrollX, scrollY,
-            scrollRangeX, scrollRangeY, maxOverScrollX, maxOverScrollY, isTouchEvent,
-        )
-    }
-
-    override fun onTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.actionMasked) {
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                overshoot = 0f; fired = false
-            }
-        }
-        return super.onTouchEvent(ev)
-    }
 }

@@ -9,8 +9,8 @@ import org.json.JSONArray
  * destination in the launcher. Baked from build.json::ui.pages into
  * [BuildConfig.UI_PAGES_B64] (base64-JSON) by app/build.gradle.
  *
- * A [Page] maps a stable `id` (e.g. "suite-phone-all", "constellation") to the
- * raw navigation `target` that reaches it (e.g. "action:open_suite_phone_all").
+ * A [Page] maps a stable `id` (e.g. "suite-phone-quickmarks", "constellation")
+ * to the raw navigation `target` that reaches it (e.g. "tab:phone:suite").
  * [byTarget] is the reverse lookup used by the single dispatch chokepoint in
  * MainActivity.onTileClicked to record `action:`/`tab:`/`mode:` opens into the
  * App Tabs recents shelf — destinations that goSection/openSectionPage never

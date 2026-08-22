@@ -47,50 +47,40 @@ class GroupedTilesFragment : Fragment() {
         }
         scroll.addView(col)
 
+        // Suite is the only section merging in the generic Home-tab "All
+        // Apps" grid + a "Recently Used" smart folder below its Quickmarks
+        // — other GroupedTilesFragment users (Home, Labs, Configs, …) keep
+        // their plain grouped-tiles rendering unchanged.
+        if (sectionId == "suite") col.addView(groupHeader(ctx, "Quickmarks"))
+
         for (group in groups) {
             col.addView(groupHeader(ctx, group.title))
             col.addView(tileRow(ctx, group.tiles))
         }
-        // Centered "More" affordance below the last group (data-driven via
-        // build.json::sections[*].section_footer). Dispatches through the
-        // same TileClickListener as any tile.
-        section?.sectionFooter?.let { col.addView(moreFooter(ctx, it)) }
-        return scroll
-    }
 
-    /** Centered icon + label rendered below all groups. Tap routes the
-     *  footer's target through the activity's TileClickListener. */
-    private fun moreFooter(ctx: android.content.Context, tile: Sections.AggTile): View {
-        val wrap = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER_HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(20); bottomMargin = dp(12) }
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                Haptics.tap(it)
-                (activity as? TileGridFragment.TileClickListener)?.onTileClicked(tile.target)
+        if (sectionId == "suite") {
+            // ── All Apps — the same grouped-by-purpose rendering the real
+            //    Home tab (HomeGroupedFragment) uses, embedded inline
+            //    instead of navigating to a separate "more" screen.
+            col.addView(groupHeader(ctx, "All Apps"))
+            HomeGroupedFragment.buildInto(ctx, inflater, col)
+
+            // ── Smart Folders → Recently Used. Cloud tiles have no
+            //    existing pin/favorite/most-used signal the way Phone
+            //    apps do — this is the one real per-tile signal
+            //    available (RecentCloudTiles, recorded centrally from
+            //    MainActivity.onTileClicked), so it's the sole Smart
+            //    Folders subsection for now.
+            val allTiles = Sections.all().flatMap { it.tileGroups }.flatMap { it.tiles }
+                .associateBy { it.target }
+            val recent = RecentCloudTiles.recent(ctx).mapNotNull { allTiles[it] }
+            if (recent.isNotEmpty()) {
+                col.addView(groupHeader(ctx, "Smart Folders"))
+                col.addView(groupHeader(ctx, "Recently Used"))
+                col.addView(tileRow(ctx, recent))
             }
         }
-        val iconRes = Sections.iconResFor(ctx, tile.iconName)
-        if (iconRes != 0) {
-            wrap.addView(android.widget.ImageView(ctx).apply {
-                setImageResource(iconRes)
-                imageTintList = android.content.res.ColorStateList.valueOf(0xFFE9D8FD.toInt())
-                val sz = dp(32)
-                layoutParams = LinearLayout.LayoutParams(sz, sz)
-            })
-        }
-        wrap.addView(TextView(ctx).apply {
-            text = tile.label
-            setTextColor(0xCCFFFFFF.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            gravity = android.view.Gravity.CENTER
-            setPadding(0, dp(4), 0, 0)
-        })
-        return wrap
+        return scroll
     }
 
     private fun groupHeader(ctx: android.content.Context, title: String): View =
