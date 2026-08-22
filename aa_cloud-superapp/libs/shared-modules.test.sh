@@ -223,6 +223,45 @@ PY
 )
 fi
 
+# 11b. The same trigger drift, one level up. An APP repo compiles shared modules
+#      BY REFERENCE out of ea_cloud-superapp/libs/ (settings.gradle re-points
+#      projectDir there), so those sources sit OUTSIDE the repo's own path
+#      filter. Miss one and the workflow simply never fires for a shared-lib
+#      change: the app keeps shipping whatever APK was last built for an
+#      unrelated reason, and the fix you just pushed is absent from the device
+#      while CI is green. All seven app workflows were missing every entry —
+#      caught 2026-08-22, when libs/devtools reached nothing but superapp.
+app_root_drift=$(python3 - <<'PYAPPROOTS'
+import json, os, re, glob
+for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+    repo = bj.split('/')[0]
+    try:
+        mods_cfg = (json.load(open(bj)).get('modules') or {})
+    except Exception:
+        continue  # build.json validity is rule 1's job, not this one.
+    mods = sorted({v['dir'].rstrip('/').split('/')[-1]
+                   for v in mods_cfg.values()
+                   if isinstance(v, dict)
+                   and 'ea_cloud-superapp/libs' in str(v.get('dir', ''))})
+    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ea_cloud-'):]
+    if not mods or not os.path.exists(wf):
+        continue
+    have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
+    if 'ea_cloud-superapp/libs' in have:
+        continue  # wildcard already covers every module (ship-cloud-libs).
+    for m in mods:
+        if 'ea_cloud-superapp/libs/%s' % m not in have:
+            print(f"{os.path.basename(wf)} has no trigger for "
+                  f"ea_cloud-superapp/libs/{m}/** — {repo} compiles it, so a "
+                  f"change there ships no new {repo} APK")
+PYAPPROOTS
+)
+if [ -z "$app_root_drift" ]; then
+    note ok "every app workflow triggers on the shared libs it compiles"
+else
+    while read -r line; do note FAIL "$line"; done <<< "$app_root_drift"
+fi
+
 # 12. Every PackageInstaller.createSession must have an abandonSession on the
 #     failure path IN THE SAME FILE. A session that is neither committed nor
 #     abandoned stays alive in the system across reboots and permanently burns
