@@ -52,6 +52,19 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // on the very first inflation.
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         super.onCreate()
+
+        // Tell libs:appstore what it cannot know: this app's entry Activity,
+        // its notification icon, how this launcher routes a tap, and the
+        // host-side toggle that gates the periodic check. The store moved out
+        // of the app, so these are the host's to supply.
+        com.diegonmarcos.superapp.appstore.AppStoreHost.apply {
+            launchActivity = MainActivity::class.java
+            notificationIcon = R.drawable.ic_stat_notify
+            launchExtras = mapOf("shortcut_action" to "action:constellation")
+            periodicCheckAllowed = { ctx ->
+                com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(ctx).toggle("fleet_check")
+            }
+        }
         // Capture process-start time before anything else so About →
         // Battery & Usage can report the real uptime.
         AppProcessUptime.initOnce()

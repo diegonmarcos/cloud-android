@@ -17,8 +17,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.Fleet
 // AUTO_UPDATE_* knobs are baked into the libs:updater BuildConfig (shared AU
@@ -75,18 +73,24 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         // .handleShortcutIntent → onTileClicked → dispatchHomeAction) so the tap
         // opens the Constellation page, not just Home. The old custom extra was
         // read by nothing → fell through to Home.
-        val open = Intent(ctx, MainActivity::class.java)
-            .putExtra("shortcut_action", "action:constellation")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        var flags = PendingIntent.FLAG_UPDATE_CURRENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags = flags or PendingIntent.FLAG_IMMUTABLE
-        val pi = PendingIntent.getActivity(ctx, NOTIF_ID, open, flags)
+        // Target and routing come from the HOST: a library cannot name the
+        // app's Activity. Null target = a notification with no tap action,
+        // which is better than not notifying at all.
+        val target = AppStoreHost.launchActivity
+        val pi = if (target == null) null else {
+            val open = Intent(ctx, target)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            AppStoreHost.launchExtras.forEach { (k, v) -> open.putExtra(k, v) }
+            var flags = PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags = flags or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.getActivity(ctx, NOTIF_ID, open, flags)
+        }
         val notif = Notification.Builder(ctx, CHANNEL)
             .setContentTitle("$n constellation update${if (n == 1) "" else "s"} available")
             .setContentText("Tap to open the Constellation AppStore")
-            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setSmallIcon(AppStoreHost.notificationIcon)
             .setColor(0xFF0A0A0A.toInt())
-            .setContentIntent(pi)
+            .apply { if (pi != null) setContentIntent(pi) }
             .setAutoCancel(true)
             .build()
         nm.notify(NOTIF_ID, notif)
@@ -104,8 +108,12 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             // "Constellation update check" toggle (Configs → Launcher → Battery
             // Hunger Ones) in addition to the auto-update master switch. Off →
             // cancel the periodic work (manual checks still work).
+            // The host owns its settings screen, so it supplies the gate
+            // rather than the store reaching into the app's prefs class.
+            // Default is "allowed", so a host that sets nothing behaves as
+            // before rather than silently never checking.
             if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)
-                || !com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("fleet_check")) {
+                || !AppStoreHost.periodicCheckAllowed(context)) {
                 // Cancel the one-shot too. start() is what the Auto-update
                 // toggle calls to reconcile, and a kick already sitting on its
                 // 30s delay would otherwise still fire after the user turned
