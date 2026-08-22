@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.configs
+package com.diegonmarcos.superapp.appstore
 
 import android.content.Context
 import android.content.Intent
@@ -17,7 +17,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.adbdebug.PackageVerifier
 import com.diegonmarcos.superapp.adbdebug.ShellAccess
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs

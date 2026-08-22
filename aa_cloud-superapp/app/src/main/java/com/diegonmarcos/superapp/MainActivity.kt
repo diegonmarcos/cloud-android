@@ -1455,7 +1455,7 @@ class MainActivity : AppCompatActivity(),
             }
             // Constellation AppStore — Configs → Constellation.
             actionType == "constellation" -> {
-                val frag = com.diegonmarcos.superapp.configs.ConstellationFragment()
+                val frag = com.diegonmarcos.superapp.appstore.ConstellationFragment()
                 applyChrome(frag)
                 supportFragmentManager.beginTransaction()
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)

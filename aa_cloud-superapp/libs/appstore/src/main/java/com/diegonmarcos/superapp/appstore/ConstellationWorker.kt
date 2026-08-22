@@ -1,4 +1,4 @@
-package com.diegonmarcos.superapp.configs
+package com.diegonmarcos.superapp.appstore
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -17,7 +17,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs

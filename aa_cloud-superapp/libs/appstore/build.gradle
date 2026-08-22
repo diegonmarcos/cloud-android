@@ -1,0 +1,57 @@
+// libs:appstore — the Constellation store: the fleet list, install/update
+// actions and the background fleet pass.
+//
+// Split out of the app so the three functions the app used to blend are
+// separable: libs:updater is the ENGINE (what installs), libs:appstore is the
+// STORE (what you browse and act on), and the launcher is the launcher.
+//
+// This is UI - Fragments the host inflates - so unlike libs:net it cannot go
+// out-of-process into its own APK. The win is an enforced boundary and
+// independent shipping, not size. Being honest about that is the point: a
+// store APK would still need the host to inflate its screens.
+
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// The fleet manifest is baked HERE now rather than into the app: the store is
+// what reads it, and a module that owns a screen should own that screen's
+// data. Path is relative to this module, so it resolves to the same
+// ea_cloud-superapp/data/constellation-fleet.json whether built by the app or
+// shared by reference into ea_cloud-libs.
+def constellationFleetFile = file('../../data/constellation-fleet.json')
+def constellationFleetJson = constellationFleetFile.exists()
+        ? constellationFleetFile.text : '{"version":1,"apps":[]}'
+def constellationFleetB64  = constellationFleetJson.bytes.encodeBase64().toString()
+
+android {
+    namespace 'com.diegonmarcos.superapp.appstore'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+        buildConfigField "String", "CONSTELLATION_FLEET_B64", "\"${constellationFleetB64}\""
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:core')
+    // The store drives the updater; that direction is the whole separation.
+    api project(':libs:updater')
+    // Play Protect toggle + shell channel ladder on the store's header.
+    implementation project(':libs:shizuku-adb-debug-tools')
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+}

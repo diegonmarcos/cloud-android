@@ -154,7 +154,7 @@ class LauncherConfigFragment : Fragment() {
                 "One switch to flip every effect below on or off.", allOn) { on ->
                 batteryOnes.forEach { settingsPrefs.setToggle(it.id, on) }
                 (activity as? MainActivity)?.notifyLauncherThemeChanged()
-                com.diegonmarcos.superapp.configs.ConstellationWorker.start(requireContext()) // re-apply fleet_check
+                com.diegonmarcos.superapp.appstore.ConstellationWorker.start(requireContext()) // re-apply fleet_check
                 rerender() // reflect the child switches
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
@@ -162,7 +162,7 @@ class LauncherConfigFragment : Fragment() {
                 root.addView(toggleRow(ctx, t.label, t.subtitle, settingsPrefs.toggle(t.id)) { on ->
                     settingsPrefs.setToggle(t.id, on)
                     (activity as? MainActivity)?.notifyLauncherThemeChanged()
-                    com.diegonmarcos.superapp.configs.ConstellationWorker.start(requireContext()) // re-apply fleet_check
+                    com.diegonmarcos.superapp.appstore.ConstellationWorker.start(requireContext()) // re-apply fleet_check
                     rerender() // keep the master switch in sync
                 })
                 root.addView(spacer(ctx, dp(ctx, 8)))

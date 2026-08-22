@@ -146,6 +146,22 @@
       "kind": "lib"
     },
     {
+      "id": "lib-appstore",
+      "label": "Lib: appstore",
+      "package": "com.diegonmarcos.cloudlib.appstore",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-appstore",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Appstore.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Appstore.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/appstore",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-appstore",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
       "id": "lib-apptabs",
       "label": "Lib: apptabs",
       "package": "com.diegonmarcos.cloudlib.apptabs",

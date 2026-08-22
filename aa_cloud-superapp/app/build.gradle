@@ -672,6 +672,7 @@ android {
 dependencies {
     implementation project(':libs:core')
     implementation project(':libs:updater')
+    implementation project(':libs:appstore')
     implementation project(':libs:devtools')
     implementation project(':libs:mail')
     // libs:feed is NOT linked: it ships as Cloud-Lib-Feed.apk and the app

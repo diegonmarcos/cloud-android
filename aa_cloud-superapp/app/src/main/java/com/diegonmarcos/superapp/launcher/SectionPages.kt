@@ -53,7 +53,7 @@ object SectionPages {
         sectionId == "config" && pageId == "ai"        -> AiFragment.newInstance()
         sectionId == "config" && pageId == "launcher" -> LauncherConfigFragment.newInstance()
         sectionId == "config" && pageId == "kde"            -> com.diegonmarcos.superapp.kdeconnect.KdeConnectFragment.newInstance()
-        sectionId == "config" && pageId == "constellation"  -> com.diegonmarcos.superapp.configs.ConstellationFragment()
+        sectionId == "config" && pageId == "constellation"  -> com.diegonmarcos.superapp.appstore.ConstellationFragment()
         sectionId == "config" && pageId == "wg"             -> WireGuardFragment.newInstance()
         sectionId == "myfin"   && pageId == "dashboard"     -> MyFinDashboardFragment.newInstance()
         sectionId == "cal"     && pageId == "month"         -> CalendarMonthFragment.newInstance()

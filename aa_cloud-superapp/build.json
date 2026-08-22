@@ -185,6 +185,9 @@
       ],
       "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, prompts user via PackageInstaller. All knobs in release.auto_update \u2014 no hardcoded URLs."
     },
+    "libs:appstore": {
+      "_doc": "The Constellation store: fleet list, install/update actions, background pass. Split from the app so store, launcher and updater are separable - libs:updater is the engine, this is the storefront. UI, so it cannot go out-of-process like libs:net; the win is the boundary."
+    },
     "libs:mail": {
       "type": "library",
       "depends_on": [

@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.superapp.appstore.ConstellationWorker
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
 import com.diegonmarcos.superapp.floatingnav.FloatingNavService
 import com.diegonmarcos.superapp.health.HealthConnectGateway
