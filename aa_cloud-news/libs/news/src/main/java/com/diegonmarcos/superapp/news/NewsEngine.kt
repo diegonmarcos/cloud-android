@@ -82,9 +82,16 @@ class NewsEngine(context: Context) {
         return JSONObject().put("ok", true).toString()
     }
 
+    /** Falls back to [src]'s own first channel (via [channelsForSource]), NOT
+     *  the hardcoded [ALL_CHANNEL_ID] — that sentinel is only meaningful for
+     *  a query-driven source. For a fixed/dynamic source it must match what
+     *  [NewsSync]'s syncRssFixed/syncRssDynamic actually cache under (their
+     *  own `?: channels.first()` fallback), or every read here misses the
+     *  cache the last sync wrote to. */
     fun activeChannelId(): String {
         val src = activeSource()
-        return JSONObject().put("id", ChannelStore.active(ctx, src.id, ALL_CHANNEL_ID)).toString()
+        val fallback = channelsForSource(src).first().id
+        return JSONObject().put("id", ChannelStore.active(ctx, src.id, fallback)).toString()
     }
 
     fun setChannel(id: String): String {
@@ -121,7 +128,7 @@ class NewsEngine(context: Context) {
     fun articles(channel: String, limit: Int): String {
         val src = activeSource()
         val max = limit.takeIf { it > 0 } ?: api().maxArticles
-        val chanId = channel.ifBlank { ChannelStore.active(ctx, src.id, ALL_CHANNEL_ID) }
+        val chanId = channel.ifBlank { ChannelStore.active(ctx, src.id, channelsForSource(src).first().id) }
         val list = if (src.queryDriven && chanId == ALL_CHANNEL_ID) {
             NewsStore.articlesFor(ctx, src.id,
                 NewsTopicsStore.effective(ctx, bakedTopics).filter { it.enabled }.map { it.topic })
@@ -146,7 +153,10 @@ class NewsEngine(context: Context) {
         val src = activeSource()
         // Blank means "whatever is active" - resolved here so the caller does
         // not need a second round trip just to name the channel it is on.
-        val channel = activeChannel.ifBlank { ChannelStore.active(ctx, src.id, ALL_CHANNEL_ID) }
+        // Fallback is src's own first channel, not the bare ALL_CHANNEL_ID
+        // sentinel - see activeChannelId's kdoc for why that must match what
+        // NewsSync actually caches under.
+        val channel = activeChannel.ifBlank { ChannelStore.active(ctx, src.id, channelsForSource(src).first().id) }
         val cfg = api()
         val r = NewsSync.syncAll(
             ctx, src,
@@ -167,9 +177,58 @@ class NewsEngine(context: Context) {
         NewsStore.toneFor(ctx, activeSource().id, topic).forEach { put(it.toJson()) }
     }.toString()
 
+    /** [source]'s channel list for the UI's second nav row — ALWAYS
+     *  non-empty (falls back to a single channel built from [source]'s
+     *  own id/label/url as an absolute last resort). Three populating
+     *  strategies: query-driven (gdelt-self, google-news) gets a
+     *  synthetic [ALL_CHANNEL_ID] "All" channel first, followed by one
+     *  channel per LIVE topics-store entry; dynamic-channel (ntfy-self)
+     *  reads the last successfully-discovered list from
+     *  [DynamicChannelStore]; fixed rss (bbc-world, guardian-world, ...)
+     *  uses the source's own declared `channels`. Ported from the old
+     *  app-side NewsBridge.channelsForSource, lost in the engine cutover
+     *  — see NewsModels.kt's NewsSourceConfig.channels kdoc, which still
+     *  points at it. */
+    private fun channelsForSource(source: NewsSourceConfig): List<NewsChannelConfig> {
+        val channels = when {
+            source.queryDriven -> {
+                val topicChannels = NewsTopicsStore.effective(ctx, bakedTopics)
+                    .map { NewsChannelConfig(id = it.topic, label = it.label) }
+                listOf(NewsChannelConfig(id = ALL_CHANNEL_ID, label = "All")) + topicChannels
+            }
+            source.dynamicChannels -> DynamicChannelStore.channelsFor(ctx, source.id)
+            else -> source.channels
+        }
+        return channels.ifEmpty { listOf(NewsChannelConfig(id = source.id, label = source.label, url = source.url)) }
+    }
+
+    /** `channels` is ALWAYS populated (never an empty array) — see
+     *  [channelsForSource] — so the UI's second nav row always has
+     *  something to render the moment a source is picked. Also restores
+     *  `kind`/`queryDriven`/`capabilities`/`requiresMesh`, which the JS
+     *  (news.html) reads directly off each source object — see
+     *  channelsForSource's kdoc for why these went missing. */
     fun sources(): String = JSONArray().apply {
         sources.forEach { src ->
-            put(JSONObject().put("id", src.id).put("label", src.label))
+            val caps = JSONArray()
+            src.capabilities.forEach { caps.put(it) }
+            val channelsArr = JSONArray()
+            channelsForSource(src).forEach { c ->
+                channelsArr.put(JSONObject().apply {
+                    put("id", c.id)
+                    put("label", c.label)
+                    if (!c.group.isNullOrBlank()) put("group", c.group)
+                })
+            }
+            put(JSONObject().apply {
+                put("id", src.id)
+                put("label", src.label)
+                put("kind", src.kind)
+                put("queryDriven", src.queryDriven)
+                put("capabilities", caps)
+                put("requiresMesh", src.requiresMesh)
+                put("channels", channelsArr)
+            })
         }
     }.toString()
 
