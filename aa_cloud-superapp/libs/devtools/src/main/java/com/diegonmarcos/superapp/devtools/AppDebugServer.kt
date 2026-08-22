@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Deliberately NOT the same thing as the app-owned DevControlServer
  * ----------------------------------------------------------------
  * SuperApp and cloud-nav each own a big DevControlServer on port 38080 with
- * dozens of app-specific routes (nav/-star, battery/-star, adb/-star). Those stay exactly
+ * dozens of app-specific routes under nav, battery and adb. Those stay exactly
  * where they are — this binds a different port range and only serves the
  * handful of endpoints that need no app-specific types whatsoever. Extracting
  * those two servers is a separate job; this one had to be safe to drop into
@@ -152,7 +152,9 @@ object AppDebugServer {
             val rawPath = parts[1]
             val qIdx = rawPath.indexOf('?')
             val path = if (qIdx < 0) rawPath else rawPath.substring(0, qIdx)
-            val query = if (qIdx < 0) emptyMap() else parseQuery(rawPath.substring(qIdx + 1))
+            val query =
+                if (qIdx < 0) emptyMap<String, String>()
+                else parseQuery(rawPath.substring(qIdx + 1))
 
             // Drain headers so the client sees a clean response rather than a
             // reset while it is still writing.
@@ -201,8 +203,13 @@ object AppDebugServer {
         val versionCode = when {
             pi == null -> -1L
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> pi.longVersionCode
-            @Suppress("DEPRECATION")
-            else -> pi.versionCode.toLong()
+            // Braces are required: an annotation cannot sit on a bare `else ->`
+            // arm — the parser reads it as a new element, the `when` loses its
+            // else branch, and the next line fails to parse.
+            else -> {
+                @Suppress("DEPRECATION")
+                pi.versionCode.toLong()
+            }
         }
         return buildString {
             append("{")
