@@ -1011,7 +1011,7 @@ class DevControlFragment : Fragment() {
                 val src = runCatching { pm.getInstallSourceInfo(pkg) }.getOrNull()
                 row(ctx, it, "Installed by", src?.installingPackageName ?: "—")
                 row(ctx, it, "Initiated by", src?.initiatingPackageName ?: "—")
-                if (android.os.Build.VERSION.SDK_INT >= 33)
+                if (android.os.Build.VERSION.SDK_INT >= 34)
                     row(ctx, it, "Update owner", src?.updateOwnerPackageName ?: "—")
             } else {
                 @Suppress("DEPRECATION")
