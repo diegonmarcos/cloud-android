@@ -1,6 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  libs:devtools ships no components of its own — the loopback control server
-  and its UI stay app-owned. Only the app-agnostic half lives here.
+  libs:devtools used to ship no components of its own — the loopback control
+  server and its UI stayed app-owned. That held while there was one server in
+  SuperApp; it stopped holding when cloud-nav grew a 721-line near-copy and
+  the other apps got nothing at all.
+
+  The reason it has to be a library component, not app code: an app can read
+  its OWN logcat with no permission, but READ_LOGS (to read anyone else's) is
+  signature|privileged against the PLATFORM key — the shared Cloud signing key
+  does not grant it. So an app's logs can only ever be served by that app.
+  Every app therefore needs the server, which means it cannot depend on
+  per-app wiring.
+
+  DebugInitProvider is how that costs zero lines in the host app: a provider
+  declared here merges into every app linking libs:devtools, and Android runs
+  its onCreate before Application.onCreate. The authority is qualified with
+  ${applicationId} because a duplicate provider authority across two installed
+  apps makes Android refuse the second install.
+
+  The big app-owned DevControlServers (port 38080, with their nav/battery/adb
+  routes) are untouched — AppDebugServer binds 38090+ and serves only the
+  endpoints that need no app-specific types.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <provider
+            android:name="com.diegonmarcos.superapp.devtools.DebugInitProvider"
+            android:authorities="${applicationId}.devtools.debuginit"
+            android:exported="false"
+            android:initOrder="100" />
+    </application>
+
+</manifest>

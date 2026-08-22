@@ -29,4 +29,15 @@ android {
 dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'
+
+    // libs:devtools rides on core so the constellation-wide debug API reaches
+    // every app without eight separate app/build.gradle edits that would drift
+    // the moment someone adds a ninth app. `api`, not `implementation`, so the
+    // consuming app can also call AppDebugServer directly (SuperApp's Configs
+    // screen reports the bound port).
+    //
+    // Safe from cycles: devtools depends on androidx.core only, never on
+    // libs:core. Keep it that way — a devtools→core edge would break every
+    // app's build at once.
+    api project(':libs:devtools')
 }

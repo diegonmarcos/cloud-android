@@ -50,6 +50,11 @@
       "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
+    "libs:devtools": {
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/, same as libs:core. Not listed in app.depends_on and not linked in app/build.gradle: libs:core pulls it in with an `api` dependency, which is what gives every app the constellation-wide debug API (127.0.0.1:38090+, own-process logcat) without per-app wiring that would drift.",
+      "dir": "../ea_cloud-superapp/libs/devtools",
+      "type": "library"
+    },
     "libs:wallet": {
       "type": "library"
     },
