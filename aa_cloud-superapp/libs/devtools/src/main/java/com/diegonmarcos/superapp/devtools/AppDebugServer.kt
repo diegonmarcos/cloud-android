@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Deliberately NOT the same thing as the app-owned DevControlServer
  * ----------------------------------------------------------------
  * SuperApp and cloud-nav each own a big DevControlServer on port 38080 with
- * dozens of app-specific routes (nav/*, battery/*, adb/*). Those stay exactly
+ * dozens of app-specific routes (nav/-star, battery/-star, adb/-star). Those stay exactly
  * where they are — this binds a different port range and only serves the
  * handful of endpoints that need no app-specific types whatsoever. Extracting
  * those two servers is a separate job; this one had to be safe to drop into
