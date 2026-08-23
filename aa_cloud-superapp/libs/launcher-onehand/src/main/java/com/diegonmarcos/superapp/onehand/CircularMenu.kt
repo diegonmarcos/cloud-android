@@ -30,16 +30,28 @@ import kotlin.math.sin
  */
 object CircularMenu {
 
-    data class Child(val label: String, val iconName: String, val target: String, val childKey: String?)
+    /** [action] = render on the inner ring instead of the outer one. The host
+     *  decides; the lib only reads the flag when laying the level out. */
+    data class Child(
+        val label: String, val iconName: String, val target: String, val childKey: String?,
+        val action: Boolean = false,
+    )
     data class Node(
         val label: String, val iconName: String, val target: String, val childKey: String?,
+        val action: Boolean = false,
+        /** Extra inner-ring entries declared in build.json for this node, merged
+         *  in on descent. Lets the radial menu carry actions that are NOT pages
+         *  of the section, so nothing else in the UI grows a phantom tile. */
+        val actions: List<Node> = emptyList(),
     )
     data class Config(
         val enabled: Boolean,
         val starGlyph: String,
         val starSizeSp: Int,
         val showOnSection: String,
+        /** Radius (dp) of the outer ring — the level's pages/sections. */
         val radiusDp: Int,
+        /** Radius (dp) of the inner ring — the level's actions. */
         val subRadiusDp: Int,
         /** Star vertical anchor as a fraction of screen height BELOW centre
          *  (0.5 ≈ near the bottom). Menu opens as an upward half-moon from here. */
@@ -71,11 +83,24 @@ object CircularMenu {
         val nodes = ArrayList<Node>(arr?.length() ?: 0)
         for (i in 0 until (arr?.length() ?: 0)) {
             val n = arr!!.getJSONObject(i)
+            val actArr = n.optJSONArray("actions")
+            val acts = ArrayList<Node>(actArr?.length() ?: 0)
+            for (j in 0 until (actArr?.length() ?: 0)) {
+                val a = actArr!!.getJSONObject(j)
+                acts.add(Node(
+                    label = a.optString("label"),
+                    iconName = a.optString("icon"),
+                    target = a.optString("target"),
+                    childKey = null,
+                    action = true,
+                ))
+            }
             nodes.add(Node(
                 label = n.optString("label"),
                 iconName = n.optString("icon"),
                 target = n.optString("target"),
                 childKey = n.optString("section").ifBlank { null }.takeIf { it != "null" },
+                actions = acts,
             ))
         }
         Config(
@@ -128,8 +153,8 @@ object CircularMenu {
 
         private val dm = resources.displayMetrics
         private fun dp(v: Int) = v * dm.density
-        private val ring = dp(cfg.radiusDp)
-        private val subRing = ring + dp(cfg.subRadiusDp)
+        private val ring = dp(cfg.radiusDp)          // outer ring — pages/sections
+        private val actionRing = dp(cfg.subRadiusDp) // inner ring — actions
         private val dead = dp(28)            // finger inside this → nothing selected
         private val nodeR = dp(26)
         private val leafR = dp(22)
@@ -162,71 +187,70 @@ object CircularMenu {
             val key = it.childKey ?: return emptyList()
             return kidCache.getOrPut(key) {
                 runCatching { host.childrenOf(key) }.getOrDefault(emptyList())
-                    .map { c -> Node(c.label, c.iconName, c.target, c.childKey) }
+                    .map { c -> Node(c.label, c.iconName, c.target, c.childKey, c.action) }
             }
         }
 
-        // LAYOUT. Items sit on an upward half-moon (180°=left → 270°=up → 360°=right)
-        // around the level's center. The radius is clamped to what fits ON SCREEN;
-        // when a level has more children than fit on one arc at readable spacing
-        // (e.g. Configs' 12), the overflow wraps onto a second, larger concentric
-        // ring — nothing is ever pushed off-screen. slots[i] maps 1:1 to items[i].
-        // Target center-to-center spacing that drives the radius. Must be COMFORTABLY
+        // LAYOUT. A level draws as up to TWO concentric rings around its centre:
+        // the OUTER ring carries pages/sections, the INNER ring carries actions
+        // (Node.action). Each band is spread evenly on its own circle, so adding
+        // actions never squeezes the pages. slots[i] maps 1:1 to items[i] and every
+        // consumer — hit-testing, drawing, outerR — just walks what layout() returns.
+        //
+        // minGap = target center-to-center spacing that drives the radius. Must be COMFORTABLY
         // bigger than an icon (2·nodeR) or `ideal` computes smaller than the base ring
         // and max(ring, …) freezes the radius at the base — the radius then never grows
         // with item count (the bug that made every "bigger radius" attempt a no-op).
         private val minGap = nodeR * 2 + dp(40)   // 2·26 + 40 = 92dp
         private val margin = nodeR + dp(8)        // keep whole icon inside the screen
+        private val ringSep = nodeR * 2 + dp(10)  // min radial gap so the bands can't touch
 
         private data class Slot(val r: Float, val a: Double)
 
-        private fun onScreen(cx: Float, cy: Float, r: Float, ang: Double): Boolean {
-            val x = cx + r * cos(ang); val y = cy + r * sin(ang)
-            return x >= margin && x <= dm.widthPixels - margin &&
-                   y >= margin && y <= dm.heightPixels - margin
-        }
-        // From straight-up (270°) walk toward 180° (dir=-1) or 360° (dir=+1) until
-        // the arc leaves the screen; return that boundary angle. The on-screen arc
-        // is contiguous around 270° because we cap the radius so the top stays visible.
-        private fun edge(cx: Float, cy: Float, r: Float, dir: Int): Double {
-            val stop = Math.toRadians(if (dir < 0) 180.0 else 360.0)
-            val stepA = Math.toRadians(1.5) * dir
-            var a = Math.toRadians(270.0)
-            while (if (dir < 0) a > stop else a < stop) {
-                val next = a + stepA
-                if (!onScreen(cx, cy, r, next)) break
-                a = next
-            }
-            return a
-        }
-
-        // A bigger circle bulges further up into the screen, giving MORE on-screen
-        // arc to spread icons over — but only until the semicircle just fits; past
-        // that the sides clip it and the visible arc SHRINKS. So the useful radius is
-        // capped where the full upper half still fits (min of half-width and the
-        // height above the center). The radius grows with count up to that cap; the
-        // visible span [lo,hi] is measured so icons never fall off the edges.
-        private fun isRoot(lv: Level) = stack.isNotEmpty() && stack[0] === lv
         private fun layout(lv: Level): List<Slot> {
             val n = lv.items.size
             if (n <= 1) return listOf(Slot(ring, Math.toRadians(270.0)))
-            // All levels: full 360° circle centred on the level's origin.
             // Radius clamps to the nearest screen edge so icons stay on screen.
             val edgeDist = minOf(lv.cx, dm.widthPixels - lv.cx, lv.cy, dm.heightPixels - lv.cy) - margin
             val rCap = maxOf(ring, edgeDist)
-            val ideal = (n * minGap / (2 * Math.PI)).toFloat()
-            val r = maxOf(ring, minOf(ideal, rCap))
-            return List(n) { i -> Slot(r, 2 * Math.PI * i / n - Math.PI / 2) } // start at top
+            val outer = ArrayList<Int>(n); val inner = ArrayList<Int>(n)
+            for (i in 0 until n) (if (lv.items[i].action) inner else outer).add(i)
+
+            fun ringRadius(count: Int) = maxOf(ring, minOf((count * minGap / (2 * Math.PI)).toFloat(), rCap))
+            // One band only → the original single full-circle layout, untouched.
+            if (inner.isEmpty() || outer.isEmpty()) {
+                val r = ringRadius(n)
+                return List(n) { i -> Slot(r, 2 * Math.PI * i / n - Math.PI / 2) } // start at top
+            }
+            // Two bands. The inner one takes its configured radius but is pulled in
+            // far enough that the outer ring still fits on screen above it; the outer
+            // one is pushed out far enough to clear the inner by a whole icon.
+            val rIn = minOf(actionRing, rCap - ringSep).coerceAtLeast(dead + nodeR)
+            val rOut = minOf(rCap, maxOf(ringRadius(outer.size), rIn + ringSep))
+
+            val slots = arrayOfNulls<Slot>(n)
+            // Inner band is offset half a step so its icons sit between the outer
+            // ones rather than hiding directly beneath them.
+            fun place(idx: List<Int>, r: Float, off: Double) =
+                idx.forEachIndexed { k, i -> slots[i] = Slot(r, 2 * Math.PI * k / idx.size - Math.PI / 2 + off) }
+            place(outer, rOut, 0.0)
+            place(inner, rIn, Math.PI / inner.size)
+            return slots.map { it!! }
         }
         private fun slotPos(lv: Level, s: Slot): Pair<Float, Float> =
             (lv.cx + s.r * cos(s.a)).toFloat() to (lv.cy + s.r * sin(s.a)).toFloat()
         private fun outerR(lv: Level): Float = layout(lv).maxOf { it.r }
         // Icon radius = half the neighbour spacing (so circles just touch at most),
-        // capped at the full nodeR. Shrinks only when the arc is too packed.
+        // capped at the full nodeR. Shrinks only when a ring is too packed. Measured
+        // per BAND: with two rings, slots[0] and slots[1] can sit on different circles,
+        // so the old first-pair measurement would size every icon off a meaningless gap.
         private fun nodeRadiusFor(lv: Level, slots: List<Slot>): Float {
             if (slots.size < 2) return nodeR
-            val (x0, y0) = slotPos(lv, slots[0]); val (x1, y1) = slotPos(lv, slots[1])
-            return (hypot(x1 - x0, y1 - y0) / 2f - dp(3)).coerceIn(dp(12), nodeR)
+            val tightest = slots.groupBy { it.r }
+                .filterValues { it.size >= 2 }
+                .map { (r, band) -> (2.0 * r * sin(Math.PI / band.size)).toFloat() }
+                .minOrNull() ?: return nodeR
+            return (tightest / 2f - dp(3)).coerceIn(dp(12), nodeR)
         }
 
         private var fx = cx; private var fy = cy
@@ -248,7 +272,9 @@ object CircularMenu {
             // descend: drag past the outermost ring into a node with children.
             // Keep the same center — redraw the ring with children + a Back node.
             if (r > outerR(lv) + dp(44) && sel.childKey != null) {
-                val kids = childrenOf(sel)
+                // Host children + the node's own build.json actions. Back sits on the
+                // outer ring with the pages; everything flagged action lands inside.
+                val kids = childrenOf(sel) + sel.actions
                 if (kids.isNotEmpty()) {
                     stack.add(Level(lv.cx, lv.cy, listOf(BACK_NODE) + kids))
                     active = -1

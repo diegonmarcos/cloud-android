@@ -90,7 +90,7 @@ class GalaxyBackdropView @JvmOverloads constructor(
      *  alone wouldn't re-fire. */
     fun applyStarsPref() {
         val on = runCatching {
-            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("stars_anim")
+            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).anim("stars_anim")
         }.getOrDefault(true)
         if (on) { if (anim.isPaused) anim.resume() else if (!anim.isStarted) anim.start() }
         else anim.pause()

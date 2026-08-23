@@ -73,6 +73,10 @@ android {
 
 dependencies {
     implementation project(':libs:core')
+    // Fleet.shellInstall uses the shell channel (uid 2000, holds INSTALL_PACKAGES)
+    // so "Update all" installs with no confirm dialog. No cycle: this module only
+    // depends on :libs:core, same as us.
+    implementation project(':libs:shizuku-adb-debug-tools')
     implementation 'androidx.core:core-ktx:1.13.1'
     // UpdateOverlayFragment lives here now (it was four vendored copies in the
     // app modules and browser/vault/wallet were stale); the module owns the UI

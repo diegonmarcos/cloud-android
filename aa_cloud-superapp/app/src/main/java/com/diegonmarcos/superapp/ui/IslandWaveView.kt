@@ -111,7 +111,7 @@ class IslandWaveView @JvmOverloads constructor(
      *  calls this LIVE when the toggle flips (mirrors stars/pets). */
     fun applyIslandPref() {
         val on = runCatching {
-            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("island_anim")
+            com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).anim("island_anim")
         }.getOrDefault(true)
         if (on) { if (animator.isPaused) animator.resume() else if (!animator.isStarted) animator.start() }
         else animator.pause()

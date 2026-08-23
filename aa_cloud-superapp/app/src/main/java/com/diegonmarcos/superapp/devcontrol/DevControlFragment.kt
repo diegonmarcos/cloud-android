@@ -1331,13 +1331,15 @@ class DevControlFragment : Fragment() {
         // title / section / row helper + the inline folder-tree block,
         // so this captures whatever was actually drawn — no parallel
         // data collection to keep in sync.
-        column.addView(actionButton(ctx, "Copy All Infos") {
+        fun copyAll() {
             val snapshot = infoBuf.toString()
             copy(ctx, snapshot)
             Toast.makeText(ctx,
                 "Copied ${snapshot.length} chars (${snapshot.count { it == '\n' }} lines)",
                 Toast.LENGTH_SHORT).show()
-        })
+        }
+        column.addView(actionButton(ctx, "Copy All Infos") { copyAll() })
+        if (copyOnOpen) { copyOnOpen = false; copyAll() }
 
         return scroll
     }
@@ -1743,6 +1745,11 @@ class DevControlFragment : Fragment() {
 
     companion object {
         fun newInstance() = DevControlFragment()
+
+        /** One-shot: when set, the next render copies its own snapshot to the
+         *  clipboard and clears the flag. Set by the Sirius-star "Copy Info"
+         *  action, which can't read the snapshot without rendering the page. */
+        var copyOnOpen = false
 
         // Neutral gray for utility buttons (Regenerate token, Open Wireless Debugging).
         private val GRAY = 0xFF4B5563.toInt()

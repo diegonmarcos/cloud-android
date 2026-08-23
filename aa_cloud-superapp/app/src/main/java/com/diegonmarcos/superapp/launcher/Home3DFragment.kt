@@ -116,7 +116,7 @@ class RotatingCubeView @JvmOverloads constructor(
     // (stop self-invalidating). Read once; the fragment recreates this view
     // when the toggle flips via chrome re-render.
     private val cubeAnimate: Boolean = runCatching {
-        com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).toggle("cube_anim")
+        com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(context).anim("cube_anim")
     }.getOrDefault(true)
 
     // "Cube drag-to-spin" — when on, touch overrides the clock-driven

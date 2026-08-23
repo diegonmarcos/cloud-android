@@ -181,9 +181,10 @@
     "libs:updater": {
       "type": "library",
       "depends_on": [
-        "libs:core"
+        "libs:core",
+        "libs:shizuku-adb-debug-tools"
       ],
-      "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, prompts user via PackageInstaller. All knobs in release.auto_update \u2014 no hardcoded URLs."
+      "comment": "In-app auto-updater. Periodic WorkManager check against ghcr.io via OCI HTTP API (same flow build.sh phone-install uses). If remote sha256 differs from current PackageInfo's, installs it. Fleet.commit prefers the shell channel (uid 2000 holds INSTALL_PACKAGES \u2192 `pm install` with NO confirm dialog and no Play Protect scan prompt), falling back to PackageInstaller (which prompts) when no channel is live. All knobs in release.auto_update \u2014 no hardcoded URLs."
     },
     "libs:appstore": {
       "_doc": "The Constellation store: fleet list, install/update actions, background pass. Split from the app so store, launcher and updater are separable - libs:updater is the engine, this is the storefront. UI, so it cannot go out-of-process like libs:net; the win is the boundary."
@@ -299,7 +300,7 @@
   "onehand": {
     "_doc": "One-Hand edge-gesture config for libs:launcher-onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/launcher-onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge \u2192 `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor \u2014 never a Kotlin change (Pillar: DATA-DRIVEN).",
     "circular_menu": {
-      "_doc": "Sirius-star radial pie \u2014 the libs:launcher-onehand 'circular-menu', sibling to the edge-menu. Tapping the home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and dragging past its ring DESCENDS into that node's children (which recenter and fan out again); releasing on a leaf navigates. Descent is RECURSIVE and arbitrary-depth: a node's `section` is its childKey \u2014 the app injects navigate(target) + iconBitmap(name) + childrenOf(key) (see app CircularMenuTree) so the lib stays app-agnostic and the tree mirrors the live sections. Example: Suite \u2192 {Cloud, Phone} \u2192 (Phone) {Home, More}; Comms/Infos \u2192 {Apps, Admin}; Labs/Configs \u2192 their pages. A node with `section:null` (Home Apps) is terminal. Star + nodes are data-driven \u2014 remap with a one-line edit, never Kotlin.",
+      "_doc": "Sirius-star radial pie \u2014 the libs:launcher-onehand 'circular-menu', sibling to the edge-menu. Tapping the home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and dragging past its ring DESCENDS into that node's children (which recenter and fan out again); releasing on a leaf navigates. Descent is RECURSIVE and arbitrary-depth: a node's `section` is its childKey \u2014 the app injects navigate(target) + iconBitmap(name) + childrenOf(key) (see app CircularMenuTree) so the lib stays app-agnostic and the tree mirrors the live sections. Example: Suite \u2192 {Cloud, Phone} \u2192 (Phone) {Home, More}; Comms/Infos \u2192 {Apps, Admin}; Labs/Configs \u2192 their pages. A node with `section:null` (Home Apps) is terminal. Star + nodes are data-driven \u2014 remap with a one-line edit, never Kotlin. TWO RINGS: a descended level draws its pages on the OUTER ring (radius_dp) and its ACTIONS on a smaller INNER ring (sub_radius_dp). A child is an action when its target fires-and-returns instead of opening a page \u2014 i.e. it starts with `action:` or `extapp:` (see app CircularMenuTree.isAction), so the split is derived and no page needs a flag. A node may also declare its own `actions[]` here: extra inner-ring entries merged in on descent that are NOT pages of the section, so they never appear in the section grid or the Home row.",
       "enabled": true,
       "star": {
         "glyph": "\u2726",
@@ -309,7 +310,7 @@
         "tap_pad_dp": 24
       },
       "radius_dp": 130,
-      "sub_radius_dp": 120,
+      "sub_radius_dp": 70,
       "nodes": [
         {
           "label": "Home Apps",
@@ -345,7 +346,24 @@
           "label": "Configs",
           "icon": "ic_settings",
           "target": "section:config",
-          "section": "config"
+          "section": "config",
+          "actions": [
+            {
+              "label": "KDE Connect",
+              "icon": "ic_kde_connect",
+              "target": "action:kde_connect_now"
+            },
+            {
+              "label": "Animations",
+              "icon": "ic_sparkles",
+              "target": "action:toggle_animations"
+            },
+            {
+              "label": "Copy Info",
+              "icon": "ic_copy",
+              "target": "action:about_copy_all"
+            }
+          ]
         }
       ]
     },
@@ -5618,6 +5636,13 @@
     "_doc_launcher_settings": "Configs \u2192 Launcher \u2192 Others. Data-driven toggles + sliders persisted via LauncherSettingsPrefs, read by each subsystem at runtime. toggles[].id maps to a pref key; default = first-run value. Sliders carry min/max/default. brightness.default -1 = leave system brightness untouched. Adding a toggle = one entry here + one subsystem read.",
     "launcher_settings": {
       "toggles": [
+        {
+          "id": "all_anim",
+          "label": "All animations",
+          "subtitle": "Master switch - off stops every animation.",
+          "default": true,
+          "battery": true
+        },
         {
           "id": "pets_anim",
           "label": "Animal animations",

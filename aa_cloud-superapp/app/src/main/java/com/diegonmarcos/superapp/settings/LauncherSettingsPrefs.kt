@@ -29,6 +29,13 @@ class LauncherSettingsPrefs(context: Context) {
     fun toggle(id: String): Boolean = sp.getBoolean("t_$id", Config.toggleDefault(id))
     fun setToggle(id: String, v: Boolean) { sp.edit().putBoolean("t_$id", v).apply() }
 
+    /** Master motion gate. Every animated surface asks through here, so one
+     *  "all_anim" flip stops UI motion regardless of the per-feature *_anim
+     *  toggles. Pass a feature id to AND it with that feature's own switch;
+     *  omit it for surfaces that have no per-feature toggle of their own. */
+    fun anim(id: String? = null): Boolean =
+        toggle("all_anim") && (id == null || toggle(id))
+
     var brightness: Int
         get() = sp.getInt("brightness", Config.brightness.default)
         set(v) { sp.edit().putInt("brightness", v).apply() }

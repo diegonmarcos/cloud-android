@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.launcher
 import com.diegonmarcos.superapp.R
+import com.diegonmarcos.superapp.settings.LauncherSettingsPrefs
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
@@ -163,10 +164,13 @@ object HomeFanMenu {
                     highlightedIdx = nearest
                     for ((i, b) in bubbles.withIndex()) {
                         val sel = i == highlightedIdx
+                        // Duration 0 when animations are off — the grow is what
+                        // tells you which bubble is armed, so it still applies,
+                        // it just snaps instead of easing.
                         b.animate()
                             .scaleX(if (sel) 1.35f else 1f)
                             .scaleY(if (sel) 1.35f else 1f)
-                            .setDuration(110).start()
+                            .setDuration(if (anim(b)) 110 else 0).start()
                         ((b.getChildAt(0) as? FrameLayout)?.background as? GradientDrawable)
                             ?.setColor(if (sel) 0xFF7C3AED.toInt() else 0xFF1A0033.toInt())
                     }
@@ -235,6 +239,9 @@ object HomeFanMenu {
     }
 
     private fun animateIn(v: View, fromX: Float, fromY: Float = 20f) {
+        // ponytail: master gate only — the fan has no per-feature toggle of its own.
+        // Off → skip the fan-in entirely and leave the bubble at its resting state.
+        if (!anim(v)) return
         v.translationX = fromX; v.translationY = fromY; v.alpha = 0f
         val ax = ObjectAnimator.ofFloat(v, "translationX", fromX, 0f)
         val ay = ObjectAnimator.ofFloat(v, "translationY", fromY, 0f)
@@ -249,4 +256,8 @@ object HomeFanMenu {
 
     private fun dp(ctx: Context, v: Int): Int =
         (v * ctx.resources.displayMetrics.density).toInt()
+
+    /** Configs → "All animations" master switch. Defaults to on if prefs blow up. */
+    private fun anim(v: View): Boolean =
+        runCatching { LauncherSettingsPrefs(v.context).anim() }.getOrDefault(true)
 }

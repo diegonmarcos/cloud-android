@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Base64
 import android.util.Log
+import com.diegonmarcos.superapp.adbdebug.ShellChannels
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -184,10 +185,49 @@ object Fleet {
         return target
     }
 
-    /** Hand a verified APK to the installer. Cheap; the work was the download. */
+    /** Hand a verified APK to the installer. Cheap; the work was the download.
+     *  Prefers the privileged shell channel, which installs with NO dialog at
+     *  all; falls back to PackageInstaller (which prompts) when no channel is up. */
     fun commit(ctx: Context, app: App, apk: File) {
+        if (shellInstall(ctx, apk)) {
+            UpdateProgress.update(UpdateProgress.State.Done)
+            Log.i(TAG, "install committed via shell: ${app.label} (${app.pkg})")
+            return
+        }
         UpdateInstaller(ctx).install(apk, app.pkg)
         Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
+    }
+
+    /** Zero-dialog install. The shell channel (Shizuku / embedded adb) runs as
+     *  uid 2000, which holds INSTALL_PACKAGES — so `pm install` neither shows the
+     *  "are you sure you want to update this app" confirm nor gives Play Protect
+     *  a chance to stack its scan prompt on top. This is the same channel the
+     *  Play-Protect toggle already uses (adbdebug.PackageVerifier).
+     *
+     *  The APK has to live somewhere shell can READ it: cacheDir is 0700
+     *  app-private, so it's staged into external files first and removed after.
+     *  Any failure at all returns false and the caller falls back to the
+     *  prompting PackageInstaller path — so this can only remove dialogs, never
+     *  break an install that used to work.
+     *
+     *  Blocking (up to ~25s); callers are already off the main thread. */
+    private fun shellInstall(ctx: Context, apk: File): Boolean {
+        val channel = ShellChannels.active(ctx) ?: return false
+        val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${apk.name}")
+        return try {
+            apk.copyTo(stage, overwrite = true)
+            // -r reinstall, -d allow version downgrade. Deliberately NOT -g: on a
+            // reinstall the runtime grants already carry over, and -g fails the
+            // whole install on any permission the platform won't auto-grant.
+            val out = (channel.exec(ctx, "pm install -r -d ${stage.absolutePath}") ?: "").trim()
+            Log.i(TAG, "shell install via ${channel.name()}: ${out.ifBlank { "no output" }}")
+            out.startsWith("Success")
+        } catch (t: Throwable) {
+            Log.w(TAG, "shell install unavailable, falling back to PackageInstaller", t)
+            false
+        } finally {
+            stage.delete()
+        }
     }
 
     /** Which apps installAll acts on. UPDATES = only apps ALREADY installed

@@ -56,12 +56,19 @@ object CircularMenuTree {
         else -> {
             // Generic: one terminal child per declared page (e.g. "tools", "config").
             SectionPages.pagesFor(key).map { p ->
-                CircularMenu.Child(p.label, p.id, p.action.ifBlank { "page:$key/${p.id}" }, null)
+                val target = p.action.ifBlank { "page:$key/${p.id}" }
+                CircularMenu.Child(p.label, p.id, target, null, isAction(target))
             }
         }
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    /** Inner-ring test. An entry whose target fires and returns isn't really a
+     *  page, so it belongs on the actions ring. Derived from the target grammar
+     *  rather than a per-page flag — build.json needs no edit to opt in. */
+    private fun isAction(target: String): Boolean =
+        target.startsWith("action:") || target.startsWith("extapp:")
 
     private fun sectionIcon(id: String): String = Sections.byId(id)?.iconName ?: ""
 }

@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity(),
                 override fun childrenOf(key: String) = CircularMenuTree.childrenOf(this@MainActivity, key)
             },
             twinkleEnabled = {
-                com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this).toggle("star_twinkle")
+                com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this).anim("star_twinkle")
             },
         )
     }
@@ -1483,6 +1483,28 @@ class MainActivity : AppCompatActivity(),
             }
             // Drawer "Home Apps" entry → open the same pull-up sheet the
             // home-screen swipe-up gesture shows.
+            // ── Sirius-star inner-ring actions (build.json::onehand.circular_menu
+            //    nodes[Configs].actions). Radial-menu only — deliberately NOT
+            //    Configs pages, so the Configs grid and Home row stay unchanged.
+            actionType == "kde_connect_now" -> {
+                com.diegonmarcos.superapp.kdeconnect.KdeConnectManager.connectFirstAsync()
+                findViewById<View>(R.id.fragment_container)?.snack("KDE Connect: connecting…")
+            }
+            actionType == "toggle_animations" -> {
+                val prefs = com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this)
+                val on = !prefs.toggle("all_anim")
+                prefs.setToggle("all_anim", on)
+                applyLauncherSettings()          // re-applies the live views (stars/waves/pets)
+                findViewById<View>(R.id.fragment_container)
+                    ?.snack("Animations ${if (on) "on" else "off"}")
+            }
+            actionType == "about_copy_all" -> {
+                // The About page builds its clipboard snapshot while rendering,
+                // so the only way to copy it is to render it. Arm the one-shot
+                // flag, then open the page — it copies itself and disarms.
+                com.diegonmarcos.superapp.devcontrol.DevControlFragment.copyOnOpen = true
+                onTileClicked("page:config/about")
+            }
             actionType == "open_home_apps" -> {
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet()

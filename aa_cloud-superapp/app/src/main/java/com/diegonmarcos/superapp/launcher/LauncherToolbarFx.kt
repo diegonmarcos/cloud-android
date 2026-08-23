@@ -148,6 +148,10 @@ class LauncherToolbarFx(
     // ── hamburger jitter — random low-amplitude tic every 3–5s ──────────
     private fun scheduleHamburgerJitter() {
         cancelHamburgerJitter()
+        // Configs → "All animations" off → never arm the jitter loop at all.
+        if (!runCatching {
+                com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(activity).anim()
+            }.getOrDefault(true)) return
         val toolbar: MaterialToolbar = activity.findViewById(R.id.toolbar) ?: return
         toolbar.post { findToolbarNavIcon(toolbar)?.let { postNextJitter(it) } }
     }
