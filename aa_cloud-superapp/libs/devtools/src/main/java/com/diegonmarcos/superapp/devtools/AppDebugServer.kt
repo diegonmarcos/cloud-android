@@ -11,6 +11,7 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -37,12 +38,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  * those two servers is a separate job; this one had to be safe to drop into
  * eight apps at once.
  *
- * Auth: none, matching the existing servers' posture for these same endpoints
- * (ping/info/logcat/crashes are already auth-free there). The bind is
- * 127.0.0.1 only, so reaching it already means code execution on the device.
- * Adding a token would mean fetching a different token per app — fifteen
- * secrets to read one log — for no boundary that the loopback bind doesn't
- * already draw.
+ * Auth: one [FleetToken] for the whole fleet, as `Authorization: Bearer <t>`,
+ * on every route except /api/system/ping. Loopback alone is not a boundary
+ * here — it is device-wide on Android, so any installed app holding INTERNET
+ * can reach these ports — and it stopped being defensible entirely once app
+ * data started riding these routes beside the logs. One token rather than one
+ * per app because fifteen secrets to read one log is how a debug facility goes
+ * unused: SuperApp mints it, siblings adopt it over a signature-guarded
+ * provider, and the human reads it once from Configs → About.
  *
  * Port: the first free one in [PORT_FIRST, PORT_LAST]. Every app defaults to
  * the same number, so a fixed port would mean only whichever app started first
@@ -86,6 +89,47 @@ object AppDebugServer {
     fun boundPort(): Int = port
 
     fun isRunning(): Boolean = running.get()
+
+    /** Reachable without the fleet token. Liveness only — it says a fleet app is
+     *  here, which the open port already said. Everything that names the app or
+     *  returns its data, /api/docs included, needs the token. */
+    private val OPEN_OPS = setOf("system/ping")
+
+    /** App-specific data groups added via [route], keyed by first path segment. */
+    private val routes =
+        ConcurrentHashMap<String, (String, Map<String, String>) -> String?>()
+
+    /**
+     * Register an app's own data group: `route("news") { op, q -> ... }` serves
+     * `/api/news/<op>`, returning null for 404. Call it from Application.onCreate.
+     *
+     * This library deliberately knows nothing about articles, events or
+     * contacts. The transport, the fleet auth and the diagnostics are universal;
+     * the payloads are not. Handlers run on a socket thread and sit behind the
+     * token check above, so an app never authenticates anything itself.
+     */
+    fun route(group: String, handler: (op: String, query: Map<String, String>) -> String?) {
+        routes[group.trim('/')] = handler
+    }
+
+    /** `Authorization: Bearer <t>` → `<t>`; null for any other header. Case and
+     *  spacing are the client's to get wrong, not ours — curl, OkHttp and a
+     *  browser each format this line a little differently, and a parse that only
+     *  handled one of them would read as "the token is broken". */
+    internal fun bearerOf(header: String): String? {
+        if (!header.startsWith("Authorization:", ignoreCase = true)) return null
+        val v = header.substringAfter(':').trim()
+        if (!v.startsWith("Bearer", ignoreCase = true)) return null
+        return v.substring("Bearer".length).trim().ifEmpty { null }
+    }
+
+    private fun appRoute(op: String, query: Map<String, String>): String? {
+        val group = op.substringBefore('/')
+        val rest = op.substringAfter('/', "")
+        return runCatching { routes[group]?.invoke(rest, query) }
+            .onFailure { Log.w(TAG, "route $group: $it") }
+            .getOrNull()
+    }
 
     fun start(ctx: Context) {
         val app = ctx.applicationContext
@@ -157,13 +201,26 @@ object AppDebugServer {
                 else parseQuery(rawPath.substring(qIdx + 1))
 
             // Drain headers so the client sees a clean response rather than a
-            // reset while it is still writing.
+            // reset while it is still writing, picking the credential up on the
+            // way past.
+            var bearer: String? = null
             while (true) {
                 val h = reader.readLine() ?: break
                 if (h.isEmpty()) break
+                bearerOf(h)?.let { bearer = it }
             }
 
-            when (canonicalOp(path)) {
+            val op = canonicalOp(path)
+            // Everything but liveness is fleet-only. The loopback bind stopped
+            // being a sufficient boundary the moment app data started riding
+            // these routes next to the logs: loopback is device-wide on Android,
+            // so any installed app with INTERNET could otherwise read all of it.
+            if (op !in OPEN_OPS && !FleetToken.matches(ctx, bearer)) {
+                reply(writer, "401 Unauthorized", "unauthorized — Bearer <fleet token>\n")
+                return
+            }
+
+            when (op) {
                 "docs" -> reply(writer, "200 OK", docsJson(ctx), "application/json")
                 "system/ping" -> reply(writer, "200 OK", "pong\n")
                 "system/info" -> reply(writer, "200 OK", infoJson(ctx), "application/json")
@@ -172,7 +229,11 @@ object AppDebugServer {
                     reply(writer, "200 OK", readLogcat(n))
                 }
                 "diagnostics/crashes" -> reply(writer, "200 OK", readCrashes(ctx))
-                else -> reply(writer, "404 Not Found", "not found — see /api/docs\n")
+                else -> {
+                    val body = appRoute(op, query)
+                    if (body != null) reply(writer, "200 OK", body, "application/json")
+                    else reply(writer, "404 Not Found", "not found — see /api/docs\n")
+                }
             }
         }
     }
@@ -231,6 +292,8 @@ object AppDebugServer {
         append(""""applicationId":"${esc(ctx.packageName)}",""")
         append(""""port":$port,""")
         append(""""base":"http://127.0.0.1:$port",""")
+        append(""""auth":"Bearer <fleet token> — one token for the whole fleet, """)
+        append("""shown in SuperApp under Configs → About. /api/system/ping is open.",""")
         append(""""auth":"none — loopback bind only",""")
         append(""""scan":"probe $PORT_FIRST..$PORT_LAST and GET /api/system/info to identify each app",""")
         append(""""endpoints":[""")

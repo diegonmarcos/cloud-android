@@ -38,6 +38,22 @@ class DevControlPrefs(context: Context) {
         return fresh
     }
 
+    /** True once a token exists on disk. Distinguishes "never adopted" from
+     *  "adopted earlier", which [FleetToken] needs because reading [token]
+     *  would silently mint a local one and split the fleet in two. */
+    val hasToken: Boolean
+        get() = !sp.getString(K_TOKEN, null).isNullOrBlank()
+
+    /** Take the fleet token minted by the authority app. Writing it into the
+     *  same slot [token] reads means the app-owned DevControlServer on 38080
+     *  and [AppDebugServer] on 38090+ end up sharing one token, which is the
+     *  point — one secret for the whole fleet, not one per app per port. */
+    fun adopt(fleetToken: String) {
+        if (fleetToken.isBlank()) return
+        if (sp.getString(K_TOKEN, null) == fleetToken) return
+        sp.edit().putString(K_TOKEN, fleetToken).apply()
+    }
+
     companion object {
         const val DEFAULT_PORT = 38080
         private const val PREFS    = "dev_control"
