@@ -449,8 +449,13 @@
            bug. Card bodies are short by design (domain/title/meta, or a
            date + a couple of rows); if one ever needs to scroll, give it
            its own inner element with touch-action: pan-y rather than
-           handing the whole card back to the browser. */
-        .event-card-body { flex: 1; padding: 22px 22px 14px; overflow-y: auto; }
+           handing the whole card back to the browser.
+           hidden, not auto: touch-action already vetoes the pan, so `auto`
+           only left a scroll container nobody could scroll — and a scroll
+           container is exactly what makes the compositor treat this region
+           differently from the image above it. Deleting it removes the
+           confound instead of arguing with it. */
+        .event-card-body { flex: 1; padding: 22px 22px 14px; overflow: hidden; }
         .event-card-cal { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
         .event-card-title { font-size: 21px; font-weight: 700; color: var(--text); margin-top: 10px; line-height: 1.3; }
         .event-card-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--text-secondary); }
@@ -476,6 +481,26 @@
            identical to Events, only the CONTENT differs (an image +
            domain/title/tone instead of a calendar accent + date/
            location), so these are the only genuinely new rules. ---- */
+        /* Four gestures, four buttons — every swipe has a visible equivalent
+           so nothing is discoverable only by accident, and each button
+           carries the arrow of the swipe it stands for so the two teach each
+           other. Four across is tight on a phone, hence the stacked
+           arrow-over-label shape: it keeps the row SHORTER than the two wide
+           buttons it replaces instead of eating into the card body.
+           --feed-actions-h is this row's height, shared with the Calendar
+           stamp above so the badge always clears the buttons. */
+        .event-card { --feed-actions-h: calc(66px + var(--sab)); }
+        .feed-card-actions { gap: 8px; padding: 10px 14px calc(12px + var(--sab)); }
+        .feed-action-btn {
+            flex: 1; min-width: 0; padding: 7px 3px; border-radius: 12px; border: none;
+            font-family: inherit; cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; gap: 1px; background: var(--surface-strong); color: var(--text-secondary);
+        }
+        .feed-action-btn .fa-arrow { font-size: 13px; line-height: 1.15; }
+        .feed-action-btn .fa-label { font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+        .feed-action-btn.is-save { background: var(--fill); color: var(--fill-text); }
+        .feed-action-btn.is-cal { color: var(--text); }
+
         .feed-card-img-wrap { width: 100%; aspect-ratio: 16 / 9; background: var(--thumb-bg); flex-shrink: 0; overflow: hidden; }
         .feed-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .feed-card-img.article-thumb-fallback { object-fit: contain; }
@@ -488,13 +513,21 @@
            left/right axis and must not look like it is. */
         .event-card-stamp.skip.feed-next-stamp,
         .event-card-stamp.save.feed-prev-stamp { color: var(--text-muted); border-color: var(--text-muted); }
-        /* Both vertical stamps sit top-centre rather than one at each end:
-           they are mutually exclusive (a drag has one axis and one
-           direction), and the bottom of the card is already the button row. */
+        /* Each stamp sits on the edge its own swipe travels toward, so the
+           badge itself tells you which way you are going: Next on the left,
+           Prev on the right, Save at the top, Calendar at the bottom. They
+           are mutually exclusive — a drag has one axis and one direction —
+           so they never collide with each other. */
+        .event-card-stamp.feed-next-stamp { left: 18px; right: auto; }
+        .event-card-stamp.feed-prev-stamp { right: 18px; left: auto; }
         .event-card-stamp.feed-up-stamp,
-        .event-card-stamp.feed-down-stamp { left: 50%; transform: translateX(-50%); }
-        .event-card-stamp.feed-up-stamp { color: var(--success-text); border-color: var(--success-text); }
-        .event-card-stamp.feed-down-stamp { color: var(--text); border-color: var(--text); }
+        .event-card-stamp.feed-down-stamp { left: 50%; right: auto; transform: translateX(-50%) rotate(-6deg); }
+        .event-card-stamp.feed-up-stamp { top: 22px; color: var(--success-text); border-color: var(--success-text); }
+        /* Clears the button row rather than landing on top of it. */
+        .event-card-stamp.feed-down-stamp {
+            top: auto; bottom: calc(var(--feed-actions-h) + 16px);
+            color: var(--text); border-color: var(--text);
+        }
 
         /* ---- Saved tab: month calendar (saved events) above the existing
            saved-articles list. No chart/calendar library — a plain CSS
@@ -2928,6 +2961,19 @@ function bindSwipeCard(card, opts) {
     // different decision than the one it started as.
     var LOCK = 12;
     var dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, axis = '';
+    // One line per gesture in logcat (see MainActivity's WebChromeClient).
+    // A swipe that dies is invisible from the outside — you cannot tell a
+    // gesture the browser cancelled from one that never got moves from one
+    // that landed under threshold — and guessing between those is what made
+    // this bug take three passes. `moves` is the tell: a healthy swipe has
+    // dozens, a stolen one stops after two or three.
+    var moves = 0, downOn = '';
+    function trace(how) {
+        try {
+            console.log('[swipe] ' + how + ' on=' + downOn + ' axis=' + (axis || '-')
+                + ' dx=' + Math.round(dx) + ' dy=' + Math.round(dy) + ' moves=' + moves);
+        } catch (e) { /* tracing must never break the gesture */ }
+    }
     function clearStamps() {
         [opts.stampRight, opts.stampLeft, opts.stampUp, opts.stampDown].forEach(function (s) {
             if (s) s.style.opacity = 0;
@@ -2940,7 +2986,8 @@ function bindSwipeCard(card, opts) {
     function onDown(ev) {
         if (ev.target.closest && ev.target.closest(ignoreSelector)) return;
         dragging = true;
-        dx = 0; dy = 0; axis = '';
+        dx = 0; dy = 0; axis = ''; moves = 0;
+        downOn = (ev.target && ev.target.className) ? String(ev.target.className).split(' ')[0] : '?';
         card.classList.add('dragging');
         startX = ev.clientX;
         startY = ev.clientY;
@@ -2950,6 +2997,7 @@ function bindSwipeCard(card, opts) {
     }
     function onMove(ev) {
         if (!dragging) return;
+        moves++;
         dx = ev.clientX - startX;
         dy = ev.clientY - startY;
         if (!axis) {
@@ -2977,6 +3025,7 @@ function bindSwipeCard(card, opts) {
         if (!dragging) return;
         dragging = false;
         card.classList.remove('dragging');
+        trace('up');
         var d = axis === 'x' ? dx : dy;
         // An unbound direction leaves cb undefined and the card simply
         // snaps back, so a deck opts into exactly the gestures it has
@@ -2999,12 +3048,39 @@ function bindSwipeCard(card, opts) {
         if (!dragging) return;
         dragging = false;
         card.classList.remove('dragging');
+        trace('CANCEL');
         settle();
     }
     card.addEventListener('pointerdown', onDown);
     card.addEventListener('pointermove', onMove);
     card.addEventListener('pointerup', onUp);
     card.addEventListener('pointercancel', onCancel);
+
+    // touch-action: none was not enough on its own. It is a declaration the
+    // compositor consults when it classifies a gesture, and something on the
+    // body side of this card kept winning that classification anyway —
+    // whereas preventDefault() on a NON-PASSIVE touchmove is not a hint the
+    // browser weighs, it hard-cancels native scrolling, text selection and
+    // image dragging for this touch outright, before any of them can take
+    // the pointer stream away. Belt and braces on purpose: the declaration
+    // handles the common path, this handles whatever the declaration misses.
+    //
+    // touchstart stays PASSIVE — it only records whether the touch is ours,
+    // and a non-passive listener there would make the browser wait on us
+    // before it could even paint the first frame of the gesture.
+    var touchOwned = false;
+    card.addEventListener('touchstart', function (ev) {
+        touchOwned = !(ev.target.closest && ev.target.closest(ignoreSelector));
+    }, { passive: true });
+    card.addEventListener('touchmove', function (ev) {
+        // cancelable goes false once the browser has already committed the
+        // gesture to a scroll; calling preventDefault() then is a no-op that
+        // logs a console warning, so don't.
+        if (touchOwned && ev.cancelable) ev.preventDefault();
+    }, { passive: false });
+    function releaseTouch() { touchOwned = false; }
+    card.addEventListener('touchend', releaseTouch);
+    card.addEventListener('touchcancel', releaseTouch);
 }
 
 // Shared fly-off animation for a decided card (swipe release OR an action
@@ -3070,11 +3146,17 @@ function feedCardHtml(a) {
         '</div>' +
         '<div class="event-card-stamp feed-up-stamp" id="feed-card-stamp-save">Save</div>' +
         '<div class="event-card-stamp skip feed-next-stamp" id="feed-card-stamp-next">Next</div>' +
-        '<div class="event-card-stamp save feed-prev-stamp" id="feed-card-stamp-prev">Prev</div>' +
-        '<div class="event-card-stamp feed-down-stamp" id="feed-card-stamp-cal">Calendar</div>' +
-        '<div class="event-card-actions">' +
-            '<button type="button" class="event-action-btn event-action-skip" id="feed-card-next-btn">Next</button>' +
-            '<button type="button" class="event-action-btn event-action-save" id="feed-card-save-btn">' + (saved ? 'Saved ✓' : 'Save') + '</button>' +
+        '<div class="event-card-stamp save feed-prev-stamp" id="feed-card-stamp-prev">Previous</div>' +
+        '<div class="event-card-stamp feed-down-stamp" id="feed-card-stamp-cal">Add calendar</div>' +
+        '<div class="event-card-actions feed-card-actions">' +
+            '<button type="button" class="event-action-btn feed-action-btn" id="feed-card-prev-btn">' +
+                '<span class="fa-arrow">→</span><span class="fa-label">Previous</span></button>' +
+            '<button type="button" class="event-action-btn feed-action-btn" id="feed-card-next-btn">' +
+                '<span class="fa-arrow">←</span><span class="fa-label">Next</span></button>' +
+            '<button type="button" class="event-action-btn feed-action-btn is-save" id="feed-card-save-btn">' +
+                '<span class="fa-arrow">↑</span><span class="fa-label">' + (saved ? 'Saved ✓' : 'Save') + '</span></button>' +
+            '<button type="button" class="event-action-btn feed-action-btn is-cal" id="feed-card-cal-btn">' +
+                '<span class="fa-arrow">↓</span><span class="fa-label">Calendar</span></button>' +
         '</div>' +
     '</div>';
 }
@@ -3113,10 +3195,18 @@ function renderFeedCardsView() {
 function wireFeedCard(article) {
     var card = document.getElementById('feed-active-card');
     if (!card) return;
-    var nextBtn = document.getElementById('feed-card-next-btn');
-    var saveBtn = document.getElementById('feed-card-save-btn');
-    if (nextBtn) nextBtn.addEventListener('click', function () { feedCardFlyOut('next', article); });
-    if (saveBtn) saveBtn.addEventListener('click', function () { feedCardFlyOut('save', article); });
+    // One button per gesture, each firing the identical path the swipe does,
+    // so the two can never drift apart in behaviour.
+    var btns = {
+        'feed-card-prev-btn': function () { feedCardFlyOut('prev', article); },
+        'feed-card-next-btn': function () { feedCardFlyOut('next', article); },
+        'feed-card-save-btn': function () { feedCardFlyOut('save', article); },
+        'feed-card-cal-btn': function () { openCalSheet(article, function () { feedCardFlyOut('next', article); }); }
+    };
+    Object.keys(btns).forEach(function (id) {
+        var b = document.getElementById(id);
+        if (b) b.addEventListener('click', btns[id]);
+    });
 
     // Horizontal = travel through the deck (left forward, right back),
     // vertical = act on the card in front of you.
