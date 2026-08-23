@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.diegonmarcos.superapp.adbdebug.ShellChannels
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -212,7 +211,10 @@ object Fleet {
      *
      *  Blocking (up to ~25s); callers are already off the main thread. */
     private fun shellInstall(ctx: Context, apk: File): Boolean {
-        val channel = ShellChannels.active(ctx) ?: return false
+        // activeShellChannel() comes from src/shell or src/noshell depending on
+        // whether this app declares :libs:shizuku-adb-debug-tools; the stub
+        // always returns null, which is the ordinary "no channel" path below.
+        val channel = activeShellChannel(ctx) ?: return false
         val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${apk.name}")
         return try {
             apk.copyTo(stage, overwrite = true)

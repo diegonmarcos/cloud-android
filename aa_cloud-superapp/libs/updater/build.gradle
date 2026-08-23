@@ -35,6 +35,19 @@ android {
     namespace 'com.diegonmarcos.superapp.updater'
     compileSdk 36
 
+    // Two source sets, never both: shell/ talks to the real ShellChannels,
+    // noshell/ hands Fleet a null channel. Source sets rather than reflection
+    // because app/build.gradle runs R8 with minifyEnabled — a reflective
+    // lookup would be renamed away and zero-dialog install would die silently
+    // in the one app that wants it. Both variants are real compiled source, so
+    // a rename in ShellChannels fails the SuperApp build out loud.
+    sourceSets {
+        main {
+            java.srcDir(findProject(':libs:shizuku-adb-debug-tools') != null
+                ? 'src/shell/java' : 'src/noshell/java')
+        }
+    }
+
     defaultConfig {
         minSdk 26
         consumerProguardFiles 'consumer-rules.pro'
@@ -76,7 +89,18 @@ dependencies {
     // Fleet.shellInstall uses the shell channel (uid 2000, holds INSTALL_PACKAGES)
     // so "Update all" installs with no confirm dialog. No cycle: this module only
     // depends on :libs:core, same as us.
-    implementation project(':libs:shizuku-adb-debug-tools')
+    //
+    // Conditional, because :libs:updater is linked into ALL EIGHT constellation
+    // apps while :libs:shizuku-adb-debug-tools is declared by SuperApp alone.
+    // Unconditionally, this line broke every other app at configuration time
+    // ("Project with path ':libs:shizuku-adb-debug-tools' could not be found"),
+    // and had they declared it they would each have swallowed BouncyCastle,
+    // Conscrypt, libadb-android and the Shizuku client for a dialog-free
+    // install only SuperApp performs. The matching source-set switch above
+    // supplies a stub channel to the apps that opt out.
+    if (findProject(':libs:shizuku-adb-debug-tools') != null) {
+        implementation project(':libs:shizuku-adb-debug-tools')
+    }
     implementation 'androidx.core:core-ktx:1.13.1'
     // UpdateOverlayFragment lives here now (it was four vendored copies in the
     // app modules and browser/vault/wallet were stale); the module owns the UI
