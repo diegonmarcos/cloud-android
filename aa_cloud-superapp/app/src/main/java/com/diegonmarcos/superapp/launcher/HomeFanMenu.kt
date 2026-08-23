@@ -44,7 +44,10 @@ object HomeFanMenu {
      *  sections[*].long_press). Kept separate per the user's "Home
      *  stays as it is" instruction. */
     val HOME_ITEMS = listOf(
-        "section:configs"         to (R.drawable.ic_settings  to "Configs"),
+        // "config", NOT "configs" — build.json declares the section id
+        // singular, and an unknown section: target silently no-ops, which is
+        // why this bubble looked like it never landed.
+        "section:config"          to (R.drawable.ic_settings  to "Configs"),
         "page:recentapps/grid"    to (R.drawable.ic_file_stack to "Recent Apps"),
         "page:apptabs/grid"       to (R.drawable.ic_mode_apps to "Tabs"),
         "action:check_updates"    to (R.drawable.ic_refresh   to "Update"),
