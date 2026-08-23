@@ -410,10 +410,34 @@
         .event-card {
             position: absolute; inset: 0; border-radius: 20px; background: var(--surface); border: 1px solid var(--border);
             box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
-            touch-action: pan-y; will-change: transform; transition: transform .25s ease, opacity .25s ease;
+            /* touch-action MUST be none, not pan-y. pan-y hands vertical
+               panning to the browser, and .event-card-body below is a real
+               scroll container — so a drag starting in the body was
+               ambiguous, and Android's compositor resolved that ambiguity
+               its way: it claimed the gesture for scrolling the moment the
+               drag showed any vertical component (every thumb swipe does),
+               fired pointercancel, and killed the swipe mid-flight. Drags
+               over .feed-card-img-wrap had no scrollable ancestor to
+               compete with, which is exactly why the image area felt
+               smooth while everything below it felt broken. Now the card
+               owns all four directions and nothing races it.
+               user-select is the second half of the same bug: body text is
+               selectable, and a drag over text can start an Android text
+               selection that also cancels the pointer stream. The image
+               has no text, hence the same image-vs-body split. */
+            touch-action: none; -webkit-user-select: none; user-select: none;
+            will-change: transform; transition: transform .25s ease, opacity .25s ease;
         }
         .event-card.dragging { transition: none; }
         .event-card-accent { height: 8px; flex-shrink: 0; }
+        /* overflow-y stays for the wheel and for clipping, but touch
+           scrolling here is deliberately gone: vertical drags are card
+           gestures now (see .event-card's touch-action). A surface cannot
+           be both a scroller and a swipe target — that conflict WAS the
+           bug. Card bodies are short by design (domain/title/meta, or a
+           date + a couple of rows); if one ever needs to scroll, give it
+           its own inner element with touch-action: pan-y rather than
+           handing the whole card back to the browser. */
         .event-card-body { flex: 1; padding: 22px 22px 14px; overflow-y: auto; }
         .event-card-cal { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
         .event-card-title { font-size: 21px; font-weight: 700; color: var(--text); margin-top: 10px; line-height: 1.3; }
@@ -443,11 +467,18 @@
         .feed-card-img-wrap { width: 100%; aspect-ratio: 16 / 9; background: var(--thumb-bg); flex-shrink: 0; overflow: hidden; }
         .feed-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .feed-card-img.article-thumb-fallback { object-fit: contain; }
-        /* Left-swipe/drag in Cards mode means "next", NOT "reject" (unlike
-           Events' Skip) — same stamp position/shape via .skip, just a
-           neutral colour instead of the remove/negative one so it never
-           reads as a rejection. */
-        .event-card-stamp.skip.feed-next-stamp { color: var(--text-muted); border-color: var(--text-muted); }
+        /* Cards mode is a PAGER, not a decision deck: BOTH horizontal
+           directions are pagination (left = next, right = previous), so
+           neither stamp may read as accept/reject the way Events' Skip/Save
+           pair does — both reuse .skip/.save purely for position and shape
+           and take the neutral colour. Save moved to swipe-UP, so its stamp
+           is centred rather than pinned to an edge: it is no longer on the
+           left/right axis and must not look like it is. */
+        .event-card-stamp.skip.feed-next-stamp,
+        .event-card-stamp.save.feed-prev-stamp { color: var(--text-muted); border-color: var(--text-muted); }
+        .event-card-stamp.feed-up-stamp {
+            left: 50%; transform: translateX(-50%); color: var(--success-text); border-color: var(--success-text);
+        }
 
         /* ---- Saved tab: month calendar (saved events) above the existing
            saved-articles list. No chart/calendar library — a plain CSS
@@ -2826,13 +2857,30 @@ function avatarFallback(img) {
 function bindSwipeCard(card, opts) {
     var ignoreSelector = opts.ignoreSelector || '.event-action-btn';
     var threshold = opts.threshold || 90;
-    var dragging = false, startX = 0, dx = 0;
+    // Below this the gesture has no committed axis and the card does not
+    // move at all: a tap never nudges it, and a slightly-diagonal start
+    // (every real thumb swipe) can't latch onto the wrong axis on its
+    // first stray pixel. Once an axis is locked the other one is pinned to
+    // zero for the rest of the drag, so a swipe can't drift into being a
+    // different decision than the one it started as.
+    var LOCK = 12;
+    var dragging = false, startX = 0, startY = 0, dx = 0, dy = 0, axis = '';
+    function clearStamps() {
+        [opts.stampRight, opts.stampLeft, opts.stampUp, opts.stampDown].forEach(function (s) {
+            if (s) s.style.opacity = 0;
+        });
+    }
+    function settle() {
+        card.style.transform = '';
+        clearStamps();
+    }
     function onDown(ev) {
         if (ev.target.closest && ev.target.closest(ignoreSelector)) return;
         dragging = true;
-        dx = 0;
+        dx = 0; dy = 0; axis = '';
         card.classList.add('dragging');
         startX = ev.clientX;
+        startY = ev.clientY;
         if (card.setPointerCapture && ev.pointerId != null) {
             try { card.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
         }
@@ -2840,37 +2888,71 @@ function bindSwipeCard(card, opts) {
     function onMove(ev) {
         if (!dragging) return;
         dx = ev.clientX - startX;
-        var rot = dx / 14;
-        card.style.transform = 'translateX(' + dx + 'px) rotate(' + rot + 'deg)';
-        var op = Math.min(1, Math.abs(dx) / threshold);
-        if (opts.stampRight) opts.stampRight.style.opacity = dx > 0 ? op : 0;
-        if (opts.stampLeft) opts.stampLeft.style.opacity = dx < 0 ? op : 0;
+        dy = ev.clientY - startY;
+        if (!axis) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < LOCK) return;
+            axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+        }
+        if (axis === 'x') {
+            dy = 0;
+            card.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 14) + 'deg)';
+        } else {
+            // No rotate on the vertical axis — a card tilting as it rises
+            // reads as "being thrown away", which is the opposite of what
+            // save/schedule mean.
+            dx = 0;
+            card.style.transform = 'translateY(' + dy + 'px)';
+        }
+        var d = axis === 'x' ? dx : dy;
+        var op = Math.min(1, Math.abs(d) / threshold);
+        if (opts.stampRight) opts.stampRight.style.opacity = (axis === 'x' && d > 0) ? op : 0;
+        if (opts.stampLeft) opts.stampLeft.style.opacity = (axis === 'x' && d < 0) ? op : 0;
+        if (opts.stampUp) opts.stampUp.style.opacity = (axis === 'y' && d < 0) ? op : 0;
+        if (opts.stampDown) opts.stampDown.style.opacity = (axis === 'y' && d > 0) ? op : 0;
     }
     function onUp() {
         if (!dragging) return;
         dragging = false;
         card.classList.remove('dragging');
-        if (dx > threshold) { opts.onRight(); }
-        else if (dx < -threshold) { opts.onLeft(); }
-        else {
-            card.style.transform = '';
-            if (opts.stampRight) opts.stampRight.style.opacity = 0;
-            if (opts.stampLeft) opts.stampLeft.style.opacity = 0;
-        }
+        var d = axis === 'x' ? dx : dy;
+        // An unbound direction leaves cb undefined and the card simply
+        // snaps back, so a deck opts into exactly the gestures it has
+        // meaning for instead of every deck needing all four.
+        var cb = null;
+        if (axis === 'x') cb = d > threshold ? opts.onRight : (d < -threshold ? opts.onLeft : null);
+        else if (axis === 'y') cb = d > threshold ? opts.onSwipeDown : (d < -threshold ? opts.onSwipeUp : null);
+        if (cb) cb(); else settle();
+    }
+    // A cancel is the browser or the OS taking the gesture away mid-drag
+    // (a scroll takeover, a text selection, a system edge gesture, the
+    // pointer leaving the screen). It must ABORT, never decide: routing
+    // this to onUp — as this did — committed whatever the finger happened
+    // to be past at the moment of the interruption, so an aborted drag
+    // could save or skip an article the user never actually released.
+    function onCancel() {
+        if (!dragging) return;
+        dragging = false;
+        card.classList.remove('dragging');
+        settle();
     }
     card.addEventListener('pointerdown', onDown);
     card.addEventListener('pointermove', onMove);
     card.addEventListener('pointerup', onUp);
-    card.addEventListener('pointercancel', onUp);
+    card.addEventListener('pointercancel', onCancel);
 }
 
 // Shared fly-off animation for a decided card (swipe release OR an action
 // button) — used by both the Events deck and Feed Cards below, same
 // visual affirmation either way, then invokes cb() once the animation has
 // had time to read.
-function flyOutCard(card, dir, stampEl, cb) {
+// `axis` defaults to 'x' so every existing caller keeps the exact fly-off
+// it had; pass 'y' for the vertical gestures, which travel further because
+// a card leaving upward has more screen to cross than one leaving sideways.
+function flyOutCard(card, dir, stampEl, cb, axis) {
     card.classList.remove('dragging');
-    card.style.transform = 'translateX(' + (dir * 480) + 'px) rotate(' + (dir * 20) + 'deg)';
+    card.style.transform = axis === 'y'
+        ? 'translateY(' + (dir * 560) + 'px)'
+        : 'translateX(' + (dir * 480) + 'px) rotate(' + (dir * 20) + 'deg)';
     card.style.opacity = '0';
     if (stampEl) stampEl.style.opacity = 1;
     setTimeout(cb, 220);
@@ -2879,10 +2961,13 @@ function flyOutCard(card, dir, stampEl, cb) {
 /* =====================================================================
    Feed: Cards mode — a second Tinder-style deck alongside Events', built
    on the SAME bindSwipeCard()/flyOutCard() drag mechanics above rather
-   than a forked copy. The interaction differs from Events on purpose: a
-   LEFT swipe/drag here is ONLY pagination (advance to the next article) —
-   it never selects or rejects anything, unlike Events' Skip. A RIGHT
-   swipe saves, consistent with Events. Visible Next/Save buttons exist
+   than a forked copy. The interaction differs from Events on purpose:
+   BOTH horizontal directions here are ONLY pagination — left advances,
+   right goes back — and neither selects or rejects anything, unlike
+   Events' Skip/Save pair. Acting on a card is the vertical axis instead:
+   swipe UP saves. Swipe DOWN is reserved for "add to calendar" and is not
+   bound yet — see wireFeedCard() for why an article can't produce an
+   event. Visible Next/Save buttons exist
    for the same reason Events' Skip/Save buttons do: a swipe-only UI is
    unusable for anyone who can't perform the gesture, and it's the only
    way this flow is testable in a browser — see bindSwipeCard()'s
@@ -2916,8 +3001,9 @@ function feedCardHtml(a) {
             '<div class="event-card-title">' + esc(a.title) + '</div>' +
             '<div class="article-meta">' + toneHtml + '<span class="article-time">' + esc(relTime(ms)) + '</span></div>' +
         '</div>' +
-        '<div class="event-card-stamp save" id="feed-card-stamp-save">Save</div>' +
+        '<div class="event-card-stamp feed-up-stamp" id="feed-card-stamp-save">Save</div>' +
         '<div class="event-card-stamp skip feed-next-stamp" id="feed-card-stamp-next">Next</div>' +
+        '<div class="event-card-stamp save feed-prev-stamp" id="feed-card-stamp-prev">Prev</div>' +
         '<div class="event-card-actions">' +
             '<button type="button" class="event-action-btn event-action-skip" id="feed-card-next-btn">Next</button>' +
             '<button type="button" class="event-action-btn event-action-save" id="feed-card-save-btn">' + (saved ? 'Saved ✓' : 'Save') + '</button>' +
@@ -2964,34 +3050,65 @@ function wireFeedCard(article) {
     if (nextBtn) nextBtn.addEventListener('click', function () { feedCardFlyOut('next', article); });
     if (saveBtn) saveBtn.addEventListener('click', function () { feedCardFlyOut('save', article); });
 
+    // Horizontal = travel through the deck (left forward, right back),
+    // vertical = act on the card in front of you. onSwipeDown is left
+    // UNBOUND on purpose: "add to calendar" needs an event, and a GDELT
+    // article carries none — {url,title,seendate,socialimage,domain,
+    // language,sourcecountry,tone} and nothing resembling a start time or
+    // venue. Api.saveEvent() wants a full SavedEvent (id, calendarId,
+    // start/end, allDay), and the calendarId has to name a real configured
+    // calendar or the Saved tab's label/colour join comes back empty — so
+    // faking one out of seendate would quietly corrupt that view. Wiring
+    // this needs event extraction from article text first; until then the
+    // gesture snaps back rather than doing something almost-right.
     bindSwipeCard(card, {
-        stampRight: document.getElementById('feed-card-stamp-save'),
         stampLeft: document.getElementById('feed-card-stamp-next'),
+        stampRight: document.getElementById('feed-card-stamp-prev'),
+        stampUp: document.getElementById('feed-card-stamp-save'),
         ignoreSelector: '.event-action-btn',
-        onRight: function () { feedCardFlyOut('save', article); },
-        onLeft: function () { feedCardFlyOut('next', article); }
+        onLeft: function () { feedCardFlyOut('next', article); },
+        onRight: function () { feedCardFlyOut('prev', article); },
+        onSwipeUp: function () { feedCardFlyOut('save', article); }
     });
 }
 
 function feedCardFlyOut(kind, article) {
     var card = document.getElementById('feed-active-card');
     if (!card) { decideFeedCard(kind, article); return; }
-    var dir = kind === 'save' ? 1 : -1;
-    var stamp = document.getElementById(kind === 'save' ? 'feed-card-stamp-save' : 'feed-card-stamp-next');
-    flyOutCard(card, dir, stamp, function () { decideFeedCard(kind, article); });
+    // Nothing sits behind the first card — snap back instead of flying one
+    // off toward an index that doesn't exist.
+    if (kind === 'prev' && State.feedCards.index <= 0) {
+        card.style.transform = '';
+        var prevStamp = document.getElementById('feed-card-stamp-prev');
+        if (prevStamp) prevStamp.style.opacity = 0;
+        return;
+    }
+    var FLY = {
+        save: { stamp: 'feed-card-stamp-save', dir: -1, axis: 'y' },
+        next: { stamp: 'feed-card-stamp-next', dir: -1, axis: 'x' },
+        prev: { stamp: 'feed-card-stamp-prev', dir: 1, axis: 'x' }
+    };
+    var f = FLY[kind] || FLY.next;
+    flyOutCard(card, f.dir, document.getElementById(f.stamp), function () {
+        decideFeedCard(kind, article);
+    }, f.axis);
 }
 
 function decideFeedCard(kind, article) {
-    // "next" (left swipe / Next button) ONLY advances — no bridge write,
-    // no save, no reject, purely pagination through the deck (per the
-    // spec note in the section header above; this is the one place Cards
-    // mode's interaction deliberately diverges from Events'). "save"
-    // always calls the SAME toggle the bookmark button uses everywhere
-    // else, exactly like Events' decideEvent() — including its known
-    // caveat (a right swipe on an already-saved card would un-save it)
-    // rather than inventing different, one-off save semantics here.
+    // "next" (left swipe / Next button) and "prev" (right swipe) ONLY move
+    // the cursor — no bridge write, no save, no reject, purely pagination
+    // through the deck (per the spec note in the section header above;
+    // this is the one place Cards mode's interaction deliberately diverges
+    // from Events'). "save" (swipe up / Save button) always calls the SAME
+    // toggle the bookmark button uses everywhere else, exactly like Events'
+    // decideEvent() — including its known caveat (a swipe-up on an
+    // already-saved card would un-save it) rather than inventing
+    // different, one-off save semantics here. Saving still advances, which
+    // is what the old right-swipe-to-save did: acting on a card is also
+    // done with it.
     if (kind === 'save') onToggleSaved(article);
-    State.feedCards.index++;
+    if (kind === 'prev') State.feedCards.index = Math.max(0, State.feedCards.index - 1);
+    else State.feedCards.index++;
     renderFeedCardsView();
 }
 
