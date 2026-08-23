@@ -117,7 +117,9 @@ object HomeFanMenu {
         val containerH = container.measuredHeight
         val hostPos = IntArray(2); host.getLocationOnScreen(hostPos)
         val cx = hostPos[0] + host.width / 2
-        val x  = cx - containerW / 2
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        val margin = dp(ctx, 8)
+        val x  = (cx - containerW / 2).coerceIn(margin, screenW - containerW - margin)
         val y  = hostPos[1] - containerH - dp(ctx, 12)
         popup.showAtLocation(host, android.view.Gravity.NO_GRAVITY, x, y)
 
