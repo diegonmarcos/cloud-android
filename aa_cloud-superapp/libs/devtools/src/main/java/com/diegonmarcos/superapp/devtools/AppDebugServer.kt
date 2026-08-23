@@ -134,6 +134,19 @@ object AppDebugServer {
         return v.substring("Bearer".length).trim().ifEmpty { null }
     }
 
+    private fun peersJson(ctx: Context): String {
+        val me = ctx.packageName
+        val peers = FleetPeers.list(ctx)
+        return buildString {
+            append("""{"self":"${esc(me)}","count":${peers.size},"peers":[""")
+            peers.forEachIndexed { i, p ->
+                if (i > 0) append(',')
+                append("""{"pkg":"${esc(p)}","self":${p == me}}""")
+            }
+            append("]}")
+        }
+    }
+
     private fun appRoute(op: String, query: Map<String, String>): String? {
         val group = op.substringBefore('/')
         val rest = op.substringAfter('/', "")
@@ -240,6 +253,21 @@ object AppDebugServer {
                     reply(writer, "200 OK", readLogcat(n))
                 }
                 "diagnostics/crashes" -> reply(writer, "200 OK", readCrashes(ctx))
+                "fleet/peers" -> reply(writer, "200 OK", peersJson(ctx), "application/json")
+                "fleet/wake" -> {
+                    val pkg = query["pkg"].orEmpty()
+                    if (pkg.isBlank()) {
+                        reply(writer, "400 Bad Request", "need ?pkg=<applicationId>\n")
+                    } else {
+                        val ok = FleetPeers.wake(ctx, pkg)
+                        reply(
+                            writer,
+                            if (ok) "200 OK" else "502 Bad Gateway",
+                            """{"pkg":"${esc(pkg)}","woken":$ok}""",
+                            "application/json",
+                        )
+                    }
+                }
                 else -> {
                     val body = appRoute(op, query)
                     if (body != null) reply(writer, "200 OK", body, "application/json")
@@ -258,6 +286,8 @@ object AppDebugServer {
             "info" -> "system/info"
             "logcat" -> "diagnostics/logcat"
             "crashes" -> "diagnostics/crashes"
+            "peers" -> "fleet/peers"
+            "wake" -> "fleet/wake"
             else -> stripped
         }
     }
@@ -305,15 +335,19 @@ object AppDebugServer {
         append(""""base":"http://127.0.0.1:$port",""")
         append(""""auth":"Bearer <fleet token> — one token for the whole fleet, """)
         append("""shown in SuperApp under Configs → About. /api/system/ping is open.",""")
-        append(""""auth":"none — loopback bind only",""")
-        append(""""scan":"probe $PORT_FIRST..$PORT_LAST and GET /api/system/info to identify each app",""")
+        append(""""scan":"probe $PORT_FIRST..$PORT_LAST with /api/system/ping — it answers """)
+        append("""'pong <applicationId>' unauthenticated, so it maps port to app in one sweep",""")
         append(""""endpoints":[""")
         append("""{"path":"/api/docs","description":"this catalog"},""")
         append("""{"path":"/api/system/ping","description":"liveness + applicationId, """)
         append("""no token needed — scan the port range with this to map port to app"},""")
         append("""{"path":"/api/system/info","description":"applicationId, label, version, bound port, device"},""")
         append("""{"path":"/api/diagnostics/logcat","params":"n=lines (default $DEFAULT_LINES, max $MAX_LINES)","description":"this app's own logcat, threadtime format"},""")
-        append("""{"path":"/api/diagnostics/crashes","description":"stored crash reports, newest first"}""")
+        append("""{"path":"/api/diagnostics/crashes","description":"stored crash reports, newest first"},""")
+        append("""{"path":"/api/fleet/peers","description":"installed mesh members"},""")
+        append("""{"path":"/api/fleet/wake","params":"pkg=<applicationId>",""")
+        append(""""description":"start a member's process via its provider — no activity """)
+        append("""launch, so Android background-start restrictions do not apply"}""")
         append("]}")
     }
 
