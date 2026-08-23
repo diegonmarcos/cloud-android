@@ -90,9 +90,20 @@ object AppDebugServer {
 
     fun isRunning(): Boolean = running.get()
 
-    /** Reachable without the fleet token. Liveness only — it says a fleet app is
-     *  here, which the open port already said. Everything that names the app or
-     *  returns its data, /api/docs included, needs the token. */
+    /**
+     * Reachable without the fleet token: liveness plus the applicationId, and
+     * nothing else. Everything that returns state or data, /api/docs included,
+     * needs the token.
+     *
+     * The package name is deliberately in the open half. Ports are assigned
+     * first-come across [PORT_FIRST]..[PORT_LAST], so port→app is the one fact
+     * you need before you can ask anything useful, and gating it makes the
+     * facility undebuggable in exactly the case you reach for it — a member
+     * that cannot adopt the token answers 401 everywhere and you cannot even
+     * tell which app is stuck. It gives an attacker nothing: any app can
+     * already enumerate installed packages and portscan loopback, so this only
+     * saves them the join.
+     */
     private val OPEN_OPS = setOf("system/ping")
 
     /** App-specific data groups added via [route], keyed by first path segment. */
@@ -222,7 +233,7 @@ object AppDebugServer {
 
             when (op) {
                 "docs" -> reply(writer, "200 OK", docsJson(ctx), "application/json")
-                "system/ping" -> reply(writer, "200 OK", "pong\n")
+                "system/ping" -> reply(writer, "200 OK", "pong ${ctx.packageName}\n")
                 "system/info" -> reply(writer, "200 OK", infoJson(ctx), "application/json")
                 "diagnostics/logcat" -> {
                     val n = (query["n"]?.toIntOrNull() ?: DEFAULT_LINES).coerceIn(1, MAX_LINES)
@@ -298,7 +309,8 @@ object AppDebugServer {
         append(""""scan":"probe $PORT_FIRST..$PORT_LAST and GET /api/system/info to identify each app",""")
         append(""""endpoints":[""")
         append("""{"path":"/api/docs","description":"this catalog"},""")
-        append("""{"path":"/api/system/ping","description":"liveness — returns pong"},""")
+        append("""{"path":"/api/system/ping","description":"liveness + applicationId, """)
+        append("""no token needed — scan the port range with this to map port to app"},""")
         append("""{"path":"/api/system/info","description":"applicationId, label, version, bound port, device"},""")
         append("""{"path":"/api/diagnostics/logcat","params":"n=lines (default $DEFAULT_LINES, max $MAX_LINES)","description":"this app's own logcat, threadtime format"},""")
         append("""{"path":"/api/diagnostics/crashes","description":"stored crash reports, newest first"}""")
