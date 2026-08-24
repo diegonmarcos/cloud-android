@@ -81,11 +81,11 @@ object ArcMenu {
         // Animations, Copy Info, Update All ...). Declared once, shown by both
         // stars — the bottom star is the one that opens Configs, so this is
         // where they have to appear.
-        val actions = CircularMenu.config().nodes
-            .firstOrNull { it.childKey == cfg.section }
-            ?.actions.orEmpty()
-            .map { Item(it.label, it.iconName, it.target, true) }
-        val items = host.itemsFor(cfg.section) + actions
+        // The inner ring is the host's business. This used to merge the
+        // circular_menu node whose childKey matched cfg.section, but EVERY
+        // ArcMenu shares one cfg — so the recents star got the Configs
+        // actions (KDE Connect, Animations, Copy Info) on its inner ring.
+        val items = host.itemsFor(cfg.section)
         if (items.isEmpty()) return null
         val v = ArcView(decor.context, cfg.radiusDp, cx, cy, items, host) { decor.removeView(it) }
         decor.addView(v, ViewGroup.LayoutParams(

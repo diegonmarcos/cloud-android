@@ -59,6 +59,10 @@ object CircularMenu {
         /** Extra touch padding (dp) around the star so it's easy to hit. */
         val starTapPadDp: Int,
         val nodes: List<Node>,
+        /** Root-level inner ring: `circular_menu.actions[]`. Same split the
+         *  descended levels already do, applied to level 0 — so the top ring
+         *  stays sections-only and the shortcuts sit inside it. */
+        val actions: List<Node> = emptyList(),
     )
 
     /** What the app must provide so the lib can render + act without touching R,
@@ -73,6 +77,28 @@ object CircularMenu {
         fun childrenOf(key: String): List<Child>
     }
 
+    /** `actions[]` -> inner-ring nodes. Every star's inner ring is declared the
+     *  same way in build.json, so they all decode through here. */
+    private fun parseActions(arr: org.json.JSONArray?): List<Node> =
+        (0 until (arr?.length() ?: 0)).map { j ->
+            val a = arr!!.getJSONObject(j)
+            Node(
+                label = a.optString("label"),
+                iconName = a.optString("icon"),
+                target = a.optString("target"),
+                childKey = null,
+                action = true,
+            )
+        }
+
+    /** The inner ring declared under `onehand.<block>.actions[]`, for the stars
+     *  that aren't the radial pie (Centauri's recents_menu). Kept here because
+     *  this is where the baked config is already decoded. */
+    fun actionsOf(block: String): List<Node> = runCatching {
+        val raw = String(Base64.decode(BuildConfig.ONEHAND_CONFIG_B64, Base64.DEFAULT))
+        parseActions(JSONObject(raw).optJSONObject(block)?.optJSONArray("actions"))
+    }.getOrDefault(emptyList())
+
     /** Decode this lib's baked onehand config and pull the circular_menu subtree.
      *  Returns a disabled empty config if absent/malformed (never throws). */
     fun config(): Config = runCatching {
@@ -83,18 +109,7 @@ object CircularMenu {
         val nodes = ArrayList<Node>(arr?.length() ?: 0)
         for (i in 0 until (arr?.length() ?: 0)) {
             val n = arr!!.getJSONObject(i)
-            val actArr = n.optJSONArray("actions")
-            val acts = ArrayList<Node>(actArr?.length() ?: 0)
-            for (j in 0 until (actArr?.length() ?: 0)) {
-                val a = actArr!!.getJSONObject(j)
-                acts.add(Node(
-                    label = a.optString("label"),
-                    iconName = a.optString("icon"),
-                    target = a.optString("target"),
-                    childKey = null,
-                    action = true,
-                ))
-            }
+            val acts = parseActions(n.optJSONArray("actions"))
             nodes.add(Node(
                 label = n.optString("label"),
                 iconName = n.optString("icon"),
@@ -113,6 +128,7 @@ object CircularMenu {
             starBottomPct = star.optDouble("bottom_pct", 0.38).toFloat(),
             starTapPadDp = star.optInt("tap_pad_dp", 22),
             nodes = nodes,
+            actions = parseActions(cm.optJSONArray("actions")),
         )
     }.getOrDefault(DISABLED)
 
@@ -179,7 +195,10 @@ object CircularMenu {
         // level and pick a different node. i=0 leftmost → i=n-1 rightmost.
         private data class Level(val cx: Float, val cy: Float, val items: List<Node>)
         private val stack = ArrayList<Level>().apply {
-            add(Level(cx, cy, cfg.nodes))   // Node already carries label/icon/target/section
+            // Sections on the outer ring, cfg.actions on the inner one — the
+            // same two-arc split every descended level does, so level 0 needs
+            // no special case beyond appending them.
+            add(Level(cx, cy, cfg.nodes + cfg.actions))
         }
         private val kidCache = HashMap<String, List<Node>>()
         private fun childrenOf(it: Node): List<Node> {
