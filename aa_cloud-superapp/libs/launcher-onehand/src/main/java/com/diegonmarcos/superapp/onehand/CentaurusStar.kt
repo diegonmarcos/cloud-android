@@ -71,6 +71,7 @@ class CentaurusStar(
 
     private val host = object : ArcMenu.Host {
         override fun navigate(target: String) {
+            if (target.startsWith("recents:")) { recentsAction(target.removePrefix("recents:")); return }
             if (!target.startsWith("launch:")) return
             val pkg = target.removePrefix("launch:")
             runCatching {
@@ -90,7 +91,44 @@ class CentaurusStar(
         override fun itemsFor(section: String): List<ArcMenu.Item> =
             RecentAppsSource.last9(activity).map { (pkg, label) ->
                 ArcMenu.Item(label, pkg, "launch:$pkg")
+            } +
+                // Inner ring: what you do TO the recents, declared in
+                // build.json::onehand.recents_menu.actions.
+                CircularMenu.actionsOf("recents_menu")
+                    .map { ArcMenu.Item(it.label, it.iconName, it.target, true) }
+    }
+
+    /**
+     * The inner-ring actions. Android exposes no public way to clear another
+     * app's task from Overview, so "close all" is killBackgroundProcesses over
+     * the apps on this ring — their background work dies, the task cards stay.
+     * ponytail: that IS the ceiling of a non-system launcher; clearing the
+     * cards needs an accessibility script per OEM Overview UI, so the card
+     * view is offered instead and the user swipes.
+     */
+    private fun recentsAction(what: String) {
+        val am = activity.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        when (what) {
+            // GLOBAL_ACTION_RECENTS needs the accessibility service; without
+            // it granted there is nothing to fall back to, so stay silent.
+            "cards" -> OneHandAccessibilityService.instance
+                ?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS)
+            "close_all" -> RecentAppsSource.last9(activity).forEach { (pkg, _) ->
+                runCatching { am?.killBackgroundProcesses(pkg) }
             }
+            // Wider sweep: every launchable app, not just the nine on the ring.
+            "kill_bg" -> {
+                val self = activity.packageName
+                runCatching {
+                    val la = activity.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    la.getActivityList(null, Process.myUserHandle())
+                        .map { it.applicationInfo.packageName }
+                        .distinct()
+                        .filter { it != self }
+                        .forEach { p -> runCatching { am?.killBackgroundProcesses(p) } }
+                }
+            }
+        }
     }
 
     /** Wire glyph/size/position/tap once; call [update] after for initial state. */

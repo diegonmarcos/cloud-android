@@ -311,13 +311,25 @@
       },
       "radius_dp": 130,
       "ring_gap_dp": 58,
-      "nodes": [
+      "_doc_actions": "Root inner ring of the ALL-APPS (Sirius) star \u2014 the same outer/inner split every descended level already does, applied to level 0. The outer ring stays sections-only; the most-used shortcuts sit inside it. Home Apps lived on the outer ring until it moved here: it is an action, not a section, so it never belonged among the parent links.",
+      "actions": [
         {
-          "label": "Home Apps",
+          "label": "Cloud",
           "icon": "ic_home_apps",
-          "target": "action:open_home_apps",
-          "section": null
+          "target": "action:open_home_apps"
         },
+        {
+          "label": "Phone",
+          "icon": "ic_mode_apps",
+          "target": "action:open_home_apps_phone"
+        },
+        {
+          "label": "Notifs",
+          "icon": "ic_stat_notify",
+          "target": "action:open_notification_center"
+        }
+      ],
+      "nodes": [
         {
           "label": "Comms",
           "icon": "ic_chat",
@@ -479,6 +491,26 @@
       "enabled": true,
       "section": "config",
       "radius_dp": 200
+    },
+    "_doc_recents_menu": "Inner ring of the ACTIVE-APPS (Centauri) star: what you do TO the recent apps, as opposed to the outer ring which launches them. Dispatched by CentaurusStar.recentsAction. Android gives a non-system launcher no way to clear another app's Overview card, so close_all/kill_bg kill BACKGROUND processes (the cards remain) and cards opens the system Overview so the user can swipe them away.",
+    "recents_menu": {
+      "actions": [
+        {
+          "label": "Close All",
+          "icon": "ic_nav_powersave",
+          "target": "recents:close_all"
+        },
+        {
+          "label": "Kill Bg",
+          "icon": "ic_nav_powersave",
+          "target": "recents:kill_bg"
+        },
+        {
+          "label": "Cards",
+          "icon": "ic_mode_apps",
+          "target": "recents:cards"
+        }
+      ]
     },
     "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps (Suite\u00b7Cloud tab) | open_home_apps_phone (Suite\u00b7Phone tab) | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
     "home_swipes": {
@@ -1671,7 +1703,8 @@
         "icon_admin": "ic_p_c3_stack",
         "module": null,
         "bottom_nav": true,
-        "is_aggregator": true,
+        "_doc_hidden_pages": "Labs' first children are the two facets only \u2014 Apps | Admin. The six subject Labs (C3, Data & ML, Engineering, Quant, Aero & Space, Circus) already render INSIDE the Apps facet via tiles_shared; listing them as pages too gave Labs eight top-level children. hidden keeps them routable as page:tools/<id> without listing them.",
+          "is_aggregator": true,
         "pages": [
           {
             "id": "apps",
@@ -1688,32 +1721,38 @@
           {
             "id": "c3",
             "label": "C3",
-            "icon": "ic_p_c3_stack"
+            "icon": "ic_p_c3_stack",
+            "hidden": true
           },
           {
             "id": "data-ml",
             "label": "Data & ML",
-            "icon": "ic_database"
+            "icon": "ic_database",
+            "hidden": true
           },
           {
             "id": "engineering",
             "label": "Engineering",
-            "icon": "ic_wg"
+            "icon": "ic_wg",
+            "hidden": true
           },
           {
             "id": "quant",
             "label": "Quant & Markets",
-            "icon": "ic_fin"
+            "icon": "ic_fin",
+            "hidden": true
           },
           {
             "id": "aero-space",
             "label": "Aero & Space",
-            "icon": "ic_world"
+            "icon": "ic_world",
+            "hidden": true
           },
           {
             "id": "circus",
             "label": "Circus",
-            "icon": "ic_solutions"
+            "icon": "ic_solutions",
+            "hidden": true
           }
         ],
         "tiles_shared": [

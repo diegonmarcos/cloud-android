@@ -81,7 +81,7 @@ class LauncherNavController(private val host: NavHost) {
                 if (id != "apptabs") runCatching {
                     host.recordPage(id, pg.id, pg.label, pg.iconName ?: "")
                 }
-                (SectionPages.pagesFor(id).firstOrNull { it.id == pg.id }?.factory?.invoke())
+                (SectionPages.pagesFor(id, includeHidden = true).firstOrNull { it.id == pg.id }?.factory?.invoke())
                     ?: SectionFragment.forSection(id, pg.id)
             }
             // Tabbed section — one strip over one pane per page on tablets.
@@ -224,7 +224,7 @@ class LauncherNavController(private val host: NavHost) {
         return when {
             sectionId == "mail" -> MailPages.fragmentFor(pageId, args)
             section != null && page != null && page.facet -> aggregatorPage(section, page)
-            else -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
+            else -> SectionPages.pagesFor(sectionId, includeHidden = true).firstOrNull { it.id == pageId }
                 ?.factory?.invoke() ?: SectionFragment.forSection(sectionId, pageId)
         }
     }

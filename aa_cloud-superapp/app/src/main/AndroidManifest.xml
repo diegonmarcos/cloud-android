@@ -123,6 +123,10 @@
          every installed launchable activity — the SuperApp needs that
          to act as a Home / Launcher replacement and render the app
          drawer for the Cloud Minimalist Black theme. -->
+    <!-- Centauri's inner ring: "Close All" / "Kill Bg" stop the background
+         work of the recent apps. Normal permission, granted at install. It
+         cannot remove their Overview cards - no public API does. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
