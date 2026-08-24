@@ -184,7 +184,7 @@ class MainActivity : AppCompatActivity(),
                         // exactly like CircularMenuTree does. Forcing page:<sec>/<id>
                         // both pointed those entries at a page that isn't there and
                         // kept them off the arc-menu's inner actions arc.
-                        ArcMenu.Item(it.label, it.iconName, it.action.ifBlank { "page:$section/${it.id}" })
+                        ArcMenu.Item(it.label, it.iconName, it.action.ifBlank { "page:$section/${it.id}" }, it.isAction)
                     }
             },
         )
