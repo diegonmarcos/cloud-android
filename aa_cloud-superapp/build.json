@@ -1058,7 +1058,8 @@
               }
             ]
           }
-        ]
+        ],
+        "tabs": true
       },
       {
         "_doc_icons": "Per-mode icons: in Apps mode shows the everyday logs glyph; in Admin mode swaps to the C3-workflows glyph so the ops view reads as the workflows dashboard. Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode) \u2014 single source of truth.",
@@ -1313,7 +1314,8 @@
               }
             ]
           }
-        ]
+        ],
+        "tabs": true
       },
       {
         "id": "suite",
@@ -1654,7 +1656,8 @@
               }
             ]
           }
-        ]
+        ],
+        "tabs": true
       },
       {
         "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",

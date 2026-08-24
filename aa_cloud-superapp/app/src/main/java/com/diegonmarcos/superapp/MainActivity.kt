@@ -12,6 +12,7 @@ import com.diegonmarcos.superapp.launcher.CircularMenuTree
 import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.launcher.SectionPages
 import com.diegonmarcos.superapp.launcher.SectionMenuFragment
+import com.diegonmarcos.superapp.launcher.SectionTabsFragment
 import com.diegonmarcos.superapp.launcher.PlaceholderDrawerFragment
 import com.diegonmarcos.superapp.launcher.LauncherStatusStripView
 import com.diegonmarcos.superapp.launcher.HomeDrawerFragment
@@ -101,8 +102,10 @@ class MainActivity : AppCompatActivity(),
     com.diegonmarcos.superapp.apptabs.AppTabsHost,
     LauncherNavController.NavHost {
 
-    /** Navigation policy + walk-list state; the Activity is its view host. */
-    private val nav = LauncherNavController(this)
+    /** Navigation policy + walk-list state; the Activity is its view host.
+     *  `internal` so [SectionTabsFragment] can reuse the page→Fragment
+     *  routing when filling its panes instead of duplicating it. */
+    internal val nav = LauncherNavController(this)
 
     /** [AppTabsHost] — card-tap callback from libs:launcher-apptabs. Routes a
      *  recorded LRU entry back to its original destination. Sections
@@ -1006,7 +1009,12 @@ class MainActivity : AppCompatActivity(),
         // pane while the master (section grid) stays visible on the left.
         // They still go on the shared back stack so Back pops the detail
         // page first, exactly like the phone single-pane flow.
-        val target = if (isTwoPane()) R.id.detail_container else R.id.fragment_container
+        // …but only while that pane is actually on screen. It is collapsed to
+        // GONE on Home and under a self-splitting tabbed section, and a
+        // fragment committed into a GONE container renders nowhere.
+        val detailShown = findViewById<View?>(R.id.detail_container)?.visibility == View.VISIBLE
+        val target = if (isTwoPane() && detailShown) R.id.detail_container
+                     else R.id.fragment_container
         supportFragmentManager.beginTransaction()
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
             .replace(target, content)
@@ -1058,7 +1066,7 @@ class MainActivity : AppCompatActivity(),
             // clearBackStack=false never sets the flag, so this is safe.
             .runOnCommit { inSectionSwap = false }
             .commit()
-        if (isTwoPane()) syncDetailPaneForMaster()
+        if (isTwoPane()) syncDetailPaneForMaster(content)
     }
 
     /**
@@ -1071,10 +1079,16 @@ class MainActivity : AppCompatActivity(),
      * Called only when [isTwoPane]; uses [currentSection] which the
      * controller sets before swapContent.
      */
-    private fun syncDetailPaneForMaster() {
+    private fun syncDetailPaneForMaster(master: Fragment) {
         val detail = findViewById<View>(R.id.detail_container) ?: return
         val divider = findViewById<View?>(R.id.pane_divider)
-        if (currentSection == "home") {
+        // A tabbed section splits ITSELF — its tab strip has to span the FULL
+        // width with one pane per page underneath, so the activity's 40/60
+        // column would cut it in half. Collapse the detail column exactly the
+        // way Home does and let the master expand edge-to-edge. Tested on the
+        // fragment we were handed, not on findFragmentById: swapContent's
+        // commit() is async, so the container still holds the OLD master here.
+        if (currentSection == "home" || master is SectionTabsFragment) {
             detail.visibility = View.GONE
             divider?.visibility = View.GONE
         } else {

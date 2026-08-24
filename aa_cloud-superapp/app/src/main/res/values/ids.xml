@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Stable view IDs for runtime-built FragmentContainerViews. Using a
-     resource id here (instead of View.generateViewId()) makes the host
-     persistent across process death + activity recreation — fragments
-     committed into these ids restore correctly via FragmentManager. -->
 <resources>
-    <item name="app_drawer_grid_host" type="id" />
-    <item name="suite_tabs_host"      type="id" />
-    <item name="tabbed_section_child_host" type="id" />
-    <item name="stack_embed_0"        type="id" />
-    <item name="stack_embed_1"        type="id" />
-    <item name="stack_embed_2"        type="id" />
-    <item name="stack_embed_3"        type="id" />
-    <item name="stack_embed_4"        type="id" />
-    <item name="stack_embed_5"        type="id" />
-    <item name="stack_embed_6"        type="id" />
-    <item name="stack_embed_7"        type="id" />
+    <!-- Pane hosts for SectionTabsFragment. STABLE resource ids — NOT
+         View.generateViewId() — so a committed child fragment restores into
+         the same host after process death. generateViewId() hands out a fresh
+         int each process, so a saved child's container id no longer matches
+         any view on restore → "No view found for id 0x2".
+         Four of them: a tablet renders one pane per page and build.json tops
+         out at 4 pages for the tabbed (aggregator) sections. Sections with
+         more pages take the icon-rail + detail route instead, so they only
+         ever need pane 0. Add ids here if an aggregator ever grows a 5th. -->
+    <item name="section_pane_0" type="id" />
+    <item name="section_pane_1" type="id" />
+    <item name="section_pane_2" type="id" />
+    <item name="section_pane_3" type="id" />
 </resources>

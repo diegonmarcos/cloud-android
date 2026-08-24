@@ -47,6 +47,14 @@ object Sections {
          *  the section IS its page (e.g. WireGuard). Source:
          *  build.json::sections[*].single_page. */
         val singlePage: Boolean = false,
+        /** When true, the section renders its pages behind ONE tab strip
+         *  ([SectionTabsFragment]) instead of a grid of page icons — and on a
+         *  tablet each page gets its own pane, all on screen at once. Opt-in
+         *  because it is a UI choice, not something the page count can tell
+         *  you: Health also has a handful of pages but reads better as a grid.
+         *  Capped by [SectionTabsFragment.MAX_PANES]. Source:
+         *  build.json::sections[*].tabs. */
+        val tabs: Boolean = false,
         /** Aggregator sections live ONLY in the bottom nav (Communication,
          *  Infos, Suite, Tools today). Their `tiles*` lists are deep-link
          *  pointers into real content sections, not pages of their own. */
@@ -565,6 +573,7 @@ object Sections {
                     pages           = pages,
                     defaultChildren = kids,
                     singlePage      = o.optBoolean("single_page", false),
+                    tabs            = o.optBoolean("tabs", false),
                     isAggregator    = o.optBoolean("is_aggregator", false),
                     tilesShared     = parseTiles("tiles_shared"),
                     tilesApps       = parseTiles("tiles_apps"),

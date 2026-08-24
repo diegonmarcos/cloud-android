@@ -67,10 +67,10 @@ class LauncherNavController(private val host: NavHost) {
         }
 
         val section = Sections.byId(id)
-        // Aggregators used to fork here into tab hosts (Cloud|Phone, Apps|Admin).
-        // Those children are declared `pages` now, so aggregators take the same
-        // page-grid branch as every other section and [aggregatorPage] renders
-        // whichever one the user picks.
+        // Aggregators used to fork here into two bespoke tab hosts (Cloud|Phone,
+        // Apps|Admin). Their children are declared `pages` now, so the single
+        // data-driven [SectionTabsFragment] covers every tabbed section — see
+        // [isTabbed] for which ones those are.
         val content: Fragment = when {
             section == null -> SectionFragment.forSection(id, label)
             // Single-page section (e.g. wg) — the section IS that page: open
@@ -84,6 +84,8 @@ class LauncherNavController(private val host: NavHost) {
                 (SectionPages.pagesFor(id).firstOrNull { it.id == pg.id }?.factory?.invoke())
                     ?: SectionFragment.forSection(id, pg.id)
             }
+            // Tabbed section — one strip over one pane per page on tablets.
+            isTabbed(section) -> SectionTabsFragment.newInstance(id, initialPage)
             section.pages.isNotEmpty() -> {
                 // Pages and Actions are shown as two labelled groups, off the
                 // same `is_action` flag the bottom star splits its two arcs by.
@@ -130,6 +132,11 @@ class LauncherNavController(private val host: NavHost) {
             if (idx >= 0) walkIndex = idx
         }
 
+        // A tabbed section is already showing every page it has — the strip
+        // owns [initialPage] (it selects that tab) and there is no detail pane
+        // to seed, so nothing more to do here.
+        if (section != null && isTabbed(section)) return
+
         // Land on a specific page when asked. On tablets, fall back to the
         // section's first real page so the 60% detail pane opens with content
         // instead of the "Select an item" placeholder — the master keeps
@@ -143,6 +150,24 @@ class LauncherNavController(private val host: NavHost) {
             openSectionPage(id, landing)
         }
     }
+
+    /**
+     * True when [section] renders as ONE tab strip over its pages
+     * ([SectionTabsFragment]) — one pane per page on a tablet — rather than a
+     * grid of page icons. Declared per section via build.json `tabs`, so no
+     * section id is named here.
+     *
+     * Two guards on top of the flag. Action pages dispatch a target instead of
+     * producing a fragment, so they have nothing to put in a pane. And past
+     * [SectionTabsFragment.MAX_PANES] there are no stable pane host ids left —
+     * such a section falls through to the page grid, which on a tablet already
+     * IS page icons on the left with the one you pick rendered on the right
+     * (configs' 12 pages, mail's 9, tools' 8).
+     */
+    private fun isTabbed(section: Sections.Section): Boolean =
+        section.tabs &&
+            section.pages.size in 2..SectionTabsFragment.MAX_PANES &&
+            section.pages.none { it.action.isNotBlank() }
 
     fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) {
         // Establish the section grid as the back-stack BASE *first*, so Back from
@@ -165,20 +190,55 @@ class LauncherNavController(private val host: NavHost) {
             val pageEntry = Sections.byId(sectionId)?.pages?.firstOrNull { it.id == pageId }
             host.recordPage(sectionId, pageId, pageEntry?.label ?: pageId, pageEntry?.iconName ?: "")
         }
-        val section = Sections.byId(sectionId)
-        val page = section?.pages?.firstOrNull { it.id == pageId }
-        val frag = when {
-            sectionId == "mail" -> MailPages.fragmentFor(pageId, args)
-            section != null && page != null && page.facet -> aggregatorPage(section, page)
-            else -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
-                ?.factory?.invoke() ?: SectionFragment.forSection(sectionId, pageId)
+        // Tabbed section: every page is already on screen (tablet) or one tap
+        // away on the strip (phone), so "open page X" means SELECT it, not
+        // push a second copy over the top.
+        Sections.byId(sectionId)?.let { sec ->
+            if (isTabbed(sec)) {
+                goSection(sectionId, sec.label, pageId)
+                host.closeDrawerIfOpen()
+                return
+            }
         }
+        syncModeForPage(pageId)
+        val frag = pageFragment(sectionId, pageId, args)
         host.closeDrawerIfOpen()
         // On tablets the page opens in the side-by-side DETAIL pane; the MASTER
         // (section grid) keeps owning the shell chrome, so a ShellOverride page
         // must NOT take it over there. Single-pane phones apply chrome as usual.
         if (!host.isTwoPane()) host.applyChrome(frag)
         host.pushContent(frag)
+    }
+
+    /**
+     * The page→Fragment routing, shared by [openSectionPage] (which pushes one
+     * onto the back stack / into the detail pane) and [SectionTabsFragment]
+     * (which commits one into each pane). Deliberately PURE — no chrome, no
+     * mode side-effects — so a caller rendering N pages at once doesn't fire
+     * them N times. Callers that open a single page pair it with
+     * [syncModeForPage].
+     */
+    fun pageFragment(sectionId: String, pageId: String, args: Bundle? = null): Fragment {
+        val section = Sections.byId(sectionId)
+        val page = section?.pages?.firstOrNull { it.id == pageId }
+        return when {
+            sectionId == "mail" -> MailPages.fragmentFor(pageId, args)
+            section != null && page != null && page.facet -> aggregatorPage(section, page)
+            else -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
+                ?.factory?.invoke() ?: SectionFragment.forSection(sectionId, pageId)
+        }
+    }
+
+    /**
+     * A page named for a ModePrefs mode also SETS it, so the Home grid, drawer
+     * and bottom-nav icon variants follow the page the user just landed on —
+     * what the retired `mode:` target used to do. Separate from [pageFragment]
+     * so the tab strip can fire it on SELECTION only: with every pane rendered
+     * at once, doing it at render time would fire once per pane and the last
+     * one would win.
+     */
+    fun syncModeForPage(pageId: String) {
+        if (pageId == "apps" || pageId == "admin") host.applyMode(pageId)
     }
 
     /**
@@ -190,10 +250,6 @@ class LauncherNavController(private val host: NavHost) {
      * before pages absorbed both.
      */
     private fun aggregatorPage(section: Sections.Section, page: Sections.Page): Fragment {
-        // A facet named after a ModePrefs mode also SETS it, so the Home grid,
-        // drawer and bottom-nav icon variants follow the page the user just
-        // opened — what the retired `mode:` target used to do.
-        if (page.id == "apps" || page.id == "admin") host.applyMode(page.id)
         val title = "${section.label} · ${page.label}"
         return when {
             Sections.aggregatorIsStack(section, page.id) ->
