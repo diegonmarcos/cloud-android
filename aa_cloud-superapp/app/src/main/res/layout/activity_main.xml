@@ -312,7 +312,7 @@
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_liquid_glass">
+            android:background="@drawable/bg_nav_island">
 
             <com.google.android.material.bottomnavigation.BottomNavigationView
                 android:id="@+id/bottom_nav"
