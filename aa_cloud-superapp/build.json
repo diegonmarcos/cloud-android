@@ -485,7 +485,7 @@
       "swipe_up": "action:open_home_apps_phone",
       "swipe_left": "open_last_superapp_page",
       "swipe_right": "open_last_android_app",
-      "swipe_down": "tab:phone:suite"
+      "swipe_down": "page:suite/phone"
     }
   },
   "shizuku_diagnostics": {
@@ -943,10 +943,10 @@
         }
       ]
     },
-    "_doc": "Navigation taxonomy \u2014 data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Adding a new section = one entry here + one drawable + one fragment placeholder.",
+    "_doc": "Navigation taxonomy - data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Every section child is a PAGE: one `pages` list per section feeds the section grid, the bottom-nav long-press fan, the Sirius ring and the tablet detail pane. The retired `tab:` and `mode:` target prefixes and the per-section `long_press` list were all just 'open child X of section Y' - write `page:<section>/<page>`. Adding a new section = one entry here + one drawable + one fragment placeholder.",
     "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal \u2192 IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
     "_doc_home_index": "The `home` section is the master index \u2014 its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
-    "_doc_aggregator_sections": "Aggregator sections are pure NAV \u2014 their `tiles` deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each aggregator can declare tiles_shared (same in both modes), tiles_apps (front-end mode), and tiles_admin (back-end mode). The Apps/Admin global toggle (ModePrefs in MainActivity) picks which set renders. The bottom nav hosts exactly these 5 aggregators today: Communication \u00b7 Infos \u00b7 HOME \u00b7 Suite \u00b7 Tools.",
+    "_doc_aggregator_sections": "Aggregator sections are pure NAV - their tiles deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each declares tiles_shared (same in both modes), tiles_apps, tiles_admin, and/or the stack_* equivalents. Its children are plain `pages`; the ones marked \"facet\": true render THIS section's tiles_<page-id> / stack_<page-id> / tile_groups instead of a SectionPages fragment (LauncherNavController.aggregatorPage), which is how Suite's Cloud and every Apps|Admin pair are drawn. Non-facet siblings (Tools' c3, quant, ...) are ordinary content pages. The bottom nav hosts exactly these 5 aggregators today: Communication - Infos - HOME - Suite - Tools.",
     "sections": [
       {
         "id": "communication",
@@ -957,22 +957,20 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "_doc_long_press": "Long-press the Inboxes bottom-nav item \u2014 same mechanism as Infos/Labs. `mode:<apps|admin>` (MainActivity.onTileClicked) applies the ModePrefs mode then re-opens this section.",
-        "long_press": [
+        "pages": [
           {
             "id": "apps",
             "label": "Apps",
             "icon": "ic_chat",
-            "target": "mode:apps:communication"
+            "facet": true
           },
           {
             "id": "admin",
             "label": "Admin",
             "icon": "ic_p_c3_workflows",
-            "target": "mode:admin:communication"
+            "facet": true
           }
         ],
-        "_doc_modes": "Split from the old single-mode tiles_shared/stack_shared into tiles_apps/stack_apps (today's Inboxes content, unchanged) + tiles_admin (new). Both tilesApps/tilesAdmin non-empty now qualifies Inboxes for TabbedSectionFragment (LauncherNavController.goSection), same as Infos/Labs \u2014 real in-page Apps|Admin tab buttons, not just the long_press fan menu.",
         "tiles_admin": [
           {
             "id": "pmboards",
@@ -1072,18 +1070,18 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "long_press": [
+        "pages": [
           {
             "id": "apps",
             "label": "Apps",
             "icon": "ic_p_logs",
-            "target": "mode:apps:infos"
+            "facet": true
           },
           {
             "id": "admin",
             "label": "Admin",
             "icon": "ic_p_c3_workflows",
-            "target": "mode:admin:infos"
+            "facet": true
           }
         ],
         "tiles_apps": [
@@ -1363,19 +1361,17 @@
           "title": "Active Apps",
           "limit": 8
         },
-        "_doc_long_press": "Long-press the Suite bottom-nav item. `tab:<cloud|phone>` (MainActivity.onTileClicked) re-opens Suite on that SuiteCloudPhoneTabsFragment tab.",
-        "long_press": [
+        "pages": [
           {
             "id": "cloud",
             "label": "Cloud",
             "icon": "ic_suite",
-            "target": "tab:cloud:suite"
+            "facet": true
           },
           {
             "id": "phone",
             "label": "Phone",
-            "icon": "ic_p_dialer",
-            "target": "tab:phone:suite"
+            "icon": "ic_p_dialer"
           }
         ],
         "_doc_phone_app_groups": "Curated phone apps surfaced in Suite/Phone, grouped under the same titled sections used by Suite/Cloud (AI \u00b7 Data Primary \u00b7 Data Apps \u00b7 Tools Primary \u00b7 Tools Dashboards \u00b7 Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden \u2014 editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
@@ -1673,18 +1669,48 @@
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
-        "long_press": [
+        "pages": [
           {
             "id": "apps",
             "label": "Apps",
             "icon": "ic_p_sol_tools",
-            "target": "mode:apps:tools"
+            "facet": true
           },
           {
             "id": "admin",
             "label": "Admin",
             "icon": "ic_p_c3_stack",
-            "target": "mode:admin:tools"
+            "facet": true
+          },
+          {
+            "id": "c3",
+            "label": "C3",
+            "icon": "ic_p_c3_stack"
+          },
+          {
+            "id": "data-ml",
+            "label": "Data & ML",
+            "icon": "ic_database"
+          },
+          {
+            "id": "engineering",
+            "label": "Engineering",
+            "icon": "ic_wg"
+          },
+          {
+            "id": "quant",
+            "label": "Quant & Markets",
+            "icon": "ic_fin"
+          },
+          {
+            "id": "aero-space",
+            "label": "Aero & Space",
+            "icon": "ic_world"
+          },
+          {
+            "id": "circus",
+            "label": "Circus",
+            "icon": "ic_solutions"
           }
         ],
         "tiles_shared": [
@@ -1723,38 +1749,6 @@
             "label": "Circus",
             "icon": "ic_solutions",
             "target": "page:tools/circus"
-          }
-        ],
-        "pages": [
-          {
-            "id": "c3",
-            "label": "C3",
-            "icon": "ic_p_c3_stack"
-          },
-          {
-            "id": "data-ml",
-            "label": "Data & ML",
-            "icon": "ic_database"
-          },
-          {
-            "id": "engineering",
-            "label": "Engineering",
-            "icon": "ic_wg"
-          },
-          {
-            "id": "quant",
-            "label": "Quant & Markets",
-            "icon": "ic_fin"
-          },
-          {
-            "id": "aero-space",
-            "label": "Aero & Space",
-            "icon": "ic_world"
-          },
-          {
-            "id": "circus",
-            "label": "Circus",
-            "icon": "ic_solutions"
           }
         ],
         "tiles_apps": [
@@ -3053,7 +3047,7 @@
         "kind": "phone_configs"
       }
     ],
-    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list \u2014 the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's sub-pages (mode tabs + Cloud/Phone tabs + the Home-Apps overlay). Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement \u2014 `mode` (apps|admin, for Tabbed sections Infos/Labs), `tab` (cloud|phone, for Suite's SuiteCloudPhoneTabsFragment), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body tab). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here \u2014 no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
+    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list - the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's pages and the Home-Apps overlay. Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement - `page` (any page id of that section: apps|admin|cloud|phone|c3|...), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body page). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here - no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
     "swipe_walk": [
       {
         "id": "comms",
@@ -3063,13 +3057,13 @@
       {
         "id": "infos-apps",
         "section": "infos",
-        "mode": "apps",
+        "page": "apps",
         "label": "Infos \u00b7 Apps"
       },
       {
         "id": "infos-admin",
         "section": "infos",
-        "mode": "admin",
+        "page": "admin",
         "label": "Infos \u00b7 Admin"
       },
       {
@@ -3087,25 +3081,25 @@
       {
         "id": "suite-cloud",
         "section": "suite",
-        "tab": "cloud",
+        "page": "cloud",
         "label": "Suite \u00b7 Cloud"
       },
       {
         "id": "suite-phone",
         "section": "suite",
-        "tab": "phone",
+        "page": "phone",
         "label": "Suite \u00b7 Phone"
       },
       {
         "id": "labs-apps",
         "section": "tools",
-        "mode": "apps",
+        "page": "apps",
         "label": "Labs \u00b7 Apps"
       },
       {
         "id": "labs-admin",
         "section": "tools",
-        "mode": "admin",
+        "page": "admin",
         "label": "Labs \u00b7 Admin"
       },
       {
@@ -4534,7 +4528,7 @@
         }
       ]
     },
-    "_doc_modes": "Global UI mode toggle (Apps \u2194 Admin). Lives in the toolbar (top-right). Aggregator sections render tiles_apps OR tiles_admin based on currentMode; sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences \u2014 not encrypted, it's just a view-pref).",
+    "_doc_modes": "Global UI mode (Apps <-> Admin). No longer a toolbar toggle: Apps and Admin are ordinary PAGES of the sections that have both, marked \"facet\": true. Opening one sets the mode, so the Home grid, drawer and bottom-nav icon variants (icon_apps/icon_admin) follow the page just opened. Sections with tiles_shared ignore the mode. Persisted via ModePrefs (regular SharedPreferences - not encrypted, it's just a view-pref).",
     "_doc_home_actions": "App-level action tiles shown in the Home master TileGrid AFTER the section tiles. Each `action_type` is handled by MainActivity.onTileClicked('action:<id>'). A URL-shaped action_type is launched via launchUri. Extend by adding entries here \u2014 never hardcoded in Kotlin.",
     "home_actions": [],
     "_doc_home_drawer_prepend": "Drawer menu entries prepended ABOVE the first section. Same {label, icon, action_type} shape as home_actions; dispatched through MainActivity.dispatchHomeAction. Use for quick-access items that aren't tied to a single section \u2014 e.g. opening the swipe-up Home Apps sheet from the drawer too.",
@@ -6261,13 +6255,13 @@
         "id": "suite-cloud-quickmarks",
         "label": "Suite \u00b7 Cloud",
         "icon": "ic_suite",
-        "target": "tab:cloud:suite"
+        "target": "page:suite/cloud"
       },
       {
         "id": "suite-phone-quickmarks",
         "label": "Suite \u00b7 Phone",
         "icon": "ic_suite",
-        "target": "tab:phone:suite"
+        "target": "page:suite/phone"
       },
       {
         "id": "constellation",

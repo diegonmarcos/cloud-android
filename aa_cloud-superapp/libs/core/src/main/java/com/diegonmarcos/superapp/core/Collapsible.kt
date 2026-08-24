@@ -7,7 +7,7 @@ package com.diegonmarcos.superapp.core
  * they're already on.
  *
  * Lives in libs:core so both app/ (AggregatorStackFragment,
- * TabbedSectionFragment, MainActivity dispatcher) and feature
+ * MainActivity dispatcher) and feature
  * modules (libs:browser's BrowserHostFragment, future libs:&lt;x&gt;
  * hosts) can implement / use the same interface without a
  * back-reference from libs into app.

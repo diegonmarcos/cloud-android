@@ -54,8 +54,8 @@ class LauncherToolbarFx(
 
     // ── long-press fan menu on every bottom-nav item ─────────────────────
     /** Home keeps its own fixed 4-bubble layout ([HomeFanMenu.HOME_ITEMS]);
-     *  the other 4 items render their build.json::sections[*].long_press
-     *  list (Sections.longPress) — empty ⇒ no fan menu for that item. */
+     *  the other 4 items render their build.json::sections[*].pages
+     *  list (Sections.Section.pages) — empty ⇒ no fan menu for that item. */
     private fun installNavFanMenus() {
         bottomNav.post {
             val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: run {
@@ -70,8 +70,17 @@ class LauncherToolbarFx(
                 } else {
                     val sectionId = sectionIdForNavId(navId) ?: continue
                     val section = Sections.byId(sectionId) ?: continue
-                    section.longPress.map { t ->
-                        t.target to (Sections.iconResFor(itemView.context, t.iconName) to t.label)
+                    // The fan menu IS the section's page list — one declaration
+                    // in build.json feeds the section grid, this menu, the
+                    // Sirius ring and the tablet detail pane.
+                    // ponytail: geometry tops out at 4 bubbles (1 top + 3 along
+                    // the bottom row), so a longer page list is truncated here.
+                    // Widen HomeFanMenu's layout if a section ever needs more.
+                    section.pages.take(4).map { p ->
+                        val target =
+                            if (p.action.isNotBlank()) p.action else "page:$sectionId/${p.id}"
+                        target to
+                            (Sections.iconResFor(itemView.context, p.iconName ?: "") to p.label)
                     }
                 }
                 if (fanItems.isEmpty()) continue

@@ -8,22 +8,16 @@ import com.diegonmarcos.superapp.ui.Haptics
 import com.diegonmarcos.superapp.ui.IslandWaveView
 import com.diegonmarcos.superapp.launcher.Pages
 import com.diegonmarcos.superapp.launcher.TileGridFragment
-import com.diegonmarcos.superapp.launcher.TabbedSectionFragment
 import com.diegonmarcos.superapp.launcher.CircularMenuTree
 import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.launcher.SectionPages
 import com.diegonmarcos.superapp.launcher.SectionMenuFragment
-import com.diegonmarcos.superapp.launcher.SectionFragment
 import com.diegonmarcos.superapp.launcher.PlaceholderDrawerFragment
-import com.diegonmarcos.superapp.launcher.MinimalistBlackFragment
 import com.diegonmarcos.superapp.launcher.LauncherStatusStripView
-import com.diegonmarcos.superapp.launcher.HomeFanMenu
 import com.diegonmarcos.superapp.launcher.HomeDrawerFragment
 import com.diegonmarcos.superapp.launcher.Home3DFragment
 import com.diegonmarcos.superapp.launcher.DetailPlaceholderFragment
-import com.diegonmarcos.superapp.launcher.GroupedTilesFragment
 import com.diegonmarcos.superapp.launcher.AppDrawerSheetFragment
-import com.diegonmarcos.superapp.launcher.AggregatorStackFragment
 import com.diegonmarcos.superapp.devtools.DevControlBridge
 import com.diegonmarcos.superapp.settings.LauncherProfiles
 import com.diegonmarcos.superapp.settings.LauncherTheme
@@ -33,7 +27,6 @@ import com.diegonmarcos.superapp.settings.LauncherThemePrefs
 import com.diegonmarcos.superapp.settings.LauncherProfilePrefs
 import com.diegonmarcos.superapp.settings.LauncherConfigFragment
 import com.diegonmarcos.superapp.settings.ImportConfigsFragment
-import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.launcher.RecentCloudTiles
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
@@ -231,7 +224,7 @@ class MainActivity : AppCompatActivity(),
     /** Global UI mode (apps | admin). Hot-swaps which aggregator
      *  tile-list renders in Communication/Infos/Suite/Tools. */
     private lateinit var modePrefs: ModePrefs
-    override val currentMode: String get() = modePrefs.mode
+    private val currentMode: String get() = modePrefs.mode
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.i(TAG, "onCreate enter")
@@ -610,7 +603,7 @@ class MainActivity : AppCompatActivity(),
             }
             "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
             "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
-            // Target-string actions ("tab:phone:suite") route through the tile
+            // Target-string actions ("page:suite/phone") route through the tile
             // grammar. Anything else IS a home action — hand it to the one
             // dispatcher that knows them all (open_home_apps_phone, ...).
             // Was: a blind openAppDrawerSheet(), which silently turned every
@@ -961,8 +954,8 @@ class MainActivity : AppCompatActivity(),
 
     /** Land the right pane on the given section's TileGrid (or placeholder
      *  if the section has no declared sub-pages). */
-    private fun goSection(id: String, label: String, initialTab: String = "") =
-        nav.goSection(id, label, initialTab)
+    private fun goSection(id: String, label: String, initialPage: String = "") =
+        nav.goSection(id, label, initialPage)
 
     /** Public entry so transient UI (e.g. the status-strip network popup's
      *  KDE Connect row) can navigate to a section. */
@@ -1381,13 +1374,13 @@ class MainActivity : AppCompatActivity(),
         // chokepoint, so every surface that fires a tile click
         // contributes, not just the Suite page itself.
         RecentCloudTiles.recordOpen(this, tileId)
-        // App Tabs capture — the single dispatch chokepoint. `action:`/`tab:`/
-        // `mode:` destinations are real "pages" (Constellation, Suite·All, the
-        // Suite tabs) but aren't recorded by goSection/openSectionPage, so they
-        // never reached the Tabs shelf. If the target is a named page in the
-        // build.json::ui.pages registry, record it here. `section:`/`page:`/
-        // `extapp:` are deliberately excluded — their own paths already record.
-        if (tileId.startsWith("action:") || tileId.startsWith("tab:") || tileId.startsWith("mode:")) {
+        // App Tabs capture — the single dispatch chokepoint. `action:` targets
+        // are real "pages" (Constellation, Suite·All) but aren't recorded by
+        // goSection/openSectionPage, so they never reached the Tabs shelf. If
+        // the target is a named page in the build.json::ui.pages registry,
+        // record it here. `section:`/`page:`/`extapp:` are deliberately
+        // excluded — their own paths already record.
+        if (tileId.startsWith("action:")) {
             runCatching { Pages.byTarget(tileId)?.let { recordTarget(tileId, it.label, it.icon) } }
         }
         when {
@@ -1400,39 +1393,10 @@ class MainActivity : AppCompatActivity(),
                 // Two forms: "<sectionId>/<pageId>" (deep-link from Home
                 // grouped tiles) or just "<pageId>" (within current section).
                 val parts = payload.split("/", limit = 2)
-                if (parts.size == 2) {
-                    openSectionPage(parts[0], parts[1], null)
-                    return
-                }
-                val pid = parts[0]
-                val page = SectionPages.pagesFor(currentSection).firstOrNull { it.id == pid } ?: return
-                val frag = page.factory.invoke()
-                applyChrome(frag)
-                supportFragmentManager.beginTransaction()
-                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-                    .replace(R.id.fragment_container, frag)
-                    .addToBackStack(null)
-                    .commit()
-                // App Tabs: in-section sub-page navigations were never recorded
-                // (only nav-routed section + deep-link pages were), so pages
-                // inside Configs etc. never landed in the Tabs shelf. Record here.
-                runCatching { recordPage(currentSection, pid, page.label, "") }
+                if (parts.size == 2) openSectionPage(parts[0], parts[1], null)
+                else openSectionPage(currentSection, parts[0], null)
             }
             tileId.startsWith("action:") -> dispatchHomeAction(tileId.removePrefix("action:"))
-            // mode:<apps|admin>:<sectionId> / tab:<cloud|phone>:<sectionId> —
-            // long-press fan-menu targets (build.json::sections[*].long_press,
-            // LauncherToolbarFx). Force a mode/Suite-tab then open the section.
-            tileId.startsWith("mode:") -> {
-                val (m, sec) = tileId.removePrefix("mode:").split(":", limit = 2)
-                    .let { it[0] to it.getOrElse(1) { currentSection } }
-                applyMode(m)
-                goSection(sec, Sections.byId(sec)?.label ?: sec)
-            }
-            tileId.startsWith("tab:") -> {
-                val (t, sec) = tileId.removePrefix("tab:").split(":", limit = 2)
-                    .let { it[0] to it.getOrElse(1) { currentSection } }
-                goSection(sec, Sections.byId(sec)?.label ?: sec, t)
-            }
             // extapp:<appId>/<forkKey> — open a companion app (Cloud-Comms),
             // installing it from build.json::ui.external_apps if absent.
             tileId.startsWith("extapp:") -> launchExternalApp(tileId.removePrefix("extapp:"))
@@ -1520,8 +1484,8 @@ class MainActivity : AppCompatActivity(),
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet()
             }
-            // Same Home Apps drawer, opened on the Phone tab — legacy long-press
-            // target (build.json::sections[suite].long_press).
+            // Same Home Apps drawer, opened on its Phone body page. Distinct
+            // from the Suite ▸ Phone PAGE — this is the overlay sheet.
             actionType == "open_home_apps_phone" -> {
                 if (currentSection != "home") goHome()
                 openAppDrawerSheet("phone")
@@ -1593,12 +1557,8 @@ class MainActivity : AppCompatActivity(),
         // then push BusinessCardFragment onto the content container.
         drawerLayout.closeDrawer(GravityCompat.START)
         val frag = BusinessCardFragment.newInstance()
-        applyChrome(frag)
-        supportFragmentManager.beginTransaction()
-            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-            .replace(R.id.fragment_container, frag)
-            .addToBackStack(null)
-            .commit()
+        if (!isTwoPane()) applyChrome(frag)
+        pushContent(frag)
     }
 
     /** Slide the Notification Centre down from the top. Reuses the
@@ -1623,18 +1583,6 @@ class MainActivity : AppCompatActivity(),
      *  future re-introduction of text overlay. */
     private fun refreshDynamicIsland() { /* no-op — see IslandWaveView */ }
 
-    /** Called by [TabbedSectionFragment] after it has written the new
-     *  mode into [ModePrefs]. Refreshes every other surface that
-     *  reads from ModePrefs (drawer island label, bottom-nav icons,
-     *  options menu) — but does NOT re-trigger [goSection] because
-     *  the tab strip already rendered its own new child fragment;
-     *  rebuilding the section would unmount the tab fragment itself. */
-    fun notifyModeChanged() {
-        refreshDynamicIsland()
-        refreshBottomNavIconsForMode()
-        invalidateOptionsMenu()
-    }
-
     override fun onDrawerModeToggle() {
         // Flip global Apps↔Admin. Don't close the drawer — the user just
         // tapped the identity row and may want to see the flip take
@@ -1647,12 +1595,9 @@ class MainActivity : AppCompatActivity(),
         // for a process restart. Same data path drives the home_groups
         // tiles + drawer rows.
         refreshBottomNavIconsForMode()
-        // Refresh any visible aggregator so its tiles re-render for the
-        // new mode.
-        if (currentSection.isNotEmpty()) {
-            val sec = Sections.byId(currentSection)
-            if (sec?.isAggregator == true) goSection(currentSection, currentLabel)
-        }
+        // No section re-render: an aggregator's body is its PAGE GRID now, and
+        // that is mode-independent. Re-entering goSection here would also kick
+        // a tablet's detail pane back to the section's first page.
     }
 
     /** Rebind bottom-nav menu items to their per-mode icons AND to

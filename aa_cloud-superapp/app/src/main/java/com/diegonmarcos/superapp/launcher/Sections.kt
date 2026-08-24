@@ -4,7 +4,6 @@ import com.diegonmarcos.superapp.App
 import com.diegonmarcos.superapp.MainActivity
 import com.diegonmarcos.superapp.system.ModePrefs
 import com.diegonmarcos.superapp.rss.RssFeedFragment
-import com.diegonmarcos.superapp.apps.SuitePhoneAppsFragment
 import com.diegonmarcos.superapp.cloud.NewsFeedFragment
 
 import android.content.Context
@@ -74,13 +73,8 @@ object Sections {
         val stackShared: List<StackPanel> = emptyList(),
         val stackApps:   List<StackPanel> = emptyList(),
         val stackAdmin:  List<StackPanel> = emptyList(),
-        /** Long-press fan-menu items for this bottom-nav item (build.json::
-         *  sections[*].long_press). Same {id,label,icon,target} shape as any
-         *  other tile — dispatched through onTileClicked, plus two extra
-         *  target prefixes it understands: mode:<apps|admin>:<sectionId> and
-         *  tab:<cloud|phone>:<sectionId>. Empty ⇒ no fan menu (e.g. Home,
-         *  which keeps its own separate hardcoded HomeFanMenu). */
-        val longPress: List<AggTile> = emptyList(),
+        // long_press is gone: the fan menu now renders [pages] directly, so a
+        // section declares its children ONCE. See LauncherToolbarFx.
     ) {
         /** Pick the right icon for the user's current mode.
          *  Apps vs Admin fall back to [iconName] when no override exists. */
@@ -204,6 +198,13 @@ object Sections {
          *  `action` so the section's tile grid behaves like the old
          *  home_actions array). */
         val action: String = "",
+        /** True ⇒ this page is a FACET of its aggregator section: it renders
+         *  the section's own `tiles_<id>` / `stack_<id>` / `tile_groups` data
+         *  ([LauncherNavController.aggregatorPage]) instead of a
+         *  [SectionPages] factory. Declared in build.json so no page id is
+         *  hardcoded in Kotlin — Tools' `apps`/`admin` are facets while its
+         *  `c3`, `quant`, … siblings are ordinary content pages. */
+        val facet: Boolean = false,
     )
 
     /** App-level action tile shown in the Home master TileGrid below the
@@ -410,6 +411,7 @@ object Sections {
                         iconName = pIcon,
                         subPages = subs,
                         action   = po.optString("action", ""),
+                        facet    = po.optBoolean("facet", false),
                     ))
                 }
             }
@@ -563,7 +565,6 @@ object Sections {
                     stackShared     = parseStack("stack_shared"),
                     stackApps       = parseStack("stack_apps"),
                     stackAdmin      = parseStack("stack_admin"),
-                    longPress       = parseTiles("long_press"),
                 )
             )
         }
@@ -581,8 +582,10 @@ object Sections {
     data class WalkStop(
         val id: String,
         val section: String,
-        val mode: String? = null,
-        val tab: String? = null,
+        /** Page of [section] this stop lands on (build.json::swipe_walk[].page).
+         *  Replaces the old `tab` (Suite) / `mode` (Infos, Labs) split — both
+         *  were always just "which child of the section", i.e. a page id. */
+        val page: String? = null,
         val sheet: String? = null,
         val label: String = "",
     )
@@ -601,8 +604,7 @@ object Sections {
             out.add(WalkStop(
                 id      = o.optString("id", ""),
                 section = o.getString("section"),
-                mode    = o.optString("mode", "").takeIf { it.isNotBlank() },
-                tab     = o.optString("tab", "").takeIf { it.isNotBlank() },
+                page    = o.optString("page", "").takeIf { it.isNotBlank() },
                 sheet   = o.optString("sheet", "").takeIf { it.isNotBlank() },
                 label   = o.optString("label", ""),
             ))

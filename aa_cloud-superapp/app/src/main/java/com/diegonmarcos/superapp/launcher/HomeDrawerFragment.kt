@@ -111,10 +111,10 @@ class HomeDrawerFragment : Fragment() {
                 Haptics.tap(it)
                 (activity as? NavigationListener)?.onDrawerBusinessCardOpen()
             }
-            // The Apps↔Admin global swap icon is RETIRED. Mode switching
-            // now lives inside the section pages that have both
-            // variants (Infos, Labs) via TabbedSectionFragment's "Apps
-            // · Admin" tab strip. Hide the swap icon so the drawer
+            // The Apps↔Admin global swap icon is RETIRED. Apps and Admin
+            // are ordinary PAGES of the sections that have both (Infos,
+            // Tools, Communication) — pick one from the section grid,
+            // the fan menu or the Sirius ring. Hide the swap icon so the drawer
             // identity row stays a pure profile row. The
             // NavigationListener.onDrawerModeToggle hook is kept for
             // backwards-compatibility in case any other surface

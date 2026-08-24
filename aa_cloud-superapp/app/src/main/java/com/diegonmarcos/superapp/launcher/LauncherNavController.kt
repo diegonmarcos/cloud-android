@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.R
-import com.diegonmarcos.superapp.apps.SuiteCloudPhoneTabsFragment
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.settings.LauncherTheme
 import com.diegonmarcos.superapp.settings.LauncherThemePrefs
@@ -48,10 +47,13 @@ class LauncherNavController(private val host: NavHost) {
         host.applyLauncherChrome()
     }
 
-    fun goSection(id: String, label: String, initialTab: String = "") {
+    /** [initialPage] — land on this page of [id] instead of stopping at the
+     *  section's page grid. Used by walk stops and `page:<section>/<page>`
+     *  deep links. Blank ⇒ the grid (phones), or the first real page seeded
+     *  into the detail pane (tablets). */
+    fun goSection(id: String, label: String, initialPage: String = "") {
         if (id == "home") { goHome(); return }
         val ctx = host.navContext()
-        val mode = host.currentMode
         host.currentSection = id
         host.currentLabel = label
         host.setSectionTitle(label)
@@ -61,27 +63,12 @@ class LauncherNavController(private val host: NavHost) {
         }
 
         val section = Sections.byId(id)
+        // Aggregators used to fork here into tab hosts (Cloud|Phone, Apps|Admin).
+        // Those children are declared `pages` now, so aggregators take the same
+        // page-grid branch as every other section and [aggregatorPage] renders
+        // whichever one the user picks.
         val content: Fragment = when {
             section == null -> SectionFragment.forSection(id, label)
-            section.isAggregator && (
-                (section.tilesApps.isNotEmpty() && section.tilesAdmin.isNotEmpty()) ||
-                (section.stackApps.isNotEmpty() && section.stackAdmin.isNotEmpty())
-            ) -> TabbedSectionFragment.newInstance(section.id, label)
-            section.isAggregator && Sections.aggregatorIsStack(section, mode) ->
-                AggregatorStackFragment.newInstance(section.id, label, mode)
-            section.isAggregator && section.tileGroups.isNotEmpty() && section.id == "suite" ->
-                SuiteCloudPhoneTabsFragment.newInstance(initialTab)
-            section.isAggregator && section.tileGroups.isNotEmpty() ->
-                GroupedTilesFragment.newInstance(section.id)
-            section.isAggregator -> {
-                val aggTiles = Sections.aggregatorTilesFor(section, mode).map { t ->
-                    TileGridFragment.Tile(
-                        id = t.target, label = t.label,
-                        iconRes = Sections.iconResFor(ctx, t.iconName))
-                }
-                val titleSuffix = if (mode == "admin") " · Admin" else " · Apps"
-                TileGridFragment.newInstance(label + titleSuffix, aggTiles)
-            }
             // Single-page section (e.g. wg) — the section IS that page: open
             // it directly instead of rendering a pointless 1-tile grid. Opt-in
             // via build.json single_page; action pages still need the grid tap.
@@ -117,9 +104,23 @@ class LauncherNavController(private val host: NavHost) {
         if (!inWalkNav) {
             val stops = Sections.swipeWalk()
             val idx = stops.indexOfFirst {
-                it.sheet == null && it.section == id && (it.mode == null || it.mode == mode)
+                it.sheet == null && it.section == id &&
+                    (it.page == null || it.page == initialPage)
             }
             if (idx >= 0) walkIndex = idx
+        }
+
+        // Land on a specific page when asked. On tablets, fall back to the
+        // section's first real page so the 60% detail pane opens with content
+        // instead of the "Select an item" placeholder — the master keeps
+        // showing the page grid, which is the whole point of the split.
+        val landing = initialPage.ifBlank {
+            if (host.isTwoPane())
+                section?.pages?.firstOrNull { it.action.isBlank() }?.id.orEmpty()
+            else ""
+        }
+        if (landing.isNotBlank() && section?.pages?.any { it.id == landing } == true) {
+            openSectionPage(id, landing)
         }
     }
 
@@ -144,9 +145,12 @@ class LauncherNavController(private val host: NavHost) {
             val pageEntry = Sections.byId(sectionId)?.pages?.firstOrNull { it.id == pageId }
             host.recordPage(sectionId, pageId, pageEntry?.label ?: pageId, pageEntry?.iconName ?: "")
         }
-        val frag = when (sectionId) {
-            "mail" -> MailPages.fragmentFor(pageId, args)
-            else   -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
+        val section = Sections.byId(sectionId)
+        val page = section?.pages?.firstOrNull { it.id == pageId }
+        val frag = when {
+            sectionId == "mail" -> MailPages.fragmentFor(pageId, args)
+            section != null && page != null && page.facet -> aggregatorPage(section, page)
+            else -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
                 ?.factory?.invoke() ?: SectionFragment.forSection(sectionId, pageId)
         }
         host.closeDrawerIfOpen()
@@ -155,6 +159,36 @@ class LauncherNavController(private val host: NavHost) {
         // must NOT take it over there. Single-pane phones apply chrome as usual.
         if (!host.isTwoPane()) host.applyChrome(frag)
         host.pushContent(frag)
+    }
+
+    /**
+     * Render a FACET page (build.json `"facet": true`) — a child of an
+     * aggregator section that shows the SECTION's own tile/stack data rather
+     * than a [SectionPages] factory. The facet id is the `tiles_<id>` /
+     * `stack_<id>` suffix, so which renderer wins is decided purely by which
+     * lists build.json declares. Was the `mode`/`tab` fork in [goSection]
+     * before pages absorbed both.
+     */
+    private fun aggregatorPage(section: Sections.Section, page: Sections.Page): Fragment {
+        // A facet named after a ModePrefs mode also SETS it, so the Home grid,
+        // drawer and bottom-nav icon variants follow the page the user just
+        // opened — what the retired `mode:` target used to do.
+        if (page.id == "apps" || page.id == "admin") host.applyMode(page.id)
+        val title = "${section.label} · ${page.label}"
+        return when {
+            Sections.aggregatorIsStack(section, page.id) ->
+                AggregatorStackFragment.newInstance(section.id, section.label, page.id)
+            section.tileGroups.isNotEmpty() -> GroupedTilesFragment.newInstance(section.id)
+            else -> {
+                val ctx = host.navContext()
+                TileGridFragment.newInstance(title, Sections.aggregatorTilesFor(section, page.id)
+                    .map { t ->
+                        TileGridFragment.Tile(
+                            id = t.target, label = t.label,
+                            iconRes = Sections.iconResFor(ctx, t.iconName))
+                    })
+            }
+        }
     }
 
     // ── horizontal-swipe walk-list (build.json::ui.swipe_walk) ───────────
@@ -167,7 +201,7 @@ class LauncherNavController(private val host: NavHost) {
         navigateWalkStop(stops[walkIndex])
     }
 
-    /** Render one walk stop: a section page (optional mode / Suite tab) or the
+    /** Render one walk stop: a section page (optional `page`) or the
      *  Home-Apps overlay sheet. */
     fun navigateWalkStop(stop: Sections.WalkStop) {
         inWalkNav = true
@@ -177,9 +211,8 @@ class LauncherNavController(private val host: NavHost) {
                 if (host.currentSection != "home") goHome()
                 host.openAppDrawerSheet(stop.sheet)
             } else {
-                if (stop.mode != null && host.currentMode != stop.mode) host.applyMode(stop.mode)
                 val label = Sections.byId(stop.section)?.label ?: stop.section
-                goSection(stop.section, label, stop.tab.orEmpty())
+                goSection(stop.section, label, stop.page.orEmpty())
             }
         } finally {
             inWalkNav = false
@@ -194,7 +227,6 @@ class LauncherNavController(private val host: NavHost) {
     interface NavHost {
         var currentSection: String
         var currentLabel: String
-        val currentMode: String
         fun navContext(): Context
         fun isDefaultLauncher(): Boolean
         /** True on tablets (sw600dp) where opened pages render in a side-by-side

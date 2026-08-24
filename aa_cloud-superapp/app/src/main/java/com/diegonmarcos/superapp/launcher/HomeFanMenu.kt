@@ -41,7 +41,7 @@ object HomeFanMenu {
 
     /** Home's own fixed 4-bubble layout — unchanged by the generic
      *  [show] overload other bottom-nav items now use (build.json::
-     *  sections[*].long_press). Kept separate per the user's "Home
+     *  sections[*].pages). Kept separate per the user's "Home
      *  stays as it is" instruction. */
     val HOME_ITEMS = listOf(
         // "config", NOT "configs" — build.json declares the section id
