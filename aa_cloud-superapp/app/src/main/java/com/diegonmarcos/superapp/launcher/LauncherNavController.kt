@@ -84,8 +84,6 @@ class LauncherNavController(private val host: NavHost) {
                 (SectionPages.pagesFor(id, includeHidden = true).firstOrNull { it.id == pg.id }?.factory?.invoke())
                     ?: SectionFragment.forSection(id, pg.id)
             }
-            // Tabbed section — one strip over one pane per page on tablets.
-            isTabbed(section) -> SectionTabsFragment.newInstance(id, initialPage)
             // Tablet, more pages than we have panes for (Configs' 12, Mail's
             // 9, Drive's …). The section's own page list becomes the LEFT
             // rail and the detail column renders whatever the user taps —
@@ -97,6 +95,11 @@ class LauncherNavController(private val host: NavHost) {
             // shows that the rail does not is the radial-menu extras.
             host.isTwoPane() && section.pages.size > SectionTabsFragment.MAX_PANES ->
                 SectionMenuFragment.newInstance(id)
+            // Tabbed section — the strip over one pane per page on a tablet,
+            // over a single swapping pane on a phone. The branch above already
+            // took anything a tablet has too many pages to pane, so page count
+            // no longer gates this: a phone keeps its strip at any size.
+            isTabbed(section) -> SectionTabsFragment.newInstance(id, initialPage)
             section.pages.isNotEmpty() -> {
                 // Pages and Actions are shown as two labelled groups, off the
                 // same `is_action` flag the bottom star splits its two arcs by.
@@ -146,7 +149,7 @@ class LauncherNavController(private val host: NavHost) {
         // A tabbed section is already showing every page it has — the strip
         // owns [initialPage] (it selects that tab) and there is no detail pane
         // to seed, so nothing more to do here.
-        if (section != null && isTabbed(section)) return
+        if (content is SectionTabsFragment) return
 
         // Land on a specific page when asked. On tablets, fall back to the
         // section's first real page so the 60% detail pane opens with content
@@ -177,7 +180,7 @@ class LauncherNavController(private val host: NavHost) {
      */
     private fun isTabbed(section: Sections.Section): Boolean =
         section.tabs &&
-            section.pages.size in 2..SectionTabsFragment.MAX_PANES &&
+            section.pages.size >= 2 &&
             section.pages.none { it.action.isNotBlank() }
 
     fun openSectionPage(sectionId: String, pageId: String, args: Bundle? = null) {
