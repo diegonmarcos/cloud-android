@@ -171,14 +171,17 @@
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
     "libs:core": {
+      "dir": "../ea_cloud-libs-shared/libs/core",
       "type": "library",
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
     },
     "libs:devtools": {
+      "dir": "../ea_cloud-libs-shared/libs/devtools",
       "type": "library"
     },
     "libs:updater": {
+      "dir": "../ea_cloud-libs-shared/libs/updater",
       "type": "library",
       "depends_on": [
         "libs:core",

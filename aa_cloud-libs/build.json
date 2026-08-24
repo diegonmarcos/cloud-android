@@ -7,6 +7,7 @@
     "_doc_scan": "Every directory under ANY of these paths that contains a build.gradle is a library module and gets an APK. A list because library modules live beside the app that grew them: superapp holds most, while cal/contacts/maps/news/wallet stayed in their own repos. Module names must be unique ACROSS roots - the name is both the gradle path and the applicationId suffix - and settings.gradle fails the build if two roots collide. Paths are relative to this repo's root.",
     "scan": [
       "../ea_cloud-superapp/libs",
+      "../ea_cloud-libs-shared/libs",
       "../ea_cloud-calendar/libs",
       "../ea_cloud-contacts/libs",
       "../ea_cloud-nav/libs",

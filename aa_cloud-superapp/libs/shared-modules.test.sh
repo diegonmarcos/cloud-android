@@ -111,7 +111,7 @@ PY
 
 # 7. The constellation permission is declared once, in the shared core, so it
 #    merges into every app. That is what makes Cloud Perms on-by-default.
-CORE_MANIFEST=ea_cloud-superapp/libs/core/src/main/AndroidManifest.xml
+CORE_MANIFEST=ea_cloud-libs-shared/libs/core/src/main/AndroidManifest.xml
 PERM=com.diegonmarcos.cloud.permission.CONSTELLATION_DATA
 if command grep -q "$PERM" "$CORE_MANIFEST" 2>/dev/null; then
     command grep -q 'android:protectionLevel="signature"' "$CORE_MANIFEST" \
@@ -224,7 +224,7 @@ PY
 fi
 
 # 11b. The same trigger drift, one level up. An APP repo compiles shared modules
-#      BY REFERENCE out of ea_cloud-superapp/libs/ (settings.gradle re-points
+#      BY REFERENCE out of another repo (settings.gradle re-points
 #      projectDir there), so those sources sit OUTSIDE the repo's own path
 #      filter. Miss one and the workflow simply never fires for a shared-lib
 #      change: the app keeps shipping whatever APK was last built for an
@@ -239,21 +239,23 @@ for bj in sorted(glob.glob('ea_cloud-*/build.json')):
         mods_cfg = (json.load(open(bj)).get('modules') or {})
     except Exception:
         continue  # build.json validity is rule 1's job, not this one.
-    mods = sorted({v['dir'].rstrip('/').split('/')[-1]
+    # Any module whose dir escapes this repo, as a repo-relative path.
+    # Derived from the dir itself, NOT matched against a hardcoded root, so
+    # moving the shared libs to a new top-level dir needs no edit here.
+    mods = sorted({os.path.normpath(os.path.join(repo, v['dir'])).replace(os.sep, '/')
                    for v in mods_cfg.values()
                    if isinstance(v, dict)
-                   and 'ea_cloud-superapp/libs' in str(v.get('dir', ''))})
+                   and str(v.get('dir', '')).startswith('../ea_cloud-')})
     wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ea_cloud-'):]
     if not mods or not os.path.exists(wf):
         continue
     have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
-    if 'ea_cloud-superapp/libs' in have:
-        continue  # wildcard already covers every module (ship-cloud-libs).
     for m in mods:
-        if 'ea_cloud-superapp/libs/%s' % m not in have:
-            print(f"{os.path.basename(wf)} has no trigger for "
-                  f"ea_cloud-superapp/libs/{m}/** — {repo} compiles it, so a "
-                  f"change there ships no new {repo} APK")
+        # A parent wildcard (ship-cloud-libs watches whole roots) counts.
+        if m in have or os.path.dirname(m) in have:
+            continue
+        print(f"{os.path.basename(wf)} has no trigger for {m}/** — "
+              f"{repo} compiles it, so a change there ships no new {repo} APK")
 PYAPPROOTS
 )
 if [ -z "$app_root_drift" ]; then
@@ -377,7 +379,7 @@ fi
 #     three taps started three installs at once.
 #     The guarantee therefore lives in UpdateInstaller.install - the one place
 #     every caller passes through - so a new call site cannot forget it.
-UI_KT=ea_cloud-superapp/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/UpdateInstaller.kt
+UI_KT=ea_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/UpdateInstaller.kt
 if [ -f "$UI_KT" ]; then
     if command grep -q 'InstallGate.serialised' "$UI_KT"; then
         note ok "every install is serialised at UpdateInstaller.install"

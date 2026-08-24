@@ -27,29 +27,29 @@
     "libs:media": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-superapp/libs/media"
+      "dir": "../ea_cloud-libs-shared/libs/media"
     },
     "libs:translate": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-superapp/libs/translate"
+      "dir": "../ea_cloud-libs-shared/libs/translate"
     },
     "libs:translate-mlkit": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-superapp/libs/translate-mlkit"
+      "dir": "../ea_cloud-libs-shared/libs/translate-mlkit"
     },
     "libs:voice": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-superapp/libs/voice"
+      "dir": "../ea_cloud-libs-shared/libs/voice"
     },
     "libs:voice-vosk": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-superapp/libs/voice-vosk"
+      "dir": "../ea_cloud-libs-shared/libs/voice-vosk"
     },
-    "_doc": "Feature libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle."
+    "_doc": "Feature libs are shared from ../ea_cloud-libs-shared/libs/ via relative project references in settings.gradle."
   },
   "keyboard_media": {
     "_doc": "Same block as ea_cloud-superapp and ea_cloud-keyboard — shared vault secret. build.sh sops-decrypts vault_secrets → GIPHY_API_KEY env var → Gradle BuildConfig → MediaRuntime.configure().",
