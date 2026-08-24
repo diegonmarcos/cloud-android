@@ -205,6 +205,13 @@ object Sections {
          *  hardcoded in Kotlin — Tools' `apps`/`admin` are facets while its
          *  `c3`, `quant`, … siblings are ordinary content pages. */
         val facet: Boolean = false,
+        /** true = this entry DOES something and returns (Update All, ...)
+         *  rather than opening a page. Declared, not inferred: `import`,
+         *  `keyboard` and `constellation` all carry an action: target yet
+         *  open real UI, so the target prefix is the wrong signal. Drives
+         *  the Pages/Actions split in the Configs grid and the ArcMenu's
+         *  outer/inner arcs. */
+        val isAction: Boolean = false,
     )
 
     /** App-level action tile shown in the Home master TileGrid below the
@@ -412,6 +419,7 @@ object Sections {
                         subPages = subs,
                         action   = po.optString("action", ""),
                         facet    = po.optBoolean("facet", false),
+                        isAction = po.optBoolean("is_action", false),
                     ))
                 }
             }

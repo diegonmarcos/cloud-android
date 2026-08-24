@@ -22,6 +22,10 @@ import com.diegonmarcos.superapp.settings.LauncherThemePrefs
  */
 class LauncherNavController(private val host: NavHost) {
 
+    /** The two headings the Configs grid groups its tiles under. */
+    private val GROUP_PAGES = "Pages"
+    private val GROUP_ACTIONS = "Actions"
+
     /** Cursor into [Sections.swipeWalk]; authoritative for swipe stepping,
      *  re-synced when the user navigates by other means (tail of [goSection]). */
     var walkIndex: Int = 0
@@ -80,14 +84,30 @@ class LauncherNavController(private val host: NavHost) {
                 (SectionPages.pagesFor(id).firstOrNull { it.id == pg.id }?.factory?.invoke())
                     ?: SectionFragment.forSection(id, pg.id)
             }
-            section.pages.isNotEmpty() -> TileGridFragment.newInstance(
-                title = label,
-                tiles = section.pages.map { p ->
+            section.pages.isNotEmpty() -> {
+                // Pages and Actions are shown as two labelled groups, off the
+                // same `is_action` flag the bottom star splits its two arcs by.
+                // The extras declared on this section's radial node (KDE
+                // Connect, Animations, Copy Info) are merged in so the grid and
+                // the star list the same actions — declared once in build.json.
+                val own = section.pages.map { p ->
                     TileGridFragment.Tile(
                         id = if (p.action.isNotBlank()) p.action else "page:${p.id}",
                         label = p.label,
-                        iconRes = p.iconName?.let { Sections.iconResFor(ctx, it) } ?: 0)
-                })
+                        iconRes = p.iconName?.let { Sections.iconResFor(ctx, it) } ?: 0,
+                        group = if (p.isAction) GROUP_ACTIONS else GROUP_PAGES)
+                }
+                val extra = com.diegonmarcos.superapp.onehand.CircularMenu.config().nodes
+                    .firstOrNull { it.childKey == id }?.actions.orEmpty()
+                    .map { TileGridFragment.Tile(it.target, it.label, Sections.iconResFor(ctx, it.iconName), GROUP_ACTIONS) }
+                val actions = own.filter { it.group == GROUP_ACTIONS } + extra
+                TileGridFragment.newInstance(
+                    title = label,
+                    // No actions in this section? Drop the headings entirely —
+                    // a lone "PAGES" banner over every other grid is noise.
+                    tiles = if (actions.isEmpty()) own.map { it.copy(group = "") }
+                            else own.filter { it.group == GROUP_PAGES } + actions)
+            }
             section.defaultChildren.isNotEmpty() -> TileGridFragment.newInstance(
                 title = label,
                 tiles = section.defaultChildren.mapIndexed { i, lbl ->

@@ -37,7 +37,9 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         fun onTileClicked(tileId: String)
     }
 
-    data class Tile(val id: String, val label: String, @DrawableRes val iconRes: Int)
+    /** [group] = optional heading this tile sits under ("Pages", "Actions").
+     *  Blank means ungrouped, which is how every section but Configs builds. */
+    data class Tile(val id: String, val label: String, @DrawableRes val iconRes: Int, val group: String = "")
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -46,6 +48,7 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         val ids    = args.getStringArray(ARG_TILE_IDS)    ?: emptyArray()
         val labels = args.getStringArray(ARG_TILE_LABELS) ?: emptyArray()
         val icons  = args.getIntArray(ARG_TILE_ICONS)     ?: IntArray(0)
+        val groups = args.getStringArray(ARG_TILE_GROUPS) ?: emptyArray()
 
         view.findViewById<TextView>(R.id.tile_grid_title).text = title
 
@@ -62,7 +65,17 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         val palette  = tilePalette(requireContext())
         val cols = COLS
         var i = 0
+        var shownGroup: String? = null
         while (i < ids.size) {
+            // Group header ("Pages" / "Actions"). Blank group = ungrouped, which
+            // is every other section — they render exactly as before.
+            val g = groups.getOrNull(i).orEmpty()
+            if (g.isNotEmpty() && g != shownGroup) { grid.addView(groupHeader(g)); shownGroup = g }
+            // A row never straddles a group boundary: count how many of the next
+            // `cols` tiles still belong to this group, and start the next group
+            // on a fresh row.
+            var span = 0
+            while (span < cols && i + span < ids.size && groups.getOrNull(i + span).orEmpty() == g) span++
             // wrap_content row → tile keeps its item_tile.xml fixed height,
             // ScrollView handles overflow. Auto-fit blew up single-row
             // sections into giant tiles.
@@ -76,7 +89,9 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
             }
             var c = 0
             while (c < cols) {
-                if (i + c < ids.size) {
+                // c < span, not i + c < ids.size: a short last row of a group
+                // gets spacers so the next group starts on its own row.
+                if (c < span) {
                     val tileView = inflater.inflate(R.layout.item_tile, row, false)
                     (tileView.layoutParams as LinearLayout.LayoutParams).apply {
                         width  = 0
@@ -98,7 +113,7 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
                 c++
             }
             grid.addView(row)
-            i += cols
+            i += span
         }
     }
 
@@ -134,6 +149,20 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         }
     }
 
+    /** Section heading between tile rows. Built in code rather than as a
+     *  layout — one TextView, no state, nothing to inflate. */
+    private fun groupHeader(text: String): TextView {
+        val d = resources.displayMetrics.density
+        return TextView(requireContext()).apply {
+            this.text = text.uppercase()
+            setTextColor(0xFF9C8BC4.toInt())
+            textSize = 11f
+            letterSpacing = 0.12f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding((14 * d).toInt(), (14 * d).toInt(), (14 * d).toInt(), (6 * d).toInt())
+        }
+    }
+
     private fun tilePalette(ctx: android.content.Context): List<Pair<Int, Int>> = listOf(
         ctx.color(R.color.tile_blue_bg)   to ctx.color(R.color.tile_blue_fg),
         ctx.color(R.color.tile_green_bg)  to ctx.color(R.color.tile_green_fg),
@@ -156,6 +185,7 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
         private const val ARG_TILE_IDS    = "tile_ids"
         private const val ARG_TILE_LABELS = "tile_labels"
         private const val ARG_TILE_ICONS  = "tile_icons"
+        private const val ARG_TILE_GROUPS = "tile_groups"
 
         fun newInstance(title: String, tiles: List<Tile>) = TileGridFragment().apply {
             arguments = bundleOf(
@@ -163,6 +193,7 @@ class TileGridFragment : Fragment(R.layout.fragment_tile_grid) {
                 ARG_TILE_IDS    to tiles.map { it.id }.toTypedArray(),
                 ARG_TILE_LABELS to tiles.map { it.label }.toTypedArray(),
                 ARG_TILE_ICONS  to tiles.map { it.iconRes }.toIntArray(),
+                ARG_TILE_GROUPS to tiles.map { it.group }.toTypedArray(),
             )
         }
     }
