@@ -130,12 +130,21 @@ object ArcMenu {
             color = Color.WHITE; textAlign = Paint.Align.CENTER
             textSize = dp(9f); isFakeBoldText = true  // smaller font
         }
+        // Actions arc is TEXT ONLY (no icon), so its type is a notch smaller
+        // than the pages arc's caption. textSize is re-set on every draw —
+        // see onDraw's shrink-to-fit.
+        private val actionTextPx = dp(8f)
+        private val lblA  = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textAlign = Paint.Align.CENTER
+            textSize = actionTextPx; isFakeBoldText = true
+        }
 
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
 
-        /** One icon's placement: centre, plus the radius to draw it at. */
-        private data class Slot(val x: Float, val y: Float, val nr: Float)
+        /** One icon's placement: centre, the radius to draw it at, and which
+         *  arc it belongs to — the inner (actions) arc draws text, not icons. */
+        private data class Slot(val x: Float, val y: Float, val nr: Float, val action: Boolean)
 
         // LAYOUT — TWO concentric upward half-moons centred on the star. The
         // OUTER arc carries the section's pages, the INNER one its actions
@@ -160,27 +169,30 @@ object ArcMenu {
             // needs r = count*minGap/PI. Grows with the count, never past the clamp.
             fun radiusFor(count: Int): Float =
                 minOf(cap, maxOf(ring, count * minGap / Math.PI.toFloat()))
-            fun place(idx: List<Int>, r: Float) {
+            fun place(idx: List<Int>, r: Float, action: Boolean) {
                 // Icon radius = half the neighbour spacing (discs at most touch),
                 // capped at nodeR and measured PER ARC — a crowded inner arc must
                 // not shrink the roomy outer one.
-                val nr = if (idx.size < 2) nodeR else
+                // Text-only discs need no icon room, so the actions arc caps
+                // smaller than the pages arc.
+                val nrCap = if (action) nodeR * 0.78f else nodeR
+                val nr = if (idx.size < 2) nrCap else
                     ((2.0 * r * sin(Math.PI / (2 * idx.size))).toFloat() / 2f - dp(2f))
-                        .coerceIn(dp(12f), nodeR)
+                        .coerceIn(dp(11f), nrCap)
                 idx.forEachIndexed { k, i ->
                     // (k + 0.5) insets both ends by half a step, so no icon sits ON
                     // the horizontal — exactly where the screen edge is nearest.
                     val ang = Math.PI * (1.0 - (k + 0.5) / idx.size)
-                    out[i] = Slot((cx + r * cos(ang)).toFloat(), (cy - r * sin(ang)).toFloat(), nr)
+                    out[i] = Slot((cx + r * cos(ang)).toFloat(), (cy - r * sin(ang)).toFloat(), nr, action)
                 }
             }
             when {
-                outer.isEmpty() -> place(inner, radiusFor(inner.size))
-                inner.isEmpty() -> place(outer, radiusFor(outer.size))
+                outer.isEmpty() -> place(inner, radiusFor(inner.size), true)
+                inner.isEmpty() -> place(outer, radiusFor(outer.size), false)
                 else -> {
                     val rOut = radiusFor(outer.size)
-                    place(outer, rOut)
-                    place(inner, (rOut - ringGap).coerceAtLeast(dead + nodeR))
+                    place(outer, rOut, false)
+                    place(inner, (rOut - ringGap).coerceAtLeast(dead + nodeR), true)
                 }
             }
             out.map { it!! }
@@ -216,6 +228,18 @@ object ArcMenu {
             slots.forEachIndexed { i, s ->
                 // Background disc
                 c.drawCircle(s.x, s.y, s.nr, if (i == active) hot else disc)
+                if (s.action) {
+                    // Actions arc: label only, no icon lookup at all. Shrink
+                    // further when the word is wider than its disc so a long
+                    // one ("Copy Info") can't spill onto its neighbour.
+                    val t = items[i].label
+                    lblA.textSize = actionTextPx
+                    val room = s.nr * 1.8f
+                    val w = lblA.measureText(t)
+                    if (w > room) lblA.textSize = actionTextPx * room / w
+                    c.drawText(t, s.x, s.y + lblA.textSize / 3f, lblA)
+                    return@forEachIndexed
+                }
                 val bmp = icon(items[i].iconName)
                 if (bmp != null) {
                     // Icon in upper half of disc, label below inside disc

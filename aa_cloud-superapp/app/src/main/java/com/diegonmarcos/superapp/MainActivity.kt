@@ -586,7 +586,10 @@ class MainActivity : AppCompatActivity(),
     /** Dispatch a home-screen swipe action by name. Values come from
      *  build.json::onehand.home_swipes baked into BuildConfig. */
     private fun handleHomeSwipeAction(action: String) {
-        when (action) {
+        // build.json declares these prefixed ("action:open_home_apps_phone");
+        // the Configs picker (HomeSwipePrefs.ACTIONS) stores them bare. Strip
+        // once so both vocabularies hit the same branches.
+        when (val a = action.removePrefix("action:")) {
             "open_home_apps" -> openAppDrawerSheet()
             "open_last_superapp_page" -> {
                 val last = runCatching {
@@ -607,9 +610,13 @@ class MainActivity : AppCompatActivity(),
             }
             "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
             "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
-            // Target-string actions (e.g. "tab:phone:suite", "action:open_home_apps")
-            // route through the same dispatch grammar as tile taps.
-            else             -> if (action.contains(':')) onTileClicked(action) else openAppDrawerSheet()
+            // Target-string actions ("tab:phone:suite") route through the tile
+            // grammar. Anything else IS a home action — hand it to the one
+            // dispatcher that knows them all (open_home_apps_phone, ...).
+            // Was: a blind openAppDrawerSheet(), which silently turned every
+            // unlisted id — swipe-up's open_home_apps_phone included — into
+            // the Cloud drawer.
+            else             -> if (a.contains(':')) onTileClicked(a) else dispatchHomeAction(a)
         }
     }
 
