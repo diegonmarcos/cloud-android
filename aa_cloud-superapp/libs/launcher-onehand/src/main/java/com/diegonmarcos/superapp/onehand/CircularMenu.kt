@@ -172,6 +172,9 @@ object CircularMenu {
         private val ring = dp(cfg.radiusDp)  // base outer-arc radius (grows with count)
         private val dead = dp(28)            // finger inside this → nothing selected
         private val nodeR = dp(26)
+        // Inner-ring discs. Both bands otherwise clamp to nodeR and come out
+        // the same size, so "smaller" has to be stated, not derived.
+        private val actionR = dp(17)
         private val leafR = dp(22)
         private val iconPx = (dp(30)).toInt()
 
@@ -184,6 +187,14 @@ object CircularMenu {
         private val back  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(200, 60, 60, 80) }
         private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE; textAlign = Paint.Align.CENTER; textSize = dp(11)
+        }
+        // The inner ring is drawn the way ArcMenu draws its action arc:
+        // smaller disc, label inside it, no icon lookup at all. Same dp(8)
+        // so the two stars read as one design.
+        private val actionTextPx = dp(8)
+        private val lblA = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textAlign = Paint.Align.CENTER
+            textSize = actionTextPx; isFakeBoldText = true
         }
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
@@ -282,13 +293,16 @@ object CircularMenu {
         // on different circles, so the old first-pair measurement sized every icon
         // off a meaningless gap. Neighbours on a half-moon of m items are
         // 2·r·sin(π/2m) apart.
-        private fun nodeRadiusFor(slots: List<Slot>): Float {
-            val tightest = slots.groupBy { it.r }
-                .filterValues { it.size >= 2 }
-                .map { (r, band) -> (2.0 * r * sin(Math.PI / (2 * band.size))).toFloat() }
-                .minOrNull() ?: return nodeR
-            return (tightest / 2f - dp(2)).coerceIn(dp(12), nodeR)
-        }
+        // ...and the answer is PER BAND, not one number for the lot. Taking the
+        // minimum across bands let the crowded inner ring shrink the outer icons
+        // too, which with eight sections on the outside dropped them under the
+        // dp(19) label cutoff and silently hid every label.
+        private fun nodeRadiiFor(slots: List<Slot>): Map<Float, Float> =
+            slots.groupBy { it.r }.mapValues { (r, band) ->
+                if (band.size < 2) nodeR
+                else ((2.0 * r * sin(Math.PI / (2 * band.size))).toFloat() / 2f - dp(2))
+                    .coerceIn(dp(12), nodeR)
+            }
 
         private var fx = cx; private var fy = cy
         private var active = -1               // highlighted item in the top level
@@ -353,10 +367,12 @@ object CircularMenu {
                 val t = (slots.minOf { it.r } - nodeR) / len
                 c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
-            val nr = nodeRadiusFor(slots)
+            val radii = nodeRadiiFor(slots)
             slots.forEachIndexed { i, s ->
                 val (nx, ny) = slotPos(lv, s)
                 val nd = lv.items[i]
+                val nr = (radii[s.r] ?: nodeR)
+                    .coerceAtMost(if (nd.action) actionR else nodeR)
                 val isBack = nd.target == TARGET_BACK
                 val bgPaint = when {
                     i == active -> hot
@@ -364,6 +380,16 @@ object CircularMenu {
                     else        -> disc
                 }
                 c.drawCircle(nx, ny, nr, bgPaint)
+                if (nd.action) {
+                    // Label only, shrunk to fit its disc so a long one
+                    // ("Share Contacts") cannot spill past the edge.
+                    lblA.textSize = actionTextPx
+                    val room = nr * 1.8f
+                    val w = lblA.measureText(nd.label)
+                    if (w > room) lblA.textSize = actionTextPx * room / w
+                    c.drawText(nd.label, nx, ny + lblA.textSize / 3f, lblA)
+                    return@forEachIndexed
+                }
                 icon(nd.iconName)?.let {
                     val h = iconPx / 2f * (nr / nodeR)
                     c.drawBitmap(it, null, RectF(nx - h, ny - h, nx + h, ny + h), null)

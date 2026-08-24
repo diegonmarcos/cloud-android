@@ -189,14 +189,11 @@ class MainActivity : AppCompatActivity(),
                         // kept them off the arc-menu's inner actions arc.
                         ArcMenu.Item(it.label, it.iconName, it.action.ifBlank { "page:$section/${it.id}" }, it.isAction)
                     } +
-                        // Inner ring: the actions declared on this section's
-                        // radial node (KDE Connect, Animations, Copy Info).
-                        // ArcMenu used to merge these itself, but its cfg is
-                        // shared with the recents star, which then showed them
-                        // too — so each host supplies its own ring now.
-                        CircularMenu.config().nodes
-                            .firstOrNull { it.childKey == section }
-                            ?.actions.orEmpty()
+                        // Inner ring (KDE Connect, Animations, Copy Info),
+                        // read from this star's own block. It used to hang off
+                        // the Configs node in circular_menu.nodes, which broke
+                        // when that ring stopped listing Configs at all.
+                        CircularMenu.actionsOf("arc_menu")
                             .map { ArcMenu.Item(it.label, it.iconName, it.target, true) }
             },
         )
