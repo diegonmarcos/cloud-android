@@ -264,6 +264,34 @@ else
     while read -r line; do note FAIL "$line"; done <<< "$app_root_drift"
 fi
 
+# 11c. A shared module that falls back to ea_cloud-libs-shared/build.json bakes
+#      THAT file's data into its BuildConfig, so every workflow watching such a
+#      module must also watch the file. Same silent-staleness failure as 11/11b,
+#      one level down: the trigger list saw libs/voice/** change but not the
+#      registry the module actually reads. The fallback set is grepped out of
+#      the build.gradle files, never listed here, so a new one is covered free.
+fallback_drift=$(python3 - <<'PYFALLBACK'
+import glob, os, re
+SHARED = 'ea_cloud-libs-shared'
+mods = sorted(os.path.basename(os.path.dirname(g))
+              for g in glob.glob(f'{SHARED}/libs/*/build.gradle')
+              if "file('../../build.json')" in open(g).read())
+for wf in sorted(glob.glob('1_cicd/src/cicd/*.yml')):
+    y = open(wf).read()
+    have = set(re.findall(r'^\s*-\s*"([^"]+)"', y, re.M))
+    watched = [m for m in mods
+               if f'{SHARED}/libs/{m}/**' in have or f'{SHARED}/libs/**' in have]
+    if watched and f'{SHARED}/build.json' not in have:
+        print(f"{os.path.basename(wf)} watches {', '.join(watched)} but not "
+              f"{SHARED}/build.json — a model-registry change ships no new APK")
+PYFALLBACK
+)
+if [ -z "$fallback_drift" ]; then
+    note ok "every workflow watching a build.json-fallback module watches the file"
+else
+    while read -r line; do note FAIL "$line"; done <<< "$fallback_drift"
+fi
+
 # 12. Every PackageInstaller.createSession must have an abandonSession on the
 #     failure path IN THE SAME FILE. A session that is neither committed nor
 #     abandoned stays alive in the system across reboots and permanently burns

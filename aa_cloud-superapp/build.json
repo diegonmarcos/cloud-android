@@ -700,40 +700,6 @@
       }
     }
   },
-  "voice": {
-    "_doc": "Offline voice-input (Vosk) model registry for libs:voice, behind the keyboard VOICE toolbar key. libs/voice/build.gradle bakes this into BuildConfig.VOICE_MODELS_JSON + VOICE_DEFAULT_LANGUAGE; VoiceModelManager downloads the model for the active keyboard language lazily on first use, unzips to filesDir/vosk/<dir>, then Vosk runs fully offline (no Google/system speech IME). Add a language = one entry. Small models keep each download ~40-50MB.",
-    "default_language": "en-us",
-    "translate_to": "en",
-    "translate_targets": [
-      "en",
-      "pt",
-      "es",
-      "de",
-      "fr"
-    ],
-    "models": {
-      "en-us": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
-        "dir": "vosk-model-small-en-us-0.15"
-      },
-      "de": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip",
-        "dir": "vosk-model-small-de-0.15"
-      },
-      "es": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip",
-        "dir": "vosk-model-small-es-0.42"
-      },
-      "pt": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.zip",
-        "dir": "vosk-model-small-pt-0.3"
-      },
-      "fr": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip",
-        "dir": "vosk-model-small-fr-0.22"
-      }
-    }
-  },
   "keyboard_dicts": {
     "_doc": "Bundled keyboard dictionaries \u2192 libs/keyboard/src/main/assets/dicts/ (HeliBoard's DictionaryInfoUtils.ASSETS_DICTIONARY_FOLDER). HeliBoard's verbatim mirror already ships main_<locale>.dict for these locales (word suggestions); sync-keyboard-dicts ADDS the matching emoji_<locale>.dict (emoji search) from codeberg.org/Helium314/aosp-dictionaries (GPL-3.0) so each supported language has FULL features. Additive copy (no --delete) so it composes with the HeliBoard mirror; run AFTER sync-heliboard (which rsync --delete's the mirror and would drop these). Locales/types data-driven \u2014 add a locale or a type (with its repo dir) = one entry. NOTE: `locales` = which dicts are BUNDLED (broad, for any language the user adds); `default_languages` = which keyboard subtypes are ENABLED on first run (App.initVendoredKeyboard via SubtypeSettings.addEnabledSubtype) \u2014 distinct lists.",
     "default_languages": [
