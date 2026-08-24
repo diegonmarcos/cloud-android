@@ -1,35 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bottom nav island. Same liquid-glass face as bg_liquid_glass, but laid
-     over an OPAQUE base so the bar stops showing the page scrolling behind
-     it. Its own file because bg_liquid_glass is shared with the top island,
-     the search sheet, the app drawer and the notification centre, which are
-     all meant to stay see-through. -->
+<!-- Bottom nav island. Deliberately NOT bg_liquid_glass: this bar is meant to
+     read as a solid box, so it is a flat opaque fill plus a hairline edge and
+     nothing else. The glass sheen bg_liquid_glass paints on top is what made
+     the top of the bar still look see-through after the base went opaque —
+     a 25%-white gradient over the fill is still a glassy band. It is gone.
+     bg_liquid_glass itself is untouched: the top island, the search sheet,
+     the app drawer and the notification centre are all meant to stay glass. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The opaque base. Darker than the #2D1B69 the window gradient ends on,
-         so the bar reads as a solid box sitting on the page. -->
+    <!-- Opaque fill. Darker than the #2D1B69 the window gradient ends on, so
+         the bar reads as a solid box sitting on the page. -->
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="24dp" />
             <solid android:color="#FF140B26" />
         </shape>
     </item>
-    <!-- Glass sheen, unchanged from bg_liquid_glass — it now blends against
-         the base above instead of the wallpaper. -->
+    <!-- Hairline edge so the box still has a defined boundary. -->
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="24dp" />
-            <gradient
-                android:type="linear"
-                android:angle="135"
-                android:startColor="#40FFFFFF"
-                android:centerColor="#0DFFFFFF"
-                android:endColor="#1AB794F4" />
-        </shape>
-    </item>
-    <!-- Inner-edge highlight — top edge brighter to suggest a light source -->
-    <item>
-        <shape android:shape="rectangle">
-            <corners android:radius="24dp" />
+            <solid android:color="@android:color/transparent" />
             <stroke
                 android:width="1dp"
                 android:color="#33FFFFFF" />
