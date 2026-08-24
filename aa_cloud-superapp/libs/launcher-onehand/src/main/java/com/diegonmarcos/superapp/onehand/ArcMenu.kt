@@ -62,6 +62,12 @@ object ArcMenu {
 
     private val DISABLED = Config(false, "config", 140)
 
+    /** Inner-arc test. An entry whose target fires and returns isn't a page, so
+     *  it belongs on the actions arc. Derived from the target grammar rather
+     *  than a per-item flag — build.json needs no edit to opt in. */
+    private fun isAction(target: String): Boolean =
+        target.startsWith("action:") || target.startsWith("extapp:")
+
     /** Touch stream forwarded from the Canopus star (press → drag → release). */
     interface Session { fun feed(x: Float, y: Float, action: Int) }
 
@@ -71,7 +77,17 @@ object ArcMenu {
     fun open(decor: ViewGroup, cx: Float, cy: Float, host: Host): Session? {
         val cfg   = config()
         if (!cfg.enabled) return null
-        val items = host.itemsFor(cfg.section)
+        // Same two-arc content the Sirius menu builds on descent: the section's
+        // pages from the host, PLUS the actions declared for that section in
+        // build.json::onehand.circular_menu.nodes[].actions (KDE Connect,
+        // Animations, Copy Info, Update All ...). Declared once, shown by both
+        // stars — the bottom star is the one that opens Configs, so this is
+        // where they have to appear.
+        val actions = CircularMenu.config().nodes
+            .firstOrNull { it.childKey == cfg.section }
+            ?.actions.orEmpty()
+            .map { Item(it.label, it.iconName, it.target) }
+        val items = host.itemsFor(cfg.section) + actions
         if (items.isEmpty()) return null
         val v = ArcView(decor.context, cfg.radiusDp, cx, cy, items, host) { decor.removeView(it) }
         decor.addView(v, ViewGroup.LayoutParams(
@@ -98,6 +114,14 @@ object ArcMenu {
         private val nodeR  = dp(26f)
         private val iconPx = dp(22f).toInt()  // icon above the label
         private val dead   = dp(20f)
+        // Arc geometry. minGap = how much arc length one icon claims; margin
+        // keeps a whole icon on screen; topInset clears status bar + toolbar;
+        // ringGap separates the two arcs by at least a whole icon so they can
+        // never overlap.
+        private val minGap   = nodeR * 2 + dp(14f)
+        private val margin   = nodeR + dp(10f)
+        private val topInset = dp(72f)
+        private val ringGap  = nodeR * 2 + dp(6f)
 
         private val scrim = Paint().apply { color = Color.argb(120, 0, 0, 0) }
         private val disc  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 24, 20, 40) }
@@ -110,18 +134,56 @@ object ArcMenu {
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
 
-        // Slots computed once: upper semicircle fanning upward from the star centre.
-        private val slots: List<Pair<Float, Float>> = run {
-            val n = items.size
-            List(n) { i ->
-                val frac = if (n <= 1) 0.5 else i.toDouble() / (n - 1)
-                // Sweep PI (left) → PI/2 (up) → 0 (right); negate sin for screen Y (Y↓)
-                val ang = Math.PI * (1.0 - frac)
-                Pair(
-                    (cx + ring * cos(ang)).toFloat(),
-                    (cy - ring * sin(ang)).toFloat(),
-                )
+        /** One icon's placement: centre, plus the radius to draw it at. */
+        private data class Slot(val x: Float, val y: Float, val nr: Float)
+
+        // LAYOUT — TWO concentric upward half-moons centred on the star. The
+        // OUTER arc carries the section's pages, the INNER one its actions
+        // (target grammar decides — see [isAction]), each spread on its own
+        // half-circle so adding actions never squeezes the pages. slots[i]
+        // maps 1:1 to items[i].
+        //
+        // Was ONE arc at a fixed 200dp radius with items at frac 0 and 1 landing
+        // exactly ON the horizontal — cx +/- (200 + 26)dp, off both edges of any
+        // normal phone — and neighbour spacing shrinking without bound as the
+        // item count grew. Radii are now clamped to the viewport and derived from
+        // the count, and both ends are inset by half a step.
+        private val slots: List<Slot> = run {
+            // Largest radius keeping a whole icon on screen, in the only
+            // directions a half-moon reaches: left, up, right.
+            val cap = (minOf(cx, dm.widthPixels - cx, cy - topInset) - margin)
+                .coerceAtLeast(dead + nodeR)
+            val outer = ArrayList<Int>(); val inner = ArrayList<Int>()
+            items.forEachIndexed { i, item -> (if (isAction(item.target)) inner else outer).add(i) }
+            val out = arrayOfNulls<Slot>(items.size)
+            // A half-moon's arc length is PI*r, so holding `count` icons at minGap
+            // needs r = count*minGap/PI. Grows with the count, never past the clamp.
+            fun radiusFor(count: Int): Float =
+                minOf(cap, maxOf(ring, count * minGap / Math.PI.toFloat()))
+            fun place(idx: List<Int>, r: Float) {
+                // Icon radius = half the neighbour spacing (discs at most touch),
+                // capped at nodeR and measured PER ARC — a crowded inner arc must
+                // not shrink the roomy outer one.
+                val nr = if (idx.size < 2) nodeR else
+                    ((2.0 * r * sin(Math.PI / (2 * idx.size))).toFloat() / 2f - dp(2f))
+                        .coerceIn(dp(12f), nodeR)
+                idx.forEachIndexed { k, i ->
+                    // (k + 0.5) insets both ends by half a step, so no icon sits ON
+                    // the horizontal — exactly where the screen edge is nearest.
+                    val ang = Math.PI * (1.0 - (k + 0.5) / idx.size)
+                    out[i] = Slot((cx + r * cos(ang)).toFloat(), (cy - r * sin(ang)).toFloat(), nr)
+                }
             }
+            when {
+                outer.isEmpty() -> place(inner, radiusFor(inner.size))
+                inner.isEmpty() -> place(outer, radiusFor(outer.size))
+                else -> {
+                    val rOut = radiusFor(outer.size)
+                    place(outer, rOut)
+                    place(inner, (rOut - ringGap).coerceAtLeast(dead + nodeR))
+                }
+            }
+            out.map { it!! }
         }
 
         private var fx = cx; private var fy = cy
@@ -133,7 +195,7 @@ object ArcMenu {
                     fx = x; fy = y
                     active = if (hypot(fx - cx, fy - cy) < dead) -1 else
                         slots.indices.minByOrNull { i ->
-                            val (px, py) = slots[i]; hypot(fx - px, fy - py)
+                            hypot(fx - slots[i].x, fy - slots[i].y)
                         } ?: -1
                     invalidate()
                 }
@@ -151,19 +213,19 @@ object ArcMenu {
 
         override fun onDraw(c: Canvas) {
             c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrim)
-            slots.forEachIndexed { i, (px, py) ->
+            slots.forEachIndexed { i, s ->
                 // Background disc
-                c.drawCircle(px, py, nodeR, if (i == active) hot else disc)
+                c.drawCircle(s.x, s.y, s.nr, if (i == active) hot else disc)
                 val bmp = icon(items[i].iconName)
                 if (bmp != null) {
                     // Icon in upper half of disc, label below inside disc
-                    val h = iconPx / 2f
-                    val iconCy = py - dp(5f)
-                    c.drawBitmap(bmp, null, RectF(px - h, iconCy - h, px + h, iconCy + h), null)
-                    c.drawText(items[i].label, px, py + nodeR - dp(2f), lbl)
+                    val h = minOf(iconPx / 2f, s.nr * 0.62f)
+                    val iconCy = s.y - dp(5f)
+                    c.drawBitmap(bmp, null, RectF(s.x - h, iconCy - h, s.x + h, iconCy + h), null)
+                    c.drawText(items[i].label, s.x, s.y + s.nr - dp(2f), lbl)
                 } else {
                     // No icon: just centered label
-                    c.drawText(items[i].label, px, py + dp(4f), lbl)
+                    c.drawText(items[i].label, s.x, s.y + dp(4f), lbl)
                 }
             }
         }

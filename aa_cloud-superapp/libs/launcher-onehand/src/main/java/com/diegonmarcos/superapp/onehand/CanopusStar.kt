@@ -106,7 +106,14 @@ class CanopusStar(
             val y = s[1] - d[1] + e.y
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    session = ArcMenu.open(decor, x, y, host)
+                    // Anchor at the star's CENTRE, not the touched pixel. The
+                    // glyph carries tap padding on every side, so opening at
+                    // e.x/e.y shifted the whole arc — and its screen-edge clamp —
+                    // by up to a finger-width, and it came out arranged
+                    // differently on every single press.
+                    val ax = s[0] - d[0] + star.width / 2f
+                    val ay = s[1] - d[1] + star.height / 2f
+                    session = ArcMenu.open(decor, ax, ay, host)
                     session?.feed(x, y, MotionEvent.ACTION_DOWN)
                 }
                 MotionEvent.ACTION_MOVE -> session?.feed(x, y, MotionEvent.ACTION_MOVE)
