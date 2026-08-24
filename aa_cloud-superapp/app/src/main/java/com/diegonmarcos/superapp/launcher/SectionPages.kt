@@ -34,12 +34,9 @@ object SectionPages {
 
     data class Page(val id: String, val label: String, val iconName: String = "", val action: String = "", val isAction: Boolean = false, val factory: () -> Fragment)
 
-    /** The section's pages as listed to the user. Pass [includeHidden] when
-     *  RESOLVING a target rather than listing children: a hidden page (Labs'
-     *  c3, quant, …) still has to answer to `page:tools/c3`. */
-    fun pagesFor(sectionId: String, includeHidden: Boolean = false): List<Page> {
+    fun pagesFor(sectionId: String): List<Page> {
         val section = Sections.byId(sectionId) ?: return emptyList()
-        return (if (includeHidden) section.allPages else section.pages).map { p ->
+        return section.pages.map { p ->
             Page(p.id, p.label, p.iconName ?: "", p.action, p.isAction) { factoryFor(sectionId, p.id, p.label) }
         }
     }

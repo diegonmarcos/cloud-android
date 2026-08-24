@@ -162,7 +162,7 @@ class MainActivity : AppCompatActivity(),
     private val siriusStar by lazy {
         SiriusStar(
             activity = this,
-            star = findViewById(R.id.all_apps_sirius_star),
+            star = findViewById(R.id.sirius_star),
             host = object : CircularMenu.Host {
                 override fun navigate(target: String) { onTileClicked(target) }
                 override fun iconBitmap(name: String, sizePx: Int) = iconBitmapFor(name, sizePx)
@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity(),
     private val canopusStar by lazy {
         CanopusStar(
             activity = this,
-            star = findViewById(R.id.configs_canopus_star),
+            star = findViewById(R.id.canopus_star),
             island = findViewById(R.id.bottom_nav_island),
             host = object : ArcMenu.Host {
                 override fun navigate(target: String) { onTileClicked(target) }
@@ -188,13 +188,7 @@ class MainActivity : AppCompatActivity(),
                         // both pointed those entries at a page that isn't there and
                         // kept them off the arc-menu's inner actions arc.
                         ArcMenu.Item(it.label, it.iconName, it.action.ifBlank { "page:$section/${it.id}" }, it.isAction)
-                    } +
-                        // Inner ring (KDE Connect, Animations, Copy Info),
-                        // read from this star's own block. It used to hang off
-                        // the Configs node in circular_menu.nodes, which broke
-                        // when that ring stopped listing Configs at all.
-                        CircularMenu.actionsOf("arc_menu")
-                            .map { ArcMenu.Item(it.label, it.iconName, it.target, true) }
+                    }
             },
         )
     }
@@ -204,7 +198,7 @@ class MainActivity : AppCompatActivity(),
     private val centauriStar by lazy {
         com.diegonmarcos.superapp.onehand.CentaurusStar(
             this,
-            findViewById(R.id.active_apps_centauri_star),
+            findViewById(R.id.centauri_star),
             findViewById(R.id.bottom_nav_island),
         )
     }

@@ -59,10 +59,6 @@ object CircularMenu {
         /** Extra touch padding (dp) around the star so it's easy to hit. */
         val starTapPadDp: Int,
         val nodes: List<Node>,
-        /** Root-level inner ring: `circular_menu.actions[]`. Same split the
-         *  descended levels already do, applied to level 0 — so the top ring
-         *  stays sections-only and the shortcuts sit inside it. */
-        val actions: List<Node> = emptyList(),
     )
 
     /** What the app must provide so the lib can render + act without touching R,
@@ -77,28 +73,6 @@ object CircularMenu {
         fun childrenOf(key: String): List<Child>
     }
 
-    /** `actions[]` -> inner-ring nodes. Every star's inner ring is declared the
-     *  same way in build.json, so they all decode through here. */
-    private fun parseActions(arr: org.json.JSONArray?): List<Node> =
-        (0 until (arr?.length() ?: 0)).map { j ->
-            val a = arr!!.getJSONObject(j)
-            Node(
-                label = a.optString("label"),
-                iconName = a.optString("icon"),
-                target = a.optString("target"),
-                childKey = null,
-                action = true,
-            )
-        }
-
-    /** The inner ring declared under `onehand.<block>.actions[]`, for the stars
-     *  that aren't the radial pie (Centauri's recents_menu). Kept here because
-     *  this is where the baked config is already decoded. */
-    fun actionsOf(block: String): List<Node> = runCatching {
-        val raw = String(Base64.decode(BuildConfig.ONEHAND_CONFIG_B64, Base64.DEFAULT))
-        parseActions(JSONObject(raw).optJSONObject(block)?.optJSONArray("actions"))
-    }.getOrDefault(emptyList())
-
     /** Decode this lib's baked onehand config and pull the circular_menu subtree.
      *  Returns a disabled empty config if absent/malformed (never throws). */
     fun config(): Config = runCatching {
@@ -109,7 +83,18 @@ object CircularMenu {
         val nodes = ArrayList<Node>(arr?.length() ?: 0)
         for (i in 0 until (arr?.length() ?: 0)) {
             val n = arr!!.getJSONObject(i)
-            val acts = parseActions(n.optJSONArray("actions"))
+            val actArr = n.optJSONArray("actions")
+            val acts = ArrayList<Node>(actArr?.length() ?: 0)
+            for (j in 0 until (actArr?.length() ?: 0)) {
+                val a = actArr!!.getJSONObject(j)
+                acts.add(Node(
+                    label = a.optString("label"),
+                    iconName = a.optString("icon"),
+                    target = a.optString("target"),
+                    childKey = null,
+                    action = true,
+                ))
+            }
             nodes.add(Node(
                 label = n.optString("label"),
                 iconName = n.optString("icon"),
@@ -128,7 +113,6 @@ object CircularMenu {
             starBottomPct = star.optDouble("bottom_pct", 0.38).toFloat(),
             starTapPadDp = star.optInt("tap_pad_dp", 22),
             nodes = nodes,
-            actions = parseActions(cm.optJSONArray("actions")),
         )
     }.getOrDefault(DISABLED)
 
@@ -172,9 +156,6 @@ object CircularMenu {
         private val ring = dp(cfg.radiusDp)  // base outer-arc radius (grows with count)
         private val dead = dp(28)            // finger inside this → nothing selected
         private val nodeR = dp(26)
-        // Inner-ring discs. Both bands otherwise clamp to nodeR and come out
-        // the same size, so "smaller" has to be stated, not derived.
-        private val actionR = dp(17)
         private val leafR = dp(22)
         private val iconPx = (dp(30)).toInt()
 
@@ -188,14 +169,6 @@ object CircularMenu {
         private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE; textAlign = Paint.Align.CENTER; textSize = dp(11)
         }
-        // The inner ring is drawn the way ArcMenu draws its action arc:
-        // smaller disc, label inside it, no icon lookup at all. Same dp(8)
-        // so the two stars read as one design.
-        private val actionTextPx = dp(8)
-        private val lblA = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE; textAlign = Paint.Align.CENTER
-            textSize = actionTextPx; isFakeBoldText = true
-        }
         private val iconCache = HashMap<String, Bitmap?>()
         private fun icon(name: String) = iconCache.getOrPut(name) { host.iconBitmap(name, iconPx) }
 
@@ -206,10 +179,7 @@ object CircularMenu {
         // level and pick a different node. i=0 leftmost → i=n-1 rightmost.
         private data class Level(val cx: Float, val cy: Float, val items: List<Node>)
         private val stack = ArrayList<Level>().apply {
-            // Sections on the outer ring, cfg.actions on the inner one — the
-            // same two-arc split every descended level does, so level 0 needs
-            // no special case beyond appending them.
-            add(Level(cx, cy, cfg.nodes + cfg.actions))
+            add(Level(cx, cy, cfg.nodes))   // Node already carries label/icon/target/section
         }
         private val kidCache = HashMap<String, List<Node>>()
         private fun childrenOf(it: Node): List<Node> {
@@ -293,16 +263,13 @@ object CircularMenu {
         // on different circles, so the old first-pair measurement sized every icon
         // off a meaningless gap. Neighbours on a half-moon of m items are
         // 2·r·sin(π/2m) apart.
-        // ...and the answer is PER BAND, not one number for the lot. Taking the
-        // minimum across bands let the crowded inner ring shrink the outer icons
-        // too, which with eight sections on the outside dropped them under the
-        // dp(19) label cutoff and silently hid every label.
-        private fun nodeRadiiFor(slots: List<Slot>): Map<Float, Float> =
-            slots.groupBy { it.r }.mapValues { (r, band) ->
-                if (band.size < 2) nodeR
-                else ((2.0 * r * sin(Math.PI / (2 * band.size))).toFloat() / 2f - dp(2))
-                    .coerceIn(dp(12), nodeR)
-            }
+        private fun nodeRadiusFor(slots: List<Slot>): Float {
+            val tightest = slots.groupBy { it.r }
+                .filterValues { it.size >= 2 }
+                .map { (r, band) -> (2.0 * r * sin(Math.PI / (2 * band.size))).toFloat() }
+                .minOrNull() ?: return nodeR
+            return (tightest / 2f - dp(2)).coerceIn(dp(12), nodeR)
+        }
 
         private var fx = cx; private var fy = cy
         private var active = -1               // highlighted item in the top level
@@ -367,12 +334,10 @@ object CircularMenu {
                 val t = (slots.minOf { it.r } - nodeR) / len
                 c.drawLine(lv.cx, lv.cy, lv.cx + dx * t, lv.cy + dy * t, arrow)
             }
-            val radii = nodeRadiiFor(slots)
+            val nr = nodeRadiusFor(slots)
             slots.forEachIndexed { i, s ->
                 val (nx, ny) = slotPos(lv, s)
                 val nd = lv.items[i]
-                val nr = (radii[s.r] ?: nodeR)
-                    .coerceAtMost(if (nd.action) actionR else nodeR)
                 val isBack = nd.target == TARGET_BACK
                 val bgPaint = when {
                     i == active -> hot
@@ -380,16 +345,6 @@ object CircularMenu {
                     else        -> disc
                 }
                 c.drawCircle(nx, ny, nr, bgPaint)
-                if (nd.action) {
-                    // Label only, shrunk to fit its disc so a long one
-                    // ("Share Contacts") cannot spill past the edge.
-                    lblA.textSize = actionTextPx
-                    val room = nr * 1.8f
-                    val w = lblA.measureText(nd.label)
-                    if (w > room) lblA.textSize = actionTextPx * room / w
-                    c.drawText(nd.label, nx, ny + lblA.textSize / 3f, lblA)
-                    return@forEachIndexed
-                }
                 icon(nd.iconName)?.let {
                     val h = iconPx / 2f * (nr / nodeR)
                     c.drawBitmap(it, null, RectF(nx - h, ny - h, nx + h, ny + h), null)
