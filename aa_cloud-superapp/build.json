@@ -311,60 +311,24 @@
       },
       "radius_dp": 130,
       "ring_gap_dp": 58,
+      "_doc_actions": "Root inner ring of the ALL-APPS (Sirius) star. Drawn the way every other star draws its inner ring: text only, on a smaller disc, with no icon lookup at all - so these carry no \"icon\" key. Targets go through the normal tile dispatcher, which is why plain https, intent:// and app:// URIs all work here with no Kotlin change.",
+      "actions": [
+        { "label": "Go Home", "target": "https://www.google.com/maps/dir/?api=1&destination=Home&travelmode=driving" },
+        { "label": "Share Contacts", "target": "https://linktree.diegonmarcos.com/qrcode.html" },
+        { "label": "AI Chat", "target": "intent://resolve?domain=Cloud_agent_hermes_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_hermes_bot;end" },
+        { "label": "Camera", "target": "intent://#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end" },
+        { "label": "Gallery", "target": "app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com" }
+      ],
+      "_doc_nodes": "Outer ring of the ALL-APPS (Sirius) star: the LEAF pages, not the five parent sections. No \"section\" key on any of them, so CircularMenu leaves childKey null and a tap navigates straight to the target instead of descending a level. Configs is deliberately absent - it has its own star (Canopus/arc_menu).",
       "nodes": [
-        {
-          "label": "Home Apps",
-          "icon": "ic_home_apps",
-          "target": "action:open_home_apps",
-          "section": null
-        },
-        {
-          "label": "Comms",
-          "icon": "ic_chat",
-          "target": "section:communication",
-          "section": "communication"
-        },
-        {
-          "label": "Infos",
-          "icon": "ic_p_logs",
-          "target": "section:infos",
-          "section": "infos"
-        },
-        {
-          "label": "Suite",
-          "icon": "ic_suite",
-          "target": "section:suite",
-          "section": "suite"
-        },
-        {
-          "label": "Labs",
-          "icon": "ic_p_sol_tools",
-          "target": "section:tools",
-          "section": "tools"
-        },
-        {
-          "label": "Configs",
-          "icon": "ic_settings",
-          "target": "section:config",
-          "section": "config",
-          "actions": [
-            {
-              "label": "KDE Connect",
-              "icon": "ic_kde_connect",
-              "target": "action:kde_connect_now"
-            },
-            {
-              "label": "Animations",
-              "icon": "ic_sparkles",
-              "target": "action:toggle_animations"
-            },
-            {
-              "label": "Copy Info",
-              "icon": "ic_copy",
-              "target": "action:about_copy_all"
-            }
-          ]
-        }
+        { "label": "Inboxes Apps", "icon": "ic_chat", "target": "page:communication/apps" },
+        { "label": "Inboxes Admin", "icon": "ic_p_c3_workflows", "target": "page:communication/admin" },
+        { "label": "Infos Apps", "icon": "ic_p_logs", "target": "page:infos/apps" },
+        { "label": "Infos Admin", "icon": "ic_p_c3_workflows", "target": "page:infos/admin" },
+        { "label": "Suite Cloud", "icon": "ic_suite", "target": "page:suite/cloud" },
+        { "label": "Suite Phone", "icon": "ic_p_dialer", "target": "page:suite/phone" },
+        { "label": "Labs Apps", "icon": "ic_p_sol_tools", "target": "page:tools/apps" },
+        { "label": "Labs Admin", "icon": "ic_p_c3_stack", "target": "page:tools/admin" }
       ]
     },
     "defaults": {
@@ -476,9 +440,35 @@
       ]
     },
     "arc_menu": {
+      "_doc_actions": "Inner ring of the CONFIGS (Canopus) star. It lives on this star's own block now, exactly like recents_menu.actions - it used to hang off the Configs node inside circular_menu.nodes, which tied this star to the all-apps ring and broke the moment that ring stopped listing Configs. Text only.",
+      "actions": [
+        { "label": "KDE Connect", "target": "action:kde_connect_now" },
+        { "label": "Animations", "target": "action:toggle_animations" },
+        { "label": "Copy Info", "target": "action:about_copy_all" }
+      ],
       "enabled": true,
       "section": "config",
       "radius_dp": 200
+    },
+    "_doc_recents_menu": "Inner ring of the ACTIVE-APPS (Centauri) star: what you do TO the recent apps, as opposed to the outer ring which launches them. Dispatched by CentaurusStar.recentsAction. Android gives a non-system launcher no way to clear another app's Overview card, so close_all/kill_bg kill BACKGROUND processes (the cards remain) and cards opens the system Overview so the user can swipe them away.",
+    "recents_menu": {
+      "actions": [
+        {
+          "label": "Close All",
+          "icon": "ic_nav_powersave",
+          "target": "recents:close_all"
+        },
+        {
+          "label": "Kill Bg",
+          "icon": "ic_nav_powersave",
+          "target": "recents:kill_bg"
+        },
+        {
+          "label": "Cards",
+          "icon": "ic_mode_apps",
+          "target": "recents:cards"
+        }
+      ]
     },
     "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps (Suite\u00b7Cloud tab) | open_home_apps_phone (Suite\u00b7Phone tab) | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
     "home_swipes": {
@@ -1666,12 +1656,14 @@
         "_doc_pages": "Per-Lab stack pages. Initially empty content (PageContentFragment fallback renders a stub) \u2014 wire each one to its dedicated content fragment as Labs come online.",
         "id": "tools",
         "label": "Labs",
+        "tabs": true,
         "icon": "ic_p_sol_tools",
         "icon_apps": "ic_p_sol_tools",
         "icon_admin": "ic_p_c3_stack",
         "module": null,
         "bottom_nav": true,
-        "is_aggregator": true,
+        "_doc_hidden_pages": "Labs' first children are the two facets only \u2014 Apps | Admin. The six subject Labs (C3, Data & ML, Engineering, Quant, Aero & Space, Circus) already render INSIDE the Apps facet via tiles_shared; listing them as pages too gave Labs eight top-level children. hidden keeps them routable as page:tools/<id> without listing them.",
+          "is_aggregator": true,
         "pages": [
           {
             "id": "apps",
@@ -1688,32 +1680,38 @@
           {
             "id": "c3",
             "label": "C3",
-            "icon": "ic_p_c3_stack"
+            "icon": "ic_p_c3_stack",
+            "hidden": true
           },
           {
             "id": "data-ml",
             "label": "Data & ML",
-            "icon": "ic_database"
+            "icon": "ic_database",
+            "hidden": true
           },
           {
             "id": "engineering",
             "label": "Engineering",
-            "icon": "ic_wg"
+            "icon": "ic_wg",
+            "hidden": true
           },
           {
             "id": "quant",
             "label": "Quant & Markets",
-            "icon": "ic_fin"
+            "icon": "ic_fin",
+            "hidden": true
           },
           {
             "id": "aero-space",
             "label": "Aero & Space",
-            "icon": "ic_world"
+            "icon": "ic_world",
+            "hidden": true
           },
           {
             "id": "circus",
             "label": "Circus",
-            "icon": "ic_solutions"
+            "icon": "ic_solutions",
+            "hidden": true
           }
         ],
         "tiles_shared": [

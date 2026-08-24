@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bottom nav island. Same liquid-glass face as bg_liquid_glass, but laid
+     over an OPAQUE base so the bar stops showing the page scrolling behind
+     it. Its own file because bg_liquid_glass is shared with the top island,
+     the search sheet, the app drawer and the notification centre, which are
+     all meant to stay see-through. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The opaque base. Darker than the #2D1B69 the window gradient ends on,
+         so the bar reads as a solid box sitting on the page. -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <solid android:color="#FF140B26" />
+        </shape>
+    </item>
+    <!-- Glass sheen, unchanged from bg_liquid_glass — it now blends against
+         the base above instead of the wallpaper. -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#40FFFFFF"
+                android:centerColor="#0DFFFFFF"
+                android:endColor="#1AB794F4" />
+        </shape>
+    </item>
+    <!-- Inner-edge highlight — top edge brighter to suggest a light source -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#33FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

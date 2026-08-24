@@ -40,7 +40,14 @@ object Sections {
          *  Source: build.json::sections[*].parent. */
         val parent: String? = null,
         val isMasterIndex: Boolean,
+        /** The section's children as shown: grids, tab strips and the radial
+         *  menus all list these. Hidden pages are filtered out — route
+         *  through [allPages] instead, which keeps every declared page. */
         val pages: List<Page>,
+        /** Every declared page, hidden ones included. Routing resolves
+         *  `page:<section>/<id>` against this, so hiding a page from the
+         *  child list never makes its target dead. */
+        val allPages: List<Page> = pages,
         val defaultChildren: List<String>,
         /** When true AND the section has exactly one non-action page, opening
          *  the section lands directly on that page instead of a 1-tile grid —
@@ -213,6 +220,13 @@ object Sections {
          *  hardcoded in Kotlin — Tools' `apps`/`admin` are facets while its
          *  `c3`, `quant`, … siblings are ordinary content pages. */
         val facet: Boolean = false,
+
+        /** true = routable but NOT listed as a child of its section. Labs'
+         *  six subject pages (c3, quant, …) already render inside the Apps
+         *  facet via tiles_shared; listing them again made Labs eight
+         *  top-level children instead of Apps | Admin. `page:tools/c3`
+         *  still resolves — see [Section.allPages]. */
+        val hidden: Boolean = false,
         /** true = this entry DOES something and returns (Update All, ...)
          *  rather than opening a page. Declared, not inferred: `import`,
          *  `keyboard` and `constellation` all carry an action: target yet
@@ -427,6 +441,7 @@ object Sections {
                         subPages = subs,
                         action   = po.optString("action", ""),
                         facet    = po.optBoolean("facet", false),
+                        hidden   = po.optBoolean("hidden", false),
                         isAction = po.optBoolean("is_action", false),
                     ))
                 }
@@ -570,7 +585,8 @@ object Sections {
                     bottomNav       = o.optBoolean("bottom_nav", false),
                     parent          = o.optString("parent", "").takeIf { it.isNotBlank() },
                     isMasterIndex   = o.optBoolean("is_master_index", false),
-                    pages           = pages,
+                    pages           = pages.filter { !it.hidden },
+                    allPages        = pages,
                     defaultChildren = kids,
                     singlePage      = o.optBoolean("single_page", false),
                     tabs            = o.optBoolean("tabs", false),
