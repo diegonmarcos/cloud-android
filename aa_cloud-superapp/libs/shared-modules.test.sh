@@ -246,16 +246,24 @@ for bj in sorted(glob.glob('ea_cloud-*/build.json')):
                    for v in mods_cfg.values()
                    if isinstance(v, dict)
                    and str(v.get('dir', '')).startswith('../ea_cloud-')})
-    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ea_cloud-'):]
-    if not mods or not os.path.exists(wf):
-        continue
-    have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
-    for m in mods:
-        # A parent wildcard (ship-cloud-libs watches whole roots) counts.
-        if m in have or os.path.dirname(m) in have:
+    # ship- AND test-: a test workflow that does not watch the shared libs its
+    # app compiles is the worse half of the pair. It stays green because it
+    # never runs, so the break surfaces on some later unrelated commit that
+    # happens to touch the app. That is exactly how the cloud-nav Explored
+    # render test slept through 548b8852 and 7ac55249 and only failed on
+    # 7e2d8328, which moved the libs and touched nothing nav renders.
+    for kind, effect in (('ship', 'ships no new %s APK' % repo),
+                         ('test', 'runs no %s test' % repo)):
+        wf = '1_cicd/src/cicd/%s-cloud-%s.yml' % (kind, repo[len('ea_cloud-'):])
+        if not mods or not os.path.exists(wf):
             continue
-        print(f"{os.path.basename(wf)} has no trigger for {m}/** — "
-              f"{repo} compiles it, so a change there ships no new {repo} APK")
+        have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
+        for m in mods:
+            # A parent wildcard (ship-cloud-libs watches whole roots) counts.
+            if m in have or os.path.dirname(m) in have:
+                continue
+            print(f"{os.path.basename(wf)} has no trigger for {m}/** — "
+                  f"{repo} compiles it, so a change there {effect}")
 PYAPPROOTS
 )
 if [ -z "$app_root_drift" ]; then
