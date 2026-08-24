@@ -2768,9 +2768,7 @@
             "id": "update",
             "label": "Update All",
             "icon": "ic_refresh",
-            "action": "action:update_all",
-            "_doc_is_action": "Fires and returns \u2014 no page behind it. Puts this entry under Actions in the Configs grid and on the ArcMenu's inner arc, instead of guessing from the action: prefix (import/keyboard/constellation carry one too but DO open a page).",
-            "is_action": true
+            "action": "action:update_all"
           },
           {
             "_doc": "Constellation AppStore \u2014 superapp is the fleet manager: install/update/uninstall/open every constellation APK, full per-app data (installed version+sha, remote GHCR digest, status). Fleet list is data-driven from data/constellation-fleet.json (auto-scanned from each app's build.json by data/regen.sh) \u2192 BuildConfig.CONSTELLATION_FLEET_B64. Opens ConstellationFragment via MainActivity.dispatchHomeAction.",

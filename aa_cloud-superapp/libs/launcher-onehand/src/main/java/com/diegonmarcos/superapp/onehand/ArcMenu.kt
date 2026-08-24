@@ -39,11 +39,7 @@ import kotlin.math.sin
  */
 object ArcMenu {
 
-    /** [action] = inner arc (does something and returns) vs outer arc (opens a
-     *  page). Declared by the host from build.json, NOT inferred from [target]:
-     *  Import/Keyboard/Constellation all carry an `action:` target yet open real
-     *  UI, and inferring dropped them off the pages arc. */
-    data class Item(val label: String, val iconName: String, val target: String, val action: Boolean = false)
+    data class Item(val label: String, val iconName: String, val target: String)
 
     data class Config(val enabled: Boolean, val section: String, val radiusDp: Int)
 
@@ -66,6 +62,12 @@ object ArcMenu {
 
     private val DISABLED = Config(false, "config", 140)
 
+    /** Inner-arc test. An entry whose target fires and returns isn't a page, so
+     *  it belongs on the actions arc. Derived from the target grammar rather
+     *  than a per-item flag — build.json needs no edit to opt in. */
+    private fun isAction(target: String): Boolean =
+        target.startsWith("action:") || target.startsWith("extapp:")
+
     /** Touch stream forwarded from the Canopus star (press → drag → release). */
     interface Session { fun feed(x: Float, y: Float, action: Int) }
 
@@ -84,7 +86,7 @@ object ArcMenu {
         val actions = CircularMenu.config().nodes
             .firstOrNull { it.childKey == cfg.section }
             ?.actions.orEmpty()
-            .map { Item(it.label, it.iconName, it.target, true) }
+            .map { Item(it.label, it.iconName, it.target) }
         val items = host.itemsFor(cfg.section) + actions
         if (items.isEmpty()) return null
         val v = ArcView(decor.context, cfg.radiusDp, cx, cy, items, host) { decor.removeView(it) }
@@ -146,7 +148,7 @@ object ArcMenu {
 
         // LAYOUT — TWO concentric upward half-moons centred on the star. The
         // OUTER arc carries the section's pages, the INNER one its actions
-        // ([Item.action] decides — declared by the host), each spread on its own
+        // (target grammar decides — see [isAction]), each spread on its own
         // half-circle so adding actions never squeezes the pages. slots[i]
         // maps 1:1 to items[i].
         //
@@ -161,7 +163,7 @@ object ArcMenu {
             val cap = (minOf(cx, dm.widthPixels - cx, cy - topInset) - margin)
                 .coerceAtLeast(dead + nodeR)
             val outer = ArrayList<Int>(); val inner = ArrayList<Int>()
-            items.forEachIndexed { i, item -> (if (item.action) inner else outer).add(i) }
+            items.forEachIndexed { i, item -> (if (isAction(item.target)) inner else outer).add(i) }
             val out = arrayOfNulls<Slot>(items.size)
             // A half-moon's arc length is PI*r, so holding `count` icons at minGap
             // needs r = count*minGap/PI. Grows with the count, never past the clamp.
