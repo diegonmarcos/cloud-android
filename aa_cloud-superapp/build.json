@@ -1698,6 +1698,7 @@
         "_doc_pages": "Per-Lab stack pages. Initially empty content (PageContentFragment fallback renders a stub) \u2014 wire each one to its dedicated content fragment as Labs come online.",
         "id": "tools",
         "label": "Labs",
+        "tabs": true,
         "icon": "ic_p_sol_tools",
         "icon_apps": "ic_p_sol_tools",
         "icon_admin": "ic_p_c3_stack",
