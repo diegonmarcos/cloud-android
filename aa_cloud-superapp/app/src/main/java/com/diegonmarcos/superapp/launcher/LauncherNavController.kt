@@ -81,22 +81,11 @@ class LauncherNavController(private val host: NavHost) {
                 if (id != "apptabs") runCatching {
                     host.recordPage(id, pg.id, pg.label, pg.iconName ?: "")
                 }
-                (SectionPages.pagesFor(id, includeHidden = true).firstOrNull { it.id == pg.id }?.factory?.invoke())
+                (SectionPages.pagesFor(id).firstOrNull { it.id == pg.id }?.factory?.invoke())
                     ?: SectionFragment.forSection(id, pg.id)
             }
             // Tabbed section — one strip over one pane per page on tablets.
             isTabbed(section) -> SectionTabsFragment.newInstance(id, initialPage)
-            // Tablet, more pages than we have panes for (Configs' 12, Mail's
-            // 9, Drive's …). The section's own page list becomes the LEFT
-            // rail and the detail column renders whatever the user taps —
-            // that is exactly the drawer's section menu, so reuse it rather
-            // than growing a second list widget. Phones keep the tile grid.
-            // ponytail: reuses SectionMenuFragment as-is; its taps already
-            // route through onDrawerPageSelected -> openSectionPage, which
-            // targets the detail pane on two-pane. The only thing the grid
-            // shows that the rail does not is the radial-menu extras.
-            host.isTwoPane() && section.pages.size > SectionTabsFragment.MAX_PANES ->
-                SectionMenuFragment.newInstance(id)
             section.pages.isNotEmpty() -> {
                 // Pages and Actions are shown as two labelled groups, off the
                 // same `is_action` flag the bottom star splits its two arcs by.
@@ -235,7 +224,7 @@ class LauncherNavController(private val host: NavHost) {
         return when {
             sectionId == "mail" -> MailPages.fragmentFor(pageId, args)
             section != null && page != null && page.facet -> aggregatorPage(section, page)
-            else -> SectionPages.pagesFor(sectionId, includeHidden = true).firstOrNull { it.id == pageId }
+            else -> SectionPages.pagesFor(sectionId).firstOrNull { it.id == pageId }
                 ?.factory?.invoke() ?: SectionFragment.forSection(sectionId, pageId)
         }
     }

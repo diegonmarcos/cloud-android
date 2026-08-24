@@ -67,13 +67,12 @@
 
         <!-- Sirius Star — a single bright, bluish-white sparkle centred on the
              home screen (theme-agnostic: it floats over whichever home
-             fragment is active). A tap opens the CircularMenu — the ALL-APPS
-             radial pie (build.json::onehand.circular_menu). Slightly
+             fragment is active). A tap opens the FloatingNav menu. Slightly
              larger than the home tiles + a soft glow (shadowLayer) for the
              "shining" look; MainActivity adds a gentle pulse and flips it
              VISIBLE only on the `home` section. Default gone. -->
         <TextView
-            android:id="@+id/all_apps_sirius_star"
+            android:id="@+id/sirius_star"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -84,7 +83,7 @@
             android:shadowDx="0"
             android:shadowDy="0"
             android:shadowRadius="7"
-            android:contentDescription="Sirius Star — all apps"
+            android:contentDescription="Sirius Star — open navigation"
             android:clickable="true"
             android:focusable="true"
             android:elevation="16dp"
@@ -92,11 +91,10 @@
 
         <!-- Canopus star — the 2nd-brightest. Sits UNDER the cube (translationY
              set in code), a touch bigger than Sirius. Tapping it opens the
-             libs:launcher-onehand ArcMenu on the CONFIGS section
-             (build.json::onehand.arc_menu). Glyph/size data-driven from
+             libs:launcher-onehand circular-menu. Glyph/size data-driven from
              build.json::onehand.circular_menu.star. VISIBLE only on `home`. -->
         <TextView
-            android:id="@+id/configs_canopus_star"
+            android:id="@+id/canopus_star"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -107,7 +105,7 @@
             android:shadowDx="0"
             android:shadowDy="0"
             android:shadowRadius="8"
-            android:contentDescription="Canopus Star — configs"
+            android:contentDescription="Canopus Star — open circular menu"
             android:clickable="true"
             android:focusable="true"
             android:elevation="16dp"
@@ -121,7 +119,7 @@
              (AppUsageProvider), not a build.json section. VISIBLE only on
              `home`. -->
         <TextView
-            android:id="@+id/active_apps_centauri_star"
+            android:id="@+id/centauri_star"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -132,7 +130,7 @@
             android:shadowDx="0"
             android:shadowDy="0"
             android:shadowRadius="7"
-            android:contentDescription="Centauri Star — active apps"
+            android:contentDescription="Centauri Star — recent apps"
             android:clickable="true"
             android:focusable="true"
             android:elevation="16dp"
