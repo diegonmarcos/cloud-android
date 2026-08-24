@@ -171,17 +171,14 @@
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
     "libs:core": {
-      "dir": "../ea_cloud-libs-shared/libs/core",
       "type": "library",
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
     },
     "libs:devtools": {
-      "dir": "../ea_cloud-libs-shared/libs/devtools",
       "type": "library"
     },
     "libs:updater": {
-      "dir": "../ea_cloud-libs-shared/libs/updater",
       "type": "library",
       "depends_on": [
         "libs:core",
@@ -697,6 +694,40 @@
           50,
           75
         ]
+      }
+    }
+  },
+  "voice": {
+    "_doc": "Offline voice-input (Vosk) model registry for libs:voice, behind the keyboard VOICE toolbar key. libs/voice/build.gradle bakes this into BuildConfig.VOICE_MODELS_JSON + VOICE_DEFAULT_LANGUAGE; VoiceModelManager downloads the model for the active keyboard language lazily on first use, unzips to filesDir/vosk/<dir>, then Vosk runs fully offline (no Google/system speech IME). Add a language = one entry. Small models keep each download ~40-50MB.",
+    "default_language": "en-us",
+    "translate_to": "en",
+    "translate_targets": [
+      "en",
+      "pt",
+      "es",
+      "de",
+      "fr"
+    ],
+    "models": {
+      "en-us": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+        "dir": "vosk-model-small-en-us-0.15"
+      },
+      "de": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip",
+        "dir": "vosk-model-small-de-0.15"
+      },
+      "es": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip",
+        "dir": "vosk-model-small-es-0.42"
+      },
+      "pt": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.zip",
+        "dir": "vosk-model-small-pt-0.3"
+      },
+      "fr": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip",
+        "dir": "vosk-model-small-fr-0.22"
       }
     }
   },

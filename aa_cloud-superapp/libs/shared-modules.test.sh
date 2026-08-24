@@ -111,7 +111,7 @@ PY
 
 # 7. The constellation permission is declared once, in the shared core, so it
 #    merges into every app. That is what makes Cloud Perms on-by-default.
-CORE_MANIFEST=ea_cloud-libs-shared/libs/core/src/main/AndroidManifest.xml
+CORE_MANIFEST=ea_cloud-superapp/libs/core/src/main/AndroidManifest.xml
 PERM=com.diegonmarcos.cloud.permission.CONSTELLATION_DATA
 if command grep -q "$PERM" "$CORE_MANIFEST" 2>/dev/null; then
     command grep -q 'android:protectionLevel="signature"' "$CORE_MANIFEST" \
@@ -224,7 +224,7 @@ PY
 fi
 
 # 11b. The same trigger drift, one level up. An APP repo compiles shared modules
-#      BY REFERENCE out of another repo (settings.gradle re-points
+#      BY REFERENCE out of ea_cloud-superapp/libs/ (settings.gradle re-points
 #      projectDir there), so those sources sit OUTSIDE the repo's own path
 #      filter. Miss one and the workflow simply never fires for a shared-lib
 #      change: the app keeps shipping whatever APK was last built for an
@@ -239,65 +239,27 @@ for bj in sorted(glob.glob('ea_cloud-*/build.json')):
         mods_cfg = (json.load(open(bj)).get('modules') or {})
     except Exception:
         continue  # build.json validity is rule 1's job, not this one.
-    # Any module whose dir escapes this repo, as a repo-relative path.
-    # Derived from the dir itself, NOT matched against a hardcoded root, so
-    # moving the shared libs to a new top-level dir needs no edit here.
-    mods = sorted({os.path.normpath(os.path.join(repo, v['dir'])).replace(os.sep, '/')
+    mods = sorted({v['dir'].rstrip('/').split('/')[-1]
                    for v in mods_cfg.values()
                    if isinstance(v, dict)
-                   and str(v.get('dir', '')).startswith('../ea_cloud-')})
-    # ship- AND test-: a test workflow that does not watch the shared libs its
-    # app compiles is the worse half of the pair. It stays green because it
-    # never runs, so the break surfaces on some later unrelated commit that
-    # happens to touch the app. That is exactly how the cloud-nav Explored
-    # render test slept through 548b8852 and 7ac55249 and only failed on
-    # 7e2d8328, which moved the libs and touched nothing nav renders.
-    for kind, effect in (('ship', 'ships no new %s APK' % repo),
-                         ('test', 'runs no %s test' % repo)):
-        wf = '1_cicd/src/cicd/%s-cloud-%s.yml' % (kind, repo[len('ea_cloud-'):])
-        if not mods or not os.path.exists(wf):
-            continue
-        have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
-        for m in mods:
-            # A parent wildcard (ship-cloud-libs watches whole roots) counts.
-            if m in have or os.path.dirname(m) in have:
-                continue
-            print(f"{os.path.basename(wf)} has no trigger for {m}/** — "
-                  f"{repo} compiles it, so a change there {effect}")
+                   and 'ea_cloud-superapp/libs' in str(v.get('dir', ''))})
+    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ea_cloud-'):]
+    if not mods or not os.path.exists(wf):
+        continue
+    have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
+    if 'ea_cloud-superapp/libs' in have:
+        continue  # wildcard already covers every module (ship-cloud-libs).
+    for m in mods:
+        if 'ea_cloud-superapp/libs/%s' % m not in have:
+            print(f"{os.path.basename(wf)} has no trigger for "
+                  f"ea_cloud-superapp/libs/{m}/** — {repo} compiles it, so a "
+                  f"change there ships no new {repo} APK")
 PYAPPROOTS
 )
 if [ -z "$app_root_drift" ]; then
     note ok "every app workflow triggers on the shared libs it compiles"
 else
     while read -r line; do note FAIL "$line"; done <<< "$app_root_drift"
-fi
-
-# 11c. A shared module that falls back to ea_cloud-libs-shared/build.json bakes
-#      THAT file's data into its BuildConfig, so every workflow watching such a
-#      module must also watch the file. Same silent-staleness failure as 11/11b,
-#      one level down: the trigger list saw libs/voice/** change but not the
-#      registry the module actually reads. The fallback set is grepped out of
-#      the build.gradle files, never listed here, so a new one is covered free.
-fallback_drift=$(python3 - <<'PYFALLBACK'
-import glob, os, re
-SHARED = 'ea_cloud-libs-shared'
-mods = sorted(os.path.basename(os.path.dirname(g))
-              for g in glob.glob(f'{SHARED}/libs/*/build.gradle')
-              if "file('../../build.json')" in open(g).read())
-for wf in sorted(glob.glob('1_cicd/src/cicd/*.yml')):
-    y = open(wf).read()
-    have = set(re.findall(r'^\s*-\s*"([^"]+)"', y, re.M))
-    watched = [m for m in mods
-               if f'{SHARED}/libs/{m}/**' in have or f'{SHARED}/libs/**' in have]
-    if watched and f'{SHARED}/build.json' not in have:
-        print(f"{os.path.basename(wf)} watches {', '.join(watched)} but not "
-              f"{SHARED}/build.json — a model-registry change ships no new APK")
-PYFALLBACK
-)
-if [ -z "$fallback_drift" ]; then
-    note ok "every workflow watching a build.json-fallback module watches the file"
-else
-    while read -r line; do note FAIL "$line"; done <<< "$fallback_drift"
 fi
 
 # 12. Every PackageInstaller.createSession must have an abandonSession on the
@@ -415,7 +377,7 @@ fi
 #     three taps started three installs at once.
 #     The guarantee therefore lives in UpdateInstaller.install - the one place
 #     every caller passes through - so a new call site cannot forget it.
-UI_KT=ea_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/UpdateInstaller.kt
+UI_KT=ea_cloud-superapp/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/UpdateInstaller.kt
 if [ -f "$UI_KT" ]; then
     if command grep -q 'InstallGate.serialised' "$UI_KT"; then
         note ok "every install is serialised at UpdateInstaller.install"

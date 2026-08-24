@@ -25,7 +25,7 @@ buildJson.modules.each { name, _spec ->
     // Map gradle path :libs:foo -> libs/foo/  (vs. :app -> app/), unless the
     // module declares a `dir` in build.json. `dir` is how a module is SHARED by
     // reference instead of copy-pasted: the module lives once in
-    // ea_cloud-libs-shared/libs/ and every app points at that one directory, so a
+    // ea_cloud-superapp/libs/ and every app points at that one directory, so a
     // fix lands in all of them at build time and copies cannot drift.
     def path = _spec?.dir ?: name.replace(':', '/')
     project(":${name}").projectDir = file(path)

@@ -22,24 +22,24 @@
     "libs:keyboard": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-libs-shared/libs/keyboard"
+      "dir": "../ea_cloud-superapp/libs/keyboard"
     },
     "libs:media": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-libs-shared/libs/media"
+      "dir": "../ea_cloud-superapp/libs/media"
     },
     "libs:translate": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-libs-shared/libs/translate"
+      "dir": "../ea_cloud-superapp/libs/translate"
     },
     "libs:voice": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../ea_cloud-libs-shared/libs/voice"
+      "dir": "../ea_cloud-superapp/libs/voice"
     },
-    "_doc": "Keyboard libs are shared from ../ea_cloud-libs-shared/libs/ via relative project references in settings.gradle."
+    "_doc": "Keyboard libs are shared from ../ea_cloud-superapp/libs/ via relative project references in settings.gradle."
   },
   "keyboard_media": {
     "_doc": "Same block as ea_cloud-superapp — shared vault secret. build.sh sops-decrypts vault_secrets → TENOR_API_KEY/GIPHY_API_KEY env vars → Gradle BuildConfig → MediaRuntime.configure().",

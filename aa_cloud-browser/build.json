@@ -47,22 +47,22 @@
     },
     "libs:core": {
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
-      "dir": "../ea_cloud-libs-shared/libs/core",
+      "dir": "../ea_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:devtools": {
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/, same as libs:core. Not listed in app.depends_on and not linked in app/build.gradle: libs:core pulls it in with an `api` dependency, which is what gives every app the constellation-wide debug API (127.0.0.1:38090+, own-process logcat) without per-app wiring that would drift.",
-      "dir": "../ea_cloud-libs-shared/libs/devtools",
+      "dir": "../ea_cloud-superapp/libs/devtools",
       "type": "library"
     },
     "libs:browser": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. browser was three byte-identical trees (superapp, browser, vault); nothing kept them in step, so a WebView fix had to be pasted three times or it silently reached one app.",
-      "dir": "../ea_cloud-libs-shared/libs/browser"
+      "dir": "../ea_cloud-superapp/libs/browser"
     },
     "libs:updater": {
       "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
-      "dir": "../ea_cloud-libs-shared/libs/updater",
+      "dir": "../ea_cloud-superapp/libs/updater",
       "type": "library"
     }
   },

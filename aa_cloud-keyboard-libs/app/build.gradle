@@ -72,7 +72,7 @@ android {
     // cloud-keyboard opens them as assets.open(filename) without a subdir prefix.
     sourceSets {
         main {
-            assets.srcDirs += [file("$rootDir/../ea_cloud-libs-shared/libs/keyboard/dicts-data")]
+            assets.srcDirs += [file("$rootDir/../ea_cloud-superapp/libs/keyboard/dicts-data")]
         }
     }
 }

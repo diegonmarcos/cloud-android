@@ -188,7 +188,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Browser.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Browser.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/browser",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/browser",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-browser",
       "blocked": false,
       "kind": "lib"
@@ -252,7 +252,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Core.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Core.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/core",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/core",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-core",
       "blocked": false,
       "kind": "lib"
@@ -284,7 +284,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Devtools.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Devtools.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/devtools",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/devtools",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-devtools",
       "blocked": false,
       "kind": "lib"
@@ -460,7 +460,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Media.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Media.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/media",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/media",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-media",
       "blocked": false,
       "kind": "lib"
@@ -556,7 +556,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Translate.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Translate.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/translate",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/translate",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-translate",
       "blocked": false,
       "kind": "lib"
@@ -572,7 +572,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Translate-Mlkit.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Translate-Mlkit.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/translate-mlkit",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/translate-mlkit",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-translate-mlkit",
       "blocked": false,
       "kind": "lib"
@@ -588,7 +588,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Updater.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Updater.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/updater",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/updater",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-updater",
       "blocked": false,
       "kind": "lib"
@@ -604,7 +604,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Voice.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Voice.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/voice",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/voice",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-voice",
       "blocked": false,
       "kind": "lib"
@@ -620,7 +620,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Voice-Vosk.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Lib-Voice-Vosk.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-libs-shared/libs/voice-vosk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/voice-vosk",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-lib-voice-vosk",
       "blocked": false,
       "kind": "lib"

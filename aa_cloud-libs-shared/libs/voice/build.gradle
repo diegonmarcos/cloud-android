@@ -18,17 +18,11 @@ plugins {
 }
 
 // Data-driven model registry from build.json::voice.
-// rootDir is the CONSUMING app's build.json - this module is compiled by
-// reference into cloud-keyboard-libs and cloud-libs, and a module-relative
-// path alone would hand every consumer one single repo's registry.
-// Consumers that declare no `voice` block fall back to ../../build.json,
-// i.e. ea_cloud-libs-shared/build.json, which owns the constellation-wide
-// default set. That file exists ONLY for this fallback: before the shared
-// modules moved out of ea_cloud-superapp/libs/ this same relative path
-// landed on ea_cloud-superapp/build.json, so every consumer inherited an
-// app's config - the coupling the move removed. Moving the modules without
-// moving the block is what broke cloud-libs and cloud-keyboard-libs on
-// 7e2d8328 ("Unable to process file: ea_cloud-libs-shared/build.json").
+// rootDir is the CONSUMING app's build.json - this module is shared by
+// reference into cloud-keyboard-libs as well as superapp, and a
+// module-relative path would hand every consumer superapp's registry.
+// Consumers that declare no `voice` block fall back to this module's own
+// repo, which owns the constellation-wide default set.
 def appJson = new JsonSlurper().parse(file("${rootDir}/build.json"))
 def voice = appJson.voice ?: new JsonSlurper().parse(file('../../build.json')).voice
 def voiceModelsJson = JsonOutput.toJson(voice.models)
