@@ -218,10 +218,11 @@ public class CommsAccounts {
         folder.subscribed = true;
         folder.selectable = true;
         // parity with the channel-tree path (ensureLeafFolder): notify on new
-        // items + show as a nav-menu shortcut, set once at creation. Nothing
-        // re-forces these on later starts (see repairRssAccount) — the user's
-        // own toggle choice sticks after this.
+        // items, show in the unified inbox, + show as a nav-menu shortcut, set
+        // once at creation. Nothing re-forces these on later starts (see
+        // repairRssAccount) — the user's own toggle choice sticks after this.
         folder.notify = true;
+        folder.unified = true;
         folder.navigation = true;
         folder.sync_days = EntityFolder.DEFAULT_SYNC;
         folder.keep_days = EntityFolder.DEFAULT_KEEP;
@@ -351,9 +352,11 @@ public class CommsAccounts {
             f.synchronize = false;
             f.subscribed = true;
             f.selectable = true;
-            // parity with mail folders: notify on new items + show as a nav-menu
-            // shortcut. Both are user-togglable per-folder (folder context menu).
+            // parity with mail folders: notify on new items, show in the unified
+            // inbox, + show as a nav-menu shortcut. All user-togglable per-folder
+            // (folder context menu).
             f.notify = true;
+            f.unified = true;
             f.navigation = true;
             f.sync_days = EntityFolder.DEFAULT_SYNC;
             f.keep_days = EntityFolder.DEFAULT_KEEP;
