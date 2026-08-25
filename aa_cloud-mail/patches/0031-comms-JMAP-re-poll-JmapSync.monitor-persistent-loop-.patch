@@ -1,0 +1,123 @@
+From ff4d7a7e2b9e2f9f25b7008405e10b196e6a855b Mon Sep 17 00:00:00 2001
+From: engine <engine@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 11:51:26 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20re-poll=20=E2=80=94=20JmapSync.?=
+ =?UTF-8?q?monitor=20persistent=20loop=20(fixes=20sync-once)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The one-pass monitor relied on the scheduler re-invoking monitorAccount each
+poll (unverified) — risked syncing once then stalling. Now a persistent loop
+(while state.isRunning(): connect -> sync pass -> state.acquire(poll_interval)),
+mirroring the IMAP/POP monitor lifetime. state.stop()/error() wakes/interrupts
+the wait to exit; a queued op wakes it early (state.release()) for prompt sync.
+poll_interval floored to 1 min. Threads Core.State in from the SS JMAP branch.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../main/java/eu/faircode/email/JmapSync.java | 65 ++++++++++++-------
+ .../eu/faircode/email/ServiceSynchronize.java |  9 +--
+ 2 files changed, 46 insertions(+), 28 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/JmapSync.java b/app/src/main/java/eu/faircode/email/JmapSync.java
+index cc7e61d34c..92bedbfac8 100644
+--- a/app/src/main/java/eu/faircode/email/JmapSync.java
++++ b/app/src/main/java/eu/faircode/email/JmapSync.java
+@@ -62,31 +62,48 @@ import rs.ltt.jmap.common.entity.Mailbox;
+ public class JmapSync {
+     private static final int SYNC_LIMIT = 200; // newest N per mailbox per pass
+ 
+-    // Entry from ServiceSynchronize.monitorAccount's TYPE_JMAP branch. Opens a
+-    // connection, runs ONE sync pass, and returns — the service scheduler
+-    // re-invokes each poll (JMAP has no IMAP IDLE). Mirrors the IMAP path's
+-    // EmailService(PURPOSE_USE) + connect(account) lifecycle + account state.
+-    static void monitor(Context context, EntityAccount account, boolean sync) {
++    // Entry from ServiceSynchronize.monitorAccount's TYPE_JMAP branch. JMAP has
++    // no IMAP IDLE, so this is a PERSISTENT POLL LOOP (mirroring the IMAP/POP
++    // monitorAccount lifetime, NOT a one-pass return): connect → one sync pass →
++    // sleep poll_interval via state.acquire(), repeat until the service stops
++    // the account (state.stop()/error() wakes/interrupts the wait). A new queued
++    // operation wakes the wait early via state.release(), so user actions sync
++    // promptly instead of waiting a full interval.
++    static void monitor(Context context, EntityAccount account, Core.State state, boolean sync) {
+         DB db = DB.getInstance(context);
+-        EmailService iservice = null;
+-        try {
+-            iservice = new EmailService(context, account, EmailService.PURPOSE_USE, false);
+-            iservice.connect(account);
+-            db.account().setAccountConnected(account.id, new Date().getTime());
+-            db.account().setAccountError(account.id, null);
+-            if (sync)
+-                run(context, account, iservice);
+-        } catch (Throwable ex) {
+-            Log.e(account.name + " JMAP", ex);
+-            EntityLog.log(context, EntityLog.Type.Account, account,
+-                    "JMAP " + account.name + " " + Log.formatThrowable(ex));
+-            db.account().setAccountError(account.id, Log.formatThrowable(ex));
+-        } finally {
+-            if (iservice != null)
+-                try {
+-                    iservice.close();
+-                } catch (Throwable ignored) {
+-                }
++        while (state.isRunning()) {
++            EmailService iservice = null;
++            try {
++                iservice = new EmailService(context, account, EmailService.PURPOSE_USE, false);
++                iservice.connect(account);
++                db.account().setAccountConnected(account.id, new Date().getTime());
++                db.account().setAccountError(account.id, null);
++                if (sync)
++                    run(context, account, iservice);
++            } catch (Throwable ex) {
++                Log.e(account.name + " JMAP", ex);
++                EntityLog.log(context, EntityLog.Type.Account, account,
++                        "JMAP " + account.name + " " + Log.formatThrowable(ex));
++                db.account().setAccountError(account.id, Log.formatThrowable(ex));
++            } finally {
++                if (iservice != null)
++                    try {
++                        iservice.close();
++                    } catch (Throwable ignored) {
++                    }
++            }
++
++            if (!state.isRunning())
++                break;
++            try {
++                // Wait poll_interval minutes (floored to 1 to avoid a busy loop
++                // when unset/0) until the next pass, woken early on new work or
++                // account stop.
++                int mins = (account.poll_interval == null ? 0 : account.poll_interval);
++                state.acquire(Math.max(1, mins) * 60L * 1000L, false);
++            } catch (InterruptedException ex) {
++                break; // account stopped / network change
++            }
+         }
+     }
+ 
+diff --git a/app/src/main/java/eu/faircode/email/ServiceSynchronize.java b/app/src/main/java/eu/faircode/email/ServiceSynchronize.java
+index 03eff38e32..eebd6db3dd 100644
+--- a/app/src/main/java/eu/faircode/email/ServiceSynchronize.java
++++ b/app/src/main/java/eu/faircode/email/ServiceSynchronize.java
+@@ -1623,11 +1623,12 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
+     private void monitorAccount(
+             final EntityAccount account, final Core.State state,
+             final boolean sync, final boolean force) throws NoSuchProviderException {
+-        // comms: JMAP (batch 4-6) — poll-based one-pass sync via JmapSync,
+-        // bypassing the IMAP Store/IDLE monitor below. The service scheduler
+-        // re-invokes monitorAccount each poll, so one pass per call is correct.
++        // comms: JMAP (batch 4-6) — persistent poll loop in JmapSync (JMAP has
++        // no IMAP Store/IDLE). JmapSync.monitor blocks for the account lifetime,
++        // syncing every poll_interval via state.acquire(), like the IMAP/POP
++        // monitor below — so it keeps fetching, not just once.
+         if (account.protocol == EntityAccount.TYPE_JMAP) {
+-            JmapSync.monitor(this, account, sync);
++            JmapSync.monitor(this, account, state, sync);
+             return;
+         }
+ 
+-- 
+2.44.2
+

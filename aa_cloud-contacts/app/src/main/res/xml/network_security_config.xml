@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security configuration.
+
+  WHY: news-gdelt (ea_cloud-superapp/data/cloud_services.json, port
+  3019) is a mesh-internal-only service — its public_url is null. It
+  is only reachable at http://news-gdelt:3019 over the WireGuard mesh
+  (the hostname resolves via the mesh's own internal DNS — see
+  hickory-dns/unbound-dns64 in cloud_services.json and the peer list
+  in ea_cloud-superapp/data/mesh.json). It has no public TLS
+  certificate, so it can only ever be reached over plain HTTP.
+  targetSdk 35 blocks cleartext HTTP by default; without this file a
+  user who points NewsBridge.setConfig's `base` at the mesh host would
+  get net::ERR_CLEARTEXT_NOT_PERMITTED instead of a working request.
+
+  The base-config keeps cleartextTrafficPermitted="false" (HTTPS-only)
+  for everything else, INCLUDING the app's default/public API base
+  (https://api.diegonmarcos.com/news, from data/topics.json). Only the
+  one mesh hostname below is exempted — this file must NOT set
+  android:usesCleartextTraffic="true" app-wide in the manifest.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- news-gdelt: the self-hosted GDELT proxy this app talks to,
+             reachable ONLY over the WireGuard mesh (no public_url in
+             cloud_services.json). Exact hostname, no subdomains — this
+             is a single internal service name, not a domain suffix. -->
+        <domain includeSubdomains="false">news-gdelt</domain>
+    </domain-config>
+</network-security-config>

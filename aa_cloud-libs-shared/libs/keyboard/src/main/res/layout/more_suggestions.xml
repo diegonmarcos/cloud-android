@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2011 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+-->
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+>
+    <helium314.keyboard.latin.suggestions.MoreSuggestionsView
+        xmlns:latin="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/more_suggestions_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        latin:keyLetterSize="@dimen/config_suggestion_text_size"
+        latin:keyLabelSize="@dimen/config_suggestion_text_size"
+        latin:keyHintLetterRatio="@fraction/config_more_suggestions_info_ratio" />
+</LinearLayout>

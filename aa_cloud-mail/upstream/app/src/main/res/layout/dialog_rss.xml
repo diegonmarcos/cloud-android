@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- comms (my-features): RSS feed config window -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/title_comms_rss"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+
+        <eu.faircode.email.EditTextPlain
+            android:id="@+id/etUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:hint="@string/hint_comms_feed_url"
+            android:inputType="textUri"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium">
+
+            <requestFocus />
+        </eu.faircode.email.EditTextPlain>
+
+        <eu.faircode.email.EditTextPlain
+            android:id="@+id/etTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/hint_comms_feed_title"
+            android:imeOptions="actionDone"
+            android:inputType="textCapWords"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+    </LinearLayout>
+</ScrollView>

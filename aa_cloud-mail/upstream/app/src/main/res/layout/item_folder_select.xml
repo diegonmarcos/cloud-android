@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clItem"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:padding="3dp">
+
+        <View
+            android:id="@+id/vwLevel"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/ibExpander"
+            android:layout_width="36dp"
+            android:layout_height="0dp"
+            android:layout_gravity="center_vertical|center_horizontal"
+            android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@string/title_legend_expander"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintStart_toEndOf="@+id/vwLevel"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/expander" />
+
+        <ImageView
+            android:id="@+id/ivType"
+            android:layout_width="24dp"
+            android:layout_height="36dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            app:layout_constraintBottom_toBottomOf="@id/ibExpander"
+            app:layout_constraintStart_toEndOf="@id/ibExpander"
+            app:layout_constraintTop_toTopOf="@id/ibExpander"
+            app:srcCompat="@drawable/twotone_inbox_24" />
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:ellipsize="middle"
+            android:gravity="center_vertical"
+            android:minHeight="24dp"
+            android:singleLine="true"
+            android:text="Name"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            app:layout_constraintBottom_toBottomOf="@id/ibExpander"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/ivType"
+            app:layout_constraintTop_toTopOf="@id/ibExpander" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>

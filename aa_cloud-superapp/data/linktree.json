@@ -1,0 +1,1640 @@
+{
+  "_description": "Declarative source of truth for the Projects section-box. Each `slide` becomes one swiper-slide. `kind=tools` slides render as `.link-section > .featured-image + .tools-dashboard > .tools-column` (matches the hand-coded markup). Slides hand-coded in index.html are not listed here; only the migrated ones are.",
+  "section": {
+    "id": "projects",
+    "title": "Projects",
+    "swiper_class": "projects-swiper",
+    "box": 2
+  },
+  "slides": [
+    {
+      "id": "repos",
+      "kind": "repos",
+      "title": "REPOS",
+      "image": {
+        "src": "public/images/banners/repos.gif",
+        "alt": "Coding"
+      },
+      "top_links": [
+        {
+          "label": "Github",
+          "url": "https://github.com/diegonmarcos",
+          "icon": "brand-github.svg",
+          "preview": "public/thumbnails/github_com.jpg",
+          "item": 0
+        }
+      ],
+      "columns": [
+        {
+          "header": "UNIX",
+          "row": 0,
+          "group": 0,
+          "links": [
+            {
+              "label": "Boot Manager",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/aa_bootloader",
+              "icon": "bolt.svg",
+              "item": 0
+            },
+            {
+              "label": "OS Flakes",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ba_flakes_desktop",
+              "icon": "world.svg",
+              "item": 1
+            },
+            {
+              "label": "Home-Manager Flakes",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/bb_flakes_termux",
+              "icon": "settings.svg",
+              "item": 2
+            },
+            {
+              "label": "Unix Binaries",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ca_containers_user",
+              "icon": "git-branch.svg",
+              "item": 3
+            },
+            {
+              "label": "Android Apks",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp",
+              "icon": "device-gamepad.svg",
+              "item": 4
+            }
+          ]
+        },
+        {
+          "header": "CLOUD",
+          "row": 0,
+          "group": 1,
+          "links": [
+            {
+              "label": "Solutions - Infra",
+              "url": "https://github.com/diegonmarcos/cloud-infra/tree/main/a_solutions",
+              "icon": "world.svg",
+              "item": 0
+            },
+            {
+              "label": "Solutions - User",
+              "url": "https://github.com/diegonmarcos/cloud-infra/tree/main/2_configs",
+              "icon": "settings.svg",
+              "item": 1
+            },
+            {
+              "label": "Vault",
+              "url": "https://github.com/diegonmarcos/cloud-vault",
+              "icon": "bolt.svg",
+              "item": 2
+            },
+            {
+              "label": "Infra",
+              "url": "https://github.com/diegonmarcos/cloud-infra/tree/main/b_infra",
+              "icon": "git-branch.svg",
+              "item": 3
+            },
+            {
+              "label": "VPS",
+              "url": "https://github.com/diegonmarcos/cloud-infra/tree/main/c_vps",
+              "icon": "device-desktop.svg",
+              "item": 4
+            }
+          ]
+        },
+        {
+          "header": "FRONT",
+          "row": 0,
+          "group": 2,
+          "links": [
+            {
+              "label": "Portals",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/a_Portals",
+              "icon": "world.svg",
+              "item": 0
+            },
+            {
+              "label": "Profiles",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/b_Work_Profiles",
+              "icon": "file-type-html.svg",
+              "item": 1
+            },
+            {
+              "label": "Work Tools",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/b_Work_Tools",
+              "icon": "settings.svg",
+              "item": 2
+            },
+            {
+              "label": "Personal Tools",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/c_Personal_Tools",
+              "icon": "device-desktop.svg",
+              "item": 3
+            }
+          ]
+        },
+        {
+          "header": "CG & Games",
+          "row": 0,
+          "group": 3,
+          "links": [
+            {
+              "label": "Games 2D",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/c-Circus/games",
+              "icon": "device-gamepad.svg",
+              "item": 0
+            },
+            {
+              "label": "Scenes 3D",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/b-Projects/galaxy-gaia",
+              "icon": "world.svg",
+              "item": 1
+            },
+            {
+              "label": "Games 3D",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/b-Projects/galaxy-earth",
+              "icon": "device-gamepad.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "header": "CS",
+          "row": 0,
+          "group": 4,
+          "links": [
+            {
+              "label": "My Libs",
+              "url": "https://github.com/diegonmarcos/ops-Mylibs",
+              "icon": "git-branch.svg",
+              "item": 0
+            },
+            {
+              "label": "Algorithms",
+              "url": "https://github.com/diegonmarcos/back-Algo",
+              "icon": "settings.svg",
+              "item": 1
+            },
+            {
+              "label": "System",
+              "url": "https://github.com/diegonmarcos/back-System",
+              "icon": "settings.svg",
+              "item": 2
+            },
+            {
+              "label": "Graphics",
+              "url": "https://github.com/diegonmarcos/back-Graphic",
+              "icon": "device-desktop.svg",
+              "item": 3
+            },
+            {
+              "label": "Cyber",
+              "url": "https://github.com/diegonmarcos/cyber-Cyberwarfare",
+              "icon": "bolt.svg",
+              "item": 4
+            },
+            {
+              "label": "42 School",
+              "url": "https://github.com/diegonmarcos/lecole42",
+              "icon": "rocket.svg",
+              "item": 5
+            },
+            {
+              "label": "Agentic AI",
+              "url": "https://github.com/diegonmarcos/ml-Agentic",
+              "icon": "brain.svg",
+              "item": 6
+            },
+            {
+              "label": "Machine Learning",
+              "url": "https://github.com/diegonmarcos/ml-MachineLearning",
+              "icon": "brain.svg",
+              "item": 7
+            }
+          ]
+        },
+        {
+          "header": "DATA",
+          "row": 0,
+          "group": 5,
+          "links": [
+            {
+              "label": "Macro/Quant",
+              "url": "https://github.com/diegonmarcos/ecoqt-thesis1",
+              "icon": "database.svg",
+              "item": 0
+            },
+            {
+              "label": "Structural",
+              "url": "https://github.com/diegonmarcos/cveng_AFrame",
+              "icon": "settings.svg",
+              "item": 1
+            },
+            {
+              "label": "Mechatronics",
+              "url": "https://github.com/diegonmarcos/back-System",
+              "icon": "device-desktop.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "header": "MACRO&QUANT",
+          "row": 1,
+          "group": 6,
+          "links": [
+            {
+              "label": "Central Bank",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/c-LabTools/central_bank",
+              "icon": "database.svg",
+              "item": 0
+            },
+            {
+              "label": "Quant Terminal",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/c-LabTools/fin-terminal",
+              "icon": "rocket.svg",
+              "item": 1
+            }
+          ]
+        },
+        {
+          "header": "STRUCTURAL",
+          "row": 1,
+          "group": 7,
+          "links": [
+            {
+              "label": "Waterlytics",
+              "url": "#",
+              "icon": "world-longitude.svg",
+              "item": 0
+            },
+            {
+              "label": "Airlytics",
+              "url": "#",
+              "icon": "world-longitude.svg",
+              "item": 1
+            },
+            {
+              "label": "Spacelytics",
+              "url": "#",
+              "icon": "rocket.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "header": "MECHATRONICS",
+          "row": 1,
+          "group": 8,
+          "links": [
+            {
+              "label": "Autonomous Engines",
+              "url": "#",
+              "icon": "bolt.svg",
+              "item": 0
+            }
+          ]
+        }
+      ],
+      "slide": 0
+    },
+    {
+      "id": "ducks",
+      "kind": "tools",
+      "title": "DUCKS",
+      "image": {
+        "src": "public/images/banners/ducks.gif",
+        "alt": "Unix"
+      },
+      "dashboard_modifier": "tools-dashboard--5",
+      "columns": [
+        {
+          "header": "Boot Manager",
+          "group": 0,
+          "links": [
+            {
+              "label": "ReFind",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/aa_bootloader",
+              "icon": "bolt.svg",
+              "item": 0
+            },
+            {
+              "label": "NixOS",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/aa_desk-usr_x86_surface-linux_nixos",
+              "icon": "world.svg",
+              "item": 1
+            },
+            {
+              "label": "KDE Plasma",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp/libs/kde-connect",
+              "icon": "settings.svg",
+              "item": 2
+            },
+            {
+              "label": "Kali Linux",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ab_desk-security_x86_kali-linux_kali",
+              "icon": "bolt.svg",
+              "item": 3
+            },
+            {
+              "label": "NixSlim",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ca_ventoy_fallback_usb/debian-slim-surface_fallback_usb",
+              "icon": "settings.svg",
+              "item": 4
+            }
+          ]
+        },
+        {
+          "header": "OS Flakes",
+          "group": 1,
+          "links": [
+            {
+              "label": "OS Flakes",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ba_flakes_desktop",
+              "icon": "world.svg",
+              "item": 0
+            },
+            {
+              "label": "System Protection",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ba_flakes_desktop",
+              "icon": "lock.svg",
+              "item": 1
+            },
+            {
+              "label": "Watchdog",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/_aba_cloud-servers-x/B1_vm-pilot-watchdog",
+              "icon": "bolt.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "header": "HM Flakes",
+          "group": 2,
+          "links": [
+            {
+              "label": "HM Flakes",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/bb_flakes_termux",
+              "icon": "settings.svg",
+              "item": 0
+            },
+            {
+              "label": "CI/CD",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/1_cicd/src/cicd",
+              "icon": "git-branch.svg",
+              "item": 1
+            },
+            {
+              "label": "VM Pilot",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/_aba_cloud-servers-x",
+              "icon": "device-desktop.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "header": "Unix Bin",
+          "group": 3,
+          "links": [
+            {
+              "label": "Unix Bin",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ca_containers_user",
+              "icon": "git-branch.svg",
+              "item": 0
+            },
+            {
+              "label": "myAI",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/da_my-ai",
+              "icon": "brain.svg",
+              "item": 1
+            },
+            {
+              "label": "myBrowser",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/da_my-browser-qute",
+              "icon": "world.svg",
+              "item": 2
+            },
+            {
+              "label": "myKonsole",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/da_my-konsole",
+              "icon": "device-desktop.svg",
+              "item": 3
+            }
+          ]
+        },
+        {
+          "header": "Android Apk",
+          "group": 4,
+          "links": [
+            {
+              "label": "Browser",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-browser",
+              "icon": "world.svg",
+              "item": 0
+            },
+            {
+              "label": "Chat",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-chat",
+              "icon": "brand-whatsapp.svg",
+              "item": 1
+            },
+            {
+              "label": "Dialer",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-dialer",
+              "icon": "link.svg",
+              "item": 2
+            },
+            {
+              "label": "IDE",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-ide",
+              "icon": "code.svg",
+              "item": 3
+            },
+            {
+              "label": "Keyboard",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard",
+              "icon": "file-type-html.svg",
+              "item": 4
+            },
+            {
+              "label": "Keyboard Libs",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-keyboard-libs",
+              "icon": "file-type-html.svg",
+              "item": 5
+            },
+            {
+              "label": "Mail",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-mail",
+              "icon": "mail.svg",
+              "item": 6
+            },
+            {
+              "label": "Matrix",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-matrix",
+              "icon": "brand-whatsapp.svg",
+              "item": 7
+            },
+            {
+              "label": "Media Center",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-media-center",
+              "icon": "headphones.svg",
+              "item": 8
+            },
+            {
+              "label": "Nav",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-nav",
+              "icon": "world-longitude.svg",
+              "item": 9
+            },
+            {
+              "label": "SuperApp",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-superapp",
+              "icon": "device-gamepad.svg",
+              "item": 10
+            },
+            {
+              "label": "Vault",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-vault",
+              "icon": "lock.svg",
+              "item": 11
+            },
+            {
+              "label": "Wallet",
+              "url": "https://github.com/diegonmarcos/cloud-unix/tree/main/ea_cloud-wallet",
+              "icon": "ledger.svg",
+              "item": 12
+            }
+          ]
+        }
+      ],
+      "slide": 1
+    },
+    {
+      "id": "suite",
+      "kind": "tools",
+      "title": "SUITE",
+      "image": {
+        "src": "public/images/banners/suite.gif",
+        "alt": "Suite"
+      },
+      "columns": [
+        {
+          "header": "AI & IDE",
+          "links": [
+            {
+              "label": "Goose",
+              "url": "https://github.com/block/goose",
+              "icon": "robot.svg",
+              "item": 0
+            },
+            {
+              "label": "Claude CLI",
+              "url": "https://claude.ai",
+              "icon": "robot.svg",
+              "item": 1
+            },
+            {
+              "label": "WebIDE",
+              "url": "https://ide.diegonmarcos.com",
+              "icon": "device-desktop.svg",
+              "item": 2
+            },
+            {
+              "label": "Jupyter NB",
+              "url": "https://jupyter.diegonmarcos.com",
+              "icon": "code.svg",
+              "item": 3
+            }
+          ],
+          "group": 0,
+          "row": 0
+        },
+        {
+          "header": "Suite",
+          "header_url": "https://diegonmarcos.github.io/suite",
+          "links": [
+            {
+              "label": "Notes",
+              "url": "https://hedgedoc.diegonmarcos.com",
+              "icon": "file-stack.svg",
+              "item": 0
+            },
+            {
+              "label": "Sheets",
+              "url": "https://sheets.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 1
+            },
+            {
+              "label": "Docs",
+              "url": "https://docs.diegonmarcos.com",
+              "icon": "file-stack.svg",
+              "item": 2
+            },
+            {
+              "label": "Slides",
+              "url": "https://slides.diegonmarcos.com",
+              "icon": "slideshow.svg",
+              "item": 3
+            },
+            {
+              "label": "Calendar",
+              "url": "https://cal.diegonmarcos.com",
+              "icon": "checklist.svg",
+              "item": 4
+            },
+            {
+              "label": "Contacts",
+              "url": "https://contacts.diegonmarcos.com",
+              "icon": "user.svg",
+              "item": 5
+            },
+            {
+              "label": "Files",
+              "url": "https://files.diegonmarcos.com",
+              "icon": "file-stack.svg",
+              "item": 6
+            }
+          ],
+          "group": 1,
+          "row": 0
+        },
+        {
+          "header": "Comms",
+          "links": [
+            {
+              "label": "Mail",
+              "url": "https://diegonmarcos.github.io/mymail",
+              "icon": "mail.svg",
+              "item": 0
+            },
+            {
+              "label": "Mattermost",
+              "url": "https://chat.diegonmarcos.com",
+              "icon": "send.svg",
+              "item": 1
+            },
+            {
+              "label": "ntfy",
+              "url": "https://ntfy.diegonmarcos.com",
+              "icon": "checklist.svg",
+              "item": 2
+            }
+          ],
+          "group": 2,
+          "row": 0
+        },
+        {
+          "header": "Nav",
+          "header_url": "https://diegonmarcos.github.io/mymaps",
+          "links": [
+            {
+              "label": "Navigation",
+              "url": "https://diegonmarcos.github.io/mymaps-navigation",
+              "icon": "map-pin-2.svg",
+              "item": 0
+            },
+            {
+              "label": "Maps",
+              "url": "https://diegonmarcos.github.io/mymaps-maps",
+              "icon": "world.svg",
+              "item": 1
+            }
+          ],
+          "group": 3,
+          "row": 0
+        },
+        {
+          "row": 1,
+          "group": 5,
+          "id": "media",
+          "header": "Media",
+          "links": [
+            {
+              "label": "Feed",
+              "url": "https://diegonmarcos.github.io/myfeed",
+              "icon": "device-desktop.svg",
+              "item": 0
+            },
+            {
+              "label": "Movies",
+              "url": "https://diegonmarcos.github.io/movies",
+              "icon": "device-desktop.svg",
+              "item": 1
+            },
+            {
+              "label": "Music",
+              "url": "https://diegonmarcos.github.io/music",
+              "icon": "device-desktop.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "row": 1,
+          "group": 6,
+          "id": "memory",
+          "header": "Memory",
+          "links": [
+            {
+              "label": "MyPhotos",
+              "url": "https://diegonmarcos.github.io/myphotos",
+              "icon": "device-desktop.svg",
+              "item": 0
+            },
+            {
+              "label": "MyTrips",
+              "url": "https://diegonmarcos.github.io/mymaps-mytrips",
+              "icon": "world-longitude.svg",
+              "item": 1
+            },
+            {
+              "label": "PhotoPrism",
+              "url": "https://photos.diegonmarcos.com",
+              "icon": "slideshow.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "row": 1,
+          "group": 7,
+          "id": "health",
+          "header": "Health",
+          "links": [
+            {
+              "label": "Tracker",
+              "url": "https://diegonmarcos.github.io/myhealth-tracker",
+              "icon": "heart.svg",
+              "item": 0
+            },
+            {
+              "label": "FeedYourself",
+              "url": "https://diegonmarcos.github.io/myhealth-feedyourself",
+              "icon": "brain.svg",
+              "item": 1
+            },
+            {
+              "label": "Profile",
+              "url": "https://diegonmarcos.github.io/myhealth-profile",
+              "icon": "heart.svg",
+              "item": 2
+            }
+          ]
+        },
+        {
+          "row": 1,
+          "group": 8,
+          "id": "tools",
+          "header": "Tools",
+          "links": [
+            {
+              "label": "Gitea",
+              "url": "https://git.diegonmarcos.com",
+              "icon": "code.svg",
+              "item": 0
+            },
+            {
+              "label": "JSON Vision",
+              "url": "https://diegonmarcos.github.io/json-vision",
+              "icon": "code.svg",
+              "item": 1
+            },
+            {
+              "label": "NocoDB",
+              "url": "https://nocodb.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 2
+            },
+            {
+              "label": "Vault",
+              "url": "https://vault.diegonmarcos.com",
+              "icon": "lock.svg",
+              "item": 3
+            },
+            {
+              "label": "tldraw",
+              "url": "https://diegonmarcos.github.io/tldraw/",
+              "icon": "brush.svg",
+              "item": 4
+            },
+            {
+              "label": "myID",
+              "url": "https://diegonmarcos.github.io/myid",
+              "icon": "cards.svg",
+              "item": 5
+            }
+          ]
+        }
+      ],
+      "slide": 2,
+      "extras": {
+        "primary_link": {
+          "label": "Suite",
+          "url": "#",
+          "icon": "settings.svg"
+        },
+        "profile_icons": [
+          {
+            "url": "https://github.com/diegonmarcos/diegonmarcos.github.io",
+            "title": "Front",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/cloud-infra",
+            "title": "Cloud",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/cloud-unix",
+            "title": "Unix",
+            "icon": "brand-github.svg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lab-tools",
+      "kind": "tools",
+      "title": "LAB TOOLS",
+      "image": {
+        "src": "public/images/banners/lab-tools.gif",
+        "alt": "Lab Tools"
+      },
+      "columns": [
+        {
+          "header": "Data Science & ML",
+          "links": [
+            {
+              "label": "Colab",
+              "url": "https://colab.research.google.com",
+              "icon": "sparkles.svg",
+              "item": 0
+            },
+            {
+              "label": "Kaggle",
+              "url": "https://kaggle.com",
+              "icon": "brain.svg",
+              "item": 1
+            },
+            {
+              "label": "HuggingFace",
+              "url": "https://huggingface.co",
+              "icon": "robot.svg",
+              "item": 2
+            },
+            {
+              "label": "PyTorch",
+              "url": "https://pytorch.org",
+              "icon": "bolt.svg",
+              "item": 3
+            },
+            {
+              "label": "TensorFlow",
+              "url": "https://tensorflow.org",
+              "icon": "bolt.svg",
+              "item": 4
+            },
+            {
+              "label": "Scikit-learn",
+              "url": "https://scikit-learn.org",
+              "icon": "code.svg",
+              "item": 5
+            },
+            {
+              "label": "IBM Quantum",
+              "url": "https://quantum.ibm.com",
+              "icon": "rocket.svg",
+              "item": 6
+            },
+            {
+              "label": "Qiskit",
+              "url": "https://qiskit.org",
+              "icon": "code.svg",
+              "item": 7
+            },
+            {
+              "label": "Google QAI",
+              "url": "https://quantumai.google",
+              "icon": "sparkles.svg",
+              "item": 8
+            },
+            {
+              "label": "Cirq",
+              "url": "https://quantumai.google/cirq",
+              "icon": "code.svg",
+              "item": 9
+            },
+            {
+              "label": "PennyLane",
+              "url": "https://pennylane.ai",
+              "icon": "bolt.svg",
+              "item": 10
+            },
+            {
+              "label": "Braket",
+              "url": "https://aws.amazon.com/braket",
+              "icon": "rocket.svg",
+              "item": 11
+            },
+            {
+              "label": "Azure QC",
+              "url": "https://azure.microsoft.com/products/quantum",
+              "icon": "world.svg",
+              "item": 12
+            },
+            {
+              "label": "QInspire",
+              "url": "https://www.quantum-inspire.com",
+              "icon": "brain.svg",
+              "item": 13
+            }
+          ],
+          "group": 0
+        },
+        {
+          "header": "Markets",
+          "links": [
+            {
+              "label": "Fin Terminal",
+              "url": "https://diegonmarcos.github.io/fin-terminal",
+              "icon": "database.svg",
+              "item": 0
+            },
+            {
+              "label": "GDELT News",
+              "url": "https://news.diegonmarcos.com",
+              "icon": "world.svg",
+              "item": 1
+            },
+            {
+              "label": "MarketWatch",
+              "url": "https://diegonmarcos.github.io/market_watch",
+              "icon": "database.svg",
+              "item": 2
+            },
+            {
+              "label": "CentralBank",
+              "url": "https://diegonmarcos.github.io/central_bank",
+              "icon": "database.svg",
+              "item": 3
+            },
+            {
+              "label": "My Financials",
+              "url": "https://diegonmarcos.github.io/my-fin",
+              "icon": "ledger.svg",
+              "item": 4
+            }
+          ],
+          "group": 1
+        },
+        {
+          "header": "Engineer",
+          "links": [
+            {
+              "label": "Sailytics",
+              "url": "https://diegonmarcos.github.io/sailytics",
+              "icon": "world.svg",
+              "item": 0
+            },
+            {
+              "label": "OpenRevit",
+              "url": "https://diegonmarcos.github.io/openrevit",
+              "icon": "settings.svg",
+              "item": 1
+            },
+            {
+              "label": "Music - DAW",
+              "url": "https://diegonmarcos.github.io/music_daw_llms",
+              "icon": "headphones.svg",
+              "item": 2
+            },
+            {
+              "label": "Music - Mixer",
+              "url": "https://diegonmarcos.github.io/music_dj-mixer_mixxx",
+              "icon": "headphones.svg",
+              "item": 3
+            }
+          ],
+          "group": 2
+        }
+      ],
+      "slide": 3,
+      "extras": {
+        "primary_link": {
+          "label": "Lab Tools",
+          "url": "#",
+          "icon": "sparkles.svg"
+        },
+        "profile_icons": [
+          {
+            "url": "https://github.com/diegonmarcos/ml-Agentic",
+            "title": "Agentic AI",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/ml-MachineLearning",
+            "title": "Machine Learning",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/ml-DataScience",
+            "title": "Data Science",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/ecoqt-thesis1",
+            "title": "Macro/Quant",
+            "icon": "brand-github.svg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cloud",
+      "kind": "tools",
+      "title": "CLOUD",
+      "image": {
+        "src": "public/images/banners/cloud.gif",
+        "alt": "Coding"
+      },
+      "dashboard_modifier": "tools-dashboard--5",
+      "columns": [
+        {
+          "header": "Security",
+          "header_url": "https://diegonmarcos.github.io/cloud",
+          "links": [
+            {
+              "label": "Authelia",
+              "url": "https://auth.diegonmarcos.com",
+              "icon": "lock.svg",
+              "item": 0
+            },
+            {
+              "label": "Vault",
+              "url": "https://vault.diegonmarcos.com",
+              "icon": "lock.svg",
+              "item": 1
+            },
+            {
+              "label": "Caddy",
+              "url": "https://proxy.diegonmarcos.com",
+              "icon": "world.svg",
+              "item": 2
+            },
+            {
+              "label": "Introspect",
+              "url": "https://introspect.diegonmarcos.com",
+              "icon": "lock.svg",
+              "item": 3
+            },
+            {
+              "label": "Hickory DNS",
+              "url": "https://dns.diegonmarcos.com",
+              "icon": "world.svg",
+              "item": 4
+            },
+            {
+              "label": "Sauron YARA",
+              "url": "https://sauron.diegonmarcos.com",
+              "icon": "bolt.svg",
+              "item": 5
+            },
+            {
+              "label": "SIEM",
+              "url": "https://siem.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 6
+            },
+            {
+              "label": "WG0",
+              "url": "https://wg.diegonmarcos.com",
+              "icon": "lock.svg",
+              "item": 7
+            },
+            {
+              "label": "CrowdSec",
+              "url": "https://crowdsec.diegonmarcos.com",
+              "icon": "bolt.svg",
+              "item": 8
+            }
+          ],
+          "group": 0
+        },
+        {
+          "header": "Ops",
+          "header_url": "https://diegonmarcos.github.io/cloud",
+          "links": [
+            {
+              "label": "Dagu",
+              "url": "https://workflows.diegonmarcos.com",
+              "icon": "settings.svg",
+              "item": 0
+            },
+            {
+              "label": "Grafana",
+              "url": "https://grafana.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 1
+            },
+            {
+              "label": "ntfy",
+              "url": "https://rss.diegonmarcos.com",
+              "icon": "bolt.svg",
+              "item": 2
+            },
+            {
+              "label": "GHA",
+              "url": "https://github.com/diegonmarcos/cloud-infra/actions",
+              "icon": "git-branch.svg",
+              "item": 3
+            },
+            {
+              "label": "GHCR",
+              "url": "https://github.com/orgs/diegonmarcos/packages",
+              "icon": "database.svg",
+              "item": 4
+            }
+          ],
+          "group": 1
+        },
+        {
+          "header": "Data",
+          "header_url": "https://diegonmarcos.github.io/cloud",
+          "links": [
+            {
+              "label": "Matomo",
+              "url": "https://analytics.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 0
+            },
+            {
+              "label": "Gitea",
+              "url": "https://git.diegonmarcos.com",
+              "icon": "code.svg",
+              "item": 1
+            },
+            {
+              "label": "Dozzle",
+              "url": "https://logs.diegonmarcos.com",
+              "icon": "file-stack.svg",
+              "item": 2
+            },
+            {
+              "label": "DBGate",
+              "url": "https://dbgate.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 3
+            },
+            {
+              "label": "Rustic",
+              "url": "https://backup.diegonmarcos.com",
+              "icon": "file-stack.svg",
+              "item": 4
+            },
+            {
+              "label": "Umami",
+              "url": "https://umami.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 5
+            },
+            {
+              "label": "NocoDB",
+              "url": "https://nocodb.diegonmarcos.com",
+              "icon": "database.svg",
+              "item": 6
+            }
+          ],
+          "group": 2
+        },
+        {
+          "header": "MCP & API",
+          "links": [
+            {
+              "label": "c3-infra-api",
+              "url": "https://api.diegonmarcos.com/c3-api",
+              "icon": "code.svg",
+              "item": 0
+            },
+            {
+              "label": "c3-infra-mcp",
+              "url": "https://diegonmarcos.github.io/skills_mcp",
+              "icon": "robot.svg",
+              "item": 1
+            },
+            {
+              "label": "c3-services-api",
+              "url": "https://api.diegonmarcos.com/c3-services",
+              "icon": "code.svg",
+              "item": 2
+            },
+            {
+              "label": "c3-services-mcp",
+              "url": "https://diegonmarcos.github.io/skills_mcp",
+              "icon": "robot.svg",
+              "item": 3
+            },
+            {
+              "label": "cgc-mcp",
+              "url": "https://diegonmarcos.github.io/skills_mcp",
+              "icon": "robot.svg",
+              "item": 4
+            },
+            {
+              "label": "dtk-mcp",
+              "url": "https://diegonmarcos.github.io/skills_mcp",
+              "icon": "robot.svg",
+              "item": 5
+            }
+          ],
+          "group": 3
+        },
+        {
+          "header": "VPS",
+          "header_url": "https://diegonmarcos.github.io/cloud",
+          "links": [
+            {
+              "label": "Oracle",
+              "url": "https://cloud.oracle.com",
+              "icon": "database.svg",
+              "item": 0
+            },
+            {
+              "label": "GCloud",
+              "url": "https://console.cloud.google.com",
+              "icon": "database.svg",
+              "item": 1
+            },
+            {
+              "label": "Cloudflare",
+              "url": "https://dash.cloudflare.com",
+              "icon": "world.svg",
+              "item": 2
+            },
+            {
+              "label": "GitHub",
+              "url": "https://github.com/diegonmarcos",
+              "icon": "code.svg",
+              "item": 3
+            },
+            {
+              "label": "Hetzner",
+              "url": "https://console.hetzner.cloud",
+              "icon": "database.svg",
+              "item": 4
+            },
+            {
+              "label": "Nvidia LLM",
+              "url": "https://build.nvidia.com",
+              "icon": "brain.svg",
+              "item": 5
+            }
+          ],
+          "group": 4
+        }
+      ],
+      "extras": {
+        "primary_link": {
+          "label": "Cloud Portal",
+          "url": "https://diegonmarcos.github.io/cloud",
+          "icon": "settings.svg"
+        },
+        "profile_icons": [
+          {
+            "url": "https://github.com/diegonmarcos/diegonmarcos.github.io",
+            "title": "Front",
+            "icon": "world.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/cloud-infra",
+            "title": "Cloud",
+            "icon": "database.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/cloud-data",
+            "title": "Cloud-data",
+            "icon": "database.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/ops-Tooling",
+            "title": "Tools",
+            "icon": "git-branch.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/cloud-unix",
+            "title": "Unix",
+            "icon": "settings.svg"
+          }
+        ]
+      },
+      "slide": 4
+    },
+    {
+      "id": "circus",
+      "kind": "tools",
+      "title": "CIRCUS",
+      "image": {
+        "src": "public/images/banners/circus.gif",
+        "alt": "Circus"
+      },
+      "row_headers": [
+        {
+          "title": "Media"
+        },
+        {
+          "title": "CG & Games"
+        }
+      ],
+      "columns": [
+        {
+          "row": 0,
+          "header": "Audio",
+          "links": [
+            {
+              "label": "Music",
+              "url": "https://diegonmarcos.github.io/music/",
+              "icon": "headphones.svg",
+              "item": 0
+            }
+          ],
+          "group": 0
+        },
+        {
+          "row": 0,
+          "header": "Videos",
+          "links": [
+            {
+              "label": "Movies",
+              "url": "https://diegonmarcos.github.io/movies/",
+              "icon": "brand-youtube.svg",
+              "item": 0
+            }
+          ],
+          "group": 1
+        },
+        {
+          "row": 1,
+          "header": "Games 2D",
+          "links": [
+            {
+              "label": "Games",
+              "url": "https://diegonmarcos.github.io/games",
+              "icon": "device-gamepad.svg",
+              "item": 0
+            },
+            {
+              "label": "Carto",
+              "url": "https://diegonmarcos.github.io/carto/",
+              "icon": "cards.svg",
+              "item": 1
+            },
+            {
+              "label": "myAstro",
+              "url": "https://diegonmarcos.github.io/myAstro",
+              "icon": "world-longitude.svg",
+              "item": 2
+            },
+            {
+              "label": "Worms",
+              "url": "https://archive.org/details/worms_team17",
+              "icon": "device-gamepad.svg",
+              "item": 3
+            }
+          ],
+          "group": 2
+        },
+        {
+          "row": 1,
+          "header": "Assets",
+          "links": [
+            {
+              "label": "Assets",
+              "url": "https://diegonmarcos.github.io/",
+              "icon": "file-stack.svg",
+              "item": 0
+            },
+            {
+              "label": "796floor",
+              "url": "https://diegonmarcos.github.io/796floor",
+              "icon": "file-stack.svg",
+              "item": 1
+            },
+            {
+              "label": "WisAldo",
+              "url": "https://tnhelearning.edu.vn/wheres-waldo-wallpaper/",
+              "icon": "world.svg",
+              "item": 2
+            }
+          ],
+          "group": 3
+        },
+        {
+          "row": 1,
+          "header": "Scenes",
+          "links": [
+            {
+              "label": "Galaxy - Gaia",
+              "url": "https://diegonmarcos.github.io/galaxy-gaia/",
+              "icon": "world.svg",
+              "item": 0
+            },
+            {
+              "label": "Galaxy - X1",
+              "url": "https://diegonmarcos.github.io/galaxy-x1/",
+              "icon": "world.svg",
+              "item": 1
+            }
+          ],
+          "group": 4
+        },
+        {
+          "row": 1,
+          "header": "Games 3D",
+          "links": [
+            {
+              "label": "Galaxy - Earth",
+              "url": "https://diegonmarcos.github.io/galaxy-earth/",
+              "icon": "world.svg",
+              "item": 0
+            }
+          ],
+          "group": 5
+        }
+      ],
+      "slide": 5
+    },
+    {
+      "id": "projects",
+      "kind": "tools",
+      "title": "PHI",
+      "image": {
+        "src": "public/images/brucheion.jpg",
+        "alt": "Projects"
+      },
+      "row_headers": [
+        {
+          "title": "Brucheion"
+        },
+        {
+          "title": "Serapeum"
+        }
+      ],
+      "columns": [
+        {
+          "row": 0,
+          "header": "Basileia",
+          "links": [
+            {
+              "label": "Basileia",
+              "url": "#",
+              "icon": "sparkles.svg",
+              "item": 0
+            }
+          ],
+          "group": 0
+        },
+        {
+          "row": 0,
+          "header": "Mousseion",
+          "links": [
+            {
+              "label": "Mousseion",
+              "url": "#",
+              "icon": "books.svg",
+              "item": 0
+            }
+          ],
+          "group": 1
+        },
+        {
+          "row": 0,
+          "header": "Paneion",
+          "links": [
+            {
+              "label": "Paneion",
+              "url": "#",
+              "icon": "bulb.svg",
+              "item": 0
+            }
+          ],
+          "group": 2
+        },
+        {
+          "row": 1,
+          "header": "Akropolis",
+          "links": [
+            {
+              "label": "Akropolis",
+              "url": "#",
+              "icon": "rocket.svg",
+              "item": 0
+            }
+          ],
+          "group": 3
+        },
+        {
+          "row": 1,
+          "header": "Bibliotheke",
+          "links": [
+            {
+              "label": "Bibliotheke",
+              "url": "#",
+              "icon": "books.svg",
+              "item": 0
+            }
+          ],
+          "group": 4
+        },
+        {
+          "row": 1,
+          "header": "Adyton",
+          "links": [
+            {
+              "label": "Adyton",
+              "url": "#",
+              "icon": "bolt.svg",
+              "item": 0
+            }
+          ],
+          "group": 5
+        }
+      ],
+      "slide": 6
+    },
+    {
+      "id": "structural",
+      "kind": "tools",
+      "title": "X",
+      "slide": 7,
+      "image": {
+        "src": "public/images/banners/structural.gif",
+        "alt": "X"
+      },
+      "columns": [
+        {
+          "header": "MACRO",
+          "row": 0,
+          "group": 2,
+          "links": [
+            {
+              "label": "Central Bank",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/c-LabTools/central_bank",
+              "icon": "database.svg",
+              "item": 0
+            }
+          ]
+        },
+        {
+          "header": "QUANT",
+          "row": 0,
+          "group": 3,
+          "links": [
+            {
+              "label": "Terminal Fin",
+              "url": "https://github.com/diegonmarcos/diegonmarcos.github.io/tree/main/c-LabTools/fin-terminal",
+              "icon": "rocket.svg",
+              "item": 0
+            }
+          ]
+        },
+        {
+          "header": "STRUCTURAL",
+          "row": 1,
+          "group": 0,
+          "links": [
+            {
+              "label": "Civil Eng",
+              "url": "https://github.com/diegonmarcos/cveng_AFrame",
+              "icon": "settings.svg",
+              "item": 0
+            },
+            {
+              "label": "OpenRevit",
+              "url": "https://diegonmarcos.github.io/openrevit",
+              "icon": "settings.svg",
+              "item": 1
+            },
+            {
+              "label": "Sailytics",
+              "url": "https://diegonmarcos.github.io/sailytics",
+              "icon": "world.svg",
+              "item": 2
+            },
+            {
+              "label": "Satellite Simulator",
+              "url": "#",
+              "icon": "rocket.svg",
+              "item": 3
+            }
+          ]
+        },
+        {
+          "header": "MECHATRONICS",
+          "row": 1,
+          "group": 1,
+          "links": [
+            {
+              "label": "System",
+              "url": "https://github.com/diegonmarcos/back-System",
+              "icon": "settings.svg",
+              "item": 0
+            },
+            {
+              "label": "Graphics",
+              "url": "https://github.com/diegonmarcos/back-Graphic",
+              "icon": "device-desktop.svg",
+              "item": 1
+            },
+            {
+              "label": "My Libs",
+              "url": "https://github.com/diegonmarcos/ops-Mylibs",
+              "icon": "git-branch.svg",
+              "item": 2
+            }
+          ]
+        }
+      ],
+      "extras": {
+        "primary_link": {
+          "label": "X",
+          "url": "#",
+          "icon": "settings.svg"
+        },
+        "profile_icons": [
+          {
+            "url": "https://github.com/diegonmarcos/cveng_AFrame",
+            "title": "Civil Eng",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/back-System",
+            "title": "System",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/back-Graphic",
+            "title": "Graphics",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/ops-Mylibs",
+            "title": "My Libs",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/back-Algo",
+            "title": "Algorithms",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/cyber-Cyberwarfare",
+            "title": "Cyber",
+            "icon": "brand-github.svg"
+          },
+          {
+            "url": "https://github.com/diegonmarcos/lecole42",
+            "title": "42 School",
+            "icon": "brand-github.svg"
+          }
+        ]
+      }
+    }
+  ]
+}

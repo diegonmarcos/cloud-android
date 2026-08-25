@@ -1,0 +1,105 @@
+Title: FairEmail, privacy aware email (maximum 30 characters)
+
+Description: Fully featured, privacy oriented email app (maximum 80 characters)
+
+FairEmail is easy to set up and works with virtually all email providers, including Gmail, Outlook and Yahoo!
+
+FairEmail might be for you if you value your privacy.
+
+<i>FairEmail is simple to use, but if you are looking for a very simple email app, FairEmail might not be the right choice.</i>
+
+<i>FairEmail is an email client only, so you need to bring your own email address. FairEmail is not a calendar/contact/task/note manager and cannot make you coffee.</i>
+
+<i>FairEmail does not support non-standard protocols, like Microsoft Exchange Web Services and Microsoft ActiveSync.</i>
+
+<i>Almost all features are free to use, but to maintain and support the app in the long term, not every feature can be for free. See below for a list of pro features.</i>
+
+<i>A lot of effort has gone into this mail app, which was developed to help you protect your privacy. If you have a question or problem, there is always support at marcel@faircode.eu.</i>
+
+<b>Main features</b>
+
+* Fully featured
+* 100% open source
+* Privacy oriented
+* Unlimited accounts
+* Unlimited email addresses
+* Unified inbox (optionally accounts or folders)
+* Conversation threading
+* Two way synchronization
+* Push notifications
+* Offline storage and operations
+* Common text style options (size, color, lists, etc.)
+* Battery friendly
+* Low data usage
+* Small (<30 MB)
+* Material design (including dark/black theme)
+* Maintained and supported
+
+This app is deliberately minimalistic by design, so you can concentrate on reading and writing messages.
+
+This app starts a foreground service with a low-priority status bar notification to make sure you'll never miss new emails.
+
+<b>Privacy features</b>
+
+* Encryption/decryption supported (OpenPGP, S/MIME)
+* Reformat messages to prevent phishing
+* Confirm showing images to prevent tracking
+* Confirm opening links to prevent tracking and phishing
+* Attempt to recognize and disable tracking images
+* Warning if messages could not be authenticated
+
+<b>Simple</b>
+
+* Quick setup
+* Easy navigation
+* No bells and whistles
+* No distracting "eye candy"
+
+<b>Secure</b>
+
+* No data storage on third-party servers
+* Using open standards (IMAP, POP3, SMTP, OpenPGP, S/MIME, etc.)
+* Safe message view (styling, scripting and unsafe HTML removed)
+* Confirm opening links, images and attachments
+* No special permissions required
+* No advertisements
+* No analytics and no tracking (error reporting via Bugsnag is opt-in)
+* Optional Android backup
+* No Firebase Cloud Messaging
+* FairEmail is an original work, not a fork or a clone
+
+<b>Efficient</b>
+
+* Fast and lightweight
+* IMAP IDLE (push messages) supported
+* Built with latest development tools and libraries
+
+<b>Pro features</b>
+
+All pro features are convenience or advanced features.
+
+* Account/identity/folder colors/avatars
+* Colored stars
+* Notification settings (sounds) per account/folder/sender (requires Android 8 Oreo)
+* Configurable notification actions
+* Snooze messages
+* Send messages after selected time
+* Synchronization scheduling
+* Reply templates
+* Accept/decline calendar invitations
+* Add message to calendar
+* Automatically generate vCard attachments
+* Filter rules
+* Automatic message classification
+* Search indexing
+* S/MIME sign/encrypt
+* Biometric/PIN authentication
+* Message list widget
+* Export settings
+
+<b>Support</b>
+
+If you have a question or problem, please check here first:
+https://github.com/M66B/FairEmail/blob/master/FAQ.md
+
+If you cannot find what you are looking for, please contact me at marcel+fairemail@faircode.eu, and I will try to help you.

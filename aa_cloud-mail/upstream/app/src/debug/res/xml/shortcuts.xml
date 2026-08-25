@@ -1,0 +1,30 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="false"
+        android:icon="@drawable/ic_shortcut_refresh"
+        android:shortcutId="refresh"
+        android:shortcutShortLabel="@string/shortcut_refresh">
+        <intent
+            android:action="eu.faircode.email.REFRESH"
+            android:targetClass="eu.faircode.email.debug.ActivityMain"
+            android:targetPackage="eu.faircode.email.debug" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_edit"
+        android:shortcutId="compose"
+        android:shortcutShortLabel="@string/shortcut_compose">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="eu.faircode.email.ActivityCompose"
+            android:targetPackage="eu.faircode.email.debug" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <share-target android:targetClass="eu.faircode.email.debug.ActivityCompose">
+        <category android:name="eu.faircode.email.debug.TEXT_SHARE_TARGET" />
+        <data android:mimeType="text/plain" />
+    </share-target>
+</shortcuts>

@@ -1,0 +1,44 @@
+From fa2458a6614ea79a676265039f29959c3be31b7d Mon Sep 17 00:00:00 2001
+From: engine <engine@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 09:50:54 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20fix=20=E2=80=94=20correct=20rs.?=
+ =?UTF-8?q?ltt.jmap=20imports=20(Upload,=20MethodResponses)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Runner build failed: JmapService imported rs.ltt.jmap.client.blob.Upload
+(batch 5) and rs.ltt.jmap.common.method.MethodResponses (batch 3) — neither
+exists in jmap-client 0.8.10. Verified against the actual jar: Upload is
+rs.ltt.jmap.common.entity.Upload; MethodResponses is rs.ltt.jmap.client.
+MethodResponses. All other JMAP symbols confirmed present.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ app/src/main/java/eu/faircode/email/JmapService.java | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+index 2f5d7db0b8..205d2ee5d4 100644
+--- a/app/src/main/java/eu/faircode/email/JmapService.java
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -39,7 +39,7 @@ import javax.mail.MessagingException;
+ import okhttp3.HttpUrl;
+ import rs.ltt.jmap.client.JmapClient;
+ import rs.ltt.jmap.client.JmapRequest;
+-import rs.ltt.jmap.client.blob.Upload;
++import rs.ltt.jmap.client.MethodResponses;
+ import rs.ltt.jmap.client.blob.Uploadable;
+ import rs.ltt.jmap.client.session.Session;
+ import rs.ltt.jmap.common.entity.Email;
+@@ -51,7 +51,6 @@ import rs.ltt.jmap.common.entity.Mailbox;
+ import rs.ltt.jmap.common.entity.Role;
+ import rs.ltt.jmap.common.entity.capability.MailAccountCapability;
+ import rs.ltt.jmap.common.entity.filter.EmailFilterCondition;
+-import rs.ltt.jmap.common.method.MethodResponses;
+ import rs.ltt.jmap.common.method.call.email.GetEmailMethodCall;
+ import rs.ltt.jmap.common.method.call.email.ImportEmailMethodCall;
+ import rs.ltt.jmap.common.method.call.email.QueryEmailMethodCall;
+-- 
+2.44.2
+

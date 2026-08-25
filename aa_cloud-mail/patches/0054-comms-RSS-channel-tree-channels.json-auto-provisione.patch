@@ -1,0 +1,509 @@
+From cdc83b1032fad520626efc36f4c7cd177eeca1cd Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Thu, 9 Jul 2026 01:58:00 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20RSS=20channel=20tree=20=E2=80=94=20cha?=
+ =?UTF-8?q?nnels.json=20auto-provisioned=20folder=20hierarchy?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Cloud Mail SUPER RSS READER: fetch <base>/channels.json from the rss-gateway and
+provision every channel as a nested folder tree (Cloud-Infra/CICD/GH, Cloud-Infra/
+Logs/<vm>/<container>, Cloud-Apps/<cat>/<svc>, …), organised exactly like email
+folders.
+
+- CommsAccounts.ensureFeedTree/ensureGroupFolder/ensureLeafFolder/pruneFeedTree:
+  folder.name = full path (satisfies the (account,name) unique index, avoids
+  leaf-label collisions), folder.display = title; group nodes selectable=false;
+  leaf identity = feed URL so renames/moves keep messages + read state; removed
+  channels pruned scoped by gateway origin (never touches manual feeds / the
+  releases seed). Repairs done as a single updateFolder write.
+- WorkerFeedSync.sync(): provisions the tree each run when comms_cloud_channels is
+  set (offline-tolerant) + per-run failed-host skip set (a dead gateway must not
+  cost ~150×20s timeouts under WorkManager's ~10-min cap).
+- FragmentDialogCloudFeeds: 'Subscribe to the whole channel tree' checkbox →
+  ensureFeedTree + WorkerFeedSync.oneShot (fills immediately, no 6h wait).
+- channels.json contract served by cloud 2_configs build-ntfy-rss-channels.json.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../java/eu/faircode/email/CommsAccounts.java | 153 ++++++++++++++++++
+ .../email/FragmentDialogCloudFeeds.java       |  91 ++++++++++-
+ .../eu/faircode/email/WorkerFeedSync.java     |  79 +++++++++
+ .../main/res/layout/dialog_cloud_feeds.xml    |  14 ++
+ app/src/main/res/values/strings_comms.xml     |   2 +
+ 5 files changed, 337 insertions(+), 2 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/CommsAccounts.java b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+index 3920b13f2e..ee84826deb 100644
+--- a/app/src/main/java/eu/faircode/email/CommsAccounts.java
++++ b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+@@ -19,9 +19,12 @@ package eu.faircode.email;
+     Copyright 2018-2026 by Marcel Bokhorst (M66B)
+ */
+ 
++import android.net.Uri;
+ import android.text.TextUtils;
+ 
++import java.util.HashSet;
+ import java.util.List;
++import java.util.Set;
+ import java.util.UUID;
+ 
+ // comms (my-features): single source of truth for JMAP-account and RSS-feed DB writes.
+@@ -208,4 +211,154 @@ public class CommsAccounts {
+         folder.keep_days = EntityFolder.DEFAULT_KEEP;
+         return db.folder().insertFolder(folder);
+     }
++
++    // ── SUPER RSS READER — hierarchical channel tree ──────────────────────────
++    // A channel from the rss-gateway /feed/channels.json: `path` is the full
++    // folder path (slash-separated, leaf included), `feed` the per-topic Atom
++    // URL (relative or absolute). See build-ntfy-rss-channels.json (cloud side).
++    static class CommsChannel {
++        final String id, title, path, feed;
++        CommsChannel(String id, String title, String path, String feed) {
++            this.id = id; this.title = title; this.path = path; this.feed = feed;
++        }
++    }
++
++    // Provision/refresh the whole feed tree from the server channel list.
++    // Idempotent + declarative (server list = source of truth):
++    //   - group folders are created for every path prefix (display = segment,
++    //     selectable=false so they're pure containers);
++    //   - leaf folders carry feed_url; identity is the FEED URL, so a renamed
++    //     title or moved path updates in place and keeps its messages/read state;
++    //   - folders whose feed_url came from THIS gateway but are no longer in the
++    //     list are pruned (scoped by origin → never touches manually-added feeds
++    //     or the GitHub releases seed).
++    // folder.name = full path (satisfies the (account,name) unique index and
++    // avoids leaf-label collisions like Logs/gitea vs Apps/gitea); the drawer
++    // shows folder.display.
++    static int ensureFeedTree(DB db, List<CommsChannel> channels, String baseUrl) {
++        EntityAccount rss = ensureRssAccount(db);
++        String origin = originOf(baseUrl);
++        Set<String> liveFeeds = new HashSet<>();
++        int n = 0;
++        for (CommsChannel ch : channels) {
++            if (ch == null || TextUtils.isEmpty(ch.path) || TextUtils.isEmpty(ch.feed))
++                continue;
++            String feedUrl = resolveFeed(origin, ch.feed);
++            liveFeeds.add(feedUrl);
++
++            String[] seg = ch.path.split("/");
++            Long parent = null;
++            StringBuilder prefix = new StringBuilder();
++            for (int i = 0; i < seg.length - 1; i++) {
++                if (seg[i].isEmpty()) continue;
++                if (prefix.length() > 0) prefix.append("/");
++                prefix.append(seg[i]);
++                parent = ensureGroupFolder(db, rss.id, prefix.toString(), seg[i], parent);
++            }
++            ensureLeafFolder(db, rss.id, ch.path, ch.title, feedUrl, parent);
++            n++;
++        }
++        pruneFeedTree(db, rss.id, origin, liveFeeds);
++        return n;
++    }
++
++    private static Long ensureGroupFolder(DB db, long account, String pathName, String label, Long parent) {
++        EntityFolder f = db.folder().getFolderByName(account, pathName);
++        if (f == null) {
++            f = new EntityFolder();
++            f.account = account;
++            f.name = pathName;      // full path (unique per account)
++            f.display = label;      // shown in the drawer
++            f.type = EntityFolder.USER;
++            f.parent = parent;
++            f.local = true;
++            f.synchronize = false;
++            f.subscribed = true;
++            f.selectable = false;   // group node — holds no messages
++            f.sync_days = EntityFolder.DEFAULT_SYNC;
++            f.keep_days = EntityFolder.DEFAULT_KEEP;
++            return db.folder().insertFolder(f);
++        }
++        // Repair placement/label in a single write (mutate the fetched entity,
++        // then one updateFolder — mixing setFolderParent with updateFolder would
++        // clobber the just-set parent from the stale in-memory copy).
++        boolean changed = false;
++        if (!eqLong(f.parent, parent)) { f.parent = parent; changed = true; }
++        if (label != null && !label.equals(f.display)) { f.display = label; changed = true; }
++        if (changed) db.folder().updateFolder(f);
++        return f.id;
++    }
++
++    private static void ensureLeafFolder(DB db, long account, String pathName, String title,
++                                         String feedUrl, Long parent) {
++        EntityFolder f = null;
++        List<EntityFolder> all = db.folder().getFolders(account, false, false);
++        if (all != null)
++            for (EntityFolder c : all)
++                if (feedUrl.equals(c.feed_url)) { f = c; break; }
++
++        if (f == null) {
++            f = new EntityFolder();
++            f.account = account;
++            f.name = pathName;
++            f.display = title;
++            f.type = EntityFolder.USER;
++            f.feed_url = feedUrl;
++            f.parent = parent;
++            f.local = true;
++            f.synchronize = false;
++            f.subscribed = true;
++            f.selectable = true;
++            f.sync_days = EntityFolder.DEFAULT_SYNC;
++            f.keep_days = EntityFolder.DEFAULT_KEEP;
++            db.folder().insertFolder(f);
++            return;
++        }
++        // identity is the feed url — repair name/placement/label in one write.
++        boolean changed = false;
++        if (!pathName.equals(f.name)) { f.name = pathName; changed = true; }
++        if (!eqLong(f.parent, parent)) { f.parent = parent; changed = true; }
++        if (title != null && !title.equals(f.display)) { f.display = title; changed = true; }
++        if (changed) db.folder().updateFolder(f);
++    }
++
++    // Drop feeds this gateway no longer serves, then any group folder left with
++    // no children. Scoped to `origin` so manual feeds + the GitHub releases seed
++    // are untouched. Single pass; deeply-nested empties clear on the next run.
++    private static void pruneFeedTree(DB db, long account, String origin, Set<String> liveFeeds) {
++        List<EntityFolder> all = db.folder().getFolders(account, false, false);
++        if (all == null)
++            return;
++        for (EntityFolder f : all)
++            if (f.feed_url != null && f.feed_url.startsWith(origin) && !liveFeeds.contains(f.feed_url))
++                db.folder().deleteFolder(f.id);
++
++        List<EntityFolder> after = db.folder().getFolders(account, false, false);
++        if (after == null)
++            return;
++        Set<Long> parents = new HashSet<>();
++        for (EntityFolder f : after)
++            if (f.parent != null)
++                parents.add(f.parent);
++        for (EntityFolder f : after)
++            if (f.feed_url == null && f.parent != null && !parents.contains(f.id))
++                db.folder().deleteFolder(f.id);
++    }
++
++    private static String originOf(String base) {
++        Uri u = Uri.parse(base == null ? "" : base);
++        String scheme = u.getScheme();
++        String authority = u.getAuthority();
++        return (scheme != null && authority != null) ? scheme + "://" + authority : "";
++    }
++
++    private static String resolveFeed(String origin, String feed) {
++        if (feed.startsWith("http://") || feed.startsWith("https://"))
++            return feed;
++        return origin + (feed.startsWith("/") ? feed : "/" + feed);
++    }
++
++    private static boolean eqLong(Long a, Long b) {
++        return a == null ? b == null : a.equals(b);
++    }
+ }
+diff --git a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+index 704a5278e8..4cb4884509 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
++++ b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+@@ -52,12 +52,14 @@ import java.util.List;
+ // it as Authorization: Bearer on subsequent polls.
+ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+ 
+-    private static final String PREF_TOKEN   = "comms_cloud_token";
+-    private static final String PREF_BASE    = "comms_cloud_base_url";
++    private static final String PREF_TOKEN    = "comms_cloud_token";
++    private static final String PREF_BASE     = "comms_cloud_base_url";
++    private static final String PREF_CHANNELS = "comms_cloud_channels";
+     private static final int    FETCH_TIMEOUT = 15_000;
+ 
+     private EditText etBaseUrl;
+     private EditText etToken;
++    private CheckBox cbAllChannels;
+     private LinearLayout profilesContainer;
+     private final List<String[]> loadedProfiles = new ArrayList<>(); // [id, title, feed_path]
+ 
+@@ -70,6 +72,7 @@ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+         etBaseUrl         = dview.findViewById(R.id.etCloudBaseUrl);
+         etToken           = dview.findViewById(R.id.etCloudToken);
+         Button btnLoad    = dview.findViewById(R.id.btnLoadProfiles);
++        cbAllChannels     = dview.findViewById(R.id.cbAllChannels);
+         profilesContainer = dview.findViewById(R.id.profilesContainer);
+ 
+         // Pre-fill from stored preferences
+@@ -78,6 +81,8 @@ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+         String savedToken = prefs.getString(PREF_TOKEN, "");
+         etBaseUrl.setText(savedBase);
+         etToken.setText(savedToken);
++        if (cbAllChannels != null)
++            cbAllChannels.setChecked(prefs.getBoolean(PREF_CHANNELS, false));
+ 
+         btnLoad.setOnClickListener(v -> loadProfiles());
+ 
+@@ -92,6 +97,13 @@ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+                         return;
+                     }
+ 
++                    // Whole-tree subscription (SUPER RSS READER) supersedes the
++                    // per-profile picker: provision every channel as a folder tree.
++                    if (cbAllChannels != null && cbAllChannels.isChecked()) {
++                        subscribeChannelTree(base, token);
++                        return;
++                    }
++
+                     // Collect selected profiles
+                     List<String[]> selected = new ArrayList<>();
+                     for (int i = 0; i < profilesContainer.getChildCount(); i++) {
+@@ -177,6 +189,81 @@ public class FragmentDialogCloudFeeds extends FragmentDialogBase {
+                 .create();
+     }
+ 
++    // SUPER RSS READER — fetch <base>/channels.json and provision the whole
++    // hierarchical folder tree in one shot (CommsAccounts.ensureFeedTree), then
++    // set comms_cloud_channels so WorkerFeedSync keeps it in sync every run.
++    private void subscribeChannelTree(String base, String token) {
++        Bundle args = new Bundle();
++        args.putString("base", base);
++        args.putString("token", token);
++
++        new SimpleTask<Integer>() {
++            @Override
++            protected Integer onExecute(Context ctx, Bundle a) throws Throwable {
++                String b   = a.getString("base");
++                String tok = a.getString("token");
++
++                PreferenceManager.getDefaultSharedPreferences(ctx).edit()
++                        .putString(PREF_TOKEN, tok)
++                        .putString(PREF_BASE, b)
++                        .putBoolean(PREF_CHANNELS, true)
++                        .apply();
++
++                String url = b.endsWith("/") ? b + "channels.json" : b + "/channels.json";
++                HttpURLConnection conn = ConnectionHelper.openConnectionUnsafe(
++                        ctx, url, FETCH_TIMEOUT, FETCH_TIMEOUT);
++                if (!TextUtils.isEmpty(tok))
++                    conn.setRequestProperty("Authorization", "Bearer " + tok);
++
++                JSONObject root;
++                try (InputStream is = conn.getInputStream()) {
++                    root = new JSONObject(new String(Helper.readBytes(is), "UTF-8"));
++                } finally {
++                    conn.disconnect();
++                }
++
++                JSONArray arr = root.optJSONArray("channels");
++                List<CommsAccounts.CommsChannel> channels = new ArrayList<>();
++                if (arr != null)
++                    for (int i = 0; i < arr.length(); i++) {
++                        JSONObject o = arr.getJSONObject(i);
++                        channels.add(new CommsAccounts.CommsChannel(
++                                o.optString("id"), o.optString("title"),
++                                o.optString("path"), o.optString("feed")));
++                    }
++
++                DB db = DB.getInstance(ctx);
++                int n;
++                try {
++                    db.beginTransaction();
++                    n = CommsAccounts.ensureFeedTree(db, channels, root.optString("base", b));
++                    db.setTransactionSuccessful();
++                } finally {
++                    db.endTransaction();
++                }
++                WorkerFeedSync.init(ctx);
++                WorkerFeedSync.oneShot(ctx); // fill the tree now, don't wait 6h
++                return n;
++            }
++
++            @Override
++            protected void onExecuted(Bundle a, Integer count) {
++                Context ctx = getContext();
++                if (ctx != null)
++                    ToastEx.makeText(ctx,
++                            ctx.getString(R.string.title_comms_cloud_feeds_added, count),
++                            Toast.LENGTH_LONG).show();
++            }
++
++            @Override
++            protected void onException(Bundle a, Throwable ex) {
++                try {
++                    Log.unexpectedError(getParentFragmentManager(), ex);
++                } catch (Throwable ignored) { }
++            }
++        }.execute(this, args, "comms:cloud-channels-tree");
++    }
++
+     private void loadProfiles() {
+         String base  = etBaseUrl.getText().toString().trim();
+         String token = etToken.getText().toString().trim();
+diff --git a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+index adba66068d..f7792d1fdf 100644
+--- a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
++++ b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+@@ -23,6 +23,7 @@ import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
+ 
+ import android.content.Context;
+ import android.content.SharedPreferences;
++import android.text.TextUtils;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.preference.PreferenceManager;
+@@ -34,10 +35,18 @@ import androidx.work.WorkManager;
+ import androidx.work.Worker;
+ import androidx.work.WorkerParameters;
+ 
++import android.net.Uri;
++
++import org.json.JSONArray;
++import org.json.JSONObject;
++
+ import java.io.File;
+ import java.io.InputStream;
+ import java.net.HttpURLConnection;
++import java.util.ArrayList;
++import java.util.HashSet;
+ import java.util.List;
++import java.util.Set;
+ import java.util.concurrent.TimeUnit;
+ 
+ import javax.mail.Address;
+@@ -69,17 +78,39 @@ public class WorkerFeedSync extends Worker {
+ 
+     private static void sync(Context context) {
+         DB db = DB.getInstance(context);
++        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
++
++        // comms: (re)provision the SUPER RSS READER channel tree from the gateway
++        // before polling, so channels added/removed server-side are reflected
++        // each run. Offline-tolerant — a fetch failure leaves the existing tree.
++        if (prefs.getBoolean("comms_cloud_channels", false)) {
++            try {
++                ensureChannelTree(context, db, prefs);
++            } catch (Throwable ex) {
++                Log.w("comms: channels.json provisioning failed", ex);
++            }
++        }
+ 
+         List<EntityFolder> folders = db.folder().getFolders();
+         if (folders == null)
+             return;
+ 
++        // With ~150 feed folders sharing one gateway host, a single unreachable
++        // gateway must not cost 150×20s of sequential timeouts (WorkManager kills
++        // the job at ~10 min). Once a host fails to connect, skip its remaining
++        // feeds this run. ponytail: one HashSet, no parallelism.
++        Set<String> deadHosts = new HashSet<>();
+         for (EntityFolder folder : folders) {
+             if (folder.feed_url == null)
+                 continue;
++            String host = Uri.parse(folder.feed_url).getHost();
++            if (host != null && deadHosts.contains(host))
++                continue;
+             try {
+                 syncFeed(context, db, folder);
+             } catch (Throwable ex) {
++                if (host != null && isConnectFailure(ex))
++                    deadHosts.add(host);
+                 // One bad feed should not kill the whole run
+                 Log.w(folder.name + " feed error", ex);
+                 EntityLog.log(context, "Feed sync error" +
+@@ -90,6 +121,54 @@ public class WorkerFeedSync extends Worker {
+         }
+     }
+ 
++    // Fetch the channel taxonomy from <base>/channels.json and (re)build the
++    // folder tree. base pref = ".../feed" (same as the profiles flow); each
++    // channel.feed is origin-relative ("/feed/c/<topic>.atom").
++    private static void ensureChannelTree(Context context, DB db, SharedPreferences prefs) throws Throwable {
++        String base = prefs.getString("comms_cloud_base_url", null);
++        if (TextUtils.isEmpty(base))
++            return;
++        String url = base.endsWith("/") ? base + "channels.json" : base + "/channels.json";
++
++        HttpURLConnection conn = ConnectionHelper.openConnectionUnsafe(
++                context, url, FETCH_TIMEOUT, FETCH_TIMEOUT);
++        String token = prefs.getString("comms_cloud_token", null);
++        if (!TextUtils.isEmpty(token))
++            conn.setRequestProperty("Authorization", "Bearer " + token);
++
++        JSONObject root;
++        try (InputStream is = conn.getInputStream()) {
++            root = new JSONObject(new String(Helper.readBytes(is), "UTF-8"));
++        } finally {
++            conn.disconnect();
++        }
++
++        JSONArray arr = root.optJSONArray("channels");
++        if (arr == null)
++            return;
++        List<CommsAccounts.CommsChannel> channels = new ArrayList<>();
++        for (int i = 0; i < arr.length(); i++) {
++            JSONObject o = arr.getJSONObject(i);
++            channels.add(new CommsAccounts.CommsChannel(
++                    o.optString("id"), o.optString("title"),
++                    o.optString("path"), o.optString("feed")));
++        }
++        int n = CommsAccounts.ensureFeedTree(db, channels, root.optString("base", base));
++        EntityLog.log(context, "comms: RSS channel tree provisioned channels=" + n);
++    }
++
++    private static boolean isConnectFailure(Throwable ex) {
++        while (ex != null) {
++            if (ex instanceof java.net.SocketTimeoutException
++                    || ex instanceof java.net.ConnectException
++                    || ex instanceof java.net.UnknownHostException
++                    || ex instanceof java.net.NoRouteToHostException)
++                return true;
++            ex = ex.getCause();
++        }
++        return false;
++    }
++
+     private static void syncFeed(Context context, DB db, EntityFolder folder) throws Throwable {
+         List<FeedParser.FeedItem> items;
+ 
+diff --git a/app/src/main/res/layout/dialog_cloud_feeds.xml b/app/src/main/res/layout/dialog_cloud_feeds.xml
+index 45758ef2f8..b030ff8d7d 100644
+--- a/app/src/main/res/layout/dialog_cloud_feeds.xml
++++ b/app/src/main/res/layout/dialog_cloud_feeds.xml
+@@ -38,6 +38,20 @@
+             android:inputType="textPassword"
+             android:singleLine="true" />
+ 
++        <CheckBox
++            android:id="@+id/cbAllChannels"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="@string/title_comms_cloud_all_channels" />
++
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginStart="32dp"
++            android:text="@string/title_comms_cloud_all_channels_hint"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
++
+         <Button
+             android:id="@+id/btnLoadProfiles"
+             android:layout_width="wrap_content"
+diff --git a/app/src/main/res/values/strings_comms.xml b/app/src/main/res/values/strings_comms.xml
+index 97dffda9a9..203be8ec55 100644
+--- a/app/src/main/res/values/strings_comms.xml
++++ b/app/src/main/res/values/strings_comms.xml
+@@ -43,6 +43,8 @@
+ 
+     <!-- Cloud Feeds (rss-gateway profile subscriptions) -->
+     <string name="title_comms_cloud_feeds" translatable="false">Cloud feeds…</string>
++    <string name="title_comms_cloud_all_channels" translatable="false">Subscribe to the whole channel tree</string>
++    <string name="title_comms_cloud_all_channels_hint" translatable="false">Provisions every Cloud channel as a nested folder tree (Cloud-Infra/…, Cloud-Apps/…) and keeps it in sync. Overrides the profile selection below.</string>
+     <string name="title_comms_cloud_base_url" translatable="false">Feed base URL</string>
+     <string name="title_comms_cloud_token" translatable="false">ntfy token (Bearer)</string>
+     <string name="title_comms_cloud_load" translatable="false">Load profiles</string>
+-- 
+2.44.2
+

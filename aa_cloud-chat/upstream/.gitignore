@@ -1,0 +1,11 @@
+# Vendored Mattermost mobile source (see ea_cloud-chat/README.md). Committed
+# as plain files — these local build/IDE artifacts must never be re-added.
+node_modules/
+android/build/
+android/app/build/
+android/.gradle/
+.gradle/
+.idea/
+.cxx/
+ios/Pods/
+ios/build/

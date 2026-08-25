@@ -1,0 +1,57 @@
+From a0c23e9110d3ffba91db25fb040738caf0086bf7 Mon Sep 17 00:00:00 2001
+From: engine <engine@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 12:15:31 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20compile=20fix=20=E2=80=94=20Mes?=
+ =?UTF-8?q?sagingException=20cause=20needs=20Exception=20not=20Throwable?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+unwrap() returns Throwable; javax.mail.MessagingException(String, Exception)
+takes an Exception. Add asException() adapter, use it at both throw sites.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ app/src/main/java/eu/faircode/email/JmapService.java | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+index e15b543884..c8c626a89b 100644
+--- a/app/src/main/java/eu/faircode/email/JmapService.java
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -151,7 +151,7 @@ public class JmapService {
+             }
+         }
+         throw new MessagingException("JMAP connect failed after " + CONNECT_ATTEMPTS +
+-                " attempts: " + sessionResourceUrl + " — " + describe(last), last);
++                " attempts: " + sessionResourceUrl + " — " + describe(last), asException(last));
+     }
+ 
+     // Unwrap Future/Completion wrappers to the real cause (SocketTimeout, auth, TLS…).
+@@ -184,6 +184,14 @@ public class JmapService {
+         return sb.toString();
+     }
+ 
++    // javax.mail.MessagingException's cause ctor takes an Exception, not a
++    // Throwable — adapt (JMAP causes are Exceptions in practice).
++    static Exception asException(Throwable t) {
++        if (t instanceof Exception)
++            return (Exception) t;
++        return new Exception(t == null ? "unknown" : t.toString(), t);
++    }
++
+     String getAccountId() {
+         return accountId;
+     }
+@@ -487,7 +495,7 @@ public class JmapService {
+         if (ex instanceof MessagingException)
+             return (MessagingException) ex;
+         Throwable cause = unwrap(ex);
+-        return new MessagingException("JMAP " + op + " failed: " + describe(cause), cause);
++        return new MessagingException("JMAP " + op + " failed: " + describe(cause), asException(cause));
+     }
+ 
+     void close() {
+-- 
+2.44.2
+

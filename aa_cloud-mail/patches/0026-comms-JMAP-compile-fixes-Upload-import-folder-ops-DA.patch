@@ -1,0 +1,67 @@
+From 644349c399b44387331b3eadc9075b4ef2ec15a2 Mon Sep 17 00:00:00 2001
+From: engine <engine@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 10:00:58 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20compile=20fixes=20=E2=80=94=20U?=
+ =?UTF-8?q?pload=20import=20+=20folder-ops=20DAO=20query?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Second runner pass surfaced two more: (1) JmapService.java:355 lost the Upload
+import (0025 removed the wrong rs.ltt.jmap.client.blob.Upload but didn't re-add
+the correct rs.ltt.jmap.common.entity.Upload); (2) JmapSync used a
+db.operation().getOperations(long folder) overload that doesn't exist — added
+DaoOperation.getOperationsByFolder(long) (@Query, id order) and switched to it.
+All other FairEmail-internal + rs.ltt.jmap symbols jar/tree-verified.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ app/src/main/java/eu/faircode/email/DaoOperation.java | 5 +++++
+ app/src/main/java/eu/faircode/email/JmapService.java  | 1 +
+ app/src/main/java/eu/faircode/email/JmapSync.java     | 2 +-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/DaoOperation.java b/app/src/main/java/eu/faircode/email/DaoOperation.java
+index 85be33a65b..851488f1d3 100644
+--- a/app/src/main/java/eu/faircode/email/DaoOperation.java
++++ b/app/src/main/java/eu/faircode/email/DaoOperation.java
+@@ -120,6 +120,11 @@ public interface DaoOperation {
+     @Query("SELECT * FROM operation WHERE folder = :folder AND name = :name")
+     List<EntityOperation> getOperationsByFolder(long folder, String name);
+ 
++    // comms: all pending operations for a folder, id order — used by the JMAP
++    // sync engine (JmapSync) to drain SEEN/FLAG/MOVE/DELETE/BODY in one pass.
++    @Query("SELECT * FROM operation WHERE folder = :folder ORDER BY id")
++    List<EntityOperation> getOperationsByFolder(long folder);
++
+     @Query("SELECT * FROM operation WHERE id = :id")
+     EntityOperation getOperation(long id);
+ 
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+index 205d2ee5d4..5c06235f69 100644
+--- a/app/src/main/java/eu/faircode/email/JmapService.java
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -49,6 +49,7 @@ import rs.ltt.jmap.common.entity.Identity;
+ import rs.ltt.jmap.common.entity.Keyword;
+ import rs.ltt.jmap.common.entity.Mailbox;
+ import rs.ltt.jmap.common.entity.Role;
++import rs.ltt.jmap.common.entity.Upload;
+ import rs.ltt.jmap.common.entity.capability.MailAccountCapability;
+ import rs.ltt.jmap.common.entity.filter.EmailFilterCondition;
+ import rs.ltt.jmap.common.method.call.email.GetEmailMethodCall;
+diff --git a/app/src/main/java/eu/faircode/email/JmapSync.java b/app/src/main/java/eu/faircode/email/JmapSync.java
+index e59b384fcf..eaa014ca61 100644
+--- a/app/src/main/java/eu/faircode/email/JmapSync.java
++++ b/app/src/main/java/eu/faircode/email/JmapSync.java
+@@ -230,7 +230,7 @@ public class JmapSync {
+                                           String mailboxId, Map<String, Long> mailboxToFolder,
+                                           JmapService jmap) throws Exception {
+         DB db = DB.getInstance(context);
+-        List<EntityOperation> ops = db.operation().getOperations(folder.id);
++        List<EntityOperation> ops = db.operation().getOperationsByFolder(folder.id);
+         if (ops == null)
+             return;
+         for (EntityOperation op : ops) {
+-- 
+2.44.2
+

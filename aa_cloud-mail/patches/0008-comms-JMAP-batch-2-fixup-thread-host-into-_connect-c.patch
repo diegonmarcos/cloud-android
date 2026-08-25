@@ -1,0 +1,77 @@
+From e3f84da3a458fe5dee28e0b8a6fe62b1af148c71 Mon Sep 17 00:00:00 2001
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Date: Tue, 23 Jun 2026 18:31:45 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20batch=202=20fixup=20=E2=80=94?=
+ =?UTF-8?q?=20thread=20host=20into=20=5Fconnect;=20catch=20Exception=20not?=
+ =?UTF-8?q?=20Throwable?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fixes 2 javac errors from the JMAP wiring (build 28036135311):
+- EmailService._connect lacked the host string; JMAP branch needs the
+  real hostname (Caddy L4 SNI on :443), not address.getHostAddress().
+  Add String host param + pass at all 3 call sites.
+- JmapService.connect: MessagingException(String,Exception) ctor — catch
+  Exception (ExecutionException/InterruptedException) not Throwable.
+---
+ app/src/main/java/eu/faircode/email/EmailService.java | 8 ++++----
+ app/src/main/java/eu/faircode/email/JmapService.java  | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/EmailService.java b/app/src/main/java/eu/faircode/email/EmailService.java
+index 048bb304b1..abdfd6af8b 100644
+--- a/app/src/main/java/eu/faircode/email/EmailService.java
++++ b/app/src/main/java/eu/faircode/email/EmailService.java
+@@ -703,7 +703,7 @@ public class EmailService implements AutoCloseable {
+             }
+ 
+             Log.breadcrumb("Connecting", crumb);
+-            _connect(main, port, require_id, user, factory);
++            _connect(main, host, port, require_id, user, factory);
+             Log.breadcrumb("Connected", crumb);
+         } catch (UnknownHostException ex) {
+             crumb.put("exception", ex + "\n" + android.util.Log.getStackTraceString(ex));
+@@ -780,7 +780,7 @@ public class EmailService implements AutoCloseable {
+                             true, false,
+                             factory.key, factory.chain, factory.trustedFingerprint);
+                     properties.put("mail." + protocol + ".ssl.socketFactory", factory);
+-                    _connect(main, port, require_id, user, factory);
++                    _connect(main, host, port, require_id, user, factory);
+                     return;
+                 } catch (GeneralSecurityException ex1) {
+                     Log.e(ex1);
+@@ -850,7 +850,7 @@ public class EmailService implements AutoCloseable {
+ 
+                             try {
+                                 EntityLog.log(context, EntityLog.Type.Network, "Falling back to " + iaddr);
+-                                _connect(iaddr, port, require_id, user, factory);
++                                _connect(iaddr, host, port, require_id, user, factory);
+                                 return;
+                             } catch (MessagingException ex1) {
+                                 ex = ex1;
+@@ -870,7 +870,7 @@ public class EmailService implements AutoCloseable {
+     }
+ 
+     private void _connect(
+-            InetAddress address, int port, boolean require_id, String user,
++            InetAddress address, String host, int port, boolean require_id, String user,
+             SSLSocketFactoryService factory) throws MessagingException {
+         EntityLog.log(context, EntityLog.Type.Network, "Connecting to " + address + ":" + port);
+ 
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+index c26275842d..4b29ae36c2 100644
+--- a/app/src/main/java/eu/faircode/email/JmapService.java
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -70,7 +70,7 @@ public class JmapService {
+         } catch (MessagingException ex) {
+             close();
+             throw ex;
+-        } catch (Throwable ex) {
++        } catch (Exception ex) {
+             close();
+             throw new MessagingException("JMAP connect failed: " + sessionResourceUrl, ex);
+         }
+-- 
+2.44.2
+

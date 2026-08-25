@@ -1,0 +1,115 @@
+From d261ded5562640ea75b2089fe89692c88beff97b Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Wed, 8 Jul 2026 16:15:52 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20fix=20JMAP=20sync=20=E2=80=94=20newest?=
+ =?UTF-8?q?-first=20query=20sort=20+=20sync=20user=20folders?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Two root causes for 'inbox frozen at 15-May, filter folders empty':
+
+1. Email/query had no sort. RFC 8621 leaves unsorted order
+   server-defined; Stalwart returns oldest-first, so limit 200 on a
+   903-message INBOX pinned the window to the 200 oldest messages —
+   new mail never appeared. Now sorts receivedAt descending.
+
+2. EntityFolder.setProperties() defaults synchronize=false for
+   USER-type folders, and JmapSync skips non-synchronized folders —
+   sieve/filter folders were provisioned (0042) but never synced.
+   New folders now sync; existing rows get a one-time pref-gated
+   repair (jmap_folder_sync_repaired.<accountId>) so later manual
+   per-folder opt-outs are respected.
+---
+ .../java/eu/faircode/email/JmapService.java   |  6 +++++
+ .../main/java/eu/faircode/email/JmapSync.java | 23 +++++++++++++++----
+ 2 files changed, 25 insertions(+), 4 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/JmapService.java b/app/src/main/java/eu/faircode/email/JmapService.java
+index c8c626a89b..eb03944971 100644
+--- a/app/src/main/java/eu/faircode/email/JmapService.java
++++ b/app/src/main/java/eu/faircode/email/JmapService.java
+@@ -50,6 +50,7 @@ import rs.ltt.jmap.common.entity.Keyword;
+ import rs.ltt.jmap.common.entity.Mailbox;
+ import rs.ltt.jmap.common.entity.Role;
+ import rs.ltt.jmap.common.entity.Upload;
++import rs.ltt.jmap.common.entity.Comparator;
+ import rs.ltt.jmap.common.entity.capability.MailAccountCapability;
+ import rs.ltt.jmap.common.entity.filter.EmailFilterCondition;
+ import rs.ltt.jmap.common.method.call.email.GetEmailMethodCall;
+@@ -286,6 +287,11 @@ public class JmapService {
+                     QueryEmailMethodCall.builder()
+                             .accountId(accountId)
+                             .filter(EmailFilterCondition.builder().inMailbox(mailboxId).build())
++                            // Explicit newest-first sort. RFC 8621 leaves unsorted
++                            // query order server-defined — Stalwart returns oldest
++                            // first, so limit N without a sort pins the window to
++                            // the N oldest messages and new mail never appears.
++                            .sort(new Comparator[]{new Comparator("receivedAt", false)})
+                             .limit((long) limit)
+                             .build());
+             JmapRequest.Call getCall = multiCall.call(
+diff --git a/app/src/main/java/eu/faircode/email/JmapSync.java b/app/src/main/java/eu/faircode/email/JmapSync.java
+index 1dc6e8ca62..716fe38dd9 100644
+--- a/app/src/main/java/eu/faircode/email/JmapSync.java
++++ b/app/src/main/java/eu/faircode/email/JmapSync.java
+@@ -20,8 +20,11 @@ package eu.faircode.email;
+ */
+ 
+ import android.content.Context;
++import android.content.SharedPreferences;
+ import android.text.TextUtils;
+ 
++import androidx.preference.PreferenceManager;
++
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.IOException;
+@@ -128,17 +131,23 @@ public class JmapSync {
+         for (Mailbox mb : mailboxes)
+             byId.put(mb.getId(), mb);
+ 
++        // Pre-0048 builds left setProperties()'s default synchronize=false on
++        // USER-type folders, so sieve/filter folders were provisioned but the
++        // message loop below skipped them forever (all empty in the app). New
++        // folders now sync; existing rows get a ONE-TIME repair (pref-gated per
++        // account so a user disabling a folder later is respected).
++        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
++        String repairKey = "jmap_folder_sync_repaired." + account.id;
++        boolean repaired = prefs.getBoolean(repairKey, false);
++
+         for (Mailbox mb : mailboxes) {
+             String name = fullName(mb, byId);
+             String type = JmapService.roleToType(mb.getRole());
+             EntityFolder folder = db.folder().getFolderByName(account.id, name);
+             if (folder == null) {
+-                // EntityFolder(name, type) ran setProperties(): synchronize=true
+-                // for system folders (user folders stay off), unified inbox etc.
+-                // Do NOT override synchronize — all-false folders stop
+-                // ServiceSynchronize from ever starting this account's monitor.
+                 folder = new EntityFolder(name, type);
+                 folder.account = account.id;
++                folder.synchronize = true; // JMAP folders are the user's own taxonomy — sync all
+                 folder.subscribed = true;
+                 folder.poll = true; // JMAP is polled, never IDLE
+                 folder.download = true;
+@@ -147,10 +156,16 @@ public class JmapSync {
+                 folder.selectable = true;
+                 folder.id = db.folder().insertFolder(folder);
+                 EntityLog.log(context, "JMAP created folder=" + name + " type=" + type);
++            } else if (!repaired && !Boolean.TRUE.equals(folder.synchronize)) {
++                db.folder().setFolderSynchronize(folder.id, true);
++                folder.synchronize = true;
++                EntityLog.log(context, "JMAP repaired sync folder=" + name);
+             }
+             folderToMailbox.put(folder.id, mb.getId());
+             mailboxToFolder.put(mb.getId(), folder.id);
+         }
++        if (!repaired)
++            prefs.edit().putBoolean(repairKey, true).apply();
+ 
+         // 2) Messages — per synchronized folder, insert any not already stored.
+         for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
+-- 
+2.44.2
+

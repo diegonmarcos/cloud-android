@@ -1,0 +1,96 @@
+From fa8abea81a1700f43ddce7bff3260e86e6ba6f34 Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Wed, 1 Jul 2026 12:35:34 +0200
+Subject: [PATCH] =?UTF-8?q?comms(mail):=20RSS=20minimal=20input=20?=
+ =?UTF-8?q?=E2=80=94=20auto-name=20feed=20from=20its=20own=20<title>?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RSS config is already a single URL field (title optional). When the user pastes
+only the URL, the folder was named with the raw URL. Now FeedParser captures the
+channel-level <title> and WorkerFeedSync renames the folder to it on first
+successful fetch (only while the folder name still equals the feed URL, so an
+explicit user title is never overwritten). User needs just the feed URL.
+---
+ .../java/eu/faircode/email/FeedParser.java    | 20 +++++++++++++++++--
+ .../eu/faircode/email/WorkerFeedSync.java     | 11 +++++++++-
+ 2 files changed, 28 insertions(+), 3 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/FeedParser.java b/app/src/main/java/eu/faircode/email/FeedParser.java
+index 945d5be02e..00b4229b13 100644
+--- a/app/src/main/java/eu/faircode/email/FeedParser.java
++++ b/app/src/main/java/eu/faircode/email/FeedParser.java
+@@ -45,6 +45,13 @@ public class FeedParser {
+         long date;
+     }
+ 
++    // comms: a parsed feed — channel/feed-level title (used to auto-name the
++    // folder when the user only pasted a URL) plus its items.
++    static class Feed {
++        String title;
++        List<FeedItem> items = new ArrayList<>();
++    }
++
+     // RFC822 (RSS pubDate) and ISO8601 (Atom updated) date formats, tried in order
+     private static final String[] DATE_FORMATS = new String[]{
+             "EEE, dd MMM yyyy HH:mm:ss Z",
+@@ -56,8 +63,9 @@ public class FeedParser {
+             "yyyy-MM-dd'T'HH:mm:ss"
+     };
+ 
+-    static List<FeedItem> parse(InputStream is) throws XmlPullParserException, IOException {
++    static Feed parse(InputStream is) throws XmlPullParserException, IOException {
+         List<FeedItem> result = new ArrayList<>();
++        String feedTitle = null;
+ 
+         XmlPullParser xml = Xml.newPullParser();
+         xml.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
+@@ -127,13 +135,21 @@ public class FeedParser {
+                         if (text != null)
+                             item.date = parseDate(text.trim());
+                     }
++                } else if ("title".equalsIgnoreCase(name)) {
++                    // comms: channel/feed-level <title> (outside any item/entry) —
++                    // used to auto-name the folder when the user only pasted a URL.
++                    if (feedTitle == null && !TextUtils.isEmpty(text))
++                        feedTitle = text.trim();
+                 }
+                 text = null;
+             }
+             eventType = xml.next();
+         }
+ 
+-        return result;
++        Feed feed = new Feed();
++        feed.title = feedTitle;
++        feed.items = result;
++        return feed;
+     }
+ 
+     // Strip any namespace prefix (content:encoded -> encoded, dc:date -> date)
+diff --git a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+index 506dd99258..68dce327a6 100644
+--- a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
++++ b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+@@ -96,7 +96,16 @@ public class WorkerFeedSync extends Worker {
+             connection = ConnectionHelper.openConnectionUnsafe(
+                     context, folder.feed_url, FETCH_TIMEOUT, FETCH_TIMEOUT);
+             try (InputStream is = connection.getInputStream()) {
+-                items = FeedParser.parse(is);
++                FeedParser.Feed feed = FeedParser.parse(is);
++                items = feed.items;
++                // comms: minimal input — when the user only pasted a URL (folder name
++                // still equals the feed URL), auto-name the folder from the feed's own
++                // <title> on first successful fetch.
++                if (feed.title != null && !feed.title.isEmpty()
++                        && folder.feed_url.equals(folder.name)) {
++                    folder.name = feed.title;
++                    db.folder().setFolderName(folder.id, feed.title);
++                }
+             }
+         } finally {
+             if (connection != null)
+-- 
+2.50.1
+

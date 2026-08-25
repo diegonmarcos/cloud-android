@@ -1,0 +1,2338 @@
+{
+  "name": "cloud-nav",
+  "description": "Diego's Cloud Nav — dedicated maps/navigation/tracker Android app. Single APK, gradle multi-module (app/ Google-Maps-style shell + libs/{core,maps}). MapLibre Native renderer, GPS tracker + Stop detection, multi-stop routing, driving navigation view, place-category browsing, and a timeline of visited places. Lifted out of Cloud SuperApp's libs:maps into its own focused app. Build via Nix devShell, one APK out.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.cloudnav",
+    "compile_sdk": 35,
+    "min_sdk": 26,
+    "target_sdk": 34,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "_doc_abi_filters": "arm64-v8a only — MapLibre Native ships ~15-18MB of .so per ABI. Every Samsung Galaxy from S8 + every modern Pixel is arm64. Add armeabi-v7a/x86_64 here for 32-bit/emulator support; no Kotlin/gradle edits needed.",
+    "abi_filters": [
+      "arm64-v8a"
+    ]
+  },
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key — it never generates or substitutes a random/legacy key.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "diagnostics": {
+    "_doc": "On-device DevControlServer diagnostics → cloud sink + local download. Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by app/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store on oci-apps) ingest, reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK (the collector relays to openobserve server-side). '{stream}' in the url is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (the 'Download logs' action still works fully); set it to the confirmed collector ingest path to enable one-tap 'Send logs to cloud'. Data-driven: change here, every app rebuild picks it up — never hardcode in Kotlin.",
+    "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
+    "log_sink_stream": "cloud-nav",
+    "enabled": true
+  },
+  "emulator": {
+    "_doc": "build.sh emulator boots an arm64 AVD for full-fidelity testing of the arm64-v8a APK. ABI/API must match flake.nix. avd_name created idempotently from system_image.",
+    "avd_name": "cloudnav-arm64",
+    "system_image": "system-images;android-34;google_apis;arm64-v8a",
+    "device": "pixel_6",
+    "boot_args": [
+      "-no-snapshot-save",
+      "-gpu",
+      "swiftshader_indirect"
+    ]
+  },
+  "toolchain": {
+    "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
+    "agp": "8.7.3",
+    "gradle": "8.10.2",
+    "kotlin": "1.9.24",
+    "jdk": "17"
+  },
+  "modules": {
+    "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list. Adding a new feature module = one entry here + mkdir + minimal build.gradle.",
+    "app": {
+      "type": "application",
+      "depends_on": [
+        "libs:core",
+        "libs:maps",
+        "libs:updater"
+      ]
+    },
+    "libs:core": {
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../ea_cloud-superapp/libs/core",
+      "type": "library"
+    },
+    "libs:maps": {
+      "type": "library"
+    },
+    "libs:devtools": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. DevControlBridge, DevControlPrefs and DiagnosticsPush were byte-identical copies in superapp and nav; the loopback server and its UI stay app-owned because they have genuinely diverged. LOG_SINK_URL/STREAM are baked by this module from the CONSUMING app's build.json::diagnostics.",
+      "dir": "../ea_cloud-superapp/libs/devtools"
+    },
+    "libs:updater": {
+      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../ea_cloud-superapp/libs/updater",
+      "type": "library"
+    }
+  },
+  "ui": {
+    "_doc_nav_tabs": "Bottom navigation tabs. Order = display order. id maps to a Fragment in MainActivity.fragmentForTab(); icon maps to R.drawable.ic_nav_<icon>.",
+    "nav_tabs": [
+      {
+        "id": "routes",
+        "label": "Routes",
+        "icon": "routes"
+      },
+      {
+        "id": "navigation",
+        "label": "Navigation",
+        "icon": "navigation"
+      },
+      {
+        "id": "places",
+        "label": "Places",
+        "icon": "places"
+      },
+      {
+        "id": "timeline",
+        "label": "Timeline",
+        "icon": "timeline"
+      },
+      {
+        "id": "configs",
+        "label": "Configs",
+        "icon": "configs"
+      }
+    ],
+    "default_tab": "routes",
+    "_doc_search_islands": "Small round 'island' shortcut chips rendered in a row beneath the top search bar (Google-Maps style). action is parsed by the active fragment.",
+    "search_islands": [
+      {
+        "id": "home",
+        "label": "Home",
+        "icon": "home",
+        "action": "saved:home"
+      },
+      {
+        "id": "work",
+        "label": "Work",
+        "icon": "work",
+        "action": "saved:work"
+      },
+      {
+        "id": "saved",
+        "label": "Saved",
+        "icon": "star",
+        "action": "list:saved"
+      },
+      {
+        "id": "recent",
+        "label": "Recent",
+        "icon": "history",
+        "action": "list:recent"
+      },
+      {
+        "id": "share_loc",
+        "label": "Share",
+        "icon": "share",
+        "action": "share:location"
+      }
+    ],
+    "_doc_places_categories": "Place categories for the Places tab islands. query is the Overpass POI tag filter; emoji is the chip glyph (Google-Maps-style, data-driven — no per-category drawables).",
+    "places_categories": [
+      {
+        "id": "bars",
+        "label": "Bars",
+        "emoji": "🍺",
+        "icon": "bar",
+        "query": "amenity=bar"
+      },
+      {
+        "id": "nightlife",
+        "label": "Nightlife",
+        "emoji": "🍸",
+        "icon": "nightlife",
+        "query": "amenity=nightclub"
+      },
+      {
+        "id": "restaurants",
+        "label": "Restaurants",
+        "emoji": "🍽️",
+        "icon": "restaurant",
+        "query": "amenity=restaurant"
+      },
+      {
+        "id": "cafes",
+        "label": "Cafés",
+        "emoji": "☕",
+        "icon": "cafe",
+        "query": "amenity=cafe"
+      },
+      {
+        "id": "supermarkets",
+        "label": "Supermarkets",
+        "emoji": "🛒",
+        "icon": "supermarket",
+        "query": "shop=supermarket"
+      },
+      {
+        "id": "beaches",
+        "label": "Beaches",
+        "emoji": "🏖️",
+        "icon": "beach",
+        "query": "natural=beach"
+      },
+      {
+        "id": "nature",
+        "label": "Natural Wonders",
+        "emoji": "🏞️",
+        "icon": "nature",
+        "query": "leisure=park"
+      },
+      {
+        "id": "gyms",
+        "label": "Gyms",
+        "emoji": "🏋️",
+        "icon": "gym",
+        "query": "leisure=fitness_centre"
+      },
+      {
+        "id": "atms",
+        "label": "ATMs",
+        "emoji": "🏧",
+        "icon": "atm",
+        "query": "amenity=atm"
+      },
+      {
+        "id": "fuel",
+        "label": "Fuel",
+        "emoji": "⛽",
+        "icon": "fuel",
+        "query": "amenity=fuel"
+      },
+      {
+        "id": "pharmacies",
+        "label": "Pharmacies",
+        "emoji": "💊",
+        "icon": "pharmacy",
+        "query": "amenity=pharmacy"
+      },
+      {
+        "id": "hotels",
+        "label": "Hotels",
+        "emoji": "🏨",
+        "icon": "hotel",
+        "query": "tourism=hotel"
+      }
+    ],
+    "_doc_poi_detail_fields": "Rows shown in the Places POI detail sheet (tap a pin). Iterated in order; each pulls its OSM [tag] from the hit's raw tags — absent tags are skipped. kind: text (plain) | url (opens browser) | phone (dials) | email. First non-blank of tag|alt tags wins. name/type/distance are rendered separately at the top; remaining un-listed tags collapse under 'More'. Data-driven — add a row here, no Kotlin change.",
+    "poi_detail_fields": [
+      {
+        "tag": "cuisine",
+        "alt": [],
+        "label": "Cuisine",
+        "emoji": "🍽️",
+        "kind": "text"
+      },
+      {
+        "tag": "opening_hours",
+        "alt": [],
+        "label": "Hours",
+        "emoji": "🕒",
+        "kind": "text"
+      },
+      {
+        "tag": "phone",
+        "alt": [
+          "contact:phone"
+        ],
+        "label": "Phone",
+        "emoji": "📞",
+        "kind": "phone"
+      },
+      {
+        "tag": "website",
+        "alt": [
+          "contact:website",
+          "url"
+        ],
+        "label": "Website",
+        "emoji": "🌐",
+        "kind": "url"
+      },
+      {
+        "tag": "email",
+        "alt": [
+          "contact:email"
+        ],
+        "label": "Email",
+        "emoji": "✉️",
+        "kind": "email"
+      },
+      {
+        "tag": "addr:street",
+        "alt": [],
+        "label": "Street",
+        "emoji": "🏠",
+        "kind": "text"
+      },
+      {
+        "tag": "addr:housenumber",
+        "alt": [],
+        "label": "No.",
+        "emoji": "🔢",
+        "kind": "text"
+      },
+      {
+        "tag": "addr:city",
+        "alt": [
+          "addr:town"
+        ],
+        "label": "City",
+        "emoji": "🏙️",
+        "kind": "text"
+      },
+      {
+        "tag": "addr:postcode",
+        "alt": [],
+        "label": "Postcode",
+        "emoji": "📮",
+        "kind": "text"
+      },
+      {
+        "tag": "brand",
+        "alt": [
+          "operator"
+        ],
+        "label": "Brand",
+        "emoji": "🏷️",
+        "kind": "text"
+      },
+      {
+        "tag": "wheelchair",
+        "alt": [],
+        "label": "Wheelchair",
+        "emoji": "♿",
+        "kind": "text"
+      },
+      {
+        "tag": "outdoor_seating",
+        "alt": [],
+        "label": "Outdoor seat.",
+        "emoji": "🪑",
+        "kind": "text"
+      },
+      {
+        "tag": "internet_access",
+        "alt": [
+          "wifi"
+        ],
+        "label": "Wi-Fi",
+        "emoji": "📶",
+        "kind": "text"
+      }
+    ],
+    "_doc_map_styles": "Basemaps. Every raster style declares `vector_equivalent` — the real vector/hybrid style MapsBasemapPrefs.resolve() substitutes when the family preference (or an explicit pin) says 'vector': light→vector_light, dark→vector_dark, satellite→satellite_hybrid (satellite is photographic imagery, not vector geometry, so its 'vector' form is a hybrid: the raster imagery with an English roads+labels vector overlay composited on top, built by VectorStyleLoader.buildHybrid — fill/background/water polygon layers from the overlay source are dropped, only line + name-bearing symbol layers survive, recolored white-on-black-halo for legibility over arbitrary imagery). Each vector/hybrid entry declares `raster_fallback` — if its network fetch fails at runtime, MapsMapFragment falls back to that raster key automatically (toasted, never a blank map). `default_family` (vector|raster) is Configs > APIs 'Basemap' menu's default resolution when no style is explicitly pinned there; picking a concrete entry from that menu pins it everywhere, overriding the family default. `order` = every entry, in the cycle the in-map Map-switcher FAB (under locate-me) steps through AND the full list shown in the Configs menu. vector_light/vector_dark are real vector-tile GL styles (vector_style_url, OpenFreeMap 'positron'/'dark') localized at runtime to prefer label_field_pref (falls back to name:latin, then name) — city/country/street labels render in English everywhere instead of each place's local script. Uses OpenFreeMap (openfreemap.org) — free, no API key, no rate limit.",
+    "map_styles": {
+      "default_family": "vector",
+      "_doc_default_style": "When set, this style is the resolved default for EVERY screen (routes/nav/places/timeline) — overriding each screen's own raw pick — unless the user has explicitly pinned another in Configs > Basemap. Must be a key in `order`.",
+      "default_style": "vector_liberty",
+      "_doc_default_3d": "First-run value for the manual 3D-buildings tilt (MapsBasemapPrefs.is3d) — true opens every map tilted with 3D buildings on. User can still toggle it off (persisted).",
+      "default_3d": true,
+      "order": [
+        "light",
+        "dark",
+        "satellite",
+        "vector_light",
+        "vector_dark",
+        "vector_liberty",
+        "satellite_hybrid"
+      ],
+      "light": {
+        "label": "Standard",
+        "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap contributors",
+        "background": "#e8eef4",
+        "maxzoom": 19,
+        "vector_equivalent": "vector_light"
+      },
+      "dark": {
+        "label": "Dark",
+        "tiles": "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap, © CARTO",
+        "background": "#0a0e14",
+        "maxzoom": 20,
+        "vector_equivalent": "vector_dark"
+      },
+      "satellite": {
+        "label": "Satellite",
+        "tiles": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© Esri, Maxar, Earthstar Geographics",
+        "background": "#0a0e14",
+        "maxzoom": 19,
+        "vector_equivalent": "satellite_hybrid"
+      },
+      "vector_light": {
+        "label": "Light (Vector)",
+        "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
+        "background": "#e8eef4",
+        "vector_style_url": "https://tiles.openfreemap.org/styles/positron",
+        "label_field_pref": "name_en",
+        "raster_fallback": "light"
+      },
+      "vector_dark": {
+        "label": "Dark (Vector)",
+        "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
+        "background": "#0a0e14",
+        "vector_style_url": "https://tiles.openfreemap.org/styles/dark",
+        "label_field_pref": "name_en",
+        "raster_fallback": "dark"
+      },
+      "vector_liberty": {
+        "label": "Liberty (Vector)",
+        "attribution": "© OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors",
+        "background": "#e8eef4",
+        "vector_style_url": "https://tiles.openfreemap.org/styles/liberty",
+        "label_field_pref": "name_en",
+        "raster_fallback": "light"
+      },
+      "satellite_hybrid": {
+        "label": "Satellite (labels)",
+        "attribution": "© Esri, Maxar, Earthstar Geographics · © OpenFreeMap, © OpenMapTiles",
+        "background": "#0a0e14",
+        "hybrid": true,
+        "base_style": "satellite",
+        "vector_overlay_url": "https://tiles.openfreemap.org/styles/positron",
+        "label_field_pref": "name_en",
+        "raster_fallback": "satellite"
+      },
+      "_doc_hillshade": "Real-elevation hillshade added to every vector style by VectorStyleLoader (NOT a selectable basemap — not in `order`). Terrarium-encoded raster-DEM from AWS's keyless Terrain Tiles open dataset; MapLibre Native renders a hillshade layer (accurate mountain relief, replacing the flat painted ne2_shaded image). NOTE: this is 2D shading — true 3D tilted terrain is unsupported by MapLibre Native (maplibre-native#252, unfunded).",
+      "hillshade": {
+        "dem_tiles": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+        "encoding": "terrarium",
+        "tile_size": 256,
+        "maxzoom": 15,
+        "exaggeration": 0.7,
+        "attribution": "Elevation © Mapzen · AWS Terrain Tiles"
+      },
+      "_doc_nature": "Vivid-green nature layer added to every vector style by VectorStyleLoader.injectNature (NOT a selectable basemap — not in `order`). OpenMapTiles' own landcover/landuse fills render wood/grass/park/forest/meadow/grassland in whatever muted tone the upstream style picked (near-white on positron, near-black on dark/liberty), so nature barely reads against the basemap. Synthesizes ONE additional fill layer from the same vector source, filtered to `classes` via a match expression, painted `green_color` at `opacity`. `minzoom` keeps it off at world-scale zooms where it would just be noise.",
+      "nature": {
+        "green_color": "#3fa34d",
+        "opacity": 0.55,
+        "classes": [
+          "wood",
+          "grass",
+          "park",
+          "forest",
+          "meadow",
+          "grassland"
+        ],
+        "minzoom": 5
+      }
+    },
+    "maps_active": {
+      "reverse": "nominatim_public",
+      "poi": "overpass_public",
+      "search": "nominatim_public"
+    },
+    "_doc_search_cache": "On-device cache for forward-search + POI lookups (NOT reverse-geocode, which never expires). New bars/shops appear slowly and the public Nominatim/Overpass endpoints are fair-use, so results for the same query/area are reused for ttl_days. Stored in the maps.db places_cache table keyed fwd:/poi:. Consumed by MapsProviderClient (baked UI_SEARCH_CACHE_TTL_DAYS).",
+    "search_cache": {
+      "ttl_days": 30
+    },
+    "_doc_search_choices": "How many forward-search candidates the search bar offers the user to pick from (Routes/Navigation show a chooser instead of auto-picking the first hit).",
+    "search_choices": 3,
+    "_doc_search_scopes": "Radius-scope islands shown when the Places search bar is focused. radius_km bounds the forward search around the user (0 = worldwide). default_search_scope = the one pre-selected.",
+    "default_search_scope": "city",
+    "search_scopes": [
+      {
+        "id": "city",
+        "label": "City",
+        "emoji": "🏙️",
+        "radius_km": 30
+      },
+      {
+        "id": "country",
+        "label": "Country",
+        "emoji": "🗺️",
+        "radius_km": 700
+      },
+      {
+        "id": "world",
+        "label": "World",
+        "emoji": "🌍",
+        "radius_km": 0
+      }
+    ],
+    "_doc_routing": "Route geometry + per-mode distance/time. valhalla_public = FOSSGIS Valhalla (free, no key, fair-use) — real road routes for car/walk/bike/bus. boat/flight/swim have no router → great-circle estimate. Consumed by MapsRouting (baked UI_ROUTING_ENDPOINT).",
+    "routing": {
+      "active": "valhalla_public",
+      "providers": [
+        {
+          "id": "valhalla_public",
+          "label": "Valhalla (FOSSGIS)",
+          "host": "free-noauth",
+          "endpoint": "https://valhalla1.openstreetmap.de/route"
+        }
+      ]
+    },
+    "_doc_travel_modes": "Route mode switcher (Routes tab) + the all-modes stats panel. engine=valhalla → real route via `costing`; engine=geodesic → straight-line distance ÷ avg_speed_kmh estimate. estimated=true flags approximations (bus = road approximation, not transit timetables). default_travel_mode = the one selected on open.",
+    "default_travel_mode": "walking",
+    "travel_modes": [
+      {
+        "id": "walking",
+        "label": "Walk",
+        "emoji": "🚶",
+        "engine": "valhalla",
+        "costing": "pedestrian",
+        "estimated": false
+      },
+      {
+        "id": "bike",
+        "label": "Bike",
+        "emoji": "🚲",
+        "engine": "valhalla",
+        "costing": "bicycle",
+        "estimated": false
+      },
+      {
+        "id": "bus",
+        "label": "Bus",
+        "emoji": "🚌",
+        "engine": "valhalla",
+        "costing": "bus",
+        "estimated": true
+      },
+      {
+        "id": "car",
+        "label": "Car",
+        "emoji": "🚗",
+        "engine": "valhalla",
+        "costing": "auto",
+        "estimated": false
+      },
+      {
+        "id": "boat",
+        "label": "Boat",
+        "emoji": "⛵",
+        "engine": "geodesic",
+        "avg_speed_kmh": 40,
+        "estimated": true
+      },
+      {
+        "id": "flying",
+        "label": "Flight",
+        "emoji": "✈️",
+        "engine": "geodesic",
+        "avg_speed_kmh": 800,
+        "estimated": true
+      },
+      {
+        "id": "swimming",
+        "label": "Swim",
+        "emoji": "🏊",
+        "engine": "geodesic",
+        "avg_speed_kmh": 4,
+        "estimated": true
+      }
+    ],
+    "_doc_cockpit_modes": "Navigation-tab vehicle cockpit switcher. Distinct from travel_modes (routing costing) — this drives the live instrument PANEL + map camera on the Navigation tab. Per mode: accent (hex), style (map_styles key), zoom/tilt/follow_bearing (camera), speed_unit (kmh|kn|mph), alt_unit (m|ft), gauges (ordered instrument ids rendered left→right). Gauge ids: speed, heading (compass rose), attitude (artificial horizon), altitude (tape), vspeed, grade, avg, dist, eta, position, track. Add a mode = one entry here (data-driven; no Kotlin change).",
+    "default_cockpit_mode": "car",
+    "cockpit_modes": [
+      {
+        "id": "bike",
+        "label": "Bike",
+        "emoji": "🚲",
+        "accent": "#34C759",
+        "style": "light",
+        "zoom": 17.0,
+        "tilt": 0.0,
+        "follow_bearing": true,
+        "speed_unit": "kmh",
+        "alt_unit": "m",
+        "gauges": [
+          "speed",
+          "avg",
+          "grade",
+          "heading"
+        ]
+      },
+      {
+        "id": "car",
+        "label": "Car",
+        "emoji": "🚗",
+        "accent": "#4DA3FF",
+        "style": "dark",
+        "zoom": 18.0,
+        "tilt": 55.0,
+        "follow_bearing": true,
+        "speed_unit": "kmh",
+        "alt_unit": "m",
+        "gauges": [
+          "speed",
+          "heading",
+          "dist",
+          "eta"
+        ]
+      },
+      {
+        "id": "boat",
+        "label": "Boat",
+        "emoji": "⛵",
+        "accent": "#00C2C7",
+        "style": "satellite",
+        "zoom": 13.0,
+        "tilt": 0.0,
+        "follow_bearing": false,
+        "speed_unit": "kn",
+        "alt_unit": "m",
+        "gauges": [
+          "speed",
+          "heading",
+          "dist",
+          "position"
+        ]
+      },
+      {
+        "id": "airplane",
+        "label": "Airplane",
+        "emoji": "✈️",
+        "accent": "#FFB020",
+        "style": "satellite",
+        "zoom": 10.0,
+        "tilt": 0.0,
+        "follow_bearing": false,
+        "speed_unit": "kn",
+        "alt_unit": "ft",
+        "gauges": [
+          "attitude",
+          "altitude",
+          "vspeed",
+          "speed"
+        ]
+      }
+    ],
+    "maps_tracking": {
+      "interval_moving_ms": 30000,
+      "interval_stopped_ms": 300000,
+      "moving_threshold_mps": 2,
+      "stops_radius_m": 100,
+      "stops_dwell_min": 2
+    },
+    "_doc_demo_stops": "Tester seed (Configs > Tracker > Load demo data): FULL daily coverage 1987-01-01..1992-12-31 (2192 days), FIXED dates so it never collides with real data. 228 REAL cities / 38 countries from front/b-MyData/mymaps-mytrips/public/travel-data.json (one base point each). place_variations (shared, expanded at parse time by MapsDemo) give every city 3 DISTINCT places → every seeded day has 3 stops (>=2), so Explored PLACES (grouped from ALL stops) shows ~3x the CITY pins. Kept COMPACT (variations shared, not duplicated 228x) so the base64 fits the 64KB Java string constant limit. computeDailyLocations still picks one place/day → Daily/CITY stay clean.",
+    "demo_stops": {
+      "range_start": "1987-01-01",
+      "range_end": "1992-12-31",
+      "stay_days": 4,
+      "city_templates": [
+        {
+          "city": "la Massana",
+          "country": "Andorra",
+          "lat": 42.547,
+          "lon": 1.5137
+        },
+        {
+          "city": "Vienna",
+          "country": "Austria",
+          "lat": 48.1934,
+          "lon": 16.3354
+        },
+        {
+          "city": "Antwerpen",
+          "country": "Belgium",
+          "lat": 51.2205,
+          "lon": 4.4169
+        },
+        {
+          "city": "Brussels",
+          "country": "Belgium",
+          "lat": 50.8456,
+          "lon": 4.3531
+        },
+        {
+          "city": "Gent",
+          "country": "Belgium",
+          "lat": 51.0539,
+          "lon": 3.7199
+        },
+        {
+          "city": "Zaventem",
+          "country": "Belgium",
+          "lat": 50.901,
+          "lon": 4.4856
+        },
+        {
+          "city": "Izacic",
+          "country": "Bosnia and Herzegovina",
+          "lat": 44.7479,
+          "lon": 15.7024
+        },
+        {
+          "city": "Mostar",
+          "country": "Bosnia and Herzegovina",
+          "lat": 43.3461,
+          "lon": 17.8119
+        },
+        {
+          "city": "Andradina",
+          "country": "Brazil",
+          "lat": -20.864,
+          "lon": -51.2632
+        },
+        {
+          "city": "Angra dos Reis",
+          "country": "Brazil",
+          "lat": -23.1415,
+          "lon": -44.1614
+        },
+        {
+          "city": "Armacao de Buzios",
+          "country": "Brazil",
+          "lat": -22.7808,
+          "lon": -41.9227
+        },
+        {
+          "city": "Atibaia",
+          "country": "Brazil",
+          "lat": -23.153,
+          "lon": -46.5862
+        },
+        {
+          "city": "Balneario Camboriu",
+          "country": "Brazil",
+          "lat": -26.998,
+          "lon": -48.6245
+        },
+        {
+          "city": "Barretos",
+          "country": "Brazil",
+          "lat": -20.5544,
+          "lon": -48.5812
+        },
+        {
+          "city": "Belo Horizonte",
+          "country": "Brazil",
+          "lat": -19.9339,
+          "lon": -43.9253
+        },
+        {
+          "city": "Biritiba Mirim",
+          "country": "Brazil",
+          "lat": -23.7616,
+          "lon": -45.7613
+        },
+        {
+          "city": "Boipeba",
+          "country": "Brazil",
+          "lat": -13.6105,
+          "lon": -38.907
+        },
+        {
+          "city": "Boituva",
+          "country": "Brazil",
+          "lat": -23.2937,
+          "lon": -47.7521
+        },
+        {
+          "city": "Brumadinho",
+          "country": "Brazil",
+          "lat": -20.1506,
+          "lon": -44.201
+        },
+        {
+          "city": "Cafelandia",
+          "country": "Brazil",
+          "lat": -21.8054,
+          "lon": -49.6035
+        },
+        {
+          "city": "Camamu",
+          "country": "Brazil",
+          "lat": -13.919,
+          "lon": -38.9315
+        },
+        {
+          "city": "Camocim",
+          "country": "Brazil",
+          "lat": -2.8529,
+          "lon": -40.6914
+        },
+        {
+          "city": "Campinas",
+          "country": "Brazil",
+          "lat": -22.8928,
+          "lon": -46.9922
+        },
+        {
+          "city": "Canela",
+          "country": "Brazil",
+          "lat": -29.357,
+          "lon": -50.8474
+        },
+        {
+          "city": "Castanhal",
+          "country": "Brazil",
+          "lat": -1.2984,
+          "lon": -47.9207
+        },
+        {
+          "city": "Cruz",
+          "country": "Brazil",
+          "lat": -2.8126,
+          "lon": -40.4163
+        },
+        {
+          "city": "Curitiba",
+          "country": "Brazil",
+          "lat": -25.4408,
+          "lon": -49.2875
+        },
+        {
+          "city": "Embu",
+          "country": "Brazil",
+          "lat": -23.6247,
+          "lon": -46.8457
+        },
+        {
+          "city": "Ferraz de Vasconcelos",
+          "country": "Brazil",
+          "lat": -23.606,
+          "lon": -46.4026
+        },
+        {
+          "city": "Fortaleza",
+          "country": "Brazil",
+          "lat": -3.7921,
+          "lon": -38.5653
+        },
+        {
+          "city": "Goiania",
+          "country": "Brazil",
+          "lat": -16.6857,
+          "lon": -49.2651
+        },
+        {
+          "city": "Guaratuba",
+          "country": "Brazil",
+          "lat": -25.9113,
+          "lon": -48.5733
+        },
+        {
+          "city": "Guarulhos",
+          "country": "Brazil",
+          "lat": -23.5189,
+          "lon": -46.473
+        },
+        {
+          "city": "Ibiracu",
+          "country": "Brazil",
+          "lat": -19.8309,
+          "lon": -40.3793
+        },
+        {
+          "city": "Ilhabela",
+          "country": "Brazil",
+          "lat": -23.8185,
+          "lon": -45.3678
+        },
+        {
+          "city": "Ilheus",
+          "country": "Brazil",
+          "lat": -14.8113,
+          "lon": -39.0279
+        },
+        {
+          "city": "Indaiatuba",
+          "country": "Brazil",
+          "lat": -23.0082,
+          "lon": -47.1376
+        },
+        {
+          "city": "Ipatinga",
+          "country": "Brazil",
+          "lat": -19.4667,
+          "lon": -42.5689
+        },
+        {
+          "city": "Itabirito",
+          "country": "Brazil",
+          "lat": -20.3145,
+          "lon": -44.0204
+        },
+        {
+          "city": "Itacare",
+          "country": "Brazil",
+          "lat": -14.2756,
+          "lon": -38.9911
+        },
+        {
+          "city": "Itamaraju",
+          "country": "Brazil",
+          "lat": -16.8964,
+          "lon": -39.1115
+        },
+        {
+          "city": "Itatiba",
+          "country": "Brazil",
+          "lat": -23.0119,
+          "lon": -46.8193
+        },
+        {
+          "city": "Itu",
+          "country": "Brazil",
+          "lat": -23.2995,
+          "lon": -47.2989
+        },
+        {
+          "city": "Itupeva",
+          "country": "Brazil",
+          "lat": -23.1613,
+          "lon": -47.0189
+        },
+        {
+          "city": "Ivoti",
+          "country": "Brazil",
+          "lat": -29.5836,
+          "lon": -51.0878
+        },
+        {
+          "city": "Mairipora",
+          "country": "Brazil",
+          "lat": -23.3798,
+          "lon": -46.6174
+        },
+        {
+          "city": "Maua",
+          "country": "Brazil",
+          "lat": -23.6347,
+          "lon": -46.454
+        },
+        {
+          "city": "Mirandopolis",
+          "country": "Brazil",
+          "lat": -21.1357,
+          "lon": -51.1037
+        },
+        {
+          "city": "Mongagua",
+          "country": "Brazil",
+          "lat": -24.1002,
+          "lon": -46.6495
+        },
+        {
+          "city": "Nilopolis",
+          "country": "Brazil",
+          "lat": -23.032,
+          "lon": -43.4715
+        },
+        {
+          "city": "Osasco",
+          "country": "Brazil",
+          "lat": -23.5463,
+          "lon": -46.7254
+        },
+        {
+          "city": "Paranagua",
+          "country": "Brazil",
+          "lat": -25.5112,
+          "lon": -48.5032
+        },
+        {
+          "city": "Paraty",
+          "country": "Brazil",
+          "lat": -23.2041,
+          "lon": -44.7227
+        },
+        {
+          "city": "Passos",
+          "country": "Brazil",
+          "lat": -20.7308,
+          "lon": -46.6085
+        },
+        {
+          "city": "Pocos de Caldas",
+          "country": "Brazil",
+          "lat": -21.7898,
+          "lon": -46.5676
+        },
+        {
+          "city": "Porto Alegre",
+          "country": "Brazil",
+          "lat": -30.0213,
+          "lon": -51.2033
+        },
+        {
+          "city": "Porto Seguro",
+          "country": "Brazil",
+          "lat": -16.8061,
+          "lon": -39.1457
+        },
+        {
+          "city": "Ribeirao Preto",
+          "country": "Brazil",
+          "lat": -21.204,
+          "lon": -47.8219
+        },
+        {
+          "city": "Rio de Janeiro",
+          "country": "Brazil",
+          "lat": -23.0098,
+          "lon": -43.3539
+        },
+        {
+          "city": "Santa Cruz Cabralia",
+          "country": "Brazil",
+          "lat": -16.2484,
+          "lon": -39.0113
+        },
+        {
+          "city": "Santo Andre",
+          "country": "Brazil",
+          "lat": -23.6496,
+          "lon": -46.5536
+        },
+        {
+          "city": "Santo Antonio de Posse",
+          "country": "Brazil",
+          "lat": -22.6049,
+          "lon": -46.9479
+        },
+        {
+          "city": "Sao Caetano do Sul",
+          "country": "Brazil",
+          "lat": -23.6479,
+          "lon": -46.5735
+        },
+        {
+          "city": "Sao Jose dos Campos",
+          "country": "Brazil",
+          "lat": -23.2542,
+          "lon": -45.8647
+        },
+        {
+          "city": "Sao Paulo",
+          "country": "Brazil",
+          "lat": -23.4933,
+          "lon": -46.6383
+        },
+        {
+          "city": "Sao Roque",
+          "country": "Brazil",
+          "lat": -23.4297,
+          "lon": -47.1383
+        },
+        {
+          "city": "Sao Sebastiao",
+          "country": "Brazil",
+          "lat": -23.7691,
+          "lon": -45.7236
+        },
+        {
+          "city": "Sarzedo",
+          "country": "Brazil",
+          "lat": -20.0251,
+          "lon": -44.1461
+        },
+        {
+          "city": "Seropedica",
+          "country": "Brazil",
+          "lat": -22.7093,
+          "lon": -43.7363
+        },
+        {
+          "city": "Sorocaba",
+          "country": "Brazil",
+          "lat": -23.4064,
+          "lon": -47.3534
+        },
+        {
+          "city": "Ubatuba",
+          "country": "Brazil",
+          "lat": -23.401,
+          "lon": -45.0158
+        },
+        {
+          "city": "Valenca",
+          "country": "Brazil",
+          "lat": -13.4095,
+          "lon": -38.908
+        },
+        {
+          "city": "Valinhos",
+          "country": "Brazil",
+          "lat": -22.9623,
+          "lon": -46.9891
+        },
+        {
+          "city": "Vargem Grande Paulista",
+          "country": "Brazil",
+          "lat": -23.5978,
+          "lon": -47.0511
+        },
+        {
+          "city": "Vila Velha",
+          "country": "Brazil",
+          "lat": -20.2908,
+          "lon": -40.294
+        },
+        {
+          "city": "Burgas",
+          "country": "Bulgaria",
+          "lat": 42.4904,
+          "lon": 27.4737
+        },
+        {
+          "city": "Sofia",
+          "country": "Bulgaria",
+          "lat": 42.6947,
+          "lon": 23.3147
+        },
+        {
+          "city": "Sozopol",
+          "country": "Bulgaria",
+          "lat": 42.4231,
+          "lon": 27.6945
+        },
+        {
+          "city": "Jezerce",
+          "country": "Croatia",
+          "lat": 44.8654,
+          "lon": 15.582
+        },
+        {
+          "city": "Split",
+          "country": "Croatia",
+          "lat": 43.5066,
+          "lon": 16.4442
+        },
+        {
+          "city": "Zagreb - Centar",
+          "country": "Croatia",
+          "lat": 45.812,
+          "lon": 15.9643
+        },
+        {
+          "city": "Prague",
+          "country": "Czech Republic",
+          "lat": 50.087,
+          "lon": 14.4338
+        },
+        {
+          "city": "Copenhagen",
+          "country": "Denmark",
+          "lat": 55.6763,
+          "lon": 12.5598
+        },
+        {
+          "city": "Frederiksberg",
+          "country": "Denmark",
+          "lat": 55.7033,
+          "lon": 12.5384
+        },
+        {
+          "city": "Tallinn",
+          "country": "Estonia",
+          "lat": 59.4391,
+          "lon": 24.7451
+        },
+        {
+          "city": "Bayonne",
+          "country": "France",
+          "lat": 43.4953,
+          "lon": -1.4688
+        },
+        {
+          "city": "Beaulieu-sur-Mer",
+          "country": "France",
+          "lat": 43.7055,
+          "lon": 7.3289
+        },
+        {
+          "city": "Bordeaux",
+          "country": "France",
+          "lat": 44.8413,
+          "lon": -0.5728
+        },
+        {
+          "city": "Cabries",
+          "country": "France",
+          "lat": 43.4816,
+          "lon": 5.366
+        },
+        {
+          "city": "Capbreton",
+          "country": "France",
+          "lat": 43.657,
+          "lon": -1.4401
+        },
+        {
+          "city": "Gordes",
+          "country": "France",
+          "lat": 43.9159,
+          "lon": 5.2073
+        },
+        {
+          "city": "Grenoble",
+          "country": "France",
+          "lat": 45.1525,
+          "lon": 5.7044
+        },
+        {
+          "city": "Hendaye",
+          "country": "France",
+          "lat": 43.3729,
+          "lon": -1.7401
+        },
+        {
+          "city": "Le Pre-Saint-Gervais",
+          "country": "France",
+          "lat": 48.8885,
+          "lon": 2.379
+        },
+        {
+          "city": "Lyon",
+          "country": "France",
+          "lat": 45.7512,
+          "lon": 4.8428
+        },
+        {
+          "city": "Marignane",
+          "country": "France",
+          "lat": 43.4384,
+          "lon": 5.2144
+        },
+        {
+          "city": "Marseille 02",
+          "country": "France",
+          "lat": 43.2916,
+          "lon": 5.3716
+        },
+        {
+          "city": "Montpellier",
+          "country": "France",
+          "lat": 43.6059,
+          "lon": 3.8776
+        },
+        {
+          "city": "Paris",
+          "country": "France",
+          "lat": 48.8419,
+          "lon": 2.3529
+        },
+        {
+          "city": "Perpignan",
+          "country": "France",
+          "lat": 42.7009,
+          "lon": 2.884
+        },
+        {
+          "city": "Tarbes",
+          "country": "France",
+          "lat": 43.2531,
+          "lon": 0.0732
+        },
+        {
+          "city": "Toulouse",
+          "country": "France",
+          "lat": 43.6091,
+          "lon": 1.4382
+        },
+        {
+          "city": "Aachen",
+          "country": "Germany",
+          "lat": 50.7687,
+          "lon": 6.2267
+        },
+        {
+          "city": "Berlin",
+          "country": "Germany",
+          "lat": 52.5087,
+          "lon": 13.4622
+        },
+        {
+          "city": "Cologne",
+          "country": "Germany",
+          "lat": 50.9463,
+          "lon": 6.9256
+        },
+        {
+          "city": "Freiburg",
+          "country": "Germany",
+          "lat": 47.9921,
+          "lon": 7.8582
+        },
+        {
+          "city": "Hamburg",
+          "country": "Germany",
+          "lat": 53.5507,
+          "lon": 10.0228
+        },
+        {
+          "city": "Kehl",
+          "country": "Germany",
+          "lat": 48.5659,
+          "lon": 7.7997
+        },
+        {
+          "city": "Leipzig",
+          "country": "Germany",
+          "lat": 51.3358,
+          "lon": 12.326
+        },
+        {
+          "city": "Stuttgart",
+          "country": "Germany",
+          "lat": 48.7933,
+          "lon": 9.1915
+        },
+        {
+          "city": "Athens",
+          "country": "Greece",
+          "lat": 37.982,
+          "lon": 23.7246
+        },
+        {
+          "city": "Chania",
+          "country": "Greece",
+          "lat": 35.5146,
+          "lon": 24.0264
+        },
+        {
+          "city": "Daratsos",
+          "country": "Greece",
+          "lat": 35.5117,
+          "lon": 23.9792
+        },
+        {
+          "city": "Kalampaka",
+          "country": "Greece",
+          "lat": 39.7047,
+          "lon": 21.6275
+        },
+        {
+          "city": "Rethymno",
+          "country": "Greece",
+          "lat": 35.3674,
+          "lon": 24.4752
+        },
+        {
+          "city": "Sykies",
+          "country": "Greece",
+          "lat": 40.6441,
+          "lon": 22.9443
+        },
+        {
+          "city": "Budapest XI. keruelet",
+          "country": "Hungary",
+          "lat": 47.4738,
+          "lon": 19.0306
+        },
+        {
+          "city": "Catania",
+          "country": "Italy",
+          "lat": 37.5136,
+          "lon": 15.0856
+        },
+        {
+          "city": "Ercolano",
+          "country": "Italy",
+          "lat": 40.7949,
+          "lon": 14.3551
+        },
+        {
+          "city": "Florence",
+          "country": "Italy",
+          "lat": 43.7842,
+          "lon": 11.2421
+        },
+        {
+          "city": "Mestre",
+          "country": "Italy",
+          "lat": 45.4834,
+          "lon": 12.2333
+        },
+        {
+          "city": "Milano",
+          "country": "Italy",
+          "lat": 45.4498,
+          "lon": 9.1669
+        },
+        {
+          "city": "Napoli",
+          "country": "Italy",
+          "lat": 40.8456,
+          "lon": 14.2499
+        },
+        {
+          "city": "Palermo",
+          "country": "Italy",
+          "lat": 38.1234,
+          "lon": 13.3654
+        },
+        {
+          "city": "Rome",
+          "country": "Italy",
+          "lat": 41.8955,
+          "lon": 12.4971
+        },
+        {
+          "city": "San Teodoro",
+          "country": "Italy",
+          "lat": 44.4052,
+          "lon": 8.9395
+        },
+        {
+          "city": "Scandicci",
+          "country": "Italy",
+          "lat": 43.7548,
+          "lon": 11.1723
+        },
+        {
+          "city": "Turin",
+          "country": "Italy",
+          "lat": 45.0763,
+          "lon": 7.6857
+        },
+        {
+          "city": "Al Jizah",
+          "country": "Jordan",
+          "lat": 31.7223,
+          "lon": 35.9865
+        },
+        {
+          "city": "Al Quwayrah",
+          "country": "Jordan",
+          "lat": 29.5559,
+          "lon": 35.4076
+        },
+        {
+          "city": "Amman",
+          "country": "Jordan",
+          "lat": 31.9579,
+          "lon": 35.922
+        },
+        {
+          "city": "Riga",
+          "country": "Latvia",
+          "lat": 56.9469,
+          "lon": 24.113
+        },
+        {
+          "city": "Ventspils",
+          "country": "Latvia",
+          "lat": 57.3946,
+          "lon": 21.5622
+        },
+        {
+          "city": "Klaipeda",
+          "country": "Lithuania",
+          "lat": 55.8017,
+          "lon": 21.0706
+        },
+        {
+          "city": "Naujamiestis",
+          "country": "Lithuania",
+          "lat": 54.6792,
+          "lon": 25.2659
+        },
+        {
+          "city": "Nida",
+          "country": "Lithuania",
+          "lat": 55.2989,
+          "lon": 20.9824
+        },
+        {
+          "city": "Palanga",
+          "country": "Lithuania",
+          "lat": 55.8786,
+          "lon": 21.0638
+        },
+        {
+          "city": "Rasos",
+          "country": "Lithuania",
+          "lat": 54.6778,
+          "lon": 25.3022
+        },
+        {
+          "city": "Vilnius",
+          "country": "Lithuania",
+          "lat": 54.687,
+          "lon": 25.285
+        },
+        {
+          "city": "Luqa",
+          "country": "Malta",
+          "lat": 35.8517,
+          "lon": 14.4863
+        },
+        {
+          "city": "San Giljan",
+          "country": "Malta",
+          "lat": 35.9138,
+          "lon": 14.4901
+        },
+        {
+          "city": "Kotor",
+          "country": "Montenegro",
+          "lat": 42.4233,
+          "lon": 18.7717
+        },
+        {
+          "city": "Chefchaouene",
+          "country": "Morocco",
+          "lat": 35.168,
+          "lon": -5.2632
+        },
+        {
+          "city": "Inezgane",
+          "country": "Morocco",
+          "lat": 30.3299,
+          "lon": -9.4103
+        },
+        {
+          "city": "Marrakesh",
+          "country": "Morocco",
+          "lat": 31.629,
+          "lon": -7.9859
+        },
+        {
+          "city": "Rabat",
+          "country": "Morocco",
+          "lat": 34.0169,
+          "lon": -6.8322
+        },
+        {
+          "city": "Taghazout",
+          "country": "Morocco",
+          "lat": 31.5032,
+          "lon": -9.7627
+        },
+        {
+          "city": "Tangier",
+          "country": "Morocco",
+          "lat": 35.7872,
+          "lon": -5.8102
+        },
+        {
+          "city": "Amsterdam",
+          "country": "Netherlands",
+          "lat": 52.3842,
+          "lon": 4.9037
+        },
+        {
+          "city": "Rotterdam",
+          "country": "Netherlands",
+          "lat": 51.9215,
+          "lon": 4.4656
+        },
+        {
+          "city": "Zaandam",
+          "country": "Netherlands",
+          "lat": 52.3891,
+          "lon": 4.8389
+        },
+        {
+          "city": "Oslo",
+          "country": "Norway",
+          "lat": 59.9274,
+          "lon": 10.767
+        },
+        {
+          "city": "Jericho",
+          "country": "Palestine",
+          "lat": 31.7667,
+          "lon": 35.5778
+        },
+        {
+          "city": "Krakow",
+          "country": "Poland",
+          "lat": 50.064,
+          "lon": 19.9409
+        },
+        {
+          "city": "Warsaw",
+          "country": "Poland",
+          "lat": 52.245,
+          "lon": 21.0139
+        },
+        {
+          "city": "Ericeira",
+          "country": "Portugal",
+          "lat": 38.9649,
+          "lon": -9.4146
+        },
+        {
+          "city": "Lisbon",
+          "country": "Portugal",
+          "lat": 38.7146,
+          "lon": -9.1414
+        },
+        {
+          "city": "Porto",
+          "country": "Portugal",
+          "lat": 41.1497,
+          "lon": -8.6149
+        },
+        {
+          "city": "Al Wakrah",
+          "country": "Qatar",
+          "lat": 25.2609,
+          "lon": 51.6138
+        },
+        {
+          "city": "Doha",
+          "country": "Qatar",
+          "lat": 25.363,
+          "lon": 51.5566
+        },
+        {
+          "city": "Bucuresti",
+          "country": "Romania",
+          "lat": 44.422,
+          "lon": 26.0988
+        },
+        {
+          "city": "Stari Grad",
+          "country": "Serbia",
+          "lat": 44.8174,
+          "lon": 20.4637
+        },
+        {
+          "city": "Bratislava",
+          "country": "Slovakia",
+          "lat": 48.1462,
+          "lon": 17.1096
+        },
+        {
+          "city": "Alboraya",
+          "country": "Spain",
+          "lat": 39.4718,
+          "lon": -0.3389
+        },
+        {
+          "city": "Balaguer",
+          "country": "Spain",
+          "lat": 41.7913,
+          "lon": 0.8105
+        },
+        {
+          "city": "Barcelona",
+          "country": "Spain",
+          "lat": 41.3935,
+          "lon": 2.1579
+        },
+        {
+          "city": "Bilbao",
+          "country": "Spain",
+          "lat": 43.2669,
+          "lon": -2.9316
+        },
+        {
+          "city": "Cadiz",
+          "country": "Spain",
+          "lat": 36.5317,
+          "lon": -6.2961
+        },
+        {
+          "city": "Cornella de Llobregat",
+          "country": "Spain",
+          "lat": 41.3518,
+          "lon": 2.0789
+        },
+        {
+          "city": "El Prat de Llobregat",
+          "country": "Spain",
+          "lat": 41.2983,
+          "lon": 2.08
+        },
+        {
+          "city": "Esplugues de Llobregat",
+          "country": "Spain",
+          "lat": 41.3865,
+          "lon": 2.1063
+        },
+        {
+          "city": "Girona",
+          "country": "Spain",
+          "lat": 41.9761,
+          "lon": 2.8127
+        },
+        {
+          "city": "Granada",
+          "country": "Spain",
+          "lat": 37.1782,
+          "lon": -3.6033
+        },
+        {
+          "city": "Madrid",
+          "country": "Spain",
+          "lat": 40.4207,
+          "lon": -3.7081
+        },
+        {
+          "city": "Malaga",
+          "country": "Spain",
+          "lat": 36.7179,
+          "lon": -4.4239
+        },
+        {
+          "city": "Montornes del Valles",
+          "country": "Spain",
+          "lat": 41.5662,
+          "lon": 2.2824
+        },
+        {
+          "city": "Oliana",
+          "country": "Spain",
+          "lat": 42.0594,
+          "lon": 1.3121
+        },
+        {
+          "city": "San Sebastian",
+          "country": "Spain",
+          "lat": 43.3071,
+          "lon": -1.9665
+        },
+        {
+          "city": "Santander",
+          "country": "Spain",
+          "lat": 43.4621,
+          "lon": -3.7205
+        },
+        {
+          "city": "Sevilla",
+          "country": "Spain",
+          "lat": 37.3855,
+          "lon": -5.99
+        },
+        {
+          "city": "Tarifa",
+          "country": "Spain",
+          "lat": 36.0142,
+          "lon": -5.6072
+        },
+        {
+          "city": "Tavernes Blanques",
+          "country": "Spain",
+          "lat": 39.4853,
+          "lon": -0.3622
+        },
+        {
+          "city": "Torroella de Montgri",
+          "country": "Spain",
+          "lat": 42.0485,
+          "lon": 3.1949
+        },
+        {
+          "city": "Valencia",
+          "country": "Spain",
+          "lat": 39.4579,
+          "lon": -0.3701
+        },
+        {
+          "city": "Zahara de los Atunes",
+          "country": "Spain",
+          "lat": 36.0733,
+          "lon": -5.7522
+        },
+        {
+          "city": "Zarautz",
+          "country": "Spain",
+          "lat": 43.2865,
+          "lon": -2.1746
+        },
+        {
+          "city": "la Seu d'Urgell",
+          "country": "Spain",
+          "lat": 42.3601,
+          "lon": 1.4558
+        },
+        {
+          "city": "les Corts",
+          "country": "Spain",
+          "lat": 41.3877,
+          "lon": 2.1087
+        },
+        {
+          "city": "Goeteborg",
+          "country": "Sweden",
+          "lat": 57.6926,
+          "lon": 11.9478
+        },
+        {
+          "city": "Majorna",
+          "country": "Sweden",
+          "lat": 57.6992,
+          "lon": 11.9376
+        },
+        {
+          "city": "Malmoe",
+          "country": "Sweden",
+          "lat": 55.5943,
+          "lon": 13.0215
+        },
+        {
+          "city": "Stockholm",
+          "country": "Sweden",
+          "lat": 59.3359,
+          "lon": 18.0507
+        },
+        {
+          "city": "Interlaken",
+          "country": "Switzerland",
+          "lat": 46.6813,
+          "lon": 7.8639
+        },
+        {
+          "city": "Zuerich (Kreis 1) / Lindenhof",
+          "country": "Switzerland",
+          "lat": 47.3781,
+          "lon": 8.5403
+        },
+        {
+          "city": "Zuerich (Kreis 2)",
+          "country": "Switzerland",
+          "lat": 47.3416,
+          "lon": 8.5201
+        },
+        {
+          "city": "Ban Ao Nang",
+          "country": "Thailand",
+          "lat": 8.0134,
+          "lon": 98.8426
+        },
+        {
+          "city": "Ban Phru Nai",
+          "country": "Thailand",
+          "lat": 7.7392,
+          "lon": 98.7662
+        },
+        {
+          "city": "Bang Sue",
+          "country": "Thailand",
+          "lat": 13.8044,
+          "lon": 100.5399
+        },
+        {
+          "city": "Bangkok",
+          "country": "Thailand",
+          "lat": 13.7516,
+          "lon": 100.5032
+        },
+        {
+          "city": "Chaiya",
+          "country": "Thailand",
+          "lat": 9.3586,
+          "lon": 99.1741
+        },
+        {
+          "city": "Chiang Mai",
+          "country": "Thailand",
+          "lat": 18.7935,
+          "lon": 98.982
+        },
+        {
+          "city": "Khlong San",
+          "country": "Thailand",
+          "lat": 13.7182,
+          "lon": 100.501
+        },
+        {
+          "city": "Ko Pha-Ngan",
+          "country": "Thailand",
+          "lat": 9.6765,
+          "lon": 100.0675
+        },
+        {
+          "city": "Lat Krabang",
+          "country": "Thailand",
+          "lat": 13.6819,
+          "lon": 100.7469
+        },
+        {
+          "city": "Pai",
+          "country": "Thailand",
+          "lat": 19.3606,
+          "lon": 98.449
+        },
+        {
+          "city": "Patong",
+          "country": "Thailand",
+          "lat": 7.8952,
+          "lon": 98.3002
+        },
+        {
+          "city": "Phra Nakhon",
+          "country": "Thailand",
+          "lat": 13.7632,
+          "lon": 100.4968
+        },
+        {
+          "city": "Phunphin",
+          "country": "Thailand",
+          "lat": 9.1056,
+          "lon": 99.2289
+        },
+        {
+          "city": "Yan Nawa",
+          "country": "Thailand",
+          "lat": 13.6999,
+          "lon": 100.5341
+        },
+        {
+          "city": "Eminoenue",
+          "country": "Turkey",
+          "lat": 41.0037,
+          "lon": 28.9804
+        },
+        {
+          "city": "Pendik",
+          "country": "Turkey",
+          "lat": 40.9054,
+          "lon": 29.3169
+        },
+        {
+          "city": "Kiev",
+          "country": "Ukraine",
+          "lat": 50.4486,
+          "lon": 30.5273
+        },
+        {
+          "city": "Barbican",
+          "country": "United Kingdom",
+          "lat": 51.5204,
+          "lon": -0.085
+        },
+        {
+          "city": "Bethnal Green",
+          "country": "United Kingdom",
+          "lat": 51.5105,
+          "lon": -0.0682
+        },
+        {
+          "city": "Camden Town",
+          "country": "United Kingdom",
+          "lat": 51.536,
+          "lon": -0.1396
+        },
+        {
+          "city": "Chalford",
+          "country": "United Kingdom",
+          "lat": 51.6857,
+          "lon": -2.142
+        },
+        {
+          "city": "Colchester",
+          "country": "United Kingdom",
+          "lat": 51.8896,
+          "lon": 0.9004
+        },
+        {
+          "city": "Great Yarmouth",
+          "country": "United Kingdom",
+          "lat": 52.6035,
+          "lon": 1.7386
+        },
+        {
+          "city": "London",
+          "country": "United Kingdom",
+          "lat": 51.4957,
+          "lon": -0.1892
+        },
+        {
+          "city": "Newquay",
+          "country": "United Kingdom",
+          "lat": 50.4161,
+          "lon": -5.0719
+        },
+        {
+          "city": "West Drayton",
+          "country": "United Kingdom",
+          "lat": 51.47,
+          "lon": -0.4543
+        },
+        {
+          "city": "Aldine",
+          "country": "United States",
+          "lat": 29.9469,
+          "lon": -95.4069
+        },
+        {
+          "city": "Grapevine",
+          "country": "United States",
+          "lat": 32.8998,
+          "lon": -97.0403
+        },
+        {
+          "city": "Key Largo",
+          "country": "United States",
+          "lat": 25.1104,
+          "lon": -80.4307
+        },
+        {
+          "city": "Miami",
+          "country": "United States",
+          "lat": 25.765,
+          "lon": -80.1901
+        },
+        {
+          "city": "Paradise",
+          "country": "United States",
+          "lat": 36.1277,
+          "lon": -115.1673
+        },
+        {
+          "city": "San Francisco",
+          "country": "United States",
+          "lat": 37.7867,
+          "lon": -122.4119
+        },
+        {
+          "city": "South Miami",
+          "country": "United States",
+          "lat": 25.7088,
+          "lon": -80.2836
+        }
+      ],
+      "place_variations": [
+        {
+          "suffix": "Old Town",
+          "dlat": 0.01,
+          "dlon": 0.008,
+          "start_min": 0,
+          "end_min": 360
+        },
+        {
+          "suffix": "Waterfront",
+          "dlat": -0.009,
+          "dlon": 0.012,
+          "start_min": 400,
+          "end_min": 720
+        },
+        {
+          "suffix": "Market Sq",
+          "dlat": 0.006,
+          "dlon": -0.011,
+          "start_min": 760,
+          "end_min": 1200
+        }
+      ]
+    },
+    "maps_providers": [
+      {
+        "id": "nominatim_public",
+        "label": "Nominatim (osm.org)",
+        "kind": [
+          "reverse",
+          "search"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1",
+        "search_endpoint": "https://nominatim.openstreetmap.org/search?q={q}&format=json&addressdetails=1&limit=25"
+      },
+      {
+        "id": "photon_public",
+        "label": "Photon (komoot.io)",
+        "kind": [
+          "reverse",
+          "search"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://photon.komoot.io/reverse?lat={lat}&lon={lon}",
+        "search_endpoint": "https://photon.komoot.io/api/?q={q}&lat={lat}&lon={lon}&limit=25"
+      },
+      {
+        "id": "locationiq",
+        "label": "LocationIQ",
+        "kind": [
+          "reverse",
+          "search"
+        ],
+        "host": "free-account",
+        "free_tier": "5k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://us1.locationiq.com/v1/reverse?key={key}&lat={lat}&lon={lon}&format=json",
+        "search_endpoint": "https://us1.locationiq.com/v1/search?key={key}&q={q}&format=json&addressdetails=1&limit=25"
+      },
+      {
+        "id": "geoapify",
+        "label": "Geoapify",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "3k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={key}"
+      },
+      {
+        "id": "opencage",
+        "label": "OpenCage",
+        "kind": [
+          "reverse"
+        ],
+        "host": "free-account",
+        "free_tier": "2.5k req/day",
+        "requires_api_key": true,
+        "endpoint": "https://api.opencagedata.com/geocode/v1/json?q={lat}+{lon}&key={key}"
+      },
+      {
+        "id": "nominatim_self",
+        "label": "Nominatim (self)",
+        "kind": [
+          "reverse",
+          "search"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/nominatim/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1",
+        "search_endpoint": "https://geo.diegonmarcos.com/nominatim/search?q={q}&format=json&addressdetails=1&limit=25"
+      },
+      {
+        "id": "photon_self",
+        "label": "Photon (self)",
+        "kind": [
+          "reverse",
+          "search"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/photon/reverse?lat={lat}&lon={lon}",
+        "search_endpoint": "https://geo.diegonmarcos.com/photon/api/?q={q}&lat={lat}&lon={lon}&limit=25"
+      },
+      {
+        "id": "overpass_public",
+        "label": "Overpass (osm.org)",
+        "kind": [
+          "poi"
+        ],
+        "host": "free-noauth",
+        "free_tier": "fair use",
+        "requires_api_key": false,
+        "endpoint": "https://overpass-api.de/api/interpreter"
+      },
+      {
+        "id": "overpass_self",
+        "label": "Overpass (self)",
+        "kind": [
+          "poi"
+        ],
+        "host": "self",
+        "free_tier": "unlimited (self)",
+        "requires_api_key": false,
+        "endpoint": "https://geo.diegonmarcos.com/overpass/api/interpreter"
+      },
+      {
+        "id": "radar",
+        "label": "Radar.io",
+        "kind": [
+          "reverse",
+          "poi"
+        ],
+        "host": "free-account",
+        "free_tier": "100k req/month",
+        "requires_api_key": true,
+        "endpoint": "https://api.radar.io/v1/geocode/reverse?coordinates={lat},{lon}"
+      },
+      {
+        "id": "google_places",
+        "label": "Google Places",
+        "kind": [
+          "reverse",
+          "poi"
+        ],
+        "host": "paid",
+        "free_tier": "$200/mo credit",
+        "requires_api_key": true,
+        "endpoint": "https://places.googleapis.com/v1/places:searchNearby"
+      }
+    ],
+    "profile_default": {
+      "name": "Diego Coelho Marcos",
+      "email": "me@diegonmarcos.com",
+      "initials": "DCM",
+      "company": "LEAFY",
+      "location": "Berlin/DE",
+      "website": "linktree.diegonmarcos.com",
+      "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
+      "_doc_repos": "Repo URLs + the consolidated cloud-data config reference, surfaced read-only in Configs/About → Profile. Data-driven (no Kotlin hardcoding) — baked via UI_PROFILE_REPOS_B64 / UI_CONSOLIDATED_CONFIG.",
+      "repos": [
+        {
+          "label": "unix",
+          "url": "https://github.com/diegonmarcos/cloud-unix"
+        },
+        {
+          "label": "cloud",
+          "url": "https://github.com/diegonmarcos/cloud-infra"
+        },
+        {
+          "label": "front",
+          "url": "https://github.com/diegonmarcos/diegonmarcos.github.io"
+        },
+        {
+          "label": "vault",
+          "url": "https://github.com/diegonmarcos/cloud-vault"
+        }
+      ],
+      "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json → baked into the app as data/mesh.json (BuildConfig.MESH_JSON_B64), the full wg-mesh/v1 node + peer + transport snapshot"
+    },
+    "permissions": {
+      "runtime": [
+        {
+          "label": "Camera",
+          "perm": "android.permission.CAMERA"
+        },
+        {
+          "label": "Microphone",
+          "perm": "android.permission.RECORD_AUDIO"
+        },
+        {
+          "label": "Notifications",
+          "perm": "android.permission.POST_NOTIFICATIONS"
+        },
+        {
+          "label": "Location (fine)",
+          "perm": "android.permission.ACCESS_FINE_LOCATION"
+        },
+        {
+          "label": "Location (coarse)",
+          "perm": "android.permission.ACCESS_COARSE_LOCATION"
+        },
+        {
+          "label": "Nearby Devices",
+          "perm": "android.permission.BLUETOOTH_SCAN"
+        },
+        {
+          "label": "Bluetooth Connect",
+          "perm": "android.permission.BLUETOOTH_CONNECT"
+        },
+        {
+          "label": "Contacts",
+          "perm": "android.permission.READ_CONTACTS"
+        },
+        {
+          "label": "Music and Audio",
+          "perm": "android.permission.READ_MEDIA_AUDIO"
+        },
+        {
+          "label": "Photos and Videos (img)",
+          "perm": "android.permission.READ_MEDIA_IMAGES"
+        },
+        {
+          "label": "Photos and Videos (vid)",
+          "perm": "android.permission.READ_MEDIA_VIDEO"
+        },
+        {
+          "label": "SMS",
+          "perm": "android.permission.READ_SMS"
+        },
+        {
+          "label": "Phone",
+          "perm": "android.permission.READ_PHONE_STATE"
+        }
+      ],
+      "_doc_roles": "Single-holder RoleManager roles surfaced as Special-access rows on Configs/About → Permissions. These are NOT held by the SuperApp (it's a launcher with no dialer / call-screening service) — the holder is the Cloud-Comms phone fork (or Fossify Phone in the interim). The SuperApp cannot grant another app a role programmatically (createRequestRoleIntent only ever targets the calling app), so each row (a) reads the LIVE holder via RoleManager.getRoleHolders / TelecomManager.getDefaultDialerPackage and shows ✓ when the holder is one of `expected_holders`, and (b) the 'Set Default Apps' button deep-links to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS so the user picks Cloud-Comms there. `role` is the literal android.app.role.* constant passed straight to RoleManager. When our own fork ships, add its package to the relevant expected_holders[] — zero code change.",
+      "roles": [
+        {
+          "label": "Default phone app",
+          "role": "android.app.role.DIALER",
+          "expected_holders": [
+            "com.diegonmarcos.comms.dialer",
+            "org.fossify.phone"
+          ]
+        },
+        {
+          "label": "Spam filter (call screening)",
+          "role": "android.app.role.CALL_SCREENING",
+          "expected_holders": [
+            "com.diegonmarcos.comms.dialer",
+            "org.fossify.phone"
+          ]
+        }
+      ]
+    }
+  },
+  "release": {
+    "_doc": "Data-driven publish targets. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-nav.yml) invokes those engine commands. release.auto_update + variants[].update_tag feed libs:updater (the in-app self-updater on Configs → Update).",
+    "artifact": {
+      "debug": "Cloud-Nav.apk",
+      "release": "Cloud-Nav-release.apk"
+    },
+    "_doc_variants": "Per-ABI build variants — CI runs one matrix job per variant. arm64 is the DEFAULT (engine behaves as before when CLOUDNAV_VARIANT is unset). x86_64 is the Waydroid / desktop-emulator artifact, published to the SAME rolling 'latest' GH release under a distinct filename and to GHCR under tag suffix -x86_64. Engine reads each variant's abis (→ CLOUDNAV_ABIS), artifact_debug, gh_asset, ghcr_tag_suffix. Add an ABI = append a variant + the matrix entry.",
+    "variants": [
+      {
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "artifact_debug": "Cloud-Nav.apk",
+        "gh_asset": "Cloud-Nav.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
+        "artifact_debug": "Cloud-Nav-x86_64.apk",
+        "gh_asset": "Cloud-Nav-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ],
+    "auto_update": {
+      "_doc": "In-app updater config — read at gradle eval time into libs:updater BuildConfig, used at runtime by the Update tab in Configs. Same registry/namespace/image as release.ghcr. ABI-aware: arm64 pulls 'latest', x86_64 pulls 'latest-x86_64' (release.variants[].update_tag).",
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions). 'silent' → USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' → always USER_ACTION_REQUIRED.",
+      "install_mode": "silent",
+      "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
+      "max_installs_per_pass": 3
+    },
+    "ghcr": {
+      "_doc": "ORAS push as an OCI artifact (APK blob, not a container). one :latest + per-sha + per-version tags; per-variant suffix -x86_64 for the x86 artifact.",
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-nav",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "_doc": "Rolling GH release named 'latest' (shared across the ea_cloud-* apps; each contributes distinctly-named APK assets), overwritten every main push so /releases/latest/download/Cloud-Nav.apk stays stable.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "Cloud-Nav.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    },
+    "phone_install": {
+      "default_tag": "latest",
+      "target_dir": "~/storage/downloads",
+      "asset_name": "Cloud-Nav.apk"
+    }
+  }
+}

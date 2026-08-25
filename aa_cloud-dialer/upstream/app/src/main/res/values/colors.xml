@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ripple_foreground">#33FFFFFF</color>
+    <color name="color_missed_call">@color/md_red_500_dark</color>
+    <color name="color_outgoing_call">@color/md_green_600</color>
+    <color name="color_incoming_call">@color/md_blue_600</color>
+
+    <!-- Cloud Dialer redesign: spam gets its own danger palette, distinct from
+         color_missed_call — Truecaller's own color legend reserves red exclusively
+         for spam, never a lesser/unrelated state (research-grounded, patch 0015). -->
+    <color name="spam_danger_red">#C4281C</color>
+    <color name="spam_danger_on_red">#FFFFFF</color>
+    <color name="spam_danger_surface">#FBE9E7</color>
+
+    <!-- Recents card fill (Material 3 surface-container equivalent, hand-authored
+         since this app doesn't use the Material3 dynamic color role system). -->
+    <color name="call_surface_container">#F2F0F4</color>
+</resources>

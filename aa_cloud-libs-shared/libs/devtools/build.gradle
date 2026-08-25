@@ -1,0 +1,38 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+// rootDir, NOT '../../': this module is shared by reference (projectDir) into
+// every constellation app, so it must read the CONSUMING app's build.json.
+// A module-relative path would resolve to superapp's build.json and every app
+// would ship superapp's log stream — cloud-nav's diagnostics would land in the
+// cloud-superapp stream and be indistinguishable from superapp's own.
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+
+// Data-driven from build.json::diagnostics; empty url = cloud push disabled.
+// These used to be baked by each app's app/build.gradle, which is why every
+// app also needed its own copy of DiagnosticsPush. The BuildConfig moves here
+// with the code that reads it, so an app gets both or neither.
+def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
+def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-app')
+
+android {
+    namespace 'com.diegonmarcos.superapp.devtools'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+        buildConfigField "String", "LOG_SINK_URL",    "\"${logSinkUrl}\""
+        buildConfigField "String", "LOG_SINK_STREAM", "\"${logSinkStream}\""
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+}

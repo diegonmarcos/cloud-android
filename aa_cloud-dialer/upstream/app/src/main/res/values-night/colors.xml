@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="color_missed_call">@color/md_red_400</color>
+    <color name="color_outgoing_call">@color/md_green_300</color>
+    <color name="color_incoming_call">@color/md_blue_300</color>
+
+    <color name="spam_danger_red">#FFB4A9</color>
+    <color name="spam_danger_on_red">#680003</color>
+    <color name="spam_danger_surface">#3A0906</color>
+
+    <color name="call_surface_container">#211F26</color>
+</resources>

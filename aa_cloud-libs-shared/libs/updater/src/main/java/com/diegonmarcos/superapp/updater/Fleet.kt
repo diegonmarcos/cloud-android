@@ -1,0 +1,397 @@
+package com.diegonmarcos.superapp.updater
+
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Base64
+import android.util.Log
+import org.json.JSONObject
+import java.io.File
+import java.security.MessageDigest
+
+/**
+ * Constellation AppStore engine — checks / installs / updates / uninstalls
+ * EVERY constellation APK, not just self. Reuses [GhcrClient] (OCI digest pull)
+ * and [UpdateInstaller] (installs foreign packages). No R references — the app
+ * module owns the manifest source (BuildConfig.CONSTELLATION_FLEET_B64) and the
+ * UI; this engine is pure mechanism.
+ *
+ * Flat model (data-driven): the fleet JSON is auto-scanned from each app's own
+ * build.json by data/regen.sh → data/constellation-fleet.json → BuildConfig.
+ */
+object Fleet {
+    private const val TAG = "Fleet"
+
+    data class App(
+        val id: String,
+        val label: String,
+        val pkg: String,
+        // Real installed package of a resigned STOCK upstream APK that isn't
+        // repackaged to `pkg` yet (chat=com.mattermost.rnbeta,
+        // matrix=io.element.android.x). Detection accepts either; null = the
+        // APK already declares `pkg` (patched forks + self).
+        val altId: String?,
+        val registry: String,
+        val namespace: String,
+        val image: String,
+        val tag: String,
+        val asset: String,
+        val releaseUrl: String,
+        val repoUrl: String,
+        val ghcrPage: String,
+        val blocked: Boolean,
+        // "app" (default) or "lib" — a companion APK that ships engines behind
+        // AIDL bound services instead of UI. Data-driven from each app's
+        // build.json::release.kind; splits the Constellation page's Apps/Libs tabs.
+        val kind: String,
+    )
+
+    /** Live state of one app on this device vs. its GHCR image. */
+    sealed class State(
+        /** APK size in bytes: the DOWNLOAD size when the manifest was reached,
+         *  otherwise the installed APK's own size, and 0 when neither is known
+         *  (blocked, or the check failed before either was available). Carried
+         *  on the base class because every variant has a size to show and the
+         *  UI should not have to branch to find it. */
+        val bytes: Long,
+    ) {
+        class Installed(val versionName: String, val versionCode: Long, val sha12: String, bytes: Long = 0L) : State(bytes)
+        class UpdateAvailable(val versionName: String?, val remoteDigest12: String, bytes: Long = 0L) : State(bytes)
+        class Missing(bytes: Long = 0L) : State(bytes)
+        class Blocked : State(0L)
+        class Error(val message: String) : State(0L)
+    }
+
+    /** Decode BuildConfig.CONSTELLATION_FLEET_B64 (base64 JSON) into apps. */
+    fun parse(fleetB64: String): List<App> {
+        return try {
+            val json = String(Base64.decode(fleetB64, Base64.DEFAULT))
+            val arr = JSONObject(json).optJSONArray("apps") ?: return emptyList()
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                App(
+                    id = o.getString("id"),
+                    label = o.optString("label", o.getString("id")),
+                    pkg = o.getString("package"),
+                    altId = o.optString("alt_id").takeIf { it.isNotEmpty() },
+                    registry = o.getString("registry"),
+                    namespace = o.getString("namespace"),
+                    image = o.getString("image"),
+                    tag = o.optString("tag", "latest"),
+                    asset = o.optString("asset", ""),
+                    releaseUrl = o.optString("release_url", ""),
+                    repoUrl = o.optString("repo_url", ""),
+                    ghcrPage = o.optString("ghcr_page", ""),
+                    blocked = o.optBoolean("blocked", false),
+                    kind = o.optString("kind", "app").takeIf { it.isNotEmpty() } ?: "app",
+                )
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "parse failed: ${t.message}")
+            emptyList()
+        }
+    }
+
+    /** ABI-aware tag. Across the constellation, x86_64 is the ONLY ABI that
+     *  publishes a suffixed variant tag (`<tag>-x86_64`); arm64 is the default
+     *  publish under the universal `<tag>`. The old code composed
+     *  `<tag>-arm64-v8a`, which never exists — a guaranteed 404 + fallback
+     *  round-trip on every arm64 device. Only reach for the suffix on x86_64. */
+    private fun remoteLayer(app: App, client: GhcrClient, token: String): GhcrClient.ManifestLayer {
+        if (Build.SUPPORTED_ABIS.firstOrNull() == "x86_64") {
+            try {
+                return client.manifest("${app.tag}-x86_64", token)
+            } catch (_: Throwable) { /* variant not published yet — universal tag */ }
+        }
+        return client.manifest(app.tag, token)
+    }
+
+    /** Compute install/update status for one app. Network per call. */
+    fun status(ctx: Context, app: App): State {
+        if (app.blocked) return State.Blocked()
+        val installed = installedInfo(ctx, app)
+        return try {
+            val client = GhcrClient(app.registry, app.namespace, app.image)
+            val layer = remoteLayer(app, client, client.token())
+            val remote12 = layer.digest.substringAfter(':').take(12)
+            // Valid manifest ⇒ remote APK exists. Not installed ⇒ offer install.
+            if (installed == null) return State.Missing(layer.size)
+            // Code-identity short-circuit for the SELF entry: builds are not
+            // byte-reproducible, so a same-commit rebuild has a different APK
+            // sha and would show a phantom "update available". When this is our
+            // own package and the manifest revision matches our built-in git
+            // sha, we are up to date regardless of bytes. (Foreign apps don't
+            // expose their revision, so sha comparison remains their signal.)
+            if (app.pkg == ctx.packageName && layer.revision != null &&
+                layer.revision == BuildConfig.GIT_SHORT_SHA) {
+                return State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12), layer.size)
+            }
+            val currentSha = "sha256:" + installed.sha
+            if (currentSha == layer.digest)
+                State.Installed(installed.versionName, installed.versionCode, installed.sha.take(12), layer.size)
+            else
+                State.UpdateAvailable(installed.versionName, remote12, layer.size)
+        } catch (e: GhcrClient.HttpException) {
+            if (e.code == 404)
+                installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) } ?: State.Missing()
+            else State.Error("HTTP ${e.code}")
+        } catch (t: Throwable) {
+            installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) }
+                ?: State.Error(t.message ?: t.toString())
+        }
+    }
+
+    /** Download the GHCR blob, verify sha, install/update [app] (foreign pkg). */
+    fun install(ctx: Context, app: App) {
+        commit(ctx, app, download(ctx, app))
+    }
+
+    /**
+     * Fetch and verify [app]'s APK, WITHOUT installing it. Returns the file.
+     *
+     * Separate from [commit] because a batch downloads everything first and
+     * only then starts installing: an install prompt blocks on the user, so
+     * interleaving the two made every tap wait on the next app's network
+     * fetch. Downloading first means the prompts run back to back.
+     */
+    fun download(ctx: Context, app: App): File {
+        UpdateProgress.update(UpdateProgress.State.CheckingManifest)
+        val client = GhcrClient(app.registry, app.namespace, app.image)
+        val token = client.token()
+        val layer = remoteLayer(app, client, token)
+        val target = File(ctx.cacheDir, "fleet-${app.id}-${layer.digest.substringAfter(':').take(12)}.apk")
+        UpdateProgress.update(UpdateProgress.State.Downloading(0, 0L, layer.size))
+        // Raw fleet threads aren't WorkManager — the Cancel button reaches them
+        // only through UpdateProgress.cancelRequested.
+        client.blob(layer.digest, token, target, { UpdateProgress.cancelRequested }) { bytes, total ->
+            val t = if (total > 0) total else layer.size
+            val pct = if (t > 0) ((bytes * 100) / t).toInt().coerceIn(0, 100) else 0
+            UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, t))
+        }
+        val dl = "sha256:" + sha256(target)
+        if (dl != layer.digest) {
+            target.delete()
+            UpdateProgress.update(UpdateProgress.State.Failed("digest mismatch for ${app.label}"))
+            error("digest mismatch: $dl != ${layer.digest}")
+        }
+        // Keep the verified APK, drop this app's superseded ones. Keeping it
+        // means a retry after a failed install reuses the download instead of
+        // pulling the blob again.
+        client.pruneCache("fleet-${app.id}-", target)
+        return target
+    }
+
+    /** Hand a verified APK to the installer. Cheap; the work was the download.
+     *  Prefers the privileged shell channel, which installs with NO dialog at
+     *  all; falls back to PackageInstaller (which prompts) when no channel is up. */
+    fun commit(ctx: Context, app: App, apk: File) {
+        if (shellInstall(ctx, apk)) {
+            UpdateProgress.update(UpdateProgress.State.Done)
+            Log.i(TAG, "install committed via shell: ${app.label} (${app.pkg})")
+            return
+        }
+        UpdateInstaller(ctx).install(apk, app.pkg)
+        Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
+    }
+
+    /** Zero-dialog install. The shell channel (Shizuku / embedded adb) runs as
+     *  uid 2000, which holds INSTALL_PACKAGES — so `pm install` neither shows the
+     *  "are you sure you want to update this app" confirm nor gives Play Protect
+     *  a chance to stack its scan prompt on top. This is the same channel the
+     *  Play-Protect toggle already uses (adbdebug.PackageVerifier).
+     *
+     *  The APK has to live somewhere shell can READ it: cacheDir is 0700
+     *  app-private, so it's staged into external files first and removed after.
+     *  Any failure at all returns false and the caller falls back to the
+     *  prompting PackageInstaller path — so this can only remove dialogs, never
+     *  break an install that used to work.
+     *
+     *  Blocking (up to ~25s); callers are already off the main thread. */
+    private fun shellInstall(ctx: Context, apk: File): Boolean {
+        // activeShellChannel() comes from src/shell or src/noshell depending on
+        // whether this app declares :libs:shizuku-adb-debug-tools; the stub
+        // always returns null, which is the ordinary "no channel" path below.
+        val channel = activeShellChannel(ctx) ?: return false
+        val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${apk.name}")
+        return try {
+            apk.copyTo(stage, overwrite = true)
+            // -r reinstall, -d allow version downgrade. Deliberately NOT -g: on a
+            // reinstall the runtime grants already carry over, and -g fails the
+            // whole install on any permission the platform won't auto-grant.
+            val out = (channel.exec(ctx, "pm install -r -d ${stage.absolutePath}") ?: "").trim()
+            Log.i(TAG, "shell install via ${channel.name()}: ${out.ifBlank { "no output" }}")
+            out.startsWith("Success")
+        } catch (t: Throwable) {
+            Log.w(TAG, "shell install unavailable, falling back to PackageInstaller", t)
+            false
+        } finally {
+            stage.delete()
+        }
+    }
+
+    /** Which apps installAll acts on. UPDATES = only apps ALREADY installed
+     *  that have a newer image ("Update all" + background auto-update — never
+     *  touches apps the user hasn't installed). MISSING = only not-yet-installed
+     *  apps ("Install all"). ALL = both. */
+    enum class Mode { UPDATES, MISSING, ALL }
+
+    /**
+     * Install/update fleet apps, filtered by [mode] (see [Mode]). Sequential
+     * (PackageInstaller sessions mustn't collide); per-app failures don't abort
+     * the rest. Returns how many were acted on.
+     */
+    fun installAll(
+        ctx: Context,
+        apps: List<App>,
+        mode: Mode = Mode.ALL,
+        limit: Int = Int.MAX_VALUE,
+    ): Int {
+        // Decide the work-list FIRST (status checks, no overlay yet) so the
+        // batch header can show a correct "N/total" — otherwise the overlay's
+        // bar just resets 0→100 per app with no context (scrambled-progress bug).
+        val todo = apps.filter { app ->
+            if (app.blocked) return@filter false
+            when (status(ctx, app)) {
+                is State.UpdateAvailable -> mode != Mode.MISSING
+                is State.Missing -> mode != Mode.UPDATES
+                else -> false
+            }
+        }
+        // Cap the batch. [limit] is Int.MAX_VALUE for user-initiated "Update
+        // all"/"Install all" - those run in the foreground, the system dialog
+        // appears, and each session resolves within seconds. A BACKGROUND pass
+        // passes a real limit, and is additionally held to whatever session
+        // headroom actually remains: its installs cannot show a dialog, so each
+        // leaves a notification holding a PackageInstaller session until the
+        // user answers it. Unbounded over a 40-entry fleet that is 40 sessions
+        // from one pass, and Android refuses new ones past 50 with "Too many
+        // active sessions for UID".
+        val batch = if (limit >= todo.size) todo
+                    else todo.take(minOf(limit, UpdateInstaller(ctx).freeSessionSlots()))
+        if (batch.size < todo.size) {
+            // Never a silent cap: the rest are picked up by the next pass, and
+            // the log has to say so or "acted on 3 apps" reads as "3 needed it".
+            Log.i(TAG, "installAll capped at ${batch.size} of ${todo.size} app(s) " +
+                       "(limit=$limit, session headroom decides the rest); " +
+                       "remainder deferred to the next pass")
+        }
+        UpdateProgress.beginDownload() // disarm any stale cancel before the batch
+
+        // ── PHASE 1: download everything, install nothing ───────────────────
+        // An install prompt blocks on the user. Interleaved, every tap was
+        // followed by a wait for the NEXT app's blob, so a ten-app batch spent
+        // most of its time with the user watching a spinner between dialogs.
+        // Fetching first means phase 2 is pure prompts, back to back.
+        //
+        // It also makes the batch atomic in the way that matters: a network
+        // that dies half way now fails BEFORE anything was installed, instead
+        // of leaving the fleet half-updated.
+        val staged = ArrayList<Pair<App, File>>(batch.size)
+        batch.forEachIndexed { i, app ->
+            if (UpdateProgress.cancelRequested) {
+                Log.i(TAG, "installAll cancelled by user during download")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                return 0
+            }
+            UpdateProgress.beginBatch("↓ ${app.label}", i + 1, batch.size)
+            try {
+                staged += app to download(ctx, app)
+            } catch (c: java.util.concurrent.CancellationException) {
+                Log.i(TAG, "download ${app.label} cancelled")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                UpdateProgress.endBatch()
+                return 0
+            } catch (t: Throwable) {
+                // One dead image must not cost the other nine their update.
+                Log.w(TAG, "installAll download ${app.label}: ${t.message}")
+            }
+        }
+        if (staged.isEmpty()) {
+            UpdateProgress.endBatch()
+            return 0
+        }
+
+        // ── PHASE 2: install, strictly one at a time ────────────────────────
+        // Sequential is not a style choice: PackageInstaller sessions collide,
+        // and each unanswered prompt holds a session against the 50-session cap.
+        var acted = 0
+        staged.forEachIndexed { i, (app, apk) ->
+            if (UpdateProgress.cancelRequested) {
+                Log.i(TAG, "installAll cancelled by user after $acted install(s)")
+                UpdateProgress.update(UpdateProgress.State.Cancelled)
+                return acted
+            }
+            UpdateProgress.beginBatch(app.label, i + 1, staged.size)
+            try {
+                // commit() blocks until this install settles: UpdateInstaller
+                // runs every install through InstallGate, so the batch does not
+                // arm/await itself any more. That moved the guarantee to the
+                // one place EVERY caller passes through - including the
+                // per-row install buttons, which never came through here.
+                commit(ctx, app, apk)
+                acted++
+            } catch (t: Throwable) {
+                // The APK stays in the cache, so a retry reuses it - the whole
+                // reason downloads are content-addressed.
+                Log.w(TAG, "installAll commit ${app.label}: ${t.message}")
+            }
+        }
+        // Clear the batch context; the async install commits still drive the
+        // overlay to Done/Failed via PackageInstallerReceiver.
+        UpdateProgress.endBatch()
+        return acted
+    }
+
+    /** Uninstall [pkg] via PackageInstaller (system confirm dialog). */
+    fun uninstall(ctx: Context, pkg: String) {
+        val intent = Intent(ctx, PackageInstallerReceiver::class.java)
+            .setPackage(ctx.packageName)
+            .putExtra(PackageInstallerReceiver.EXTRA_OP, PackageInstallerReceiver.OP_UNINSTALL)
+        var flags = PendingIntent.FLAG_UPDATE_CURRENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags = flags or PendingIntent.FLAG_MUTABLE
+        val pi = PendingIntent.getBroadcast(ctx, pkg.hashCode(), intent, flags)
+        ctx.packageManager.packageInstaller.uninstall(pkg, pi.intentSender)
+    }
+
+    private data class Installed(val versionName: String, val versionCode: Long, val sha: String, val bytes: Long)
+
+    /** The package actually on the device for this app — pkg if present, else
+     *  the stock upstream altId. null when neither is installed. Used by the UI
+     *  for Open / Uninstall so they target the real installed package. */
+    fun installedId(ctx: Context, app: App): String? =
+        listOfNotNull(app.pkg, app.altId).firstOrNull { pkgInstalled(ctx, it) }
+
+    private fun pkgInstalled(ctx: Context, pkg: String): Boolean = try {
+        @Suppress("DEPRECATION") ctx.packageManager.getPackageInfo(pkg, 0); true
+    } catch (_: PackageManager.NameNotFoundException) { false }
+
+    private fun installedInfo(ctx: Context, app: App): Installed? {
+        val pkg = installedId(ctx, app) ?: return null
+        return try {
+            @Suppress("DEPRECATION")
+            val pi = ctx.packageManager.getPackageInfo(pkg, 0)
+            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pi.longVersionCode
+            else @Suppress("DEPRECATION") pi.versionCode.toLong()
+            val path = pi.applicationInfo?.sourceDir
+            Installed(pi.versionName ?: "—", code,
+                if (path != null) sha256(File(path)) else "",
+                if (path != null) File(path).length() else 0L)
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        }
+    }
+
+    private fun sha256(file: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { s ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = s.read(buf); if (n <= 0) break; md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
+    }
+}

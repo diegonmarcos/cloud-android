@@ -1,0 +1,508 @@
+From 50a348ec69ea293ad079c46b91d9908cd1b3748f Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Tue, 7 Jul 2026 22:10:34 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20Cloud=20Feeds=20(patch=200041)=20?=
+ =?UTF-8?q?=E2=80=94=20rss-gateway=20profile=20subscriptions?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+FragmentDialogCloudFeeds: fetches /feed/profiles.json from the rss-gateway
+sidecar, shows a checkbox list of profile groups (security/cicd/health/ops/
+all), and creates one RSS folder per selected profile — one URL per group
+instead of N individual topic subscriptions.
+
+Token stored in SharedPreferences (comms_cloud_token). WorkerFeedSync injects
+Authorization: Bearer <token> on all feed_url polls matching /feed/ path.
+FragmentSetup menu entry 'Cloud feeds…' → ACTION_ADD_CLOUD_FEEDS action.
+CommsAccounts.createCloudProfileFeed() delegates to createRssFeed().
+---
+ .../java/eu/faircode/email/ActivitySetup.java |   6 +-
+ .../java/eu/faircode/email/CommsAccounts.java |   7 +
+ .../email/FragmentDialogCloudFeeds.java       | 285 ++++++++++++++++++
+ .../java/eu/faircode/email/FragmentSetup.java |   7 +
+ .../eu/faircode/email/WorkerFeedSync.java     |   9 +
+ .../main/res/layout/dialog_cloud_feeds.xml    |  63 ++++
+ app/src/main/res/values/strings_comms.xml     |  12 +
+ 7 files changed, 388 insertions(+), 1 deletion(-)
+ create mode 100644 app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+ create mode 100644 app/src/main/res/layout/dialog_cloud_feeds.xml
+
+diff --git a/app/src/main/java/eu/faircode/email/ActivitySetup.java b/app/src/main/java/eu/faircode/email/ActivitySetup.java
+index 7e5137a1e7..a323850781 100644
+--- a/app/src/main/java/eu/faircode/email/ActivitySetup.java
++++ b/app/src/main/java/eu/faircode/email/ActivitySetup.java
+@@ -120,7 +120,8 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
+     static final String ACTION_SETUP_MORE = BuildConfig.APPLICATION_ID + ".SETUP_MORE";
+     static final String ACTION_IMPORT_CONFIGS = BuildConfig.APPLICATION_ID + ".ACTION_IMPORT_CONFIGS"; // comms
+     static final String ACTION_ADD_JMAP = BuildConfig.APPLICATION_ID + ".ACTION_ADD_JMAP"; // comms
+-    static final String ACTION_ADD_RSS = BuildConfig.APPLICATION_ID + ".ACTION_ADD_RSS"; // comms
++    static final String ACTION_ADD_RSS          = BuildConfig.APPLICATION_ID + ".ACTION_ADD_RSS"; // comms
++    static final String ACTION_ADD_CLOUD_FEEDS  = BuildConfig.APPLICATION_ID + ".ACTION_ADD_CLOUD_FEEDS"; // comms
+ 
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+@@ -349,6 +350,7 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
+         iff.addAction(ACTION_IMPORT_CONFIGS); // comms
+         iff.addAction(ACTION_ADD_JMAP); // comms
+         iff.addAction(ACTION_ADD_RSS); // comms
++        iff.addAction(ACTION_ADD_CLOUD_FEEDS); // comms
+         lbm.registerReceiver(receiver, iff);
+     }
+ 
+@@ -894,6 +896,8 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
+                 }
+                 else if (ACTION_ADD_RSS.equals(action)) // comms
+                     new FragmentDialogRss().show(getSupportFragmentManager(), "comms:rss");
++                else if (ACTION_ADD_CLOUD_FEEDS.equals(action)) // comms
++                    new FragmentDialogCloudFeeds().show(getSupportFragmentManager(), "comms:cloud-feeds");
+             }
+         }
+     };
+diff --git a/app/src/main/java/eu/faircode/email/CommsAccounts.java b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+index b6d1f97683..ddc8f7967e 100644
+--- a/app/src/main/java/eu/faircode/email/CommsAccounts.java
++++ b/app/src/main/java/eu/faircode/email/CommsAccounts.java
+@@ -131,6 +131,13 @@ public class CommsAccounts {
+         return rss;
+     }
+ 
++    // Create a cloud profile feed folder (from rss-gateway /feed/<profile>.atom).
++    // Behaves identically to createRssFeed but explicitly named for clarity.
++    // Returns new folder id, or -1 if a feed with this url already exists.
++    static long createCloudProfileFeed(DB db, String feedUrl, String title) {
++        return createRssFeed(db, feedUrl, title);
++    }
++
+     // Create an RSS/Atom feed folder under the synthetic Feeds account.
+     // title may be empty → the url is used as the folder name.
+     // Returns the new folder id, or -1 if a feed with this url already exists.
+diff --git a/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+new file mode 100644
+index 0000000000..704a5278e8
+--- /dev/null
++++ b/app/src/main/java/eu/faircode/email/FragmentDialogCloudFeeds.java
+@@ -0,0 +1,285 @@
++package eu.faircode.email;
++
++/*
++    This file is part of FairEmail.
++
++    FairEmail is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    FairEmail is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with FairEmail.  If not, see <http://www.gnu.org/licenses/>.
++
++    Copyright 2018-2026 by Marcel Bokhorst (M66B)
++*/
++
++import android.app.Dialog;
++import android.content.Context;
++import android.content.SharedPreferences;
++import android.os.Bundle;
++import android.text.TextUtils;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.widget.Button;
++import android.widget.CheckBox;
++import android.widget.EditText;
++import android.widget.LinearLayout;
++import android.widget.TextView;
++import android.widget.Toast;
++
++import androidx.annotation.NonNull;
++import androidx.annotation.Nullable;
++import androidx.appcompat.app.AlertDialog;
++import androidx.preference.PreferenceManager;
++
++import org.json.JSONArray;
++import org.json.JSONObject;
++
++import java.io.InputStream;
++import java.net.HttpURLConnection;
++import java.util.ArrayList;
++import java.util.List;
++
++// comms: "Cloud Feeds" dialog — fetches /feed/profiles.json from rss.diegonmarcos.com,
++// shows a checkbox list of profiles, and creates one RSS folder per selected profile.
++// Token is stored in SharedPreferences (comms_cloud_token) so WorkerFeedSync can inject
++// it as Authorization: Bearer on subsequent polls.
++public class FragmentDialogCloudFeeds extends FragmentDialogBase {
++
++    private static final String PREF_TOKEN   = "comms_cloud_token";
++    private static final String PREF_BASE    = "comms_cloud_base_url";
++    private static final int    FETCH_TIMEOUT = 15_000;
++
++    private EditText etBaseUrl;
++    private EditText etToken;
++    private LinearLayout profilesContainer;
++    private final List<String[]> loadedProfiles = new ArrayList<>(); // [id, title, feed_path]
++
++    @NonNull
++    @Override
++    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
++        Context context = getContext();
++        View dview = LayoutInflater.from(context).inflate(R.layout.dialog_cloud_feeds, null);
++
++        etBaseUrl         = dview.findViewById(R.id.etCloudBaseUrl);
++        etToken           = dview.findViewById(R.id.etCloudToken);
++        Button btnLoad    = dview.findViewById(R.id.btnLoadProfiles);
++        profilesContainer = dview.findViewById(R.id.profilesContainer);
++
++        // Pre-fill from stored preferences
++        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
++        String savedBase  = prefs.getString(PREF_BASE,  "https://rss.diegonmarcos.com/feed");
++        String savedToken = prefs.getString(PREF_TOKEN, "");
++        etBaseUrl.setText(savedBase);
++        etToken.setText(savedToken);
++
++        btnLoad.setOnClickListener(v -> loadProfiles());
++
++        return new AlertDialog.Builder(context)
++                .setTitle(R.string.title_comms_cloud_feeds)
++                .setView(dview)
++                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
++                    String base  = etBaseUrl.getText().toString().trim();
++                    String token = etToken.getText().toString().trim();
++                    if (TextUtils.isEmpty(base)) {
++                        ToastEx.makeText(context, R.string.title_comms_cloud_base_required, Toast.LENGTH_SHORT).show();
++                        return;
++                    }
++
++                    // Collect selected profiles
++                    List<String[]> selected = new ArrayList<>();
++                    for (int i = 0; i < profilesContainer.getChildCount(); i++) {
++                        View child = profilesContainer.getChildAt(i);
++                        if (child instanceof CheckBox) {
++                            CheckBox cb = (CheckBox) child;
++                            if (cb.isChecked()) {
++                                String[] meta = (String[]) cb.getTag();
++                                selected.add(meta); // [id, title, feed_path]
++                            }
++                        }
++                    }
++
++                    if (selected.isEmpty()) {
++                        ToastEx.makeText(context, R.string.title_comms_cloud_no_selection, Toast.LENGTH_SHORT).show();
++                        return;
++                    }
++
++                    Bundle args = new Bundle();
++                    args.putString("base", base);
++                    args.putString("token", token);
++                    String[] ids    = new String[selected.size()];
++                    String[] titles = new String[selected.size()];
++                    String[] feeds  = new String[selected.size()];
++                    for (int i = 0; i < selected.size(); i++) {
++                        ids[i]    = selected.get(i)[0];
++                        titles[i] = selected.get(i)[1];
++                        feeds[i]  = selected.get(i)[2];
++                    }
++                    args.putStringArray("ids",    ids);
++                    args.putStringArray("titles", titles);
++                    args.putStringArray("feeds",  feeds);
++
++                    new SimpleTask<Integer>() {
++                        @Override
++                        protected Integer onExecute(Context ctx, Bundle a) throws Throwable {
++                            String b     = a.getString("base");
++                            String tok   = a.getString("token");
++                            String[] fs  = a.getStringArray("feeds");
++                            String[] ts  = a.getStringArray("titles");
++                            int created  = 0;
++
++                            // Persist token + base for WorkerFeedSync
++                            PreferenceManager.getDefaultSharedPreferences(ctx).edit()
++                                    .putString(PREF_TOKEN, tok)
++                                    .putString(PREF_BASE,  b)
++                                    .apply();
++
++                            DB db = DB.getInstance(ctx);
++                            try {
++                                db.beginTransaction();
++                                for (int i = 0; i < fs.length; i++) {
++                                    String feedUrl = b + fs[i];
++                                    long id = CommsAccounts.createCloudProfileFeed(db, feedUrl, ts[i]);
++                                    if (id >= 0) created++;
++                                }
++                                db.setTransactionSuccessful();
++                            } finally {
++                                db.endTransaction();
++                            }
++                            WorkerFeedSync.init(ctx);
++                            return created;
++                        }
++
++                        @Override
++                        protected void onExecuted(Bundle a, Integer count) {
++                            Context ctx = getContext();
++                            if (ctx != null)
++                                ToastEx.makeText(ctx,
++                                        ctx.getString(R.string.title_comms_cloud_feeds_added, count),
++                                        Toast.LENGTH_LONG).show();
++                        }
++
++                        @Override
++                        protected void onException(Bundle a, Throwable ex) {
++                            try {
++                                Log.unexpectedError(getParentFragmentManager(), ex);
++                            } catch (Throwable ignored) { }
++                        }
++                    }.execute(FragmentDialogCloudFeeds.this, args, "comms:cloud-feeds-create");
++                })
++                .setNegativeButton(android.R.string.cancel, null)
++                .create();
++    }
++
++    private void loadProfiles() {
++        String base  = etBaseUrl.getText().toString().trim();
++        String token = etToken.getText().toString().trim();
++        if (TextUtils.isEmpty(base)) {
++            ToastEx.makeText(getContext(), R.string.title_comms_cloud_base_required, Toast.LENGTH_SHORT).show();
++            return;
++        }
++
++        Bundle args = new Bundle();
++        args.putString("base",  base);
++        args.putString("token", token);
++
++        new SimpleTask<List<String[]>>() {
++            @Override
++            protected List<String[]> onExecute(Context ctx, Bundle a) throws Throwable {
++                String b   = a.getString("base");
++                String tok = a.getString("token");
++                String url = b + "/profiles.json";
++
++                HttpURLConnection conn = ConnectionHelper.openConnectionUnsafe(
++                        ctx, url, FETCH_TIMEOUT, FETCH_TIMEOUT);
++                if (!TextUtils.isEmpty(tok))
++                    conn.setRequestProperty("Authorization", "Bearer " + tok);
++
++                List<String[]> result = new ArrayList<>();
++                try (InputStream is = conn.getInputStream()) {
++                    byte[] bytes = Helper.readBytes(is);
++                    JSONObject root = new JSONObject(new String(bytes, "UTF-8"));
++                    JSONArray profiles = root.optJSONArray("profiles");
++                    if (profiles != null) {
++                        for (int i = 0; i < profiles.length(); i++) {
++                            JSONObject p = profiles.getJSONObject(i);
++                            String id    = p.optString("id", "");
++                            String title = p.optString("title", id);
++                            String feed  = p.optString("feed", "/feed/" + id + ".atom");
++                            // Build channel summary for subtitle
++                            JSONArray chs = p.optJSONArray("channels");
++                            StringBuilder sb = new StringBuilder();
++                            if (chs != null) {
++                                for (int j = 0; j < chs.length() && j < 4; j++) {
++                                    if (j > 0) sb.append(", ");
++                                    sb.append(chs.getJSONObject(j).optString("name", ""));
++                                }
++                                if (chs.length() > 4) sb.append(" +").append(chs.length() - 4);
++                            }
++                            result.add(new String[]{id, title, feed, sb.toString()});
++                        }
++                    }
++                } finally {
++                    conn.disconnect();
++                }
++                return result;
++            }
++
++            @Override
++            protected void onExecuted(Bundle a, List<String[]> profiles) {
++                loadedProfiles.clear();
++                loadedProfiles.addAll(profiles);
++                populateProfiles(profiles);
++            }
++
++            @Override
++            protected void onException(Bundle a, Throwable ex) {
++                Context ctx = getContext();
++                if (ctx != null)
++                    ToastEx.makeText(ctx,
++                            ctx.getString(R.string.title_comms_cloud_load_error, ex.getMessage()),
++                            Toast.LENGTH_LONG).show();
++            }
++        }.execute(this, args, "comms:cloud-feeds-load");
++    }
++
++    private void populateProfiles(List<String[]> profiles) {
++        profilesContainer.removeAllViews();
++        Context ctx = getContext();
++        if (ctx == null) return;
++
++        for (String[] p : profiles) {
++            // id=p[0], title=p[1], feed=p[2], channelSummary=p[3]
++            LinearLayout row = new LinearLayout(ctx);
++            row.setOrientation(LinearLayout.VERTICAL);
++            row.setPadding(0, 8, 0, 8);
++
++            CheckBox cb = new CheckBox(ctx);
++            cb.setText(p[1]);
++            cb.setTag(new String[]{p[0], p[1], p[2]});
++            cb.setChecked(true);
++            row.addView(cb);
++
++            if (!TextUtils.isEmpty(p[3])) {
++                TextView tv = new TextView(ctx);
++                tv.setText(p[3]);
++                tv.setTextSize(12);
++                tv.setPadding(48, 0, 0, 0);
++                row.addView(tv);
++            }
++            profilesContainer.addView(row);
++        }
++
++        if (profiles.isEmpty()) {
++            TextView tv = new TextView(ctx);
++            tv.setText(R.string.title_comms_cloud_no_profiles);
++            profilesContainer.addView(tv);
++        }
++    }
++}
+diff --git a/app/src/main/java/eu/faircode/email/FragmentSetup.java b/app/src/main/java/eu/faircode/email/FragmentSetup.java
+index d5f509f91c..5bb9df9305 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentSetup.java
++++ b/app/src/main/java/eu/faircode/email/FragmentSetup.java
+@@ -381,6 +381,11 @@ public class FragmentSetup extends FragmentBase implements SharedPreferences.OnS
+                 rss.setSpan(new RelativeSizeSpan(HtmlHelper.FONT_SMALL), 0, rss.length(), 0);
+                 menu.add(Menu.FIRST, R.string.title_comms_rss, order++, rss);
+ 
++                // comms (my-features): cloud feeds profile subscriptions (rss-gateway)
++                SpannableString cloudFeeds = new SpannableString(getString(R.string.title_comms_cloud_feeds));
++                cloudFeeds.setSpan(new RelativeSizeSpan(HtmlHelper.FONT_SMALL), 0, cloudFeeds.length(), 0);
++                menu.add(Menu.FIRST, R.string.title_comms_cloud_feeds, order++, cloudFeeds);
++
+                 popupMenu.insertIcons(context);
+ 
+                 MenuCompat.setGroupDividerEnabled(menu, true);
+@@ -439,6 +444,8 @@ public class FragmentSetup extends FragmentBase implements SharedPreferences.OnS
+                             return true;
+                         } else if (itemId == R.string.title_comms_rss) {
+                             lbm.sendBroadcast(new Intent(ActivitySetup.ACTION_ADD_RSS)); // comms
++                        } else if (itemId == R.string.title_comms_cloud_feeds) {
++                            lbm.sendBroadcast(new Intent(ActivitySetup.ACTION_ADD_CLOUD_FEEDS)); // comms
+                             return true;
+                         } else if (itemId == R.string.menu_faq) {
+                             Helper.view(getContext(), Helper.getSupportUri(getContext(), "Providers:support"), false);
+diff --git a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+index 68dce327a6..09012b5d7a 100644
+--- a/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
++++ b/app/src/main/java/eu/faircode/email/WorkerFeedSync.java
+@@ -95,6 +95,15 @@ public class WorkerFeedSync extends Worker {
+         try {
+             connection = ConnectionHelper.openConnectionUnsafe(
+                     context, folder.feed_url, FETCH_TIMEOUT, FETCH_TIMEOUT);
++            // comms: cloud profile feeds (rss-gateway on rss.diegonmarcos.com/feed/) require
++            // Bearer auth. Token is stored in SharedPreferences by FragmentDialogCloudFeeds.
++            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
++            String cloudToken = prefs.getString("comms_cloud_token", null);
++            if (cloudToken != null && !cloudToken.isEmpty()
++                    && folder.feed_url != null
++                    && folder.feed_url.contains("/feed/")) {
++                connection.setRequestProperty("Authorization", "Bearer " + cloudToken);
++            }
+             try (InputStream is = connection.getInputStream()) {
+                 FeedParser.Feed feed = FeedParser.parse(is);
+                 items = feed.items;
+diff --git a/app/src/main/res/layout/dialog_cloud_feeds.xml b/app/src/main/res/layout/dialog_cloud_feeds.xml
+new file mode 100644
+index 0000000000..45758ef2f8
+--- /dev/null
++++ b/app/src/main/res/layout/dialog_cloud_feeds.xml
+@@ -0,0 +1,63 @@
++<?xml version="1.0" encoding="utf-8"?>
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:padding="16dp">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical">
++
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:text="@string/title_comms_cloud_base_url"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
++
++        <EditText
++            android:id="@+id/etCloudBaseUrl"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:hint="https://rss.diegonmarcos.com/feed"
++            android:inputType="textUri"
++            android:singleLine="true" />
++
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="@string/title_comms_cloud_token"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
++
++        <EditText
++            android:id="@+id/etCloudToken"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:hint="tk_…"
++            android:inputType="textPassword"
++            android:singleLine="true" />
++
++        <Button
++            android:id="@+id/btnLoadProfiles"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="@string/title_comms_cloud_load" />
++
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="@string/title_comms_cloud_profiles_label"
++            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
++
++        <LinearLayout
++            android:id="@+id/profilesContainer"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical"
++            android:layout_marginTop="4dp" />
++
++    </LinearLayout>
++</ScrollView>
+diff --git a/app/src/main/res/values/strings_comms.xml b/app/src/main/res/values/strings_comms.xml
+index 07b7253717..c1d3730bb8 100644
+--- a/app/src/main/res/values/strings_comms.xml
++++ b/app/src/main/res/values/strings_comms.xml
+@@ -33,4 +33,16 @@
+     <string name="title_comms_checking_update" translatable="false">Checking for updates…</string>
+     <string name="title_comms_up_to_date" translatable="false">Cloud Mail is up to date</string>
+     <string name="title_comms_jmap_connect_success" translatable="false">JMAP connection successful</string>
++
++    <!-- Cloud Feeds (rss-gateway profile subscriptions) -->
++    <string name="title_comms_cloud_feeds" translatable="false">Cloud feeds…</string>
++    <string name="title_comms_cloud_base_url" translatable="false">Feed base URL</string>
++    <string name="title_comms_cloud_token" translatable="false">ntfy token (Bearer)</string>
++    <string name="title_comms_cloud_load" translatable="false">Load profiles</string>
++    <string name="title_comms_cloud_profiles_label" translatable="false">Select profiles to subscribe:</string>
++    <string name="title_comms_cloud_no_profiles" translatable="false">No profiles found — check URL and token</string>
++    <string name="title_comms_cloud_base_required" translatable="false">Feed base URL is required</string>
++    <string name="title_comms_cloud_no_selection" translatable="false">Select at least one profile</string>
++    <string name="title_comms_cloud_feeds_added" translatable="false">%d cloud feed(s) added</string>
++    <string name="title_comms_cloud_load_error" translatable="false">Failed to load profiles: %s</string>
+ </resources>
+-- 
+2.44.2
+

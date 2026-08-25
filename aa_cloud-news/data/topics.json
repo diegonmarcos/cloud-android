@@ -1,0 +1,21 @@
+{
+  "_doc": "DEFAULT TOPICS + API CONFIG — the data half of the news app. Ported 1:1 from V_front-configs/c-LabTools/news/src/typescript/config.ts (DEFAULT_TOPICS, API_BASE, REFRESH_INTERVAL, MAX_ARTICLES). libs:news fetches each topic's articles/timeline/tone from `api.base`; the ToDo/Topics surfaces render from that cache, never straight off the network. Adding a topic is an entry HERE plus a rebuild — no Kotlin change. Baked into BuildConfig.TOPICS_B64 by app/build.gradle, same pattern as ea_cloud-calendar/data/calendars.json → BuildConfig.CALENDARS_B64.",
+  "_doc_fields": "topic: the raw GDELT query term sent to the API. label: shown in the UI tab/chip.",
+  "version": 1,
+  "api": {
+    "_doc": "base: the self-hosted GDELT proxy this app talks to. refresh_seconds: how often the UI polls a topic's cache. max_articles: cap per topic per fetch, mirrors TS MAX_ARTICLES.",
+    "base": "https://api.diegonmarcos.com/news",
+    "refresh_seconds": 60,
+    "max_articles": 50
+  },
+  "topics": [
+    { "topic": "economy", "label": "Economy" },
+    { "topic": "technology", "label": "Technology" },
+    { "topic": "geopolitics", "label": "Geopolitics" },
+    { "topic": "climate change", "label": "Climate" },
+    { "topic": "finance markets", "label": "Finance" },
+    { "topic": "artificial intelligence", "label": "AI" },
+    { "topic": "energy", "label": "Energy" },
+    { "topic": "health", "label": "Health" }
+  ]
+}

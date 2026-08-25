@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloud Wallet palette — Material 3 seed = maps-green #1A73E8-adjacent teal. -->
+<resources>
+    <color name="nav_primary">#FF0B8043</color>
+    <color name="nav_on_primary">#FFFFFFFF</color>
+    <color name="nav_primary_container">#FFB7F4C9</color>
+    <color name="nav_on_primary_container">#FF00210F</color>
+    <color name="nav_secondary">#FF4C6358</color>
+    <color name="nav_secondary_container">#FFCEE9D9</color>
+
+    <color name="nav_surface">#FFFFFFFF</color>
+    <color name="nav_on_surface">#FF1A1C1A</color>
+    <color name="nav_on_surface_variant">#FF5C5F5C</color>
+    <color name="nav_outline">#FF74796F</color>
+</resources>

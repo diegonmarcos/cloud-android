@@ -1,0 +1,286 @@
+From 18b442f461f760c8143be3889dda6a2bba3bcab8 Mon Sep 17 00:00:00 2001
+From: comms <comms@diegonmarcos.com>
+Date: Wed, 22 Jul 2026 14:20:01 +0200
+Subject: [PATCH] =?UTF-8?q?comms:=20Gmail-style=20tappable=20attachment=20?=
+ =?UTF-8?q?in=20message=20list=20=E2=80=94=20open=20attachment=20directly?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Make the attachment paperclip (and a new count badge beside it) a tap
+target in the collapsed message-list row: tapping it opens the message's
+attachment directly, while tapping anywhere else on the row still opens
+the message. Picks the first non-inline attachment (else the first);
+reuses FairEmail's own open (Helper.share) and on-demand download
+(EntityOperation.ATTACHMENT + ServiceSynchronize.eval). Applied to both
+the normal and compact list layouts (include_message_{normal,compact}).
+---
+ .../eu/faircode/email/AdapterMessage.java     | 104 ++++++++++++++++++
+ .../res/layout/include_message_compact.xml    |  23 +++-
+ .../res/layout/include_message_normal.xml     |  23 +++-
+ 3 files changed, 148 insertions(+), 2 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/AdapterMessage.java b/app/src/main/java/eu/faircode/email/AdapterMessage.java
+index 312f64ce71..8c3e6c2a5b 100644
+--- a/app/src/main/java/eu/faircode/email/AdapterMessage.java
++++ b/app/src/main/java/eu/faircode/email/AdapterMessage.java
+@@ -390,6 +390,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+         private ImageView ivAnswered;
+         private ImageView ivForwarded;
+         private ImageView ivAttachments;
++        private TextView tvAttachmentsCount;
+         private TextView tvSubject;
+         private TextView tvKeywords;
+         private TextView tvFolder;
+@@ -770,6 +771,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+             ivAnswered = itemView.findViewById(R.id.ivAnswered);
+             ivForwarded = itemView.findViewById(R.id.ivForwarded);
+             ivAttachments = itemView.findViewById(R.id.ivAttachments);
++            tvAttachmentsCount = itemView.findViewById(R.id.tvAttachmentsCount);
+             tvSubject = itemView.findViewById(subject_top ? R.id.tvFrom : R.id.tvSubject);
+             tvKeywords = itemView.findViewById(R.id.tvKeywords);
+             tvExpand = itemView.findViewById(R.id.tvExpand);
+@@ -1071,6 +1073,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+             ibEncrypted.setOnClickListener(this);
+             ibSnoozed.setOnClickListener(this);
+             ibFlagged.setOnClickListener(this);
++            ivAttachments.setOnClickListener(this);
++            tvAttachmentsCount.setOnClickListener(this);
+             if (viewType == ViewType.THREAD) {
+                 ibFlagged.setOnLongClickListener(this);
+                 tvFolder.setOnLongClickListener(this);
+@@ -1199,6 +1203,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+             ibEncrypted.setOnClickListener(null);
+             ibSnoozed.setOnClickListener(null);
+             ibFlagged.setOnClickListener(null);
++            ivAttachments.setOnClickListener(null);
++            tvAttachmentsCount.setOnClickListener(null);
+             if (viewType == ViewType.THREAD) {
+                 ibFlagged.setOnLongClickListener(null);
+                 tvFolder.setOnLongClickListener(null);
+@@ -1599,6 +1605,9 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+             ivAnswered.setVisibility(message.ui_answered ? View.VISIBLE : View.GONE);
+             ivForwarded.setVisibility(message.isForwarded() ? View.VISIBLE : View.GONE);
+             ivAttachments.setVisibility(message.totalAttachments > 0 ? View.VISIBLE : View.GONE);
++            // comms: show a count badge next to the paperclip when >1 attachment.
++            tvAttachmentsCount.setText(message.totalAttachments > 1 ? Integer.toString(message.totalAttachments) : null);
++            tvAttachmentsCount.setVisibility(message.totalAttachments > 1 ? View.VISIBLE : View.GONE);
+ 
+             if (viewType == ViewType.FOLDER)
+                 tvFolder.setText(outbox ? message.identityEmail : message.accountName);
+@@ -4587,6 +4596,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+                 onToggleFlag(message);
+             else if (id == R.id.ibError)
+                 onHelp(message);
++            else if (id == R.id.ivAttachments || id == R.id.tvAttachmentsCount)
++                onOpenAttachment(message);
+             else if (id == R.id.ibReceipt)
+                 onReceipt(message);
+             else if (id == R.id.ibSearchContact)
+@@ -5586,6 +5597,99 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
+             context.startActivity(edit);
+         }
+ 
++        // comms: Gmail-style — tapping the paperclip / count in the collapsed list
++        // row opens the message's attachment directly (the rest of the row still
++        // toggles the message). Picks the first real (non-inline) attachment, else
++        // the first; reuses FairEmail's own open (Helper.share) / download flow.
++        // ponytail: single-attachment case opens directly; with several it opens the
++        // first — the others stay reachable by opening the message. Upgrade to a
++        // chooser if multi-attachment direct-pick is ever wanted.
++        private void onOpenAttachment(TupleMessageEx message) {
++            Bundle args = new Bundle();
++            args.putLong("id", message.id);
++
++            new SimpleTask<EntityAttachment>() {
++                @Override
++                protected EntityAttachment onExecute(Context context, Bundle args) {
++                    long id = args.getLong("id");
++
++                    DB db = DB.getInstance(context);
++                    List<EntityAttachment> attachments = db.attachment().getAttachments(id);
++
++                    EntityAttachment target = null;
++                    for (EntityAttachment a : attachments)
++                        if (a != null && !a.isInline()) {
++                            target = a;
++                            break;
++                        }
++                    if (target == null && !attachments.isEmpty())
++                        target = attachments.get(0);
++
++                    return target;
++                }
++
++                @Override
++                protected void onExecuted(Bundle args, EntityAttachment attachment) {
++                    if (attachment == null)
++                        return;
++                    if (attachment.available) {
++                        String title = (attachment.name == null ? attachment.cid : attachment.name);
++                        Helper.share(context, attachment.getFile(context), attachment.getMimeType(), title);
++                    } else if (attachment.progress == null)
++                        onDownloadAttachment(attachment);
++                }
++
++                @Override
++                protected void onException(Bundle args, Throwable ex) {
++                    Log.unexpectedError(parentFragment.getParentFragmentManager(), ex);
++                }
++            }.execute(context, owner, args, "message:attachment:open");
++        }
++
++        // comms: queue an on-demand download for a not-yet-fetched attachment,
++        // mirroring AdapterAttachment.onDownload (tap again to open once available).
++        private void onDownloadAttachment(EntityAttachment attachment) {
++            Bundle args = new Bundle();
++            args.putLong("id", attachment.id);
++            args.putLong("message", attachment.message);
++
++            new SimpleTask<Void>() {
++                @Override
++                protected Void onExecute(Context context, Bundle args) {
++                    long id = args.getLong("id");
++                    long mid = args.getLong("message");
++
++                    DB db = DB.getInstance(context);
++                    try {
++                        db.beginTransaction();
++
++                        EntityMessage message = db.message().getMessage(mid);
++                        if (message == null)
++                            return null;
++
++                        EntityAttachment attachment = db.attachment().getAttachment(id);
++                        if (attachment == null || attachment.progress != null || attachment.available)
++                            return null;
++
++                        EntityOperation.queue(context, message, EntityOperation.ATTACHMENT, id);
++
++                        db.setTransactionSuccessful();
++                    } finally {
++                        db.endTransaction();
++                    }
++
++                    ServiceSynchronize.eval(context, "attachment");
++
++                    return null;
++                }
++
++                @Override
++                protected void onException(Bundle args, Throwable ex) {
++                    Log.unexpectedError(parentFragment.getParentFragmentManager(), ex);
++                }
++            }.execute(context, owner, args, "message:attachment:download");
++        }
++
+         private void onToggleMessage(TupleMessageEx message) {
+             if (EntityFolder.DRAFTS.equals(message.folderType) && message.visible == 1 &&
+                     !EntityMessage.PGP_SIGNENCRYPT.equals(message.encrypt) &&
+diff --git a/app/src/main/res/layout/include_message_compact.xml b/app/src/main/res/layout/include_message_compact.xml
+index b3bad8f697..f9a06bc60f 100644
+--- a/app/src/main/res/layout/include_message_compact.xml
++++ b/app/src/main/res/layout/include_message_compact.xml
+@@ -267,17 +267,38 @@
+         app:layout_constraintTop_toTopOf="@+id/tvSubject"
+         app:srcCompat="@drawable/twotone_forwarded_24" />
+ 
++    <!-- comms: Gmail-style — paperclip is a tap target that opens the attachment
++         directly (the rest of the row still opens the message). -->
+     <ImageView
+         android:id="@+id/ivAttachments"
+         android:layout_width="21dp"
+         android:layout_height="21dp"
+         android:layout_marginStart="6dp"
++        android:background="?attr/selectableItemBackgroundBorderless"
++        android:clickable="true"
+         android:contentDescription="@null"
++        android:focusable="true"
+         app:layout_constraintBottom_toBottomOf="@+id/tvSubject"
+         app:layout_constraintStart_toEndOf="@id/ivForwarded"
+         app:layout_constraintTop_toTopOf="@+id/tvSubject"
+         app:srcCompat="@drawable/twotone_attachment_24" />
+ 
++    <!-- comms: attachment count badge beside the paperclip; shares its open action. -->
++    <TextView
++        android:id="@+id/tvAttachmentsCount"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginStart="2dp"
++        android:background="?attr/selectableItemBackgroundBorderless"
++        android:clickable="true"
++        android:focusable="true"
++        android:gravity="center_vertical"
++        android:maxLines="1"
++        android:textAppearance="@style/TextAppearance.AppCompat.Small"
++        app:layout_constraintBottom_toBottomOf="@id/ivAttachments"
++        app:layout_constraintStart_toEndOf="@id/ivAttachments"
++        app:layout_constraintTop_toTopOf="@id/ivAttachments" />
++
+     <TextView
+         android:id="@+id/tvSubject"
+         android:layout_width="0dp"
+@@ -292,7 +313,7 @@
+         android:text="Subject"
+         android:textAppearance="@style/TextAppearance.AppCompat.Small"
+         app:layout_constraintEnd_toStartOf="@+id/tvCount"
+-        app:layout_constraintStart_toEndOf="@id/ivAttachments"
++        app:layout_constraintStart_toEndOf="@id/tvAttachmentsCount"
+         app:layout_constraintTop_toBottomOf="@id/tvFrom" />
+ 
+     <TextView
+diff --git a/app/src/main/res/layout/include_message_normal.xml b/app/src/main/res/layout/include_message_normal.xml
+index 32df10aaae..5f6e2bc8b4 100644
+--- a/app/src/main/res/layout/include_message_normal.xml
++++ b/app/src/main/res/layout/include_message_normal.xml
+@@ -308,17 +308,38 @@
+         app:layout_constraintTop_toTopOf="@+id/tvFolder"
+         app:srcCompat="@drawable/twotone_forwarded_24" />
+ 
++    <!-- comms: Gmail-style — paperclip is a tap target that opens the attachment
++         directly (the rest of the row still opens the message). -->
+     <ImageView
+         android:id="@+id/ivAttachments"
+         android:layout_width="21dp"
+         android:layout_height="21dp"
+         android:layout_marginStart="6dp"
++        android:background="?attr/selectableItemBackgroundBorderless"
++        android:clickable="true"
+         android:contentDescription="@null"
++        android:focusable="true"
+         app:layout_constraintBottom_toBottomOf="@+id/tvFolder"
+         app:layout_constraintStart_toEndOf="@id/ivForwarded"
+         app:layout_constraintTop_toTopOf="@+id/tvFolder"
+         app:srcCompat="@drawable/twotone_attachment_24" />
+ 
++    <!-- comms: attachment count badge beside the paperclip; shares its open action. -->
++    <TextView
++        android:id="@+id/tvAttachmentsCount"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginStart="2dp"
++        android:background="?attr/selectableItemBackgroundBorderless"
++        android:clickable="true"
++        android:focusable="true"
++        android:gravity="center_vertical"
++        android:maxLines="1"
++        android:textAppearance="@style/TextAppearance.AppCompat.Small"
++        app:layout_constraintBottom_toBottomOf="@id/ivAttachments"
++        app:layout_constraintStart_toEndOf="@id/ivAttachments"
++        app:layout_constraintTop_toTopOf="@id/ivAttachments" />
++
+     <TextView
+         android:id="@+id/tvFolder"
+         android:layout_width="wrap_content"
+@@ -333,7 +354,7 @@
+         app:layout_constrainedWidth="true"
+         app:layout_constraintEnd_toStartOf="@+id/tvCount"
+         app:layout_constraintHorizontal_bias="0.0"
+-        app:layout_constraintStart_toEndOf="@id/ivAttachments"
++        app:layout_constraintStart_toEndOf="@id/tvAttachmentsCount"
+         app:layout_constraintTop_toBottomOf="@id/tvKeywords" />
+ 
+     <TextView
+-- 
+2.50.1
+

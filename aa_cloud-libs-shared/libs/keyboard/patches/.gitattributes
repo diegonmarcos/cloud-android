@@ -1,0 +1,2 @@
+# Patch files must be stored byte-for-byte (CRLF-preserving) so they re-apply cleanly.
+*.patch -text

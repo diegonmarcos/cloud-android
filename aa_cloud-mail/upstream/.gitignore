@@ -1,0 +1,5 @@
+# Vendored FairEmail source (see ea_cloud-mail/README.md). Committed as
+# plain files — these local build/IDE artifacts must never be re-added.
+build/
+.gradle/
+.idea/

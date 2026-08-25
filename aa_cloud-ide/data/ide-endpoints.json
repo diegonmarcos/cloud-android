@@ -1,0 +1,68 @@
+{
+  "_doc": "Endpoints + workspace layout baked into each fork's defaults + the hub's deep-link fallbacks. Data-driven: change a value here, re-materialize the affected fork, get rebuilt defaults. NO secrets — credentials flow through each fork's own login (Acode SFTP login, gitea auth), never this file. SFTP targets are WireGuard-only: the public surface is 443+51820+25, so port 22 is only reachable with the WG tunnel up on the phone — every sftp preset carries wg_only:true and the UI must surface it. WG IPs are from the cloud mesh (10.0.0.0/24).",
+  "workspace": {
+    "_doc": "The hub-owned shared workspace tree. The hub creates/announces it; Amaze FM/Utils bookmark it; Acode opens folders under it via SAF grants handed over in the hub deep-link. `volume` is the logical name used by storage_summary + analyzeStorage().",
+    "root_path": "/storage/emulated/0/CloudIDE",
+    "display_name": "Cloud-IDE",
+    "volume": "primary"
+  },
+  "editor": {
+    "_doc": "Acode fork defaults. code-server is browser-only (deep-link tile, NOT an in-app client). gitea provides git remotes over public HTTPS :443. sftp_presets reference the shared `sftp` list below.",
+    "code_server_url": "https://ide.diegonmarcos.com",
+    "gitea_https_base": "https://git.diegonmarcos.com",
+    "gitea_host": "git.diegonmarcos.com",
+    "uses_sftp_presets": true
+  },
+  "files": {
+    "_doc": "Amaze File Manager fork default bookmarks: the workspace root plus the shared SFTP presets.",
+    "default_bookmarks": ["workspace_root"],
+    "uses_sftp_presets": true
+  },
+  "utils": {
+    "_doc": "Amaze File Utilities fork default scan target.",
+    "scan_volume": "primary",
+    "scan_root": "/storage/emulated/0/CloudIDE"
+  },
+  "sftp": [
+    {
+      "id": "gcp-proxy",
+      "name": "gcp-proxy",
+      "ssh_alias": "gcp-proxy",
+      "host": "10.0.0.1",
+      "port": 22,
+      "username": "",
+      "wg_only": true,
+      "_doc": "gcp-E2-f_0 — central proxy/control (WG hub). username filled at first connect / from ssh config."
+    },
+    {
+      "id": "oci-mail",
+      "name": "oci-mail",
+      "ssh_alias": "oci-mail",
+      "host": "10.0.0.3",
+      "port": 22,
+      "username": "",
+      "wg_only": true,
+      "_doc": "oci-E2-f_0 — mail server."
+    },
+    {
+      "id": "oci-analytics",
+      "name": "oci-analytics",
+      "ssh_alias": "oci-analytics",
+      "host": "10.0.0.4",
+      "port": 22,
+      "username": "",
+      "wg_only": true,
+      "_doc": "oci-E2-f_1 — analytics + workflows + public Caddy edge."
+    },
+    {
+      "id": "oci-apps",
+      "name": "oci-apps",
+      "ssh_alias": "oci-apps",
+      "host": "10.0.0.6",
+      "port": 22,
+      "username": "",
+      "wg_only": true,
+      "_doc": "oci-A1-f_0 — consolidated apps (gitea, code-server, most services)."
+    }
+  ]
+}

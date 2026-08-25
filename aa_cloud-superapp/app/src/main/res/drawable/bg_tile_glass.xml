@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tile glass — same family as bg_liquid_glass.xml but tuned tighter:
+     smaller radius (20dp matches item_tile.xml), softer gradient. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#33FFFFFF"
+                android:centerColor="#0AFFFFFF"
+                android:endColor="#14B794F4" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#22FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

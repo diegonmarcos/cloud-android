@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2009 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+
+    <!-- Subtype locale whose name should be displayed in Locale.ROOT. -->
+    <string-array name="subtype_locale_displayed_in_root_locale">
+        <item>hi-Latn</item>
+        <item>mns</item>
+        <item>dru</item>
+        <item>xdq</item>
+        <item>sr-Latn</item>
+    </string-array>
+    <!-- Display names for language tags in subtype_locale_displayed_in_root_locale -->
+    <string-array name="subtype_locale_displayed_in_root_locale_display_names">
+        <item>Hinglish</item>
+        <item>Ма̄ньси</item>
+        <item>ХӀурухъла лугъат</item>
+        <item>Хайдаҡӏла</item>
+        <item>Srpski</item>
+    </string-array>
+
+    <!-- Generic subtype label -->
+    <string name="subtype_generic" translatable="false">%s</string>
+
+    <!-- Predefined keyboard layouts for additional subtype -->
+    <string-array name="predefined_layouts">
+        <item>qwerty</item>
+        <item>qwertz</item>
+        <item>azerty</item>
+        <item>dvorak</item>
+        <item>halmak</item>
+        <item>hcesar</item>
+        <item>colemak</item>
+        <item>colemak_dh</item>
+        <item>workman</item>
+        <item>bepo</item>
+        <item>pcqwerty</item>
+    </string-array>
+    <!-- Predefined keyboard layout display names -->
+    <string-array name="predefined_layout_display_names">
+        <item>QWERTY</item>
+        <item>QWERTZ</item>
+        <item>AZERTY</item>
+        <item>Dvorak</item>
+        <item>Halmak</item>
+        <item>HCESAR</item>
+        <item>Colemak</item>
+        <item>Colemak Mod-DH</item>
+        <item>Workman</item>
+        <item>Bépo</item>
+        <item>PC</item>
+    </string-array>
+
+    <!-- Description for Bulgarian (BDS) subtype. -->
+    <string name="subtype_bulgarian_bds" translatable="false">%s (BDS)</string>
+	
+    <!-- Description for Bulgarian (BEKL) subtype. -->
+    <string name="subtype_bulgarian_bekl" translatable="false">%s (BEKL)</string>
+
+    <!-- Description for Arabic (PC) subtype. -->
+    <string name="subtype_arabic_pc" translatable="false">%s (PC)</string>
+
+    <!-- Description for Arabic (Hija'i) subtype. -->
+    <string name="subtype_arabic_hijai" translatable="false">%s (Hija\'i)</string>
+
+    <!-- Description for Hebrew 2 subtype. -->
+    <string name="subtype_hebrew_1452_2" translatable="false">%s (1452-2)</string>
+
+    <string name="english_ime_name" translatable="false">HeliBoard</string>
+    <!-- App slogan-->
+    <string name="app_slogan" translatable="false">100% FOSS keyboard, based on AOSP.</string>
+
+</resources>

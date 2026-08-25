@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json.schemastore.org/solidaritySchema",
+  "config" : {
+    "output" : "moderate"
+  },
+  "requirements": {
+    "Android": [
+      {
+        "rule": "cli",
+        "binary": "emulator"
+      },
+      {
+        "rule": "env",
+        "variable": "ANDROID_HOME",
+        "error": "The ANDROID_HOME environment variable must be set to your local SDK.  Refer to getting started docs for help."
+      }
+    ],
+    "iOS": [
+      {
+        "rule": "cli",
+        "binary": "watchman",
+        "error": "install watchman `brew install watchman`",
+        "platform": "darwin"
+      },
+      {
+        "rule": "cli",
+        "binary": "xcodebuild",
+        "semver": ">=13.0",
+        "error": "install xcode",
+        "platform": "darwin"
+      },
+      {
+        "rule": "cli",
+        "binary": "ruby",
+        "semver": ">=3.2.0",
+        "error": "visit rvm install https://rvm.io/rvm/install",
+        "platform": "darwin"
+      },
+      {
+        "rule": "cli",
+        "binary": "pod",
+        "semver": "1.16.1",
+        "platform": "darwin"
+      }
+    ],
+    "Git email": [
+      {
+        "rule": "shell",
+        "command": "git config user.email",
+        "match": ".+@.+"
+      }
+    ]
+  }
+}

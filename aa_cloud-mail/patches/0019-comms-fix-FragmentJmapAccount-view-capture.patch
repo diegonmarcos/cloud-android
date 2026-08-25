@@ -1,0 +1,53 @@
+From 7d32075a5a1c51758ec0a7dba20b1af34788e7af Mon Sep 17 00:00:00 2001
+From: Diego Nepomuceno Marcos <me@diegonmarcos.com>
+Date: Sat, 27 Jun 2026 13:42:48 +0200
+Subject: [PATCH] =?UTF-8?q?comms:=20fix=20FragmentJmapAccount=20view=20cap?=
+ =?UTF-8?q?ture=20=E2=80=94=20use=20requireView()=20in=20SimpleTask=20lamb?=
+ =?UTF-8?q?das?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ .../main/java/eu/faircode/email/FragmentJmapAccount.java  | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java b/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java
+index 3ae84cf578..4e3a1e602c 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java
++++ b/app/src/main/java/eu/faircode/email/FragmentJmapAccount.java
+@@ -531,13 +531,13 @@ public class FragmentJmapAccount extends FragmentBase {
+             @Override
+             protected void onPreExecute(Bundle args) {
+                 pbCheck.setVisibility(View.VISIBLE);
+-                Helper.setViewsEnabled((ViewGroup) view, false);
++                Helper.setViewsEnabled((ViewGroup) requireView(), false);
+             }
+ 
+             @Override
+             protected void onPostExecute(Bundle args) {
+                 pbCheck.setVisibility(View.GONE);
+-                Helper.setViewsEnabled((ViewGroup) view, true);
++                Helper.setViewsEnabled((ViewGroup) requireView(), true);
+             }
+ 
+             @Override
+@@ -702,13 +702,13 @@ public class FragmentJmapAccount extends FragmentBase {
+             @Override
+             protected void onPreExecute(Bundle args) {
+                 pbSave.setVisibility(View.VISIBLE);
+-                Helper.setViewsEnabled((ViewGroup) view, false);
++                Helper.setViewsEnabled((ViewGroup) requireView(), false);
+             }
+ 
+             @Override
+             protected void onPostExecute(Bundle args) {
+                 pbSave.setVisibility(View.GONE);
+-                Helper.setViewsEnabled((ViewGroup) view, true);
++                Helper.setViewsEnabled((ViewGroup) requireView(), true);
+             }
+ 
+             @Override
+-- 
+2.50.1
+

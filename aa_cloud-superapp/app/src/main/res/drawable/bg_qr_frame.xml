@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rainbow gradient frame for the Virtual Business Card QR. Six-stop
+     sweep so the frame reads as a colourful decorative border without
+     interfering with the QR scan area beneath (the QR keeps a white
+     inner border via its own 12dp padding). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="sweep"
+                android:startColor="#FFFF3D00"
+                android:centerColor="#FF7C3AED"
+                android:endColor="#FFFF3D00" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <!-- Inner white plate so the QR modules paint on solid white -->
+    <item
+        android:left="6dp"
+        android:top="6dp"
+        android:right="6dp"
+        android:bottom="6dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFFFF" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+</layer-list>

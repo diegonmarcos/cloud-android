@@ -1,0 +1,42 @@
+From 1bc76e237964dc76dfe220c2118498d84e20b30f Mon Sep 17 00:00:00 2001
+From: engine <engine@diegonmarcos.com>
+Date: Fri, 3 Jul 2026 10:20:44 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20JMAP=20R8=20rules=20=E2=80=94=20dontwa?=
+ =?UTF-8?q?rn=20lombok.**=20+=20keep=20rs.ltt.jmap=20models?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Java compile fully passed; R8 minify (githubRelease) failed on missing
+lombok.NonNull (compile-only, referenced by rs.ltt.jmap Lombok entities) and
+would also strip/rename the Gson-reflected entity fields at runtime. Add
+-dontwarn lombok.** + -keep rs.ltt.jmap model classes/members.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ app/proguard-rules.pro | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/app/proguard-rules.pro b/app/proguard-rules.pro
+index afc2899847..80c256b30d 100644
+--- a/app/proguard-rules.pro
++++ b/app/proguard-rules.pro
+@@ -164,4 +164,12 @@
+ 
+ #EvalEx
+ -dontwarn lombok.Generated
+--keep class com.ezylang.evalex.** {*;}
+\ No newline at end of file
++-keep class com.ezylang.evalex.** {*;}
++
++# comms: rs.ltt.jmap (JMAP client) — Lombok-annotated, Gson-serialized entities.
++# R8 fails on the compile-only lombok.NonNull reference and would strip/rename
++# the reflected entity fields, breaking JMAP JSON. Silence lombok + keep the
++# library's model classes/members intact.
++-dontwarn lombok.**
++-keep class rs.ltt.jmap.** { *; }
++-keepclassmembers class rs.ltt.jmap.** { *; }
+\ No newline at end of file
+-- 
+2.44.2
+

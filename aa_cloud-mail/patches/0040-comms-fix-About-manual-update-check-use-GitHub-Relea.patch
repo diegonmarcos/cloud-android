@@ -1,0 +1,51 @@
+From 057da6ec6ca7196f50b3dfacfb36373daf290ed0 Mon Sep 17 00:00:00 2001
+From: Diego <me@diegonmarcos.com>
+Date: Tue, 7 Jul 2026 21:23:00 +0300
+Subject: [PATCH] =?UTF-8?q?comms:=20fix=20About=20manual=20update=20check?=
+ =?UTF-8?q?=20=E2=80=94=20use=20GitHub=20Releases=20API=20(fetchLatestRele?=
+ =?UTF-8?q?ase/downloadApk)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Patch 0039 rewrote CommsUpdateWorker to GitHub Releases and removed the
+GHCR methods (fetchToken/fetchManifestDigest/installedApkSha256/
+downloadApkBlob), but FragmentOptionsCommsAbout (0036) still called them
+— 4 compile errors, CI red since 0036, so the published APK never got
+the 0037 Gson/R8 TypeToken fix (JMAP NoClassDefFoundError persisted).
+
+Mirror doWork: compare rel.publishedAt vs COMMS_BUILD_TIMESTAMP
+(ISO-8601 lexicographic), download rel.downloadUrl.
+---
+ .../eu/faircode/email/FragmentOptionsCommsAbout.java | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+index 51f3630897..7af9064b6a 100644
+--- a/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
++++ b/app/src/main/java/eu/faircode/email/FragmentOptionsCommsAbout.java
+@@ -71,15 +71,15 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
+         new SimpleTask<File>() {
+             @Override
+             protected File onExecute(Context ctx, Bundle args) throws Throwable {
+-                String token = CommsUpdateWorker.fetchToken();
+-                String remoteDigest = CommsUpdateWorker.fetchManifestDigest(token);
+-                String installedSha = CommsUpdateWorker.installedApkSha256(ctx);
+-
+-                if (installedSha != null && ("sha256:" + installedSha).equals(remoteDigest))
++                CommsUpdateWorker.ReleaseMeta rel = CommsUpdateWorker.fetchLatestRelease();
++                // Same comparison as CommsUpdateWorker.doWork: ISO-8601 sorts
++                // lexicographically; "dev" = local build, treat as up to date.
++                String installed = BuildConfig.COMMS_BUILD_TIMESTAMP;
++                if ("dev".equals(installed) || rel.publishedAt.compareTo(installed) <= 0)
+                     return null; // null = up to date
+ 
+                 File dest = new File(ctx.getCacheDir(), "updates/cloud-mail-update.apk");
+-                CommsUpdateWorker.downloadApkBlob(token, remoteDigest, dest);
++                CommsUpdateWorker.downloadApk(rel.downloadUrl, dest);
+                 return dest;
+             }
+ 
+-- 
+2.44.2
+

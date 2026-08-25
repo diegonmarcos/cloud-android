@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2011 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+-->
+
+<!-- Configuration values for Small Tablet Landscape. -->
+<resources>
+    <!-- Preferable keyboard height in absolute scale: 45.0mm -->
+    <!-- This config_default_keyboard_height value should match with keyboard-heights.xml -->
+    <dimen name="config_default_keyboard_height">283.5dp</dimen>
+    <fraction name="config_min_keyboard_height">40%p</fraction>
+
+    <dimen name="config_popup_keys_keyboard_key_height">81.9dp</dimen>
+
+    <fraction name="config_keyboard_top_padding_holo">2.727%p</fraction>
+    <fraction name="config_keyboard_bottom_padding_holo">2.0%p</fraction>
+    <fraction name="config_key_vertical_gap_holo">4.5%p</fraction>
+    <fraction name="config_key_horizontal_gap_holo">0.9%p</fraction>
+
+    <fraction name="config_key_letter_ratio_holo">50%</fraction>
+    <fraction name="config_key_letter_ratio_lxx">50%</fraction>
+    <fraction name="config_key_large_letter_ratio_holo">48%</fraction>
+    <fraction name="config_key_large_letter_ratio_lxx">60%</fraction>
+    <fraction name="config_key_label_ratio_holo">32%</fraction>
+    <fraction name="config_key_label_ratio_lxx">32%</fraction>
+    <fraction name="config_key_hint_letter_ratio_holo">23%</fraction>
+    <fraction name="config_key_hint_letter_ratio_lxx">23%</fraction>
+    <fraction name="config_key_hint_label_ratio_holo">34%</fraction>
+    <fraction name="config_key_hint_label_ratio_lxx">20%</fraction>
+    <fraction name="config_key_shifted_letter_hint_ratio_holo">29%</fraction>
+    <fraction name="config_key_shifted_letter_hint_ratio_lxx">29%</fraction>
+    <fraction name="config_language_on_spacebar_text_ratio">30.0%</fraction>
+    <dimen name="config_key_shifted_letter_hint_padding">4dp</dimen>
+
+    <dimen name="config_suggestions_strip_height">44dp</dimen>
+    <dimen name="config_suggestions_strip_edge_key_width">54dp</dimen>
+    <integer name="config_max_more_suggestions_row">5</integer>
+    <fraction name="config_min_more_suggestions_width">50%</fraction>
+
+    <!-- Gesture floating preview text parameters -->
+    <dimen name="config_gesture_floating_preview_text_size">26dp</dimen>
+    <dimen name="config_gesture_floating_preview_text_offset">76dp</dimen>
+    <dimen name="config_gesture_floating_preview_horizontal_padding">26dp</dimen>
+    <dimen name="config_gesture_floating_preview_vertical_padding">17dp</dimen>
+
+    <!-- Emoji keyboard -->
+    <fraction name="config_emoji_keyboard_key_width">8.33%p</fraction>
+    <fraction name="config_emoji_keyboard_row_height">40%p</fraction>
+    <fraction name="config_emoji_keyboard_key_letter_size">64%p</fraction>
+    <fraction name="config_emoji_keyboard_key_label_size">64%p</fraction>
+    <integer name="config_emoji_keyboard_max_recents_key_count">36</integer>
+
+    <!-- Clipboard keyboard -->
+    <integer name="config_clipboard_keyboard_col_count">4</integer>
+</resources>
