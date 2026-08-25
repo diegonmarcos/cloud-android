@@ -3,16 +3,16 @@
 # GitHub release asset, and the SuperApp's extapp install URLs point at it.
 #
 # Chain under test (data-driven, one source of truth per link):
-#   ea_cloud-<fork>/build.json::release.gh_release  (rolling_tag=latest, asset)
+#   aa_cloud-<fork>/build.json::release.gh_release  (rolling_tag=latest, asset)
 #     → ship-cloud-<fork>.yml calls `build.sh gh-release-fork`  (uploads asset
-#       to the shared /releases/latest release, same as the other ea_cloud-* apps)
+#       to the shared /releases/latest release, same as the other aa_cloud-* apps)
 #     → aa_cloud-superapp build.json ui.external_apps[cloud-<fork>].install_apk_url
 #       == https://.../releases/latest/download/<asset>
 # So a tap on a not-installed comms tile does a one-tap install from a stable URL
 # instead of the "not installed" snack.
 set -u
 APP="$(cd "$(dirname "$0")/.." && pwd)"          # → aa_cloud-superapp
-UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/cloud-unix
+UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/cloud-android
 BJ="$APP/build.json"
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
@@ -24,13 +24,13 @@ REL="releases/latest/download"
 
 echo "== T1: each fork build.json declares a rolling-'latest' gh_release =="
 for pair in $FORKS; do
-  key="${pair%%:*}"; fbj="$UNIX/ea_cloud-$key/build.json"
+  key="${pair%%:*}"; fbj="$UNIX/aa_cloud-$key/build.json"
   asset="$(jq -r '.release.gh_release.asset_name // ""' "$fbj" 2>/dev/null)"
   tag="$(jq -r '.release.gh_release.rolling_tag // ""' "$fbj" 2>/dev/null)"
   en="$(jq -r '.release.gh_release.enabled // false' "$fbj" 2>/dev/null)"
   [ "$tag" = "latest" ] && [ "$en" = "true" ] && [ "$asset" = "cloud-comms-$key.apk" ] \
-    && ok "ea_cloud-$key: gh_release enabled, rolling_tag=latest, asset=$asset" \
-    || bad "ea_cloud-$key: gh_release missing/wrong (tag=$tag enabled=$en asset=$asset)"
+    && ok "aa_cloud-$key: gh_release enabled, rolling_tag=latest, asset=$asset" \
+    || bad "aa_cloud-$key: gh_release missing/wrong (tag=$tag enabled=$en asset=$asset)"
 done
 
 echo "== T2: each ship workflow uploads via the engine (build.sh gh-release-fork) =="

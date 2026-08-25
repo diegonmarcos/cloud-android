@@ -1,8 +1,19 @@
-[submodule "cloud-data"]
-	path = I_cloud-data
-	url = https://github.com/diegonmarcos/cloud-data.git
-	ignore = all
-[submodule "tools"]
-	path = II_tools
-	url = https://github.com/diegonmarcos/cloud-mykonsole-dtk.git
+# Single read-only index submodule.
+#
+# 2026-08-18: every cloud-* repo embeds ONLY `cloud` — the fleet index,
+# formerly cloud-master. https:// rather than git@ makes it read-only in
+# practice: the index is consumed here, never pushed from here.
+#
+# No recursion: `cloud` declares no submodules of its own — it indexes the
+# fleet with committed RELATIVE symlinks, which dangle harmlessly inside a
+# submodule checkout. `cloud` is public, so init needs no credentials.
+#
+# The ship engine reconciles declaratively against this file: declared-but-
+# unregistered gets `git submodule add`, registered-but-undeclared gets
+# `git rm --cached`. Deleting this section removes the submodule.
+
+[submodule "cloud"]
+	path = cloud
+	url = https://github.com/diegonmarcos/cloud.git
+	shallow = true
 	ignore = all

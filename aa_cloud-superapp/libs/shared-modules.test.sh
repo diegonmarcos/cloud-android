@@ -35,7 +35,7 @@ while IFS='|' read -r app mod dir; do
     [ -e "$local_path" ] && note FAIL "$local_path is a local copy shadowing the shared $dir — delete it"
 done < <(python3 - <<'PY'
 import json,glob
-for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+for bj in sorted(glob.glob('aa_cloud-*/build.json')):
     app=bj.split('/')[0]
     for k,v in json.load(open(bj)).get('modules',{}).items():
         if k.startswith('libs:') and isinstance(v,dict) and v.get('dir'):
@@ -55,7 +55,7 @@ import json, glob, os
 # data-driven loop there reports a failure that cannot be fixed by fixing
 # anything. Kept scoped rather than universal because a repo can legitimately
 # ship a gradle project with no build.json.
-for sg in sorted(glob.glob('ea_cloud-*/settings.gradle')):
+for sg in sorted(glob.glob('aa_cloud-*/settings.gradle')):
     bj = os.path.join(os.path.dirname(sg), 'build.json')
     if not os.path.isfile(bj):
         continue
@@ -75,7 +75,7 @@ while read -r line; do
 done < <(python3 - <<'PY'
 import os,collections
 seen=collections.defaultdict(list)
-for app in sorted(d for d in os.listdir('.') if d.startswith('ea_cloud-')):
+for app in sorted(d for d in os.listdir('.') if d.startswith('aa_cloud-')):
     L=os.path.join(app,'libs')
     if os.path.isdir(L):
         for m in sorted(os.listdir(L)):
@@ -100,7 +100,7 @@ while read -r bg; do
 done < <(python3 - <<'PY'
 import json,glob,os
 dirs={os.path.normpath(os.path.join(bj.split('/')[0],v['dir']))
-      for bj in glob.glob('ea_cloud-*/build.json')
+      for bj in glob.glob('aa_cloud-*/build.json')
       for k,v in json.load(open(bj)).get('modules',{}).items()
       if k.startswith('libs:') and isinstance(v,dict) and v.get('dir')}
 for d in sorted(dirs):
@@ -137,7 +137,7 @@ command grep -q "\"$PERM\"" "$UI" \
 #    feature slot pretending to be a feature.
 while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json,glob,os
-for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+for bj in sorted(glob.glob('aa_cloud-*/build.json')):
     app=bj.split('/')[0]
     for k,v in json.load(open(bj)).get('modules',{}).items():
         if not k.startswith('libs:'): continue
@@ -157,7 +157,7 @@ note ok "every declared module has source"
 #     and gradle only says "Project with path ':libs:x' could not be found".
 while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json,glob,re,os
-for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+for bj in sorted(glob.glob('aa_cloud-*/build.json')):
     app=bj.split('/')[0]
     declared=set(json.load(open(bj)).get('modules',{}))
     for bg in glob.glob(f'{app}/*/build.gradle'):
@@ -233,7 +233,7 @@ fi
 #      caught 2026-08-22, when libs/devtools reached nothing but superapp.
 app_root_drift=$(python3 - <<'PYAPPROOTS'
 import json, os, re, glob
-for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+for bj in sorted(glob.glob('aa_cloud-*/build.json')):
     repo = bj.split('/')[0]
     try:
         mods_cfg = (json.load(open(bj)).get('modules') or {})
@@ -243,7 +243,7 @@ for bj in sorted(glob.glob('ea_cloud-*/build.json')):
                    for v in mods_cfg.values()
                    if isinstance(v, dict)
                    and 'aa_cloud-superapp/libs' in str(v.get('dir', ''))})
-    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ea_cloud-'):]
+    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('aa_cloud-'):]
     if not mods or not os.path.exists(wf):
         continue
     have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
@@ -281,7 +281,7 @@ import os, re
 for root, dirs, files in os.walk('.'):
     dirs[:] = [d for d in dirs if d not in ('build', '.git', 'z_archive')]
     rel = root.lstrip('./')
-    if not rel.startswith('ea_cloud-'):
+    if not rel.startswith('aa_cloud-'):
         continue
     for f in files:
         if not f.endswith(('.kt', '.java')):
@@ -303,7 +303,7 @@ PYSESS
 #     Android's 50-session limit and NOTHING installs until they are reclaimed.
 while read -r line; do note FAIL "$line"; done < <(python3 - <<'PYCAP'
 import json, glob
-for bj in sorted(glob.glob('ea_cloud-*/build.json')):
+for bj in sorted(glob.glob('aa_cloud-*/build.json')):
     try:
         au = (json.load(open(bj)).get('release') or {}).get('auto_update')
     except Exception:

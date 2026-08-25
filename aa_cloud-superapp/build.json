@@ -53,42 +53,42 @@
   "upstreams": {
     "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 0_git/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ \u2014 NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
     "mail": {
-      "tracker": "ea_mail-fairmail",
+      "tracker": "aa_mail-fairmail",
       "repo": "https://github.com/M66B/FairEmail.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:mail",
       "primary_lang": "Java"
     },
     "cal": {
-      "tracker": "ea_cal-davx5",
+      "tracker": "aa_cal-davx5",
       "repo": "https://github.com/bitfireAT/davx5-ose.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:cal",
       "primary_lang": "Kotlin"
     },
     "feed": {
-      "tracker": "ea_feed-feeder",
+      "tracker": "aa_feed-feeder",
       "repo": "https://github.com/spacecowboy/Feeder.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:feed",
       "primary_lang": "Kotlin"
     },
     "net": {
-      "tracker": "ea_net-wireguard",
+      "tracker": "aa_net-wireguard",
       "repo": "https://github.com/WireGuard/wireguard-android.git",
       "license": "Apache-2.0",
       "feeds_into": "libs:net",
       "primary_lang": "Kotlin+C"
     },
     "vault": {
-      "tracker": "ea_vault-keepassdx",
+      "tracker": "aa_vault-keepassdx",
       "repo": "https://github.com/Kunzisoft/KeePassDX.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:vault",
       "primary_lang": "Kotlin"
     },
     "kde-connect": {
-      "tracker": "ea_net-kdeconnect",
+      "tracker": "aa_net-kdeconnect",
       "repo": "https://github.com/KDE/kdeconnect-android.git",
       "license": "GPL-2.0 (UPSTREAM REFERENCE ONLY \u2014 we do NOT vendor it)",
       "feeds_into": "libs:kde-connect",
@@ -96,7 +96,7 @@
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED. libs/kde-connect is an ORIGINAL implementation of the KDE Connect LAN protocol written by us (NetworkPacket framing, mutual-TLS handshake with a self-signed device cert, protocol-v8 encrypted identity re-exchange, cert-pinned pairing, plugin registry: ping/clipboard/findmyphone/notification). The KDE repo above is consulted ONLY for the documented interop FACTS (port 1716; the TCP-dialer is the TLS server; pairing = trust-the-cert) \u2014 those are functional protocol requirements, not copyrightable expression. NONE of KDE's GPL-2.0 source is copied/vendored, so the app keeps its own license. Connects over wg0 by explicit wg_ip (auto-discovery can't cross WireGuard). Next: a foreground service hosting an inbound TCP server (1716-1764) so peers can also initiate, plus battery/share/mpris plugins."
     },
     "firewall": {
-      "tracker": "ea_net-rethinkdns",
+      "tracker": "aa_net-rethinkdns",
       "repo": "https://github.com/celzero/rethink-app.git",
       "license": "Apache-2.0 (UPSTREAM REFERENCE ONLY \u2014 not vendored in v1)",
       "feeds_into": "libs:firewall",
@@ -1172,8 +1172,8 @@
             "repos": [
               {
                 "owner": "diegonmarcos",
-                "repo": "cloud-unix",
-                "label": "unix"
+                "repo": "cloud-android",
+                "label": "android"
               },
               {
                 "owner": "diegonmarcos",
@@ -1195,8 +1195,8 @@
             "repos": [
               {
                 "owner": "diegonmarcos",
-                "repo": "cloud-unix",
-                "label": "unix"
+                "repo": "cloud-android",
+                "label": "android"
               },
               {
                 "owner": "diegonmarcos",

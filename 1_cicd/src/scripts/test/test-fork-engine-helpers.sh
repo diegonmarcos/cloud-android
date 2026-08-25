@@ -100,7 +100,7 @@ HUB_JSON='{
   "forks": {
     "mail": {
       "upstream_repo": "https://github.com/M66B/FairEmail.git",
-      "tracker_dir": "ea_mail-fairmail",
+      "tracker_dir": "aa_mail-fairmail",
       "pinned_tag": "9.4.1",
       "build": { "gradle_task": "assembleGithubRelease", "apk_glob": "app/build/outputs/apk/**/*.apk" }
     }

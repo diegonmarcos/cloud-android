@@ -3,7 +3,7 @@
 # the decommissioned Cloud-Comms hub.
 #
 # cloud-comms (hub com.diegonmarcos.comms) is archived; its 4 forks are now
-# standalone constellation apps (ea_cloud-{dialer,chat,mail,matrix}). The
+# standalone constellation apps (aa_cloud-{dialer,chat,mail,matrix}). The
 # Communications tiles + the ui.external_apps registry + the FloatingNav comms
 # parent used to route through `extapp:cloud-comms/<fork>` → the dead hub. This
 # asserts every one of those now targets the standalone apps and that NO dead-hub

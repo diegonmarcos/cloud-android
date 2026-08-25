@@ -18,7 +18,7 @@ echo "== T1: fleet manifest auto-generated with every app =="
 if [ -f "$FLEET" ]; then
   N=$(jq '.apps | length' "$FLEET" 2>/dev/null)
   [ "${N:-0}" -ge 8 ] && ok "constellation-fleet.json has $N apps (>=8)" || bad "expected >=8 apps, got ${N:-0}"
-  # Every standalone ea_cloud-<id> self-registers: the top-level apps +
+  # Every standalone aa_cloud-<id> self-registers: the top-level apps +
   # the 4 promoted ex-comms fork-apps (dialer/chat/mail/matrix), each now its
   # OWN dir + ship-cloud-<id>.yml CI. Fleet ids = the dir basenames.
   for id in superapp nav ide browser vault wallet dialer chat mail matrix; do

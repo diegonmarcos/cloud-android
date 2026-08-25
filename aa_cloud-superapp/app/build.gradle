@@ -169,7 +169,7 @@ def cloudSvcJson     = cloudSvcFile.exists() ? cloudSvcFile.text : "{}"
 def cloudSvcB64      = cloudSvcJson.bytes.encodeBase64().toString()
 // Constellation AppStore fleet registry — every constellation APK + its GHCR
 // image, auto-scanned from each app's own build.json by data/regen.sh. Run
-// on every build so committing a new ea_cloud-* app is enough by itself —
+// on every build so committing a new aa_cloud-* app is enough by itself —
 // nobody has to remember to re-run regen.sh (that was the bug: cloud-contacts
 // existed for a while with no fleet entry because this step was manual).
 // Only depends on sibling repos (always present), so failure here is a real
@@ -339,17 +339,17 @@ gradleSearchRoots.findAll { it.exists() }.each { root ->
 def stackFrameworksJson = groovy.json.JsonOutput.toJson(stackDeps.toList())
 def stackFrameworksB64  = stackFrameworksJson.bytes.encodeBase64().toString()
 
-// ── Folder tree (L3, ea_* siblings) — DYNAMIC, scanned every build ────
+// ── Folder tree (L3, aa_* siblings) — DYNAMIC, scanned every build ────
 // Re-scanned fresh from the filesystem on EVERY build (no committed
-// snapshot): every `ea_*` directory sibling under the unix repo root is
+// snapshot): every `aa_*` directory sibling under the unix repo root is
 // listed (L2), each with its immediate sub-directories (L3), rooted at
-// `unix/` (L1). The tree therefore reflects exactly the ea_* clones
+// `unix/` (L1). The tree therefore reflects exactly the aa_* clones
 // present at build time. NOTE: the gitignored upstream clones
-// (ea_cal-davx5, ea_mail-fairmail, …) appear only on machines where
+// (aa_cal-davx5, aa_mail-fairmail, …) appear only on machines where
 // they're checked out (local builds); the GHA runner — which has just
-// the tracked ea_cloud-* siblings — prints those. The `ea_*` filter
+// the tracked aa_cloud-* siblings — prints those. The `aa_*` filter
 // requires an alphanumeric after the prefix so layout separator dirs
-// (ea_____…) are skipped; nothing here is a hardcoded sibling list.
+// (aa_____…) are skipped; nothing here is a hardcoded sibling list.
 def stackTreeSkip = ["build", "dist", "node_modules", ".gradle", ".result"] as Set
 def stackTreeSubdirs = { File dir, String selfName ->
     (dir.listFiles() ?: []).findAll {
@@ -371,14 +371,14 @@ stackTreeWalk = { StringBuilder sb, File dir, String prefix, String selfName, in
             stackTreeWalk(sb, k, prefix + (last ? "    " : "│   "), null, level + 1, maxDepth)
     }
 }
-// unix/ (L1) → ea_* siblings (L2) → sub-dirs (L3) → grand-children (L4).
+// unix/ (L1) → aa_* siblings (L2) → sub-dirs (L3) → grand-children (L4).
 def folderTree = { int maxDepth ->
     def root = repoRoot
     if (root == null || !root.isDirectory()) return "—"
-    // L2 = ea_* siblings. Alphanumeric-after-prefix filter drops layout
-    // separator dirs (ea_____…) without a hardcoded sibling list.
+    // L2 = aa_* siblings. Alphanumeric-after-prefix filter drops layout
+    // separator dirs (aa_____…) without a hardcoded sibling list.
     def eaDirs = (root.listFiles() ?: []).findAll {
-        it.isDirectory() && (it.name ==~ /ea_[a-z0-9].*/)
+        it.isDirectory() && (it.name ==~ /aa_[a-z0-9].*/)
     }.sort { it.name }
     if (eaDirs.isEmpty()) return "—"
     def sb = new StringBuilder(root.name + "/\n")   // L1

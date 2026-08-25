@@ -1,0 +1,153 @@
+name: "Ship → Cloud Libs APKs (one APK per library module + push to GHCR via ORAS + attach to GH Release)"
+
+# Every module in aa_cloud-superapp/libs/ shipped as its own installable APK.
+# aa_cloud-keyboard-libs bundles five modules into one companion APK; this is the
+# general case, one package per module, so a lib can be installed and updated on
+# its own. The module set is discovered by build.json::lib_apks (scan + exclude) -
+# adding a module under aa_cloud-superapp/libs/ ships an APK with no edit here.
+#
+# Triggers:
+#   - push main touching aa_cloud-libs/ or ANY module under aa_cloud-superapp/libs/
+#   - tag aa_cloud-libs-v* → release build
+#   - workflow_dispatch → manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Build variant"
+        required: false
+        type: choice
+        default: "debug"
+        options: [debug, release]
+      push_oras:
+        description: "Push APKs to GHCR via ORAS"
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    tags:
+      - "aa_cloud-libs-v*"
+    paths:
+      - "aa_cloud-libs/**"
+      # Every shared module, not an enumerated subset: the whole point of this
+      # repo is that it ships all of them, so any of them changing must rebuild.
+      # One line per build.json::lib_apks.scan root - GitHub does not expand
+      # globs from a file, so this list is the one place the roots repeat, and
+      # shared-modules.test.sh rule 11 fails the build if it drifts.
+      - "aa_cloud-superapp/libs/**"
+      - "aa_cloud-calendar/libs/**"
+      - "aa_cloud-contacts/libs/**"
+      - "aa_cloud-nav/libs/**"
+      - "aa_cloud-news/libs/**"
+      - "aa_cloud-wallet/libs/**"
+      - "1_cicd/src/cicd/ship-cloud-libs.yml"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  WORK_DIR: aa_cloud-libs
+
+jobs:
+  build_and_publish:
+    name: "Build Cloud Libs APKs"
+    runs-on: ubuntu-latest
+    # 24 APKs from one configuration pass; the NDK-carrying modules (voice-vosk,
+    # translate-mlkit) dominate. Higher than the single-APK ship workflows.
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # Same toolchain as superapp (these ARE superapp's modules).
+          packages: "platforms;android-36 platforms;android-35 platforms;android-34 platforms;android-26 build-tools;36.0.0 build-tools;35.0.0 build-tools;34.0.0 platform-tools ndk;28.0.13004108 ndk;26.1.10909125"
+
+      - name: Set up Gradle 8.14 (cached)
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.14"
+
+      - name: Checkout vault (shared Android signing key)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install ORAS + sops + jq
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null && sudo chmod +x /usr/local/bin/sops
+
+      - name: Determine variant
+        id: variant
+        run: |
+          if   [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "variant=${{ inputs.variant }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "variant=debug" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build APKs
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x build.sh
+          ./build.sh list
+          if [ "${{ steps.variant.outputs.variant }}" = "release" ]; then
+            ./build.sh release
+          else
+            ./build.sh build
+          fi
+          ls -la dist/
+
+      - name: Upload APKs as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cloud-Libs-${{ steps.variant.outputs.variant }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Login to GHCR
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push APKs to GHCR via ORAS
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh oras-push
+
+      - name: Publish to GitHub Releases
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./build.sh gh-release

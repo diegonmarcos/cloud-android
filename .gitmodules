@@ -1,15 +1,3 @@
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║                                                                  ║
-# ║   GENERATED FILE — DO NOT EDIT                                   ║
-# ║                                                                  ║
-# ║   Source : 0_git/src/gitmodules
-# ║   Engine : 1_cicd/src/scripts/cloud-ship-repo-workflow-engine.sh
-# ║   Rebuild: ./9_others/build.sh
-# ║                                                                  ║
-# ║   Manual edits will be overwritten on next build.                ║
-# ║                                                                  ║
-# ╚══════════════════════════════════════════════════════════════════╝
-
 # Single read-only index submodule.
 #
 # 2026-08-18: every cloud-* repo embeds ONLY `cloud` — the fleet index,
