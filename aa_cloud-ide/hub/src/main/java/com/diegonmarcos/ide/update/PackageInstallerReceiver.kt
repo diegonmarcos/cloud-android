@@ -17,7 +17,7 @@ import android.widget.Toast
  * Receives PackageInstaller status callbacks. Forwards the system confirmation
  * Activity on STATUS_PENDING_USER_ACTION; surfaces SUCCESS / FAILURE_* as a
  * Toast + notification so a silent reject (e.g. signature mismatch after a
- * keystore bump) isn't invisible. Trimmed from ea_cloud-superapp's receiver —
+ * keystore bump) isn't invisible. Trimmed from aa_cloud-superapp's receiver —
  * the thin hub has no in-app NotificationStore feed.
  */
 class PackageInstallerReceiver : BroadcastReceiver() {

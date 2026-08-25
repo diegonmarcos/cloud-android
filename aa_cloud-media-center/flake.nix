@@ -1,5 +1,5 @@
 {
-  description = "Cloud Media Center — Nix devShell wrapping the Android Gradle build for the ReFra-fork gallery APK. gradle + AGP + Android SDK + JDK 17. All toolchain pinned; same input → same APK. No Node/Cordova (pure Kotlin/Compose fork, unlike the Acode fork in ea_cloud-ide).";
+  description = "Cloud Media Center — Nix devShell wrapping the Android Gradle build for the ReFra-fork gallery APK. gradle + AGP + Android SDK + JDK 17. All toolchain pinned; same input → same APK. No Node/Cordova (pure Kotlin/Compose fork, unlike the Acode fork in aa_cloud-ide).";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
@@ -74,7 +74,7 @@
         # lockfile. For now the devShell is the path, matching the other
         # ea_cloud-* Android projects. This app additionally has NO build.sh
         # yet at all (see README.md ## OPEN: engine choice) so packages.default
-        # is a stub, same honest-placeholder pattern as ea_cloud-ide.
+        # is a stub, same honest-placeholder pattern as aa_cloud-ide.
         packages.default = pkgs.runCommandLocal "cloud-media-center-stub" {} ''
           mkdir -p $out
           echo "TODO: hermetic APK build needs gradle wrapper checked in + dependency lockfile; also see README.md ## OPEN: engine choice (build.sh not written yet)" > $out/README

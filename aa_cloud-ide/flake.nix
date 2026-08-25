@@ -18,7 +18,7 @@
         };
 
         # Toolchain pinned in one place. Mirrored in build.json::toolchain —
-        # keep in sync. Same SDK/build-tools/NDK combo as ea_cloud-superapp +
+        # keep in sync. Same SDK/build-tools/NDK combo as aa_cloud-superapp +
         # ea_cloud-comms so all the Android projects share one reproducible
         # toolchain (and one signing/cross-talk story).
         androidEnv = pkgs.androidenv.composeAndroidPackages {
@@ -27,7 +27,7 @@
           buildToolsVersions   = [ "35.0.0" "34.0.0" ];
           platformVersions     = [ "35" "34" "26" ];
           # The hub is pure-JVM; NDK not required but kept for schema parity
-          # with ea_cloud-superapp / ea_cloud-comms toolchain definitions.
+          # with aa_cloud-superapp / ea_cloud-comms toolchain definitions.
           includeNDK           = true;
           ndkVersions          = [ "26.1.10909125" ];
           cmakeVersions        = [ "3.22.1" ];
@@ -69,7 +69,7 @@
 
         # Hermetic APK build needs a checked-in gradle wrapper + dependency
         # lockfile. For now the devShell + ./build.sh build is the path,
-        # matching ea_cloud-superapp / ea_cloud-comms.
+        # matching aa_cloud-superapp / ea_cloud-comms.
         packages.default = pkgs.runCommandLocal "cloud-ide-stub" {} ''
           mkdir -p $out
           echo "TODO: hermetic APK build needs gradle wrapper checked in + dependency lockfile" > $out/README

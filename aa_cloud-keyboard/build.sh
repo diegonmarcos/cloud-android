@@ -34,7 +34,7 @@ _resolve_gif_keys() {
 
 _bj() { python3 -c "import json,sys;print(json.load(open('$SCRIPT_DIR/build.json'))$1)" 2>/dev/null; }
 
-# ONE shared Cloud-constellation signing key — mirrors ea_cloud-superapp.
+# ONE shared Cloud-constellation signing key — mirrors aa_cloud-superapp.
 # NO fallback: if the shared key can't be resolved the build FAILS LOUD
 # instead of silently signing with the ephemeral android debug keystore
 # (a fresh random key per CI run → INSTALL_FAILED_UPDATE_INCOMPATIBLE).

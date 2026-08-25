@@ -2,7 +2,7 @@
 
 - **Upstream**: https://github.com/M66B/FairEmail.git (GPL-3.0, Java)
 - **App id**: `com.diegonmarcos.comms.mail`
-- **Tracker**: `ea_mail-fairmail/` (shared with ea_cloud-superapp's cherry-pick;
+- **Tracker**: `ea_mail-fairmail/` (shared with aa_cloud-superapp's cherry-pick;
   `materialize-fork` checks out the pin, never trusts tracker HEAD)
 - **Server**: Maddy + Stalwart on oci-mail — `imap.diegonmarcos.com:443` +
   `smtps.diegonmarcos.com:443` (implicit TLS, SNI demux on :443), JMAP on

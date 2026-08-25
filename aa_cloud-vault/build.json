@@ -19,12 +19,12 @@
   },
   "forks": {
     "vault": {
-      "_doc": "Bitwarden-fork rebuild of this app — THE shipping Cloud-Vault.apk since 2026-08-18: CI's push-triggered job runs materialize-fork + build-fork and publishes the fork APK as Cloud-Vault.apk (GHCR :latest + GH release rolling tag). build.sh's default `build`/`release` still produce the legacy WebView wrapper, now a manual-only CI fallback. Uses the SAME fork machinery ea_cloud-mail's forks.mail entry uses (see cloud-mail-fork-engine.sh, ported verbatim into this app's build.sh).",
+      "_doc": "Bitwarden-fork rebuild of this app — THE shipping Cloud-Vault.apk since 2026-08-18: CI's push-triggered job runs materialize-fork + build-fork and publishes the fork APK as Cloud-Vault.apk (GHCR :latest + GH release rolling tag). build.sh's default `build`/`release` still produce the legacy WebView wrapper, now a manual-only CI fallback. Uses the SAME fork machinery aa_cloud-mail's forks.mail entry uses (see cloud-mail-fork-engine.sh, ported verbatim into this app's build.sh).",
       "app_id": "com.diegonmarcos.cloudvault",
       "label": "Cloud Vault (Bitwarden)",
       "image": "cloud-vault-bitwarden",
       "upstream_repo": "https://github.com/bitwarden/android.git",
-      "tracker_dir": "ea_upstreams-sources/vault-bitwarden",
+      "tracker_dir": "aa_upstreams-sources/vault-bitwarden",
       "pinned_tag": "v2026.7.1-bwpm",
       "license": "GPL-3.0",
       "primary_lang": "Kotlin",
@@ -38,7 +38,7 @@
         "_build_blocker_doc": "com.bitwarden:sdk-android is resolved from https://maven.pkg.github.com/bitwarden/sdk (settings.gradle.kts dependencyResolutionManagement), which 401s without an authenticated GitHub account/token even for public artifacts — verified un-buildable anonymously (local sandbox). settings.gradle.kts reads the credential as: password = userProperties[\"gitHubToken\"] (rootDir/user.properties, gitignored, local-dev only) ?: System.getenv(\"GITHUB_TOKEN\") ; username is hardcoded to \"\" (empty). RESOLVED in CI (run 31602029574, 2026-08-12): the auto-minted per-run GITHUB_TOKEN reads bitwarden/sdk packages fine — no BITWARDEN_PACKAGES_TOKEN PAT needed (the workflow still prefers that secret if ever set). Locally, put a token in user.properties. Not a gradle_props entry — it's a plain env var upstream settings.gradle.kts reads.",
         "gradle_props": {}
       },
-      "comment": "Bitwarden Android (password manager). Rebrand + self-hosted-server-default + NOTICE patches in ea_cloud-vault/patches/. materialize-fork is pure git clone+patch (no network auth); build-fork VERIFIED green in CI 2026-08-12 (run 31602029574, signed 36 MB fdroid/release APK) and promoted 2026-08-18 to the push-triggered publisher of Cloud-Vault.apk."
+      "comment": "Bitwarden Android (password manager). Rebrand + self-hosted-server-default + NOTICE patches in aa_cloud-vault/patches/. materialize-fork is pure git clone+patch (no network auth); build-fork VERIFIED green in CI 2026-08-12 (run 31602029574, signed 36 MB fdroid/release APK) and promoted 2026-08-18 to the push-triggered publisher of Cloud-Vault.apk."
     }
   },
   "signing": {
@@ -70,23 +70,23 @@
       ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
-      "dir": "../ea_cloud-superapp/libs/core",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../aa_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:devtools": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/, same as libs:core. Not listed in app.depends_on and not linked in app/build.gradle: libs:core pulls it in with an `api` dependency, which is what gives every app the constellation-wide debug API (127.0.0.1:38090+, own-process logcat) without per-app wiring that would drift.",
-      "dir": "../ea_cloud-superapp/libs/devtools",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/, same as libs:core. Not listed in app.depends_on and not linked in app/build.gradle: libs:core pulls it in with an `api` dependency, which is what gives every app the constellation-wide debug API (127.0.0.1:38090+, own-process logcat) without per-app wiring that would drift.",
+      "dir": "../aa_cloud-superapp/libs/devtools",
       "type": "library"
     },
     "libs:browser": {
       "type": "library",
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. browser was three byte-identical trees (superapp, browser, vault); nothing kept them in step, so a WebView fix had to be pasted three times or it silently reached one app.",
-      "dir": "../ea_cloud-superapp/libs/browser"
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. browser was three byte-identical trees (superapp, browser, vault); nothing kept them in step, so a WebView fix had to be pasted three times or it silently reached one app.",
+      "dir": "../aa_cloud-superapp/libs/browser"
     },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
-      "dir": "../ea_cloud-superapp/libs/updater",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../aa_cloud-superapp/libs/updater",
       "type": "library"
     }
   },
@@ -103,7 +103,7 @@
       "repos": [
         {
           "label": "unix",
-          "url": "https://github.com/diegonmarcos/cloud-unix"
+          "url": "https://github.com/diegonmarcos/cloud-android"
         },
         {
           "label": "cloud",

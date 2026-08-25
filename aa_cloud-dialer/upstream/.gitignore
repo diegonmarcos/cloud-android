@@ -1,4 +1,4 @@
-# Vendored Fossify Phone source (see ea_cloud-dialer/README.md). Committed
+# Vendored Fossify Phone source (see aa_cloud-dialer/README.md). Committed
 # as plain files — these local build/IDE artifacts must never be re-added.
 build/
 .gradle/

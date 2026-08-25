@@ -1,4 +1,4 @@
-# ea_upstreams-sources/
+# aa_upstreams-sources/
 
 **The canonical home of every third-party upstream working copy** we fork or
 cherry-pick from (owner decision 2026-06-12 — clones live IN these subdirs, no
@@ -15,11 +15,11 @@ fresh `unix/` clone re-create the workspace deterministically.
    <key>` clones the upstream at `build.json::forks.<key>.pinned_tag` into the
    subdir named by `forks.<key>.tracker_dir` and applies the committed patch
    series from `ea_cloud-comms/forks/<key>/patches/`. Same input → same tree.
-2. **`ea_cloud-superapp/libs/` cherry-picks** — `build.sh sync-net` etc. copy
+2. **`aa_cloud-superapp/libs/` cherry-picks** — `build.sh sync-net` etc. copy
    include-lists from these clones into in-tree gradle modules.
-3. **`ea_cloud-ide/` forks (wrapper)** — same materialize-fork contract as
-   comms (`ea_cloud-ide/build.sh materialize-fork <key>`, registry of record =
-   `ea_cloud-ide/build.json::forks.<key>.tracker_dir`). The wrapper bundles the
+3. **`aa_cloud-ide/` forks (wrapper)** — same materialize-fork contract as
+   comms (`aa_cloud-ide/build.sh materialize-fork <key>`, registry of record =
+   `aa_cloud-ide/build.json::forks.<key>.tracker_dir`). The wrapper bundles the
    PINNED UPSTREAM RELEASE APKs (`bundle-forks`, sha256-verified) until the
    patched forks build from these trackers.
 
@@ -29,10 +29,10 @@ fresh `unix/` clone re-create the workspace deterministically.
 | `chat-mattermost/` | mattermost/mattermost-mobile (Apache-2.0) | comms fork `chat` | `… materialize-fork chat` (after push decision) |
 | `chat-element/` | element-hq/element-x-android (AGPL-3.0) | comms fork `matrix` | `… materialize-fork matrix` (blocked on Matrix stack) |
 | `dialer-fossify/` | FossifyOrg/Phone (GPL-3.0) | comms fork `dialer` | `… materialize-fork dialer` |
-| `editor-acode/` | Acode-Foundation/Acode (MIT) @ v1.12.4 | ide fork `editor` | `ea_cloud-ide/build.sh materialize-fork editor` |
+| `editor-acode/` | Acode-Foundation/Acode (MIT) @ v1.12.4 | ide fork `editor` | `aa_cloud-ide/build.sh materialize-fork editor` |
 | `files-amaze/` | TeamAmaze/AmazeFileManager (GPL-3.0) @ v3.11.2 | ide fork `files` | `… materialize-fork files` |
 | `files-amaze-utils/` | TeamAmaze/AmazeFileUtilities (GPL-3.0) @ v1.94 | ide fork `utils` (not yet cloned) | `… materialize-fork utils` |
-| `cal-davx5/` | bitfireAT/davx5-ose (GPL-3.0) | superapp libs:cal | `git clone` per ea_cloud-superapp/build.json::upstreams |
+| `cal-davx5/` | bitfireAT/davx5-ose (GPL-3.0) | superapp libs:cal | `git clone` per aa_cloud-superapp/build.json::upstreams |
 | `feed-feeder/` | spacecowboy/Feeder (GPL-3.0) | superapp libs:feed | idem |
 | `net-wireguard/` | WireGuard/wireguard-android (Apache-2.0) | superapp libs:net (`sync-net`) | idem |
 | `vault-keepassdx/` | Kunzisoft/KeePassDX (GPL-3.0) | superapp libs:vault | idem |

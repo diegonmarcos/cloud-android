@@ -15,7 +15,7 @@ central `flatDir` + a plain aar dependency — no wrapper module needed.
 Data-driven from `build.json::upstreams.firestack.build`:
 
 1. `build.sh sync-firestack` clones/updates the tracker at
-   `$UNIX_REPO/ea_net-firestack` (pinned to `ref`, default `n2`).
+   `$UNIX_REPO/aa_net-firestack` (pinned to `ref`, default `n2`).
 2. `build.sh firestack` self-downloads the pinned Go (`go_version`,
    checksum-verified into `.cache/golang/`), then runs firestack's **own**
    `make <make_target>` inside the Nix devShell (for `ANDROID_HOME` + NDK).

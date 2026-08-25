@@ -19,7 +19,7 @@
     "target_sdk": 34,
     "version_code": 1,
     "version_name": "0.1.0-dev",
-    "_doc_abi_filters": "Hub is pure-JVM (no native libs) so ABI filtering is irrelevant to it; kept for schema parity with ea_cloud-superapp / ea_cloud-comms. The forks declare their own abi_filters.",
+    "_doc_abi_filters": "Hub is pure-JVM (no native libs) so ABI filtering is irrelevant to it; kept for schema parity with aa_cloud-superapp / ea_cloud-comms. The forks declare their own abi_filters.",
     "abi_filters": [
       "arm64-v8a"
     ]
@@ -36,7 +36,7 @@
     "enabled": true
   },
   "toolchain": {
-    "_doc": "Pinned for reproducibility — all derived in flake.nix. Mirrors ea_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
+    "_doc": "Pinned for reproducibility — all derived in flake.nix. Mirrors aa_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
     "agp": "8.7.3",
     "gradle": "8.10.2",
     "kotlin": "1.9.24",
@@ -57,7 +57,7 @@
     }
   },
   "release": {
-    "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as ea_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
+    "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as aa_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
     "abis": {
       "_doc": "ABI build axis. The hub is pure-JVM (ABI-agnostic); the ONLY native-bearing bundled app is the patched Amaze fork (Rust :file_operations). `build.sh build [abi]` / `build-fork <k> [abi]` / `bundle-forks [abi]` select one. `default:true` is what bare `build` / the CI artifact use; non-default abis get a -<abi> artifact suffix. rust_target = the rust-android-gradle cargo target key (passed as -PcloudIdeRustTargets).",
       "arm64-v8a": {
@@ -90,7 +90,7 @@
       "_doc": "GitHub Release attachment. rolling_tag is canonical: one release (default `latest`) the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-IDE-Hub.apk is a stable URL. tag_pattern stays for immutable per-tag releases under a tag push (rolling release publishes alongside).",
       "enabled": true,
       "rolling_tag": "latest",
-      "tag_pattern": "ea_cloud-ide-v*",
+      "tag_pattern": "aa_cloud-ide-v*",
       "asset_name": "Cloud-IDE-Hub.apk",
       "draft": false,
       "prerelease": false,
@@ -103,7 +103,7 @@
       "asset_name": "Cloud-IDE-Hub.apk"
     },
     "auto_update": {
-      "_doc": "In-app updater config — read at gradle eval time into BuildConfig, then used by the hub's com.diegonmarcos.ide.update package at runtime (same OCI HTTP flow as build.sh oras-pull). Same registry/namespace/image as release.ghcr. The hub self-updates from cloud-ide-hub:<tag>; the forks update via the same mechanism once they publish their own images. Mirrors ea_cloud-superapp/build.json::release.auto_update.",
+      "_doc": "In-app updater config — read at gradle eval time into BuildConfig, then used by the hub's com.diegonmarcos.ide.update package at runtime (same OCI HTTP flow as build.sh oras-pull). Same registry/namespace/image as release.ghcr. The hub self-updates from cloud-ide-hub:<tag>; the forks update via the same mechanism once they publish their own images. Mirrors aa_cloud-superapp/build.json::release.auto_update.",
       "enabled": true,
       "tag": "latest",
       "interval_hours": 6,

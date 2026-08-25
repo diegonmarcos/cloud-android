@@ -4,11 +4,11 @@ Through 0063, this series was applied live via `git am` at every `materialize-fo
 run (local and CI), on top of a fresh network clone of upstream FairEmail.
 
 As of 2026-08-19, `materialize-fork` no longer clones or applies these — the fully
-patched source is vendored directly in `ea_cloud-mail/upstream/` (committed, no
+patched source is vendored directly in `aa_cloud-mail/upstream/` (committed, no
 `.git` inside it). These `.patch` files stay as the historical record of what
 changed vs. upstream and why (see each patch's commit message).
 
-Making a new change: edit `ea_cloud-mail/upstream/` directly, then (optional but
+Making a new change: edit `aa_cloud-mail/upstream/` directly, then (optional but
 preferred for history) regenerate a patch documenting the change — e.g. commit the
 edit in a scratch clone of upstream at the pinned tag and `git format-patch -1` it
 into this directory with the next number in sequence. Nothing re-applies these

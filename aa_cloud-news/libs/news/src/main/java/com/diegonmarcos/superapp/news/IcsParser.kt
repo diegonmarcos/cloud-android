@@ -1,14 +1,14 @@
 package com.diegonmarcos.superapp.news
 
 // Copied verbatim (package line only changed) from
-// ea_cloud-calendar/libs/cal/src/main/java/com/diegonmarcos/superapp/cal/IcsParser.kt
+// aa_cloud-calendar/libs/cal/src/main/java/com/diegonmarcos/superapp/cal/IcsParser.kt
 // for the new Events tab — same "libs/core and libs/updater are
-// byte-identical across ea_cloud-calendar and ea_cloud-news" precedent
+// byte-identical across aa_cloud-calendar and aa_cloud-news" precedent
 // this repo already follows for whole modules, just at file
 // granularity here. TZID resolution and RRULE expansion (both
 // hard-won, see the class kdoc below) are UNCHANGED. Depends on
 // [CalEvent] — defined in EventsModels.kt in THIS package (also
-// copied from ea_cloud-calendar's CalModels.kt), not the ea_cloud-
+// copied from aa_cloud-calendar's CalModels.kt), not the ea_cloud-
 // calendar one, so this file has zero dependency on that other app.
 // Any future fix to the calendar app's IcsParser should be
 // back-ported here by hand; there is no shared-source mechanism

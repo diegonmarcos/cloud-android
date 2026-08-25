@@ -3,7 +3,7 @@
 - **Upstream**: https://github.com/FossifyOrg/Phone.git (GPL-3.0, Kotlin) — the
   maintained Fossify fork of Simple Dialer.
 - **App id**: `com.diegonmarcos.comms.dialer` · label **Phone**
-- **Tracker**: `ea_upstreams-sources/dialer-fossify/`
+- **Tracker**: `aa_upstreams-sources/dialer-fossify/`
 - **Pinned**: 1.11.1
 - **Role**: the "Dialer" entry under Cloud-SuperApp **Suite ▸ Cloud ▸
   Communications** — SuperApp links to it; Cloud-Comms owns/ships it like the

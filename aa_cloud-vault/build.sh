@@ -29,7 +29,7 @@
 # ║ build/release above are UNCHANGED — they still build the in-tree  ║
 # ║ WebView wrapper. materialize-fork/build-fork are a SEPARATE       ║
 # ║ opt-in path (build.json::forks.vault) for the Bitwarden-fork      ║
-# ║ rebuild — same fork machinery ea_cloud-mail uses (clone pinned    ║
+# ║ rebuild — same fork machinery aa_cloud-mail uses (clone pinned    ║
 # ║ tag into gitignored tracker + apply patches/, ported verbatim).   ║
 # ║                                                                  ║
 # ║ NEVER bypass this script for build operations.                    ║
@@ -158,7 +158,7 @@ _enforce_signature() {
 # _release_var — a fork key containing a hyphen is parsed by jq as
 # subtraction when interpolated into a path. Passing the key as DATA
 # (--arg) and indexing with brackets makes any key safe and closes a
-# shell->jq injection path. Ported verbatim from ea_cloud-mail's engine
+# shell->jq injection path. Ported verbatim from aa_cloud-mail's engine
 # (cloud-mail-fork-engine.sh::_fork_json) — same semantics, same signature.
 #   _fork_json "$key" '.build.gradle_task'
 #   _fork_json "$key" ''                    # the whole fork object
@@ -168,7 +168,7 @@ _fork_json() {
 }
 
 # Guard against shipping an APK with the wrong package identity. Ported
-# verbatim from ea_cloud-mail's engine.
+# verbatim from aa_cloud-mail's engine.
 # $1=key, $2=apk path, $3=expected package id (defaults to .forks.<key>.app_id).
 _assert_apk_identity() {
   local key="$1" apk="$2" expected_id="${3:-}"
@@ -189,7 +189,7 @@ _assert_apk_identity() {
 }
 
 # Resign an APK (in-place-safe: in != out) with the ONE shared constellation
-# key — zipalign + apksigner. Ported verbatim from ea_cloud-mail's engine.
+# key — zipalign + apksigner. Ported verbatim from aa_cloud-mail's engine.
 _resign_apk() {
   local in="$1" out="$2" bt zipalign apksigner ks
   _resolve_signing
@@ -207,7 +207,7 @@ _resign_apk() {
 }
 
 # Fetch a pinned upstream release APK: curl + sha256 verify (+ optional
-# constellation re-sign). Ported verbatim from ea_cloud-mail's engine. Not
+# constellation re-sign). Ported verbatim from aa_cloud-mail's engine. Not
 # exercised by the vault fork today (it builds from source), kept for parity
 # so a future upstream-APK fork under this build.sh works unmodified.
 _fetch_upstream_apk() {
@@ -231,7 +231,7 @@ _fetch_upstream_apk() {
 # Declaratively reconstruct a fork: clone the upstream at the pinned tag into
 # its (gitignored) tracker dir, then apply the committed patch series. Same
 # input → same working tree. NEVER produces a long-lived divergent clone.
-# Ported verbatim (same semantics) from ea_cloud-mail's
+# Ported verbatim (same semantics) from aa_cloud-mail's
 # cloud-mail-fork-engine.sh::step_materialize_fork.
 step_materialize_fork() {
   local key="${2:-}"
@@ -265,12 +265,12 @@ step_materialize_fork() {
 
   local dest="$SCRIPT_DIR/../$tracker"
   # Per-app model: patches always live beside the build.sh entrypoint
-  # (ea_cloud-vault/patches/). SCRIPT_DIR resolves to the invocation dir.
+  # (aa_cloud-vault/patches/). SCRIPT_DIR resolves to the invocation dir.
   local patch_dir="$SCRIPT_DIR/patches"
 
   if [ ! -d "$dest/.git" ]; then
     log "materialize-fork[$key]: cloning $repo → $tracker (tag $tag)"
-    # tracker_dir may be nested (ea_upstreams-sources/<name>); the parent is
+    # tracker_dir may be nested (aa_upstreams-sources/<name>); the parent is
     # gitignored workspace and won't exist on a fresh CI checkout.
     mkdir -p "$(dirname "$dest")"
     prefer_host git clone --filter=blob:none "$repo" "$dest"
@@ -307,7 +307,7 @@ step_materialize_fork() {
 # Build a materialized fork's APK with the fork's OWN gradle wrapper (each
 # upstream pins its own Gradle/AGP — never our devShell gradle). Everything
 # is data-driven from build.json::forks.<key>.build. Ported verbatim (same
-# semantics) from ea_cloud-mail's cloud-mail-fork-engine.sh::step_build_fork.
+# semantics) from aa_cloud-mail's cloud-mail-fork-engine.sh::step_build_fork.
 step_build_fork() {
   local key="${2:-}"
   [ -n "$key" ] || { errlog "usage: build.sh build-fork <vault>"; exit 1; }

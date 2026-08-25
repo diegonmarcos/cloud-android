@@ -18,8 +18,8 @@ plugins {
 // The fleet manifest is baked HERE now rather than into the app: the store is
 // what reads it, and a module that owns a screen should own that screen's
 // data. Path is relative to this module, so it resolves to the same
-// ea_cloud-superapp/data/constellation-fleet.json whether built by the app or
-// shared by reference into ea_cloud-libs.
+// aa_cloud-superapp/data/constellation-fleet.json whether built by the app or
+// shared by reference into aa_cloud-libs.
 def constellationFleetFile = file('../../data/constellation-fleet.json')
 def constellationFleetJson = constellationFleetFile.exists()
         ? constellationFleetFile.text : '{"version":1,"apps":[]}'

@@ -17,7 +17,7 @@ import com.diegonmarcos.superapp.chat.ChatPages
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.ops.OpsPages
 import com.diegonmarcos.superapp.fin.MyFinDashboardFragment
-// libs:wallet MOVED to ea_cloud-wallet (constellation APK). No WalletFragment here.
+// libs:wallet MOVED to aa_cloud-wallet (constellation APK). No WalletFragment here.
 
 /**
  * Per-section page registry — now driven by [Sections] (which mirrors

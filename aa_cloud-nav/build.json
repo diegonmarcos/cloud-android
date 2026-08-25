@@ -58,8 +58,8 @@
       ]
     },
     "libs:core": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
-      "dir": "../ea_cloud-superapp/libs/core",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../aa_cloud-superapp/libs/core",
       "type": "library"
     },
     "libs:maps": {
@@ -67,12 +67,12 @@
     },
     "libs:devtools": {
       "type": "library",
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. DevControlBridge, DevControlPrefs and DiagnosticsPush were byte-identical copies in superapp and nav; the loopback server and its UI stay app-owned because they have genuinely diverged. LOG_SINK_URL/STREAM are baked by this module from the CONSUMING app's build.json::diagnostics.",
-      "dir": "../ea_cloud-superapp/libs/devtools"
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. DevControlBridge, DevControlPrefs and DiagnosticsPush were byte-identical copies in superapp and nav; the loopback server and its UI stay app-owned because they have genuinely diverged. LOG_SINK_URL/STREAM are baked by this module from the CONSUMING app's build.json::diagnostics.",
+      "dir": "../aa_cloud-superapp/libs/devtools"
     },
     "libs:updater": {
-      "_doc_dir": "Shared BY REFERENCE from ea_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
-      "dir": "../ea_cloud-superapp/libs/updater",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ — settings.gradle points projectDir here instead of at a local copy. Every app used to carry its own copy-pasted tree and they drifted: 6 apps sat 228 source lines behind superapp's updater. One directory, no sync step, no drift.",
+      "dir": "../aa_cloud-superapp/libs/updater",
       "type": "library"
     }
   },
@@ -2165,7 +2165,7 @@
       "repos": [
         {
           "label": "unix",
-          "url": "https://github.com/diegonmarcos/cloud-unix"
+          "url": "https://github.com/diegonmarcos/cloud-android"
         },
         {
           "label": "cloud",

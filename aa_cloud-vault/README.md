@@ -18,7 +18,7 @@ workflow dispatch).
   (applicationId `com.x8bit.bitwarden` upstream) is the password manager;
   module `authenticator` is the other product and is not touched.
 - **App id**: `com.diegonmarcos.cloudvault` (patched from `com.x8bit.bitwarden`)
-- **Tracker**: `../ea_upstreams-sources/vault-bitwarden/` (gitignored;
+- **Tracker**: `../aa_upstreams-sources/vault-bitwarden/` (gitignored;
   `materialize-fork` clones it at the pin and never trusts a pre-existing
   tracker HEAD)
 - **Flavor**: `fdroid` (dimension `mode`) — the Google-free flavor.
@@ -35,7 +35,7 @@ workflow dispatch).
 
 ### Fork machinery
 
-Same engine ea_cloud-mail uses, ported verbatim into this app's `build.sh`
+Same engine aa_cloud-mail uses, ported verbatim into this app's `build.sh`
 (`_fork_json`, `step_materialize_fork`, `step_build_fork` + their signing/
 identity-assert/upstream-apk helpers): clone upstream at the pinned tag into
 the gitignored tracker dir, apply the committed `patches/*.patch` series with

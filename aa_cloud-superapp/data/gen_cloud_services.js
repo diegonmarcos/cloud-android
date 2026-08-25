@@ -206,7 +206,7 @@ INFRA.push(["Pilots", PILOTS]);   // 5 vm-pilots under Infra Apps
 // x86 = GitHub-hosted GHA runners (external link to the workflow runs).
 const RUNNERS = [
     vm("runner-arm", NODE_IP["oci-apps"] || "10.0.0.6", "ARM (Oci-Apps)"),
-    ext("x86 (GHA)", "https://github.com/diegonmarcos/cloud-unix/actions"),
+    ext("x86 (GHA)", "https://github.com/diegonmarcos/cloud-android/actions"),
 ];
 
 function grp(gid, gl, subs, extra) {

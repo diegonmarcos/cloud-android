@@ -18,7 +18,7 @@ import androidx.fragment.app.DialogFragment
 import com.diegonmarcos.ide.update.UpdateProgress
 
 /**
- * Fullscreen update overlay — the Cloud-IDE equivalent of ea_cloud-superapp's
+ * Fullscreen update overlay — the Cloud-IDE equivalent of aa_cloud-superapp's
  * UpdateOverlayFragment. Dark scrim + headline + horizontal progress bar +
  * detail line, driven live by UpdateProgress state transitions. Terminal states
  * (UpToDate / Done / Failed) show a Dismiss button and auto-close.

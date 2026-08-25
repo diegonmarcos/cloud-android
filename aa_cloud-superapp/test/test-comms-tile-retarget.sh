@@ -14,7 +14,7 @@
 # checks each retargeted external_app resolves to an app in the constellation
 # fleet, so tiles can never point at a package the AppStore can't install.
 set -u
-APP="$(cd "$(dirname "$0")/.." && pwd)"          # → ea_cloud-superapp
+APP="$(cd "$(dirname "$0")/.." && pwd)"          # → aa_cloud-superapp
 BJ="$APP/build.json"
 FLEET="$APP/data/constellation-fleet.json"
 PASS=0; FAIL=0

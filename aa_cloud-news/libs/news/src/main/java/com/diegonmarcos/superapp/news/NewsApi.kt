@@ -100,7 +100,7 @@ object NewsApi {
      * ever runs against the user's own self-hosted rss-gateway.
      *
      * NO AUTH HEADER, ON PURPOSE: the same rss-gateway software (see
-     * ea_cloud-mail's SUPER RSS READER patches) has an optional
+     * aa_cloud-mail's SUPER RSS READER patches) has an optional
      * Bearer-token config for OTHER deployments of it
      * (`comms_cloud_token`), but data/sources.json's ntfy-self entry
      * records this deployment as `feed_auth=none` — so no

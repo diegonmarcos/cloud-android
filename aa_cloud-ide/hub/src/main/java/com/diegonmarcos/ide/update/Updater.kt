@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Public API for the hub updater. Call [start] once from App.onCreate.
  * Everything is data-driven by build.json::release.auto_update — no caller-side
- * config. Mirrors ea_cloud-superapp's Updater facade.
+ * config. Mirrors aa_cloud-superapp's Updater facade.
  */
 object Updater {
     private const val WORK_NAME = "cloud-ide-auto-update"

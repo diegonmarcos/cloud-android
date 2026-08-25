@@ -4,7 +4,7 @@ package com.diegonmarcos.ide.update
  * Process-wide observable state for the in-app updater. The download/install
  * pipeline writes states here; the Configs UI observes via [setListener].
  * Plain singleton + callback so the updater doesn't pull in LiveData. Mirrors
- * ea_cloud-superapp's UpdateProgress.
+ * aa_cloud-superapp's UpdateProgress.
  */
 object UpdateProgress {
 

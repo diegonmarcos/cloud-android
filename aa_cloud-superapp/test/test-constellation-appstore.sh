@@ -6,7 +6,7 @@
 #
 # Usage: ./test-constellation-appstore.sh   (live check needs network/wg0)
 set -u
-APP="$(cd "$(dirname "$0")/.." && pwd)"          # → ea_cloud-superapp
+APP="$(cd "$(dirname "$0")/.." && pwd)"          # → aa_cloud-superapp
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
@@ -33,10 +33,10 @@ if [ -f "$FLEET" ]; then
     && bad "stale comms-* fork id present" || ok "no stale comms-* fork ids"
 else bad "constellation-fleet.json missing (run data/regen.sh)"; fi
 has "$APP/data/regen.sh" "regen_constellation" "regen.sh auto-scans siblings → fleet json"
-# self-registering / DRY: the dialer package is scanned from ea_cloud-dialer/
+# self-registering / DRY: the dialer package is scanned from aa_cloud-dialer/
 # build.json (forks.dialer.app_id), not hand-typed — dialer is now an
 # independent fleet app with its own ship CI.
-grep -q '"com.diegonmarcos.comms.dialer"' "$FLEET" 2>/dev/null && ok "dialer package scanned from ea_cloud-dialer/build.json" || bad "dialer package not scanned"
+grep -q '"com.diegonmarcos.comms.dialer"' "$FLEET" 2>/dev/null && ok "dialer package scanned from aa_cloud-dialer/build.json" || bad "dialer package not scanned"
 
 echo "== T2: baked into BuildConfig (data-driven) =="
 has "$APP/app/build.gradle" "constellation-fleet.json" "build.gradle reads the fleet snapshot"

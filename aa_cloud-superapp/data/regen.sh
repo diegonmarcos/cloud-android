@@ -46,9 +46,9 @@ UNIX="$(cd "$HERE/../.." && pwd)"
 regen_constellation() {
     command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; return 1; }
     # owner/repo = the monorepo these apps ship from (invariant identity).
-    local rel="https://github.com/diegonmarcos/cloud-unix/releases"
+    local rel="https://github.com/diegonmarcos/cloud-android/releases"
     local tree="https://github.com/diegonmarcos/cloud-unix/tree/main"
-    local pkg="https://github.com/diegonmarcos/cloud-unix/pkgs/container"
+    local pkg="https://github.com/diegonmarcos/cloud-android/pkgs/container"
 
     # Scan EVERY sibling repo's build.json, not just ea_cloud-*/. Membership is a
     # property of the DATA, not of the directory name: a dir self-registers as a
@@ -67,11 +67,11 @@ regen_constellation() {
            "$bj" >/dev/null 2>&1 || continue
         dir="$(basename "$(dirname "$bj")")"; id="${dir#ea_cloud-}"
         if jq -e '.lib_apks.scan' "$bj" >/dev/null 2>&1; then
-            # ── Multi-lib repo (ea_cloud-libs) ────────────────────────────────
+            # ── Multi-lib repo (aa_cloud-libs) ────────────────────────────────
             # One repo, one APK per library module, so it expands into MANY fleet
             # entries instead of one. The module set is not listed anywhere: it is
             # the same scan+exclude that settings.gradle and build.sh apply, so a
-            # new module under ea_cloud-superapp/libs/ appears in the Libs tab
+            # new module under aa_cloud-superapp/libs/ appears in the Libs tab
             # automatically. Everything else here is derived from the dir name.
             local lroot lscan lrel lpair lexcl lprefix laprefix limgprefix lmod lasset
             lexcl="$(jq -r '(.lib_apks.exclude // {}) | keys[]' "$bj" 2>/dev/null | tr '\n' ' ')"
@@ -81,7 +81,7 @@ regen_constellation() {
             # lib_apks.scan is a LIST of roots (library modules live beside the
             # app that grew them), so flatten to "<module>|<repo-relative dir>"
             # first: the directory is what repo_url has to point at, and it is
-            # no longer always ea_cloud-superapp/libs.
+            # no longer always aa_cloud-superapp/libs.
             for lpair in $(
                 for lroot in $(jq -r '.lib_apks.scan | if type == "array" then .[] else . end' "$bj"); do
                     lscan="$(dirname "$bj")/$lroot"

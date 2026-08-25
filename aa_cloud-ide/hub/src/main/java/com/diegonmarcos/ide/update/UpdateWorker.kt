@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * WorkManager job: check → download → install. Scheduled by Updater.start() at
- * build.json::release.auto_update.interval_hours. Mirrors ea_cloud-superapp's
+ * build.json::release.auto_update.interval_hours. Mirrors aa_cloud-superapp's
  * UpdateWorker.
  */
 class UpdateWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {

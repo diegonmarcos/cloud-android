@@ -11,7 +11,7 @@ import java.io.File
 /**
  * Wraps PackageInstaller — Android's only no-root path to install an APK. The
  * user gets a system confirmation prompt (can't be bypassed without the system
- * updater privilege). Mirrors ea_cloud-superapp's UpdateInstaller.
+ * updater privilege). Mirrors aa_cloud-superapp's UpdateInstaller.
  */
 internal class UpdateInstaller(private val context: Context) {
     private val tag = "Ide/Update/Install"

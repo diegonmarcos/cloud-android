@@ -4,7 +4,7 @@
 
   These app-res strings win the resource merge over the vendored libs:keyboard
   (verbatim HeliBoard mirror), renaming the keyboard everywhere it shows without
-  editing the mirror. The superapp app (ea_cloud-superapp/app) has the identical
+  editing the mirror. The superapp app (aa_cloud-superapp/app) has the identical
   overrides; the standalone keyboard lost them when it was split out — this
   restores the FULL rebrand: the name is "Cloud Keyboard (HeliBoard)".
 

@@ -9,7 +9,7 @@ import java.security.MessageDigest
 /**
  * Detect whether GHCR has a hub APK whose sha256 differs from the currently
  * installed one, and download it if so. Returns null when already up to date.
- * Mirrors ea_cloud-superapp's UpdateChecker (self-update of the hub APK from
+ * Mirrors aa_cloud-superapp's UpdateChecker (self-update of the hub APK from
  * com.diegonmarcos.ide.BuildConfig.GHCR_IMAGE at com.diegonmarcos.ide.BuildConfig.AUTO_UPDATE_TAG).
  */
 internal class UpdateChecker(private val context: Context) {

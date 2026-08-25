@@ -25,7 +25,7 @@ bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 has()   { grep -qF "$2" "$ROOT/$1" 2>/dev/null && ok "$3" || bad "$3 ($1)"; }
 hasnt() { grep -qF "$2" "$ROOT/$1" 2>/dev/null && bad "$3 ($1)" || ok "$3"; }
 
-APPS="ea_cloud-superapp ea_cloud-wallet ea_cloud-vault ea_cloud-browser"
+APPS="aa_cloud-superapp aa_cloud-wallet aa_cloud-vault aa_cloud-browser"
 REL="libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
 
 echo "== T1: ABI-tag no longer composes the bogus '<tag>-<deviceAbi>' =="

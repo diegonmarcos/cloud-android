@@ -9,7 +9,7 @@ plugins {
 // decodes it once at runtime. Tuning the edge handle / gesture→action
 // map is a build.json edit — no Kotlin change (Pillar: DATA-DRIVEN).
 // Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
-// repos (ea_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// repos (aa_cloud-libs ships it as its own APK), so it must read the CONSUMING
 // app's build.json first - a module-relative path always resolves to superapp's
 // and the consumer's config would be silently ignored. The `onehand` block is
 // superapp-owned content that a wrapper repo has no reason to redeclare, so when

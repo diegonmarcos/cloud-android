@@ -1,6 +1,6 @@
 # Cloud-SuperApp keyboard overlay — single consolidated, verified patch.
 # Reconciled 2026-07-23 from HeliBoard upstream 7738e7e.
-# Supersedes former 0001-0008 (inconsistent a/ea_cloud-superapp prefixes on 0002-0005
+# Supersedes former 0001-0008 (inconsistent a/aa_cloud-superapp prefixes on 0002-0005
 # + context drift on 0002/0003/0005 -> no longer applied cleanly, silently breaking sync-heliboard).
 # Applying this to a pristine rsync'd upstream reproduces libs/keyboard/src/main byte-for-byte
 # (assets/dicts owned by sync-keyboard-dicts; brand-rename is idempotent over the branded strings here).

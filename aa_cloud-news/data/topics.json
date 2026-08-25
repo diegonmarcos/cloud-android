@@ -1,5 +1,5 @@
 {
-  "_doc": "DEFAULT TOPICS + API CONFIG — the data half of the news app. Ported 1:1 from V_front-configs/c-LabTools/news/src/typescript/config.ts (DEFAULT_TOPICS, API_BASE, REFRESH_INTERVAL, MAX_ARTICLES). libs:news fetches each topic's articles/timeline/tone from `api.base`; the ToDo/Topics surfaces render from that cache, never straight off the network. Adding a topic is an entry HERE plus a rebuild — no Kotlin change. Baked into BuildConfig.TOPICS_B64 by app/build.gradle, same pattern as ea_cloud-calendar/data/calendars.json → BuildConfig.CALENDARS_B64.",
+  "_doc": "DEFAULT TOPICS + API CONFIG — the data half of the news app. Ported 1:1 from V_front-configs/c-LabTools/news/src/typescript/config.ts (DEFAULT_TOPICS, API_BASE, REFRESH_INTERVAL, MAX_ARTICLES). libs:news fetches each topic's articles/timeline/tone from `api.base`; the ToDo/Topics surfaces render from that cache, never straight off the network. Adding a topic is an entry HERE plus a rebuild — no Kotlin change. Baked into BuildConfig.TOPICS_B64 by app/build.gradle, same pattern as aa_cloud-calendar/data/calendars.json → BuildConfig.CALENDARS_B64.",
   "_doc_fields": "topic: the raw GDELT query term sent to the API. label: shown in the UI tab/chip.",
   "version": 1,
   "api": {

@@ -56,7 +56,7 @@ def consolidatedCfg  = (profileDefault.consolidated_config ?: '').toString()
 // ── Stack scan ───────────────────────────────────────────────────────
 // Data-driven snapshot of "what's inside this APK" for Configs → About →
 // Stack. Computed from the actual repository contents at config time.
-def repoRoot = rootDir   // ea_cloud-nav/
+def repoRoot = rootDir   // aa_cloud-nav/
 def stackExtMap = [
     "kt"     : "Kotlin",
     "java"   : "Java",

@@ -4,13 +4,13 @@
 # The animated status-bar pet (PetStrengthView + its vendored zoomies GIFs) used
 # to live inside app/ (and a stray empty ea_zoomies-pets/ app folder existed at
 # the unix root). zoomies is ONE library, not an app folder — this asserts the
-# extraction to ea_cloud-superapp/libs/launcher-zoomies is wired the same way as the other
+# extraction to aa_cloud-superapp/libs/launcher-zoomies is wired the same way as the other
 # 25 lib modules: data-driven module entry in build.json + app dependency + the
 # moved source repackaged + the consumer importing the new package.
 #
 # Static wiring tester (no device / no gradle run): asserts the exact markers.
 set -u
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"        # → ea_cloud-superapp
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"        # → aa_cloud-superapp
 UNIX="$(cd "$ROOT/.." && pwd)"                    # → ~/git/cloud-unix
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }

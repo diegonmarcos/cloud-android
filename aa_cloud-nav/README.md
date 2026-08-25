@@ -6,7 +6,7 @@ monolith, `build.sh` + `build.json` + Nix devShell), but a focused
 Google-Maps-style shell.
 
 ```
-ea_cloud-nav/
+aa_cloud-nav/
 ├── build.sh            ← universal dispatcher (build/dev/test/clean/ship/emulator)
 ├── build.json          ← data-driven: module graph + toolchain + UI (tabs/islands/places) + maps providers
 ├── flake.nix           ← Nix devShell: JDK 17 + Gradle 8.10 + AGP 8.7 + Android SDK

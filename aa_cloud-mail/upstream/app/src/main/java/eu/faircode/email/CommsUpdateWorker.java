@@ -74,7 +74,7 @@ public class CommsUpdateWorker extends Worker {
     private static final int NOTIFICATION_ID = 99001;
     // comms: GitHub releases Atom — all ea_* apps publish releases here on CI
     private static final String RELEASES_FEED_URL =
-            "https://github.com/diegonmarcos/cloud-unix/releases.atom";
+            "https://github.com/diegonmarcos/cloud-android/releases.atom";
     private static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
 
     // comms: user-overridable installed stamp (About → Update channel override)

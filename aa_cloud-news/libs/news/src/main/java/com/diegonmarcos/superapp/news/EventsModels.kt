@@ -6,7 +6,7 @@ import org.json.JSONObject
 /**
  * EVENTS (ICS calendar feeds) — the data half of the Events tab.
  * [CalEvent] is copied field-for-field from
- * ea_cloud-calendar/libs/cal/src/main/java/com/diegonmarcos/superapp/cal/CalModels.kt's
+ * aa_cloud-calendar/libs/cal/src/main/java/com/diegonmarcos/superapp/cal/CalModels.kt's
  * class of the same name — IcsParser.kt (also copied into this
  * package, see that file's header comment) constructs it unqualified,
  * so it must exist in this package under this exact name/shape. Kept
@@ -56,9 +56,9 @@ data class CalEvent(
 
 /** One entry from data/events.json's `calendars` array — a public ICS
  *  feed EventsSync keeps in sync locally. Field-for-field the same
- *  shape as ea_cloud-calendar's `CalSubscription` (CalModels.kt),
+ *  shape as aa_cloud-calendar's `CalSubscription` (CalModels.kt),
  *  renamed to avoid implying it's that other app's class (this module
- *  has no dependency on ea_cloud-calendar's code, only on the same
+ *  has no dependency on aa_cloud-calendar's code, only on the same
  *  data-file SHAPE by convention). `read_only` is implicit: this
  *  module never writes back to the remote URL, same as the calendar
  *  app's original. */
@@ -78,7 +78,7 @@ data class EventCalendarConfig(
  * responsibility as [NewsTopicsConfig]/[NewsSourcesConfig]/[MediaConfig]:
  * libs:news can't reach BuildConfig itself, so callers (NewsBridge)
  * decode the Base64 and hand the raw JSON string here. Mirrors
- * ea_cloud-calendar's `Calendars.parse` (CalModels.kt) exactly,
+ * aa_cloud-calendar's `Calendars.parse` (CalModels.kt) exactly,
  * including the `defaults.refresh_hours` fallback.
  */
 object EventCalendars {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cloud Libs — Build Dispatcher
 #
-# One APK per constellation library module. Mirrors ea_cloud-keyboard-libs, but
+# One APK per constellation library module. Mirrors aa_cloud-keyboard-libs, but
 # that repo produces a single bundle APK and this one produces N, so every step
 # here loops over the SAME scan that settings.gradle uses (build.json::lib_apks).
 # Nothing in this file names a module.

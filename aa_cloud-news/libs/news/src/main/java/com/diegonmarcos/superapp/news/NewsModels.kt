@@ -210,7 +210,7 @@ data class NewsApiConfig(
  * access to that BuildConfig field directly — callers (NewsBridge)
  * decode the Base64 themselves and hand the raw JSON string to
  * [parseTopics]/[parseApi]. Mirrors `Calendars` in
- * ea_cloud-calendar/libs/cal/CalModels.kt. Parsed results are cached
+ * aa_cloud-calendar/libs/cal/CalModels.kt. Parsed results are cached
  * per-process since the underlying data never changes without a
  * rebuild.
  */
@@ -373,7 +373,7 @@ data class NewsSourceConfig(
  * discovery payload (ntfy-self's rss-gateway `/feed/channels.json`)
  * into [NewsChannelConfig]s.
  *
- * SHAPE IS NOW CONFIRMED — ea_cloud-mail's SUPER RSS READER
+ * SHAPE IS NOW CONFIRMED — aa_cloud-mail's SUPER RSS READER
  * (patches/0054-comms-RSS-channel-tree-.../CommsAccounts.java +
  * WorkerFeedSync.java) is a working consumer of this exact endpoint
  * already shipping in production, and
@@ -502,7 +502,7 @@ object DynamicChannels {
      *  is origin-relative, ALREADY including its own leading `/feed/`
      *  path segment) is resolved against [base]'s ORIGIN (scheme +
      *  authority only, [originOf] — never the whole [base] string
-     *  verbatim). This mirrors ea_cloud-mail's already-shipping
+     *  verbatim). This mirrors aa_cloud-mail's already-shipping
      *  `resolveFeed`/`originOf` (CommsAccounts.java, patch 0054)
      *  exactly, and matters concretely here: [NewsSourceConfig.base]
      *  for ntfy-self is configured as `"https://rss.../feed"` (WITH the

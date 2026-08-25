@@ -16,7 +16,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-// libs:browser moved to ea_cloud-browser — no browser imports here.
+// libs:browser moved to aa_cloud-browser — no browser imports here.
 
 /**
  * Android-launcher-style "all apps" drawer revealed by pulling up from
@@ -108,7 +108,7 @@ class AppDrawerSheetFragment : Fragment() {
         // the user picks the surface first, then the shared search +
         // chip strip apply to whichever tab is active.
 
-        // Browser-tab chip strip removed — tabs live in Cloud-Browser (ea_cloud-browser).
+        // Browser-tab chip strip removed — tabs live in Cloud-Browser (aa_cloud-browser).
 
         // ── Body tabs (Cloud | Phone) — data-driven from build.json::ui.home_apps_tabs.
         // Cloud = GroupedTilesFragment("suite") and Phone =

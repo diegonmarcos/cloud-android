@@ -6,7 +6,7 @@ import android.content.Context
  * Result of one [NewsSync.syncAll] pass. Purely informational — the
  * bridge's refreshStatus() surfaces it to the UI. Nothing here is
  * persisted; [NewsStore] is the source of truth for what actually
- * landed in the cache. Shape mirrors ea_cloud-calendar's SyncReport
+ * landed in the cache. Shape mirrors aa_cloud-calendar's SyncReport
  * (CalSync.kt), with `lastFetch` added since the bridge contract
  * (refreshStatus) asks for it directly.
  */

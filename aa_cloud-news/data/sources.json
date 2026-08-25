@@ -24,7 +24,7 @@
       "dynamic_channels": true,
       "capabilities": ["articles"],
       "requires_mesh": true,
-      "_doc_source": "ea_cloud-superapp/data/cloud_services.json (service `ntfy`, vm oci-A1-f_0, port 8090, public_url https://rss.diegonmarcos.com) + ea_cloud-superapp/data/services_private.json (`rss-gateway`, private_dns rss-gateway:8091) + ea_cloud-mail/build.json's COMMS_RSS_BASE + ea_cloud-mail/patches/0055-...: rss-gateway serves /feed/channels.json (142 channels: 22 declared + 89 logs + 31 apps) on wg0, feed_auth=none. Channels are deliberately NOT enumerated here — see the top-level _doc_fields entry for dynamic_channels."
+      "_doc_source": "aa_cloud-superapp/data/cloud_services.json (service `ntfy`, vm oci-A1-f_0, port 8090, public_url https://rss.diegonmarcos.com) + aa_cloud-superapp/data/services_private.json (`rss-gateway`, private_dns rss-gateway:8091) + aa_cloud-mail/build.json's COMMS_RSS_BASE + aa_cloud-mail/patches/0055-...: rss-gateway serves /feed/channels.json (142 channels: 22 declared + 89 logs + 31 apps) on wg0, feed_auth=none. Channels are deliberately NOT enumerated here — see the top-level _doc_fields entry for dynamic_channels."
     },
     {
       "id": "google-news",

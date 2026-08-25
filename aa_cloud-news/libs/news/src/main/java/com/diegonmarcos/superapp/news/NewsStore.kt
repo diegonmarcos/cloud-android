@@ -7,7 +7,7 @@ import org.json.JSONObject
 /**
  * SharedPreferences-backed local cache of synced news data, keyed per
  * topic, plus the sync bookkeeping (`lastFetch`) NewsSync needs.
- * Follows the same house style as ea_cloud-calendar's CalendarStore:
+ * Follows the same house style as aa_cloud-calendar's CalendarStore:
  * one prefs file, JSON strings as values, no Room/DB dependency.
  *
  * OFFLINE-FIRST is the whole point: every read here is a pure prefs

@@ -8,7 +8,7 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 /** Result of one [EventsSync.syncAll] pass. Purely informational — same
- *  shape as ea_cloud-calendar's `SyncReport` (CalSync.kt). Nothing here
+ *  shape as aa_cloud-calendar's `SyncReport` (CalSync.kt). Nothing here
  *  is persisted; [EventsStore] is the source of truth for what actually
  *  landed in the cache. */
 data class EventsSyncReport(
@@ -21,7 +21,7 @@ data class EventsSyncReport(
 /**
  * Fetches every ENABLED [EventCalendarConfig], parses its ICS body with
  * [IcsParser], and writes the result into [EventsStore]. Ported
- * field-for-field from ea_cloud-calendar's `CalSync` (CalSync.kt),
+ * field-for-field from aa_cloud-calendar's `CalSync` (CalSync.kt),
  * including its per-calendar `refresh_hours` throttle — see that
  * throttle's role in [com.diegonmarcos.cloudnews.NewsBridge].refresh's
  * kdoc for why this is what keeps a steady-state refresh() call cheap

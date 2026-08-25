@@ -537,7 +537,7 @@ step_gh_release() {
 
   # ─── Per-tag immutable release (legacy mode) ────────────────────────
   # Still publish a tag-named release when invoked under a tag push, so
-  # the legacy ea_cloud-superapp-vN.N.N tags keep producing pinned
+  # the legacy aa_cloud-superapp-vN.N.N tags keep producing pinned
   # releases. Rolling mode above runs in addition to this, not instead.
   #
   # Gate on GITHUB_REF (full "refs/tags/..." or "refs/heads/...") rather
@@ -765,7 +765,7 @@ _verify_firestack_aar() {
 # Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
 # GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
 # self-contained keyboard provider. Upstream clone lives at
-# ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-heliboard/ (gitignored sibling,
+# ${UNIX_REPO:-$HOME/git/cloud-android}/aa_keyboard-heliboard/ (gitignored sibling,
 # ea_*-* workspace-clone convention).
 #
 # Copies app/src/main VERBATIM (java/kotlin + res + assets + jni + the
@@ -787,9 +787,9 @@ _verify_firestack_aar() {
 # Idempotent — rsync --delete. Fresh upstream pull -> one
 # `./build.sh sync-heliboard` -> clear `git diff` for review.
 step_sync_heliboard() {
-  local upstream="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-heliboard/app/src/main"
+  local upstream="${UNIX_REPO:-$HOME/git/cloud-android}/aa_keyboard-heliboard/app/src/main"
   local dst="$SCRIPT_DIR/libs/keyboard"
-  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-heliboard, or set UNIX_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${UNIX_REPO:-$HOME/git/cloud-android}/aa_keyboard-heliboard, or set UNIX_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-heliboard: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
 
   mkdir -p "$dst/src/main"
@@ -916,12 +916,12 @@ step_sync_zoomies() {
 # build.json::keyboard_dicts (locales[] × types[].{type,dir}). ADDITIVE (no --delete):
 # composes with the HeliBoard mirror, so run AFTER sync-heliboard (which rsync
 # --delete's the mirror and would otherwise drop these). Upstream clone:
-# ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
+# ${UNIX_REPO:-$HOME/git/cloud-android}/aa_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
 step_sync_keyboard_dicts() {
-  local upstream="${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-dicts"
+  local upstream="${UNIX_REPO:-$HOME/git/cloud-android}/aa_keyboard-dicts"
   local dst="$SCRIPT_DIR/libs/keyboard/dicts-data"  # OUT of the asset tree: only the companion bundles these; cloud-keyboard reads them at runtime
   local bj="$SCRIPT_DIR/build.json"
-  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${UNIX_REPO:-$HOME/git/cloud-unix}/ea_keyboard-dicts, or set UNIX_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${UNIX_REPO:-$HOME/git/cloud-android}/aa_keyboard-dicts, or set UNIX_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-keyboard-dicts: jq required"; exit 1; }
 
   mkdir -p "$dst"
@@ -940,7 +940,7 @@ step_sync_keyboard_dicts() {
   done < <(jq -r '.keyboard_dicts.types[] | "\(.type) \(.dir)"' "$bj")
 
   log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/dicts-data/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
-  log "  NOTE: ea_cloud-keyboard-libs bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
+  log "  NOTE: aa_cloud-keyboard-libs bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/dicts-data/"
   [ "$miss" -eq 0 ] || { errlog "sync-keyboard-dicts: $miss dict(s) missing — fix build.json::keyboard_dicts or update the clone"; exit 1; }
 }

@@ -3,7 +3,7 @@
 Modularized monolith Android app — one APK, gradle multi-module. Each domain (mail, calendar, RSS, WireGuard, cloud ops, vault, chat, C3 ops) lives in its own focused library module; the launcher shell in `app/` ties them together.
 
 ```
-ea_cloud-superapp/
+aa_cloud-superapp/
 ├── build.sh            ← universal dispatcher (build/dev/test/clean/ship)
 ├── build.json          ← data-driven module graph + toolchain pins
 ├── flake.nix           ← Nix devShell: JDK 17 + Gradle 8.7 + AGP 8.5 + Android SDK

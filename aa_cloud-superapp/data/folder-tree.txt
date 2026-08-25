@@ -15,7 +15,7 @@ unix/
 │   └── synctools/
 │       ├── opentasks-contract/
 │       └── src/
-├── ea_cloud-superapp/
+├── aa_cloud-superapp/
 │   ├── app/
 │   │   ├── keystores/
 │   │   └── src/

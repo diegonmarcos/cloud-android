@@ -17,7 +17,7 @@
 # Static ordering tester (no device): asserts goSection precedes the action
 # dispatch inside openSectionPage.
 set -u
-APP="$(cd "$(dirname "$0")/.." && pwd)"          # → ea_cloud-superapp
+APP="$(cd "$(dirname "$0")/.." && pwd)"          # → aa_cloud-superapp
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }

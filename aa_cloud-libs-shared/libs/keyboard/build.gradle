@@ -36,7 +36,7 @@ plugins {
 // inject them below from the consuming app's build.json, so the keyboard's
 // About/upgrade/gesture code resolves against the app it is built into.
 // rootDir, NOT '../../': this module is shared by reference into cloud-keyboard,
-// so a module-relative path resolves to ea_cloud-superapp/build.json and the
+// so a module-relative path resolves to aa_cloud-superapp/build.json and the
 // keyboard APK was being baked with SUPERAPP's application_id and version -
 // its own BuildConfig identified it as cloud-superapp. rootDir is the
 // CONSUMING app's build.json, which is what 'single source of truth' meant.

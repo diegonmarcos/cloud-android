@@ -245,7 +245,7 @@ step_ship() {
 }
 
 # ── GHCR distribution (hub APK) ─────────────────────────────────────────
-# Same OCI HTTP flow as ea_cloud-superapp / cloud-comms; the hub's in-app
+# Same OCI HTTP flow as aa_cloud-superapp / cloud-comms; the hub's in-app
 # updater drives the on-device fleet. Registry/tags are data-driven from
 # build.json::release.ghcr.
 _resolve_template() {
@@ -326,10 +326,10 @@ step_phone_install() {
 }
 
 # ── GitHub Release (engine reads build.json::release.gh_release) ────────
-# Same pattern as ea_cloud-comms / ea_cloud-superapp. Rolling mode keeps one
+# Same pattern as ea_cloud-comms / aa_cloud-superapp. Rolling mode keeps one
 # release (release.gh_release.rolling_tag, default `latest`), overwriting its
 # asset on every main push so /releases/latest/download/<asset> is stable; a tag
-# push (refs/tags/ea_cloud-ide-v*) also cuts an immutable per-tag release.
+# push (refs/tags/aa_cloud-ide-v*) also cuts an immutable per-tag release.
 step_gh_release() {
   [ "$(_json '.release.gh_release.enabled')" = "true" ] || { log "gh-release: disabled — skip"; return 0; }
   local draft prerelease notes asset rolling_tag src_release src_debug dst

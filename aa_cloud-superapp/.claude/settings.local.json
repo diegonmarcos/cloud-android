@@ -40,7 +40,7 @@
       "Bash(gh repo *)",
       "Bash(gh workflow *)",
       "Bash(gh run *)",
-      "Bash(git -C /data/data/com.termux.nix/files/home/git/cloud-unix/ea_cloud-superapp log --oneline -1 -L77,77:libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Defaults.kt)",
+      "Bash(git -C /data/data/com.termux.nix/files/home/git/cloud-android/aa_cloud-superapp log --oneline -1 -L77,77:libs/keyboard/src/main/java/helium314/keyboard/latin/settings/Defaults.kt)",
       "Bash(python3 -c \"import json;d=json.load\\(open\\('build.json'\\)\\);print\\(json.dumps\\(d.get\\('modules',{}\\),indent=1\\)\\)\")",
       "Bash(python3 -c \"import json;d=json.load\\(open\\('build.json'\\)\\);print\\(d['modules'].get\\('libs:keyboard',{}\\).get\\('depends_on'\\)\\)\")",
       "Bash(python3 -c \"import json;d=json.load\\(open\\('build.json'\\)\\);print\\(d['modules'].get\\('libs:translate',{}\\).get\\('depends_on'\\)\\)\")",

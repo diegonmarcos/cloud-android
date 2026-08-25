@@ -2,13 +2,13 @@
 
 A **constellation** of three minimally-forked upstream developer apps plus a
 thin original **hub** APK. The hub switches between the forks and brokers their
-data to [Cloud-SuperApp](../ea_cloud-superapp/) over signature-gated IPC, so
+data to [Cloud-SuperApp](../aa_cloud-superapp/) over signature-gated IPC, so
 SuperApp can show a dev surface (recent files, workspaces, git status, storage)
 while the *editor / file-manager engines* live in the forks. Twin of
 [Cloud-Comms](../ea_cloud-comms/) — same engine, hub, and IPC pattern.
 
 ```
-ea_cloud-ide/
+aa_cloud-ide/
 ├── build.sh            ← universal dispatcher (build/verify-contract/materialize-fork/…)
 ├── build.json          ← data-driven: module graph + toolchain + FORK REGISTRY + IPC
 ├── flake.nix           ← Nix devShell: JDK 17 + Gradle + AGP + Android SDK + Node/Cordova (editor fork)

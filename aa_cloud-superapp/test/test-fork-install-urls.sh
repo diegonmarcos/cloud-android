@@ -6,12 +6,12 @@
 #   ea_cloud-<fork>/build.json::release.gh_release  (rolling_tag=latest, asset)
 #     → ship-cloud-<fork>.yml calls `build.sh gh-release-fork`  (uploads asset
 #       to the shared /releases/latest release, same as the other ea_cloud-* apps)
-#     → ea_cloud-superapp build.json ui.external_apps[cloud-<fork>].install_apk_url
+#     → aa_cloud-superapp build.json ui.external_apps[cloud-<fork>].install_apk_url
 #       == https://.../releases/latest/download/<asset>
 # So a tap on a not-installed comms tile does a one-tap install from a stable URL
 # instead of the "not installed" snack.
 set -u
-APP="$(cd "$(dirname "$0")/.." && pwd)"          # → ea_cloud-superapp
+APP="$(cd "$(dirname "$0")/.." && pwd)"          # → aa_cloud-superapp
 UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/cloud-unix
 BJ="$APP/build.json"
 PASS=0; FAIL=0
@@ -44,15 +44,15 @@ for pair in $FORKS; do
 done
 
 echo "== T3: the fork engine actually implements gh-release-fork =="
-grep -qF 'step_gh_release_fork()' "$UNIX/ea_cloud-dialer/build.sh" 2>/dev/null \
+grep -qF 'step_gh_release_fork()' "$UNIX/aa_cloud-dialer/build.sh" 2>/dev/null \
   && ok "fork build.sh has step_gh_release_fork" || bad "fork build.sh missing step_gh_release_fork"
-grep -qE 'gh-release-fork\)\s+step_gh_release_fork' "$UNIX/ea_cloud-dialer/build.sh" 2>/dev/null \
+grep -qE 'gh-release-fork\)\s+step_gh_release_fork' "$UNIX/aa_cloud-dialer/build.sh" 2>/dev/null \
   && ok "gh-release-fork verb dispatched" || bad "gh-release-fork verb not wired in case"
 
 echo "== T4: SuperApp install_apk_url == the fork's rolling-'latest' asset URL =="
 for pair in $FORKS; do
   key="${pair%%:*}"; eid="${pair##*:}"
-  want="https://github.com/diegonmarcos/cloud-unix/$REL/cloud-comms-$key.apk"
+  want="https://github.com/diegonmarcos/cloud-android/$REL/cloud-comms-$key.apk"
   got="$(jq -r --arg i "$eid" '.ui.external_apps[] | select(.id==$i) | .install_apk_url' "$BJ" 2>/dev/null)"
   [ "$got" = "$want" ] && ok "$eid install_apk_url → cloud-comms-$key.apk" \
     || bad "$eid install_apk_url mismatch (got: $got)"

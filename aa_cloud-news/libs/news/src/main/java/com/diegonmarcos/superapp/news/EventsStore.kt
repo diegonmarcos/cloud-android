@@ -7,7 +7,7 @@ import org.json.JSONArray
  * SharedPreferences-backed local cache of synced calendar events, plus
  * the sync bookkeeping (last-sync timestamp, HTTP ETag) [EventsSync]
  * needs to avoid re-fetching unchanged feeds. Mirrors
- * ea_cloud-calendar's `CalendarStore` (CalendarStore.kt) field-for-field
+ * aa_cloud-calendar's `CalendarStore` (CalendarStore.kt) field-for-field
  * — same house style as [NewsStore]: one prefs file, JSON strings as
  * values, no Room/DB dependency, replace-only-on-success (see
  * [EventsSync]).

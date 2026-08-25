@@ -7,7 +7,7 @@ Pinned at upstream tag **`5.1.1-51101-nightly`** (newest tag as of 2026-07-26 �
 `build.json::fork.pinned_tag`; upstream ships nightlies as its release channel and
 has no recent stable tag — `4.3.0` is the last plain-semver one; review the pin
 whenever upstream cuts an actual stable release). Tracker clone lives at
-(gitignored, materialized at build time) `../ea_upstreams-sources/media-refra`.
+(gitignored, materialized at build time) `../aa_upstreams-sources/media-refra`.
 
 **Native build dependency:** upstream is not pure Kotlin/Compose — it has
 `externalNativeBuild` + CMake with JNI over libheif/libde265. NDK
@@ -61,7 +61,7 @@ Two candidate engines were evaluated for `build.sh`. Neither could be used
 as-is, and per FIRE rule 5/6 a hardcoded copy-paste was rejected in favor of
 naming the actual blocker.
 
-**`ea_cloud-mail/build.sh` is a symlink** to
+**`aa_cloud-mail/build.sh` is a symlink** to
 `~/git/cloud-unix/1_cicd/src/scripts/cloud-comms-fork-engine.sh`. That engine
 is genuinely comms-coupled, not a generic single-fork engine — evidence:
 
@@ -89,7 +89,7 @@ single-fork app if a bare, hub-less `build`/`release`/`ship` existed. The
 `_resolve_signing` / `_enforce_signature` / `_assert_apk_identity` machinery
 (lines 133-229) is fully generic and reusable as-is.
 
-**`ea_cloud-ide/build.sh`** is a standalone ~22K non-symlinked engine, but it
+**`aa_cloud-ide/build.sh`** is a standalone ~22K non-symlinked engine, but it
 is built around the "thin original hub + 3 embedded forks" model too (its
 `step_bundle_forks` also targets `hub/src/main/assets/forks/`) — copying it
 verbatim would carry the same hub assumption this app doesn't have.
@@ -103,7 +103,7 @@ verbatim would carry the same hub assumption this app doesn't have.
    and drop the `verify-contract` step for apps with no `ipc` block. This is
    the path implied by the README task brief's "later be renamed to a neutral
    `android-fork-engine.sh`" note.
-2. Follow the `ea_cloud-ide` standalone pattern but strip the hub/bundle
+2. Follow the `aa_cloud-ide` standalone pattern but strip the hub/bundle
    layer entirely, writing a new minimal single-fork engine from scratch
    (still symlink-shareable if a second single-fork app appears later).
 
@@ -136,7 +136,7 @@ etc. do not exist for this app — only the devShell (`nix develop`) is usable.
 ## Patches directory convention
 
 `patches/` holds a git-am-format patch series applied against the pinned
-tracker checkout (`../ea_upstreams-sources/media-refra` at tag
+tracker checkout (`../aa_upstreams-sources/media-refra` at tag
 `build.json::fork.pinned_tag`), in lexical apply order. Naming:
 
 ```

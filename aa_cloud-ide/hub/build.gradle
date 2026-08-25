@@ -8,7 +8,7 @@ plugins {
 // JSON at config time and baked into BuildConfig — no parallel hardcoded list
 // in Kotlin (FIRE rule 4). Bump a value in build.json / data, get a
 // rebuilt BuildConfig on the next gradle run.
-def repoRoot          = rootDir                       // ea_cloud-ide/
+def repoRoot          = rootDir                       // aa_cloud-ide/
 def buildJson         = new groovy.json.JsonSlurper().parse(file("$repoRoot/build.json"))
 def endpoints         = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/ide-endpoints.json"))
 def terminalTargets   = new groovy.json.JsonSlurper().parse(file("$repoRoot/data/terminal-targets.json"))
@@ -21,7 +21,7 @@ def shortSha   = (System.getenv('GITHUB_SHA')
                          commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
                          ignoreExitValue = true
                      }.standardOutput.asText.get().trim()).take(8)
-// Build timestamp (UTC) — mirrors ea_cloud-superapp; shown in the About popup.
+// Build timestamp (UTC) — mirrors aa_cloud-superapp; shown in the About popup.
 def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'").with {
     setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
     format(new java.util.Date())
@@ -35,7 +35,7 @@ def terminalTargetsB64  = groovy.json.JsonOutput.toJson(terminalTargets).bytes.e
 // GHCR + in-app updater config — same source of truth (build.json::release) the
 // build.sh oras-push / oras-pull / gh-release steps read. The hub's
 // com.diegonmarcos.ide.update package self-updates the hub APK from here; no
-// hardcoded URLs in Kotlin (FIRE rule 4). Mirrors ea_cloud-superapp/libs:updater.
+// hardcoded URLs in Kotlin (FIRE rule 4). Mirrors aa_cloud-superapp/libs:updater.
 def ghcr = buildJson.release.ghcr
 // Diagnostics cloud sink (DiagnosticsPush → OpenObserve/Loki). Data-driven from
 // build.json::diagnostics; empty url = cloud push disabled (download still works).
@@ -43,7 +43,7 @@ def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
 def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-ide-hub')
 def au   = buildJson.release.auto_update
 
-// ── About stack-scan (ported from ea_cloud-superapp via ea_cloud-comms) ──
+// ── About stack-scan (ported from aa_cloud-superapp via ea_cloud-comms) ──
 // Compute "what's in this project" at config time so About → Stack ships no
 // static manifest to drift: languages {label:{files,loc}} + framework deps +
 // CI build-time history. Degrades gracefully offline (gh missing → "—").
