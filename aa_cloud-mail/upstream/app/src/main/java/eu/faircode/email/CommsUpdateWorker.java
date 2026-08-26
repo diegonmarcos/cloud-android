@@ -72,9 +72,14 @@ public class CommsUpdateWorker extends Worker {
     private static final String WORK_NAME = "CommsUpdateWorker";
     private static final String WORK_NAME_NOW = "CommsUpdateWorkerNow";
     private static final int NOTIFICATION_ID = 99001;
-    // comms: GitHub releases Atom — all ea_* apps publish releases here on CI
+    // comms: GitHub releases Atom — all cloud-android apps publish releases here
+    // on CI. Derived from BuildConfig, NOT hardcoded: the owner/repo pair already
+    // exists there for the API call below, and a second hardcoded copy is exactly
+    // how the COMMS_GH_REPO default ended up still pointing at the pre-rename
+    // 'unix' repo long after the rename.
     private static final String RELEASES_FEED_URL =
-            "https://github.com/diegonmarcos/cloud-android/releases.atom";
+            "https://github.com/" + BuildConfig.COMMS_GH_OWNER
+                    + "/" + BuildConfig.COMMS_GH_REPO + "/releases.atom";
     private static final String RSS_ACCOUNT_UUID = "cloud-comms-rss-account";
 
     // comms: user-overridable installed stamp (About → Update channel override)
