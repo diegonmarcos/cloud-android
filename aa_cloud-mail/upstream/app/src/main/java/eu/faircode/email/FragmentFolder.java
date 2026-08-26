@@ -80,7 +80,9 @@ public class FragmentFolder extends FragmentBase {
     private CheckBox cbAutoClassifyTarget;
     private TextView tvAutoClassifyPro;
     private ImageButton ibInfo;
+    private TextView tvSyncDays;
     private EditText etSyncDays;
+    private TextView tvKeepDays;
     private EditText etKeepDays;
     private CheckBox cbKeepAll;
     private CheckBox cbAutoDelete;
@@ -154,7 +156,9 @@ public class FragmentFolder extends FragmentBase {
         cbAutoClassifyTarget = view.findViewById(R.id.cbAutoClassifyTarget);
         tvAutoClassifyPro = view.findViewById(R.id.tvAutoClassifyPro);
         ibInfo = view.findViewById(R.id.ibInfo);
+        tvSyncDays = view.findViewById(R.id.tvSyncDays);
         etSyncDays = view.findViewById(R.id.etSyncDays);
+        tvKeepDays = view.findViewById(R.id.tvKeepDays);
         etKeepDays = view.findViewById(R.id.etKeepDays);
         cbKeepAll = view.findViewById(R.id.cbKeepAll);
         cbAutoDelete = view.findViewById(R.id.cbAutoDelete);

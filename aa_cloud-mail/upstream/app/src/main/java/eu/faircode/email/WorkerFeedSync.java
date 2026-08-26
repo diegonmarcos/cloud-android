@@ -255,7 +255,7 @@ public class WorkerFeedSync extends Worker {
             if (db.message().getMessageByUid(folder.id, uid) != null)
                 continue;
 
-            if (importAfter > 0 && item.date != null && item.date < importAfter)
+            if (importAfter > 0 && item.date > 0 && item.date < importAfter)
                 continue;
 
             String html = (item.html == null ? "" : item.html);
