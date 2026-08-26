@@ -3137,13 +3137,34 @@ class Core {
                 continue;
             }
             List<EntityFolder> childs = parentFolders.get(name);
-            if (EntityFolder.USER.equals(folder.type) ||
-                    childs == null || childs.size() == 0) {
+            // A parent is only worth keeping if at least one of its children is
+            // still on the server. `local` holds exactly the folders the server
+            // did NOT return, so a child that is itself in `local` is just as
+            // stale as the parent and must not keep it alive.
+            //
+            // Without this, renaming a folder whose name contained the hierarchy
+            // separator stranded a phantom parent forever: "Fe Dev / Tech" was
+            // parsed as parent "Fe Dev" + child "Tech", and the parent was
+            // auto-created above as type SYSTEM (see "Creating parent"). After
+            // the rename to "Fe Dev & Tech" the server stopped returning both,
+            // yet the old parent matched neither delete condition -- not USER,
+            // and childs.size() > 0 -- so every sync logged "keep" and the user
+            // saw a permanent duplicate that no resync could clear. It also
+            // rendered even with "Subscribed only" on, because AdapterFolder
+            // shows any folder with children regardless of subscription.
+            boolean liveChild = false;
+            if (childs != null)
+                for (EntityFolder child : childs)
+                    if (!local.containsKey(child.name)) {
+                        liveChild = true;
+                        break;
+                    }
+            if (EntityFolder.USER.equals(folder.type) || !liveChild) {
                 EntityLog.log(context, name + " delete");
                 db.folder().deleteFolder(account.id, name);
                 EntityLog.log(context, name + " deleted");
             } else
-                Log.w(name + " keep type=" + folder.type);
+                Log.w(name + " keep type=" + folder.type + " (has live child on server)");
         }
     }
 

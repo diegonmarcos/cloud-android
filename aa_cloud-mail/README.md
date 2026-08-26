@@ -1,30 +1,51 @@
-# Fork: mail (FairEmail)
+# Cloud Mail
 
-- **Upstream**: https://github.com/M66B/FairEmail.git (GPL-3.0, Java)
+**This is our code.** Not a fork with a patch series on top — a single, directly
+editable Java source tree at `upstream/`. Edit it like any other code in this
+repo: change the file, commit, build. There is no patch to refresh, no series to
+rebase, no `git am` step that can conflict.
+
 - **App id**: `com.diegonmarcos.comms.mail`
-- **Tracker**: `aa_mail-fairmail/` (shared with aa_cloud-superapp's cherry-pick;
-  `materialize-fork` checks out the pin, never trusts tracker HEAD)
-- **Server**: Maddy + Stalwart on oci-mail — `imap.diegonmarcos.com:443` +
-  `smtps.diegonmarcos.com:443` (implicit TLS, SNI demux on :443), JMAP on
-  `jmap.diegonmarcos.com:443`. See `../../data/comms-endpoints.json::mail`.
-- **Priority**: 1 — build this fork first (pure Java, no RN/Rust, server is live).
+- **Source tree**: `upstream/` — 3,178 tracked files, no `.git` inside it
+- **Build**: `./build.sh build-fork mail`
 
-## Status
+## Provenance and licence
 
-Scaffold only. Next steps for the dev agent:
+Derived from [FairEmail](https://github.com/M66B/FairEmail) by M66B, **GPL-3.0**,
+originally taken at tag `1.2321`. That attribution is a licence obligation and
+stays regardless of how much we diverge — the GPL headers in each source file are
+the authoritative notice.
 
-1. Set `build.json::forks.mail.pinned_tag` to the latest FairEmail release tag.
-2. `./build.sh materialize-fork mail`.
-3. Author the four patches (branding / provisioning / exporter / switcher — see
-   `../README.md`). FairEmail supports custom host:port with implicit TLS, so the
-   `:443` SNI endpoints work without upstream changes.
-4. Exporter: `MailExportProvider` under `com.diegonmarcos.comms.mail.provider`
-   implementing the `accounts/summary/threads/messages` tables from
-   `../../contract/comms-ipc-v1.json`, reading FairEmail's Room DB.
+`build.json::forks.mail` still records `upstream_repo` + `pinned_tag`. That is
+provenance and a re-vendor escape hatch, not a live build input: nothing clones
+or patches during a normal build.
 
-## Tester
+## How the build finds the source
 
-- CI: clean clone at pin + `git am` of the series applies with zero fuzz.
-- Instrumented: provider `summary.unread_count` == IMAP STATUS unread for the
-  test account (cross-check via the `services_email_imap_*` MCP tooling).
-- e2e: `ICommsService.send()` → message lands in Maddy.
+`materialize-fork` returns early when the tracker directory exists without a
+`.git` inside it — which is the case here — and `build-fork` compiles
+`upstream/` directly. The clone-at-pin + `git am` path further down the engine is
+for the OTHER apps that still carry a patch series (`aa_cloud-chat`), not for
+this one.
+
+To re-vendor a newer upstream release: bump `pinned_tag`, delete `upstream/`, run
+`./build.sh materialize-fork mail` (that path clones fresh), then re-apply our
+divergence by hand. Our changes are ordinary commits in this repo's history, so
+`git log -- aa_cloud-mail/upstream` is the record of what we changed and why.
+
+## Our divergence from upstream
+
+The 63-patch series that used to live in `patches/` was applied into `upstream/`
+on 2026-08-19 and the files deleted on 2026-08-26; the engine had already stopped
+reading them, so they were a stale historical record that looked live. Broadly
+what we added:
+
+- JMAP account type and sync engine (`JmapService`, `JmapSync`, `FragmentJmapAccount`)
+- Native RSS/Atom reader with feed folders and channel provisioning
+- Import-Configs single-JSON provisioner
+- Self-updater against GitHub Releases (`CommsUpdateWorker`) and an About tab
+- Branding, always-pro, nav-drawer folder tree
+
+Server side: Maddy serves IMAP (INBOX + the F* sender folders), Stalwart serves
+JMAP (the full 1*-9* + A*-F* structure). They are deliberately separate stores;
+see `cloud-infra/a_solutions/user-comm_tools-stalwart/build.json::l4_ports`.

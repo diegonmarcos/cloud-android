@@ -2,7 +2,7 @@ name: "Ship → Cloud Mail (materialize + build + publish to GHCR)"
 
 # Independent per-app workflow for Cloud Mail (Fairmail fork).
 # Engine: 1_cicd/src/scripts/cloud-mail-fork-engine.sh (symlinked as aa_cloud-mail/build.sh).
-# Per-app build.json at aa_cloud-mail/build.json; patches at aa_cloud-mail/patches/.
+# Per-app build.json at aa_cloud-mail/build.json. No patch series: aa_cloud-mail/upstream/ IS the source, edited directly.
 
 on:
   workflow_dispatch: {}
