@@ -651,7 +651,7 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 }
 
                 if (folder.account != null && folder.accountProtocol == EntityAccount.TYPE_IMAP) {
-                    boolean subscriptions = prefs.getBoolean("subscriptions", false);
+                    boolean subscriptions = prefs.getBoolean("subscriptions", true);
                     if (subscriptions && !folder.read_only)
                         popupMenu.getMenu().add(Menu.FIRST + 1, R.string.title_subscribe, order++, R.string.title_subscribe)
                                 .setCheckable(true).setChecked(folder.subscribed != null && folder.subscribed);
@@ -1509,8 +1509,16 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
         if (zoom == 0)
             zoom = 1;
 
-        this.subscriptions = prefs.getBoolean("subscriptions", false);
-        this.subscribed_only = prefs.getBoolean("subscribed_only", false) && subscriptions;
+        // ponytail: fork default true (upstream: false). Our Stalwart store
+        // serves JMAP and IMAP from ONE mailbox set, so the full 1*-9* + A*-E*
+        // sorting structure necessarily exists over IMAP too. Server-side
+        // isSubscribed is the only lever that hides it, and upstream's false
+        // defaults made that lever inert -- the folder list showed everything
+        // no matter what the server said. Both keys flipped at all 8 call
+        // sites; see mail-rules-general.json::folder_options for the server
+        // half (only F* is subscribed).
+        this.subscriptions = prefs.getBoolean("subscriptions", true);
+        this.subscribed_only = prefs.getBoolean("subscribed_only", true) && subscriptions;
         this.sort_unread_atop = prefs.getBoolean("sort_unread_atop", false);
 
         this.dp3 = Helper.dp2pixels(context, 3);

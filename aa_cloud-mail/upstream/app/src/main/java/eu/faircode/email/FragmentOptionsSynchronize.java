@@ -706,7 +706,7 @@ public class FragmentOptionsSynchronize extends FragmentBase implements SharedPr
             swSyncSharedFolders.setChecked(prefs.getBoolean("sync_shared_folders", false));
             swSyncSharedFolders.setEnabled(swSyncFolders.isChecked());
             swSyncAdded.setChecked(prefs.getBoolean("sync_added_folders", false));
-            swSubscriptions.setChecked(prefs.getBoolean("subscriptions", false));
+            swSubscriptions.setChecked(prefs.getBoolean("subscriptions", true));
             swTuneKeepAlive.setChecked(prefs.getBoolean("tune_keep_alive", true));
             swCheckAuthentication.setChecked(prefs.getBoolean("check_authentication", true));
             swCheckTls.setChecked(prefs.getBoolean("check_tls", false));

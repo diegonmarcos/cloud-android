@@ -1681,7 +1681,7 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
 
                 // Debug
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-                boolean subscriptions = prefs.getBoolean("subscriptions", false);
+                boolean subscriptions = prefs.getBoolean("subscriptions", true);
                 boolean keep_alive_poll = prefs.getBoolean("keep_alive_poll", false);
                 boolean empty_pool = prefs.getBoolean("empty_pool", true);
                 boolean debug = (prefs.getBoolean("debug", false) || BuildConfig.DEBUG);

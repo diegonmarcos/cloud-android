@@ -697,8 +697,8 @@ public class FragmentFolders extends FragmentBase {
     @Override
     public void onPrepareOptionsMenu(Menu menu) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
-        boolean subscriptions = prefs.getBoolean("subscriptions", false);
-        boolean subscribed_only = prefs.getBoolean("subscribed_only", false);
+        boolean subscriptions = prefs.getBoolean("subscriptions", true);
+        boolean subscribed_only = prefs.getBoolean("subscribed_only", true);
         boolean sort_unread_atop = prefs.getBoolean("sort_unread_atop", false);
 
         menu.findItem(R.id.menu_unified).setVisible(account < 0 || primary);
@@ -847,7 +847,7 @@ public class FragmentFolders extends FragmentBase {
 
     private void onMenuSubscribedOnly() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
-        boolean subscribed_only = !prefs.getBoolean("subscribed_only", false);
+        boolean subscribed_only = !prefs.getBoolean("subscribed_only", true);
         prefs.edit().putBoolean("subscribed_only", subscribed_only).apply();
         invalidateOptionsMenu();
         adapter.setSubscribedOnly(subscribed_only);
