@@ -26,6 +26,23 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 set -euo pipefail
 
+# Repo identity for GHCR package linkage. GHCR binds a package to whichever repo
+# first pushed it, and a workflow's GITHUB_TOKEN only grants packages bound to
+# its OWN repo — after the 2026-08 android split every push was denied
+# write_package because the packages were still linked to cloud-unix. This is
+# the annotation GHCR reads to (re)link a package, so the link follows whichever
+# repo actually ships it. Never hardcoded: CI supplies GITHUB_REPOSITORY, local
+# runs fall back to the origin remote.
+_ghcr_source() {
+  if [ -n "${GITHUB_REPOSITORY:-}" ]; then
+    printf '%s/%s\n' "${GITHUB_SERVER_URL:-https://github.com}" "$GITHUB_REPOSITORY"
+  else
+    git remote get-url origin 2>/dev/null \
+      | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||'
+  fi
+}
+
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DIST_DIR="$SCRIPT_DIR/dist"
 CMD="${1:-help}"
@@ -281,7 +298,8 @@ step_oras_push() {
       [ -z "$tmpl" ] && continue
       tag="$(_resolve_template "$tmpl")${suffix}"; ref="$registry/$namespace/$image:$tag"
       log "oras push $ref ← $aname"
-      ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" )
+      ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" \
+    --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
     done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
     pushed=$((pushed+1))
   done < <(prefer_host jq -r '.release.abis | to_entries[] | select(.key|startswith("_")|not) | .key' "$SCRIPT_DIR/build.json")

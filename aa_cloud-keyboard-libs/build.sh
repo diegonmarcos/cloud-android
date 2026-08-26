@@ -3,6 +3,23 @@
 # Mirrors the keyboard engine pattern. All config read from build.json.
 set -euo pipefail
 
+# Repo identity for GHCR package linkage. GHCR binds a package to whichever repo
+# first pushed it, and a workflow's GITHUB_TOKEN only grants packages bound to
+# its OWN repo — after the 2026-08 android split every push was denied
+# write_package because the packages were still linked to cloud-unix. This is
+# the annotation GHCR reads to (re)link a package, so the link follows whichever
+# repo actually ships it. Never hardcoded: CI supplies GITHUB_REPOSITORY, local
+# runs fall back to the origin remote.
+_ghcr_source() {
+  if [ -n "${GITHUB_REPOSITORY:-}" ]; then
+    printf '%s/%s\n' "${GITHUB_SERVER_URL:-https://github.com}" "$GITHUB_REPOSITORY"
+  else
+    git remote get-url origin 2>/dev/null \
+      | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||'
+  fi
+}
+
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DIST_DIR="$SCRIPT_DIR/dist"
 CMD="${1:-help}"
@@ -123,8 +140,10 @@ case "$CMD" in
     # ORAS 1.x dropped --media-type; per-file media type is set via `file:type`.
     reg="$(python3 -c "import json;d=json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr'];print(f\"{d['registry']}/{d['namespace']}/{d['image']}\")")"
     mt="$(python3 -c "import json;print(json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr']['media_type'])")"
-    ( cd "$DIST_DIR" && oras push "${reg}:latest"          "Cloud-Keyboard-Libs.apk:${mt}" )
-    ( cd "$DIST_DIR" && oras push "${reg}:sha-${SHORT}"    "Cloud-Keyboard-Libs.apk:${mt}" )
+    ( cd "$DIST_DIR" && oras push "${reg}:latest"          "Cloud-Keyboard-Libs.apk:${mt}" \
+    --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
+    ( cd "$DIST_DIR" && oras push "${reg}:sha-${SHORT}"    "Cloud-Keyboard-Libs.apk:${mt}" \
+    --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
     log "Pushed :latest + :sha-${SHORT}"
     ;;
   gh-release)
