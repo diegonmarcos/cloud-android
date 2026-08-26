@@ -25,27 +25,25 @@ bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 has()   { grep -qF "$2" "$ROOT/$1" 2>/dev/null && ok "$3" || bad "$3 ($1)"; }
 hasnt() { grep -qF "$2" "$ROOT/$1" 2>/dev/null && bad "$3 ($1)" || ok "$3"; }
 
-APPS="aa_cloud-superapp aa_cloud-wallet aa_cloud-vault aa_cloud-browser"
+# The four vendored Fleet.kt copies were replaced by ONE shared module in
+# aa_cloud-libs-shared that every app compiles against. The old "4 copies are
+# byte-identical" invariant is now structural rather than checked, so T3
+# asserts the copies have not crept back instead of comparing checksums.
 REL="libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
+FLEET="aa_cloud-libs-shared/$REL"
 
 echo "== T1: ABI-tag no longer composes the bogus '<tag>-<deviceAbi>' =="
-for a in $APPS; do
-  f="$a/$REL"
-  hasnt "$f" '${app.tag}-$abi' "$a: dropped the always-404 <tag>-<abi> composition"
-  has   "$f" '${app.tag}-x86_64' "$a: x86_64-gated suffix"
-  has   "$f" 'Build.SUPPORTED_ABIS.firstOrNull() == "x86_64"' "$a: suffix only attempted on x86_64"
-done
+hasnt "$FLEET" '${app.tag}-$abi' "dropped the always-404 <tag>-<abi> composition"
+has   "$FLEET" '${app.tag}-x86_64' "x86_64-gated suffix"
+has   "$FLEET" 'Build.SUPPORTED_ABIS.firstOrNull() == "x86_64"' "suffix only attempted on x86_64"
 
 echo "== T2: self entry short-circuits on manifest revision (no phantom update) =="
-for a in $APPS; do
-  f="$a/$REL"
-  has "$f" 'app.pkg == ctx.packageName' "$a: identifies the self entry"
-  has "$f" 'layer.revision == BuildConfig.GIT_SHORT_SHA' "$a: compares GHCR revision to built-in git sha"
-done
+has "$FLEET" 'app.pkg == ctx.packageName' "identifies the self entry"
+has "$FLEET" 'layer.revision == BuildConfig.GIT_SHORT_SHA' "compares GHCR revision to built-in git sha"
 
-echo "== T3: all 4 copies are byte-identical (vendored invariant) =="
-n=$(md5sum $(for a in $APPS; do echo "$ROOT/$a/$REL"; done) 2>/dev/null | awk '{print $1}' | sort -u | wc -l)
-[ "$n" = "1" ] && ok "Fleet.kt identical across all 4 apps" || bad "Fleet.kt diverged ($n distinct versions)"
+echo "== T3: exactly one Fleet.kt — no vendored copies crept back =="
+n=$(ls -1 "$ROOT"/*/"$REL" 2>/dev/null | wc -l)
+[ "$n" = "1" ] && ok "single shared Fleet.kt" || bad "expected 1 Fleet.kt, found $n"
 
 echo
 echo "== RESULT: $PASS passed, $FAIL failed =="

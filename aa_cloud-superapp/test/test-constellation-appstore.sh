@@ -43,13 +43,13 @@ has "$APP/app/build.gradle" "constellation-fleet.json" "build.gradle reads the f
 has "$APP/app/build.gradle" 'buildConfigField "String", "CONSTELLATION_FLEET_B64"' "build.gradle bakes CONSTELLATION_FLEET_B64"
 
 echo "== T3: engine reuses libs/updater primitives (no reinvention) =="
-ENG="$APP/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
+ENG="$(cd "$APP/.." && pwd)/aa_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
 has "$ENG" "GhcrClient(app.registry, app.namespace, app.image)" "Fleet checks per-image via existing GhcrClient"
-has "$ENG" "UpdateInstaller(ctx).install(target, app.pkg)" "Fleet installs foreign pkg via existing UpdateInstaller"
+has "$ENG" "UpdateInstaller(ctx).install(apk, app.pkg)" "Fleet installs foreign pkg via existing UpdateInstaller"
 has "$ENG" "packageInstaller.uninstall(pkg" "Fleet uninstall via PackageInstaller"
 
 echo "== T4: UI page + navigation + worker wired =="
-has "$APP/app/src/main/java/com/diegonmarcos/superapp/configs/ConstellationFragment.kt" "CONSTELLATION_FLEET_B64" "ConstellationFragment reads the fleet"
+has "$APP/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore/ConstellationFragment.kt" "CONSTELLATION_FLEET_B64" "ConstellationFragment reads the fleet"
 has "$APP/app/src/main/java/com/diegonmarcos/superapp/MainActivity.kt" 'actionType == "constellation"' "MainActivity routes the constellation action"
 has "$APP/app/src/main/java/com/diegonmarcos/superapp/App.kt" "ConstellationWorker.start(this)" "App.onCreate starts the fleet worker"
 jq -e '.ui.sections[] | select(.id=="config") | .pages[] | select(.id=="constellation")' "$APP/build.json" >/dev/null 2>&1 \

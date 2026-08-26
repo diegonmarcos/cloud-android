@@ -111,7 +111,7 @@ PY
 
 # 7. The constellation permission is declared once, in the shared core, so it
 #    merges into every app. That is what makes Cloud Perms on-by-default.
-CORE_MANIFEST=aa_cloud-superapp/libs/core/src/main/AndroidManifest.xml
+CORE_MANIFEST=aa_cloud-libs-shared/libs/core/src/main/AndroidManifest.xml
 PERM=com.diegonmarcos.cloud.permission.CONSTELLATION_DATA
 if command grep -q "$PERM" "$CORE_MANIFEST" 2>/dev/null; then
     command grep -q 'android:protectionLevel="signature"' "$CORE_MANIFEST" \

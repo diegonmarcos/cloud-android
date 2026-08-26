@@ -23,7 +23,9 @@ ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 
 NAV="$APP/app/src/main/java/com/diegonmarcos/superapp/launcher/LauncherNavController.kt"
-CAN="$APP/app/src/main/java/com/diegonmarcos/superapp/launcher/CanopusStar.kt"
+# CanopusStar moved to libs/launcher-onehand and no longer owns page routing;
+# MainActivity now builds the ArcMenu items and emits the page: grammar.
+CAN="$APP/app/src/main/java/com/diegonmarcos/superapp/MainActivity.kt"
 
 echo "== T1: the arc menu routes taps through the page: grammar (→ openSectionPage) =="
 grep -qF 'page:$section/${it.id}' "$CAN" 2>/dev/null \

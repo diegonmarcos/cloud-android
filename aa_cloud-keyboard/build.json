@@ -22,22 +22,22 @@
     "libs:keyboard": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../aa_cloud-superapp/libs/keyboard"
+      "dir": "../aa_cloud-libs-shared/libs/keyboard"
     },
     "libs:media": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../aa_cloud-superapp/libs/media"
+      "dir": "../aa_cloud-libs-shared/libs/media"
     },
     "libs:translate": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../aa_cloud-superapp/libs/translate"
+      "dir": "../aa_cloud-libs-shared/libs/translate"
     },
     "libs:voice": {
       "type": "library",
       "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
-      "dir": "../aa_cloud-superapp/libs/voice"
+      "dir": "../aa_cloud-libs-shared/libs/voice"
     },
     "_doc": "Keyboard libs are shared from ../aa_cloud-superapp/libs/ via relative project references in settings.gradle."
   },

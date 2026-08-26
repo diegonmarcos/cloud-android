@@ -2,8 +2,11 @@
 # Tester for Constellation AppStore v2 fixes (this session's feedback batch).
 set -u
 APP="$(cd "$(dirname "$0")/.." && pwd)"
-UPD="$APP/libs/updater/src/main/java/com/diegonmarcos/superapp/updater"
-CFG="$APP/app/src/main/java/com/diegonmarcos/superapp/configs"
+ROOT="$(cd "$APP/.." && pwd)"
+# updater is a shared module in aa_cloud-libs-shared, not vendored per-app.
+UPD="$ROOT/aa_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater"
+# the constellation UI moved out of app/configs into the appstore lib module.
+CFG="$APP/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore"
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
@@ -23,7 +26,7 @@ has "$CFG/ConstellationFragment.kt" "app.releaseUrl" "UI shows the release URL l
 
 echo "== T3: per-app CONCURRENT status (fixes Dialer no-status / Chat loop) =="
 has "$CFG/ConstellationFragment.kt" "thread(name = \"fleet-check-" "each app checked on its own thread"
-grep -q 'for (app in apps)' "$CFG/ConstellationFragment.kt" && grep -q 'thread(name = "fleet-check' "$CFG/ConstellationFragment.kt" \
+grep -q 'for (app in list)' "$CFG/ConstellationFragment.kt" && grep -q 'thread(name = "fleet-check' "$CFG/ConstellationFragment.kt" \
   && ok "checkAll spawns a thread per app (non-blocking)" || bad "checkAll not concurrent"
 has "$CFG/ConstellationWorker.kt" "Result.success()" "fleet worker returns success (no retry loop)"
 
@@ -32,11 +35,14 @@ has "$UPD/Fleet.kt" "fun installAll(" "Fleet.installAll (Update All)"
 has "$CFG/ConstellationFragment.kt" "Update all" "UI has Update-all button"
 has "$UPD/UpdateProgress.kt" "object Cancelled" "UpdateProgress has Cancelled state"
 has "$UPD/Updater.kt" "fun cancelNow(" "Updater.cancelNow exists"
-has "$APP/app/src/main/java/com/diegonmarcos/superapp/updater/UpdateOverlayFragment.kt" "Updater.cancelNow" "overlay Cancel button wired"
+has "$UPD/UpdateOverlayFragment.kt" "Updater.cancelNow" "overlay Cancel button wired"
 grep -q '"action:update_all"' "$APP/build.json" && ok "Config Update tile → Update All" || bad "Config Update tile not repointed"
 
 echo "== T5: update notification deep-links to the Constellation page (not Home) =="
-has "$CFG/ConstellationWorker.kt" '"shortcut_action", "action:constellation"' "notification uses shortcut_action deep-link"
+# A library cannot name the host's Activity, so the worker now replays
+# AppStoreHost.launchExtras; the host supplies the deep-link in App.kt.
+has "$APP/app/src/main/java/com/diegonmarcos/superapp/App.kt" '"shortcut_action" to "action:constellation"' "host supplies shortcut_action deep-link"
+has "$CFG/ConstellationWorker.kt" 'AppStoreHost.launchExtras.forEach' "notification replays the host launch extras"
 grep -q '"open_action"' "$CFG/ConstellationWorker.kt" && bad "old open_action extra still present" || ok "old dead open_action extra removed"
 
 echo
