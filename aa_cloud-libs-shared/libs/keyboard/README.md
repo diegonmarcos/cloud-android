@@ -25,7 +25,7 @@ git -C . status -s -- libs/keyboard/   # review the vendored diff, then commit
 
 The sibling clone (`~/git/cloud-android/aa_keyboard-heliboard/`) is gitignored — the
 `ea_*-*` workspace-clone convention, same as `libs:net`'s
-`ea_net-wireguard/`. Pin a specific tag in the clone for reproducibility.
+`aa_net-wireguard/`. Pin a specific tag in the clone for reproducibility.
 
 ## Manifest reconciliation (in `app/`, not here)
 

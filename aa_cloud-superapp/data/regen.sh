@@ -171,6 +171,16 @@ regen_constellation() {
         fi
     done
 
+    # Cross-repo fleet members. The scan above walks THIS monorepo's siblings,
+    # so an app that ships from another repo cannot be discovered no matter how
+    # correctly its build.json is declared. Kept as data in
+    # aa_cloud-superapp/build.json::constellation.external (FIRE RULE #6) and
+    # merged here, with its own release/repo/ghcr URLs pointing at its own repo.
+    local selfbj="$UNIX/aa_cloud-superapp/build.json"
+    if [ -f "$selfbj" ]; then
+        apps="$(jq --argjson acc "$apps" '$acc + (.constellation.external // [])' "$selfbj")"
+    fi
+
     jq -n --argjson apps "$apps" '{ version: 1, apps: $apps }' \
         > "$HERE/constellation-fleet.json"
     echo "constellation apps: $(jq '.apps | length' "$HERE/constellation-fleet.json")"

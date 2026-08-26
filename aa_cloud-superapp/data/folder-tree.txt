@@ -1,6 +1,6 @@
-unix/
-├── ea_______________________________/
-├── ea_cal-davx5/
+android/
+├── aa_______________________________/
+├── aa_cal-davx5/
 │   ├── app-ose/
 │   │   └── src/
 │   ├── core/
@@ -30,7 +30,7 @@ unix/
 │       ├── ops/
 │       ├── updater/
 │       └── vault/
-├── ea_feed-feeder/
+├── aa_feed-feeder/
 │   ├── app/
 │   │   ├── libs/
 │   │   ├── schemas/
@@ -42,7 +42,7 @@ unix/
 │   │   └── wrapper/
 │   ├── graphics/
 │   └── scripts/
-├── ea_mail-fairmail/
+├── aa_mail-fairmail/
 │   ├── app/
 │   │   ├── lib/
 │   │   ├── schemas/
@@ -68,7 +68,7 @@ unix/
 │   ├── tools/
 │   └── tutorials/
 │       └── images/
-├── ea_net-wireguard/
+├── aa_net-wireguard/
 │   ├── gradle/
 │   │   └── wrapper/
 │   ├── tunnel/
@@ -77,7 +77,7 @@ unix/
 │   └── ui/
 │       ├── sampledata/
 │       └── src/
-└── ea_vault-keepassdx/
+└── aa_vault-keepassdx/
     ├── app/
     │   ├── schemas/
     │   └── src/

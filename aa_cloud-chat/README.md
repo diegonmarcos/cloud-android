@@ -2,7 +2,7 @@
 
 - **Upstream**: https://github.com/mattermost/mattermost-mobile.git (Apache-2.0, React Native)
 - **App id**: `com.diegonmarcos.comms.chat`
-- **Tracker**: `ea_chat-mattermost/`
+- **Tracker**: `aa_upstreams-sources/chat-mattermost/`
 - **Server**: `https://chat.diegonmarcos.com` on oci-apps. See
   `../../data/comms-endpoints.json::chat`.
 - **Priority**: 2.

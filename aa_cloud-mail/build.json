@@ -27,7 +27,7 @@
           "COMMS_RSS_BASE": "https://rss.diegonmarcos.com/feed"
         }
       },
-      "comment": "FairEmail. Reuses the EXISTING ea_mail-fairmail tracker clone already used by aa_cloud-superapp's cherry-pick \u2014 materialize-fork checks out the pin, never trusts the tracker HEAD. Server: Maddy + Stalwart on oci-mail (imap./smtps. via SNI on :443, jmap.). Do this fork first: pure Java, no RN/Rust, mail server is live."
+      "comment": "FairEmail. Reuses the EXISTING aa_mail-fairmail tracker clone already used by aa_cloud-superapp's cherry-pick \u2014 materialize-fork checks out the pin, never trusts the tracker HEAD. Server: Maddy + Stalwart on oci-mail (imap./smtps. via SNI on :443, jmap.). Do this fork first: pure Java, no RN/Rust, mail server is live."
     }
   },
   "signing": {

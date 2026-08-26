@@ -50,6 +50,27 @@
     "compile_sdk": 36,
     "jdk": "17"
   },
+  "constellation": {
+    "_doc": "Fleet members that regen.sh cannot discover by scanning this monorepo's siblings, because they ship from a DIFFERENT repo. The scan predicate in data/regen.sh is deliberately prefix-agnostic so a repo self-registers via its own build.json, but it only reaches sibling directories of cloud-android. cloud-unix-termux-boot lives in cloud-unix and is released + GHCR-pushed from there by ship-cloud-unix-termux-boot.yml, so its URLs point at cloud-unix, not here. Declared as DATA rather than hardcoded in the script (FIRE RULE #6). Before the 2026-08-25 android split the scan picked this up automatically; the split made it invisible and it silently left the store.",
+    "external": [
+      {
+        "id": "cloud-unix-termux-boot",
+        "label": "cloud-unix-termux-boot",
+        "package": "com.termux.nix.boot",
+        "alt_id": null,
+        "registry": "ghcr.io",
+        "namespace": "diegonmarcos",
+        "image": "cloud-unix-termux-boot",
+        "tag": "latest",
+        "asset": "Cloud-Unix-Termux-Boot.apk",
+        "release_url": "https://github.com/diegonmarcos/cloud-unix/releases/latest/download/Cloud-Unix-Termux-Boot.apk",
+        "repo_url": "https://github.com/diegonmarcos/cloud-unix/tree/main/cloud-unix-termux-boot",
+        "ghcr_page": "https://github.com/diegonmarcos/cloud-unix/pkgs/container/cloud-unix-termux-boot",
+        "blocked": false,
+        "kind": "lib"
+      }
+    ]
+  },
   "upstreams": {
     "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 0_git/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ \u2014 NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
     "mail": {
@@ -194,7 +215,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Mail \u2014 FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ea_mail-fairmail/."
+      "comment": "Mail \u2014 FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../aa_mail-fairmail/."
     },
     "libs:feed": {
       "type": "library",
