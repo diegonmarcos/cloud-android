@@ -93,3 +93,21 @@ Whenever the canonical key changes, **every** installed app must be uninstalled 
 reinstalled once (Android can't cross-key update). After that, all apps share the
 one key and update cleanly. This is the *only* situation that requires a device
 reinstall — keep the key stable to avoid it.
+
+## GHCR package linkage (2026-08-26)
+
+Every fleet package is still bound to `diegonmarcos/cloud-unix`, the repo that
+first pushed it. A workflow's `GITHUB_TOKEN` only grants packages bound to its
+own repo, so pushes from cloud-android fail with
+`denied: permission_denied: write_package` unless a packages-scoped token is
+used. The `oras login` step therefore reads
+`${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}`.
+
+Pushes now set `org.opencontainers.image.source`, which is what GHCR reads to
+link a package — but **only at package creation**. Verified: the manifest
+carries the cloud-android source annotation and the package is still linked to
+cloud-unix. So the annotation is correct for new packages and cannot fix the
+existing ones; re-linking those has no REST API for a user account and is
+per-package in the web UI. `GHCR_TOKEN` stays required until then.
+
+Check with `gh api user/packages/container/<name> --jq .repository.full_name`.
