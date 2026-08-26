@@ -173,7 +173,6 @@
         "libs:core",
         "libs:updater",
         "libs:mail",
-        "libs:cal",
         "libs:feed",
         "libs:net",
         "libs:ops",
@@ -192,14 +191,17 @@
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
     "libs:core": {
+      "dir": "../aa_cloud-libs-shared/libs/core",
       "type": "library",
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
     },
     "libs:devtools": {
+      "dir": "../aa_cloud-libs-shared/libs/devtools",
       "type": "library"
     },
     "libs:updater": {
+      "dir": "../aa_cloud-libs-shared/libs/updater",
       "type": "library",
       "depends_on": [
         "libs:core",
