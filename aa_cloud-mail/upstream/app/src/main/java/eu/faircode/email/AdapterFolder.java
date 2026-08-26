@@ -1393,7 +1393,11 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                             new Intent(ActivityView.ACTION_EDIT_FOLDER)
                                     .putExtra("id", folder.id)
                                     .putExtra("account", folder.account)
-                                    .putExtra("imap", folder.accountProtocol == EntityAccount.TYPE_IMAP));
+                                    .putExtra("imap", folder.accountProtocol == EntityAccount.TYPE_IMAP)
+                                    // comms: a feed LEAF (carries feed_url). Tells
+                                    // FragmentFolder to show the Feed URL row and the
+                                    // sync/keep window, which the imap-only gate hid.
+                                    .putExtra("feed", folder.feed_url != null));
                 }
 
                 @RequiresApi(api = Build.VERSION_CODES.O)

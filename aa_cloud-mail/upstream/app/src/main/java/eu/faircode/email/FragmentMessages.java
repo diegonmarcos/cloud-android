@@ -7409,6 +7409,10 @@ public class FragmentMessages extends FragmentBase
                     return null;
 
                 args.putBoolean("imap", account.protocol == EntityAccount.TYPE_IMAP);
+                // comms: same feed flag AdapterFolder passes -- without it this
+                // entry point would still render a feed folder as "not IMAP" and
+                // hide its Feed URL / sync / keep settings.
+                args.putBoolean("feed", folder.feed_url != null);
 
                 return folder;
             }

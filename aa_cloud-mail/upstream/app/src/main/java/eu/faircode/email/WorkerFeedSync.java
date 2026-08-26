@@ -54,7 +54,17 @@ import javax.mail.internet.InternetAddress;
 
 // comms: periodic worker that fetches RSS/Atom feeds into their feed folders, modeled on WorkerCleanup
 public class WorkerFeedSync extends Worker {
-    private static final int FEED_INTERVAL = 6; // hours
+    private static final int FEED_INTERVAL = 6; // hours (default; see getIntervalHours)
+
+    /**
+     * Base poll interval in hours. Was a hardcoded 6, which put a hard floor
+     * under every feed; mail's equivalent has always been user-configurable, so
+     * this is the parity fix. Clamped to >=1 because WorkManager rejects
+     * periodic work under 15 minutes and an accidental 0 would busy-loop.
+     */
+    static int getIntervalHours(SharedPreferences prefs) {
+        return Math.max(1, prefs.getInt("comms_feed_interval_hours", FEED_INTERVAL));
+    }
     private static final int FETCH_TIMEOUT = 20 * 1000; // milliseconds
 
     public WorkerFeedSync(@NonNull Context context, @NonNull WorkerParameters workerParams) {
@@ -101,15 +111,25 @@ public class WorkerFeedSync extends Worker {
         // feeds this run. ponytail: one HashSet, no parallelism.
         Set<String> deadHosts = new HashSet<>();
         long now = System.currentTimeMillis();
+        int baseHours = getIntervalHours(prefs);
         for (EntityFolder folder : folders) {
             if (folder.feed_url == null)
                 continue;
-            // comms: per-feed poll interval. The worker ticks every FEED_INTERVAL
-            // (6h); a feed's effective interval = FEED_INTERVAL * poll_factor
-            // (Edit properties → poll factor, default 1). Skip feeds not yet due
-            // so noisy channels can be slowed without a separate schedule.
+            // comms: the per-folder Synchronize toggle. Previously this worker
+            // ignored it entirely and fetched every folder carrying a feed_url,
+            // so switching Synchronize off in Edit properties did nothing at all
+            // -- a setting that was stored and displayed but never read. Mail
+            // folders have always honoured it; feeds now do too.
+            if (Boolean.FALSE.equals(folder.synchronize))
+                continue;
+            // comms: per-feed poll interval. The worker ticks every baseHours
+            // (comms_feed_interval_hours, default 6 -- was a hardcoded constant,
+            // which meant no feed could ever be checked more often than 6h); a
+            // feed's effective interval = baseHours * poll_factor (Edit
+            // properties -> poll factor, default 1). Same multiplier-over-a-
+            // configurable-base shape mail folders use.
             int factor = (folder.poll_factor == null) ? 1 : Math.max(1, folder.poll_factor);
-            long effectiveMs = (long) FEED_INTERVAL * 3600_000L * factor;
+            long effectiveMs = (long) baseHours * 3600_000L * factor;
             if (factor > 1 && folder.last_sync != null && now - folder.last_sync < effectiveMs)
                 continue;
             String host = Uri.parse(folder.feed_url).getHost();
@@ -220,11 +240,22 @@ public class WorkerFeedSync extends Worker {
         if (items == null)
             return;
 
+        // comms: sync_days — how far back to import, same meaning as a mail
+        // folder's sync window. Previously unread by this worker, so the value
+        // shown in Edit properties did nothing and a feed advertising a long
+        // history imported all of it on first sync.
+        long importAfter = 0;
+        if (folder.sync_days != null && folder.sync_days != Integer.MAX_VALUE && folder.sync_days > 0)
+            importAfter = System.currentTimeMillis() - folder.sync_days * 24L * 3600_000L;
+
         for (FeedParser.FeedItem item : items) {
             long uid = (long) item.guid.hashCode();
 
             // Dedupe: skip items already present in this folder
             if (db.message().getMessageByUid(folder.id, uid) != null)
+                continue;
+
+            if (importAfter > 0 && item.date != null && item.date < importAfter)
                 continue;
 
             String html = (item.html == null ? "" : item.html);
@@ -266,6 +297,52 @@ public class WorkerFeedSync extends Worker {
 
             Log.i(folder.name + " feed added uid=" + uid + " subject=" + item.title);
         }
+
+        pruneFeed(db, folder);
+    }
+
+    /**
+     * comms: enforce keep_days / auto_delete on a feed folder.
+     *
+     * keep_days was set at creation, shown in the folder list and editable in
+     * Edit properties, but NOTHING enforced it: retention lives in Core's
+     * onSynchronizeMessages, which is the IMAP path a feed folder never enters.
+     * Feed folders therefore grew without bound -- the one gap here that gets
+     * worse over time rather than merely being inert.
+     *
+     * Reuses the same DAO mail uses, so the exemptions are identical: flagged,
+     * still-unread and snoozed items are never reaped. auto_delete chooses hard
+     * delete vs. the ui_hide soft delete, matching the mail semantics.
+     */
+    private static void pruneFeed(DB db, EntityFolder folder) {
+        Integer keep = folder.keep_days;
+        if (keep == null || keep == Integer.MAX_VALUE || keep <= 0)
+            return;
+
+        long now = System.currentTimeMillis();
+        long keepTime = now - keep * 24L * 3600_000L;
+        // Unread items get the same grace mail gives them: kept until twice the
+        // window has passed, so a feed you have not opened does not silently
+        // empty itself.
+        long keepUnreadTime = now - keep * 2L * 24L * 3600_000L;
+
+        try {
+            if (Boolean.TRUE.equals(folder.auto_delete)) {
+                int n = db.message().deleteMessagesBefore(folder.id, now, keepTime, keepUnreadTime);
+                if (n > 0)
+                    Log.i(folder.name + " feed pruned=" + n + " keep_days=" + keep);
+            } else {
+                List<Long> ids = db.message().getMessagesBefore(folder.id, now, keepTime, keepUnreadTime);
+                if (ids != null && !ids.isEmpty()) {
+                    for (Long id : ids)
+                        db.message().setMessageUiHide(id, true);
+                    Log.i(folder.name + " feed hidden=" + ids.size() + " keep_days=" + keep);
+                }
+            }
+        } catch (Throwable ex) {
+            // Retention must never break the sync that just succeeded.
+            Log.w(folder.name + " feed prune failed", ex);
+        }
     }
 
     private static Address[] buildFrom(String name) {
@@ -283,11 +360,12 @@ public class WorkerFeedSync extends Worker {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
             boolean enabled = prefs.getBoolean("enabled", true);
             if (enabled) {
-                Log.i("Queuing " + getName() + " every " + FEED_INTERVAL + " hours");
+                int every = getIntervalHours(PreferenceManager.getDefaultSharedPreferences(context));
+                Log.i("Queuing " + getName() + " every " + every + " hours");
 
                 PeriodicWorkRequest workRequest =
-                        new PeriodicWorkRequest.Builder(WorkerFeedSync.class, FEED_INTERVAL, TimeUnit.HOURS)
-                                .setInitialDelay(FEED_INTERVAL, TimeUnit.HOURS)
+                        new PeriodicWorkRequest.Builder(WorkerFeedSync.class, every, TimeUnit.HOURS)
+                                .setInitialDelay(every, TimeUnit.HOURS)
                                 .build();
                 WorkManager.getInstance(context)
                         .enqueueUniquePeriodicWork(getName(), ExistingPeriodicWorkPolicy.KEEP, workRequest);

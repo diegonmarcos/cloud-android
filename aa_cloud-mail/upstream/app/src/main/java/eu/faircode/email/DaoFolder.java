@@ -387,6 +387,11 @@ public interface DaoFolder {
             " AND NOT (sync_days IS :sync_days AND keep_days IS :keep_days)")
     int setFolderProperties(long id, int sync_days, int keep_days);
 
+    // comms: repoint a feed folder at a different URL without deleting and
+    // recreating it (which lost every item and every per-folder setting).
+    @Query("UPDATE folder SET feed_url = :feed_url WHERE id = :id AND NOT (feed_url IS :feed_url)")
+    int setFolderFeedUrl(long id, String feed_url);
+
     @Query("UPDATE folder SET flags = :flags WHERE id = :id AND NOT (flags IS :flags)")
     int setFolderFlags(long id, String flags);
 

@@ -62,6 +62,7 @@ public class FragmentFolder extends FragmentBase {
     private TextView tvParent;
     private EditText etName;
     private EditText etDisplay;
+    private EditText etFeedUrl;
     private ViewButtonColor btnColor;
     private CheckBox cbHide;
     private CheckBox cbHideSeen;
@@ -89,12 +90,17 @@ public class FragmentFolder extends FragmentBase {
     private TextView tvInboxRootHint;
     private ContentLoadingProgressBar pbWait;
     private Group grpImap;
+    private Group grpFeed;
     private Group grpParent;
     private Group grpPoll;
     private Group grpAutoDelete;
 
     private long id = -1;
     private boolean imap = true;
+    // comms: an RSS/feed folder. These were treated as "not IMAP" and so lost
+    // the entire grpImap block -- Synchronize, sync days, keep days, keep-all --
+    // meaning the settings WorkerFeedSync now honours had no UI to set them.
+    private boolean feed = false;
     private long account = -1;
     private String parent = null;
     private boolean saving = false;
@@ -112,6 +118,7 @@ public class FragmentFolder extends FragmentBase {
         Bundle args = getArguments();
         id = args.getLong("id", -1);
         imap = args.getBoolean("imap", true);
+        feed = args.getBoolean("feed", false);
         account = args.getLong("account", -1);
         parent = args.getString("parent");
     }
@@ -129,6 +136,7 @@ public class FragmentFolder extends FragmentBase {
         etName = view.findViewById(R.id.etName);
         tvParent = view.findViewById(R.id.tvParent);
         etDisplay = view.findViewById(R.id.etDisplay);
+        etFeedUrl = view.findViewById(R.id.etFeedUrl);
         btnColor = view.findViewById(R.id.btnColor);
         cbHide = view.findViewById(R.id.cbHide);
         cbHideSeen = view.findViewById(R.id.cbHideSeen);
@@ -156,6 +164,7 @@ public class FragmentFolder extends FragmentBase {
         tvInboxRootHint = view.findViewById(R.id.tvInboxRootHint);
         pbWait = view.findViewById(R.id.pbWait);
         grpImap = view.findViewById(R.id.grpImap);
+        grpFeed = view.findViewById(R.id.grpFeed);
         grpParent = view.findViewById(R.id.grpParent);
         grpPoll = view.findViewById(R.id.grpPoll);
         grpAutoDelete = view.findViewById(R.id.grpAutoDelete);
@@ -255,6 +264,17 @@ public class FragmentFolder extends FragmentBase {
         // Initialize
         Helper.setViewsEnabled(view, false);
         grpImap.setVisibility(imap ? View.VISIBLE : View.GONE);
+        grpFeed.setVisibility(feed ? View.VISIBLE : View.GONE);
+        if (feed) {
+            // Show the subset that actually means something for a feed. Poll,
+            // Download and auto-classify stay hidden: they are IMAP mechanics.
+            cbSynchronize.setVisibility(View.VISIBLE);
+            tvSyncDays.setVisibility(View.VISIBLE);
+            etSyncDays.setVisibility(View.VISIBLE);
+            tvKeepDays.setVisibility(View.VISIBLE);
+            etKeepDays.setVisibility(View.VISIBLE);
+            cbKeepAll.setVisibility(View.VISIBLE);
+        }
         tvParent.setText(parent);
         grpParent.setVisibility(parent == null ? View.GONE : View.VISIBLE);
         cbAutoClassifySource.setVisibility(View.GONE);
@@ -327,6 +347,7 @@ public class FragmentFolder extends FragmentBase {
                 if (savedInstanceState == null) {
                     etName.setText(folder == null ? null : folder.name);
                     etDisplay.setText(folder == null ? null : folder.display);
+                    etFeedUrl.setText(folder == null ? null : folder.feed_url);
                     etDisplay.setHint(folder == null ? null : EntityFolder.localizeName(getContext(), folder.name));
                     btnColor.setColor(folder == null ? null : folder.color);
                     cbHide.setChecked(folder == null ? false : folder.hide);
@@ -479,6 +500,8 @@ public class FragmentFolder extends FragmentBase {
         args.putString("parent", parent);
         args.putString("name", etName.getText().toString().trim());
         args.putString("display", etDisplay.getText().toString());
+        args.putString("feed_url", etFeedUrl.getText().toString());
+        args.putBoolean("feed", feed);
         args.putInt("color", btnColor.getColor());
         args.putBoolean("hide", cbHide.isChecked());
         args.putBoolean("hide_seen", cbHideSeen.isChecked());
@@ -525,6 +548,8 @@ public class FragmentFolder extends FragmentBase {
                 String parent = args.getString("parent");
                 String name = args.getString("name");
                 String display = args.getString("display");
+                String feed_url = args.getString("feed_url");
+                boolean feed = args.getBoolean("feed");
                 Integer color = args.getInt("color");
                 boolean hide = args.getBoolean("hide");
                 boolean hide_seen = args.getBoolean("hide_seen");
@@ -555,7 +580,12 @@ public class FragmentFolder extends FragmentBase {
                 int keep_days = (TextUtils.isEmpty(keep) ? EntityFolder.DEFAULT_KEEP : Integer.parseInt(keep));
                 if (keep_days < sync_days)
                     keep_days = sync_days;
-                if (!imap) {
+                // comms: feeds keep their real windows. This used to force both to
+                // MAX_VALUE for every non-IMAP folder, i.e. "keep everything
+                // forever" -- which is why an RSS folder's keep_days was shown in
+                // the folder list yet never expired anything. WorkerFeedSync now
+                // enforces both, so the values have to survive the save.
+                if (!imap && !feed) {
                     sync_days = Integer.MAX_VALUE;
                     keep_days = Integer.MAX_VALUE;
                 }
@@ -579,6 +609,8 @@ public class FragmentFolder extends FragmentBase {
                             return true;
                         if (!Objects.equals(folder.display, display))
                             return true;
+                        if (feed && !Objects.equals(folder.feed_url, feed_url))
+                            return true;
                         if (!Objects.equals(folder.color, color))
                             return true;
                         if (!Objects.equals(folder.unified, unified))
@@ -595,6 +627,19 @@ public class FragmentFolder extends FragmentBase {
                             return true;
                         if (!Objects.equals(folder.synchronize, synchronize))
                             return true;
+                        if (feed) {
+                            // Same fields, different gate: these were inside the
+                            // imap-only block, so for a feed folder they were
+                            // never compared and never saved.
+                            if (!Objects.equals(folder.sync_days, sync_days))
+                                return true;
+                            if (!Objects.equals(folder.keep_days, keep_days))
+                                return true;
+                            if (!Objects.equals(folder.auto_delete, auto_delete))
+                                return true;
+                            if (!Objects.equals(folder.poll_factor, poll_factor))
+                                return true;
+                        }
                         if (imap) {
                             if (!Objects.equals(folder.poll, poll))
                                 return true;
@@ -671,6 +716,10 @@ public class FragmentFolder extends FragmentBase {
                                 !folder.poll.equals(poll));
 
                         Log.i("Updating folder=" + folder.name);
+                        if (feed && !Objects.equals(folder.feed_url, feed_url))
+                            db.folder().setFolderFeedUrl(id,
+                                    TextUtils.isEmpty(feed_url) ? null : feed_url.trim());
+
                         db.folder().setFolderProperties(id,
                                 folder.name.equals(name) ? null : name,
                                 display, color, unified,
