@@ -239,21 +239,26 @@ for bj in sorted(glob.glob('aa_cloud-*/build.json')):
         mods_cfg = (json.load(open(bj)).get('modules') or {})
     except Exception:
         continue  # build.json validity is rule 1's job, not this one.
-    mods = sorted({v['dir'].rstrip('/').split('/')[-1]
+    # Derive the shared roots from the DATA. Hardcoding 'aa_cloud-superapp/libs'
+    # here made this rule pass vacuously the moment the modules moved to
+    # aa_cloud-libs-shared: the set came out empty and nothing was checked.
+    # A rule that names a path which no longer exists passes by default.
+    mods = sorted({os.path.normpath(os.path.join(repo, v['dir']))
                    for v in mods_cfg.values()
-                   if isinstance(v, dict)
-                   and 'aa_cloud-superapp/libs' in str(v.get('dir', ''))})
+                   if isinstance(v, dict) and v.get('dir')})
+    # Only modules OUTSIDE this repo need their own trigger; the repo's own
+    # "<repo>/**" filter already covers anything in-tree.
+    mods = [m for m in mods if not m.startswith(repo + '/')]
     wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('aa_cloud-'):]
     if not mods or not os.path.exists(wf):
         continue
     have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
-    if 'aa_cloud-superapp/libs' in have:
-        continue  # wildcard already covers every module (ship-cloud-libs).
     for m in mods:
-        if 'aa_cloud-superapp/libs/%s' % m not in have:
-            print(f"{os.path.basename(wf)} has no trigger for "
-                  f"aa_cloud-superapp/libs/{m}/** — {repo} compiles it, so a "
-                  f"change there ships no new {repo} APK")
+        # a wildcard on the parent root covers every module under it
+        if m in have or os.path.dirname(m) in have:
+            continue
+        print(f"{os.path.basename(wf)} has no trigger for {m}/** — "
+              f"{repo} compiles it, so a change there ships no new {repo} APK")
 PYAPPROOTS
 )
 if [ -z "$app_root_drift" ]; then
@@ -318,8 +323,14 @@ note ok "every auto_update declares a per-pass install cap"
 # 14. The unattended pass must actually PASS that cap to installAll. The
 #     parameter defaults to unlimited (correct for the user-initiated
 #     "Update all"), so a worker that forgets it silently reverts to uncapped.
-WORKER=aa_cloud-superapp/app/src/main/java/com/diegonmarcos/superapp/configs/ConstellationWorker.kt
-if [ -f "$WORKER" ]; then
+WORKER=$(command find . -name ConstellationWorker.kt -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null | command head -1)
+# A missing file must FAIL, never skip. This rule was silently disarmed for the
+# whole 2026-08 libs-shared move: it named app/configs/ConstellationWorker.kt,
+# the file moved to libs/appstore/, and `[ -f ]` turned the check into a no-op
+# that reported nothing. Located by NAME now, like rule 8.
+if [ -z "$WORKER" ]; then
+    note FAIL "ConstellationWorker.kt not found — cannot verify the background pass is capped"
+else
     command grep -q 'limit = AuConfig.AU_MAX_PER_PASS' "$WORKER" \
         && note ok "background fleet pass is capped" \
         || note FAIL "$WORKER calls installAll without limit= - the background pass is uncapped"
@@ -377,14 +388,22 @@ fi
 #     three taps started three installs at once.
 #     The guarantee therefore lives in UpdateInstaller.install - the one place
 #     every caller passes through - so a new call site cannot forget it.
-UI_KT=aa_cloud-superapp/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/UpdateInstaller.kt
-if [ -f "$UI_KT" ]; then
-    if command grep -q 'InstallGate.serialised' "$UI_KT"; then
-        note ok "every install is serialised at UpdateInstaller.install"
-    else
-        note FAIL "UpdateInstaller.install does not go through InstallGate.serialised — concurrent callers will race and can exhaust install sessions"
-    fi
-fi
+# Scoped by PACKAGE path, not bare filename: cloud-ide has its own
+# UpdateInstaller.kt and the Fossify dialer fork vendors another, so
+# `find -name` + head -1 picks whichever the walk hits first. The constellation
+# installer is the one in com/diegonmarcos/superapp/updater/. Every match is
+# checked, so a vendored copy reappearing is caught rather than masked. A miss
+# FAILS — this rule sat disarmed through the 2026-08 libs-shared move because a
+# `[ -f <stale path> ]` guard turned it into a no-op.
+ui_n=0
+while read -r UI_KT; do
+    [ -z "$UI_KT" ] && continue
+    ui_n=$((ui_n+1))
+    command grep -q 'InstallGate.serialised' "$UI_KT" \
+        && note ok "every install is serialised at UpdateInstaller.install" \
+        || note FAIL "$UI_KT does not go through InstallGate.serialised — concurrent callers will race and can exhaust install sessions"
+done < <(command find . -path "*/com/diegonmarcos/superapp/updater/UpdateInstaller.kt" -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null)
+[ "$ui_n" -gt 0 ] || note FAIL "no constellation UpdateInstaller.kt found — cannot verify installs are serialised"
 
 # 17. A buildConfigField that interpolates ${x} needs a `def x` in the same
 #     build.gradle. Gradle only fails at CONFIGURATION time with "Could not get

@@ -48,9 +48,9 @@ on:
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no
       # new APK here and the installed build silently goes stale.
-      - "aa_cloud-superapp/libs/core/**"
-      - "aa_cloud-superapp/libs/devtools/**"
-      - "aa_cloud-superapp/libs/updater/**"
+      - "aa_cloud-libs-shared/libs/core/**"
+      - "aa_cloud-libs-shared/libs/devtools/**"
+      - "aa_cloud-libs-shared/libs/updater/**"
       - "1_cicd/src/cicd/ship-cloud-nav.yml"
       # NOTE: the generated .github/workflows/ship-cloud-nav.yml is deliberately
       # NOT watched — it's regenerated (with all sibling workflows) by

@@ -34,11 +34,11 @@ on:
       - "aa_cloud-keyboard-libs-v*"
     paths:
       - "aa_cloud-keyboard-libs/**"
-      - "aa_cloud-superapp/libs/media/**"
-      - "aa_cloud-superapp/libs/translate/**"
-      - "aa_cloud-superapp/libs/voice/**"
-      - "aa_cloud-superapp/libs/voice-vosk/**"
-      - "aa_cloud-superapp/libs/translate-mlkit/**"
+      - "aa_cloud-libs-shared/libs/media/**"
+      - "aa_cloud-libs-shared/libs/translate/**"
+      - "aa_cloud-libs-shared/libs/voice/**"
+      - "aa_cloud-libs-shared/libs/voice-vosk/**"
+      - "aa_cloud-libs-shared/libs/translate-mlkit/**"
       - "1_cicd/src/cicd/ship-cloud-keyboard-libs.yml"
 
 permissions:
