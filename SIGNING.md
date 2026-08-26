@@ -56,6 +56,29 @@ Each `ship-cloud-*.yml` checks out the private vault and decrypts the key:
 No keystore is cached or generated in CI. Missing either secret → the build fails
 (by design) rather than signing with a wrong key.
 
+> **`ANDROID_SIGNING_VAULT_TOKEN` on cloud-android currently holds a
+> broad-scope token, not a scoped PAT (2026-08-26).** cloud-vault is private
+> and there is no API for minting a fine-grained PAT, so the value set here is
+> the account's `gh` CLI token, which carries `repo`, `workflow`, `admin:org`,
+> `admin:enterprise` and `delete_repo` among others. Every workflow run in this
+> repo can therefore do far more than read one vault. This was a deliberate,
+> informed choice to unblock CI after the android split, **not** the intended
+> end state.
+>
+> Replace it when convenient — no code change required, the workflows already
+> read the right secret name:
+>
+> 1. Mint at `github.com/settings/personal-access-tokens/new` — owner
+>    `diegonmarcos`, repository access **only** `diegonmarcos/cloud-vault`,
+>    permission **Contents: Read**.
+> 2. `gh secret set ANDROID_SIGNING_VAULT_TOKEN -R diegonmarcos/cloud-android`
+> 3. Re-run any ship workflow to confirm.
+>
+> A read-only **deploy key** on cloud-vault is the other correct option, but it
+> needs `actions/checkout` switched from `token:` to `ssh-key:` in all 18
+> workflow sources, and would leave cloud-android authenticating differently
+> from cloud-unix.
+
 > **GitHub secrets do not move with workflows.** The 2026-08-25 migration of the
 > `ea_*` app trees out of `cloud-unix` carried the `ship-cloud-*.yml` workflows
 > but *not* these two secrets, so every ship run failed with
