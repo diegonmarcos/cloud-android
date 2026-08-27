@@ -1787,16 +1787,19 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             } else
                 bindContactInfo(message, info, addresses);
 
-            // comms: inline conversations bind the expanded body in the
-            // folder list too, not only in the thread view.
-            if (viewType == ViewType.THREAD || inline_threads)
-                if (expanded)
-                    bindExpanded(message, scroll);
-                else {
-                    clearExpanded(message);
-                    if (scroll)
-                        properties.scrollTo(getAdapterPosition(), 0);
-                }
+            // comms: inline conversations bind the expanded body in the folder
+            // list too, not only in the thread view. Collapsing stays thread-only:
+            // clearExpanded() stops eowner/cowner and tears down the body views,
+            // and once a holder has been recycled from an expanded row its vsBody
+            // is non-null forever, so it would run that teardown on plain list
+            // rows that never expanded. The list never needed it.
+            if (expanded)
+                bindExpanded(message, scroll);
+            else if (viewType == ViewType.THREAD) {
+                clearExpanded(message);
+                if (scroll)
+                    properties.scrollTo(getAdapterPosition(), 0);
+            }
 
             if (properties.getValue("raw_save", message.id)) {
                 properties.setValue("raw_save", message.id, false);
@@ -8594,8 +8597,12 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
         this.properties = properties;
 
         this.context = parentFragment.getContext();
+        // ponytail: off by default until inline expansion is verified on a device.
+        // Every gate below reads `viewType == THREAD || inline_threads`, so false
+        // reproduces the pre-inline-conversations behaviour exactly, and
+        // expandedThreads() then stays NO_EXPANDED so the paged SQL is unchanged.
         this.inline_threads = PreferenceManager.getDefaultSharedPreferences(
-                this.context).getBoolean("inline_threads", true);
+                this.context).getBoolean("inline_threads", false);
         this.owner = parentFragment.getViewLifecycleOwner();
         this.inflater = LayoutInflater.from(context);
         this.prefs = PreferenceManager.getDefaultSharedPreferences(context);
