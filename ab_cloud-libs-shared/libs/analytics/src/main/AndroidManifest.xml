@@ -6,4 +6,15 @@
          consumer cannot forget. Same reasoning as libs:updater's permissions. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application>
+        <!-- Runs before Application.onCreate(), so consumers get analytics with
+             no per-app wiring. ${applicationId} keeps the authority unique —
+             a shared authority is an install-time conflict between our apps. -->
+        <provider
+            android:name="com.diegonmarcos.superapp.analytics.AnalyticsInitProvider"
+            android:authorities="${applicationId}.analyticsinit"
+            android:exported="false"
+            android:initOrder="100" />
+    </application>
 </manifest>
