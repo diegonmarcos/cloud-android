@@ -2625,6 +2625,7 @@ public class FragmentMessages extends FragmentBase
                 return;
             if (!inlineThreads.remove(message.thread))
                 inlineThreads.add(message.thread);
+            adapter.setInlineThreads(inlineThreads);
             loadMessages(false);
         }
 
@@ -9432,6 +9433,7 @@ public class FragmentMessages extends FragmentBase
                 if (!inlineThreads.isEmpty()) {
                     List<String> threads = new ArrayList<>(inlineThreads);
                     inlineThreads.remove(threads.get(threads.size() - 1));
+                    adapter.setInlineThreads(inlineThreads);
                     loadMessages(false);
                     return;
                 }

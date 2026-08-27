@@ -172,7 +172,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -220,6 +222,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
     private boolean ascending;
     private boolean filter_duplicates;
     private final boolean inline_threads;
+    private Set<String> inlineThreads = new HashSet<>();
     private boolean filter_sent;
     private boolean filter_trash;
     private IProperties properties;
@@ -1666,13 +1669,23 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
 
             // Message text preview
             int textColor = (contrast ? textColorPrimary : textColorSecondary);
-            if (!Objects.equals(tvPreview.getTag(), textColor)) {
-                tvPreview.setTag(textColor);
+            // comms: a message inside an opened conversation gets one preview
+            // line, so a conversation that was N lines tall while collapsed
+            // shows N of its messages once it is opened. The tag has to carry
+            // the line count too -- views are recycled between grouped and
+            // ungrouped rows, and the colour alone would not spot the change.
+            int lines = (message.thread != null && inlineThreads.contains(message.thread)
+                    ? 1 : preview_lines);
+            String previewTag = textColor + ":" + lines;
+            if (!Objects.equals(tvPreview.getTag(), previewTag)) {
+                tvPreview.setTag(previewTag);
                 tvPreview.setTextColor(textColor);
-                if (preview_lines == 1)
+                if (lines == 1)
                     tvPreview.setSingleLine(true);
-                else
-                    tvPreview.setMaxLines(preview_lines);
+                else {
+                    tvPreview.setSingleLine(false);
+                    tvPreview.setMaxLines(lines);
+                }
             }
             tvPreview.setTypeface(
                     StyleHelper.getTypeface(display_font, context),
@@ -9391,6 +9404,10 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             rv.getLayoutManager().removeAllViews();
         }
         properties.refresh();
+    }
+
+    void setInlineThreads(Set<String> threads) {
+        this.inlineThreads = threads;
     }
 
     void setSort(String sort) {
