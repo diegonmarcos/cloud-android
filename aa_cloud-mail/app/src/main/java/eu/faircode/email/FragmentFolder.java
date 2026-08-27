@@ -201,7 +201,7 @@ public class FragmentFolder extends FragmentBase {
                 cbPoll.setEnabled(isChecked);
                 tvPollRemark.setVisibility(imap && cbPoll.isEnabled() && !cbPoll.isChecked()
                         ? View.VISIBLE : View.GONE);
-                grpPoll.setVisibility(imap && cbPoll.isEnabled() && cbPoll.isChecked()
+                grpPoll.setVisibility(feed || imap && cbPoll.isEnabled() && cbPoll.isChecked()
                         ? View.VISIBLE : View.GONE);
             }
         });
@@ -211,7 +211,7 @@ public class FragmentFolder extends FragmentBase {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 tvPollRemark.setVisibility(imap && cbPoll.isEnabled() && !cbPoll.isChecked()
                         ? View.VISIBLE : View.GONE);
-                grpPoll.setVisibility(imap && cbPoll.isEnabled() && cbPoll.isChecked()
+                grpPoll.setVisibility(feed || imap && cbPoll.isEnabled() && cbPoll.isChecked()
                         ? View.VISIBLE : View.GONE);
             }
         });
@@ -278,6 +278,10 @@ public class FragmentFolder extends FragmentBase {
             tvKeepDays.setVisibility(View.VISIBLE);
             etKeepDays.setVisibility(View.VISIBLE);
             cbKeepAll.setVisibility(View.VISIBLE);
+            // Poll FACTOR is the per-feed interval multiplier WorkerFeedSync
+            // applies over comms_feed_interval_hours, so the row is meaningful
+            // here even though the cbPoll checkbox above it is an IMAP concept.
+            grpPoll.setVisibility(View.VISIBLE);
         }
         tvParent.setText(parent);
         grpParent.setVisibility(parent == null ? View.GONE : View.VISIBLE);
@@ -380,7 +384,11 @@ public class FragmentFolder extends FragmentBase {
                 cbHideSeen.setEnabled(!cbHide.isChecked());
 
                 boolean canAutoClassify = (imap && MessageClassifier.isEnabled(getContext()));
-                boolean canAutoDelete = (imap && (folder == null || !folder.read_only));
+                // comms: feeds get the auto-delete row too. WorkerFeedSync.pruneFeed
+                // honours folder.auto_delete (hard delete vs ui_hide), and the save
+                // path already persists it for feeds -- without this the value was
+                // stored and enforced but had no control.
+                boolean canAutoDelete = ((imap || feed) && (folder == null || !folder.read_only));
                 boolean isArchive = (folder != null && EntityFolder.ARCHIVE.equals(folder.type));
                 boolean pro = (ActivityBilling.isPro(getContext()) ||
                         (folder != null && EntityFolder.JUNK.equals(folder.type)));
@@ -389,7 +397,7 @@ public class FragmentFolder extends FragmentBase {
                 cbPoll.setEnabled(cbSynchronize.isChecked());
                 tvPollRemark.setVisibility(imap && cbPoll.isEnabled() && !cbPoll.isChecked()
                         ? View.VISIBLE : View.GONE);
-                grpPoll.setVisibility(imap && cbPoll.isEnabled() && cbPoll.isChecked()
+                grpPoll.setVisibility(feed || imap && cbPoll.isEnabled() && cbPoll.isChecked()
                         ? View.VISIBLE : View.GONE);
                 cbAutoClassifySource.setEnabled(cbDownload.isChecked());
                 cbAutoClassifyTarget.setEnabled(cbDownload.isChecked() && cbAutoClassifySource.isChecked());

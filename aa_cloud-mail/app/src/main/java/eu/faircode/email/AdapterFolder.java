@@ -635,7 +635,12 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 else if (EntityFolder.JUNK.equals(folder.type))
                     popupMenu.getMenu().add(Menu.NONE, R.string.title_empty_spam, order++, R.string.title_empty_spam);
 
-                if (folder.account != null && folder.accountProtocol == EntityAccount.TYPE_IMAP)
+                // comms: RSS gets the same per-folder Synchronize toggle as IMAP.
+                // WorkerFeedSync honours folder.synchronize, so this is a real
+                // switch, not decoration.
+                if (folder.account != null &&
+                        (folder.accountProtocol == EntityAccount.TYPE_IMAP ||
+                                folder.accountProtocol == EntityAccount.TYPE_RSS))
                     popupMenu.getMenu().add(Menu.FIRST + 1, R.string.title_synchronize_enabled, order++, R.string.title_synchronize_enabled)
                             .setCheckable(true).setChecked(folder.synchronize);
 
@@ -667,7 +672,12 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
 
                 popupMenu.getMenu().add(Menu.NONE, R.string.title_edit_properties, order++, R.string.title_edit_properties);
 
-                if (folder.account != null && folder.accountProtocol == EntityAccount.TYPE_IMAP) {
+                // comms: per-folder notification channel for feeds too -- the channel
+                // is keyed on folder.id and has nothing IMAP-specific about it, so a
+                // feed folder can have its own sound/importance like any mail folder.
+                if (folder.account != null &&
+                        (folder.accountProtocol == EntityAccount.TYPE_IMAP ||
+                                folder.accountProtocol == EntityAccount.TYPE_RSS)) {
                     if (folder.notify && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         String channelId = EntityFolder.getNotificationChannelId(folder.id);
                         NotificationManager nm = Helper.getSystemService(context, NotificationManager.class);
@@ -736,14 +746,41 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 popupMenu.getMenu().add(Menu.NONE, R.string.title_delete, order++, R.string.title_delete);
 
             // comms: RSS GROUP folders (Cloud-Infra, CICD, …) are not selectable
-            // (hold no messages), so the selectable block above never offered
-            // Edit properties — leaving no way to rename their displayed title.
-            // Offer it here; the existing title_edit_properties handler opens
-            // FragmentFolder where Display is editable.
+            // (hold no messages), so the whole `folder.selectable` block above --
+            // Notify / Show in unified / Show in navigation / Edit colour / Edit
+            // properties -- was skipped for them. A group is still a folder the
+            // user configures, so give it the same per-folder settings the
+            // selectable branch offers, minus the ones that need messages
+            // (synchronize now, mark all read, empty trash...).
             if (!folder.selectable && folder.account != null
                     && folder.accountProtocol == EntityAccount.TYPE_RSS
-                    && folder.feed_url == null)
+                    && folder.feed_url == null) {
+                popupMenu.getMenu().add(Menu.FIRST + 1, R.string.title_notify_folder, order++, R.string.title_notify_folder)
+                        .setCheckable(true).setChecked(folder.notify);
+
+                popupMenu.getMenu().add(Menu.FIRST + 1, R.string.title_unified_folder, order++, R.string.title_unified_folder)
+                        .setCheckable(true).setChecked(folder.unified);
+
+                popupMenu.getMenu().add(Menu.FIRST + 1, R.string.title_navigation_folder, order++, R.string.title_navigation_folder)
+                        .setCheckable(true).setChecked(folder.navigation);
+
+                if (parentFragment instanceof FragmentFolders)
+                    popupMenu.getMenu().add(Menu.NONE, R.string.title_edit_color, order++, R.string.title_edit_color);
+
                 popupMenu.getMenu().add(Menu.NONE, R.string.title_edit_properties, order++, R.string.title_edit_properties);
+
+                if (folder.notify && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    String channelId = EntityFolder.getNotificationChannelId(folder.id);
+                    NotificationManager nm = Helper.getSystemService(context, NotificationManager.class);
+                    NotificationChannel channel = nm.getNotificationChannel(channelId);
+                    if (channel == null)
+                        popupMenu.getMenu().add(Menu.NONE, R.string.title_create_channel, order++, R.string.title_create_channel);
+                    else {
+                        popupMenu.getMenu().add(Menu.NONE, R.string.title_edit_channel, order++, R.string.title_edit_channel);
+                        popupMenu.getMenu().add(Menu.NONE, R.string.title_delete_channel, order++, R.string.title_delete_channel);
+                    }
+                }
+            }
 
             popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                 @Override
