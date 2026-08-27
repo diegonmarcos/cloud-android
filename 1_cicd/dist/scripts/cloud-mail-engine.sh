@@ -402,88 +402,27 @@ step_verify_contract() {
 # its (gitignored) tracker dir, then apply the committed patch series. Same
 # input → same working tree. NEVER produces a long-lived divergent clone.
 step_materialize_fork() {
-  local key="${2:-}"
-  [ -n "$key" ] || { errlog "usage: build.sh materialize-fork <mail|chat|matrix>"; exit 1; }
+  # THIS IS OUR CODE. ac_cloud-mail/ IS the gradle project -- app/, build.gradle,
+  # settings.gradle at its root. There is nothing to materialise: no upstream
+  # clone, no pinned tag, no patch series, no git am. The verb is kept only so
+  # the ship workflow's existing step stays valid, and it now does one useful
+  # thing -- fail loudly if the source tree is missing, instead of silently
+  # building nothing.
+  #
+  # The old body cloned upstream_repo at pinned_tag and replayed a patch series
+  # over it. Both keys are gone from build.json; re-adding that path would
+  # reintroduce exactly the "vendored tree vs patch series" ambiguity this
+  # codebase was consolidated to remove.
+  local key="${1:-mail}"
+  local dir="$SCRIPT_DIR"
 
-  local repo tracker tag blocked mtask
-  repo="$(_fork_json "$key" ".upstream_repo")"
-  tracker="$(_fork_json "$key" ".tracker_dir")"
-  tag="$(_fork_json "$key" ".pinned_tag")"
-  blocked="$(_fork_json "$key" ".blocked_on")"
-  [ -n "$repo" ] && [ -n "$tracker" ] || { errlog "unknown fork '$key' in build.json::forks"; exit 1; }
-
-  # Upstream-APK forks (no gradle_task AND no build.command) build from the
-  # pinned release APK, not source — nothing to clone/patch. build-fork fetches +
-  # resigns it directly. A fork with EITHER a gradle_task OR a build.command
-  # (RN wrapper) is a from-source fork → clone + patch below.
-  mtask="$(_fork_json "$key" ".build.gradle_task")"
-  local mcmd; mcmd="$(_fork_json "$key" ".build.command")"
-  if { [ -z "$mtask" ] || [ "$mtask" = "null" ]; } && { [ -z "$mcmd" ] || [ "$mcmd" = "null" ]; }; then
-    log "materialize-fork[$key]: upstream-APK fork (no gradle build) — no source to materialize; build-fork resigns the pinned upstream APK."
-    return 0
-  fi
-
-  if [ -n "$blocked" ] && [ "$blocked" != "null" ]; then
-    errlog "fork '$key' is BLOCKED on: $blocked — resolve the blocker before materializing."
+  if [ ! -f "$dir/build.gradle" ] || [ ! -d "$dir/app" ]; then
+    errlog "materialize-fork[$key]: no gradle project at $dir (expected build.gradle + app/)."
+    errlog "  ac_cloud-mail IS the source tree -- nothing clones it into place."
     exit 1
   fi
-  if [ -z "$tag" ]; then
-    errlog "fork '$key' has no pinned_tag in build.json::forks.${key}.pinned_tag."
-    errlog "  Pin an upstream release tag (see $repo releases) before materializing."
-    exit 1
-  fi
-
-  local dest="$SCRIPT_DIR/../$tracker"
-  # Per-app model: patches always live beside the build.sh/engine symlink
-  # (ac_cloud-<fork>/patches/). SCRIPT_DIR resolves to the invocation dir.
-  local patch_dir="$SCRIPT_DIR/patches"
-
-  # Vendored-in-repo fork (2026-08-19): tracker_dir points at a committed,
-  # already-fully-patched plain source tree (no .git inside it) instead of a
-  # gitignored external clone. No network clone, no git am — build-fork reads
-  # straight from here. patches/ stays as historical record only; bump
-  # pinned_tag and delete $dest to force the clone+patch path below and
-  # re-vendor a newer upstream tag.
-  if [ -d "$dest" ] && [ ! -d "$dest/.git" ]; then
-    log "materialize-fork[$key]: using vendored in-repo source at $tracker (no clone, no git am — see $patch_dir for historical patch series)"
-    return 0
-  fi
-
-  if [ ! -d "$dest/.git" ]; then
-    log "materialize-fork[$key]: cloning $repo → $tracker (tag $tag)"
-    # tracker_dir may be nested (ac_upstreams-sources/<name> — the canonical
-    # upstream home since 2026-06-12); the parent is gitignored workspace and
-    # won't exist on a fresh CI checkout.
-    mkdir -p "$(dirname "$dest")"
-    prefer_host git clone --filter=blob:none "$repo" "$dest"
-  fi
-  log "materialize-fork[$key]: reset to pinned tag $tag"
-  prefer_host git -C "$dest" fetch --tags origin
-  prefer_host git -C "$dest" reset --hard "$tag"
-  prefer_host git -C "$dest" clean -fdx
-
-  # Apply the committed patch series in lexical order. Empty series = a pure
-  # upstream checkout (valid during early scaffolding).
-  shopt -s nullglob
-  local patches=("$patch_dir"/*.patch)
-  shopt -u nullglob
-  if [ "${#patches[@]}" -eq 0 ]; then
-    log "materialize-fork[$key]: no patches yet — left at clean upstream $tag"
-  else
-    log "materialize-fork[$key]: applying ${#patches[@]} patch(es)"
-    local p
-    for p in "${patches[@]}"; do
-      log "  git am $(basename "$p")"
-      # Explicit ident: CI runners have no git identity (run 27418737089
-      # "empty ident name"); the applied commits are reproducible-engine
-      # output, not authored work.
-      prefer_host git -C "$dest" \
-        -c user.name="cloud-comms-engine" \
-        -c user.email="engine@diegonmarcos.com" \
-        am "$p"
-    done
-  fi
-  log "materialize-fork[$key]: ✓ $tracker ready (build with: ./build.sh build-fork $key)"
+  log "materialize-fork[$key]: source present at $dir (our code; no clone, no patches)"
+  return 0
 }
 
 # ── build-fork <key> ───────────────────────────────────────────────────
@@ -550,7 +489,7 @@ step_build_fork() {
   fi
 
   # A fork is ready when its source tree is present - either a CLONE (.git, the
-  # pinned-tag + `git am` path) or a VENDORED in-repo tree (no .git; since
+  # our own in-repo tree (ac_cloud-mail IS the gradle project; since
   # 2026-08-19 materialize-fork returns early for those and uses the committed
   # source as-is). Demanding .git here contradicted that and rejected every
   # vendored fork, which is what broke ship-cloud-mail and ship-cloud-dialer on

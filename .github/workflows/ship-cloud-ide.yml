@@ -45,10 +45,9 @@ on:
       - "ac_cloud-ide/**"
       # The WebView APK bundles the my-konsole frontend at build time
       # (build.sh step_bundle_frontend copies ../da_my-konsole/frontend into
-      # assets/; step_bundle_data generates its profiles) — so a frontend or
-      # build.sh change must rebuild the APK too.
-      - "da_my-konsole/frontend/**"
-      - "da_my-konsole/build.sh"
+      # assets/), but my-konsole is a SIBLING REPO -- a path filter only ever
+      # sees this repo, so watching da_my-konsole/** never fired. Rebuilding
+      # on a frontend change needs a repository_dispatch from that repo.
       - "1_cicd/src/cicd/ship-cloud-ide.yml"
       # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
       # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).

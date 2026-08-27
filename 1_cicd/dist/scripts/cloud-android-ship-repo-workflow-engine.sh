@@ -40,6 +40,66 @@ for f in "$CICD_SRC/scripts/"*.sh; do
     chmod +x "$CICD_DIST/scripts/$base"
 done
 
+# ── cicd: verify trigger paths against the data that declares them ──
+#
+# on:push:paths was hand-maintained beside build.json, so it drifted silently
+# and in the worst way: a workflow watching nothing real never runs and nobody
+# gets an error. Three had already drifted when this check was added -- two
+# watching their own generated copy (self-triggering on unrelated commits),
+# one watching a sibling repo a path filter can never see.
+log_step "verify workflow triggers"
+python3 - "$CLOUD_ANDROID_ROOT" <<'PYEOF' || exit 1
+import glob, json, os, re, sys
+
+root = sys.argv[1]
+apps = {d for d in os.listdir(root)
+        if os.path.exists(os.path.join(root, d, "build.json"))}
+bad = []
+
+for wf in sorted(glob.glob(os.path.join(root, "1_cicd/src/cicd/*.yml"))):
+    name = os.path.basename(wf)
+    lines = open(wf).read().split("\n")
+    start = next((i for i, l in enumerate(lines) if l.strip() == "paths:"), None)
+    if start is None:
+        continue
+
+    entries = []
+    for l in lines[start + 1:]:
+        m = re.match(r'^      - "([^"]+)"', l)
+        if m:
+            entries.append(m.group(1))
+        elif l.strip() and not l.strip().startswith("#") and not l.startswith("      "):
+            break
+
+    for e in entries:
+        if e.startswith(".github/workflows/"):
+            bad.append(f"{name}: watches its own generated copy: {e}")
+        base = e.split("*")[0].rstrip("/")
+        if base and not os.path.exists(os.path.join(root, base)):
+            bad.append(f"{name}: watches a path not in this repo: {e}")
+
+    slug = re.sub(r"^(ship|test)-|\.yml$", "", name)
+    app = next((a for a in apps if a.split("_", 1)[-1] == slug), None)
+    if not app:
+        continue
+    if f"{app}/**" not in entries:
+        bad.append(f"{name}: does not watch its own app directory {app}/**")
+    modules = json.load(open(os.path.join(root, app, "build.json"))).get("modules", {})
+    if isinstance(modules, dict):
+        for mod in modules.values():
+            if not isinstance(mod, dict) or not mod.get("dir"):
+                continue
+            shared = os.path.normpath(os.path.join(app, mod["dir"]))
+            if shared.startswith(app + os.sep):
+                continue
+            if not any(e.startswith(shared) for e in entries):
+                bad.append(f"{name}: build.json uses {shared} but never rebuilds on it")
+
+for b in bad:
+    print("  " + b, file=sys.stderr)
+sys.exit(1 if bad else 0)
+PYEOF
+
 # ── cicd: copy YAMLs → dist/cicd then into .github/workflows ───────
 log_step "dist/cicd → .github/workflows"
 mkdir -p "$CLOUD_ANDROID_ROOT/.github/workflows"

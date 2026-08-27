@@ -32,7 +32,8 @@ on:
     paths:
       - "c_devices/garmin-watchface/**"
       - "1_cicd/src/cicd/ship-garmin-watchface.yml"
-      - ".github/workflows/ship-garmin-watchface.yml"
+      # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
+      # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).
 
 permissions:
   contents: write   # gh release create/upload

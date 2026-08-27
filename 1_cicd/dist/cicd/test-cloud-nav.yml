@@ -17,7 +17,12 @@ on:
     branches: [main]
     paths:
       - "ac_cloud-nav/**"
-      - ".github/workflows/test-cloud-nav.yml"
+      - "ab_cloud-libs-shared/libs/core/**"
+      - "ab_cloud-libs-shared/libs/devtools/**"
+      - "ab_cloud-libs-shared/libs/updater/**"
+      - "1_cicd/src/cicd/test-cloud-nav.yml"
+      # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
+      # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).
 
 permissions:
   contents: read

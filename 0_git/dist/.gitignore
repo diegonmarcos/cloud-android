@@ -67,8 +67,11 @@ node_modules
 *.tfstate.backup
 !*.tfstate.enc
 ## Nix build artifacts
-result
-.result
+## Anchored with a leading slash: a bare `result` matches ANY directory of
+## that name at any depth, which silently swallowed the 5 tracked C++ sources
+## in ab_cloud-libs-shared/libs/keyboard/.../suggest/core/result/.
+/result
+/.result
 ## Temporary files
 *.tmp
 ## Generated data files → symlinks to cloud-data/ submodule (tracked)
@@ -154,7 +157,11 @@ ac_cloud-nav/**/*.keystore
 ac_cloud-nav/**/*.jks
 ## Bitwarden Android for ac_cloud-vault's `vault-bitwarden` fork, added
 ## ac_cloud-<app>/patches/ (tracked). Was covered by the old `ea_*-*/`
-ac_upstreams-sources/
+## Contents ignored via /* (not the dir itself): git cannot re-include a
+## file inside an excluded directory, so the README negation below needs the
+## directory to stay traversable.
+ac_upstreams-sources/*
+!ac_upstreams-sources/README.md
 ac_cloud-wallet/**/*.keystore
 ac_cloud-wallet/**/*.jks
 ac_cloud-browser/**/*.keystore
@@ -246,3 +253,6 @@ a_solutions/ae-tool_termux-boot/local.properties
 ## Garmin is monkeyc, not Gradle: build.sh writes dist/ (incl. the developer key,
 ## which must never be vendored) per design.
 c_devices/garmin-watchface/dist/
+
+## Tracked here on purpose; overrides the global core.excludesFile `.vscode/`.
+!.vscode/
