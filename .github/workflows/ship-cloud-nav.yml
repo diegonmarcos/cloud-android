@@ -48,6 +48,7 @@ on:
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no
       # new APK here and the installed build silently goes stale.
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "ab_cloud-libs-shared/libs/core/**"
       - "ab_cloud-libs-shared/libs/devtools/**"
       - "ab_cloud-libs-shared/libs/updater/**"

@@ -56,7 +56,10 @@
   },
   "modules": {
     "_doc": "Only the wrapper lives here. The :libs:* modules are appended by settings.gradle from the lib_apks scan above, each pointing at the one canonical directory in aa_cloud-superapp/libs/.",
-    "app": {}
+    "app": {},
+    "libs:analytics": {
+      "dir": "../ab_cloud-libs-shared/libs/analytics"
+    }
   },
   "signing": {
     "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. build.sh::_resolve_signing resolves $VAULT_DIR + sops-decrypts the passwords. NO fallback.",
@@ -97,6 +100,19 @@
       "draft": false,
       "prerelease": false,
       "generate_release_notes": false
+    }
+  },
+  "analytics": {
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "enabled": true,
+    "app": "ab_cloud-libs",
+    "umami": {
+      "endpoint": "https://analytics.diegonmarcos.com/umami",
+      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
+    },
+    "matomo": {
+      "endpoint": "https://analytics.diegonmarcos.com/matomo",
+      "site_id": "1"
     }
   }
 }

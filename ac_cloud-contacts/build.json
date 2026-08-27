@@ -54,6 +54,9 @@
     },
     "libs:contacts": {
       "type": "library"
+    },
+    "libs:analytics": {
+      "dir": "../ab_cloud-libs-shared/libs/analytics"
     }
   },
   "channels": {
@@ -269,6 +272,19 @@
       "default_tag": "latest",
       "target_dir": "~/storage/downloads",
       "asset_name": "Cloud-Contacts.apk"
+    }
+  },
+  "analytics": {
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "enabled": true,
+    "app": "ac_cloud-contacts",
+    "umami": {
+      "endpoint": "https://analytics.diegonmarcos.com/umami",
+      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
+    },
+    "matomo": {
+      "endpoint": "https://analytics.diegonmarcos.com/matomo",
+      "site_id": "1"
     }
   }
 }

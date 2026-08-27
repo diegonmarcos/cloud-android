@@ -37,6 +37,7 @@ on:
       - "ab_cloud-libs-shared/libs/media/**"
       - "ab_cloud-libs-shared/libs/translate/**"
       - "ab_cloud-libs-shared/libs/voice/**"
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "1_cicd/src/cicd/ship-cloud-keyboard.yml"
 
 permissions:

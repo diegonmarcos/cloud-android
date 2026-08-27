@@ -54,6 +54,9 @@
       "type": "application",
       "depends_on": [],
       "comment": "Thin switcher + IPC broker. Original code (no upstream). Declares the signature permission, the unified IdeProvider (reads), the IIdeService AIDL (actions + push callbacks), the launcher switcher UI, and owns the shared workspace root (data/ide-endpoints.json::workspace.root_path). HUB-SHARING: the broker + updater are structurally identical to cloud-comms-hub — once both exist, extract them into a shared gradle module (see forks/../README) rather than maintaining two copies. cloud-comms scaffolded first, so Cloud-IDE consumes the extracted core; until that extraction lands, this hub mirrors the comms hub deliberately."
+    },
+    "libs:analytics": {
+      "dir": "../ab_cloud-libs-shared/libs/analytics"
     }
   },
   "release": {
@@ -114,6 +117,19 @@
       "install_mode": "silent",
       "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
       "max_installs_per_pass": 3
+    }
+  },
+  "analytics": {
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "enabled": true,
+    "app": "ac_cloud-ide",
+    "umami": {
+      "endpoint": "https://analytics.diegonmarcos.com/umami",
+      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
+    },
+    "matomo": {
+      "endpoint": "https://analytics.diegonmarcos.com/matomo",
+      "site_id": "1"
     }
   }
 }

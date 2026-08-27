@@ -48,6 +48,7 @@ on:
       # assets/), but my-konsole is a SIBLING REPO -- a path filter only ever
       # sees this repo, so watching da_my-konsole/** never fired. Rebuilding
       # on a frontend change needs a repository_dispatch from that repo.
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "1_cicd/src/cicd/ship-cloud-ide.yml"
       # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
       # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).

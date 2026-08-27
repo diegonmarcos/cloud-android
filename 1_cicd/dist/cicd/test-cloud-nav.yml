@@ -17,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "ac_cloud-nav/**"
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "ab_cloud-libs-shared/libs/core/**"
       - "ab_cloud-libs-shared/libs/devtools/**"
       - "ab_cloud-libs-shared/libs/updater/**"

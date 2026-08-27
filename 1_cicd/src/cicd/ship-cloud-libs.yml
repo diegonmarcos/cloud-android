@@ -43,6 +43,7 @@ on:
       - "ac_cloud-nav/libs/**"
       - "ac_cloud-news/libs/**"
       - "ac_cloud-wallet/libs/**"
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "1_cicd/src/cicd/ship-cloud-libs.yml"
 
 permissions:

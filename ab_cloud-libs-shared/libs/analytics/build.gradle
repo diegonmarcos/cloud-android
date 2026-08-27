@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Inject build.json::analytics into BuildConfig. rootDir, NOT '../../': this
+// module is shared by reference (projectDir) into every constellation app, so
+// it must read the CONSUMING app's build.json — a module-relative path would
+// hand every app superapp's site ids and every event would be misattributed.
+// Same reasoning as :libs:updater; see the long note in its build.gradle.
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+def an = buildJson.analytics ?: [:]
+def umami  = an.umami  ?: [:]
+def matomo = an.matomo ?: [:]
+
+android {
+    namespace 'com.diegonmarcos.superapp.analytics'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+
+        // The app id is what makes events attributable. Umami and Matomo are
+        // both single-site today, so every app reports into the same site and
+        // is told apart by this name (it becomes the URL path and hostname).
+        buildConfigField "String",  "AN_APP",           "\"${an.app ?: buildJson.project?.name ?: 'unknown'}\""
+        buildConfigField "boolean", "AN_ENABLED",       "${an.enabled ?: false}"
+        buildConfigField "String",  "AN_UMAMI_URL",     "\"${umami.endpoint ?: ''}\""
+        buildConfigField "String",  "AN_UMAMI_SITE",    "\"${umami.site_id ?: ''}\""
+        buildConfigField "String",  "AN_MATOMO_URL",    "\"${matomo.endpoint ?: ''}\""
+        buildConfigField "String",  "AN_MATOMO_SITE",   "\"${matomo.site_id ?: ''}\""
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    // Deliberately NO :libs:core. This module is plain HttpURLConnection +
+    // org.json, so keeping it dependency-free lets ANY app consume it —
+    // including the upstream forks (mail, dialer, chat, matrix, media-center)
+    // that have no shared-module graph at all.
+}

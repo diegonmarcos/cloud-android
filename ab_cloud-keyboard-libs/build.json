@@ -49,7 +49,10 @@
       "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
       "dir": "../ab_cloud-libs-shared/libs/voice-vosk"
     },
-    "_doc": "Feature libs are shared from ../aa_cloud-superapp/libs/ via relative project references in settings.gradle."
+    "_doc": "Feature libs are shared from ../aa_cloud-superapp/libs/ via relative project references in settings.gradle.",
+    "libs:analytics": {
+      "dir": "../ab_cloud-libs-shared/libs/analytics"
+    }
   },
   "keyboard_media": {
     "_doc": "Same block as aa_cloud-superapp and ac_cloud-keyboard — shared vault secret. build.sh sops-decrypts vault_secrets → GIPHY_API_KEY env var → Gradle BuildConfig → MediaRuntime.configure().",
@@ -136,6 +139,19 @@
       "draft": false,
       "prerelease": false,
       "generate_release_notes": false
+    }
+  },
+  "analytics": {
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "enabled": true,
+    "app": "ab_cloud-keyboard-libs",
+    "umami": {
+      "endpoint": "https://analytics.diegonmarcos.com/umami",
+      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
+    },
+    "matomo": {
+      "endpoint": "https://analytics.diegonmarcos.com/matomo",
+      "site_id": "1"
     }
   }
 }

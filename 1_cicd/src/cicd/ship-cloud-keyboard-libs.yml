@@ -39,6 +39,7 @@ on:
       - "ab_cloud-libs-shared/libs/voice/**"
       - "ab_cloud-libs-shared/libs/voice-vosk/**"
       - "ab_cloud-libs-shared/libs/translate-mlkit/**"
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "1_cicd/src/cicd/ship-cloud-keyboard-libs.yml"
 
 permissions:
