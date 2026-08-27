@@ -20,7 +20,7 @@
 # _single_fork_key, _launcher_activity, _json), never step_build/step_dev/etc.
 set -euo pipefail
 
-ENGINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/cloud-mail-fork-engine.sh"
+ENGINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/cloud-mail-engine.sh"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 

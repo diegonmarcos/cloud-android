@@ -1,3 +1,4 @@
+# ─── GENERATED: do not edit — edit 1_cicd/src/scripts/cloud-mail-engine.sh ───
 #!/usr/bin/env bash
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║ Cloud Mail — Build Dispatcher                                      ║

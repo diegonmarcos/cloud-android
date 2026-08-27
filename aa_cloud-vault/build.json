@@ -19,7 +19,7 @@
   },
   "forks": {
     "vault": {
-      "_doc": "Bitwarden-fork rebuild of this app — THE shipping Cloud-Vault.apk since 2026-08-18: CI's push-triggered job runs materialize-fork + build-fork and publishes the fork APK as Cloud-Vault.apk (GHCR :latest + GH release rolling tag). build.sh's default `build`/`release` still produce the legacy WebView wrapper, now a manual-only CI fallback. Uses the SAME fork machinery aa_cloud-mail's forks.mail entry uses (see cloud-mail-fork-engine.sh, ported verbatim into this app's build.sh).",
+      "_doc": "Bitwarden-fork rebuild of this app — THE shipping Cloud-Vault.apk since 2026-08-18: CI's push-triggered job runs materialize-fork + build-fork and publishes the fork APK as Cloud-Vault.apk (GHCR :latest + GH release rolling tag). build.sh's default `build`/`release` still produce the legacy WebView wrapper, now a manual-only CI fallback. Uses the SAME fork machinery aa_cloud-mail's forks.mail entry uses (see cloud-mail-engine.sh, ported verbatim into this app's build.sh).",
       "app_id": "com.diegonmarcos.cloudvault",
       "label": "Cloud Vault (Bitwarden)",
       "image": "cloud-vault-bitwarden",

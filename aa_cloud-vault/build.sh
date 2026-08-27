@@ -176,7 +176,7 @@ _enforce_signature() {
 # subtraction when interpolated into a path. Passing the key as DATA
 # (--arg) and indexing with brackets makes any key safe and closes a
 # shell->jq injection path. Ported verbatim from aa_cloud-mail's engine
-# (cloud-mail-fork-engine.sh::_fork_json) — same semantics, same signature.
+# (cloud-mail-engine.sh::_fork_json) — same semantics, same signature.
 #   _fork_json "$key" '.build.gradle_task'
 #   _fork_json "$key" ''                    # the whole fork object
 _fork_json() {
@@ -249,7 +249,7 @@ _fetch_upstream_apk() {
 # its (gitignored) tracker dir, then apply the committed patch series. Same
 # input → same working tree. NEVER produces a long-lived divergent clone.
 # Ported verbatim (same semantics) from aa_cloud-mail's
-# cloud-mail-fork-engine.sh::step_materialize_fork.
+# cloud-mail-engine.sh::step_materialize_fork.
 step_materialize_fork() {
   local key="${2:-}"
   [ -n "$key" ] || { errlog "usage: build.sh materialize-fork <vault>"; exit 1; }
@@ -324,7 +324,7 @@ step_materialize_fork() {
 # Build a materialized fork's APK with the fork's OWN gradle wrapper (each
 # upstream pins its own Gradle/AGP — never our devShell gradle). Everything
 # is data-driven from build.json::forks.<key>.build. Ported verbatim (same
-# semantics) from aa_cloud-mail's cloud-mail-fork-engine.sh::step_build_fork.
+# semantics) from aa_cloud-mail's cloud-mail-engine.sh::step_build_fork.
 step_build_fork() {
   local key="${2:-}"
   [ -n "$key" ] || { errlog "usage: build.sh build-fork <vault>"; exit 1; }
