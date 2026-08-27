@@ -80,6 +80,8 @@ public class FragmentFolder extends FragmentBase {
     private CheckBox cbAutoClassifyTarget;
     private TextView tvAutoClassifyPro;
     private ImageButton ibInfo;
+    private TextView tvSyncDaysRemark;
+    private TextView tvKeepDaysRemark;
     private TextView tvSyncDays;
     private EditText etSyncDays;
     private TextView tvKeepDays;
@@ -156,6 +158,8 @@ public class FragmentFolder extends FragmentBase {
         cbAutoClassifyTarget = view.findViewById(R.id.cbAutoClassifyTarget);
         tvAutoClassifyPro = view.findViewById(R.id.tvAutoClassifyPro);
         ibInfo = view.findViewById(R.id.ibInfo);
+        tvSyncDaysRemark = view.findViewById(R.id.tvSyncDaysRemark);
+        tvKeepDaysRemark = view.findViewById(R.id.tvKeepDaysRemark);
         tvSyncDays = view.findViewById(R.id.tvSyncDays);
         etSyncDays = view.findViewById(R.id.etSyncDays);
         tvKeepDays = view.findViewById(R.id.tvKeepDays);
@@ -282,6 +286,13 @@ public class FragmentFolder extends FragmentBase {
             // applies over comms_feed_interval_hours, so the row is meaningful
             // here even though the cbPoll checkbox above it is an IMAP concept.
             grpPoll.setVisibility(View.VISIBLE);
+            // The rest of grpImap's sync/keep row furniture. Without these the
+            // feed screen showed the fields bare while the mail screen showed
+            // them with their explanatory remarks and info button -- same
+            // settings, visibly different UI.
+            tvSyncDaysRemark.setVisibility(View.VISIBLE);
+            tvKeepDaysRemark.setVisibility(View.VISIBLE);
+            ibInfo.setVisibility(View.VISIBLE);
         }
         tvParent.setText(parent);
         grpParent.setVisibility(parent == null ? View.GONE : View.VISIBLE);

@@ -628,6 +628,19 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                         popupMenu.getMenu().add(Menu.NONE, R.string.title_expunge, order++, R.string.title_expunge);
                 }
 
+                // comms: feeds get the message-level actions that are not IMAP
+                // protocol mechanics. delete_local clears cached items (feed items
+                // ARE local messages); rules run on EntityMessage and are not
+                // IMAP-specific. synchronize_more / delete_browsed / expunge stay
+                // out: they are fetch-window, browsed-cache and IMAP EXPUNGE.
+                if (folder.account != null && folder.accountProtocol == EntityAccount.TYPE_RSS) {
+                    popupMenu.getMenu().add(Menu.NONE, R.string.title_delete_local, order++, R.string.title_delete_local);
+                    if (!folder.read_only) {
+                        popupMenu.getMenu().add(Menu.NONE, R.string.title_edit_rules, order++, R.string.title_edit_rules);
+                        popupMenu.getMenu().add(Menu.NONE, R.string.title_execute_rules, order++, R.string.title_execute_rules);
+                    }
+                }
+
                 popupMenu.getMenu().add(Menu.NONE, R.string.title_mark_all_read, order++, R.string.title_mark_all_read);
 
                 if (EntityFolder.TRASH.equals(folder.type))
