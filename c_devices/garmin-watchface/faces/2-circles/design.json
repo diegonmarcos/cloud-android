@@ -1,0 +1,37 @@
+{
+  "id": "2-circles",
+  "name": "2 Circles",
+  "_doc": "Self-contained design for the '2 Circles' watch face (replica of Schiefersoft's '2 Circles', CIQ store a8e08d3f-b998-493a-8f85-0bb5a6c1aba0). ALL tunable geometry lives here — NOT in build.json — because designs multiply. build.sh generates source/gen/DesignConfig.mc from this file at build time (data-driven: tune numbers here, rebuild, no .mc edits). uuid is this design's CIQ app identity and must stay stable forever (changing it = a new store app).",
+
+  "uuid": "0474dda6-77ae-41e3-97b6-884865fcdb2f",
+
+  "geometry": {
+    "_doc_model": "Reverse-engineered from the store screenshot + the owner's description: the round screen is the MINUTE scale (top = :00, clockwise, full turn = 60min). The current minute -> a point P at angle theta_min around the screen. Each entry in circles[] is drawn relative to screen-center C and that time-driven angle. All *_pct values are fractions of the screen RADIUS (so they scale across devices); all angles use 12-o'clock=0, clockwise-positive. THIS IS A v1 INTERPRETATION meant to be tuned against the physical watch — every number below is a knob.",
+
+    "background_color": "0x000000",
+    "stroke_color": "0xC8C8C8",
+    "stroke_width_px": 2,
+    "antialias": true,
+
+    "circles": [
+      {
+        "role": "minutes-big",
+        "_doc": "The BIG circle = minutes. Its centre orbits C driven by the minute angle; large radius so it sweeps across the face and visibly bulges toward the current minute. center_distance_pct is how far its centre sits from C along the minute direction.",
+        "angle_source": "minutes",
+        "center_distance_pct": 0.30,
+        "radius_pct": 0.52,
+        "ticks": { "enabled": false, "count": 0, "len_pct": 0.0 },
+        "hand": { "enabled": false, "angle_source": "minutes", "len_pct": 0.0 }
+      },
+      {
+        "role": "hours-small",
+        "_doc": "The SMALL circle = hours. It is PINNED to the current minute point P (so it travels around with the minutes — 'small circle moves as minutes'). Inside it, a short hand points to the current hour, and 12 tick marks form a mini hour dial. center_distance_pct ~ the minute-point radius; radius_pct small.",
+        "angle_source": "minutes",
+        "center_distance_pct": 0.55,
+        "radius_pct": 0.22,
+        "ticks": { "enabled": true, "count": 12, "len_pct": 0.04 },
+        "hand": { "enabled": true, "angle_source": "hours", "len_pct": 0.20 }
+      }
+    ]
+  }
+}

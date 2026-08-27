@@ -1,0 +1,161 @@
+name: "Ship → Garmin Watch Face (.prg → GHCR via ORAS + GitHub Release)"
+
+# Builds each Connect IQ watch-face design in c_devices/garmin-watchface/faces/<id>/ and
+# publishes via the SAME two channels as aa_cloud-superapp — both data-driven by
+# c_devices/garmin-watchface/build.json::release:
+#
+#   1. ORAS push as OCI artifact   → ghcr.io/<ns>/garmin-watchface-<design>:<tags>
+#   2. GH Release attachment        → <design>.prg on a rolling `latest` release
+#                                      (stable download URL for sideload).
+#
+# The workflow hardcodes NO registry/tag/asset strings — build.sh reads them from
+# build.json. The design matrix is discovered from build.json::build.designs.
+# Toolchain is provided in-CI (BYPASS_NIX=1); the Nix flake is the LOCAL path.
+
+on:
+  workflow_dispatch:
+    inputs:
+      push_oras:
+        description: "Push .prg to GHCR via ORAS"
+        required: false
+        type: boolean
+        default: true
+      create_release:
+        description: "Attach .prg to the rolling GitHub Release"
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    tags:
+      - "fa_garmin-watchface-*-v*"
+    paths:
+      - "c_devices/garmin-watchface/**"
+      - "1_cicd/src/cicd/ship-garmin-watchface.yml"
+      - ".github/workflows/ship-garmin-watchface.yml"
+
+permissions:
+  contents: write   # gh release create/upload
+  packages: write   # ghcr push (oras)
+
+env:
+  WORK_DIR: c_devices/garmin-watchface
+
+jobs:
+  # ── Discover designs (data-driven: build.json::build.designs) ──────
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      designs: ${{ steps.list.outputs.designs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update -y && sudo apt-get install -y jq
+      - id: list
+        working-directory: ${{ env.WORK_DIR }}
+        run: echo "designs=$(jq -c '.build.designs' build.json)" >> "$GITHUB_OUTPUT"
+
+  build_and_publish:
+    needs: discover
+    name: "Build + Publish (${{ matrix.design }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        design: ${{ fromJSON(needs.discover.outputs.designs) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # ── connect-iq-sdk-manager CLI (just the tool) ─────────────────
+      # The CLI is the ONLY thing CI installs here; build.sh::ensure_sdk drives
+      # the actual SDK provisioning (agreement accept → sdk set → login → device
+      # download) so the flow stays in the universal engine, not the workflow.
+      # Use the official install.sh: it names the binary `connect-iq-sdk-manager`
+      # (the canonical name build.sh + flake call). `go install` would instead
+      # name it `connect-iq-sdk-manager-cli` (module last element) → not found.
+      # Pinned to a release tag for reproducibility.
+      - name: Install connect-iq-sdk-manager CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/lindell/connect-iq-sdk-manager-cli/master/install.sh \
+            | sh -s -- -b "$HOME/.local/bin" v0.8.4
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/connect-iq-sdk-manager" version
+
+      # ── Stable developer signing key (cached → constant signature) ──
+      # Mirrors aa_cloud-superapp's cached debug keystore: a fresh RSA key
+      # each run would change the app signature. Cache it so every CI build
+      # signs identically. build.sh::_resolve_signing returns early when
+      # dist/developer_key.der already exists.
+      - name: Restore developer key from cache
+        id: key-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WORK_DIR }}/dist/developer_key.der
+          key: garmin-watchface-devkey-v1
+      - name: Generate developer key (first run only)
+        if: steps.key-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          mkdir -p dist
+          openssl genrsa -out dist/developer_key.pem 4096
+          openssl pkcs8 -topk8 -inform PEM -outform DER -nocrypt \
+            -in dist/developer_key.pem -out dist/developer_key.der
+
+      - name: Install ORAS
+        run: |
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          oras version
+
+      # build.sh::ensure_sdk runs the Garmin agreement-accept (hash from
+      # build.json::toolchain.agreement_hash) + login (creds below) + sdk set +
+      # per-design device download, then monkeyc. Creds are GHA secrets.
+      - name: Build .prg (engine)
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: |
+          chmod +x build.sh
+          ./build.sh build "${{ matrix.design }}"
+          ls -la "dist/${{ matrix.design }}/"
+
+      - name: Upload .prg as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.design }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/${{ matrix.design }}/*.prg
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Login to GHCR
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push .prg to GHCR via ORAS (engine)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh oras-push "${{ matrix.design }}"
+
+      - name: Publish to GitHub Releases (engine)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.create_release }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh gh-release "${{ matrix.design }}"

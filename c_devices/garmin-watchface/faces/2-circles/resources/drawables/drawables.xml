@@ -1,0 +1,6 @@
+<drawables>
+    <!-- Launcher icon = the 2-circles motif (gray strokes on black), generated
+         by build.sh from design.json so it always matches the face. 40x40 is
+         the CIQ launcher-icon convention for AMOLED fenix devices. -->
+    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>
+</drawables>

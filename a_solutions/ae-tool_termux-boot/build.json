@@ -1,0 +1,62 @@
+{
+  "name": "termux-boot",
+  "description": "Runs Nix-on-Droid boot scripts at device boot. Foreign-signed BOOT_COMPLETED receiver that reaches the host app over its dangerous-level RUN_COMMAND permission, because a shared uid is impossible without the host's signing key.",
+  "category": "system",
+  "_doc_membership": "Constellation membership is DATA, not a directory-name convention: data/regen.sh admits any repo whose build.json declares android.application_id + release.ghcr (or forks / lib_apks). This repo is named for the host it targets rather than aa_cloud-*, and joins the fleet on the strength of this file alone.",
+  "android": {
+    "_doc_application_id": "com.termux.nix.boot, NOT com.diegonmarcos.*: the manifest namespaces every intent action and permission by the host package, and the applicationId is what the host's RUN_COMMAND grant is recorded against. Renaming it orphans the grant.",
+    "application_id": "com.termux.nix.boot",
+    "_doc_host_package": "Compiled into BuildConfig and substituted into the manifest as ${NOD_PACKAGE_NAME}. Must match the installed Nix-on-Droid package or every intent this app sends is addressed to nothing. Was a gradle property with a default buried in app/build.gradle.",
+    "host_package": "com.termux.nix",
+    "version_code": 1,
+    "version_name": "1.0.0",
+    "min_sdk": 21,
+    "_doc_target_sdk": "28 on purpose. Raising it puts the BOOT_COMPLETED receiver under Android 10+ background-start limits, which is exactly the thing this app exists to do.",
+    "target_sdk": 28
+  },
+  "toolchain": {
+    "agp": "8.3.2",
+    "gradle": "8.14",
+    "compile_sdk": 34,
+    "jdk": "17"
+  },
+  "modules": {
+    "app": {
+      "type": "application"
+    }
+  },
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. build.sh::_resolve_signing resolves $VAULT_DIR + sops-decrypts the passwords. NO fallback. Note this key is NOT the host app's key - see AndroidManifest.xml on why no sharedUserId is possible.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "_doc_kind": "'lib' = a companion APK that ships behaviour rather than UI. Its only activity is a one-screen status page; the product is a boot receiver. data/regen.sh files it under the SuperApp Constellation page's Libs tab.",
+    "kind": "lib",
+    "artifact": {
+      "debug": "Cloud-Unix-Termux-Boot.apk",
+      "release": "Cloud-Unix-Termux-Boot-release.apk"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-unix-termux-boot",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "cloud-unix-termux-boot-v*",
+      "asset_name": "Cloud-Unix-Termux-Boot.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

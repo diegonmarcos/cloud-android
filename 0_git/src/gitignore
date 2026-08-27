@@ -236,3 +236,13 @@ aa_cloud-media-center/dist/
 aa_cloud-media-center/**/*.apk
 aa_cloud-calendar/dist/
 aa_cloud-calendar/**/*.apk
+## ae-tool_termux-boot + c_devices/garmin-watchface arrived from cloud-unix
+## (2026-08-27). Termux Boot is Gradle like the aa_cloud-* apps, so it needs the
+## same build-output rules; *.jks/*.keystore are already global above.
+a_solutions/ae-tool_termux-boot/.gradle/
+a_solutions/ae-tool_termux-boot/build/
+a_solutions/ae-tool_termux-boot/**/build/
+a_solutions/ae-tool_termux-boot/local.properties
+## Garmin is monkeyc, not Gradle: build.sh writes dist/ (incl. the developer key,
+## which must never be vendored) per design.
+c_devices/garmin-watchface/dist/

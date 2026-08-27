@@ -1,0 +1,199 @@
+name: "Ship → Cloud Unix Termux Boot APK (build + sign with the shared constellation key)"
+
+# Cloud Unix Termux Boot starts Nix-on-Droid's boot scripts at device boot.
+#
+# It exists because Termux:Boot cannot: that addon declares
+# sharedUserId="com.termux", and Android grants a shared uid only to apps
+# signed with the same certificate. Nix-on-Droid ships signed by F-Droid, so
+# no APK we can build is able to join its uid. Cloud Unix Termux Boot therefore talks to
+# the host through RunCommandService instead, which is exported behind a
+# "dangerous" (not "signature") permission plus allow-external-apps=true.
+#
+# Pure Java, no NDK and no ABI split, so unlike the other aa_cloud-* apps this
+# builds one universal APK and needs no matrix.
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Build variant"
+        required: false
+        type: choice
+        default: "release"
+        options: [debug, release]
+      create_release:
+        description: "Attach the APK to a GitHub Release"
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    tags:
+      - "cloud-unix-termux-boot-v*"
+    paths:
+      - "a_solutions/ae-tool_termux-boot/**"
+      - "1_cicd/src/cicd/ship-termux-boot.yml"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  WORK_DIR: a_solutions/ae-tool_termux-boot
+
+jobs:
+  build:
+    name: "Build + sign Cloud Unix Termux Boot APK"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+
+      - name: Set up Gradle 8.10.2 (cached)
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.10.2"
+
+      # The ONE shared constellation key. Never a debug or per-app key: a
+      # device that sees a different signer refuses the update outright.
+      - name: Checkout vault (shared Android signing key)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install sops + ORAS + jq
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null && sudo chmod +x /usr/local/bin/sops
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+
+      - name: Determine variant
+        id: variant
+        run: |
+          if   [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "variant=${{ inputs.variant }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build APK
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          chmod +x gradlew
+          if [ "${{ steps.variant.outputs.variant }}" = "release" ]; then
+            ./gradlew --no-daemon assembleRelease
+          else
+            ./gradlew --no-daemon assembleDebug
+          fi
+          find app/build/outputs/apk -name '*.apk' -print
+
+      # Mirrors _enforce_signature in the fork engines: zipalign + apksigner
+      # with the vault key, then verify. Whatever gradle emitted (unsigned, or
+      # signed with a debug key) is overwritten -- it must not be possible to
+      # ship anything but the shared key.
+      - name: Sign with the shared constellation key
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          set -euo pipefail
+          KS="$VAULT_DIR/A0_keys/providers/android/release.jks"
+          SEC="$VAULT_DIR/A0_keys/providers/android/signing.secrets.yaml"
+          [ -f "$KS" ] || { echo "FATAL: shared keystore missing at $KS"; exit 1; }
+
+          STORE_PW="$(sops --config /dev/null -d --extract '["keystore_password"]' "$SEC")"
+          KEY_PW="$(sops --config /dev/null -d --extract '["key_password"]' "$SEC")"
+          ALIAS="$(sops --config /dev/null -d --extract '["key_alias"]' "$SEC")"
+          [ -n "$STORE_PW" ] && [ -n "$ALIAS" ] || { echo "FATAL: cannot decrypt signing secrets"; exit 1; }
+
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          mkdir -p dist
+          for apk in $(find app/build/outputs/apk -name '*.apk'); do
+            out="dist/$(basename "${apk%.apk}")-signed.apk"
+            "$BT/zipalign" -f -p 4 "$apk" "$out.tmp"
+            "$BT/apksigner" sign \
+              --ks "$KS" --ks-pass "pass:$STORE_PW" \
+              --key-pass "pass:$KEY_PW" --ks-key-alias "$ALIAS" \
+              --out "$out" "$out.tmp"
+            rm -f "$out.tmp"
+            "$BT/apksigner" verify --print-certs "$out"
+          done
+          ls -la dist/
+
+      # The Constellation store resolves this app through GHCR (for the installed
+      # -vs- available check) and installs it from the rolling release asset.
+      # Both names are read out of build.json here, so the store and the
+      # workflow cannot drift apart.
+      - name: Name the artifact from build.json
+        id: asset
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          set -euo pipefail
+          name="$(jq -r '.release.gh_release.asset_name' build.json)"
+          src="$(ls dist/*-signed.apk | head -1)"
+          [ -f "$src" ] || { echo "FATAL: signing produced no APK"; exit 1; }
+          mv "$src" "dist/$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "image=$(jq -r '.release.ghcr | .registry + "/" + .namespace + "/" + .image' build.json)" >> "$GITHUB_OUTPUT"
+          echo "media=$(jq -r '.release.ghcr.media_type' build.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Push APK to GHCR via ORAS
+        working-directory: ${{ env.WORK_DIR }}/dist
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          short="${GITHUB_SHA:0:8}"
+          # ORAS 1.x sets the per-file media type as `file:type`, not --media-type.
+          oras push "${{ steps.asset.outputs.image }}:latest" \
+            "${{ steps.asset.outputs.name }}:${{ steps.asset.outputs.media }}"
+          oras push "${{ steps.asset.outputs.image }}:sha-${short}" \
+            "${{ steps.asset.outputs.name }}:${{ steps.asset.outputs.media }}"
+
+      - name: Attach to the rolling 'latest' release
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload latest "dist/${{ steps.asset.outputs.name }}" --clobber \
+            || gh release create latest "dist/${{ steps.asset.outputs.name }}" \
+                 --title "Cloud constellation (rolling)" \
+                 --notes "Auto-updated from main."
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cloud-Boot-${{ steps.variant.outputs.variant }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach to GitHub Release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="cloud-unix-termux-boot-v$(date +%Y%m%d%H%M)"
+          gh release create "$tag" ${{ env.WORK_DIR }}/dist/*.apk \
+            --title "Cloud Unix Termux Boot $tag" \
+            --notes "Runs ~/.termux/boot scripts in Nix-on-Droid at device boot."
