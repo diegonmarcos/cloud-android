@@ -664,7 +664,7 @@
             {
               "name": "x86 (GHA)",
               "label": "x86 (GHA)",
-              "url": "https://github.com/diegonmarcos/cloud-android/actions",
+              "url": "https://github.com/diegonmarcos/cloud-u-android/actions",
               "external": true
             }
           ]

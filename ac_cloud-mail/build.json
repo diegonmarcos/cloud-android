@@ -18,7 +18,7 @@
         "signing": "keystore_properties",
         "gradle_props": {
           "COMMS_GH_OWNER": "diegonmarcos",
-          "COMMS_GH_REPO": "cloud-android",
+          "COMMS_GH_REPO": "cloud-u-android",
           "COMMS_RELEASE_ASSET_NAME": "cloud-comms-mail.apk",
           "COMMS_BUILD_TIMESTAMP": "$ENV:COMMS_BUILD_TIMESTAMP",
           "_COMMS_RSS_BASE_doc": "SUPER RSS READER default feed root (wg0-only rss-gateway, feed_auth=none). Baked into BuildConfig.COMMS_RSS_BASE; WorkerFeedSync auto-provisions the channel tree from <base>/channels.json on first run — no manual Cloud Feeds dialog needed.",
@@ -39,7 +39,7 @@
       "media_type": "application/vnd.android.package-archive"
     },
     "gh_release": {
-      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-android/releases/latest/download/cloud-comms-mail.apk stays stable. Published by `build.sh gh-release-fork mail` (ship-cloud-mail.yml), which uploads dist/cloud-comms-mail.apk with --clobber. Consumed by aa_cloud-superapp ui.external_apps[cloud-mail].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
+      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/cloud-comms-mail.apk stays stable. Published by `build.sh gh-release-fork mail` (ship-cloud-mail.yml), which uploads dist/cloud-comms-mail.apk with --clobber. Consumed by aa_cloud-superapp ui.external_apps[cloud-mail].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
       "enabled": true,
       "rolling_tag": "latest",
       "asset_name": "cloud-comms-mail.apk",

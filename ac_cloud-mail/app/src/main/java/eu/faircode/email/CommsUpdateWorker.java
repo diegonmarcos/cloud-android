@@ -72,7 +72,7 @@ public class CommsUpdateWorker extends Worker {
     private static final String WORK_NAME = "CommsUpdateWorker";
     private static final String WORK_NAME_NOW = "CommsUpdateWorkerNow";
     private static final int NOTIFICATION_ID = 99001;
-    // comms: GitHub releases Atom — all cloud-android apps publish releases here
+    // comms: GitHub releases Atom — all cloud-u-android apps publish releases here
     // on CI. Derived from BuildConfig, NOT hardcoded: the owner/repo pair already
     // exists there for the API call below, and a second hardcoded copy is exactly
     // how the COMMS_GH_REPO default ended up still pointing at the pre-rename

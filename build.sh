@@ -55,7 +55,7 @@ case "$command" in
     deps)              sh "$SCRIPTS/cloud-android-ship-repo-deps.sh" "$@" ;;
     ""|help)
         cat <<'EOF'
-Cloud-Android Orchestrator — repo-level CLI for cloud-android/ infrastructure
+Cloud-Android Orchestrator — repo-level CLI for cloud-u-android/ infrastructure
 
 USAGE:  ./build.sh <command> [args]
 

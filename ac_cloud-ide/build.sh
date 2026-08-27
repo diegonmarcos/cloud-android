@@ -29,7 +29,7 @@ set -euo pipefail
 # Repo identity for GHCR package linkage. GHCR binds a package to whichever repo
 # first pushed it, and a workflow's GITHUB_TOKEN only grants packages bound to
 # its OWN repo — after the 2026-08 android split every push was denied
-# write_package because the packages were still linked to cloud-unix. This is
+# write_package because the packages were still linked to cloud-infra-desktop. This is
 # the annotation GHCR reads to (re)link a package, so the link follows whichever
 # repo actually ships it. Never hardcoded: CI supplies GITHUB_REPOSITORY, local
 # runs fall back to the origin remote.

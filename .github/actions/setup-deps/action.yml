@@ -1,5 +1,5 @@
 name: setup-deps
-description: Install build dependencies for cloud-android (Nix + Node + Android toolchain)
+description: Install build dependencies for cloud-u-android (Nix + Node + Android toolchain)
 
 runs:
   using: composite

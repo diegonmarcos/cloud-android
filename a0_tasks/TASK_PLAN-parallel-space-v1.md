@@ -2,7 +2,7 @@
 
 **Opened**: 2026-04-22
 **Owner**: Diego
-**Repo**: `cloud-android`
+**Repo**: `cloud-u-android`
 **Status**: SCOPING — architecture locked, no code yet
 
 > First real task of this repo. Goal: a working launcher-host APK that runs

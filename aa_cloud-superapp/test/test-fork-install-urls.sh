@@ -12,7 +12,7 @@
 # instead of the "not installed" snack.
 set -u
 APP="$(cd "$(dirname "$0")/.." && pwd)"          # → aa_cloud-superapp
-UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/cloud-android
+UNIX="$(cd "$APP/.." && pwd)"                      # → ~/git/cloud-u-android
 BJ="$APP/build.json"
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
@@ -52,7 +52,7 @@ grep -qE 'gh-release-fork\)\s+step_gh_release_fork' "$UNIX/ac_cloud-dialer/build
 echo "== T4: SuperApp install_apk_url == the fork's rolling-'latest' asset URL =="
 for pair in $FORKS; do
   key="${pair%%:*}"; eid="${pair##*:}"
-  want="https://github.com/diegonmarcos/cloud-android/$REL/cloud-comms-$key.apk"
+  want="https://github.com/diegonmarcos/cloud-u-android/$REL/cloud-comms-$key.apk"
   got="$(jq -r --arg i "$eid" '.ui.external_apps[] | select(.id==$i) | .install_apk_url' "$BJ" 2>/dev/null)"
   [ "$got" = "$want" ] && ok "$eid install_apk_url → cloud-comms-$key.apk" \
     || bad "$eid install_apk_url mismatch (got: $got)"

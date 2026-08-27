@@ -2,7 +2,7 @@
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║ pre-commit — block secrets from ever reaching a commit           ║
 # ║                                                                  ║
-# ║ Source: cloud-android/0_git/src/hooks/pre-commit           ║
+# ║ Source: cloud-u-android/0_git/src/hooks/pre-commit           ║
 # ║ Deploy: build.sh workflow → 0_git/dist/hooks/              ║
 # ║ Active: via .gitconfig [core] hooksPath = 0_git/dist/hooks ║
 # ║                                                                  ║

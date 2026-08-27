@@ -11,7 +11,7 @@
 # Static wiring tester (no device / no gradle run): asserts the exact markers.
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"        # → aa_cloud-superapp
-UNIX="$(cd "$ROOT/.." && pwd)"                    # → ~/git/cloud-android
+UNIX="$(cd "$ROOT/.." && pwd)"                    # → ~/git/cloud-u-android
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }

@@ -1,7 +1,7 @@
-# 9_others — cloud-android CI/CD & Build System
+# 9_others — cloud-u-android CI/CD & Build System
 
 Single source of truth for **all** executable logic, GHA workflows, git hooks,
-and repo configuration in `cloud-android/`. Mirrors the pattern used in
+and repo configuration in `cloud-u-android/`. Mirrors the pattern used in
 [`cloud/9_others/`](https://github.com/diegonmarcos/cloud-infra/tree/main/9_others).
 
 Everything under `.github/`, `.gitmodules`, and `.gitconfig` at repo root is

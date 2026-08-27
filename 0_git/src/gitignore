@@ -6,8 +6,8 @@
 # ── Secrets & Credentials (reinforces global gitignore) ──
 # KEEP IN SYNC WITH:
 #   Pre-commit hook: 0_git/src/hooks/pre-commit  (blocks even git add -f)
-#   Global gitignore: ~/git/cloud-unix/ba_flakes_desktop/src/modules/programs/git.nix
-#   Global gitignore: ~/git/cloud-unix/bb_flakes_termux/src/modules/programs/git.nix
+#   Global gitignore: ~/git/cloud-infra-desktop/ba_flakes_desktop/src/modules/programs/git.nix
+#   Global gitignore: ~/git/cloud-infra-desktop/bb_flakes_termux/src/modules/programs/git.nix
 ## Decrypted secrets output
 .secrets
 *.secrets
@@ -118,7 +118,7 @@ build.log
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 
-## ─── Android app trees (moved from cloud-unix 2026-08-25, ea_* -> aa_* (superapp) / ab_* (libs) / ac_* (apps)) ───
+## ─── Android app trees (moved from cloud-infra-desktop 2026-08-25, ea_* -> aa_* (superapp) / ab_* (libs) / ac_* (apps)) ───
 ## EXCEPTION: aa_cloud-superapp/libs/ is the gradle multi-module source tree
 ## renamed from ea_superapp → aa_cloud-superapp 2026-05-30.
 !aa_cloud-superapp/libs/
@@ -243,7 +243,7 @@ ac_cloud-media-center/dist/
 ac_cloud-media-center/**/*.apk
 ac_cloud-calendar/dist/
 ac_cloud-calendar/**/*.apk
-## ae-tool_termux-boot + c_devices/garmin-watchface arrived from cloud-unix
+## ae-tool_termux-boot + c_devices/garmin-watchface arrived from cloud-infra-desktop
 ## (2026-08-27). Termux Boot is Gradle like the ac_cloud-* apps, so it needs the
 ## same build-output rules; *.jks/*.keystore are already global above.
 a_solutions/ae-tool_termux-boot/.gradle/

@@ -1,4 +1,4 @@
-# SOPS configuration for cloud-android secrets
+# SOPS configuration for cloud-u-android secrets
 # Uses age encryption with Diego's key
 
 keys:

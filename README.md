@@ -1,4 +1,4 @@
-# cloud-android
+# cloud-u-android
 
 Android **Parallel Space / Virtual Engine** workspace — data-ownership tooling
 built on the same declarative framework as [`cloud/`](https://github.com/diegonmarcos/cloud-infra).
@@ -31,7 +31,7 @@ lightweight fallback.
 ## Framework (same as `cloud/`)
 
 ```
-cloud-android/
+cloud-u-android/
 ├── build.sh                     # Root dispatcher — delegates to 1_cicd/src/scripts/*
 ├── config.json                  # SINGLE SOURCE OF TRUTH — devices, arch pillars, deps
 ├── .gitignore / .sops.yaml      # Secret-hygiene reinforced by pre-commit hook
@@ -135,8 +135,8 @@ engine symlink target per-solution** — extend `build.json` instead.
 ## Getting started
 
 ```sh
-git clone --recurse-submodules git@github.com:diegonmarcos/cloud-android.git
-cd cloud-android
+git clone --recurse-submodules git@github.com:diegonmarcos/cloud-u-android.git
+cd cloud-u-android
 ./build.sh deps        # check / install system deps
 ./build.sh workflow    # materialise hooks, .github/, .gitmodules from src
 ./build.sh config      # generate 2_configs/dist from build.json files

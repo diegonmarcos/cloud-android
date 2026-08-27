@@ -44,7 +44,7 @@ android {
 
         // comms: GitHub Releases coords for CommsUpdateWorker — data-driven via build.json::gradle_props.
         buildConfigField "String", "COMMS_GH_OWNER",           "\"${project.findProperty('COMMS_GH_OWNER') ?: 'diegonmarcos'}\""
-        buildConfigField "String", "COMMS_GH_REPO",            "\"${project.findProperty('COMMS_GH_REPO') ?: 'cloud-android'}\""
+        buildConfigField "String", "COMMS_GH_REPO",            "\"${project.findProperty('COMMS_GH_REPO') ?: 'cloud-u-android'}\""
         buildConfigField "String", "COMMS_RELEASE_ASSET_NAME", "\"${project.findProperty('COMMS_RELEASE_ASSET_NAME') ?: 'cloud-comms-mail.apk'}\""
         buildConfigField "String", "COMMS_BUILD_TIMESTAMP",    "\"${project.findProperty('COMMS_BUILD_TIMESTAMP') ?: 'dev'}\""
         // comms: SUPER RSS READER default base — the wg0-only rss-gateway feed

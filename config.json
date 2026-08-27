@@ -6,10 +6,10 @@
     "github": "diegonmarcos"
   },
   "repo": {
-    "name": "cloud-android",
+    "name": "cloud-u-android",
     "description": "Android Parallel Space / Virtual Engine — data-ownership workspace built on the cloud/ declarative framework",
     "visibility": "public",
-    "url": "https://github.com/diegonmarcos/cloud-android"
+    "url": "https://github.com/diegonmarcos/cloud-u-android"
   },
   "ssh_key": "/home/diego/git/cloud-vault/A0_keys/ssh/id_rsa",
   "engine_folder": "9_others",

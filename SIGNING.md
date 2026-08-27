@@ -56,7 +56,7 @@ Each `ship-cloud-*.yml` checks out the private vault and decrypts the key:
 No keystore is cached or generated in CI. Missing either secret → the build fails
 (by design) rather than signing with a wrong key.
 
-> **`ANDROID_SIGNING_VAULT_TOKEN` on cloud-android currently holds a
+> **`ANDROID_SIGNING_VAULT_TOKEN` on cloud-u-android currently holds a
 > broad-scope token, not a scoped PAT (2026-08-26).** cloud-vault is private
 > and there is no API for minting a fine-grained PAT, so the value set here is
 > the account's `gh` CLI token, which carries `repo`, `workflow`, `admin:org`,
@@ -71,21 +71,21 @@ No keystore is cached or generated in CI. Missing either secret → the build fa
 > 1. Mint at `github.com/settings/personal-access-tokens/new` — owner
 >    `diegonmarcos`, repository access **only** `diegonmarcos/cloud-vault`,
 >    permission **Contents: Read**.
-> 2. `gh secret set ANDROID_SIGNING_VAULT_TOKEN -R diegonmarcos/cloud-android`
+> 2. `gh secret set ANDROID_SIGNING_VAULT_TOKEN -R diegonmarcos/cloud-u-android`
 > 3. Re-run any ship workflow to confirm.
 >
 > A read-only **deploy key** on cloud-vault is the other correct option, but it
 > needs `actions/checkout` switched from `token:` to `ssh-key:` in all 18
-> workflow sources, and would leave cloud-android authenticating differently
-> from cloud-unix.
+> workflow sources, and would leave cloud-u-android authenticating differently
+> from cloud-infra-desktop.
 
 > **GitHub secrets do not move with workflows.** The 2026-08-25 migration of the
-> `ea_*` app trees out of `cloud-unix` carried the `ship-cloud-*.yml` workflows
+> `ea_*` app trees out of `cloud-infra-desktop` carried the `ship-cloud-*.yml` workflows
 > but *not* these two secrets, so every ship run failed with
 > `Input required and not supplied: token` until they were re-set on
-> `diegonmarcos/cloud-android`. Secrets are write-only — they cannot be copied
-> between repos, only re-supplied. `cloud-unix` keeps its own copies because
-> `ship-cloud-unix-termux-boot.yml` still signs with the same key.
+> `diegonmarcos/cloud-u-android`. Secrets are write-only — they cannot be copied
+> between repos, only re-supplied. `cloud-infra-desktop` keeps its own copies because
+> `ship-cloud-infra-desktop-termux-boot.yml` still signs with the same key.
 
 ## Re-keying cost
 
@@ -96,17 +96,17 @@ reinstall — keep the key stable to avoid it.
 
 ## GHCR package linkage (2026-08-26)
 
-Every fleet package is still bound to `diegonmarcos/cloud-unix`, the repo that
+Every fleet package is still bound to `diegonmarcos/cloud-infra-desktop`, the repo that
 first pushed it. A workflow's `GITHUB_TOKEN` only grants packages bound to its
-own repo, so pushes from cloud-android fail with
+own repo, so pushes from cloud-u-android fail with
 `denied: permission_denied: write_package` unless a packages-scoped token is
 used. The `oras login` step therefore reads
 `${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}`.
 
 Pushes now set `org.opencontainers.image.source`, which is what GHCR reads to
 link a package — but **only at package creation**. Verified: the manifest
-carries the cloud-android source annotation and the package is still linked to
-cloud-unix. So the annotation is correct for new packages and cannot fix the
+carries the cloud-u-android source annotation and the package is still linked to
+cloud-infra-desktop. So the annotation is correct for new packages and cannot fix the
 existing ones; re-linking those has no REST API for a user account and is
 per-package in the web UI. `GHCR_TOKEN` stays required until then.
 

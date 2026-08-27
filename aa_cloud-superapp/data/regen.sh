@@ -46,16 +46,16 @@ UNIX="$(cd "$HERE/../.." && pwd)"
 regen_constellation() {
     command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; return 1; }
     # owner/repo = the monorepo these apps ship from (invariant identity).
-    local rel="https://github.com/diegonmarcos/cloud-android/releases"
-    local tree="https://github.com/diegonmarcos/cloud-android/tree/main"
-    local pkg="https://github.com/diegonmarcos/cloud-android/pkgs/container"
+    local rel="https://github.com/diegonmarcos/cloud-u-android/releases"
+    local tree="https://github.com/diegonmarcos/cloud-u-android/tree/main"
+    local pkg="https://github.com/diegonmarcos/cloud-u-android/pkgs/container"
 
     # Scan EVERY sibling repo's build.json, not just ac_cloud-*/. Membership is a
     # property of the DATA, not of the directory name: a dir self-registers as a
     # top-level app (.android.application_id + .release.ghcr), a multi-lib repo
     # (.lib_apks) or a fork-app (a real .forks.<key> entry), and anything else is
     # skipped. The old ac_cloud-* glob made the prefix load-bearing, so
-    # cloud-unix-termux-boot - named for the host it targets - was invisible to
+    # cloud-infra-desktop-termux-boot - named for the host it targets - was invisible to
     # the store no matter what its build.json said. This predicate admits exactly
     # the same repos the glob did, plus any correctly-declared one.
     # id = dir basename sans an ac_cloud- prefix if it has one.
@@ -198,7 +198,7 @@ if [ -z "$CONSOLIDATED" ]; then
         "$HOME/git/cloud-infra/2_configs/dist/_cloud-data-consolidated.json" \
         "$HOME/git/cloud-infra/I_cloud-data/_cloud-data-consolidated.json" \
         "$HOME/git/cloud-data/_cloud-data-consolidated.json" \
-        "$HOME/git/cloud-unix/cloud-data/_cloud-data-consolidated.json"; do
+        "$HOME/git/cloud-infra-desktop/cloud-data/_cloud-data-consolidated.json"; do
         [ -f "$cand" ] && { CONSOLIDATED="$cand"; break; }
     done
 fi

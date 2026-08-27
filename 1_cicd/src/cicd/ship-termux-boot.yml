@@ -29,7 +29,7 @@ on:
   push:
     branches: [main]
     tags:
-      - "cloud-unix-termux-boot-v*"
+      - "cloud-infra-desktop-termux-boot-v*"
     paths:
       - "a_solutions/ae-tool_termux-boot/**"
       - "1_cicd/src/cicd/ship-termux-boot.yml"
@@ -193,7 +193,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="cloud-unix-termux-boot-v$(date +%Y%m%d%H%M)"
+          tag="cloud-infra-desktop-termux-boot-v$(date +%Y%m%d%H%M)"
           gh release create "$tag" ${{ env.WORK_DIR }}/dist/*.apk \
             --title "Cloud Unix Termux Boot $tag" \
             --notes "Runs ~/.termux/boot scripts in Nix-on-Droid at device boot."
