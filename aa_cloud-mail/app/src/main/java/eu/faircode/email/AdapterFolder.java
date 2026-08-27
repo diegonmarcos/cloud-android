@@ -589,7 +589,15 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 return false;
 
             final TupleFolderEx folder = selected.get(pos);
-            if (folder.tbd != null || folder.local)
+            // comms: RSS/JMAP folders are local=true (they hold no IMAP server
+            // state), but that is a SYNC property, not a UI one. Gating the
+            // long-press menu on it made every feed folder unreachable: no
+            // notify / unified / navigation / synchronize toggle, no Edit
+            // properties -- the exact per-folder settings IMAP folders get.
+            // Only `tbd` (folder being deleted) is a real reason to bail.
+            boolean feed = (folder.accountProtocol == EntityAccount.TYPE_RSS ||
+                    folder.accountProtocol == EntityAccount.TYPE_JMAP);
+            if (folder.tbd != null || (folder.local && !feed))
                 return false;
 
             if (listener != null)

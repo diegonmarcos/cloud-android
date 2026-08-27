@@ -263,15 +263,26 @@ public class CommsAccounts {
         // of the DB writes rolling back (caller-owned transaction) while the
         // non-transactional SharedPreferences flag stays permanently true.
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean migrate = !prefs.getBoolean("comms_nav_tree_0062", false);
+        // 0063 supersedes the 0062 "nav tree" migration, which force-set
+        // navigation=true on every group node. Together with the forced
+        // notify/unified/navigation at leaf creation that put every feed in
+        // the nav drawer, in the unified inbox and on the notification
+        // channel — and the long-press menu was gated on folder.local, so
+        // there was no way to turn any of it off.
+        //
+        // Resetting to the IMAP user-folder defaults (all false) cannot
+        // clobber a user choice: making one was impossible until the
+        // AdapterFolder.onLongClick fix shipped alongside this. From here the
+        // opt-in is per folder, via the same long-press menu IMAP folders use.
+        boolean migrate = !prefs.getBoolean("comms_folder_defaults_0063", false);
         if (migrate) {
             List<EntityFolder> existing = db.folder().getFolders(rss.id, false, false);
             if (existing != null)
-                for (EntityFolder f : existing)
-                    if (f.feed_url == null && !Boolean.TRUE.equals(f.selectable)) {
-                        db.folder().setFolderNavigation(f.id, true);
-                        db.folder().setFolderCollapsed(f.id, true);
-                    }
+                for (EntityFolder f : existing) {
+                    db.folder().setFolderNavigation(f.id, false);
+                    db.folder().setFolderUnified(f.id, false);
+                    db.folder().setFolderNotify(f.id, false);
+                }
         }
         String origin = originOf(baseUrl);
         Set<String> liveFeeds = new HashSet<>();
@@ -296,7 +307,7 @@ public class CommsAccounts {
         }
         pruneFeedTree(db, rss.id, origin, liveFeeds);
         if (migrate)
-            prefs.edit().putBoolean("comms_nav_tree_0062", true).apply();
+            prefs.edit().putBoolean("comms_folder_defaults_0063", true).apply();
         return n;
     }
 
@@ -313,9 +324,9 @@ public class CommsAccounts {
             f.synchronize = false;
             f.subscribed = true;
             f.selectable = false;   // group node — holds no messages
-            // groups are the nav-drawer tree skeleton: shown, but collapsed by
-            // default so the drawer stays compact until the user expands them
-            f.navigation = true;
+            // navigation stays false (EntityFolder default), like an IMAP
+            // parent folder: the group shows in the account's folder list,
+            // not as a nav-drawer shortcut, unless the user opts in.
             f.collapsed = true;
             f.sync_days = EntityFolder.DEFAULT_SYNC;
             f.keep_days = EntityFolder.DEFAULT_KEEP;
@@ -352,12 +363,13 @@ public class CommsAccounts {
             f.synchronize = false;
             f.subscribed = true;
             f.selectable = true;
-            // parity with mail folders: notify on new items, show in the unified
-            // inbox, + show as a nav-menu shortcut. All user-togglable per-folder
-            // (folder context menu).
-            f.notify = true;
-            f.unified = true;
-            f.navigation = true;
+            // Parity with IMAP user folders means the SAME DEFAULTS, not
+            // everything forced on: EntityFolder defaults notify/unified/
+            // navigation to false and the user opts in per folder via the
+            // long-press menu. Forcing them true here put every feed in the
+            // nav drawer, in the unified inbox and on the notification
+            // channel with no way to opt out (the long-press menu was also
+            // unreachable -- see AdapterFolder.onLongClick).
             f.sync_days = EntityFolder.DEFAULT_SYNC;
             f.keep_days = EntityFolder.DEFAULT_KEEP;
             db.folder().insertFolder(f);
