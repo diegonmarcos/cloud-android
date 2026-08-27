@@ -30,13 +30,13 @@ the in-app fleet updater installs updates across apps. Android refuses to update
 installed app — or grant signature-IPC — across **different** signing keys. So all
 of these MUST share the single key above:
 
-Concretely: **every** `aa_cloud-*` app whose `build.json` declares
+Concretely: **every** `ac_cloud-*` app whose `build.json` declares
 `signing.vault_keystore` — 17 of them as of 2026-08-26, including their forks
 (mail/FairEmail, dialer/Fossify, ide, media-center, …). The list is not
 maintained here; it *is* the set of build.json files that declare the key:
 
 ```sh
-rg -l vault_keystore --glob 'aa_*/build.json'
+rg -l vault_keystore --glob 'a[abc]_*/build.json'
 ```
 
 ## How it's wired (declarative)

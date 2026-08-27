@@ -67,8 +67,11 @@ node_modules
 *.tfstate.backup
 !*.tfstate.enc
 ## Nix build artifacts
-result
-.result
+## Anchored with a leading slash: a bare `result` matches ANY directory of
+## that name at any depth, which silently swallowed the 5 tracked C++ sources
+## in ab_cloud-libs-shared/libs/keyboard/.../suggest/core/result/.
+/result
+/.result
 ## Temporary files
 *.tmp
 ## Generated data files → symlinks to cloud-data/ submodule (tracked)
@@ -115,105 +118,109 @@ build.log
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 
-## ─── Android app trees (moved from cloud-unix 2026-08-25, ea_* -> aa_*) ───
+## ─── Android app trees (moved from cloud-unix 2026-08-25, ea_* -> aa_* (superapp) / ab_* (libs) / ac_* (apps)) ───
 ## EXCEPTION: aa_cloud-superapp/libs/ is the gradle multi-module source tree
 ## renamed from ea_superapp → aa_cloud-superapp 2026-05-30.
 !aa_cloud-superapp/libs/
 !aa_cloud-superapp/libs/**
-## EXCEPTION: aa_cloud-wallet/libs/ is the gradle multi-module source tree
+## EXCEPTION: ac_cloud-wallet/libs/ is the gradle multi-module source tree
 ## (libs:wallet). Same pattern as aa_cloud-superapp/libs/. Added 2026-07-12.
-!aa_cloud-wallet/libs/
-!aa_cloud-wallet/libs/**
-## EXCEPTION: aa_cloud-nav/libs/ is the gradle multi-module source tree
+!ac_cloud-wallet/libs/
+!ac_cloud-wallet/libs/**
+## EXCEPTION: ac_cloud-nav/libs/ is the gradle multi-module source tree
 ## (libs:core, libs:maps, libs:updater). Same pattern as aa_cloud-superapp/libs/.
-!aa_cloud-nav/libs/
-!aa_cloud-nav/libs/**
-## EXCEPTION: aa_cloud-calendar/libs/ is the gradle multi-module source tree
+!ac_cloud-nav/libs/
+!ac_cloud-nav/libs/**
+## EXCEPTION: ac_cloud-calendar/libs/ is the gradle multi-module source tree
 ## (libs:core, libs:updater, libs:cal). Same pattern as aa_cloud-superapp/libs/.
-!aa_cloud-calendar/libs/
-!aa_cloud-calendar/libs/**
-## EXCEPTION: aa_cloud-news/libs/ is the gradle multi-module source tree
-!aa_cloud-news/libs/
-!aa_cloud-news/libs/**
-!aa_cloud-contacts/libs/
-!aa_cloud-contacts/libs/**
-## EXCEPTION: aa_cloud-vault/libs/ — the FIFTH time this blanket rule has
-!aa_cloud-vault/libs/
-!aa_cloud-vault/libs/**
-## EXCEPTION: aa_cloud-media-center/upstream/libs/ — the SIXTH time. This one
-## as !aa_cloud-media-center/libs/ would not have matched it.
-!aa_cloud-media-center/upstream/libs/
-!aa_cloud-media-center/upstream/libs/**
+!ac_cloud-calendar/libs/
+!ac_cloud-calendar/libs/**
+## EXCEPTION: ac_cloud-news/libs/ is the gradle multi-module source tree
+!ac_cloud-news/libs/
+!ac_cloud-news/libs/**
+!ac_cloud-contacts/libs/
+!ac_cloud-contacts/libs/**
+## EXCEPTION: ac_cloud-vault/libs/ — the FIFTH time this blanket rule has
+!ac_cloud-vault/libs/
+!ac_cloud-vault/libs/**
+## EXCEPTION: ac_cloud-media-center/upstream/libs/ — the SIXTH time. This one
+## as !ac_cloud-media-center/libs/ would not have matched it.
+!ac_cloud-media-center/upstream/libs/
+!ac_cloud-media-center/upstream/libs/**
 aa_cloud-superapp/**/*.keystore
 aa_cloud-superapp/**/*.jks
 ea_cloud-comms/**/*.keystore
 ea_cloud-comms/**/*.jks
-aa_cloud-ide/**/*.keystore
-aa_cloud-ide/**/*.jks
-aa_cloud-nav/**/*.keystore
-aa_cloud-nav/**/*.jks
-## Bitwarden Android for aa_cloud-vault's `vault-bitwarden` fork, added
-## aa_cloud-<app>/patches/ (tracked). Was covered by the old `ea_*-*/`
-aa_upstreams-sources/
-aa_cloud-wallet/**/*.keystore
-aa_cloud-wallet/**/*.jks
-aa_cloud-browser/**/*.keystore
-aa_cloud-browser/**/*.jks
-aa_cloud-vault/**/*.keystore
-aa_cloud-vault/**/*.jks
-aa_cloud-contacts/**/*.keystore
-aa_cloud-contacts/**/*.jks
-aa_cloud-media-center/**/*.keystore
-aa_cloud-media-center/**/*.jks
+ac_cloud-ide/**/*.keystore
+ac_cloud-ide/**/*.jks
+ac_cloud-nav/**/*.keystore
+ac_cloud-nav/**/*.jks
+## Bitwarden Android for ac_cloud-vault's `vault-bitwarden` fork, added
+## ac_cloud-<app>/patches/ (tracked). Was covered by the old `ea_*-*/`
+## Contents ignored via /* (not the dir itself): git cannot re-include a
+## file inside an excluded directory, so the README negation below needs the
+## directory to stay traversable.
+ac_upstreams-sources/*
+!ac_upstreams-sources/README.md
+ac_cloud-wallet/**/*.keystore
+ac_cloud-wallet/**/*.jks
+ac_cloud-browser/**/*.keystore
+ac_cloud-browser/**/*.jks
+ac_cloud-vault/**/*.keystore
+ac_cloud-vault/**/*.jks
+ac_cloud-contacts/**/*.keystore
+ac_cloud-contacts/**/*.jks
+ac_cloud-media-center/**/*.keystore
+ac_cloud-media-center/**/*.jks
 ## `ea_*-*/` blanket rule removed 2026-07-10; 93fdc30c re-added explicit ignores
-## that were later lost. If any becomes a real app, whitelist it like aa_cloud-*.
-aa_keyboard-dicts/
-aa_keyboard-heliboard/
-aa_net-firestack/
-aa_zoomies-pets/
-aa_mail-fairmail/
-aa_cal-davx5/
-aa_feed-feeder/
-aa_net-wireguard/
-aa_vault-keepassdx/
-aa_net-kdeconnect/
-aa_net-rethinkdns/
-## Re-ignore Gradle build outputs inside the whitelisted aa_cloud-ide/ tree
-## (the !aa_cloud-ide/** whitelist would otherwise track build/.gradle dirs).
-aa_cloud-ide/.gradle/
-aa_cloud-ide/build/
-aa_cloud-ide/**/build/
-aa_cloud-nav/.gradle/
-aa_cloud-nav/build/
-aa_cloud-nav/**/build/
-aa_cloud-media-center/.gradle/
-aa_cloud-media-center/build/
-aa_cloud-media-center/**/build/
-## aa_cloud-calendar was added after this list and never got its entries, so a
+## that were later lost. If any becomes a real app, whitelist it like ac_cloud-*.
+ac_keyboard-dicts/
+ac_keyboard-heliboard/
+ac_net-firestack/
+ac_zoomies-pets/
+ac_mail-fairmail/
+ac_cal-davx5/
+ac_feed-feeder/
+ac_net-wireguard/
+ac_vault-keepassdx/
+ac_net-kdeconnect/
+ac_net-rethinkdns/
+## Re-ignore Gradle build outputs inside the whitelisted ac_cloud-ide/ tree
+## (the !ac_cloud-ide/** whitelist would otherwise track build/.gradle dirs).
+ac_cloud-ide/.gradle/
+ac_cloud-ide/build/
+ac_cloud-ide/**/build/
+ac_cloud-nav/.gradle/
+ac_cloud-nav/build/
+ac_cloud-nav/**/build/
+ac_cloud-media-center/.gradle/
+ac_cloud-media-center/build/
+ac_cloud-media-center/**/build/
+## ac_cloud-calendar was added after this list and never got its entries, so a
 ## ~3M-line aa_cloud-superapp cache commit (264c09f2). Added 2026-08-09.
-aa_cloud-calendar/.gradle/
-aa_cloud-calendar/build/
-aa_cloud-calendar/**/build/
-aa_cloud-calendar/.cache/
-aa_cloud-calendar/.kotlin/
-## Same for aa_cloud-news. These MUST sort after the !aa_cloud-news/libs/**
-aa_cloud-news/.gradle/
-aa_cloud-news/build/
-aa_cloud-news/**/build/
-## Same for aa_cloud-vault — MUST sort after its whitelist above.
-aa_cloud-vault/.gradle/
-aa_cloud-vault/build/
-aa_cloud-vault/**/build/
-aa_cloud-vault/.cache/
-aa_cloud-vault/.kotlin/
-aa_cloud-news/.cache/
-aa_cloud-news/.kotlin/
-aa_cloud-contacts/.gradle/
-aa_cloud-contacts/build/
-aa_cloud-contacts/**/build/
-aa_cloud-contacts/.cache/
-aa_cloud-contacts/.kotlin/
-## aa_cloud-calendar's first local ./gradlew run surfaced it, but the gap
+ac_cloud-calendar/.gradle/
+ac_cloud-calendar/build/
+ac_cloud-calendar/**/build/
+ac_cloud-calendar/.cache/
+ac_cloud-calendar/.kotlin/
+## Same for ac_cloud-news. These MUST sort after the !ac_cloud-news/libs/**
+ac_cloud-news/.gradle/
+ac_cloud-news/build/
+ac_cloud-news/**/build/
+## Same for ac_cloud-vault — MUST sort after its whitelist above.
+ac_cloud-vault/.gradle/
+ac_cloud-vault/build/
+ac_cloud-vault/**/build/
+ac_cloud-vault/.cache/
+ac_cloud-vault/.kotlin/
+ac_cloud-news/.cache/
+ac_cloud-news/.kotlin/
+ac_cloud-contacts/.gradle/
+ac_cloud-contacts/build/
+ac_cloud-contacts/**/build/
+ac_cloud-contacts/.cache/
+ac_cloud-contacts/.kotlin/
+## ac_cloud-calendar's first local ./gradlew run surfaced it, but the gap
 ## Re-ignore Gradle/Kotlin daemon caches inside the whitelisted aa_cloud-superapp/
 aa_cloud-superapp/.cache/
 aa_cloud-superapp/.kotlin/
@@ -222,22 +229,22 @@ aa_cloud-superapp/dist/
 aa_cloud-superapp/**/*.apk
 ea_cloud-comms/dist/
 ea_cloud-comms/**/*.apk
-aa_cloud-ide/dist/
-aa_cloud-ide/**/*.apk
-aa_cloud-nav/dist/
-aa_cloud-nav/**/*.apk
-aa_cloud-wallet/dist/
-aa_cloud-wallet/**/*.apk
-aa_cloud-browser/dist/
-aa_cloud-browser/**/*.apk
-aa_cloud-vault/dist/
-aa_cloud-vault/**/*.apk
-aa_cloud-media-center/dist/
-aa_cloud-media-center/**/*.apk
-aa_cloud-calendar/dist/
-aa_cloud-calendar/**/*.apk
+ac_cloud-ide/dist/
+ac_cloud-ide/**/*.apk
+ac_cloud-nav/dist/
+ac_cloud-nav/**/*.apk
+ac_cloud-wallet/dist/
+ac_cloud-wallet/**/*.apk
+ac_cloud-browser/dist/
+ac_cloud-browser/**/*.apk
+ac_cloud-vault/dist/
+ac_cloud-vault/**/*.apk
+ac_cloud-media-center/dist/
+ac_cloud-media-center/**/*.apk
+ac_cloud-calendar/dist/
+ac_cloud-calendar/**/*.apk
 ## ae-tool_termux-boot + c_devices/garmin-watchface arrived from cloud-unix
-## (2026-08-27). Termux Boot is Gradle like the aa_cloud-* apps, so it needs the
+## (2026-08-27). Termux Boot is Gradle like the ac_cloud-* apps, so it needs the
 ## same build-output rules; *.jks/*.keystore are already global above.
 a_solutions/ae-tool_termux-boot/.gradle/
 a_solutions/ae-tool_termux-boot/build/
@@ -246,3 +253,6 @@ a_solutions/ae-tool_termux-boot/local.properties
 ## Garmin is monkeyc, not Gradle: build.sh writes dist/ (incl. the developer key,
 ## which must never be vendored) per design.
 c_devices/garmin-watchface/dist/
+
+## Tracked here on purpose; overrides the global core.excludesFile `.vscode/`.
+!.vscode/

@@ -12,7 +12,7 @@
       "tag": "latest",
       "asset": "Cloud-Browser.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Browser.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-browser",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-browser",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-browser",
       "blocked": false,
       "kind": "app"
@@ -28,7 +28,7 @@
       "tag": "latest",
       "asset": "Cloud-Calendar.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Calendar.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-calendar",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-calendar",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-calendar",
       "blocked": false,
       "kind": "app"
@@ -44,7 +44,7 @@
       "tag": "latest",
       "asset": "cloud-comms-chat.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-chat",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-chat",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-comms-chat",
       "blocked": false,
       "kind": "app"
@@ -60,7 +60,7 @@
       "tag": "latest",
       "asset": "Cloud-Contacts.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Contacts.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-contacts",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-contacts",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-contacts",
       "blocked": false,
       "kind": "app"
@@ -76,7 +76,7 @@
       "tag": "latest",
       "asset": "cloud-comms-dialer.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-dialer",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-dialer",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-comms-dialer",
       "blocked": false,
       "kind": "app"
@@ -92,7 +92,7 @@
       "tag": "latest",
       "asset": "Cloud-IDE-Hub.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-IDE-Hub.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-ide",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-ide",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-ide-hub",
       "blocked": false,
       "kind": "app"
@@ -108,7 +108,7 @@
       "tag": "latest",
       "asset": "Cloud-Keyboard.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Keyboard.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-keyboard",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-keyboard",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-keyboard",
       "blocked": false,
       "kind": "app"
@@ -124,7 +124,7 @@
       "tag": "latest",
       "asset": "Cloud-Keyboard-Libs.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Keyboard-Libs.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-keyboard-libs",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-keyboard-libs",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-keyboard-libs",
       "blocked": false,
       "kind": "lib"
@@ -172,7 +172,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Browser.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Browser.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/browser",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/browser",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-browser",
       "blocked": false,
       "kind": "lib"
@@ -188,7 +188,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Cal.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Cal.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-calendar/libs/cal",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-calendar/libs/cal",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-cal",
       "blocked": false,
       "kind": "lib"
@@ -220,7 +220,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Contacts.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Contacts.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-contacts/libs/contacts",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-contacts/libs/contacts",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-contacts",
       "blocked": false,
       "kind": "lib"
@@ -236,7 +236,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Core.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Core.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/core",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/core",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-core",
       "blocked": false,
       "kind": "lib"
@@ -268,7 +268,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Devtools.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Devtools.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/devtools",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/devtools",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-devtools",
       "blocked": false,
       "kind": "lib"
@@ -428,7 +428,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Maps.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Maps.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-nav/libs/maps",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-nav/libs/maps",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-maps",
       "blocked": false,
       "kind": "lib"
@@ -444,7 +444,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Media.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Media.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/media",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/media",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-media",
       "blocked": false,
       "kind": "lib"
@@ -492,7 +492,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-News.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-News.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-news/libs/news",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-news/libs/news",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-news",
       "blocked": false,
       "kind": "lib"
@@ -540,7 +540,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Translate.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Translate.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/translate",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/translate",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-translate",
       "blocked": false,
       "kind": "lib"
@@ -556,7 +556,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Translate-Mlkit.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Translate-Mlkit.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/translate-mlkit",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/translate-mlkit",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-translate-mlkit",
       "blocked": false,
       "kind": "lib"
@@ -572,7 +572,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Updater.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Updater.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/updater",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/updater",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-updater",
       "blocked": false,
       "kind": "lib"
@@ -588,7 +588,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Voice.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Voice.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/voice",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/voice",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-voice",
       "blocked": false,
       "kind": "lib"
@@ -604,7 +604,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Voice-Vosk.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Voice-Vosk.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-libs-shared/libs/voice-vosk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ab_cloud-libs-shared/libs/voice-vosk",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-voice-vosk",
       "blocked": false,
       "kind": "lib"
@@ -620,7 +620,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Wallet.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Lib-Wallet.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-wallet/libs/wallet",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-wallet/libs/wallet",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-lib-wallet",
       "blocked": false,
       "kind": "lib"
@@ -636,7 +636,7 @@
       "tag": "latest",
       "asset": "cloud-comms-mail.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-mail",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-mail",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-comms-mail",
       "blocked": false,
       "kind": "app"
@@ -652,7 +652,7 @@
       "tag": "latest",
       "asset": "cloud-comms-matrix.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-matrix",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-matrix",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-comms-matrix",
       "blocked": false,
       "kind": "app"
@@ -668,7 +668,7 @@
       "tag": "latest",
       "asset": "cloud-media-center.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/cloud-media-center.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-media-center",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-media-center",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-media-center",
       "blocked": false,
       "kind": "app"
@@ -684,7 +684,7 @@
       "tag": "latest",
       "asset": "Cloud-Nav.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Nav.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-nav",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-nav",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-nav",
       "blocked": false,
       "kind": "app"
@@ -700,7 +700,7 @@
       "tag": "latest",
       "asset": "Cloud-News.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-News.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-news",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-news",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-news",
       "blocked": false,
       "kind": "app"
@@ -732,7 +732,7 @@
       "tag": "latest",
       "asset": "Cloud-Vault.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Vault.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-vault",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-vault",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-vault",
       "blocked": false,
       "kind": "app"
@@ -748,7 +748,7 @@
       "tag": "latest",
       "asset": "Cloud-Wallet.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-android/releases/latest/download/Cloud-Wallet.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/aa_cloud-wallet",
+      "repo_url": "https://github.com/diegonmarcos/cloud-android/tree/main/ac_cloud-wallet",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-android/pkgs/container/cloud-wallet",
       "blocked": false,
       "kind": "app"

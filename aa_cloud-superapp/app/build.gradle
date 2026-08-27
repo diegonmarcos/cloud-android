@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     // Compose compiler plugin removed — libs:wallet (the only Compose
-    // surface) moved to aa_cloud-wallet; buildFeatures.compose = false.
+    // surface) moved to ac_cloud-wallet; buildFeatures.compose = false.
 }
 
 // Capture wall-clock start so we can emit gradle's config-phase
@@ -74,7 +74,7 @@ def statusPetsB64    = statusPetsJson.bytes.encodeBase64().toString()
 // Keyboard subtypes enabled on first run (App.initVendoredKeyboard). CSV of
 // BCP-47 language tags from build.json::keyboard_dicts.default_languages.
 def keyboardDefaultLangs = (buildJson.keyboard_dicts?.default_languages ?: []).join(',')
-// keyboard_media + GIF API keys MOVED to aa_cloud-keyboard (standalone constellation APK).
+// keyboard_media + GIF API keys MOVED to ac_cloud-keyboard (standalone constellation APK).
 // Launcher themes — Configs → Launcher picker reads this list to
 // render the chooser. Single source of truth lives in
 // build.json::ui.launcher_themes; add a theme there, picker updates.
@@ -169,7 +169,7 @@ def cloudSvcJson     = cloudSvcFile.exists() ? cloudSvcFile.text : "{}"
 def cloudSvcB64      = cloudSvcJson.bytes.encodeBase64().toString()
 // Constellation AppStore fleet registry — every constellation APK + its GHCR
 // image, auto-scanned from each app's own build.json by data/regen.sh. Run
-// on every build so committing a new aa_cloud-* app is enough by itself —
+// on every build so committing a new ac_cloud-* app is enough by itself —
 // nobody has to remember to re-run regen.sh (that was the bug: cloud-contacts
 // existed for a while with no fleet entry because this step was manual).
 // Only depends on sibling repos (always present), so failure here is a real
@@ -339,17 +339,17 @@ gradleSearchRoots.findAll { it.exists() }.each { root ->
 def stackFrameworksJson = groovy.json.JsonOutput.toJson(stackDeps.toList())
 def stackFrameworksB64  = stackFrameworksJson.bytes.encodeBase64().toString()
 
-// ── Folder tree (L3, aa_* siblings) — DYNAMIC, scanned every build ────
+// ── Folder tree (L3, a[abc]_* siblings) — DYNAMIC, scanned every build ────
 // Re-scanned fresh from the filesystem on EVERY build (no committed
-// snapshot): every `aa_*` directory sibling under the unix repo root is
+// snapshot): every `a[abc]_*` directory sibling under the unix repo root is
 // listed (L2), each with its immediate sub-directories (L3), rooted at
-// `unix/` (L1). The tree therefore reflects exactly the aa_* clones
+// `unix/` (L1). The tree therefore reflects exactly the a[abc]_* clones
 // present at build time. NOTE: the gitignored upstream clones
-// (aa_cal-davx5, aa_mail-fairmail, …) appear only on machines where
+// (ac_cal-davx5, ac_mail-fairmail, …) appear only on machines where
 // they're checked out (local builds); the GHA runner — which has just
-// the tracked aa_cloud-* siblings — prints those. The `aa_*` filter
+// the tracked ac_cloud-* siblings — prints those. The `a[abc]_*` filter
 // requires an alphanumeric after the prefix so layout separator dirs
-// (aa_____…) are skipped; nothing here is a hardcoded sibling list.
+// (ac_____…) are skipped; nothing here is a hardcoded sibling list.
 def stackTreeSkip = ["build", "dist", "node_modules", ".gradle", ".result"] as Set
 def stackTreeSubdirs = { File dir, String selfName ->
     (dir.listFiles() ?: []).findAll {
@@ -371,14 +371,14 @@ stackTreeWalk = { StringBuilder sb, File dir, String prefix, String selfName, in
             stackTreeWalk(sb, k, prefix + (last ? "    " : "│   "), null, level + 1, maxDepth)
     }
 }
-// unix/ (L1) → aa_* siblings (L2) → sub-dirs (L3) → grand-children (L4).
+// unix/ (L1) → a[abc]_* siblings (L2) → sub-dirs (L3) → grand-children (L4).
 def folderTree = { int maxDepth ->
     def root = repoRoot
     if (root == null || !root.isDirectory()) return "—"
-    // L2 = aa_* siblings. Alphanumeric-after-prefix filter drops layout
-    // separator dirs (aa_____…) without a hardcoded sibling list.
+    // L2 = a[abc]_* siblings. Alphanumeric-after-prefix filter drops layout
+    // separator dirs (ac_____…) without a hardcoded sibling list.
     def eaDirs = (root.listFiles() ?: []).findAll {
-        it.isDirectory() && (it.name ==~ /aa_[a-z0-9].*/)
+        it.isDirectory() && (it.name ==~ /a[abc]_[a-z0-9].*/)
     }.sort { it.name }
     if (eaDirs.isEmpty()) return "—"
     def sb = new StringBuilder(root.name + "/\n")   // L1
@@ -601,7 +601,7 @@ android {
         // per-app energy attribution.
         aidl = true
         // Jetpack Compose was used for libs:wallet (now moved to
-        // aa_cloud-wallet — standalone constellation APK). No remaining
+        // ac_cloud-wallet — standalone constellation APK). No remaining
         // compose surfaces in this module; disabled so the Compose
         // compiler plugin is not invoked unnecessarily.
         compose = false
@@ -680,11 +680,11 @@ dependencies {
     // Re-adding this line puts the fetcher back in the app and makes the
     // engine APK dead weight.
     implementation project(':libs:net')
-    // libs:keyboard + libs:media MOVED to aa_cloud-keyboard (standalone constellation APK).
+    // libs:keyboard + libs:media MOVED to ac_cloud-keyboard (standalone constellation APK).
     implementation project(':libs:ops')
-    // libs:vault MOVED to aa_cloud-vault (standalone constellation APK hosting vault.diegonmarcos.com).
+    // libs:vault MOVED to ac_cloud-vault (standalone constellation APK hosting vault.diegonmarcos.com).
     implementation project(':libs:chat')
-    // libs:wallet MOVED to aa_cloud-wallet (standalone constellation APK).
+    // libs:wallet MOVED to ac_cloud-wallet (standalone constellation APK).
     implementation project(':libs:health')
     implementation project(':libs:fin')
     implementation project(':libs:kde-connect')
@@ -723,7 +723,7 @@ dependencies {
     // jobs under the same tag set without touching the orchestrator.
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
 
-    // libs:browser MOVED to aa_cloud-browser (constellation APK).
+    // libs:browser MOVED to ac_cloud-browser (constellation APK).
     // launchUri http/https now fires ACTION_VIEW → com.diegonmarcos.cloudbrowser.
 
     // libs:launcher-apptabs — the App Tabs (last-6 LRU shelf) feature.
@@ -753,11 +753,11 @@ dependencies {
     implementation 'dev.rikka.shizuku:provider:13.1.5'
 
     // Compose BOM removed — libs:wallet (the only compose surface) was
-    // moved to aa_cloud-wallet standalone APK (see compose = false above).
+    // moved to ac_cloud-wallet standalone APK (see compose = false above).
 
-    // ── Maps / Tracker stack lifted OUT to the aa_cloud-nav app ──
+    // ── Maps / Tracker stack lifted OUT to the ac_cloud-nav app ──
     // libs:maps (MapLibre Native + tracker + timeline + MyTrips) was moved
-    // to the dedicated Cloud Nav app (../aa_cloud-nav/). SuperApp no longer
+    // to the dedicated Cloud Nav app (../ac_cloud-nav/). SuperApp no longer
     // ships maps; BackgroundOrchestrator still issues a best-effort stop
     // intent by string to LocationTrackerService (no compile dep).
 

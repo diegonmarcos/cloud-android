@@ -22,16 +22,16 @@ on:
   push:
     branches: [main]
     tags:
-      - "aa_cloud-contacts-v*"
+      - "ac_cloud-contacts-v*"
     paths:
-      - "aa_cloud-contacts/**"
+      - "ac_cloud-contacts/**"
       # Shared BY REFERENCE from aa_cloud-superapp/libs/ (settings.gradle
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no
       # new APK here and the installed build silently goes stale.
-      - "aa_cloud-libs-shared/libs/core/**"
-      - "aa_cloud-libs-shared/libs/devtools/**"
-      - "aa_cloud-libs-shared/libs/updater/**"
+      - "ab_cloud-libs-shared/libs/core/**"
+      - "ab_cloud-libs-shared/libs/devtools/**"
+      - "ab_cloud-libs-shared/libs/updater/**"
       - "1_cicd/src/cicd/ship-cloud-contacts.yml"
 
 permissions:
@@ -39,7 +39,7 @@ permissions:
   packages: write
 
 env:
-  WORK_DIR: aa_cloud-contacts
+  WORK_DIR: ac_cloud-contacts
 
 jobs:
   build_and_publish:

@@ -2,7 +2,7 @@
 # Tester: zoomies pets extracted from app/ into a proper libs/launcher-zoomies module.
 #
 # The animated status-bar pet (PetStrengthView + its vendored zoomies GIFs) used
-# to live inside app/ (and a stray empty aa_zoomies-pets/ app folder existed at
+# to live inside app/ (and a stray empty ac_zoomies-pets/ app folder existed at
 # the unix root). zoomies is ONE library, not an app folder — this asserts the
 # extraction to aa_cloud-superapp/libs/launcher-zoomies is wired the same way as the other
 # 25 lib modules: data-driven module entry in build.json + app dependency + the
@@ -61,8 +61,8 @@ echo "== T6: consumer imports the new package =="
 STRIP="app/src/main/java/com/diegonmarcos/superapp/launcher/LauncherStatusStripView.kt"
 has "$STRIP" "import com.diegonmarcos.superapp.zoomies.PetStrengthView" "LauncherStatusStripView imports moved class"
 
-echo "== T7: stray aa_zoomies-pets app folder removed =="
-absent "$UNIX/aa_zoomies-pets" "aa_zoomies-pets/ root app folder is gone"
+echo "== T7: stray ac_zoomies-pets app folder removed =="
+absent "$UNIX/ac_zoomies-pets" "ac_zoomies-pets/ root app folder is gone"
 
 echo
 echo "== RESULT: $PASS passed, $FAIL failed =="

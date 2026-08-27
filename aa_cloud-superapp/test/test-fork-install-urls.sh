@@ -3,9 +3,9 @@
 # GitHub release asset, and the SuperApp's extapp install URLs point at it.
 #
 # Chain under test (data-driven, one source of truth per link):
-#   aa_cloud-<fork>/build.json::release.gh_release  (rolling_tag=latest, asset)
+#   ac_cloud-<fork>/build.json::release.gh_release  (rolling_tag=latest, asset)
 #     → ship-cloud-<fork>.yml calls `build.sh gh-release-fork`  (uploads asset
-#       to the shared /releases/latest release, same as the other aa_cloud-* apps)
+#       to the shared /releases/latest release, same as the other ac_cloud-* apps)
 #     → aa_cloud-superapp build.json ui.external_apps[cloud-<fork>].install_apk_url
 #       == https://.../releases/latest/download/<asset>
 # So a tap on a not-installed comms tile does a one-tap install from a stable URL
@@ -24,13 +24,13 @@ REL="releases/latest/download"
 
 echo "== T1: each fork build.json declares a rolling-'latest' gh_release =="
 for pair in $FORKS; do
-  key="${pair%%:*}"; fbj="$UNIX/aa_cloud-$key/build.json"
+  key="${pair%%:*}"; fbj="$UNIX/ac_cloud-$key/build.json"
   asset="$(jq -r '.release.gh_release.asset_name // ""' "$fbj" 2>/dev/null)"
   tag="$(jq -r '.release.gh_release.rolling_tag // ""' "$fbj" 2>/dev/null)"
   en="$(jq -r '.release.gh_release.enabled // false' "$fbj" 2>/dev/null)"
   [ "$tag" = "latest" ] && [ "$en" = "true" ] && [ "$asset" = "cloud-comms-$key.apk" ] \
-    && ok "aa_cloud-$key: gh_release enabled, rolling_tag=latest, asset=$asset" \
-    || bad "aa_cloud-$key: gh_release missing/wrong (tag=$tag enabled=$en asset=$asset)"
+    && ok "ac_cloud-$key: gh_release enabled, rolling_tag=latest, asset=$asset" \
+    || bad "ac_cloud-$key: gh_release missing/wrong (tag=$tag enabled=$en asset=$asset)"
 done
 
 echo "== T2: each ship workflow uploads via the engine (build.sh gh-release-fork) =="
@@ -44,9 +44,9 @@ for pair in $FORKS; do
 done
 
 echo "== T3: the fork engine actually implements gh-release-fork =="
-grep -qF 'step_gh_release_fork()' "$UNIX/aa_cloud-dialer/build.sh" 2>/dev/null \
+grep -qF 'step_gh_release_fork()' "$UNIX/ac_cloud-dialer/build.sh" 2>/dev/null \
   && ok "fork build.sh has step_gh_release_fork" || bad "fork build.sh missing step_gh_release_fork"
-grep -qE 'gh-release-fork\)\s+step_gh_release_fork' "$UNIX/aa_cloud-dialer/build.sh" 2>/dev/null \
+grep -qE 'gh-release-fork\)\s+step_gh_release_fork' "$UNIX/ac_cloud-dialer/build.sh" 2>/dev/null \
   && ok "gh-release-fork verb dispatched" || bad "gh-release-fork verb not wired in case"
 
 echo "== T4: SuperApp install_apk_url == the fork's rolling-'latest' asset URL =="

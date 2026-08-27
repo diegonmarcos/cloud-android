@@ -19,7 +19,7 @@ plugins {
 // what reads it, and a module that owns a screen should own that screen's
 // data. Path is relative to this module, so it resolves to the same
 // aa_cloud-superapp/data/constellation-fleet.json whether built by the app or
-// shared by reference into aa_cloud-libs.
+// shared by reference into ab_cloud-libs.
 def constellationFleetFile = file('../../data/constellation-fleet.json')
 def constellationFleetJson = constellationFleetFile.exists()
         ? constellationFleetFile.text : '{"version":1,"apps":[]}'

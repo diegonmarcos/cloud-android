@@ -35,7 +35,7 @@ All build calls route through `nix develop` per the flake — host tools are nev
 
 Phase 0: skeleton — empty modules, "Hello Diego" main screen. Verifies the build chain works. Next: cherry-pick FairEmail's protocol+sync into `libs:mail/` and add JMAP transport (`rs.ltt.jmap.client`).
 
-Upstream FairEmail tracking clone lives at `../aa_mail-fairmail/` (shallow, read-only mirror — `git pull` to surface upstream fixes).
+Upstream FairEmail tracking clone lives at `../ac_mail-fairmail/` (shallow, read-only mirror — `git pull` to surface upstream fixes).
 
 ## App take-over contract (minimal-plumbing FOSS-app hosting)
 

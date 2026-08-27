@@ -3,8 +3,8 @@
 set -u
 APP="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(cd "$APP/.." && pwd)"
-# updater is a shared module in aa_cloud-libs-shared, not vendored per-app.
-UPD="$ROOT/aa_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater"
+# updater is a shared module in ab_cloud-libs-shared, not vendored per-app.
+UPD="$ROOT/ab_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater"
 # the constellation UI moved out of app/configs into the appstore lib module.
 CFG="$APP/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore"
 PASS=0; FAIL=0

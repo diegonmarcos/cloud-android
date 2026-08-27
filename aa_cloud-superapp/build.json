@@ -74,42 +74,42 @@
   "upstreams": {
     "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 0_git/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ \u2014 NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
     "mail": {
-      "tracker": "aa_mail-fairmail",
+      "tracker": "ac_mail-fairmail",
       "repo": "https://github.com/M66B/FairEmail.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:mail",
       "primary_lang": "Java"
     },
     "cal": {
-      "tracker": "aa_cal-davx5",
+      "tracker": "ac_cal-davx5",
       "repo": "https://github.com/bitfireAT/davx5-ose.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:cal",
       "primary_lang": "Kotlin"
     },
     "feed": {
-      "tracker": "aa_feed-feeder",
+      "tracker": "ac_feed-feeder",
       "repo": "https://github.com/spacecowboy/Feeder.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:feed",
       "primary_lang": "Kotlin"
     },
     "net": {
-      "tracker": "aa_net-wireguard",
+      "tracker": "ac_net-wireguard",
       "repo": "https://github.com/WireGuard/wireguard-android.git",
       "license": "Apache-2.0",
       "feeds_into": "libs:net",
       "primary_lang": "Kotlin+C"
     },
     "vault": {
-      "tracker": "aa_vault-keepassdx",
+      "tracker": "ac_vault-keepassdx",
       "repo": "https://github.com/Kunzisoft/KeePassDX.git",
       "license": "GPL-3.0",
       "feeds_into": "libs:vault",
       "primary_lang": "Kotlin"
     },
     "kde-connect": {
-      "tracker": "aa_net-kdeconnect",
+      "tracker": "ac_net-kdeconnect",
       "repo": "https://github.com/KDE/kdeconnect-android.git",
       "license": "GPL-2.0 (UPSTREAM REFERENCE ONLY \u2014 we do NOT vendor it)",
       "feeds_into": "libs:kde-connect",
@@ -117,7 +117,7 @@
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED. libs/kde-connect is an ORIGINAL implementation of the KDE Connect LAN protocol written by us (NetworkPacket framing, mutual-TLS handshake with a self-signed device cert, protocol-v8 encrypted identity re-exchange, cert-pinned pairing, plugin registry: ping/clipboard/findmyphone/notification). The KDE repo above is consulted ONLY for the documented interop FACTS (port 1716; the TCP-dialer is the TLS server; pairing = trust-the-cert) \u2014 those are functional protocol requirements, not copyrightable expression. NONE of KDE's GPL-2.0 source is copied/vendored, so the app keeps its own license. Connects over wg0 by explicit wg_ip (auto-discovery can't cross WireGuard). Next: a foreground service hosting an inbound TCP server (1716-1764) so peers can also initiate, plus battery/share/mpris plugins."
     },
     "firewall": {
-      "tracker": "aa_net-rethinkdns",
+      "tracker": "ac_net-rethinkdns",
       "repo": "https://github.com/celzero/rethink-app.git",
       "license": "Apache-2.0 (UPSTREAM REFERENCE ONLY \u2014 not vendored in v1)",
       "feeds_into": "libs:firewall",
@@ -125,7 +125,7 @@
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) \u2014 zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
     },
     "firestack": {
-      "tracker": "aa_net-firestack",
+      "tracker": "ac_net-firestack",
       "repo": "https://github.com/celzero/firestack.git",
       "ref": "n2",
       "license": "MPL-2.0",
@@ -191,17 +191,17 @@
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
     "libs:core": {
-      "dir": "../aa_cloud-libs-shared/libs/core",
+      "dir": "../ab_cloud-libs-shared/libs/core",
       "type": "library",
       "depends_on": [],
       "comment": "Shared models, DB, theming, prefs, auth. No domain logic."
     },
     "libs:devtools": {
-      "dir": "../aa_cloud-libs-shared/libs/devtools",
+      "dir": "../ab_cloud-libs-shared/libs/devtools",
       "type": "library"
     },
     "libs:updater": {
-      "dir": "../aa_cloud-libs-shared/libs/updater",
+      "dir": "../ab_cloud-libs-shared/libs/updater",
       "type": "library",
       "depends_on": [
         "libs:core",
@@ -217,7 +217,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "Mail \u2014 FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../aa_mail-fairmail/."
+      "comment": "Mail \u2014 FairEmail-derived, JMAP-extended. Source upstream: github.com/M66B/FairEmail (GPLv3). Tracking clone lives at ../ac_mail-fairmail/."
     },
     "libs:feed": {
       "type": "library",
@@ -255,7 +255,7 @@
       ],
       "comment": "MyHealth \u2014 native Android Health Connect dashboard. Reads aggregated records (Steps, Distance, Floors, Elevation, HR, RHR, HRV, VO2max, BP, BloodGlucose, SpO2, Temperature, RespiratoryRate, Sleep+stages, Exercise, Weight/BodyFat/Lean/Bone/Water, Hydration, Nutrition, Cycle) via androidx.health.connect:connect-client. All of Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura sync INTO Health Connect on-device \u2014 single SDK gets the union. LOCAL-ONLY: persists rollups + caches into HealthStore (libs:core, SharedPreferences). Zero network. No OAuth, no webhooks, no cloud ingester. Compose surface \u2014 pages declared in build.json::ui.sections[id=health]."
     },
-    "_libs_browser_tombstone": "libs:browser MOVED to aa_cloud-browser (constellation APK). Removed from app.depends_on and from this module list 2026-07. The Tools tile target is now extapp:cloud-browser. launchUri http/https now sends ACTION_VIEW to com.diegonmarcos.cloudbrowser instead of instantiating BrowserHostFragment.",
+    "_libs_browser_tombstone": "libs:browser MOVED to ac_cloud-browser (constellation APK). Removed from app.depends_on and from this module list 2026-07. The Tools tile target is now extapp:cloud-browser. launchUri http/https now sends ACTION_VIEW to com.diegonmarcos.cloudbrowser instead of instantiating BrowserHostFragment.",
     "libs:fin": {
       "type": "library",
       "depends_on": [
@@ -1526,14 +1526,14 @@
                 "label": "Messenger (Element)",
                 "icon": "ic_p_chat_matrix",
                 "target": "extapp:cloud-matrix",
-                "_doc": "Opens the standalone Cloud-Matrix app (aa_cloud-matrix, com.diegonmarcos.comms.matrix) via extapp:cloud-matrix \u2014 installed \u2192 launches; absent \u2192 install via Configs \u25b8 Constellation. The Cloud-Comms hub is decommissioned; the matrix fork is now its own constellation app. Replaces the old app://im.vector.app launcher."
+                "_doc": "Opens the standalone Cloud-Matrix app (ac_cloud-matrix, com.diegonmarcos.comms.matrix) via extapp:cloud-matrix \u2014 installed \u2192 launches; absent \u2192 install via Configs \u25b8 Constellation. The Cloud-Comms hub is decommissioned; the matrix fork is now its own constellation app. Replaces the old app://im.vector.app launcher."
               },
               {
                 "id": "dialer",
                 "label": "Dialer",
                 "icon": "ic_p_dialer",
                 "target": "extapp:cloud-dialer",
-                "_doc": "Opens the standalone Cloud-Dialer app (aa_cloud-dialer, com.diegonmarcos.comms.dialer, Fossify Phone) via extapp:cloud-dialer \u2014 installed \u2192 launches; absent \u2192 install via Configs \u25b8 Constellation. Its own constellation app now that the Cloud-Comms hub is decommissioned; same extapp mechanism as Mail / Chat / Messenger above."
+                "_doc": "Opens the standalone Cloud-Dialer app (ac_cloud-dialer, com.diegonmarcos.comms.dialer, Fossify Phone) via extapp:cloud-dialer \u2014 installed \u2192 launches; absent \u2192 install via Configs \u25b8 Constellation. Its own constellation app now that the Cloud-Comms hub is decommissioned; same extapp mechanism as Mail / Chat / Messenger above."
               },
               {
                 "id": "c3-bot",
@@ -1559,7 +1559,7 @@
                 "target": "extapp:cloud-news"
               },
               {
-                "_doc": "Opens the standalone Cloud-Contacts app (aa_cloud-contacts, com.diegonmarcos.cloudcontacts, native multi-channel people hub) via extapp:cloud-contacts \u2014 installed \u2192 launches; absent \u2192 install via Configs \u25b8 Constellation. Replaces the old Google Contacts launcher.",
+                "_doc": "Opens the standalone Cloud-Contacts app (ac_cloud-contacts, com.diegonmarcos.cloudcontacts, native multi-channel people hub) via extapp:cloud-contacts \u2014 installed \u2192 launches; absent \u2192 install via Configs \u25b8 Constellation. Replaces the old Google Contacts launcher.",
                 "id": "contacts",
                 "label": "Contacts",
                 "icon": "ic_p_sol_personal",
@@ -1602,7 +1602,7 @@
             "title": "Tools Primary",
             "tiles": [
               {
-                "_doc": "Cloud-Browser \u2014 the dedicated WebView browser app (aa_cloud-browser). libs:browser (BrowserHostFragment + BrowserTabPrefs) was MOVED out of the SuperApp into Cloud-Browser, so this tile no longer routes to an in-app section. target=extapp:cloud-browser \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudbrowser if installed, else downloads + installs ui.external_apps[id=cloud-browser].install_apk_url. Browser also handles http/https VIEW intents so other apps can open links in it. icon ic_world (globe) stays \u2014 visually distinct from the App Tabs tile (ic_mode_apps).",
+                "_doc": "Cloud-Browser \u2014 the dedicated WebView browser app (ac_cloud-browser). libs:browser (BrowserHostFragment + BrowserTabPrefs) was MOVED out of the SuperApp into Cloud-Browser, so this tile no longer routes to an in-app section. target=extapp:cloud-browser \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudbrowser if installed, else downloads + installs ui.external_apps[id=cloud-browser].install_apk_url. Browser also handles http/https VIEW intents so other apps can open links in it. icon ic_world (globe) stays \u2014 visually distinct from the App Tabs tile (ic_mode_apps).",
                 "id": "browser",
                 "label": "Browser",
                 "icon": "ic_world",
@@ -1616,21 +1616,21 @@
                 "target": "page:apptabs/grid"
               },
               {
-                "_doc": "Cloud-Wallet \u2014 the dedicated cards/passes/tickets app (aa_cloud-wallet). libs:wallet (Compose deck) was MOVED out of the SuperApp into Cloud-Wallet, so this tile no longer routes to an in-app section. target=extapp:cloud-wallet \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudwallet if installed, else downloads + installs ui.external_apps[id=cloud-wallet].install_apk_url. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
+                "_doc": "Cloud-Wallet \u2014 the dedicated cards/passes/tickets app (ac_cloud-wallet). libs:wallet (Compose deck) was MOVED out of the SuperApp into Cloud-Wallet, so this tile no longer routes to an in-app section. target=extapp:cloud-wallet \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudwallet if installed, else downloads + installs ui.external_apps[id=cloud-wallet].install_apk_url. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
                 "id": "wallet",
                 "label": "Wallet",
                 "icon": "ic_wallet",
                 "target": "extapp:cloud-wallet"
               },
               {
-                "_doc": "Navigation \u2014 hands off to the dedicated Cloud-Nav app (aa_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
+                "_doc": "Navigation \u2014 hands off to the dedicated Cloud-Nav app (ac_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
                 "id": "maps",
                 "label": "Navigation",
                 "icon": "ic_nav",
                 "target": "extapp:cloud-nav"
               },
               {
-                "_doc": "Cloud-Vault \u2014 the dedicated Vaultwarden client app (aa_cloud-vault). libs:vault (KeePassDX stub) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). target=extapp:cloud-vault \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudvault if installed, else downloads + installs ui.external_apps[id=cloud-vault].install_apk_url.",
+                "_doc": "Cloud-Vault \u2014 the dedicated Vaultwarden client app (ac_cloud-vault). libs:vault (KeePassDX stub) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). target=extapp:cloud-vault \u2192 MainActivity.launchExternalApp opens com.diegonmarcos.cloudvault if installed, else downloads + installs ui.external_apps[id=cloud-vault].install_apk_url.",
                 "id": "vault",
                 "label": "Vault",
                 "icon": "ic_vault",
@@ -2283,7 +2283,7 @@
         ]
       },
       {
-        "_doc": "Vault \u2014 MIGRATED to Cloud-Vault (aa_cloud-vault, com.diegonmarcos.cloudvault). libs:vault (KeePassDX stub, never shipped) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). The home tile target is now extapp:cloud-vault. Section entry kept as a tombstone; module removed + bottom_nav:false means it is not shown in drawer or bottom nav.",
+        "_doc": "Vault \u2014 MIGRATED to Cloud-Vault (ac_cloud-vault, com.diegonmarcos.cloudvault). libs:vault (KeePassDX stub, never shipped) was replaced by Cloud-Vault, a standalone constellation APK hosting vault.diegonmarcos.com (self-hosted Vaultwarden). The home tile target is now extapp:cloud-vault. Section entry kept as a tombstone; module removed + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "vault",
         "label": "Vault",
         "icon": "ic_vault",
@@ -2573,7 +2573,7 @@
         ]
       },
       {
-        "_doc": "Wallet \u2014 MIGRATED to Cloud-Wallet (aa_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Suite/Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
+        "_doc": "Wallet \u2014 MIGRATED to Cloud-Wallet (ac_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Suite/Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "wallet",
         "label": "Wallet",
         "icon": "ic_wallet",
@@ -2781,7 +2781,7 @@
             "action": "action:import_configs"
           },
           {
-            "_doc": "Keyboard \u2014 hands off to the standalone Cloud-Keyboard app (aa_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard \u2192 MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed after Import, before About per UI spec.",
+            "_doc": "Keyboard \u2014 hands off to the standalone Cloud-Keyboard app (ac_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard \u2192 MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed after Import, before About per UI spec.",
             "id": "keyboard",
             "label": "Keyboard",
             "icon": "ic_keyboard",
@@ -5511,7 +5511,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud Contacts \u2014 standalone NATIVE multi-channel people hub (aa_cloud-contacts, WebView/Tailwind, cloud-news pattern \u2014 NOT a Fossify fork). Merges device (local + Gmail) contacts with LinkedIn/Instagram imports; the person screen is a channel switchboard (WhatsApp/Telegram/Matrix/Cloud Chat/Cloud Mail/SMS/Cloud Dialer/LinkedIn/Instagram) driven by build.json::channels \u2014 no default call action. install_apk_url mirrors aa_cloud-contacts/build.json::release.gh_release (asset Cloud-Contacts.apk, published by ship-cloud-contacts.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud Contacts \u2014 standalone NATIVE multi-channel people hub (ac_cloud-contacts, WebView/Tailwind, cloud-news pattern \u2014 NOT a Fossify fork). Merges device (local + Gmail) contacts with LinkedIn/Instagram imports; the person screen is a channel switchboard (WhatsApp/Telegram/Matrix/Cloud Chat/Cloud Mail/SMS/Cloud Dialer/LinkedIn/Instagram) driven by build.json::channels \u2014 no default call action. install_apk_url mirrors ac_cloud-contacts/build.json::release.gh_release (asset Cloud-Contacts.apk, published by ship-cloud-contacts.yml). Signs with the shared constellation key.",
         "id": "cloud-contacts",
         "label": "Cloud Contacts",
         "hub_package": "com.diegonmarcos.cloudcontacts",
@@ -5556,7 +5556,7 @@
         }
       },
       {
-        "_doc": "Cloud-Nav \u2014 the dedicated maps/navigation/tracker app (aa_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Suite/Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors aa_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
+        "_doc": "Cloud-Nav \u2014 the dedicated maps/navigation/tracker app (ac_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Suite/Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors ac_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
         "id": "cloud-nav",
         "label": "Cloud-Nav",
         "hub_package": "com.diegonmarcos.cloudnav",
@@ -5581,7 +5581,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Keyboard \u2014 the standalone IME app (aa_cloud-keyboard). The vendored HeliBoard (libs:keyboard) was extracted into this standalone APK, so Configs \u2192 Keyboard (action extapp:cloud-keyboard) opens its SettingsActivity if installed, else downloads + installs install_apk_url. Its SettingsActivity carries MAIN/LAUNCHER (libs/keyboard manifest), so getLaunchIntentForPackage resolves the forkless extapp:cloud-keyboard straight to hub_package. install_apk_url mirrors aa_cloud-keyboard/build.json::release.gh_release (asset Cloud-Keyboard.apk, published by ship-cloud-keyboard.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Keyboard \u2014 the standalone IME app (ac_cloud-keyboard). The vendored HeliBoard (libs:keyboard) was extracted into this standalone APK, so Configs \u2192 Keyboard (action extapp:cloud-keyboard) opens its SettingsActivity if installed, else downloads + installs install_apk_url. Its SettingsActivity carries MAIN/LAUNCHER (libs/keyboard manifest), so getLaunchIntentForPackage resolves the forkless extapp:cloud-keyboard straight to hub_package. install_apk_url mirrors ac_cloud-keyboard/build.json::release.gh_release (asset Cloud-Keyboard.apk, published by ship-cloud-keyboard.yml). Signs with the shared constellation key.",
         "id": "cloud-keyboard",
         "label": "Cloud-Keyboard",
         "hub_package": "com.diegonmarcos.cloudkeyboard",
@@ -5590,7 +5590,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Wallet \u2014 standalone cards/passes/tickets app (aa_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Suite/Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors aa_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
+        "_doc": "Cloud-Wallet \u2014 standalone cards/passes/tickets app (ac_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Suite/Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors ac_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
         "id": "cloud-wallet",
         "label": "Cloud-Wallet",
         "hub_package": "com.diegonmarcos.cloudwallet",
@@ -5599,7 +5599,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Browser \u2014 standalone WebView browser app (aa_cloud-browser). libs:browser (BrowserHostFragment + multi-tab BrowserTabPrefs) was MOVED out of the SuperApp into this standalone APK; the Tools 'Browser' tile (target extapp:cloud-browser) opens it if installed, else downloads + installs install_apk_url. Also handles http/https VIEW intents (declared in its manifest) so any app can open links in it. install_apk_url mirrors aa_cloud-browser/build.json::release.gh_release (asset Cloud-Browser.apk, published by ship-cloud-browser.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Browser \u2014 standalone WebView browser app (ac_cloud-browser). libs:browser (BrowserHostFragment + multi-tab BrowserTabPrefs) was MOVED out of the SuperApp into this standalone APK; the Tools 'Browser' tile (target extapp:cloud-browser) opens it if installed, else downloads + installs install_apk_url. Also handles http/https VIEW intents (declared in its manifest) so any app can open links in it. install_apk_url mirrors ac_cloud-browser/build.json::release.gh_release (asset Cloud-Browser.apk, published by ship-cloud-browser.yml). Signs with the shared constellation key.",
         "id": "cloud-browser",
         "label": "Cloud-Browser",
         "hub_package": "com.diegonmarcos.cloudbrowser",
@@ -5608,7 +5608,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Vault \u2014 standalone Vaultwarden client app (aa_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Suite/Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors aa_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Vault \u2014 standalone Vaultwarden client app (ac_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Suite/Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors ac_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
         "id": "cloud-vault",
         "label": "Cloud-Vault",
         "hub_package": "com.diegonmarcos.cloudvault",
@@ -5617,7 +5617,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud Media Center \u2014 standalone gallery app (aa_cloud-media-center), a Google-Photos/Samsung-Gallery replacement: on-device MediaStore gallery + PhotoPrism cloud library (WebDAV) + camera-roll auto-backup, plus YouTube (NewPipeExtractor) and mirrored-Instagram profiles. Single-app fork (forkless), so extapp:cloud-media-center resolves straight to hub_package. NOT YET SHIPPED: aa_cloud-media-center has no build engine/CI wired yet (ship-cloud-media-center.yml EXISTS at 1_cicd/src/cicd/ but is not yet regenerated into .github/workflows/, and no build.sh engine exists for the app yet, so nothing builds; no release published), so install_apk_url below is the intended rolling-latest location mirrored from release.gh_release.asset_name but currently 404s until CI produces an artifact. Do not treat this URL as live.",
+        "_doc": "Cloud Media Center \u2014 standalone gallery app (ac_cloud-media-center), a Google-Photos/Samsung-Gallery replacement: on-device MediaStore gallery + PhotoPrism cloud library (WebDAV) + camera-roll auto-backup, plus YouTube (NewPipeExtractor) and mirrored-Instagram profiles. Single-app fork (forkless), so extapp:cloud-media-center resolves straight to hub_package. NOT YET SHIPPED: ac_cloud-media-center has no build engine/CI wired yet (ship-cloud-media-center.yml EXISTS at 1_cicd/src/cicd/ but is not yet regenerated into .github/workflows/, and no build.sh engine exists for the app yet, so nothing builds; no release published), so install_apk_url below is the intended rolling-latest location mirrored from release.gh_release.asset_name but currently 404s until CI produces an artifact. Do not treat this URL as live.",
         "id": "cloud-media-center",
         "label": "Cloud Media Center",
         "hub_package": "com.diegonmarcos.mediacenter",

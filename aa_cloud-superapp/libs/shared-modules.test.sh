@@ -35,7 +35,7 @@ while IFS='|' read -r app mod dir; do
     [ -e "$local_path" ] && note FAIL "$local_path is a local copy shadowing the shared $dir — delete it"
 done < <(python3 - <<'PY'
 import json,glob
-for bj in sorted(glob.glob('aa_cloud-*/build.json')):
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     app=bj.split('/')[0]
     for k,v in json.load(open(bj)).get('modules',{}).items():
         if k.startswith('libs:') and isinstance(v,dict) and v.get('dir'):
@@ -55,7 +55,7 @@ import json, glob, os
 # data-driven loop there reports a failure that cannot be fixed by fixing
 # anything. Kept scoped rather than universal because a repo can legitimately
 # ship a gradle project with no build.json.
-for sg in sorted(glob.glob('aa_cloud-*/settings.gradle')):
+for sg in sorted(glob.glob('ac_cloud-*/settings.gradle')):
     bj = os.path.join(os.path.dirname(sg), 'build.json')
     if not os.path.isfile(bj):
         continue
@@ -75,7 +75,7 @@ while read -r line; do
 done < <(python3 - <<'PY'
 import os,collections
 seen=collections.defaultdict(list)
-for app in sorted(d for d in os.listdir('.') if d.startswith('aa_cloud-')):
+for app in sorted(d for d in os.listdir('.') if d.startswith('ac_cloud-')):
     L=os.path.join(app,'libs')
     if os.path.isdir(L):
         for m in sorted(os.listdir(L)):
@@ -100,7 +100,7 @@ while read -r bg; do
 done < <(python3 - <<'PY'
 import json,glob,os
 dirs={os.path.normpath(os.path.join(bj.split('/')[0],v['dir']))
-      for bj in glob.glob('aa_cloud-*/build.json')
+      for bj in glob.glob('ac_cloud-*/build.json')
       for k,v in json.load(open(bj)).get('modules',{}).items()
       if k.startswith('libs:') and isinstance(v,dict) and v.get('dir')}
 for d in sorted(dirs):
@@ -111,7 +111,7 @@ PY
 
 # 7. The constellation permission is declared once, in the shared core, so it
 #    merges into every app. That is what makes Cloud Perms on-by-default.
-CORE_MANIFEST=aa_cloud-libs-shared/libs/core/src/main/AndroidManifest.xml
+CORE_MANIFEST=ab_cloud-libs-shared/libs/core/src/main/AndroidManifest.xml
 PERM=com.diegonmarcos.cloud.permission.CONSTELLATION_DATA
 if command grep -q "$PERM" "$CORE_MANIFEST" 2>/dev/null; then
     command grep -q 'android:protectionLevel="signature"' "$CORE_MANIFEST" \
@@ -137,7 +137,7 @@ command grep -q "\"$PERM\"" "$UI" \
 #    feature slot pretending to be a feature.
 while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json,glob,os
-for bj in sorted(glob.glob('aa_cloud-*/build.json')):
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     app=bj.split('/')[0]
     for k,v in json.load(open(bj)).get('modules',{}).items():
         if not k.startswith('libs:'): continue
@@ -157,7 +157,7 @@ note ok "every declared module has source"
 #     and gradle only says "Project with path ':libs:x' could not be found".
 while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json,glob,re,os
-for bj in sorted(glob.glob('aa_cloud-*/build.json')):
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     app=bj.split('/')[0]
     declared=set(json.load(open(bj)).get('modules',{}))
     for bg in glob.glob(f'{app}/*/build.gradle'):
@@ -168,16 +168,16 @@ PY
 )
 note ok "every project() dependency names a declared module"
 
-# 11. aa_cloud-libs ships one APK per library module. Three places derive that
+# 11. ab_cloud-libs ships one APK per library module. Three places derive that
 #     set from build.json::lib_apks — settings.gradle (the gradle modules),
 #     build.sh (the asset names) and data/regen.sh (the Libs tab). They must
 #     agree, or the store lists an APK the build never produced and the install
 #     button 404s on the release asset.
-LIBS_BJ=aa_cloud-libs/build.json
+LIBS_BJ=ab_cloud-libs/build.json
 if [ -f "$LIBS_BJ" ]; then
     # LC_ALL=C: python sorts by byte, GNU sort by locale, and they disagree on
     # '-' vs '.' (Cloud-Lib-Voice-Vosk.apk vs Cloud-Lib-Voice.apk).
-    shipped=$(bash aa_cloud-libs/build.sh list 2>/dev/null | command awk '{print $3}' | LC_ALL=C sort)
+    shipped=$(bash ab_cloud-libs/build.sh list 2>/dev/null | command awk '{print $3}' | LC_ALL=C sort)
     fleeted=$(python3 - <<'PY'
 import json
 d=json.load(open('aa_cloud-superapp/data/constellation-fleet.json'))
@@ -187,9 +187,9 @@ print('\n'.join(sorted(x['asset'] for x in a
 PY
 )
     if [ "$shipped" = "$fleeted" ]; then
-        note ok "aa_cloud-libs: $(printf '%s\n' "$shipped" | command grep -c . ) lib APKs, build and fleet agree"
+        note ok "ab_cloud-libs: $(printf '%s\n' "$shipped" | command grep -c . ) lib APKs, build and fleet agree"
     else
-        note FAIL "aa_cloud-libs: build.sh and constellation-fleet.json disagree — rerun aa_cloud-superapp/data/regen.sh"
+        note FAIL "ab_cloud-libs: build.sh and constellation-fleet.json disagree — rerun aa_cloud-superapp/data/regen.sh"
         diff <(printf '%s\n' "$shipped") <(printf '%s\n' "$fleeted") | command head -10
     fi
     # The CI trigger has to repeat the scan roots, because GitHub Actions cannot
@@ -197,7 +197,7 @@ PY
     # module changes, no workflow matches, and no APK is ever rebuilt.
     root_drift=$(python3 - <<'PYROOTS'
 import json, re
-cfg   = json.load(open('aa_cloud-libs/build.json'))['lib_apks']
+cfg   = json.load(open('ab_cloud-libs/build.json'))['lib_apks']
 roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
 want  = {r.lstrip('./').replace('../', '').rstrip('/') + '/**' for r in roots}
 yml   = open('1_cicd/src/cicd/ship-cloud-libs.yml').read()
@@ -216,9 +216,9 @@ PYROOTS
     # a module someone silently dropped because it would not build.
     while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json
-for k,v in json.load(open('aa_cloud-libs/build.json'))['lib_apks'].get('exclude',{}).items():
+for k,v in json.load(open('ab_cloud-libs/build.json'))['lib_apks'].get('exclude',{}).items():
     if not isinstance(v,str) or len(v) < 20:
-        print(f"aa_cloud-libs excludes {k} without a reason — say why it cannot ship")
+        print(f"ab_cloud-libs excludes {k} without a reason — say why it cannot ship")
 PY
 )
 fi
@@ -233,7 +233,7 @@ fi
 #      caught 2026-08-22, when libs/devtools reached nothing but superapp.
 app_root_drift=$(python3 - <<'PYAPPROOTS'
 import json, os, re, glob
-for bj in sorted(glob.glob('aa_cloud-*/build.json')):
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     repo = bj.split('/')[0]
     try:
         mods_cfg = (json.load(open(bj)).get('modules') or {})
@@ -241,7 +241,7 @@ for bj in sorted(glob.glob('aa_cloud-*/build.json')):
         continue  # build.json validity is rule 1's job, not this one.
     # Derive the shared roots from the DATA. Hardcoding 'aa_cloud-superapp/libs'
     # here made this rule pass vacuously the moment the modules moved to
-    # aa_cloud-libs-shared: the set came out empty and nothing was checked.
+    # ab_cloud-libs-shared: the set came out empty and nothing was checked.
     # A rule that names a path which no longer exists passes by default.
     mods = sorted({os.path.normpath(os.path.join(repo, v['dir']))
                    for v in mods_cfg.values()
@@ -249,7 +249,7 @@ for bj in sorted(glob.glob('aa_cloud-*/build.json')):
     # Only modules OUTSIDE this repo need their own trigger; the repo's own
     # "<repo>/**" filter already covers anything in-tree.
     mods = [m for m in mods if not m.startswith(repo + '/')]
-    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('aa_cloud-'):]
+    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ac_cloud-'):]
     if not mods or not os.path.exists(wf):
         continue
     have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
@@ -286,7 +286,7 @@ import os, re
 for root, dirs, files in os.walk('.'):
     dirs[:] = [d for d in dirs if d not in ('build', '.git', 'z_archive')]
     rel = root.lstrip('./')
-    if not rel.startswith('aa_cloud-'):
+    if not rel.startswith('ac_cloud-'):
         continue
     for f in files:
         if not f.endswith(('.kt', '.java')):
@@ -308,7 +308,7 @@ PYSESS
 #     Android's 50-session limit and NOTHING installs until they are reclaimed.
 while read -r line; do note FAIL "$line"; done < <(python3 - <<'PYCAP'
 import json, glob
-for bj in sorted(glob.glob('aa_cloud-*/build.json')):
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     try:
         au = (json.load(open(bj)).get('release') or {}).get('auto_update')
     except Exception:
@@ -341,7 +341,7 @@ echo
 #     careless `implementation project(':libs:net-wg')` away from being undone
 #     without anything failing - the app would just quietly grow libwg-go.so
 #     back. Two invariants: the contract carries no native build, and no app
-#     links the engine (only aa_cloud-libs, which turns it into its own APK).
+#     links the engine (only ab_cloud-libs, which turns it into its own APK).
 if [ -d aa_cloud-superapp/libs/net ]; then
     if command grep -qE 'externalNativeBuild|ndkVersion|cmake' aa_cloud-superapp/libs/net/build.gradle; then
         note FAIL "libs:net declares a native build - the engine belongs in libs:net-wg, or every consumer carries libwg-go.so again"
@@ -426,7 +426,7 @@ note ok "every interpolated buildConfigField variable is defined"
 #     dialog while we are the installer of record; without
 #     setRequestUpdateOwnership, ownership sits with whatever installed the app
 #     last (Files, adb, another store) and every update prompts again. There is
-#     more than one installer in this tree - aa_cloud-ide keeps its own copy
+#     more than one installer in this tree - ac_cloud-ide keeps its own copy
 #     instead of linking libs:updater - so this must hold in each.
 while read -r f; do
     [ -z "$f" ] && continue
@@ -436,9 +436,9 @@ while read -r f; do
 done < <(command grep -rl 'PackageInstaller.SessionParams(' --include=*.kt --include=*.java . 2>/dev/null \
          | command grep -v '/build/' \
          | command grep -v '^./z_archive/' \
-         | command grep -v '^./aa_upstreams-sources/' \
+         | command grep -v '^./ac_upstreams-sources/' \
          | command sort)
-# z_archive is retired; aa_upstreams-sources holds the fork TRACKER clones,
+# z_archive is retired; ac_upstreams-sources holds the fork TRACKER clones,
 # which are regenerated from upstream + patches - editing them is reverted on
 # the next sync (feedback: submodules/forks, edit the source).
 

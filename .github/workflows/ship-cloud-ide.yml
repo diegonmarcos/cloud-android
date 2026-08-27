@@ -1,15 +1,15 @@
 name: "Ship → Cloud-IDE Hub APK (build + push to GHCR via ORAS + attach to GH Release)"
 
-# Builds the Cloud-IDE HUB APK from aa_cloud-ide/ and publishes via two channels
-# — both data-driven by aa_cloud-ide/build.json::release:
+# Builds the Cloud-IDE HUB APK from ac_cloud-ide/ and publishes via two channels
+# — both data-driven by ac_cloud-ide/build.json::release:
 #
 #   1. ORAS push as OCI artifact  → ghcr.io/<ns>/cloud-ide-hub:<tags>
 #      (release.ghcr.tags expanded from build.json; APK published as an OCI blob).
 #   2. GH Release attachment       → rolling `latest` release on every main push,
-#      plus an immutable per-tag release on `aa_cloud-ide-v*` tag pushes.
+#      plus an immutable per-tag release on `ac_cloud-ide-v*` tag pushes.
 #
 # Same pattern as ship-cloud-comms.yml / ship-cloud-superapp.yml. The only "knob"
-# here is which build.sh subcommand runs; the engine reads aa_cloud-ide/build.json
+# here is which build.sh subcommand runs; the engine reads ac_cloud-ide/build.json
 # for everything else (registry, tags, asset names). The hub is pure-JVM (no
 # native libs), so like the comms workflow this needs NO NDK / CMake SDK packages.
 #
@@ -40,9 +40,9 @@ on:
   push:
     branches: [main]
     tags:
-      - "aa_cloud-ide-v*"
+      - "ac_cloud-ide-v*"
     paths:
-      - "aa_cloud-ide/**"
+      - "ac_cloud-ide/**"
       # The WebView APK bundles the my-konsole frontend at build time
       # (build.sh step_bundle_frontend copies ../da_my-konsole/frontend into
       # assets/; step_bundle_data generates its profiles) — so a frontend or
@@ -58,7 +58,7 @@ permissions:
   packages: write   # for ghcr push (oras)
 
 env:
-  WORK_DIR: aa_cloud-ide
+  WORK_DIR: ac_cloud-ide
 
 jobs:
   build_and_publish:
@@ -93,7 +93,7 @@ jobs:
         with:
           # Hub is pure-JVM (no NDK/CMake). compileSdk 35 needs platforms 35 +
           # build-tools 35.0.0 (AGP 8.7.3); 34/26 kept for parity with the
-          # toolchain pins in aa_cloud-ide/flake.nix.
+          # toolchain pins in ac_cloud-ide/flake.nix.
           packages: "platforms;android-35 platforms;android-34 platforms;android-26 build-tools;35.0.0 build-tools;34.0.0 platform-tools"
 
       - name: Set up Gradle 8.10.2 (cached)

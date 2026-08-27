@@ -42,7 +42,7 @@
 #     contract.
 #
 # SPLIT (2026-07-30): this used to be one shared cloud-comms-fork-engine.sh
-# symlinked from all 4 aa_cloud-* build.sh entrypoints. Per-app copies now —
+# symlinked from all 4 ac_cloud-* build.sh entrypoints. Per-app copies now —
 # no more consolidated filename. Logic is identical across the 4 copies
 # (still 100% data-driven from each app's own build.json); only this
 # header + the invoking symlink differ.
@@ -435,7 +435,7 @@ step_materialize_fork() {
 
   local dest="$SCRIPT_DIR/../$tracker"
   # Per-app model: patches always live beside the build.sh/engine symlink
-  # (aa_cloud-<fork>/patches/). SCRIPT_DIR resolves to the invocation dir.
+  # (ac_cloud-<fork>/patches/). SCRIPT_DIR resolves to the invocation dir.
   local patch_dir="$SCRIPT_DIR/patches"
 
   # Vendored-in-repo fork (2026-08-19): tracker_dir points at a committed,
@@ -451,7 +451,7 @@ step_materialize_fork() {
 
   if [ ! -d "$dest/.git" ]; then
     log "materialize-fork[$key]: cloning $repo → $tracker (tag $tag)"
-    # tracker_dir may be nested (aa_upstreams-sources/<name> — the canonical
+    # tracker_dir may be nested (ac_upstreams-sources/<name> — the canonical
     # upstream home since 2026-06-12); the parent is gitignored workspace and
     # won't exist on a fresh CI checkout.
     mkdir -p "$(dirname "$dest")"

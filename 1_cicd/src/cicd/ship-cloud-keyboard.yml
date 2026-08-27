@@ -4,8 +4,8 @@ name: "Ship → Cloud Keyboard APK (build + push to GHCR via ORAS + attach to GH
 # Libs shared from aa_cloud-superapp/libs/ via relative project references.
 #
 # Triggers:
-#   - push main touching aa_cloud-keyboard/ or aa_cloud-superapp/libs/{keyboard,media,translate,voice}/
-#   - tag aa_cloud-keyboard-v* → release build
+#   - push main touching ac_cloud-keyboard/ or aa_cloud-superapp/libs/{keyboard,media,translate,voice}/
+#   - tag ac_cloud-keyboard-v* → release build
 #   - workflow_dispatch → manual
 
 on:
@@ -30,13 +30,13 @@ on:
   push:
     branches: [main]
     tags:
-      - "aa_cloud-keyboard-v*"
+      - "ac_cloud-keyboard-v*"
     paths:
-      - "aa_cloud-keyboard/**"
-      - "aa_cloud-libs-shared/libs/keyboard/**"
-      - "aa_cloud-libs-shared/libs/media/**"
-      - "aa_cloud-libs-shared/libs/translate/**"
-      - "aa_cloud-libs-shared/libs/voice/**"
+      - "ac_cloud-keyboard/**"
+      - "ab_cloud-libs-shared/libs/keyboard/**"
+      - "ab_cloud-libs-shared/libs/media/**"
+      - "ab_cloud-libs-shared/libs/translate/**"
+      - "ab_cloud-libs-shared/libs/voice/**"
       - "1_cicd/src/cicd/ship-cloud-keyboard.yml"
 
 permissions:
@@ -44,7 +44,7 @@ permissions:
   packages: write
 
 env:
-  WORK_DIR: aa_cloud-keyboard
+  WORK_DIR: ac_cloud-keyboard
 
 jobs:
   build_and_publish:

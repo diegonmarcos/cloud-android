@@ -1,0 +1,129 @@
+{
+  "name": "cloud-keyboard",
+  "description": "Cloud Keyboard — HeliBoard IME with on-device translation, voice input, and bundled sticker packs. Standalone constellation APK.",
+  "category": "keyboard",
+  "android": {
+    "application_id": "com.diegonmarcos.cloudkeyboard",
+    "version_code": 1,
+    "version_name": "1.0",
+    "_doc_version": "version_code/version_name live here, not in app/build.gradle. libs/keyboard is shared by reference and reads ${rootDir}/build.json, so these are what the keyboard APK's BuildConfig reports - they used to resolve to aa_cloud-superapp's because the module read a relative path."
+  },
+  "toolchain": {
+    "agp": "8.13.2",
+    "gradle": "8.14",
+    "kotlin": "2.3.20",
+    "compile_sdk": 36,
+    "jdk": "17"
+  },
+  "modules": {
+    "app": {
+      "type": "application"
+    },
+    "libs:keyboard": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/keyboard"
+    },
+    "libs:media": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/media"
+    },
+    "libs:translate": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/translate"
+    },
+    "libs:voice": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/voice"
+    },
+    "_doc": "Keyboard libs are shared from ../aa_cloud-superapp/libs/ via relative project references in settings.gradle."
+  },
+  "keyboard_media": {
+    "_doc": "Same block as aa_cloud-superapp — shared vault secret. build.sh sops-decrypts vault_secrets → TENOR_API_KEY/GIPHY_API_KEY env vars → Gradle BuildConfig → MediaRuntime.configure().",
+    "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
+    "enabled": true,
+    "sticker": {
+      "enabled": true
+    },
+    "gif": {
+      "provider": "giphy",
+      "limit": 30,
+      "giphy": {
+        "base_url": "https://api.giphy.com/v1/gifs",
+        "categories": [
+          {
+            "id": "trending",
+            "label": "Trending",
+            "query": ""
+          },
+          {
+            "id": "reactions",
+            "label": "Reactions",
+            "query": "reaction"
+          },
+          {
+            "id": "love",
+            "label": "Love",
+            "query": "love"
+          },
+          {
+            "id": "happy",
+            "label": "Happy",
+            "query": "happy"
+          },
+          {
+            "id": "sad",
+            "label": "Sad",
+            "query": "sad"
+          },
+          {
+            "id": "celebrate",
+            "label": "Celebrate",
+            "query": "celebrate"
+          }
+        ]
+      }
+    }
+  },
+  "default_locales": [
+    "en_GB",
+    "es_ES",
+    "pt_BR",
+    "de_DE"
+  ],
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps — the SAME key that signs the superapp, so the in-app fleet updater never hits INSTALL_FAILED_UPDATE_INCOMPATIBLE. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, and _enforce_signature re-signs the built APK with it. NO fallback: if the key is unavailable the build FAILS LOUD — it never signs with the ephemeral android debug keystore.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "artifact": {
+      "debug": "Cloud-Keyboard.apk",
+      "release": "Cloud-Keyboard-release.apk"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ac_cloud-keyboard-v*",
+      "asset_name": "Cloud-Keyboard.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

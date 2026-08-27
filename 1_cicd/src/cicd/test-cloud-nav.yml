@@ -16,7 +16,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "aa_cloud-nav/**"
+      - "ac_cloud-nav/**"
       - ".github/workflows/test-cloud-nav.yml"
 
 permissions:
@@ -95,7 +95,7 @@ jobs:
           # under the fast headless indirect GPU regardless of GL tiling.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          working-directory: aa_cloud-nav
+          working-directory: ac_cloud-nav
           script: |
             rc=0
             ./build.sh instrument || rc=$?
@@ -115,8 +115,8 @@ jobs:
         with:
           name: explored-render
           path: |
-            aa_cloud-nav/test-out/
-            aa_cloud-nav/app/build/reports/androidTests/
+            ac_cloud-nav/test-out/
+            ac_cloud-nav/app/build/reports/androidTests/
           if-no-files-found: warn
 
       # gradle connectedAndroidTest exited 0 despite a FAILING instrumented
@@ -127,7 +127,7 @@ jobs:
         if: always()
         run: |
           shopt -s globstar nullglob
-          xmls=(aa_cloud-nav/app/build/outputs/androidTest-results/**/*.xml)
+          xmls=(ac_cloud-nav/app/build/outputs/androidTest-results/**/*.xml)
           if [ ${#xmls[@]} -eq 0 ]; then echo "NO test result XML found — treating as failure"; exit 1; fi
           fails=$(grep -hoE '(failures|errors)="[0-9]+"' "${xmls[@]}" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
           echo "instrumented failures+errors = $fails across ${#xmls[@]} result file(s)"

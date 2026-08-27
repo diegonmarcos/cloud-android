@@ -34,10 +34,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 #   • top-level apps (browser/vault/wallet/superapp/nav/ide) — identity at
 #     .android.application_id + .release.ghcr.image.
 #   • fork-apps (dialer/chat/mail/matrix) — the promoted ex-cloud-comms forks,
-#     each now its OWN aa_cloud-<id> dir + ship-cloud-<id>.yml CI; identity
+#     each now its OWN ac_cloud-<id> dir + ship-cloud-<id>.yml CI; identity
 #     lives under .forks.<key>. Scanned ONLY for non-top-level dirs, so the IDE
 #     hub's own nested forks (editor/files/utils) are never pulled in.
-# The cloud-comms HUB is decommissioned (archived to z_archive/aa_cloud-comms),
+# The cloud-comms HUB is decommissioned (archived to z_archive/ac_cloud-comms),
 # so it is no longer scanned and drops out of the fleet automatically.
 # Baked into BuildConfig.CONSTELLATION_FLEET_B64 by app/build.gradle. Depends
 # ONLY on the sibling repos (always present), so it runs before the cloud-data
@@ -50,24 +50,24 @@ regen_constellation() {
     local tree="https://github.com/diegonmarcos/cloud-android/tree/main"
     local pkg="https://github.com/diegonmarcos/cloud-android/pkgs/container"
 
-    # Scan EVERY sibling repo's build.json, not just aa_cloud-*/. Membership is a
+    # Scan EVERY sibling repo's build.json, not just ac_cloud-*/. Membership is a
     # property of the DATA, not of the directory name: a dir self-registers as a
     # top-level app (.android.application_id + .release.ghcr), a multi-lib repo
     # (.lib_apks) or a fork-app (a real .forks.<key> entry), and anything else is
-    # skipped. The old aa_cloud-* glob made the prefix load-bearing, so
+    # skipped. The old ac_cloud-* glob made the prefix load-bearing, so
     # cloud-unix-termux-boot - named for the host it targets - was invisible to
     # the store no matter what its build.json said. This predicate admits exactly
     # the same repos the glob did, plus any correctly-declared one.
-    # id = dir basename sans an aa_cloud- prefix if it has one.
+    # id = dir basename sans an ac_cloud- prefix if it has one.
     local apps="[]" bj id dir
     for bj in "$UNIX"/*/build.json; do
         [ -f "$bj" ] || continue
         jq -e '(.lib_apks != null) or (.forks != null)
                or (.android.application_id != null and .release.ghcr != null)' \
            "$bj" >/dev/null 2>&1 || continue
-        dir="$(basename "$(dirname "$bj")")"; id="${dir#aa_cloud-}"
+        dir="$(basename "$(dirname "$bj")")"; id="${dir#ac_cloud-}"
         if jq -e '.lib_apks.scan' "$bj" >/dev/null 2>&1; then
-            # ── Multi-lib repo (aa_cloud-libs) ────────────────────────────────
+            # ── Multi-lib repo (ab_cloud-libs) ────────────────────────────────
             # One repo, one APK per library module, so it expands into MANY fleet
             # entries instead of one. The module set is not listed anywhere: it is
             # the same scan+exclude that settings.gradle and build.sh apply, so a
@@ -144,7 +144,7 @@ regen_constellation() {
                     | map(select(.key != "_doc" and (.value|type=="object")))
                     | length > 0' "$bj" >/dev/null 2>&1; then
             # ── Fork-app (dialer/chat/mail/matrix) ───────────────────────────
-            # A standalone aa_cloud-<id> promoted from an ex-cloud-comms fork:
+            # A standalone ac_cloud-<id> promoted from an ex-cloud-comms fork:
             # identity under .forks.<key> (one real fork per dir). Forks publish
             # --latest=false tagged releases → link the releases page, not a
             # /latest/download. keystore-signed package id is preserved.

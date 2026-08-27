@@ -70,7 +70,7 @@ HUBLESS_JSON='{
   "forks": {
     "media-center": {
       "upstream_repo": "https://github.com/IacobIonut01/ReFra.git",
-      "tracker_dir": "aa_upstreams-sources/media-refra",
+      "tracker_dir": "ac_upstreams-sources/media-refra",
       "pinned_tag": "5.1.1-51101-nightly",
       "app_id": "com.diegonmarcos.mediacenter",
       "build": { "gradle_task": "assembleArm64V8aNoMLRelease", "apk_glob": "app/build/outputs/apk/**/*.apk" }
@@ -100,7 +100,7 @@ HUB_JSON='{
   "forks": {
     "mail": {
       "upstream_repo": "https://github.com/M66B/FairEmail.git",
-      "tracker_dir": "aa_mail-fairmail",
+      "tracker_dir": "ac_mail-fairmail",
       "pinned_tag": "9.4.1",
       "build": { "gradle_task": "assembleGithubRelease", "apk_glob": "app/build/outputs/apk/**/*.apk" }
     }

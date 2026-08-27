@@ -1016,7 +1016,7 @@ class DevControlFragment : Fragment() {
 
         // IPC Contract — the cross-app intent/IPC surface Cloud SuperApp
         // exposes/consumes (the constellation hub ↔ ea_cloud-comms /
-        // aa_cloud-ide contract). Always rendered, even when nothing is
+        // ac_cloud-ide contract). Always rendered, even when nothing is
         // declared yet, so the surface is discoverable.
 
         section(ctx, column, "SYSFS-PROC") {

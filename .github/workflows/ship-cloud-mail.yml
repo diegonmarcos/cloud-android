@@ -1,15 +1,15 @@
 name: "Ship → Cloud Mail (build + publish to GHCR)"
 
 # Independent per-app workflow for Cloud Mail (Fairmail fork).
-# Engine: 1_cicd/src/scripts/cloud-mail-engine.sh (symlinked as aa_cloud-mail/build.sh).
-# Per-app build.json at aa_cloud-mail/build.json. OUR code: the gradle project is aa_cloud-mail/ itself (app/, build.gradle at its root) — no upstream/ subdir, no patch series.
+# Engine: 1_cicd/src/scripts/cloud-mail-engine.sh (symlinked as ac_cloud-mail/build.sh).
+# Per-app build.json at ac_cloud-mail/build.json. OUR code: the gradle project is ac_cloud-mail/ itself (app/, build.gradle at its root) — no upstream/ subdir, no patch series.
 
 on:
   workflow_dispatch: {}
   push:
     branches: [main]
     paths:
-      - "aa_cloud-mail/**"
+      - "ac_cloud-mail/**"
       - "1_cicd/src/scripts/cloud-mail-engine.sh"
       - "1_cicd/src/cicd/ship-cloud-mail.yml"
 
@@ -18,7 +18,7 @@ permissions:
   packages: write   # ghcr push (oras)
 
 env:
-  WORK_DIR: aa_cloud-mail
+  WORK_DIR: ac_cloud-mail
   FORK: mail
 
 jobs:

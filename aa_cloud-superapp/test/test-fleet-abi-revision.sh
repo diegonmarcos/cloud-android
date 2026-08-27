@@ -26,11 +26,11 @@ has()   { grep -qF "$2" "$ROOT/$1" 2>/dev/null && ok "$3" || bad "$3 ($1)"; }
 hasnt() { grep -qF "$2" "$ROOT/$1" 2>/dev/null && bad "$3 ($1)" || ok "$3"; }
 
 # The four vendored Fleet.kt copies were replaced by ONE shared module in
-# aa_cloud-libs-shared that every app compiles against. The old "4 copies are
+# ab_cloud-libs-shared that every app compiles against. The old "4 copies are
 # byte-identical" invariant is now structural rather than checked, so T3
 # asserts the copies have not crept back instead of comparing checksums.
 REL="libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
-FLEET="aa_cloud-libs-shared/$REL"
+FLEET="ab_cloud-libs-shared/$REL"
 
 echo "== T1: ABI-tag no longer composes the bogus '<tag>-<deviceAbi>' =="
 hasnt "$FLEET" '${app.tag}-$abi' "dropped the always-404 <tag>-<abi> composition"

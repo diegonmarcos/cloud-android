@@ -18,7 +18,7 @@ echo "== T1: fleet manifest auto-generated with every app =="
 if [ -f "$FLEET" ]; then
   N=$(jq '.apps | length' "$FLEET" 2>/dev/null)
   [ "${N:-0}" -ge 8 ] && ok "constellation-fleet.json has $N apps (>=8)" || bad "expected >=8 apps, got ${N:-0}"
-  # Every standalone aa_cloud-<id> self-registers: the top-level apps +
+  # Every standalone ac_cloud-<id> self-registers: the top-level apps +
   # the 4 promoted ex-comms fork-apps (dialer/chat/mail/matrix), each now its
   # OWN dir + ship-cloud-<id>.yml CI. Fleet ids = the dir basenames.
   for id in superapp nav ide browser vault wallet dialer chat mail matrix; do
@@ -33,17 +33,17 @@ if [ -f "$FLEET" ]; then
     && bad "stale comms-* fork id present" || ok "no stale comms-* fork ids"
 else bad "constellation-fleet.json missing (run data/regen.sh)"; fi
 has "$APP/data/regen.sh" "regen_constellation" "regen.sh auto-scans siblings → fleet json"
-# self-registering / DRY: the dialer package is scanned from aa_cloud-dialer/
+# self-registering / DRY: the dialer package is scanned from ac_cloud-dialer/
 # build.json (forks.dialer.app_id), not hand-typed — dialer is now an
 # independent fleet app with its own ship CI.
-grep -q '"com.diegonmarcos.comms.dialer"' "$FLEET" 2>/dev/null && ok "dialer package scanned from aa_cloud-dialer/build.json" || bad "dialer package not scanned"
+grep -q '"com.diegonmarcos.comms.dialer"' "$FLEET" 2>/dev/null && ok "dialer package scanned from ac_cloud-dialer/build.json" || bad "dialer package not scanned"
 
 echo "== T2: baked into BuildConfig (data-driven) =="
 has "$APP/app/build.gradle" "constellation-fleet.json" "build.gradle reads the fleet snapshot"
 has "$APP/app/build.gradle" 'buildConfigField "String", "CONSTELLATION_FLEET_B64"' "build.gradle bakes CONSTELLATION_FLEET_B64"
 
 echo "== T3: engine reuses libs/updater primitives (no reinvention) =="
-ENG="$(cd "$APP/.." && pwd)/aa_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
+ENG="$(cd "$APP/.." && pwd)/ab_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater/Fleet.kt"
 has "$ENG" "GhcrClient(app.registry, app.namespace, app.image)" "Fleet checks per-image via existing GhcrClient"
 has "$ENG" "UpdateInstaller(ctx).install(apk, app.pkg)" "Fleet installs foreign pkg via existing UpdateInstaller"
 has "$ENG" "packageInstaller.uninstall(pkg" "Fleet uninstall via PackageInstaller"

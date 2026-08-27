@@ -1,0 +1,141 @@
+{
+  "name": "cloud-keyboard-libs",
+  "description": "Cloud Keyboard — Feature Pack APK. Bundles libs:media (stickers/GIF), libs:translate (ML Kit), and libs:voice (Vosk) as a companion APK updatable independently of the keyboard.",
+  "category": "keyboard",
+  "android": {
+    "application_id": "com.diegonmarcos.cloudkeyboardlibs",
+    "_doc_abi_filters": "Native-library ABIs shipped in the APK. Vosk + JNA ship ~25MB of .so PER ABI; with no filter AGP bundled all 7 the deps carry (x86_64, x86, arm64-v8a, armeabi-v7a, mips, mips64, armeabi) = 99.5MB of a 129.7MB APK. mips/mips64 were removed from the NDK in 2018 and are dead weight. arm64-v8a only mirrors aa_cloud-superapp + ac_cloud-vault and lands the APK at ~55MB. Add 'x86_64' here for Waydroid/emulator and rebuild — no gradle edits needed.",
+    "abi_filters": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "version_code": 1,
+    "version_name": "1.0",
+    "_doc_version": "version_code/version_name live here, not in app/build.gradle. libs/keyboard is shared by reference and reads ${rootDir}/build.json, so these are what the keyboard APK's BuildConfig reports - they used to resolve to aa_cloud-superapp's because the module read a relative path."
+  },
+  "toolchain": {
+    "agp": "8.13.2",
+    "gradle": "8.14",
+    "kotlin": "2.3.20",
+    "compile_sdk": 36,
+    "jdk": "17"
+  },
+  "modules": {
+    "app": {
+      "type": "application"
+    },
+    "libs:media": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/media"
+    },
+    "libs:translate": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/translate"
+    },
+    "libs:translate-mlkit": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/translate-mlkit"
+    },
+    "libs:voice": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/voice"
+    },
+    "libs:voice-vosk": {
+      "type": "library",
+      "_doc_dir": "Shared BY REFERENCE from aa_cloud-superapp/libs/ - settings.gradle points projectDir here instead of at a local copy. These paths used to be hardcoded as include/projectDir pairs in settings.gradle, which meant the module graph lived in two places and neither knew about the other. build.json is now the only place a module is declared.",
+      "dir": "../ab_cloud-libs-shared/libs/voice-vosk"
+    },
+    "_doc": "Feature libs are shared from ../aa_cloud-superapp/libs/ via relative project references in settings.gradle."
+  },
+  "keyboard_media": {
+    "_doc": "Same block as aa_cloud-superapp and ac_cloud-keyboard — shared vault secret. build.sh sops-decrypts vault_secrets → GIPHY_API_KEY env var → Gradle BuildConfig → MediaRuntime.configure().",
+    "vault_secrets": "A0_keys/providers/keyboard-media/secrets.yaml",
+    "enabled": true,
+    "sticker": {
+      "enabled": true
+    },
+    "gif": {
+      "provider": "giphy",
+      "limit": 30,
+      "giphy": {
+        "base_url": "https://api.giphy.com/v1/gifs",
+        "categories": [
+          {
+            "id": "trending",
+            "label": "Trending",
+            "query": ""
+          },
+          {
+            "id": "reactions",
+            "label": "Reactions",
+            "query": "reaction"
+          },
+          {
+            "id": "love",
+            "label": "Love",
+            "query": "love"
+          },
+          {
+            "id": "happy",
+            "label": "Happy",
+            "query": "happy"
+          },
+          {
+            "id": "sad",
+            "label": "Sad",
+            "query": "sad"
+          },
+          {
+            "id": "celebrate",
+            "label": "Celebrate",
+            "query": "celebrate"
+          }
+        ]
+      }
+    }
+  },
+  "default_locales": [
+    "en_GB",
+    "es_ES",
+    "pt_BR",
+    "de_DE"
+  ],
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. build.sh::_resolve_signing resolves $VAULT_DIR + sops-decrypts the passwords. NO fallback.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "_doc_kind": "'lib' = a companion APK that ships engines behind AIDL bound services instead of UI. data/regen.sh copies this into constellation-fleet.json; the SuperApp's Constellation page files it under the Libs tab instead of Apps. Absent/anything else = 'app'.",
+    "kind": "lib",
+    "artifact": {
+      "debug": "Cloud-Keyboard-Libs.apk",
+      "release": "Cloud-Keyboard-Libs-release.apk"
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-keyboard-libs",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ab_cloud-keyboard-libs-v*",
+      "asset_name": "Cloud-Keyboard-Libs.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

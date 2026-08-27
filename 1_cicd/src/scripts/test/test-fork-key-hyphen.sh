@@ -2,7 +2,7 @@
 # Regression test: fork keys containing a hyphen must resolve in the engine's
 # jq lookups.
 #
-# Bug (GHA run 30528694044, aa_cloud-media-center): step_build_fork built its
+# Bug (GHA run 30528694044, ac_cloud-media-center): step_build_fork built its
 # jq filters by shell-interpolating the fork key into a jq PATH:
 #     jq -r ".forks.${key}.build.prepare // [] | .[]"
 # With key="media-center" jq parses that as arithmetic on undefined functions:
@@ -79,7 +79,7 @@ check "single-word sibling key still resolves" "echo mail" "$sib"
 
 # --- the engine source must not reintroduce an interpolated jq path ---------
 # The shared cloud-comms-fork-engine.sh was retired 2026-07-30 — each
-# aa_cloud-* app now carries its OWN byte-for-byte copy
+# ac_cloud-* app now carries its OWN byte-for-byte copy
 # (cloud-{mail,chat,dialer,matrix,media-center}-fork-engine.sh). A fix applied
 # to one copy does NOT propagate to its siblings, so this checks EVERY copy,
 # not one hardcoded name (rule 6) — glob, not a literal app list.
@@ -197,7 +197,7 @@ known = set(re.findall(r'^\s*(store_password|key_password|key_alias|keystore_pat
                        engine, re.M))
 root = os.path.abspath(os.path.join(os.path.dirname(sys.argv[1]), '..', '..', '..'))
 bad = []
-for bj in glob.glob(os.path.join(root, 'aa_cloud-*', 'build.json')):
+for bj in glob.glob(os.path.join(root, 'ac_cloud-*', 'build.json')):
     try:
         d = json.load(open(bj, encoding='utf8'))
     except Exception:

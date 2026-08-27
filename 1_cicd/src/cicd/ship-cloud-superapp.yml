@@ -50,14 +50,14 @@ on:
       - "aa_cloud-superapp-v*"
     paths:
       - "aa_cloud-superapp/**"
-      # Shared modules compiled BY REFERENCE from aa_cloud-libs-shared: they sit
+      # Shared modules compiled BY REFERENCE from ab_cloud-libs-shared: they sit
       # outside this repo's own filter, so without these a fix to core/devtools/
       # updater ships no new SuperApp APK while CI stays green. One line per
       # build.json::modules entry whose `dir` leaves this directory —
       # shared-modules.test.sh rule 11 fails the build if it drifts.
-      - "aa_cloud-libs-shared/libs/core/**"
-      - "aa_cloud-libs-shared/libs/devtools/**"
-      - "aa_cloud-libs-shared/libs/updater/**"
+      - "ab_cloud-libs-shared/libs/core/**"
+      - "ab_cloud-libs-shared/libs/devtools/**"
+      - "ab_cloud-libs-shared/libs/updater/**"
       - "1_cicd/src/cicd/ship-cloud-superapp.yml"
       # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
       # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).

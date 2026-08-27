@@ -1,15 +1,15 @@
 name: "Ship → Cloud Chat (materialize + build + publish to GHCR)"
 
 # Independent per-app workflow for Cloud Chat (Mattermost fork).
-# Engine: 1_cicd/src/scripts/cloud-chat-fork-engine.sh (symlinked as aa_cloud-chat/build.sh).
-# Per-app build.json at aa_cloud-chat/build.json; patches at aa_cloud-chat/patches/.
+# Engine: 1_cicd/src/scripts/cloud-chat-fork-engine.sh (symlinked as ac_cloud-chat/build.sh).
+# Per-app build.json at ac_cloud-chat/build.json; patches at ac_cloud-chat/patches/.
 
 on:
   workflow_dispatch: {}
   push:
     branches: [main]
     paths:
-      - "aa_cloud-chat/**"
+      - "ac_cloud-chat/**"
       - "1_cicd/src/scripts/cloud-chat-fork-engine.sh"
       - "1_cicd/src/cicd/ship-cloud-chat.yml"
 
@@ -18,7 +18,7 @@ permissions:
   packages: write   # ghcr push (oras)
 
 env:
-  WORK_DIR: aa_cloud-chat
+  WORK_DIR: ac_cloud-chat
   FORK: chat
 
 jobs:

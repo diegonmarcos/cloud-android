@@ -597,12 +597,12 @@ step_sync_qrcodes() {
   log "  review with: git -C $SCRIPT_DIR diff -- app/src/main/assets/qrcodes/qrcodes.json"
 }
 
-# ─── Sync the WireGuard tunnel engine from aa_net-wireguard ─────────
+# ─── Sync the WireGuard tunnel engine from ac_net-wireguard ─────────
 # Cherry-picks the embeddable `tunnel/` module of upstream
 # wireguard-android (https://github.com/WireGuard/wireguard-android,
 # Apache-2.0) into libs/net/. The upstream clone lives at
-# ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_net-wireguard/ (gitignored per the
-# aa_*-*/ workspace-clone convention); this command copies a fixed
+# ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_net-wireguard/ (gitignored per the
+# ac_*-*/ workspace-clone convention); this command copies a fixed
 # include-list into the in-tree gradle module so CI can build the
 # native libwg-go.so + libwg.so + libwg-quick.so without the sibling
 # clone being present.
@@ -610,7 +610,7 @@ step_sync_qrcodes() {
 # Idempotent — rsync --delete on the destinations, so a fresh upstream
 # pull → one `./build.sh sync-net` → clear `git diff` for review.
 step_sync_net() {
-  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/aa_net-wireguard/tunnel"
+  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/ac_net-wireguard/tunnel"
   local dst="$SCRIPT_DIR/libs/net"
   [ -d "$upstream" ] || { errlog "sync-net: upstream not found: $upstream (clone https://github.com/WireGuard/wireguard-android.git there, or set ANDROID_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-net: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
@@ -666,11 +666,11 @@ step_sync_net() {
 # REFERENCE-ONLY sync for libs:firewall. Unlike sync-net, this does NOT
 # vendor or rsync any upstream code: v1's libs/firewall is original,
 # clean-room code. This just materialises (or updates) the RethinkDNS
-# reference clone next to the other aa_* upstream mirrors so you can
+# reference clone next to the other ac_* upstream mirrors so you can
 # browse and hand-cherry-pick its DNS / firestack engine into
 # libs/firewall later. Registered in build.json::upstreams.firewall.
 step_sync_firewall() {
-  local ref="${ANDROID_REPO:-$HOME/git/cloud-android}/aa_net-rethinkdns"
+  local ref="${ANDROID_REPO:-$HOME/git/cloud-android}/ac_net-rethinkdns"
   local url="https://github.com/celzero/rethink-app.git"
   command -v git >/dev/null 2>&1 || { errlog "sync-firewall: git is required"; exit 1; }
   if [ -d "$ref/.git" ]; then
@@ -783,8 +783,8 @@ _verify_firestack_aar() {
 # Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
 # GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
 # self-contained keyboard provider. Upstream clone lives at
-# ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_keyboard-heliboard/ (gitignored sibling,
-# aa_*-* workspace-clone convention).
+# ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_keyboard-heliboard/ (gitignored sibling,
+# ac_*-* workspace-clone convention).
 #
 # Copies app/src/main VERBATIM (java/kotlin + res + assets + jni + the
 # AndroidManifest.xml). The manifest is taken as-is — it is rich (own App
@@ -805,9 +805,9 @@ _verify_firestack_aar() {
 # Idempotent — rsync --delete. Fresh upstream pull -> one
 # `./build.sh sync-heliboard` -> clear `git diff` for review.
 step_sync_heliboard() {
-  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/aa_keyboard-heliboard/app/src/main"
+  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/ac_keyboard-heliboard/app/src/main"
   local dst="$SCRIPT_DIR/libs/keyboard"
-  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_keyboard-heliboard, or set ANDROID_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_keyboard-heliboard, or set ANDROID_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-heliboard: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
 
   mkdir -p "$dst/src/main"
@@ -888,13 +888,13 @@ step_brand_rename() {
 # animal/variant each tool uses from build.json::status_pets.tools and copies
 # exactly those 4-gait GIFs into app/src/main/assets/zoomies/. Adding/retuning
 # a pet = edit build.json + re-run this; no hardcoded animal list in the engine.
-# Upstream clone lives at ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_zoomies-pets/
-# (gitignored sibling, aa_*-* convention).
+# Upstream clone lives at ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_zoomies-pets/
+# (gitignored sibling, ac_*-* convention).
 step_sync_zoomies() {
-  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/aa_zoomies-pets/Sources/Zoomies/Pets"
+  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/ac_zoomies-pets/Sources/Zoomies/Pets"
   local dst="$SCRIPT_DIR/app/src/main/assets/zoomies"
   local bj="$SCRIPT_DIR/build.json"
-  [ -d "$upstream" ] || { errlog "sync-zoomies: upstream not found: $upstream (clone https://github.com/KartikLabhshetwar/zoomies to ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_zoomies-pets, or set ANDROID_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-zoomies: upstream not found: $upstream (clone https://github.com/KartikLabhshetwar/zoomies to ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_zoomies-pets, or set ANDROID_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-zoomies: jq required"; exit 1; }
 
   rm -rf "$dst"; mkdir -p "$dst"
@@ -934,12 +934,12 @@ step_sync_zoomies() {
 # build.json::keyboard_dicts (locales[] × types[].{type,dir}). ADDITIVE (no --delete):
 # composes with the HeliBoard mirror, so run AFTER sync-heliboard (which rsync
 # --delete's the mirror and would otherwise drop these). Upstream clone:
-# ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
+# ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
 step_sync_keyboard_dicts() {
-  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/aa_keyboard-dicts"
+  local upstream="${ANDROID_REPO:-$HOME/git/cloud-android}/ac_keyboard-dicts"
   local dst="$SCRIPT_DIR/libs/keyboard/dicts-data"  # OUT of the asset tree: only the companion bundles these; cloud-keyboard reads them at runtime
   local bj="$SCRIPT_DIR/build.json"
-  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${ANDROID_REPO:-$HOME/git/cloud-android}/aa_keyboard-dicts, or set ANDROID_REPO=)"; exit 1; }
+  [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${ANDROID_REPO:-$HOME/git/cloud-android}/ac_keyboard-dicts, or set ANDROID_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-keyboard-dicts: jq required"; exit 1; }
 
   mkdir -p "$dst"
@@ -958,7 +958,7 @@ step_sync_keyboard_dicts() {
   done < <(jq -r '.keyboard_dicts.types[] | "\(.type) \(.dir)"' "$bj")
 
   log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/dicts-data/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
-  log "  NOTE: aa_cloud-keyboard-libs bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
+  log "  NOTE: ab_cloud-keyboard-libs bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/dicts-data/"
   [ "$miss" -eq 0 ] || { errlog "sync-keyboard-dicts: $miss dict(s) missing — fix build.json::keyboard_dicts or update the clone"; exit 1; }
 }

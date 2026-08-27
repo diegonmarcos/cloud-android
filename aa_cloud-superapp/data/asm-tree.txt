@@ -275,7 +275,7 @@ In-app Updater ── libs:updater  (OCI/GHCR HTTP API → WorkManager → Packa
 External App Launcher  (extapp: grammar)
   cloud-comms  hub → mail fork / matrix fork / chat fork / dialer fork
   cloud-ide    hub → files fork
-  cloud-nav    dedicated Maps/Nav APK (aa_cloud-nav)
+  cloud-nav    dedicated Maps/Nav APK (ac_cloud-nav)
   (install fallback: libs:updater fetches APK from installApkUrl if not installed)
 
 Notification Centre ── NotificationStore (in-app feed)

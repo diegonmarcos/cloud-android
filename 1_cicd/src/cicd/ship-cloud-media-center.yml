@@ -1,13 +1,13 @@
 name: "Ship → Cloud Media Center APK (build + push to GHCR via ORAS + attach to GH Release)"
 
 # Engine: 1_cicd/src/scripts/cloud-media-center-fork-engine.sh
-# (symlinked as aa_cloud-media-center/build.sh) — this app's own copy, not
-# shared, matching the aa_cloud-{mail,chat,dialer,matrix} per-app convention
+# (symlinked as ac_cloud-media-center/build.sh) — this app's own copy, not
+# shared, matching the ac_cloud-{mail,chat,dialer,matrix} per-app convention
 # (the old shared cloud-comms-fork-engine.sh was retired 2026-07-30).
 #
-# Builds the Cloud Media Center APK from aa_cloud-media-center/ (a fork of
+# Builds the Cloud Media Center APK from ac_cloud-media-center/ (a fork of
 # IacobIonut01/ReFra) and publishes via two channels, both data-driven by
-# aa_cloud-media-center/build.json::release (mirror of the
+# ac_cloud-media-center/build.json::release (mirror of the
 # ship-cloud-superapp.yml engine contract — the only "knob" here is which
 # build.sh subcommand to invoke; engine reads build.json for the rest):
 #
@@ -47,9 +47,9 @@ on:
   push:
     branches: [main]
     tags:
-      - "aa_cloud-media-center-v*"
+      - "ac_cloud-media-center-v*"
     paths:
-      - "aa_cloud-media-center/**"
+      - "ac_cloud-media-center/**"
       - "1_cicd/src/cicd/ship-cloud-media-center.yml"
       - "1_cicd/src/scripts/cloud-media-center-fork-engine.sh"
       # NOTE: the generated .github/workflows/ship-cloud-media-center.yml is
@@ -63,7 +63,7 @@ permissions:
   packages: write   # for ghcr push (oras)
 
 env:
-  WORK_DIR: aa_cloud-media-center
+  WORK_DIR: ac_cloud-media-center
 
 jobs:
   build_and_publish:
@@ -96,7 +96,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # Pins mirror aa_cloud-media-center/flake.nix + build.json::toolchain.
+          # Pins mirror ac_cloud-media-center/flake.nix + build.json::toolchain.
           # ndk;29.0.14033849 + cmake;3.31.6 required — ReFra upstream builds
           # native libheif/libde265 via CMake (see comment above).
           packages: "platforms;android-37.1 platforms;android-37.0 platforms;android-35 platforms;android-34 platforms;android-26 build-tools;37.0.0 build-tools;35.0.0 build-tools;34.0.0 platform-tools ndk;29.0.14033849 cmake;3.31.6"

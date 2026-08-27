@@ -2,7 +2,7 @@
   "name": "termux-boot",
   "description": "Runs Nix-on-Droid boot scripts at device boot. Foreign-signed BOOT_COMPLETED receiver that reaches the host app over its dangerous-level RUN_COMMAND permission, because a shared uid is impossible without the host's signing key.",
   "category": "system",
-  "_doc_membership": "Constellation membership is DATA, not a directory-name convention: data/regen.sh admits any repo whose build.json declares android.application_id + release.ghcr (or forks / lib_apks). This repo is named for the host it targets rather than aa_cloud-*, and joins the fleet on the strength of this file alone.",
+  "_doc_membership": "Constellation membership is DATA, not a directory-name convention: data/regen.sh admits any repo whose build.json declares android.application_id + release.ghcr (or forks / lib_apks). This repo is named for the host it targets rather than ac_cloud-*, and joins the fleet on the strength of this file alone.",
   "android": {
     "_doc_application_id": "com.termux.nix.boot, NOT com.diegonmarcos.*: the manifest namespaces every intent action and permission by the host package, and the applicationId is what the host's RUN_COMMAND grant is recorded against. Renaming it orphans the grant.",
     "application_id": "com.termux.nix.boot",

@@ -9,7 +9,7 @@ name: "Ship → Cloud Unix Termux Boot APK (build + sign with the shared constel
 # the host through RunCommandService instead, which is exported behind a
 # "dangerous" (not "signature") permission plus allow-external-apps=true.
 #
-# Pure Java, no NDK and no ABI split, so unlike the other aa_cloud-* apps this
+# Pure Java, no NDK and no ABI split, so unlike the other ac_cloud-* apps this
 # builds one universal APK and needs no matrix.
 
 on:

@@ -77,7 +77,7 @@ import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.superapp.mail.MailHost
 import com.diegonmarcos.superapp.mail.MailPages
 import com.diegonmarcos.superapp.launcher.BackHandler
-// WalletHost removed — libs:wallet moved to aa_cloud-wallet (constellation APK).
+// WalletHost removed — libs:wallet moved to ac_cloud-wallet (constellation APK).
 
 /**
  * Top-level shell.
@@ -1687,7 +1687,7 @@ class MainActivity : AppCompatActivity(),
                 return true
             }
             R.id.action_wallet -> {
-                // Wallet moved to aa_cloud-wallet (constellation APK).
+                // Wallet moved to ac_cloud-wallet (constellation APK).
                 // Launch it as an external app; installs from GHCR if absent.
                 launchExternalApp("cloud-wallet")
                 return true
