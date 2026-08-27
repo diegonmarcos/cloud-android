@@ -1349,11 +1349,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             // comms: was `viewType == ViewType.THREAD &&`. With inline
             // conversations a message expands in place in the folder list
             // too, so the gate is the pref, not the view type.
-            // item_message_duplicate has no vsBody, so ensureExpanded() would
-            // NPE on it. In the folder list sent/trash rows use that layout,
-            // so an expandable row must be one whose layout can hold a body.
             boolean expanded = ((viewType == ViewType.THREAD || inline_threads) &&
-                    getItemViewType() != R.layout.item_message_duplicate &&
                     properties.getValue("expanded", message.id));
 
             // Text size
