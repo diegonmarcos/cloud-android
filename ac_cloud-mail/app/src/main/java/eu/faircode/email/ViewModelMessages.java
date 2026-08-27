@@ -42,12 +42,18 @@ import androidx.room.paging.LimitOffsetDataSource;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 public class ViewModelMessages extends ViewModel {
+    // Room expands an empty collection to `IN ()`, which SQLite will not
+    // parse, so the no-expansion case has to be a list that matches nothing.
+    // Thread ids are never empty, so one empty string is that list.
+    static final List<String> NO_EXPANDED = Collections.singletonList("");
+
     private AdapterMessage.ViewType last = AdapterMessage.ViewType.UNIFIED;
     private Map<AdapterMessage.ViewType, Model> models = new HashMap<AdapterMessage.ViewType, Model>() {
         @Nullable
@@ -85,6 +91,7 @@ public class ViewModelMessages extends ViewModel {
             String type, String category, long account, long folder,
             String thread, long id,
             boolean threading,
+            List<String> expanded,
             boolean filter_archive,
             BoundaryCallbackMessages.SearchCriteria criteria, boolean server) {
 
@@ -93,7 +100,7 @@ public class ViewModelMessages extends ViewModel {
 
         Args args = new Args(context,
                 viewType, type, category, account, folder,
-                thread, id, threading,
+                thread, id, threading, expanded,
                 filter_archive, criteria, server);
         Log.i("Get model=" + viewType + " " + args);
         dump();
@@ -128,7 +135,7 @@ public class ViewModelMessages extends ViewModel {
                         pager = db.message().pagedUnifiedJson(
                                 args.type,
                                 args.category,
-                                args.threading,
+                                args.threading, args.expanded,
                                 args.group_category,
                                 args.sort1, args.sort2, args.ascending,
                                 args.filter_seen,
@@ -145,7 +152,7 @@ public class ViewModelMessages extends ViewModel {
                         pager = db.message().pagedUnified(
                                 args.type,
                                 args.category,
-                                args.threading,
+                                args.threading, args.expanded,
                                 args.group_category,
                                 args.sort1, args.sort2, args.ascending,
                                 args.filter_seen,
@@ -170,7 +177,7 @@ public class ViewModelMessages extends ViewModel {
                             .build();
                     if ("sender_name".equals(args.sort1))
                         pager = db.message().pagedFolderJson(
-                                args.folder, args.threading,
+                                args.folder, args.threading, args.expanded,
                                 args.sort1, args.sort2, args.ascending,
                                 args.filter_seen,
                                 args.filter_unseen,
@@ -184,7 +191,7 @@ public class ViewModelMessages extends ViewModel {
                                 args.debug);
                     else
                         pager = db.message().pagedFolder(
-                                args.folder, args.threading,
+                                args.folder, args.threading, args.expanded,
                                 args.sort1, args.sort2, args.ascending,
                                 args.filter_seen,
                                 args.filter_unseen,
@@ -224,7 +231,7 @@ public class ViewModelMessages extends ViewModel {
                         if ("sender_name".equals(args.sort1))
                             pager = db.message().pagedUnifiedJson(
                                     null, null,
-                                    args.threading, false,
+                                    args.threading, NO_EXPANDED, false,
                                     criteria == null || criteria.touched == null ? "time" : "touched", "", false,
                                     false, false, false, false, false, false, false,
                                     null,
@@ -233,7 +240,7 @@ public class ViewModelMessages extends ViewModel {
                         else
                             pager = db.message().pagedUnified(
                                     null, null,
-                                    args.threading, false,
+                                    args.threading, NO_EXPANDED, false,
                                     criteria == null || criteria.touched == null ? "time" : "touched", "", false,
                                     false, false, false, false, false, false, false,
                                     null,
@@ -243,7 +250,7 @@ public class ViewModelMessages extends ViewModel {
                     } else {
                         if ("sender_name".equals(args.sort1))
                             pager = db.message().pagedFolderJson(
-                                    args.folder, args.threading,
+                                    args.folder, args.threading, NO_EXPANDED,
                                     criteria == null || criteria.touched == null ? "time" : "touched", "", false,
                                     false, false, false, false, false, false, false,
                                     null,
@@ -251,7 +258,7 @@ public class ViewModelMessages extends ViewModel {
                                     args.debug);
                         else
                             pager = db.message().pagedFolder(
-                                    args.folder, args.threading,
+                                    args.folder, args.threading, NO_EXPANDED,
                                     criteria == null || criteria.touched == null ? "time" : "touched", "", false,
                                     false, false, false, false, false, false, false,
                                     null,
@@ -579,6 +586,7 @@ public class ViewModelMessages extends ViewModel {
         private boolean server;
 
         private boolean threading;
+        private List<String> expanded;
         private boolean group_category;
         private String sort1;
         private String sort2;
@@ -597,7 +605,7 @@ public class ViewModelMessages extends ViewModel {
         Args(Context context,
              AdapterMessage.ViewType viewType,
              String type, String category, long account, long folder,
-             String thread, long id, boolean threading,
+             String thread, long id, boolean threading, List<String> expanded,
              boolean filter_archive,
              BoundaryCallbackMessages.SearchCriteria criteria, boolean server) {
 
@@ -608,6 +616,7 @@ public class ViewModelMessages extends ViewModel {
             this.thread = thread;
             this.id = id;
             this.threading = threading;
+            this.expanded = expanded;
             this.filter_archive = filter_archive;
             this.criteria = criteria;
             this.server = server;
@@ -655,6 +664,7 @@ public class ViewModelMessages extends ViewModel {
                         this.server == other.server &&
 
                         this.threading == other.threading &&
+                        Objects.equals(this.expanded, other.expanded) &&
                         this.group_category == other.group_category &&
                         Objects.equals(this.sort1, other.sort1) &&
                         Objects.equals(this.sort2, other.sort2) &&
@@ -680,6 +690,7 @@ public class ViewModelMessages extends ViewModel {
                     " thread=" + thread + ":" + id +
                     " criteria=" + criteria + ":" + server + "" +
                     " threading=" + threading +
+                    " expanded=" + expanded +
                     " category=" + group_category +
                     " sort=" + sort1 + "/" + sort2 + ":" + ascending +
                     " filter seen=" + filter_seen + "/" + filter_unseen +

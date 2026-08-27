@@ -83,7 +83,7 @@ public interface DaoMessage {
             " AND (:threading OR (:type IS NULL AND (folder.unified OR :found)) OR (:type IS NOT NULL AND folder.type = :type))" +
             " AND (NOT message.ui_hide OR :debug)" +
             " AND (NOT :found OR message.ui_found = :found)" +
-            " GROUP BY account.id, CASE WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
+            " GROUP BY account.id, CASE WHEN message.thread IN (:expanded) THEN COALESCE(message.hash, message.msgid, message.id) WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
             " HAVING (SUM((:found AND message.ui_found)" +
             " OR (NOT :found AND :type IS NULL AND folder.unified)" +
             " OR (NOT :found AND :type IS NOT NULL AND folder.type = :type)) > 0)" + // thread can be the same in different accounts
@@ -119,7 +119,7 @@ public interface DaoMessage {
             ", CASE WHEN :ascending THEN message.received ELSE -message.received END")
     DataSource.Factory<Integer, TupleMessageEx> pagedUnified(
             String type, String category,
-            boolean threading, boolean group_category,
+            boolean threading, List<String> expanded, boolean group_category,
             String sort1, String sort2, boolean ascending,
             boolean filter_seen, boolean filter_unseen, boolean filter_flagged, boolean filter_unflagged, boolean filter_unknown, boolean filter_snoozed, boolean filter_deleted, String filter_language,
             boolean found,
@@ -164,7 +164,7 @@ public interface DaoMessage {
             " AND (:threading OR folder.id = :folder)" +
             " AND (NOT message.ui_hide OR :debug)" +
             " AND (NOT :found OR message.ui_found = :found)" +
-            " GROUP BY CASE WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
+            " GROUP BY CASE WHEN message.thread IN (:expanded) THEN COALESCE(message.hash, message.msgid, message.id) WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
             " HAVING (SUM((:found AND message.ui_found)" +
             " OR (NOT :found AND message.folder = :folder)) > 0)" +
             " AND SUM(NOT message.ui_hide OR :debug) > 0" +
@@ -198,7 +198,7 @@ public interface DaoMessage {
             "  END" +
             ", CASE WHEN :ascending THEN message.received ELSE -message.received END")
     DataSource.Factory<Integer, TupleMessageEx> pagedFolder(
-            long folder, boolean threading,
+            long folder, boolean threading, List<String> expanded,
             String sort1, String sort2, boolean ascending,
             boolean filter_seen, boolean filter_unseen, boolean filter_flagged, boolean filter_unflagged, boolean filter_unknown, boolean filter_snoozed, boolean filter_deleted, String filter_language,
             boolean found,
@@ -1151,7 +1151,7 @@ public interface DaoMessage {
             " AND (:threading OR (:type IS NULL AND (folder.unified OR :found)) OR (:type IS NOT NULL AND folder.type = :type))" +
             " AND (NOT message.ui_hide OR :debug)" +
             " AND (NOT :found OR message.ui_found = :found)" +
-            " GROUP BY account.id, CASE WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
+            " GROUP BY account.id, CASE WHEN message.thread IN (:expanded) THEN COALESCE(message.hash, message.msgid, message.id) WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
             " HAVING (SUM((:found AND message.ui_found)" +
             " OR (NOT :found AND :type IS NULL AND folder.unified)" +
             " OR (NOT :found AND :type IS NOT NULL AND folder.type = :type)) > 0)" + // thread can be the same in different accounts
@@ -1188,7 +1188,7 @@ public interface DaoMessage {
             ", CASE WHEN :ascending THEN message.received ELSE -message.received END")
     DataSource.Factory<Integer, TupleMessageEx> pagedUnifiedJson(
             String type, String category,
-            boolean threading, boolean group_category,
+            boolean threading, List<String> expanded, boolean group_category,
             String sort1, String sort2, boolean ascending,
             boolean filter_seen, boolean filter_unseen, boolean filter_flagged, boolean filter_unflagged, boolean filter_unknown, boolean filter_snoozed, boolean filter_deleted, String filter_language,
             boolean found,
@@ -1233,7 +1233,7 @@ public interface DaoMessage {
             " AND (:threading OR folder.id = :folder)" +
             " AND (NOT message.ui_hide OR :debug)" +
             " AND (NOT :found OR message.ui_found = :found)" +
-            " GROUP BY CASE WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
+            " GROUP BY CASE WHEN message.thread IN (:expanded) THEN COALESCE(message.hash, message.msgid, message.id) WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
             " HAVING (SUM((:found AND message.ui_found)" +
             " OR (NOT :found AND message.folder = :folder)) > 0)" +
             " AND SUM(NOT message.ui_hide OR :debug) > 0" +
@@ -1268,7 +1268,7 @@ public interface DaoMessage {
             "  END" +
             ", CASE WHEN :ascending THEN message.received ELSE -message.received END")
     DataSource.Factory<Integer, TupleMessageEx> pagedFolderJson(
-            long folder, boolean threading,
+            long folder, boolean threading, List<String> expanded,
             String sort1, String sort2, boolean ascending,
             boolean filter_seen, boolean filter_unseen, boolean filter_flagged, boolean filter_unflagged, boolean filter_unknown, boolean filter_snoozed, boolean filter_deleted, String filter_language,
             boolean found,

@@ -219,6 +219,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
     private String sort;
     private boolean ascending;
     private boolean filter_duplicates;
+    private final boolean inline_threads;
     private boolean filter_sent;
     private boolean filter_trash;
     private IProperties properties;
@@ -1342,7 +1343,11 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                             (Boolean.FALSE.equals(message.reply_domain) && check_reply_domain) ||
                             (Boolean.FALSE.equals(message.mx) && check_mx) ||
                             (Boolean.TRUE.equals(message.blocklist) && check_blocklist));
-            boolean expanded = (viewType == ViewType.THREAD && properties.getValue("expanded", message.id));
+            // comms: was `viewType == ViewType.THREAD &&`. With inline
+            // conversations a message expands in place in the folder list
+            // too, so the gate is the pref, not the view type.
+            boolean expanded = ((viewType == ViewType.THREAD || inline_threads) &&
+                    properties.getValue("expanded", message.id));
 
             // Text size
             if (textSize != 0) {
@@ -1769,7 +1774,9 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             } else
                 bindContactInfo(message, info, addresses);
 
-            if (viewType == ViewType.THREAD)
+            // comms: inline conversations bind the expanded body in the
+            // folder list too, not only in the thread view.
+            if (viewType == ViewType.THREAD || inline_threads)
                 if (expanded)
                     bindExpanded(message, scroll);
                 else {
@@ -4608,7 +4615,12 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                 onPinContact(message);
             else if (id == R.id.ibAddContact)
                 onAddContact(message);
-            else if (viewType == ViewType.THREAD) {
+            // comms: an inline-expanded message in the folder list has the
+            // same expanded layout as the thread view, so its buttons need
+            // the same routing -- the gate is "is this message expanded",
+            // not "are we in the thread view".
+            else if (viewType == ViewType.THREAD ||
+                    (inline_threads && properties.getValue("expanded", message.id))) {
                 if (id == R.id.ibExpanderAddress) {
                     onToggleAddresses(message);
                 } else if (id == R.id.ibCopyHeaders) {
@@ -4752,6 +4764,19 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                                     .putExtra("action", "edit")
                                     .putExtra("id", message.id));
                     properties.setValue("selected", message.id, true);
+                } else if (inline_threads && viewType != ViewType.SEARCH) {
+                    // comms: inline conversations. A row with more than one
+                    // visible message is a collapsed conversation -- the first
+                    // tap ungroups it into one row per message (the grouping is
+                    // done in SQL, so "expanding" means re-running the query
+                    // with this thread excluded from the GROUP BY). Any further
+                    // tap expands that message's body in place, the same
+                    // onToggleMessage the thread view uses. Nothing opens a new
+                    // page any more.
+                    if (message.visible > 1)
+                        properties.toggleThread(message);
+                    else
+                        onToggleMessage(message);
                 } else {
                     boolean filter_archive = !(viewType == ViewType.SEARCH ||
                             EntityFolder.ARCHIVE.equals(message.folderType));
@@ -8556,6 +8581,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
         this.properties = properties;
 
         this.context = parentFragment.getContext();
+        this.inline_threads = PreferenceManager.getDefaultSharedPreferences(
+                this.context).getBoolean("inline_threads", true);
         this.owner = parentFragment.getViewLifecycleOwner();
         this.inflater = LayoutInflater.from(context);
         this.prefs = PreferenceManager.getDefaultSharedPreferences(context);
@@ -9648,6 +9675,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
     }
 
     interface IProperties {
+        void toggleThread(TupleMessageEx message);
+
         void setValue(String key, String value);
 
         void setValue(String name, long id, boolean enabled);

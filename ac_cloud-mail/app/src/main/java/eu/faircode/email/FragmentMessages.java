@@ -225,11 +225,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -354,6 +356,11 @@ public class FragmentMessages extends FragmentBase
     private boolean date_fixed;
     private boolean date_bold;
     private boolean threading;
+    // comms: threads the user has opened inline in the message list. The
+    // grouping is done in SQL, so an expanded thread is one excluded from
+    // the GROUP BY -- changing this set changes ViewModelMessages.Args,
+    // which is what makes the model rebuild the paged list.
+    private final Set<String> inlineThreads = new LinkedHashSet<>();
     private boolean swipenav;
     private int spacing;
     private boolean seekbar;
@@ -2609,6 +2616,18 @@ public class FragmentMessages extends FragmentBase
     }
 
     private AdapterMessage.IProperties iProperties = new AdapterMessage.IProperties() {
+        @Override
+        public void toggleThread(TupleMessageEx message) {
+            // comms: inline conversations. The list groups threads in SQL,
+            // so ungrouping one is just excluding it from the GROUP BY and
+            // reloading -- its messages then arrive as ordinary rows.
+            if (message.thread == null)
+                return;
+            if (!inlineThreads.remove(message.thread))
+                inlineThreads.add(message.thread);
+            loadMessages(false);
+        }
+
         @Override
         public void setValue(String key, String value) {
             if (value == null)
@@ -7743,6 +7762,15 @@ public class FragmentMessages extends FragmentBase
             loadMessagesNext(top);
     }
 
+    private List<String> expandedThreads() {
+        // ponytail: empty means "no thread expanded", but Room renders an
+        // empty collection as `IN ()` which SQLite rejects, so that case
+        // has to be the sentinel list from the view model.
+        return (inlineThreads.isEmpty()
+                ? ViewModelMessages.NO_EXPANDED
+                : new ArrayList<>(inlineThreads));
+    }
+
     private void loadMessagesNext(final boolean top) {
         if (top && false)
             adapter.gotoTop();
@@ -7751,7 +7779,8 @@ public class FragmentMessages extends FragmentBase
 
         ViewModelMessages.Model vmodel = model.getModel(
                 getContext(), getViewLifecycleOwner(),
-                viewType, type, category, account, folder, thread, id, threading, filter_archive, criteria, server);
+                viewType, type, category, account, folder, thread, id, threading, expandedThreads(),
+                filter_archive, criteria, server);
 
         initialized = false;
         loading = false;
@@ -9397,6 +9426,15 @@ public class FragmentMessages extends FragmentBase
 
                 if (expanded > 0)
                     values.get("expanded").clear();
+
+                // comms: back collapses the most recently ungrouped
+                // conversation before it leaves the folder.
+                if (!inlineThreads.isEmpty()) {
+                    List<String> threads = new ArrayList<>(inlineThreads);
+                    inlineThreads.remove(threads.get(threads.size() - 1));
+                    loadMessages(false);
+                    return;
+                }
 
                 handleExit();
 
