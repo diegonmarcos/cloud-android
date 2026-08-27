@@ -633,7 +633,14 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 // ARE local messages); rules run on EntityMessage and are not
                 // IMAP-specific. synchronize_more / delete_browsed / expunge stay
                 // out: they are fetch-window, browsed-cache and IMAP EXPUNGE.
-                if (folder.account != null && folder.accountProtocol == EntityAccount.TYPE_RSS) {
+                // JMAP joins RSS here: delete_local clears the local cache and rules
+                // run on EntityMessage, both protocol-agnostic. JMAP is excluded
+                // from expunge (no JMAP EXPUNGE), subscribe (JmapSync queues no
+                // SUBSCRIBE op) and create_sub_folder (no Mailbox/set create),
+                // since those would enqueue operations nothing executes.
+                if (folder.account != null &&
+                        (folder.accountProtocol == EntityAccount.TYPE_RSS ||
+                                folder.accountProtocol == EntityAccount.TYPE_JMAP)) {
                     popupMenu.getMenu().add(Menu.NONE, R.string.title_delete_local, order++, R.string.title_delete_local);
                     if (!folder.read_only) {
                         popupMenu.getMenu().add(Menu.NONE, R.string.title_edit_rules, order++, R.string.title_edit_rules);
@@ -653,6 +660,7 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 // switch, not decoration.
                 if (folder.account != null &&
                         (folder.accountProtocol == EntityAccount.TYPE_IMAP ||
+                                folder.accountProtocol == EntityAccount.TYPE_JMAP ||
                                 folder.accountProtocol == EntityAccount.TYPE_RSS))
                     popupMenu.getMenu().add(Menu.FIRST + 1, R.string.title_synchronize_enabled, order++, R.string.title_synchronize_enabled)
                             .setCheckable(true).setChecked(folder.synchronize);
@@ -690,6 +698,7 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 // feed folder can have its own sound/importance like any mail folder.
                 if (folder.account != null &&
                         (folder.accountProtocol == EntityAccount.TYPE_IMAP ||
+                                folder.accountProtocol == EntityAccount.TYPE_JMAP ||
                                 folder.accountProtocol == EntityAccount.TYPE_RSS)) {
                     if (folder.notify && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         String channelId = EntityFolder.getNotificationChannelId(folder.id);
@@ -1443,7 +1452,8 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                             new Intent(ActivityView.ACTION_EDIT_FOLDER)
                                     .putExtra("id", folder.id)
                                     .putExtra("account", folder.account)
-                                    .putExtra("imap", folder.accountProtocol == EntityAccount.TYPE_IMAP)
+                                    .putExtra("imap", folder.accountProtocol == EntityAccount.TYPE_IMAP
+                                            || folder.accountProtocol == EntityAccount.TYPE_JMAP)
                                     // comms: a feed LEAF (carries feed_url). Tells
                                     // FragmentFolder to show the Feed URL row and the
                                     // sync/keep window, which the imap-only gate hid.

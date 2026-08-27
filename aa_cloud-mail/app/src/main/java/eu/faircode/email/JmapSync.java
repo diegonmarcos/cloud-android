@@ -212,6 +212,48 @@ public class JmapSync {
             syncMessages(context, account, folder, e.getValue(), jmap);
             // 3) Drain pending operations queued against this folder.
             processOperations(context, account, folder, e.getValue(), mailboxToFolder, jmap);
+            // 4) Retention.
+            prune(context, db, folder);
+        }
+    }
+
+    /**
+     * comms: enforce keep_days / auto_delete on a JMAP folder.
+     *
+     * keep_days was assigned at folder creation (DEFAULT_KEEP) and shown in the
+     * UI, but nothing enforced it: retention lives in Core's
+     * onSynchronizeMessages, the IMAP path a JMAP folder never enters. JMAP
+     * folders therefore grew without bound, exactly as feed folders did before
+     * WorkerFeedSync.pruneFeed.
+     *
+     * Same DAO and same exemptions mail uses: flagged, still-unread and snoozed
+     * messages are never reaped, and unread gets twice the window.
+     */
+    private static void prune(Context context, DB db, EntityFolder folder) {
+        Integer keep = folder.keep_days;
+        if (keep == null || keep == Integer.MAX_VALUE || keep <= 0)
+            return;
+
+        long now = System.currentTimeMillis();
+        long keepTime = now - keep * 24L * 3600_000L;
+        long keepUnreadTime = now - keep * 2L * 24L * 3600_000L;
+
+        try {
+            if (Boolean.TRUE.equals(folder.auto_delete)) {
+                int n = db.message().deleteMessagesBefore(folder.id, now, keepTime, keepUnreadTime);
+                if (n > 0)
+                    EntityLog.log(context, "JMAP pruned=" + n + " folder=" + folder.name + " keep_days=" + keep);
+            } else {
+                List<Long> ids = db.message().getMessagesBefore(folder.id, now, keepTime, keepUnreadTime);
+                if (ids != null && !ids.isEmpty()) {
+                    for (Long id : ids)
+                        db.message().setMessageUiHide(id, true);
+                    EntityLog.log(context, "JMAP hidden=" + ids.size() + " folder=" + folder.name + " keep_days=" + keep);
+                }
+            }
+        } catch (Throwable ex) {
+            // Retention must never break a sync that already succeeded.
+            Log.w(folder.name + " JMAP prune failed", ex);
         }
     }
 

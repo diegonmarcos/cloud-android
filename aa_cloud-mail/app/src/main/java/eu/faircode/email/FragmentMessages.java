@@ -7408,7 +7408,13 @@ public class FragmentMessages extends FragmentBase
                 if (account == null)
                     return null;
 
-                args.putBoolean("imap", account.protocol == EntityAccount.TYPE_IMAP);
+                // comms: JMAP has real server-side folder semantics -- JmapSync
+                // honours synchronize / sync_days / keep_days / poll / download --
+                // so it must get the same folder-settings block as IMAP. Gating on
+                // TYPE_IMAP alone hid every one of those settings for JMAP folders
+                // while the sync engine went on obeying them.
+                args.putBoolean("imap", account.protocol == EntityAccount.TYPE_IMAP
+                        || account.protocol == EntityAccount.TYPE_JMAP);
                 // comms: same feed flag AdapterFolder passes -- without it this
                 // entry point would still render a feed folder as "not IMAP" and
                 // hide its Feed URL / sync / keep settings.
