@@ -1712,12 +1712,12 @@ public class FragmentOptionsDisplay extends FragmentBase implements SharedPrefer
 
             spAccountColorSize.setEnabled(spAccountColor.getSelectedItemPosition() == 1);
             swAvatars.setChecked(prefs.getBoolean("avatars", true));
-            swBimi.setChecked(prefs.getBoolean("bimi", false));
+            swBimi.setChecked(prefs.getBoolean("bimi", true));
             swBimiVmc.setChecked(prefs.getBoolean("bimi_vmc", false));
             swBimiVmc.setEnabled(swBimi.isChecked());
             swGravatars.setChecked(prefs.getBoolean("gravatars", false));
             swLibravatars.setChecked(prefs.getBoolean("libravatars", false));
-            swFavicons.setChecked(prefs.getBoolean("favicons", false));
+            swFavicons.setChecked(prefs.getBoolean("favicons", true));
             swFaviconsPartial.setChecked(prefs.getBoolean("favicons_partial", true));
             swFaviconsPartial.setEnabled(swFavicons.isChecked());
             swFaviconsManifest.setChecked(prefs.getBoolean("favicons_manifest", false));

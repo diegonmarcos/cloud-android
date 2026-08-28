@@ -2052,13 +2052,13 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                 }
             }
 
-            Typeface typeface = (message.unseen > 0 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            Typeface typeface = (message.unseen > 0 ? Helper.TYPEFACE_UNREAD : Typeface.DEFAULT);
             tvFrom.setTypeface(typeface);
             tvSize.setTypeface(typeface);
             tvTime.setTypeface(typeface);
             if (subject_italic)
                 if (message.unseen > 0)
-                    tvSubject.setTypeface(null, Typeface.BOLD_ITALIC);
+                    tvSubject.setTypeface(Helper.TYPEFACE_UNREAD, Typeface.ITALIC);
                 else
                     tvSubject.setTypeface(null, Typeface.ITALIC);
             else
@@ -8653,10 +8653,10 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
 
         boolean contacts = Helper.hasPermission(context, Manifest.permission.READ_CONTACTS);
         boolean avatars = prefs.getBoolean("avatars", true);
-        boolean bimi = prefs.getBoolean("bimi", false);
+        boolean bimi = prefs.getBoolean("bimi", true);
         boolean gravatars = (prefs.getBoolean("gravatars", false) && !BuildConfig.PLAY_STORE_RELEASE);
         boolean libravatars = (prefs.getBoolean("libravatars", false) && !BuildConfig.PLAY_STORE_RELEASE);
-        boolean favicons = prefs.getBoolean("favicons", false);
+        boolean favicons = prefs.getBoolean("favicons", true);
         boolean generated = prefs.getBoolean("generated_icons", true);
 
         this.date = prefs.getBoolean("date", true);
@@ -9570,7 +9570,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             else
                 holder.tvFolder.setText(context.getString(R.string.title_sent_to,
                         MessageHelper.formatAddresses(message.to, false, false)));
-            holder.tvFolder.setTypeface(message.unseen > 0 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            holder.tvFolder.setTypeface(message.unseen > 0 ? Helper.TYPEFACE_UNREAD : Typeface.DEFAULT);
             holder.tvFolder.setTextColor(message.unseen > 0 ? colorUnread : colorRead);
             holder.tvFolder.setAlpha(Helper.LOW_LIGHT);
             return;

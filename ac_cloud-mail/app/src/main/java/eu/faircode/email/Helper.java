@@ -57,6 +57,7 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -208,6 +209,11 @@ public class Helper {
     private static String installerName = "?";
 
     static final float LOW_LIGHT = 0.6f;
+
+    // ponytail: Typeface.DEFAULT_BOLD is weight 700, nearly invisible next to Roboto
+    // regular (400) at list text sizes. sans-serif-black is weight 900 and ships on every
+    // device since API 21. Swap to a real weight if a variable font is ever bundled.
+    static final Typeface TYPEFACE_UNREAD = Typeface.create("sans-serif-black", Typeface.NORMAL);
 
     static final int WAKELOCK_MAX = 30 * 60 * 1000; // milliseconds
     static final int BUFFER_SIZE = 8192; // Same as in Files class

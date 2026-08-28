@@ -282,10 +282,10 @@ public class ContactInfo {
         boolean avatars = prefs.getBoolean("avatars", true);
         boolean prefer_contact = prefs.getBoolean("prefer_contact", false);
         boolean distinguish_contacts = prefs.getBoolean("distinguish_contacts", false);
-        boolean bimi = (prefs.getBoolean("bimi", false) && (!favicons_dmarc || dmarc) && !BuildConfig.PLAY_STORE_RELEASE);
+        boolean bimi = (prefs.getBoolean("bimi", true) && (!favicons_dmarc || dmarc) && !BuildConfig.PLAY_STORE_RELEASE);
         boolean gravatars = (prefs.getBoolean("gravatars", false) && (!favicons_dmarc || dmarc) && !BuildConfig.PLAY_STORE_RELEASE);
         boolean libravatars = (prefs.getBoolean("libravatars", false) && (!favicons_dmarc || dmarc) && !BuildConfig.PLAY_STORE_RELEASE);
-        boolean favicons = (prefs.getBoolean("favicons", false) && (!favicons_dmarc || dmarc));
+        boolean favicons = (prefs.getBoolean("favicons", true) && (!favicons_dmarc || dmarc));
         boolean ddg_icons = (prefs.getBoolean("ddg_icons", false) && (!favicons_dmarc || dmarc) && !BuildConfig.PLAY_STORE_RELEASE);
         String favicon_uri = prefs.getString("favicon_uri", null);
         boolean generated = prefs.getBoolean("generated_icons", true);
@@ -663,10 +663,10 @@ public class ContactInfo {
     private static ContactInfo getAnonymous(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean avatars = prefs.getBoolean("avatars", true);
-        boolean bimi = (prefs.getBoolean("bimi", false) && !BuildConfig.PLAY_STORE_RELEASE);
+        boolean bimi = (prefs.getBoolean("bimi", true) && !BuildConfig.PLAY_STORE_RELEASE);
         boolean gravatars = (prefs.getBoolean("gravatars", false) && !BuildConfig.PLAY_STORE_RELEASE);
         boolean libravatars = (prefs.getBoolean("libravatars", false) && !BuildConfig.PLAY_STORE_RELEASE);
-        boolean favicons = prefs.getBoolean("favicons", false);
+        boolean favicons = prefs.getBoolean("favicons", true);
         boolean generated = prefs.getBoolean("generated_icons", true);
         boolean identicons = prefs.getBoolean("identicons", false);
         if (avatars || bimi || gravatars || libravatars || favicons || generated || identicons) {

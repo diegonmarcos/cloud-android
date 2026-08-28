@@ -363,7 +363,7 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
             } else
                 tvName.setText(folder.getDisplayName(context, folder.parent_ref));
 
-            tvName.setTypeface(unseen > 0 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            tvName.setTypeface(unseen > 0 ? Helper.TYPEFACE_UNREAD : Typeface.DEFAULT);
             tvName.setTextColor(unseen > 0 ? colorUnread : textColorSecondary);
 
             if (listener == null && folder.selectable) {
