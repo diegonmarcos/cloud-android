@@ -243,6 +243,7 @@ android {
 }
 
 dependencies {
+    implementation project(':libs:analytics')
     implementation project(':libs:core')
     implementation project(':libs:maps')
     implementation project(':libs:updater')

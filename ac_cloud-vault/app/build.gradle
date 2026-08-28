@@ -179,6 +179,7 @@ android {
 }
 
 dependencies {
+    implementation project(':libs:analytics')
     implementation project(':libs:core')
     implementation project(':libs:browser')
     implementation project(':libs:updater')

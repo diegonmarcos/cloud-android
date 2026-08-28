@@ -160,6 +160,7 @@ android {
 }
 
 dependencies {
+    implementation project(':libs:analytics')
     implementation project(':libs:core')
     implementation project(':libs:updater')
     implementation project(':libs:contacts')

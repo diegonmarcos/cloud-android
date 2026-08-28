@@ -185,6 +185,7 @@ android {
 }
 
 dependencies {
+    implementation project(':libs:analytics')
     implementation project(':libs:core')
     implementation project(':libs:wallet')
     implementation project(':libs:updater')

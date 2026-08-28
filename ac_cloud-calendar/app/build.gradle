@@ -182,6 +182,7 @@ android {
 }
 
 dependencies {
+    implementation project(':libs:analytics')
     implementation project(':libs:core')
     implementation project(':libs:updater')
     // libs:cal is NOT linked: it ships as Cloud-Lib-Cal.apk and the app
