@@ -66,7 +66,11 @@ object Analytics {
     fun init(context: Context) {
         if (prefs != null) return
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        consent = prefs?.getBoolean(KEY_CONSENT, false) ?: false
+        // Defaults ON for this fleet: these are self-hosted apps on the owner's
+        // own devices reporting to the owner's own Umami/Matomo, so opt-in would
+        // mean collecting nothing from anyone who never opens settings. Flip the
+        // default to false before any public/Play distribution.
+        consent = prefs?.getBoolean(KEY_CONSENT, true) ?: true
     }
 
     @JvmStatic

@@ -19,7 +19,13 @@ import android.net.Uri
  */
 class AnalyticsInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
-        context?.let { Analytics.init(it) }
+        context?.let {
+            Analytics.init(it)
+            // Emit the launch here, not in each app. Without this the library is
+            // wired into every APK and still reports nothing, because no app has
+            // a call site - which is exactly the state it shipped in.
+            Analytics.screen("app_open")
+        }
         return true
     }
 
