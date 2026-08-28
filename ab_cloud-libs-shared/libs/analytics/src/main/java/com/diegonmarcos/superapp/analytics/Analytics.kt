@@ -174,7 +174,12 @@ object Analytics {
         val code = conn.responseCode
         conn.disconnect()
         code in 200..299
-    } catch (_: Exception) {
-        false // network/DNS/TLS: caller requeues. Analytics must never crash a host app.
+    } catch (e: Exception) {
+        // LOG IT. A silent analytics client is undebuggable: this module shipped
+        // wired into 12 apps and reported nothing, and the swallowed exception
+        // meant the app produced no signal at all while the transport was broken
+        // upstream. Never crash the host app - but never fail invisibly either.
+        android.util.Log.w("cloud-analytics", "send failed: $url (${e.javaClass.simpleName}: ${e.message})")
+        false
     }
 }
