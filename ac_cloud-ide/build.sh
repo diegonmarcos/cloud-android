@@ -33,6 +33,23 @@ set -euo pipefail
 # the annotation GHCR reads to (re)link a package, so the link follows whichever
 # repo actually ships it. Never hardcoded: CI supplies GITHUB_REPOSITORY, local
 # runs fall back to the origin remote.
+# A brand-new GHCR package is created PRIVATE by GitHub regardless of the repo,
+# so the first push of any new artifact 401s for every unauthenticated consumer
+# (the constellation store included). image.source LINKS the package to the repo
+# but does NOT make it inherit visibility, and there is no REST endpoint to flip
+# it for a USER-owned package (PATCH /user/packages/... returns 404) - it is a
+# one-time click in the package settings UI. So this cannot self-heal; it warns
+# LOUDLY instead, because the failure mode otherwise is a silent 401 in the store.
+_ghcr_publish() {
+  local image="$1"
+  command -v gh >/dev/null 2>&1 || return 0
+  local vis
+  vis="$(gh api "/user/packages/container/${image}" --jq .visibility 2>/dev/null)" || return 0
+  [ "$vis" = "public" ] && return 0
+  echo "  !! GHCR package ${image} is ${vis} - unauthenticated pulls will 401." >&2
+  echo "  !! Make it public once: https://github.com/users/diegonmarcos/packages/container/${image}/settings" >&2
+}
+
 _ghcr_source() {
   if [ -n "${GITHUB_REPOSITORY:-}" ]; then
     printf '%s/%s\n' "${GITHUB_SERVER_URL:-https://github.com}" "$GITHUB_REPOSITORY"
