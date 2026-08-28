@@ -17,6 +17,9 @@ import android.provider.MediaStore;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.io.BufferedReader;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.service.notification.StatusBarNotification;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
@@ -94,6 +97,28 @@ public class DebugDumpReceiver extends BroadcastReceiver {
         } catch (Throwable ex) {
             sb.append(ex).append("\r\n");
         }
+
+        // What is actually in the shade right now. getActiveNotifications() only ever
+        // returns this app's own notifications, so it needs no listener permission.
+        sb.append("\r\n--- active notifications ---\r\n");
+        active(context, sb);
+
+        // The notification backlog: liveUnseenNotify()'s own WHERE clause, per folder.
+        sb.append("\r\n--- notify backlog ---\r\n");
+        query(context, sb,
+                "SELECT folder.id, folder.name, folder.unified, folder.notify" +
+                ", COUNT(*) AS eligible" +
+                ", SUM(message.notifying <> 0) AS notifying" +
+                ", SUM(message.ui_ignored) AS ignored" +
+                " FROM message" +
+                " JOIN folder ON folder.id = message.folder" +
+                " JOIN account ON account.id = message.account" +
+                " WHERE account.synchronize AND folder.notify" +
+                " AND (account.created IS NULL OR message.received > account.created" +
+                "  OR message.sent > account.created OR message.ui_unsnoozed)" +
+                " AND message.notifying <> " + EntityMessage.NOTIFYING_IGNORE +
+                " AND (message.notifying <> 0 OR NOT (message.ui_seen OR message.ui_ignored OR message.ui_hide))" +
+                " GROUP BY folder.id ORDER BY eligible DESC");
 
         sb.append("\r\n--- log (24h) ---\r\n");
         try {
@@ -216,6 +241,46 @@ public class DebugDumpReceiver extends BroadcastReceiver {
                 os.write(bytes);
             }
             Log.i("Debug dump written to " + file);
+        }
+    }
+
+    private static void active(Context context, StringBuilder sb) {
+        try {
+            NotificationManager nm = Helper.getSystemService(context, NotificationManager.class);
+            StatusBarNotification[] sbns = nm.getActiveNotifications();
+            sb.append("count=").append(sbns.length).append("\r\n");
+            for (StatusBarNotification sbn : sbns) {
+                Notification n = sbn.getNotification();
+                sb.append("tag=").append(sbn.getTag())
+                        .append(" id=").append(sbn.getId())
+                        .append(" channel=").append(n.getChannelId())
+                        .append(" group=").append(n.getGroup())
+                        .append(" ongoing=").append(sbn.isOngoing())
+                        .append(" clearable=").append(sbn.isClearable())
+                        .append(" flags=0x").append(Integer.toHexString(n.flags))
+                        .append(" posted=").append(new Date(sbn.getPostTime()))
+                        .append(" title=").append(n.extras == null
+                                ? null : n.extras.getCharSequence(Notification.EXTRA_TITLE))
+                        .append("\r\n");
+            }
+        } catch (Throwable ex) {
+            sb.append(stack(ex));
+        }
+    }
+
+    private static void query(Context context, StringBuilder sb, String sql) {
+        try (android.database.Cursor cursor = DB.getInstance(context)
+                .getOpenHelper().getReadableDatabase().query(sql)) {
+            for (int c = 0; c < cursor.getColumnCount(); c++)
+                sb.append(c == 0 ? "" : "\t").append(cursor.getColumnName(c));
+            sb.append("\r\n");
+            while (cursor.moveToNext()) {
+                for (int c = 0; c < cursor.getColumnCount(); c++)
+                    sb.append(c == 0 ? "" : "\t").append(cursor.isNull(c) ? "" : cursor.getString(c));
+                sb.append("\r\n");
+            }
+        } catch (Throwable ex) {
+            sb.append(stack(ex));
         }
     }
 }
