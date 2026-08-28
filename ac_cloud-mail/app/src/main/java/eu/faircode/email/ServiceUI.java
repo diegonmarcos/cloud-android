@@ -105,7 +105,7 @@ public class ServiceUI extends IntentService {
 
             switch (parts[0]) {
                 case "clear":
-                    onClear(id);
+                    ReceiverUI.clear(this, id);
                     break;
 
                 case "trash":
@@ -161,7 +161,7 @@ public class ServiceUI extends IntentService {
 
                 case "ignore":
                     cancel(group, id);
-                    onIgnore(id);
+                    ReceiverUI.ignore(this, id);
                     break;
 
                 case "wakeup":
@@ -197,21 +197,6 @@ public class ServiceUI extends IntentService {
         } catch (Throwable ex) {
             Log.e(ex);
         }
-    }
-
-    private void onClear(long group) {
-        // Group
-        // < 0: folder
-        // = 0: unified
-        // > 0: account
-        DB db = DB.getInstance(this);
-        int cleared;
-        if (group < 0)
-            cleared = db.message().ignoreAll(null, -group, null);
-        else
-            cleared = db.message().ignoreAll(group == 0 ? null : group, null, null);
-        EntityLog.log(this, EntityLog.Type.Notification,
-                "Notify clear group=" + group + " cleared=" + cleared);
     }
 
     private void cancel(long group, long id) {
@@ -463,30 +448,6 @@ public class ServiceUI extends IntentService {
 
             db.setTransactionSuccessful();
 
-        } finally {
-            db.endTransaction();
-        }
-    }
-
-    private void onIgnore(long id) {
-        EntityMessage message;
-        EntityFolder folder;
-
-        DB db = DB.getInstance(this);
-        try {
-            db.beginTransaction();
-
-            message = db.message().getMessage(id);
-            if (message == null)
-                return;
-
-            folder = db.folder().getFolder(message.folder);
-            if (folder == null)
-                return;
-
-            db.message().setMessageUiIgnored(message.id, true);
-
-            db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
         }

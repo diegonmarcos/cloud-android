@@ -792,6 +792,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Notification dismissal; a receiver survives background-start restrictions, a service does not -->
+        <receiver
+            android:name=".ReceiverUI"
+            android:exported="false" />
+
         <!-- comms: am broadcast -a ${applicationId}.DEBUG_DUMP -> Downloads/mail-debug/ -->
         <receiver
             android:name=".DebugDumpReceiver"

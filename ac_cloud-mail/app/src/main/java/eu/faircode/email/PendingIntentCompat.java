@@ -59,6 +59,18 @@ public class PendingIntentCompat {
         }
     }
 
+    public static PendingIntent getBroadcast(Context context, int requestCode, @NonNull Intent intent, int flags) {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || (flags & PendingIntent.FLAG_MUTABLE) != 0)
+                return PendingIntent.getBroadcast(context, requestCode, intent, flags);
+            else
+                return PendingIntent.getBroadcast(context, requestCode, intent, flags | PendingIntent.FLAG_IMMUTABLE);
+        } catch (Throwable ex) {
+            Log.e(ex);
+            throw ex;
+        }
+    }
+
     static PendingIntent getForegroundService(Context context, int requestCode, @NonNull Intent intent, int flags) {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || (flags & PendingIntent.FLAG_MUTABLE) != 0)

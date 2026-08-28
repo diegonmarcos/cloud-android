@@ -784,8 +784,8 @@ class NotificationHelper {
             PendingIntent piContent = PendingIntentCompat.getActivity(
                     context, ActivityView.PI_UNIFIED, content, PendingIntent.FLAG_UPDATE_CURRENT);
 
-            Intent clear = new Intent(context, ServiceUI.class).setAction("clear:" + group);
-            PendingIntent piClear = PendingIntentCompat.getService(
+            Intent clear = new Intent(context, ReceiverUI.class).setAction("clear:" + group);
+            PendingIntent piClear = PendingIntentCompat.getBroadcast(
                     context, ServiceUI.PI_CLEAR, clear, PendingIntent.FLAG_UPDATE_CURRENT);
 
             // Build title
@@ -926,8 +926,8 @@ class NotificationHelper {
             PendingIntent piContent = PendingIntentCompat.getActivity(
                     context, ActivityView.PI_THREAD, thread, PendingIntent.FLAG_UPDATE_CURRENT);
 
-            Intent ignore = new Intent(context, ServiceUI.class).setAction("ignore:" + message.id);
-            PendingIntent piIgnore = PendingIntentCompat.getService(
+            Intent ignore = new Intent(context, ReceiverUI.class).setAction("ignore:" + message.id);
+            PendingIntent piIgnore = PendingIntentCompat.getBroadcast(
                     context, ServiceUI.PI_IGNORED, ignore, PendingIntent.FLAG_UPDATE_CURRENT);
 
             // Get channel name
