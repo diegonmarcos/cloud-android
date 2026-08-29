@@ -14,6 +14,10 @@ object ClipboardPlugin : KdePlugin {
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
         val content = packet.getString("content")
         if (content.isEmpty()) return true
+        // Remember it BEFORE trying to write: the write below is the part
+        // Android can refuse, and the Configs > KDE page still has to be able
+        // to show what the desktop sent even when it was refused.
+        KdeClipboardStore.rememberHost(ctx, content)
         runCatching {
             (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.setPrimaryClip(ClipData.newPlainText("KDE Connect", content))

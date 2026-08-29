@@ -8,7 +8,6 @@ import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.settings.LauncherProfile
 import com.diegonmarcos.superapp.settings.LauncherProfiles
 import com.diegonmarcos.superapp.settings.LauncherProfilePrefs
-import com.diegonmarcos.superapp.search.SearchSheetFragment
 
 import android.app.Dialog
 import android.content.Context
@@ -573,7 +572,7 @@ class PhoneAppsFragment : Fragment() {
         }
 
         /** Public snapshot for callers OUTSIDE this fragment that need
-         *  the launchable-apps list — currently [SearchSheetFragment]'s
+         *  the launchable-apps list — currently SuperappSearchIndex's
          *  "Phone (apps)" scope. Returns the warm-up cache when
          *  present (zero work), otherwise falls through to a fresh
          *  enumeration. Same profile-filter pipeline applies; the
