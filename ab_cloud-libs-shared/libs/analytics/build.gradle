@@ -1,17 +1,16 @@
 plugins {
     id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
 }
 
-// The Kotlin plugin is applied defensively, not in the plugins{} block above.
-// This module is consumed by forks with wildly different build setups, and some
-// already register a 'kotlin' extension on every subproject — applying it a
-// second time fails the whole build with:
-//   Cannot add extension with name 'kotlin', as there is an extension already
-//   registered with that name.
-// A plugins{} entry cannot be made conditional, so apply it only if absent.
-if (!project.plugins.hasPlugin('org.jetbrains.kotlin.android')) {
-    apply plugin: 'org.jetbrains.kotlin.android'
-}
+// NOTE: this module cannot be consumed by an AGP 9 project as-is. AGP 9
+// registers a 'kotlin' extension itself, so applying the Kotlin plugin here
+// fails with "Cannot add extension with name 'kotlin'". Making the apply
+// conditional does not help: the plugins{} DSL cannot be made conditional, and
+// switching to a legacy `apply plugin:` changes resolution to the root
+// buildscript classpath, which breaks consumers that declare Kotlin only via
+// settings pluginManagement (ac_cloud-ide). ac_cloud-mail is on AGP 9.2.1 and
+// is therefore NOT wired to this module — see its build.json.
 
 // Inject build.json::analytics into BuildConfig. rootDir, NOT '../../': this
 // module is shared by reference (projectDir) into every constellation app, so

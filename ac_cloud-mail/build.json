@@ -49,16 +49,8 @@
     }
   },
   "analytics": {
-    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
-    "enabled": true,
-    "app": "ac_cloud-mail",
-    "umami": {
-      "endpoint": "https://analytics.diegonmarcos.com/umami",
-      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
-    },
-    "matomo": {
-      "endpoint": "https://analytics.diegonmarcos.com/matomo",
-      "site_id": "1"
-    }
+    "_doc": "NOT WIRED. This app is on AGP 9.2.1 / Gradle 9.4.1, and AGP 9 registers a 'kotlin' extension itself, so :libs:analytics applying org.jetbrains.kotlin.android fails with \"Cannot add extension with name 'kotlin'\". The apply cannot be made conditional without breaking other consumers (see the note in libs/analytics/build.gradle). Wiring this app needs the shared module to support AGP 9 first.",
+    "enabled": false,
+    "app": "ac_cloud-mail"
   }
 }
