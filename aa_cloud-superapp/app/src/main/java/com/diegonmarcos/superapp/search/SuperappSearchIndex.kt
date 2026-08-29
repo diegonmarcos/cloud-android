@@ -2,7 +2,7 @@ package com.diegonmarcos.superapp.search
 
 import android.content.Context
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
-import com.diegonmarcos.superapp.data.CloudData
+import com.diegonmarcos.superapp.cloud.CloudData
 import com.diegonmarcos.superapp.launcher.Sections
 
 /**
