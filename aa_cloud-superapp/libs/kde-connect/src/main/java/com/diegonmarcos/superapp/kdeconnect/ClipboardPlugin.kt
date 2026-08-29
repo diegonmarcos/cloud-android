@@ -14,6 +14,10 @@ object ClipboardPlugin : KdePlugin {
     override fun onPacket(ctx: Context, link: KdeLink, packet: NetworkPacket): Boolean {
         val content = packet.getString("content")
         if (content.isEmpty()) return true
+        // Remember it BEFORE trying to write: the write below is the part
+        // Android can refuse, and the Configs > KDE page still has to be able
+        // to show what the desktop sent even when it was refused.
+        KdeClipboardStore.rememberHost(ctx, content)
         runCatching {
             (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.setPrimaryClip(ClipData.newPlainText("KDE Connect", content))
@@ -21,4 +25,18 @@ object ClipboardPlugin : KdePlugin {
         return true
     }
     fun build(content: String) = NetworkPacket.of(NetworkPacket.TYPE_CLIPBOARD) { put("content", content) }
+
+    /**
+     * `kdeconnect.clipboard.connect` — content plus the moment it was copied.
+     * The peer applies it only when the timestamp is NEWER than its own, which
+     * is what makes this usable as a pull: send ours dated at the epoch and any
+     * desktop with a clipboard at all considers itself newer and pushes back.
+     * It is the only "ask the other side" the clipboard protocol has; there is
+     * no packet for requesting a peer's clipboard HISTORY.
+     */
+    fun buildConnect(content: String, timestamp: Long) =
+        NetworkPacket.of(NetworkPacket.TYPE_CLIPBOARD_CONNECT) {
+            put("content", content)
+            put("timestamp", timestamp)
+        }
 }
