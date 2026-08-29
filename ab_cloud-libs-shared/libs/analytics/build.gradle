@@ -77,7 +77,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = '17' }
 }
 
 dependencies {
@@ -85,4 +84,18 @@ dependencies {
     // org.json, so keeping it dependency-free lets ANY app consume it —
     // including the upstream forks (mail, dialer, chat, matrix, media-center)
     // that have no shared-module graph at all.
+}
+
+// jvmTarget must match the Java 17 compileOptions above, or the Kotlin and Java
+// halves of this module compile to different bytecode levels.
+//
+// Set via the top-level `kotlin` extension, NOT android.kotlinOptions: AGP 9
+// removed kotlinOptions from the android extension ("Could not find method
+// kotlinOptions()"), and this module is consumed by both AGP 8 and AGP 9 apps.
+// The `kotlin` extension exists in both — added by the Kotlin plugin applied
+// above on AGP 8, and by AGP itself on AGP 9 — so one path covers both.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
