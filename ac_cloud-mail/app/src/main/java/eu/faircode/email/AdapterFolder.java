@@ -91,6 +91,7 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
     private boolean show_flagged;
     private boolean subscribed_only;
     private boolean sort_unread_atop;
+    private boolean unread_only; // comms: "Unread" tab on the folders page
     private IFolderSelectedListener listener;
 
     private Context context;
@@ -497,6 +498,14 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                     if (listener == null) {
                         if (selectedModel != null)
                             selectedModel.select(folder.id);
+
+                        // comms: on the "Unread" tab a folder opens showing only its
+                        // unread messages, reusing the very same local search the
+                        // unread badge already runs -- no query means no server hit.
+                        if (unread_only) {
+                            onUnread(folder);
+                            return;
+                        }
 
                         LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
                         lbm.sendBroadcast(
@@ -1592,6 +1601,11 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
         this.subscriptions = prefs.getBoolean("subscriptions", true);
         this.subscribed_only = prefs.getBoolean("subscribed_only", true) && subscriptions;
         this.sort_unread_atop = prefs.getBoolean("sort_unread_atop", false);
+        // comms: unread_only is NOT read from prefs here. It belongs to the folders
+        // page, and this adapter also backs the folder pickers -- reading the pref
+        // would silently filter "move to folder" down to folders with unread mail.
+        // FragmentFolders drives it explicitly via setUnreadOnly().
+        this.unread_only = false;
 
         this.dp3 = Helper.dp2pixels(context, 3);
         this.dp6 = Helper.dp2pixels(context, 6);
@@ -1653,6 +1667,15 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
         }
     }
 
+    // comms: the "Unread" tab keeps only folders that hold unread messages, and
+    // makes tapping one open it filtered to those messages (see onClick).
+    void setUnreadOnly(boolean unread_only) {
+        if (this.unread_only != unread_only) {
+            this.unread_only = unread_only;
+            set(all);
+        }
+    }
+
     void setDisabled(List<Long> ids) {
         disabledIds = ids;
     }
@@ -1665,7 +1688,9 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
         if (account < 0 && !primary) {
             List<TupleFolderEx> filtered = new ArrayList<>();
             for (TupleFolderEx folder : folders)
-                if (show_hidden || !folder.isHidden(listener != null))
+                // comms: this list is flat, so unseen alone decides the "Unread" tab
+                if ((show_hidden || !folder.isHidden(listener != null)) &&
+                        !(unread_only && folder.unseen == 0))
                     filtered.add(folder);
 
             if (filtered.size() > 0)
@@ -1876,6 +1901,14 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                         parent.childs_unseen += child.childs_unseen;
                 }
             }
+
+            // comms: the "Unread" tab drops a folder only when neither it nor any
+            // descendant holds unread mail. childs has already been through this
+            // same filter, so a non-empty childs means the subtree has unread and
+            // this parent has to stay to host it -- dropping it would orphan them.
+            if (unread_only && parent.unseen == 0 &&
+                    (childs == null || childs.size() == 0))
+                continue;
 
             if (!subscribed_only ||
                     EntityFolder.INBOX.equals(parent.type) ||

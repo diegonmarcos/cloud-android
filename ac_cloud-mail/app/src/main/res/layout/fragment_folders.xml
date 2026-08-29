@@ -15,6 +15,17 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
+            <!-- comms: All | Unread switcher; tabs are added in FragmentFolders -->
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabFolders"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:tabInlineLabel="true"
+                app:tabMode="fixed" />
+
             <TextView
                 android:id="@+id/tvHintActions"
                 android:layout_width="0dp"
@@ -26,7 +37,7 @@
                 android:textAppearance="@style/TextAppearance.AppCompat.Small"
                 app:layout_constraintEnd_toStartOf="@+id/ibHintActions"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toBottomOf="@id/tabFolders" />
 
             <ImageButton
                 android:id="@+id/ibHintActions"
@@ -101,6 +112,22 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/vSeparatorSync" />
+
+            <!-- comms: shown when the Unread tab has nothing to list, so an
+                 empty folder list never reads as a broken screen -->
+            <TextView
+                android:id="@+id/tvNoUnread"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="@string/title_folders_no_unread"
+                android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/rvFolder"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@id/rvFolder" />
 
             <eu.faircode.email.ContentLoadingProgressBar
                 android:id="@+id/pbWait"

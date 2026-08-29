@@ -67,6 +67,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.tabs.TabLayout;
 
 import org.json.JSONException;
 
@@ -102,9 +103,11 @@ import javax.mail.internet.MimeMessage;
 public class FragmentFolders extends FragmentBase {
     private ViewGroup view;
     private SwipeRefreshLayout swipeRefresh;
+    private TabLayout tabFolders;
     private ImageButton ibHintActions;
     private ImageButton ibHintSync;
     private RecyclerView rvFolder;
+    private TextView tvNoUnread;
     private ContentLoadingProgressBar pbWait;
     private Group grpHintActions;
     private Group grpHintSync;
@@ -123,6 +126,8 @@ public class FragmentFolders extends FragmentBase {
     private boolean primary;
     private boolean show_hidden = false;
     private boolean show_flagged = false;
+    private boolean unread_only = false; // comms: "Unread" tab
+    private boolean loaded = false;
     private String searching = null;
     private AdapterFolder adapter;
 
@@ -157,6 +162,7 @@ public class FragmentFolders extends FragmentBase {
         compact = prefs.getBoolean("compact_folders", true);
         show_hidden = false; // prefs.getBoolean("hidden_folders", false);
         show_flagged = prefs.getBoolean("flagged_folders", false);
+        unread_only = prefs.getBoolean("folders_unread_only", false); // comms
 
         if (BuildConfig.DEBUG) {
             ViewModelSelected selectedModel =
@@ -177,9 +183,11 @@ public class FragmentFolders extends FragmentBase {
 
         // Get controls
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
+        tabFolders = view.findViewById(R.id.tabFolders);
         ibHintActions = view.findViewById(R.id.ibHintActions);
         ibHintSync = view.findViewById(R.id.ibHintSync);
         rvFolder = view.findViewById(R.id.rvFolder);
+        tvNoUnread = view.findViewById(R.id.tvNoUnread);
         pbWait = view.findViewById(R.id.pbWait);
         grpHintActions = view.findViewById(R.id.grpHintActions);
         grpHintSync = view.findViewById(R.id.grpHintSync);
@@ -313,7 +321,32 @@ public class FragmentFolders extends FragmentBase {
         }
 
         adapter = new AdapterFolder(this, account, unified, primary, compact, show_hidden, show_flagged, null);
+        adapter.setUnreadOnly(unread_only); // comms: before any data arrives
         rvFolder.setAdapter(adapter);
+
+        // comms: All | Unread switcher. The tab is selected before the listener is
+        // attached, so restoring the remembered tab does not count as a user switch.
+        tabFolders.addTab(tabFolders.newTab().setText(R.string.title_folders_tab_all));
+        tabFolders.addTab(tabFolders.newTab().setText(R.string.title_folders_tab_unread));
+        TabLayout.Tab initial = tabFolders.getTabAt(unread_only ? 1 : 0);
+        if (initial != null)
+            initial.select();
+        tabFolders.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                onSelectUnreadOnly(tab.getPosition() == 1);
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // Do nothing
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                // Do nothing
+            }
+        });
 
         fabAdd.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -492,10 +525,32 @@ public class FragmentFolders extends FragmentBase {
 
                 adapter.set(folders);
 
+                loaded = true;
                 pbWait.setVisibility(View.GONE);
                 grpReady.setVisibility(View.VISIBLE);
+                updateEmptyState();
             }
         });
+    }
+
+    // comms: switch between the All and Unread tabs
+    private void onSelectUnreadOnly(boolean unread_only) {
+        if (this.unread_only == unread_only)
+            return;
+        this.unread_only = unread_only;
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        prefs.edit().putBoolean("folders_unread_only", unread_only).apply();
+
+        adapter.setUnreadOnly(unread_only);
+        updateEmptyState();
+    }
+
+    // comms: an Unread tab with nothing left to list would otherwise be a blank screen
+    private void updateEmptyState() {
+        tvNoUnread.setVisibility(
+                loaded && unread_only && adapter.getItemCount() == 0
+                        ? View.VISIBLE : View.GONE);
     }
 
     private void onSwipeRefresh() {
