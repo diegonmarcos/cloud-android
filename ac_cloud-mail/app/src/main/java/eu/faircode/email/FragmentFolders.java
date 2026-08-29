@@ -52,6 +52,7 @@ import androidx.appcompat.widget.SearchView;
 import androidx.constraintlayout.widget.Group;
 import androidx.core.app.NotificationCompat;
 import androidx.core.view.MenuCompat;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
@@ -67,6 +68,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.tabs.TabLayout;
 
 import org.json.JSONException;
 
@@ -102,6 +104,7 @@ import javax.mail.internet.MimeMessage;
 public class FragmentFolders extends FragmentBase {
     private ViewGroup view;
     private SwipeRefreshLayout swipeRefresh;
+    private TabLayout tabFolders;
     private ImageButton ibHintActions;
     private ImageButton ibHintSync;
     private RecyclerView rvFolder;
@@ -177,6 +180,7 @@ public class FragmentFolders extends FragmentBase {
 
         // Get controls
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
+        tabFolders = view.findViewById(R.id.tabFolders);
         ibHintActions = view.findViewById(R.id.ibHintActions);
         ibHintSync = view.findViewById(R.id.ibHintSync);
         rvFolder = view.findViewById(R.id.rvFolder);
@@ -314,6 +318,31 @@ public class FragmentFolders extends FragmentBase {
 
         adapter = new AdapterFolder(this, account, unified, primary, compact, show_hidden, show_flagged, null);
         rvFolder.setAdapter(adapter);
+
+        // comms: All | Unread switcher. Tab 0 is selected before the listener is
+        // attached, so landing on this page is not treated as a user switch.
+        tabFolders.addTab(tabFolders.newTab().setText(R.string.title_unread_tab_all));
+        tabFolders.addTab(tabFolders.newTab().setText(R.string.title_unread_tab_unread));
+        TabLayout.Tab initial = tabFolders.getTabAt(0);
+        if (initial != null)
+            initial.select();
+        tabFolders.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                if (tab.getPosition() == 1)
+                    showUnread();
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // Do nothing
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                // Do nothing
+            }
+        });
 
         fabAdd.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -496,6 +525,27 @@ public class FragmentFolders extends FragmentBase {
                 grpReady.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    // comms: swap in the unread lane. Pops "folders" first so flipping between
+    // the two tabs does not grow the back stack one entry per switch -- Back
+    // from either tab returns to wherever the folder page was opened from.
+    private void showUnread() {
+        if (!getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
+            return;
+
+        Bundle args = new Bundle();
+        args.putLong("account", account);
+        args.putBoolean("primary", primary);
+
+        FragmentUnread fragment = new FragmentUnread();
+        fragment.setArguments(args);
+
+        getParentFragmentManager().popBackStack("folders", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+
+        FragmentTransaction ft = getParentFragmentManager().beginTransaction();
+        ft.replace(R.id.content_frame, fragment).addToBackStack("folders");
+        ft.commit();
     }
 
     private void onSwipeRefresh() {
