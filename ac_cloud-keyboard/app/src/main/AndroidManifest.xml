@@ -23,6 +23,12 @@
          (signature-level: both apps are signed with the same constellation key). -->
     <uses-permission android:name="com.diegonmarcos.cloudkeyboardlibs.BIND_ENGINE" />
 
+    <!-- Clipboard export/import writes a fixed, user-visible folder
+         (/sdcard/.cloud-keyboard/clipboard) so backups land in a predictable place
+         instead of wherever a file picker happened to point. Requested at use time
+         from Clipboard settings, never on launch. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+
     <!-- Android 11+ package visibility: declare the companion libs package so
          PackageManager resolves it and bindService() succeeds. -->
     <queries>

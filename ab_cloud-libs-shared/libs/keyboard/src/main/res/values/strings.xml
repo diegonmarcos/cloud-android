@@ -229,9 +229,11 @@
     <string name="clipboard_rename_list">Rename list</string>
     <string name="clipboard_rename_list_hint">List name</string>
     <string name="clipboard_export_json">Export clipboard (JSON)</string>
-    <string name="clipboard_export_json_summary">Save clipboard history and pins to a JSON file</string>
+    <string name="clipboard_export_json_summary">Write every tab to .cloud-keyboard/clipboard as manifest.json plus one file per tab</string>
     <string name="clipboard_import_json">Import clipboard (JSON)</string>
-    <string name="clipboard_import_json_summary">Restore clipboard history and pins from a JSON file</string>
+    <string name="clipboard_import_json_summary">Replace the clipboard with the contents of .cloud-keyboard/clipboard</string>
+    <string name="clipboard_import_replace_warning">This replaces all %d clips currently stored. Images are kept; text clips and pins are rewritten from the exported files.</string>
+    <string name="clipboard_needs_storage_access">Grant all-files access, then tap again</string>
     <string name="clipboard_export_success">Exported %d clips</string>
     <string name="clipboard_import_success">Imported %d clips</string>
     <string name="clipboard_import_failed">Import failed</string>

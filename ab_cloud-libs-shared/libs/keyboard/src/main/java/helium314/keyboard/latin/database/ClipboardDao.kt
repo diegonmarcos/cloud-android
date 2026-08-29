@@ -249,72 +249,104 @@ class ClipboardDao private constructor(private val db: Database) {
         db.writableDatabase.delete(TABLE, null, null)
     }
 
-    /** Convenience wrapper: returns [exportToJson] result together with the exported entry count. */
-    fun exportToJsonWithCount(context: Context): Pair<String, Int> {
-        val json = exportToJson(context)
-        // count only entries that have a "text" key (non-binary)
-        val count = cache.count { it.filename == null }
-        return Pair(json, count)
+    /** One parsed-but-not-yet-inserted clip, held while [importFromDir] validates every file. */
+    private class PendingClip(val timeStamp: Long, val listName: String?, val text: String, val mimeTypes: List<String>?)
+
+    /**
+     * Export every tab to [dir] as `manifest.json` plus one json file per tab
+     * (`default.json` for the unpinned page, one per pin list).
+     * Binary (file-backed) clips are skipped — the format cannot carry them.
+     * Stale tab files from a previous export are removed so the folder always
+     * mirrors the current state.
+     * Returns the number of entries written.
+     */
+    fun exportToDir(dir: File): Int = synchronized(this) {
+        dir.mkdirs()
+        val manifestTabs = org.json.JSONArray()
+        val written = HashSet<String>()
+        var total = 0
+        (listOf<String?>(null) + getListNames()).forEach { listName ->
+            val entries = getForList(listName).filter { it.filename == null }
+            val fileName = tabFileName(listName, written)
+            File(dir, fileName).writeText(entriesToJson(entries))
+            manifestTabs.put(org.json.JSONObject().apply {
+                put("listName", listName ?: org.json.JSONObject.NULL)
+                put("file", fileName)
+                put("count", entries.size)
+            })
+            total += entries.size
+        }
+        val manifest = org.json.JSONObject().apply {
+            put("version", EXPORT_VERSION)
+            put("exportedAt", System.currentTimeMillis())
+            put("tabs", manifestTabs)
+        }
+        File(dir, MANIFEST).writeText(manifest.toString(2))
+        // drop json files left over from an earlier export (renamed or deleted lists)
+        dir.listFiles()?.forEach {
+            if (it.name.endsWith(".json") && it.name != MANIFEST && it.name !in written) it.delete()
+        }
+        return total
     }
 
     /**
-     * Serialize all text clips to a JSON array string.
-     * Binary (file-backed) clips are excluded in v1 — a "filename" note is kept so the
-     * entry is visible in a diff but will not be re-imported.
-     * Format: [{timeStamp, listName, text, mimeTypes}, ...]
-     *
-     * Uses org.json (android.jar built-in) — no extra dependency.
+     * Replace the clipboard with the contents of [dir] (as written by [exportToDir]).
+     * Every file is parsed before anything is deleted, so a corrupt or truncated file
+     * leaves the database untouched instead of emptying it.
+     * File-backed (binary) clips are kept: the export format cannot carry them, so
+     * removing them here would destroy them permanently.
+     * Throws on a missing or malformed manifest/tab file. Returns the number of entries inserted.
      */
-    fun exportToJson(context: Context): String {
+    fun importFromDir(dir: File, context: Context): Int = synchronized(this) {
+        val manifest = org.json.JSONObject(File(dir, MANIFEST).readText())
+        val tabs = manifest.getJSONArray("tabs")
+        val parsed = mutableListOf<PendingClip>()
+        for (i in 0 until tabs.length()) {
+            val tab = tabs.getJSONObject(i)
+            val listName = if (tab.isNull("listName")) null else tab.getString("listName")
+            val array = org.json.JSONArray(File(dir, tab.getString("file")).readText())
+            for (j in 0 until array.length()) {
+                val obj = array.getJSONObject(j)
+                val text = obj.optString("text").takeIf { it.isNotEmpty() } ?: continue
+                val mimeArr = obj.optJSONArray("mimeTypes")
+                val mimeTypes = mimeArr?.let { arr ->
+                    (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotEmpty() } }
+                }
+                parsed.add(PendingClip(obj.optLong("timeStamp", System.currentTimeMillis()), listName, text, mimeTypes))
+            }
+        }
+        // everything parsed — safe to swap now
+        Log.i(TAG, "importFromDir: replacing ${cache.count { it.filename == null }} text clips with ${parsed.size}")
+        delete(cache.filter { it.filename == null })
+        parsed.forEach { insertNewEntry(it.timeStamp, it.listName, it.text, null, it.mimeTypes, context) }
+        return parsed.size
+    }
+
+    private fun entriesToJson(entries: List<ClipboardHistoryEntry>): String {
         val array = org.json.JSONArray()
-        cache.forEach { entry ->
-            val obj = org.json.JSONObject()
-            obj.put("timeStamp", entry.timeStamp)
-            obj.put("listName", entry.listName ?: org.json.JSONObject.NULL)
-            if (entry.filename != null) {
-                // binary clip — record filename as a note; text field omitted
-                obj.put("filename", entry.filename)
-                obj.put("_skipped", "binary clips not supported in v1 export")
-            } else {
-                obj.put("text", entry.text ?: "")
+        entries.forEach { entry ->
+            array.put(org.json.JSONObject().apply {
+                put("timeStamp", entry.timeStamp)
+                put("text", entry.text ?: "")
                 val mimeArr = org.json.JSONArray()
                 entry.mimeTypes?.forEach { mimeArr.put(it) }
-                obj.put("mimeTypes", mimeArr)
-            }
-            array.put(obj)
+                put("mimeTypes", mimeArr)
+            })
         }
-        return array.toString(2) // pretty-print with 2-space indent
+        return array.toString(2)
     }
 
     /**
-     * Parse a JSON array produced by [exportToJson] and insert each text entry via [insertNewEntry].
-     * Skips binary-only entries (no "text" key) and deduplicates by text+listName.
-     * Returns the number of entries actually inserted.
+     * File name for a tab. List names are user-editable, so anything that is not
+     * plainly safe in a path is replaced; [used] disambiguates the collisions that
+     * sanitizing can create (e.g. "a/b" and "a:b" both mapping to "a_b").
      */
-    fun importFromJson(context: Context, json: String): Int {
-        val array = try {
-            org.json.JSONArray(json)
-        } catch (e: org.json.JSONException) {
-            Log.w(TAG, "importFromJson: parse error", e)
-            return 0
-        }
-        var inserted = 0
-        for (i in 0 until array.length()) {
-            val obj = array.optJSONObject(i) ?: continue
-            if (!obj.has("text")) continue // binary entry — skip
-            val text = obj.optString("text").takeIf { it.isNotEmpty() } ?: continue
-            val listName = obj.optString("listName").takeIf { !obj.isNull("listName") }
-            // dedupe: skip if a clip with identical text+listName already exists
-            if (cache.any { it.text == text && it.listName == listName }) continue
-            val timeStamp = obj.optLong("timeStamp", System.currentTimeMillis())
-            val mimeArr = obj.optJSONArray("mimeTypes")
-            val mimeTypes = if (mimeArr != null) {
-                (0 until mimeArr.length()).mapNotNull { mimeArr.optString(it).takeIf { s -> s.isNotEmpty() } }
-            } else null
-            insertNewEntry(timeStamp, listName, text, null, mimeTypes, context)
-            inserted++
-        }
-        return inserted
+    private fun tabFileName(listName: String?, used: MutableSet<String>): String {
+        val base = if (listName == null) "default" else listName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        var name = "$base.json"
+        var n = 2
+        while (!used.add(name)) name = "$base-${n++}.json"
+        return name
     }
 
     fun cleanupFiles(prefs: SharedPreferences) {
@@ -357,6 +389,12 @@ class ClipboardDao private constructor(private val db: Database) {
         private const val COLUMN_LIST_NAME = "LIST_NAME" // null = default (unpinned) page; otherwise the pin list this clip belongs to
         const val DEFAULT_PIN_LIST_PREFIX = "Pins-"
         const val DEFAULT_PIN_LIST = "Pins-1"
+
+        const val MANIFEST = "manifest.json"
+        private const val EXPORT_VERSION = 1
+
+        /** Fixed export/import location, shared by the standalone keyboard and the SuperApp. */
+        fun exportDir(): File = File(android.os.Environment.getExternalStorageDirectory(), ".cloud-keyboard/clipboard")
         const val CREATE_TABLE = """
             CREATE TABLE $TABLE (
                 $COLUMN_ID INTEGER PRIMARY KEY,

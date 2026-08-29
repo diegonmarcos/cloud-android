@@ -3,6 +3,9 @@ package helium314.keyboard.settings.screens
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.widget.Toast
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -19,7 +22,6 @@ import helium314.keyboard.latin.utils.prefs
 import helium314.keyboard.settings.SearchSettingsScreen
 import helium314.keyboard.settings.Setting
 import helium314.keyboard.settings.SettingsWithoutKey
-import helium314.keyboard.settings.filePicker
 import helium314.keyboard.settings.initPreview
 import helium314.keyboard.settings.preferences.Preference
 import helium314.keyboard.settings.preferences.SliderPreference
@@ -50,6 +52,30 @@ fun ClipboardSettingsScreen(onClickBack: () -> Unit) {
         title = stringResource(R.string.settings_screen_clipboard),
         settings = items
     )
+}
+
+/**
+ * Export/import use a fixed path outside the app sandbox ([ClipboardDao.exportDir]), which needs
+ * all-files access. Returns true when we already have it; otherwise sends the user to the system
+ * grant screen and returns false, so they retry the action once it is granted.
+ */
+private fun ensureAllFilesAccess(ctx: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) return true
+    Toast.makeText(ctx, R.string.clipboard_needs_storage_access, Toast.LENGTH_LONG).show()
+    val appSpecific = Intent(
+        android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+        Uri.parse("package:${ctx.packageName}")
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    // some OEM builds ship no app-specific screen; fall back to the global list
+    runCatching { ctx.startActivity(appSpecific) }.onFailure {
+        runCatching {
+            ctx.startActivity(
+                Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+    return false
 }
 
 fun createClipboardSettings(context: Context) = listOf(
@@ -96,44 +122,36 @@ fun createClipboardSettings(context: Context) = listOf(
     },
     Setting(context, SettingsWithoutKey.CLIPBOARD_EXPORT_JSON, R.string.clipboard_export_json, R.string.clipboard_export_json_summary) {
         val ctx = LocalContext.current
-        val exportLauncher = filePicker { uri ->
-            val dao = ClipboardDao.getInstance(ctx) ?: return@filePicker
+        Preference(name = stringResource(R.string.clipboard_export_json), onClick = {
+            val dao = ClipboardDao.getInstance(ctx)
+            if (dao == null || !ensureAllFilesAccess(ctx)) return@Preference
             runCatching {
-                val (json, count) = dao.exportToJsonWithCount(ctx)
-                ctx.contentResolver.openOutputStream(uri)?.use { os ->
-                    os.write(json.toByteArray(Charsets.UTF_8))
-                }
+                val count = dao.exportToDir(ClipboardDao.exportDir())
                 Toast.makeText(ctx, ctx.getString(R.string.clipboard_export_success, count), Toast.LENGTH_SHORT).show()
             }.onFailure {
                 Toast.makeText(ctx, R.string.clipboard_import_failed, Toast.LENGTH_SHORT).show()
             }
-        }
-        Preference(name = stringResource(R.string.clipboard_export_json), onClick = {
-            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
-                .addCategory(Intent.CATEGORY_OPENABLE)
-                .setType("application/json")
-                .putExtra(Intent.EXTRA_TITLE, "clipboard-export.json")
-            exportLauncher.launch(intent)
         })
     },
     Setting(context, SettingsWithoutKey.CLIPBOARD_IMPORT_JSON, R.string.clipboard_import_json, R.string.clipboard_import_json_summary) {
         val ctx = LocalContext.current
-        val importLauncher = filePicker { uri ->
-            val dao = ClipboardDao.getInstance(ctx) ?: return@filePicker
-            runCatching {
-                val json = ctx.contentResolver.openInputStream(uri)?.use { it.reader().readText() }
-                    ?: return@filePicker
-                val count = dao.importFromJson(ctx, json)
-                Toast.makeText(ctx, ctx.getString(R.string.clipboard_import_success, count), Toast.LENGTH_SHORT).show()
-            }.onFailure {
-                Toast.makeText(ctx, R.string.clipboard_import_failed, Toast.LENGTH_SHORT).show()
-            }
-        }
         Preference(name = stringResource(R.string.clipboard_import_json), onClick = {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-                .addCategory(Intent.CATEGORY_OPENABLE)
-                .setType("application/json")
-            importLauncher.launch(intent)
+            val dao = ClipboardDao.getInstance(ctx)
+            if (dao == null || !ensureAllFilesAccess(ctx)) return@Preference
+            // import replaces everything, so confirm first
+            android.app.AlertDialog.Builder(ctx)
+                .setTitle(R.string.clipboard_import_json)
+                .setMessage(ctx.getString(R.string.clipboard_import_replace_warning, dao.count()))
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    runCatching {
+                        val count = dao.importFromDir(ClipboardDao.exportDir(), ctx)
+                        Toast.makeText(ctx, ctx.getString(R.string.clipboard_import_success, count), Toast.LENGTH_SHORT).show()
+                    }.onFailure {
+                        Toast.makeText(ctx, R.string.clipboard_import_failed, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         })
     },
     // Rename a pin list from Settings (the in-panel version can't work: while the
