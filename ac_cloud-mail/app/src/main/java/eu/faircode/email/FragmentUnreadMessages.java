@@ -19,6 +19,7 @@ package eu.faircode.email;
     Copyright 2018-2026 by Marcel Bokhorst (M66B)
 */
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -67,6 +68,32 @@ public class FragmentUnreadMessages extends FragmentBase
 
         setTitle(R.string.title_unread_tab_unread);
         setSubtitle(name);
+
+        // comms: nudge the server read-state probe once per screen open, not
+        // once per LiveData emission (the observer in onActivityCreated can
+        // fire repeatedly). Folder lookup runs in a SimpleTask so opening this
+        // screen never does DB work on the main thread.
+        Bundle probeArgs = new Bundle();
+        probeArgs.putLong("folder", folder);
+
+        new SimpleTask<Void>() {
+            @Override
+            protected Void onExecute(Context context, Bundle args) {
+                long fid = args.getLong("folder");
+
+                DB db = DB.getInstance(context);
+                EntityFolder folder = db.folder().getFolder(fid);
+                if (folder != null)
+                    EntityOperation.queue(context, folder, EntityOperation.UNREAD);
+
+                return null;
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                Log.w(ex);
+            }
+        }.execute(this, probeArgs, "unread:probe");
     }
 
     @Override
