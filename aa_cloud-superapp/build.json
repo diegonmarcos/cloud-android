@@ -133,8 +133,8 @@
       "primary_lang": "Go",
       "build": {
         "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
-        "go_version": "1.26.4",
-        "go_sha256_linux_amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
+        "go_version": "1.27.0",
+        "go_sha256_linux_amd64": "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685",
         "make_target": "intra",
         "aar_built": "build/intra/tun2socks.aar",
         "aar_out": "firestack.aar",
@@ -189,6 +189,12 @@
         "libs:launcher-zoomies"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
+    },
+    "libs:search": {
+      "dir": "../ab_cloud-libs-shared/libs/search",
+      "type": "library",
+      "depends_on": [],
+      "comment": "Search sheet + \":\"-command line, app-agnostic. Owns the query box, matching, scope chips, grouping and dispatch; the app supplies hits, commands and the target grammar through SearchSheet.Host. Reads ui.search_scopes from the CONSUMING app's build.json into its own BuildConfig."
     },
     "libs:core": {
       "dir": "../ab_cloud-libs-shared/libs/core",
@@ -340,11 +346,11 @@
       "_doc_actions": "Root inner ring of the ALL-APPS (Sirius) star. Drawn the way every other star draws its inner ring: text only, on a smaller disc, with no icon lookup at all - so these carry no \"icon\" key. Targets go through the normal tile dispatcher, which is why plain https, intent:// and app:// URIs all work here with no Kotlin change.",
       "actions": [
         {
-          "label": "Go Home",
-          "target": "https://www.google.com/maps/dir/?api=1&destination=Home&travelmode=driving"
+          "label": "Search",
+          "target": "action:open_search"
         },
         {
-          "label": "Share Contacts",
+          "label": "Contact Me",
           "target": "https://linktree.diegonmarcos.com/qrcode.html"
         },
         {
@@ -353,11 +359,11 @@
         },
         {
           "label": "Camera",
-          "target": "intent://#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end"
+          "target": "action:open_camera"
         },
         {
           "label": "Gallery",
-          "target": "app://com.google.android.apps.photos?fallback=https%3A%2F%2Fphotos.google.com"
+          "target": "extapp:cloud-media-center"
         }
       ],
       "_doc_nodes": "Outer ring of the ALL-APPS (Sirius) star: the LEAF pages, not the five parent sections. No \"section\" key on any of them, so CircularMenu leaves childKey null and a tap navigates straight to the target instead of descending a level. Configs is deliberately absent - it has its own star (Canopus/arc_menu).",
@@ -3110,6 +3116,16 @@
       }
     ],
     "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen — same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here — no Kotlin edit.",
+    "_doc_camera_apps": "Fallback camera apps for action:open_camera, in order. The FIRST attempt is always the OS resolver for MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA, which honours whatever camera the user set as default - this list is only for when nothing answers that action (some OEM cameras do not export the filter). Ordered so the OEM's own camera wins over a third-party one; a package that is not installed is skipped.",
+    "camera_apps": [
+      { "label": "Samsung Camera", "package": "com.sec.android.app.camera" },
+      { "label": "Pixel Camera",   "package": "com.google.android.GoogleCamera" },
+      { "label": "Xiaomi Camera",  "package": "com.android.camera" },
+      { "label": "OnePlus Camera", "package": "com.oneplus.camera" },
+      { "label": "Motorola Camera","package": "com.motorola.camera3" },
+      { "label": "AOSP Camera",    "package": "com.android.camera2" },
+      { "label": "Open Camera",    "package": "net.sourceforge.opencamera" }
+    ],
     "search_scopes": [
       {
         "id": "cloud-apps",
