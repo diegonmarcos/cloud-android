@@ -152,42 +152,19 @@ PY
 )
 note ok "every declared module has source"
 
-# 10. Every project(':libs:x') dependency must name a project the build really
-#     includes. Dropping a dead module from build.json leaves the dependency
-#     line behind, and gradle only says "Project with path ':libs:x' could not
-#     be found".
-#
-#     Two things this rule got wrong and no longer does:
-#     a) COMMENTS counted. `//implementation project(':sqlite-android')` is a
-#        line someone deliberately disabled; flagging it teaches people the
-#        guard cries wolf, which is worse than having no guard.
-#     b) A FORK keeps upstream's hand-written settings.gradle, which includes
-#        its vendored modules as literal `include ':colorpicker'` instead of
-#        reading build.json. Those projects exist as far as gradle is
-#        concerned - declared, just not there. A GENERATED settings.gradle
-#        includes ":${name}" from a loop and contributes no literals, so it is
-#        unaffected and the rule still bites for every app that has one.
-while read -r line; do note FAIL "$line"; done < <(python3 - <<'MODDECL'
+# 10. Every project(':libs:x') dependency must name a module the build declares.
+#     Dropping a dead module from build.json leaves the dependency line behind,
+#     and gradle only says "Project with path ':libs:x' could not be found".
+while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json,glob,re,os
-
-def code_only(text):
-    """Gradle source minus comments - a disabled line is not a dependency."""
-    text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
-    return '\n'.join(re.sub(r'//.*$', '', l) for l in text.split('\n'))
-
 for bj in sorted(glob.glob('ac_cloud-*/build.json')):
-    app = bj.split('/')[0]
-    declared = set(json.load(open(bj)).get('modules') or {})
-    sg = os.path.join(app, 'settings.gradle')
-    if os.path.exists(sg):
-        for line in code_only(open(sg).read()).split('\n'):
-            if re.match(r'\s*include\b', line):
-                declared |= set(re.findall(r"':([\w:-]+)'", line))
+    app=bj.split('/')[0]
+    declared=set(json.load(open(bj)).get('modules',{}))
     for bg in glob.glob(f'{app}/*/build.gradle'):
-        for m in re.findall(r"project\(':([\w:-]+)'\)", code_only(open(bg).read())):
+        for m in re.findall(r"project\(':([\w:-]+)'\)", open(bg).read()):
             if m not in declared:
-                print(f"{bg} depends on :{m}, which neither {bj} nor {app}/settings.gradle declares")
-MODDECL
+                print(f"{bg} depends on :{m}, which {bj} does not declare")
+PY
 )
 note ok "every project() dependency names a declared module"
 

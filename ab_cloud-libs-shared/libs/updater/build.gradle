@@ -12,16 +12,6 @@ plugins {
 // app superapp's GHCR image + auto_update block — i.e. cloud-browser would
 // update itself into cloud-superapp.
 def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
-
-// The constellation fleet, so the periodic worker can update the OTHER apps
-// and not just this one. Read from the consuming app's data/ dir the same way
-// build.json is read from its root: an app that ships the file gets fleet
-// auto-update, one that does not gets an empty list and self-update only.
-// It was baked ONLY into the superapp before, which is precisely why the
-// unattended pass could never reach the fleet - Fleet.installAll had exactly
-// one caller, the manual Update-All button.
-def fleetFile = file("${rootDir}/data/constellation-fleet.json")
-def fleetB64 = fleetFile.exists() ? fleetFile.text.bytes.encodeBase64().toString() : ""
 def ghcr = buildJson.release.ghcr
 def au   = buildJson.release.auto_update
 // Short git sha = code-identity stamp (matches build.sh oras-push manifest
@@ -84,7 +74,6 @@ android {
         buildConfigField "boolean", "AU_REQUIRE_CHARGING",         "${au.require_charging}"
         buildConfigField "String",  "AU_INSTALL_MODE",             "\"${au.install_mode}\""
         buildConfigField "String",  "GIT_SHORT_SHA",               "\"${shortSha}\""
-        buildConfigField "String",  "CONSTELLATION_FLEET_B64",     "\"${fleetB64}\""
     }
 
     buildFeatures { buildConfig = true }

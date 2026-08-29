@@ -16,3 +16,8 @@ dependencyResolutionManagement {
     }
 }
 include(":app")
+
+// Shared BY REFERENCE from ab_cloud-libs-shared/ — projectDir points at the one
+// copy rather than a vendored duplicate, so the module can never drift per app.
+include(":libs:analytics")
+project(":libs:analytics").projectDir = file("../ab_cloud-libs-shared/libs/analytics")

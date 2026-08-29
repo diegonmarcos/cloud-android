@@ -133,8 +133,8 @@
       "primary_lang": "Go",
       "build": {
         "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
-        "go_version": "1.27.0",
-        "go_sha256_linux_amd64": "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685",
+        "go_version": "1.26.4",
+        "go_sha256_linux_amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
         "make_target": "intra",
         "aar_built": "build/intra/tun2socks.aar",
         "aar_out": "firestack.aar",
@@ -189,12 +189,6 @@
         "libs:launcher-zoomies"
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
-    },
-    "libs:search": {
-      "dir": "../ab_cloud-libs-shared/libs/search",
-      "type": "library",
-      "depends_on": [],
-      "comment": "Search sheet + \":\"-command line, app-agnostic. Owns the query box, matching, scope chips, grouping and dispatch; the app supplies hits, commands and the target grammar through SearchSheet.Host. Reads ui.search_scopes from the CONSUMING app's build.json into its own BuildConfig."
     },
     "libs:core": {
       "dir": "../ab_cloud-libs-shared/libs/core",
@@ -346,11 +340,11 @@
       "_doc_actions": "Root inner ring of the ALL-APPS (Sirius) star. Drawn the way every other star draws its inner ring: text only, on a smaller disc, with no icon lookup at all - so these carry no \"icon\" key. Targets go through the normal tile dispatcher, which is why plain https, intent:// and app:// URIs all work here with no Kotlin change.",
       "actions": [
         {
-          "label": "Search",
-          "target": "action:open_search"
+          "label": "Go Home",
+          "target": "https://www.google.com/maps/dir/?api=1&destination=Home&travelmode=driving"
         },
         {
-          "label": "Contact Me",
+          "label": "Share Contacts",
           "target": "https://linktree.diegonmarcos.com/qrcode.html"
         },
         {

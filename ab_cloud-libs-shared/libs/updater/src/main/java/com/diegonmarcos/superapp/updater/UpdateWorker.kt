@@ -35,16 +35,6 @@ class UpdateWorker(
             return@withContext Result.success()
         UpdateProgress.beginDownload() // disarm any stale cancel from a prior run
         try {
-            // ── The fleet FIRST, then this app.
-            // Installing our own APK tears this process (and therefore this
-            // worker) down, so anything after the self-update never runs. The
-            // fleet pass used to be nowhere at all: Fleet.installAll had a
-            // single caller, the manual Update-All button, so "auto-update on"
-            // updated the superapp forever and never once touched the other
-            // apps. Unattended only — a forced "check for updates" is the user
-            // asking about THIS app.
-            if (!force) updateFleet()
-
             val available = UpdateChecker(applicationContext).available()
                 ?: return@withContext Result.success()
             // Ask (don't auto-download) on metered unless the user forced it.
@@ -70,27 +60,6 @@ class UpdateWorker(
             Log.w("Updater/Worker", "check failed: ${t.message}", t)
             Result.retry()
         }
-    }
-
-    /**
-     * Unattended constellation pass: update the fleet apps that already have a
-     * newer release, never install missing ones. MISSING is deliberately out of
-     * scope here — a first install cannot be silent (we are not yet the
-     * installer of record for that package, so the OS shows its dialog no
-     * matter what we ask for), and an unattended job must not throw dialogs at
-     * someone who is not looking at the phone. Missing apps stay a job for the
-     * Update-All button, which runs with the user watching.
-     *
-     * Failures are per-app inside [Fleet.installAll]; a fleet problem must not
-     * cost this app its own update, which is the whole reason for the catch.
-     */
-    private fun updateFleet() {
-        val fleet = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
-        if (fleet.isEmpty()) return
-        runCatching {
-            val n = Fleet.installAll(applicationContext, fleet, Fleet.Mode.UPDATES)
-            if (n > 0) Log.i("Updater/Worker", "fleet auto-update: acted on $n app(s)")
-        }.onFailure { Log.w("Updater/Worker", "fleet auto-update failed: ${it.message}", it) }
     }
 
     /** True when the active network is metered (mobile data, or Wi-Fi the user

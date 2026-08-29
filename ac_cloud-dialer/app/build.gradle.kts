@@ -158,6 +158,7 @@ detekt {
 }
 
 dependencies {
+    implementation(project(":libs:analytics"))
     implementation(libs.fossify.commons)
     implementation(libs.indicator.fast.scroll)
     implementation(libs.autofit.text.view)
