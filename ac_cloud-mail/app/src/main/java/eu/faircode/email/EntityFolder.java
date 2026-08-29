@@ -255,8 +255,14 @@ public class EntityFolder extends EntityOrder implements Serializable {
         put("wysłane", new TypeScore(EntityFolder.SENT, 100)); // Polish
     }};
 
-    static final int DEFAULT_SYNC = 7; // days
-    static final int DEFAULT_KEEP = 30; // days
+    // ponytail: was 7/30 days. This is a self-hosted server whose entire
+    // taxonomy is categorised folders -- a 7-day sync window meant `24 House`
+    // showed 5 of its 370 messages, because the sorter tags mail by SENDER, not
+    // by date, so a correctly-filed folder is mostly older mail. INBOX already
+    // used MAX_VALUE for the same reason. Bandwidth is not a concern against
+    // your own box on the mesh.
+    static final int DEFAULT_SYNC = Integer.MAX_VALUE; // days
+    static final int DEFAULT_KEEP = Integer.MAX_VALUE; // days
     static final int DEFAULT_KEEP_DRAFTS = 365; // days
 
     private static final List<String> SYSTEM_FOLDER_SYNC = Collections.unmodifiableList(Arrays.asList(

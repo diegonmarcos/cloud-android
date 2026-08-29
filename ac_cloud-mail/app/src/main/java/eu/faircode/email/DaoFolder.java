@@ -279,6 +279,14 @@ public interface DaoFolder {
             " WHERE id = :id AND NOT (namespace IS :namespace AND separator IS :separator)")
     int setFolderNamespace(long id, String namespace, Character separator);
 
+    // ponytail: one-shot widening for the 7/30 -> unlimited default change.
+    // Existing rows keep whatever they were created with, so raising
+    // EntityFolder.DEFAULT_SYNC alone only helps folders created afterwards --
+    // which is why `24 House` still showed 5 of 370 after the sorter filled it.
+    @Query("UPDATE folder SET sync_days = :days, keep_days = :days" +
+            " WHERE sync_days < :days OR keep_days < :days")
+    int setAllSyncKeepDays(int days);
+
     @Query("UPDATE folder SET unified = :unified WHERE id = :id AND NOT (unified IS :unified)")
     int setFolderUnified(long id, boolean unified);
 

@@ -58,26 +58,6 @@ class GroupedTilesFragment : Fragment() {
             col.addView(tileRow(ctx, group.tiles))
         }
 
-        // ── Actions, after the declared groups ────────────────────────────
-        // The SAME list the all-apps star draws on its inner ring
-        // (build.json::onehand.circular_menu.actions), read from that block
-        // rather than copied into tile_groups. Copying is what let the Configs
-        // grid and the Configs star disagree about how many actions exist; one
-        // list cannot disagree with itself, and adding a sixth action means
-        // editing one place and seeing it in both.
-        //
-        // Suite only, like the Quickmarks header above: these are the global
-        // actions, so repeating them in Home, Labs and Configs would be the
-        // same five tiles four times over.
-        if (sectionId == "suite") {
-            val starActions = com.diegonmarcos.superapp.onehand.CircularMenu.config().actions
-                .map { Sections.AggTile(it.target, it.label, it.iconName, it.target) }
-            if (starActions.isNotEmpty()) {
-                col.addView(groupHeader(ctx, "Actions"))
-                col.addView(tileRow(ctx, starActions))
-            }
-        }
-
         if (sectionId == "suite") {
             // ── All Apps — the same grouped-by-purpose rendering the real
             //    Home tab (HomeGroupedFragment) uses, embedded inline

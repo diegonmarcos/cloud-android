@@ -1163,6 +1163,28 @@ public class ApplicationEx extends Application
             }
         }
 
+        if (version < 3569) {
+            // ponytail: EntityFolder.DEFAULT_SYNC/KEEP went 7/30 days ->
+            // unlimited, but that only applies to folders created afterwards.
+            // Existing rows keep the old window, which is why `24 House` showed
+            // 5 of its 370 messages even after the server-side sorter filled it:
+            // mail is tagged by SENDER, not by date, so a correctly-filed folder
+            // is mostly older than any short sync window. Widen them once.
+            // Off the main thread -- upgrade() runs during onCreate.
+            Helper.getSerialExecutor().submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        int n = DB.getInstance(context).folder()
+                                .setAllSyncKeepDays(Integer.MAX_VALUE);
+                        EntityLog.log(context, "Widened sync/keep window on " + n + " folders");
+                    } catch (Throwable ex) {
+                        Log.e(ex);
+                    }
+                }
+            });
+        }
+
         if (version < BuildConfig.VERSION_CODE)
             editor.putInt("previous_version", version);
         editor.putInt("version", BuildConfig.VERSION_CODE);
