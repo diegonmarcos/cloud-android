@@ -165,13 +165,17 @@ class MainActivity : AppCompatActivity(),
      * The rules themselves still come from the data-driven files: edit, commit,
      * push, deploy -- then tap this to apply them to mail that already arrived.
      */
+    // The strings live in libs:mail, and android.nonTransitiveRClass=true means
+    // a library's resources are NOT in the app's R - they have to be reached
+    // through that library's own R. Unqualified R.string here is what broke
+    // 0777d9dd, 3334e872, eccd3f4f and every build since.
     private fun reapplyMailRules(anchor: android.view.View) {
         val prefs = com.diegonmarcos.superapp.mail.JmapPrefs(this)
         if (prefs.email.isBlank() || prefs.password.isBlank()) {
-            anchor.snack(getString(R.string.mail_messages_login_first))
+            anchor.snack(getString(com.diegonmarcos.superapp.mail.R.string.mail_messages_login_first))
             return
         }
-        anchor.snack(getString(R.string.reapply_rules_sent))
+        anchor.snack(getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_sent))
         Thread {
             val client = com.diegonmarcos.superapp.mail.JmapClient(
                 prefs.server, prefs.email, prefs.password,
@@ -180,16 +184,16 @@ class MainActivity : AppCompatActivity(),
                 is com.diegonmarcos.superapp.mail.JmapClient.Result.Success ->
                     when (val r = client.createMailbox(s.value, REAPPLY_SENTINEL)) {
                         is com.diegonmarcos.superapp.mail.JmapClient.Result.Success ->
-                            getString(R.string.reapply_rules_ok)
+                            getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_ok)
                         is com.diegonmarcos.superapp.mail.JmapClient.Result.HttpError ->
-                            getString(R.string.reapply_rules_failed, "HTTP ${r.code}")
+                            getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, "HTTP ${r.code}")
                         is com.diegonmarcos.superapp.mail.JmapClient.Result.NetworkError ->
-                            getString(R.string.reapply_rules_failed, r.message)
+                            getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, r.message)
                     }
                 is com.diegonmarcos.superapp.mail.JmapClient.Result.HttpError ->
-                    getString(R.string.reapply_rules_failed, "HTTP ${s.code}")
+                    getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, "HTTP ${s.code}")
                 is com.diegonmarcos.superapp.mail.JmapClient.Result.NetworkError ->
-                    getString(R.string.reapply_rules_failed, s.message)
+                    getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, s.message)
             }
             runOnUiThread { anchor.snack(msg) }
         }.start()
