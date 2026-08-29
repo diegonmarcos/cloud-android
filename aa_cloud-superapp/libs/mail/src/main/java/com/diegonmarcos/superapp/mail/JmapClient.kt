@@ -109,6 +109,55 @@ class JmapClient(
             .sortedWith(compareBy({ it.parentId ?: "" }, { it.sortOrder }, { it.name }))
     }
 
+    /**
+     * Create a mailbox. Used to drop the `.reapply` sentinel that asks the
+     * server-side sorter to re-apply every routing rule to every message now
+     * instead of on its next scheduled pass.
+     *
+     * A mailbox rather than an HTTP call to the sorter, because a JMAP mailbox
+     * is just a tag: it needs no new endpoint, no new port, and no token in the
+     * APK -- this reuses the mail credentials the user already entered. The
+     * sorter consumes and destroys it, so a create is the whole protocol.
+     */
+    fun createMailbox(
+        session: Session,
+        name: String,
+        accountId: String = session.primaryAccountId,
+    ): Result<Unit> = wrap {
+        val payload = buildJsonObject {
+            put("using", buildJsonArray {
+                add("urn:ietf:params:jmap:core")
+                add("urn:ietf:params:jmap:mail")
+            })
+            put("methodCalls", buildJsonArray {
+                addJsonArray {
+                    add("Mailbox/set")
+                    add(buildJsonObject {
+                        put("accountId", accountId)
+                        put("create", buildJsonObject {
+                            put("s0", buildJsonObject { put("name", name) })
+                        })
+                    })
+                    add("c0")
+                }
+            })
+        }
+        val body = httpPost(session.apiUrl, payload.toString())
+        val mr = json.parseToJsonElement(body).jsonObject["methodResponses"]?.jsonArray
+            ?: throw HttpException(200, "no methodResponses in body")
+        val res = mr.firstOrNull()?.jsonArray?.getOrNull(1)?.jsonObject
+            ?: throw HttpException(200, "empty methodResponses")
+        // An existing sentinel means a tap is already queued -- that is success,
+        // not an error, so notCreated is only fatal if nothing was created.
+        if (res["created"]?.jsonObject?.isEmpty() != false) {
+            val why = res["notCreated"]?.toString() ?: "unknown"
+            if (!why.contains("alreadyExists") && !why.contains("invalidArguments")) {
+                throw HttpException(200, "Mailbox/set created nothing: $why")
+            }
+        }
+        Unit
+    }
+
     private fun JsonObject.toMailbox(): Mailbox = Mailbox(
         id           = this["id"]!!.jsonPrimitive.content,
         name         = this["name"]?.jsonPrimitive?.content ?: "(unnamed)",

@@ -32,7 +32,6 @@ import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.launcher.RecentCloudTiles
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
 import com.diegonmarcos.superapp.battery.BatterySessionWorker
-import com.diegonmarcos.superapp.search.SearchSheetFragment
 import com.diegonmarcos.superapp.search.SearchOpener
 import com.diegonmarcos.superapp.network.WgState
 import com.diegonmarcos.superapp.profile.BusinessCardFragment
@@ -99,8 +98,12 @@ class MainActivity : AppCompatActivity(),
     com.diegonmarcos.superapp.devtools.DevControlBridge.ActivityHost,
     MailHost,
     SearchOpener,
+    com.diegonmarcos.superapp.search.SearchSheet.Host,
     com.diegonmarcos.superapp.apptabs.AppTabsHost,
     LauncherNavController.NavHost {
+
+    /** Must match REAPPLY_SENTINEL in the stalwart sorter (crate/src/main.rs). */
+    private val REAPPLY_SENTINEL = ".reapply"
 
     /** Navigation policy + walk-list state; the Activity is its view host.
      *  `internal` so [SectionTabsFragment] can reuse the page→Fragment
@@ -149,6 +152,50 @@ class MainActivity : AppCompatActivity(),
     // Host at all. iconBitmap is identical for Sirius and Canopus — both
     // resolve build.json icon names via Sections.iconResFor, same as every
     // other launcher surface.
+    /**
+     * Ask the server-side sorter to re-apply every routing rule to every
+     * message now, by creating the `.reapply` sentinel mailbox over JMAP.
+     *
+     * Deliberately NOT a GitHub workflow_dispatch: that needs a PAT, and a
+     * token has no business shipping inside an APK. A JMAP mailbox is just a
+     * tag, so this reuses the mail credentials the user already entered, needs
+     * no new endpoint and no new secret. The sorter notices the sentinel within
+     * one tick, destroys it, and runs a full pass.
+     *
+     * The rules themselves still come from the data-driven files: edit, commit,
+     * push, deploy -- then tap this to apply them to mail that already arrived.
+     */
+    private fun reapplyMailRules(anchor: android.view.View) {
+        val prefs = com.diegonmarcos.superapp.mail.JmapPrefs(this)
+        if (prefs.email.isBlank() || prefs.password.isBlank()) {
+            anchor.snack(getString(R.string.mail_messages_login_first))
+            return
+        }
+        anchor.snack(getString(R.string.reapply_rules_sent))
+        Thread {
+            val client = com.diegonmarcos.superapp.mail.JmapClient(
+                prefs.server, prefs.email, prefs.password,
+            )
+            val msg = when (val s = client.discover()) {
+                is com.diegonmarcos.superapp.mail.JmapClient.Result.Success ->
+                    when (val r = client.createMailbox(s.value, REAPPLY_SENTINEL)) {
+                        is com.diegonmarcos.superapp.mail.JmapClient.Result.Success ->
+                            getString(R.string.reapply_rules_ok)
+                        is com.diegonmarcos.superapp.mail.JmapClient.Result.HttpError ->
+                            getString(R.string.reapply_rules_failed, "HTTP ${r.code}")
+                        is com.diegonmarcos.superapp.mail.JmapClient.Result.NetworkError ->
+                            getString(R.string.reapply_rules_failed, r.message)
+                    }
+                is com.diegonmarcos.superapp.mail.JmapClient.Result.HttpError ->
+                    getString(R.string.reapply_rules_failed, "HTTP ${s.code}")
+                is com.diegonmarcos.superapp.mail.JmapClient.Result.NetworkError ->
+                    getString(R.string.reapply_rules_failed, s.message)
+            }
+            runOnUiThread { anchor.snack(msg) }
+        }.start()
+    }
+
+
     private fun iconBitmapFor(name: String, sizePx: Int): android.graphics.Bitmap? {
         if (name.isBlank() || sizePx <= 0) return null
         val resId = Sections.iconResFor(this, name)
@@ -1513,7 +1560,19 @@ class MainActivity : AppCompatActivity(),
             // Cloud Notification Center — same surface the top-bar bell
             // icon opens. Wiring it here means any data-driven entry
             // (tile target / drawer action) can route to it without code.
+            // Sirius inner ring "Search" — the same sheet the top-bar search
+            // icon and the launcher shortcut open. handleShortcutIntent
+            // already routed action:open_search; the star goes through
+            // dispatchHomeAction instead, which did not.
+            actionType == "open_search" -> openSearchSheet()
+            // Sirius inner ring "Camera". Was
+            // intent://#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end,
+            // which Intent.parseUri turns into that action PLUS `intent://` as
+            // the intent's DATA — an action+data pair no camera filter matches,
+            // so it resolved to nothing and snacked "No app handles".
+            actionType == "open_camera" -> openCamera()
             actionType == "open_notification_center" -> openNotificationCenter()
+            actionType == "reapply_mail_rules" -> reapplyMailRules(anchor)
             // Configs → Keyboard now hands off to the standalone Cloud-Keyboard
             // app via extapp:cloud-keyboard (ui.external_apps[cloud-keyboard]);
             // the old in-APK keyboard_settings component launch is retired.
@@ -1750,17 +1809,88 @@ class MainActivity : AppCompatActivity(),
      *  AppDrawerSheet's in-page search bar (via [SearchOpener]) and the
      *  launcher long-press → "Search" shortcut. */
     override fun openSearchSheet() {
-        // Don't stack multiple SearchSheets if user double-taps.
-        if (supportFragmentManager.findFragmentByTag(SearchSheetFragment.BACK_STACK_TAG) != null) return
+        // Don't stack multiple sheets if the user double-taps.
+        val tag = com.diegonmarcos.superapp.search.SearchSheet.BACK_STACK_TAG
+        if (supportFragmentManager.findFragmentByTag(tag) != null) return
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(
                 R.anim.slide_in_up,  R.anim.fade_out,
                 R.anim.fade_in,      R.anim.slide_out_down,
             )
-            .add(R.id.overlay_container, SearchSheetFragment.newInstance(),
-                SearchSheetFragment.BACK_STACK_TAG)
-            .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
+            .add(R.id.overlay_container,
+                com.diegonmarcos.superapp.search.SearchSheet.newInstance(), tag)
+            .addToBackStack(tag)
             .commit()
+    }
+
+    /**
+     * Open the camera the user actually uses.
+     *
+     * 1. [MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA] with no data — the
+     *    standard "open the camera app" action. The OS resolves it, so
+     *    whatever the user set as their default camera is what opens, which on
+     *    a Samsung is Samsung's.
+     * 2. If nothing answers that (some OEM cameras ship without the filter),
+     *    fall through build.json::ui.camera_apps in order and launch the first
+     *    package that is installed. Data-driven, so adding an OEM is a JSON
+     *    line, not a code change.
+     *
+     * Package visibility is fine on Android 11+ because the launcher already
+     * holds QUERY_ALL_PACKAGES for app discovery.
+     */
+    private fun openCamera() {
+        val still = android.content.Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (packageManager.resolveActivity(still, 0) != null &&
+            runCatching { startActivity(still); true }.getOrDefault(false)
+        ) return
+
+        for ((pkg, label) in cameraFallbacks()) {
+            val launch = packageManager.getLaunchIntentForPackage(pkg) ?: continue
+            launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (runCatching { startActivity(launch); true }.getOrDefault(false)) {
+                com.diegonmarcos.superapp.apptabs.AppTabPrefs(this).recordExternalApp(pkg, label)
+                return
+            }
+        }
+        findViewById<View>(R.id.fragment_container)?.snack("No camera app found")
+    }
+
+    /** build.json::ui.camera_apps as (package, label), in declared order. */
+    private fun cameraFallbacks(): List<Pair<String, String>> = runCatching {
+        val arr = org.json.JSONArray(
+            String(android.util.Base64.decode(BuildConfig.UI_CAMERA_APPS_B64, android.util.Base64.NO_WRAP)))
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            o.optString("package") to o.optString("label")
+        }.filter { it.first.isNotBlank() }
+    }.getOrDefault(emptyList())
+
+    // ── SearchSheet.Host ───────────────────────────────────────────────
+    // libs:search owns the sheet, the matching and the `:`-command line; this
+    // app owns what is IN it. Everything below is a one-line hand-off, which
+    // is the point: a second app implements these five and has the same
+    // search bar.
+
+    override fun hitsFor(scope: com.diegonmarcos.superapp.search.SearchScope) =
+        com.diegonmarcos.superapp.search.SuperappSearchIndex.hitsFor(applicationContext, scope)
+
+    override fun searchCommands() =
+        com.diegonmarcos.superapp.search.SuperappSearchIndex.commands()
+
+    /** Both a hit's target and a command's target are the ordinary tile
+     *  grammar (`section:` / `page:` / `action:` / a URI), so search adds no
+     *  new vocabulary — every command is something a tile could already do. */
+    override fun openTarget(target: String) = onTileClicked(target)
+
+    override fun searchBoxBackground() = R.drawable.bg_liquid_glass
+    override fun searchChipBackground() = R.drawable.bg_liquid_glass_pill
+
+    override fun dismissSearch() {
+        supportFragmentManager.popBackStack(
+            com.diegonmarcos.superapp.search.SearchSheet.BACK_STACK_TAG,
+            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
+        )
     }
 
     // ── DevControlBridge.ActivityHost ────────────────────────────────────

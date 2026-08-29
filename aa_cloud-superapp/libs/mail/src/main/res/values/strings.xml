@@ -26,6 +26,9 @@
 
     <!-- Slice C — Messages (Email/query + Email/get) -->
     <string name="mail_messages_loading">Loading messages…</string>
+    <string name="reapply_rules_sent">Asking the sorter to re-apply all rules\u2026</string>
+    <string name="reapply_rules_ok">Re-apply requested \u2014 the sorter picks it up within ~10s.</string>
+    <string name="reapply_rules_failed">Re-apply failed: %1$s</string>
     <string name="mail_messages_login_first">Sign in via Mail → Accounts first.</string>
     <string name="mail_messages_no_folder">No folder selected.</string>
     <string name="mail_messages_empty">No messages in this folder.</string>
