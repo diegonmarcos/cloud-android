@@ -1,6 +1,16 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+}
+
+// The Kotlin plugin is applied defensively, not in the plugins{} block above.
+// This module is consumed by forks with wildly different build setups, and some
+// already register a 'kotlin' extension on every subproject — applying it a
+// second time fails the whole build with:
+//   Cannot add extension with name 'kotlin', as there is an extension already
+//   registered with that name.
+// A plugins{} entry cannot be made conditional, so apply it only if absent.
+if (!project.plugins.hasPlugin('org.jetbrains.kotlin.android')) {
+    apply plugin: 'org.jetbrains.kotlin.android'
 }
 
 // Inject build.json::analytics into BuildConfig. rootDir, NOT '../../': this
@@ -31,7 +41,14 @@ android {
     compileSdk 36
 
     defaultConfig {
-        minSdk 26
+        // 21, not 26: a library's minSdk is a FLOOR on every consumer, and the
+        // manifest merger fails the whole app build when the app's minSdk is
+        // lower ("uses-sdk:minSdkVersion 24 cannot be smaller than version 26
+        // declared in library [:libs:analytics]"). chat is minSdk 24. Nothing
+        // here needs 26 — the module only touches ContentProvider,
+        // SharedPreferences, HttpURLConnection and java.util, all API <= 9.
+        // Keep this at or below the lowest consumer minSdk in the repo.
+        minSdk 21
         consumerProguardFiles 'consumer-rules.pro'
 
         // The app id is what makes events attributable. Umami and Matomo are

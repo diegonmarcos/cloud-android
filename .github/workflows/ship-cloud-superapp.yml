@@ -59,7 +59,6 @@ on:
       - "ab_cloud-libs-shared/libs/devtools/**"
       - "ab_cloud-libs-shared/libs/updater/**"
       - "ab_cloud-libs-shared/libs/analytics/**"
-      - "ab_cloud-libs-shared/libs/search/**"
       - "1_cicd/src/cicd/ship-cloud-superapp.yml"
       # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
       # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).
