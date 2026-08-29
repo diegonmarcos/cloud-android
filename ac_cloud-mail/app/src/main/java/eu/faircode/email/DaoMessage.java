@@ -204,6 +204,52 @@ public interface DaoMessage {
             boolean found,
             boolean debug);
 
+    // comms: the unread lane's message query -- the unread mail of one folder.
+    //
+    // Deliberately NOT pagedFolder() with filter_seen set. Two reasons:
+    //
+    // 1. pagedFolder groups by THREAD, so a thread with one unread reply among
+    //    ten read ones is a single row carrying all eleven. The unread page
+    //    lists individual unread messages, so this groups by message.id.
+    // 2. filter_seen is a HAVING clause over a thread aggregate, so it cannot
+    //    express "this one message is unread" at all.
+    //
+    // Note the local naming trap this avoids: in pagedFolder, `filter_seen`
+    // means "keep threads that HAVE unread" and `filter_unseen` means "keep
+    // threads that are fully read" -- the opposite of how both read.
+    @Transaction
+    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
+    @Query("SELECT message.*" +
+            ", account.pop AS accountProtocol, account.name AS accountName, account.category AS accountCategory, COALESCE(identity.color, folder.color, account.color) AS accountColor" +
+            ", account.notify AS accountNotify, account.summary AS accountSummary, account.leave_on_server AS accountLeaveOnServer, account.leave_deleted AS accountLeaveDeleted, account.auto_seen AS accountAutoSeen" +
+            ", folder.name AS folderName, folder.color AS folderColor, folder.display AS folderDisplay, folder.type AS folderType, folder.inherited_type AS folderInheritedType, folder.unified AS folderUnified, folder.read_only AS folderReadOnly" +
+            ", IFNULL(identity.display, identity.name) AS identityName, identity.email AS identityEmail, identity.color AS identityColor, identity.synchronize AS identitySynchronize" +
+            ", '[' || substr(group_concat(message.`from`, ','), 0, 2048) || ']' AS senders" +
+            ", '[' || substr(group_concat(message.`to`, ','), 0, 2048) || ']' AS recipients" +
+            ", COUNT(message.id) AS count" +
+            ", SUM(1 - message.ui_seen) AS unseen" +
+            ", SUM(1 - message.ui_flagged) AS unflagged" +
+            ", SUM(folder.type = '" + EntityFolder.DRAFTS + "') AS drafts" +
+            ", COUNT(DISTINCT message.id) AS visible" +
+            ", COUNT(DISTINCT CASE WHEN message.ui_seen THEN NULL ELSE message.id END) AS visible_unseen" +
+            ", SUM(message.attachments) AS totalAttachments" +
+            ", SUM(message.total) AS totalSize" +
+            ", message.priority AS ui_priority" +
+            ", MAX(message.importance) AS ui_importance" +
+            " FROM message" +
+            " JOIN account_view AS account ON account.id = message.account" +
+            " LEFT JOIN identity_view AS identity ON identity.id = message.identity" +
+            " JOIN folder_view AS folder ON folder.id = message.folder" +
+            " WHERE message.folder = :folder" +
+            " AND NOT message.ui_seen" +
+            " AND (NOT message.ui_hide OR :debug)" +
+            " AND (NOT :filter_deleted OR NOT message.ui_deleted)" +
+            " GROUP BY message.id" +
+            " ORDER BY -IFNULL(message.importance, 1)" +
+            ", CASE WHEN :ascending THEN message.received ELSE -message.received END")
+    DataSource.Factory<Integer, TupleMessageEx> pagedUnread(
+            long folder, boolean ascending, boolean filter_deleted, boolean debug);
+
     @Transaction
     @Query("SELECT message.*" +
             ", account.pop AS accountProtocol, account.name AS accountName, account.category AS accountCategory, COALESCE(identity.color, folder.color, account.color) AS accountColor" +
