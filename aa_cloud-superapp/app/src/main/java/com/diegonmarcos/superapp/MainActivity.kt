@@ -32,7 +32,6 @@ import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 import com.diegonmarcos.superapp.launcher.RecentCloudTiles
 import com.diegonmarcos.superapp.battery.EnergyWatchdog
 import com.diegonmarcos.superapp.battery.BatterySessionWorker
-import com.diegonmarcos.superapp.search.SearchSheetFragment
 import com.diegonmarcos.superapp.search.SearchOpener
 import com.diegonmarcos.superapp.network.WgState
 import com.diegonmarcos.superapp.profile.BusinessCardFragment
@@ -99,6 +98,7 @@ class MainActivity : AppCompatActivity(),
     com.diegonmarcos.superapp.devtools.DevControlBridge.ActivityHost,
     MailHost,
     SearchOpener,
+    com.diegonmarcos.superapp.search.SearchSheet.Host,
     com.diegonmarcos.superapp.apptabs.AppTabsHost,
     LauncherNavController.NavHost {
 
@@ -1755,17 +1755,45 @@ class MainActivity : AppCompatActivity(),
      *  AppDrawerSheet's in-page search bar (via [SearchOpener]) and the
      *  launcher long-press → "Search" shortcut. */
     override fun openSearchSheet() {
-        // Don't stack multiple SearchSheets if user double-taps.
-        if (supportFragmentManager.findFragmentByTag(SearchSheetFragment.BACK_STACK_TAG) != null) return
+        // Don't stack multiple sheets if the user double-taps.
+        val tag = com.diegonmarcos.superapp.search.SearchSheet.BACK_STACK_TAG
+        if (supportFragmentManager.findFragmentByTag(tag) != null) return
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(
                 R.anim.slide_in_up,  R.anim.fade_out,
                 R.anim.fade_in,      R.anim.slide_out_down,
             )
-            .add(R.id.overlay_container, SearchSheetFragment.newInstance(),
-                SearchSheetFragment.BACK_STACK_TAG)
-            .addToBackStack(SearchSheetFragment.BACK_STACK_TAG)
+            .add(R.id.overlay_container,
+                com.diegonmarcos.superapp.search.SearchSheet.newInstance(), tag)
+            .addToBackStack(tag)
             .commit()
+    }
+
+    // ── SearchSheet.Host ───────────────────────────────────────────────
+    // libs:search owns the sheet, the matching and the `:`-command line; this
+    // app owns what is IN it. Everything below is a one-line hand-off, which
+    // is the point: a second app implements these five and has the same
+    // search bar.
+
+    override fun hitsFor(scope: com.diegonmarcos.superapp.search.SearchScope) =
+        com.diegonmarcos.superapp.search.SuperappSearchIndex.hitsFor(applicationContext, scope)
+
+    override fun searchCommands() =
+        com.diegonmarcos.superapp.search.SuperappSearchIndex.commands()
+
+    /** Both a hit's target and a command's target are the ordinary tile
+     *  grammar (`section:` / `page:` / `action:` / a URI), so search adds no
+     *  new vocabulary — every command is something a tile could already do. */
+    override fun openTarget(target: String) = onTileClicked(target)
+
+    override fun searchBoxBackground() = R.drawable.bg_liquid_glass
+    override fun searchChipBackground() = R.drawable.bg_liquid_glass_pill
+
+    override fun dismissSearch() {
+        supportFragmentManager.popBackStack(
+            com.diegonmarcos.superapp.search.SearchSheet.BACK_STACK_TAG,
+            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE,
+        )
     }
 
     // ── DevControlBridge.ActivityHost ────────────────────────────────────

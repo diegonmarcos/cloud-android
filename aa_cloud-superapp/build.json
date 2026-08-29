@@ -190,6 +190,12 @@
       ],
       "comment": "Launcher / shell. Hosts navigation to each feature module."
     },
+    "libs:search": {
+      "dir": "../ab_cloud-libs-shared/libs/search",
+      "type": "library",
+      "depends_on": [],
+      "comment": "Search sheet + \":\"-command line, app-agnostic. Owns the query box, matching, scope chips, grouping and dispatch; the app supplies hits, commands and the target grammar through SearchSheet.Host. Reads ui.search_scopes from the CONSUMING app's build.json into its own BuildConfig."
+    },
     "libs:core": {
       "dir": "../ab_cloud-libs-shared/libs/core",
       "type": "library",
