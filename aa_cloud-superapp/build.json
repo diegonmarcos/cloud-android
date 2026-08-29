@@ -520,20 +520,8 @@
     },
     "arc_menu": {
       "_doc_actions": "Inner ring of the CONFIGS (Canopus) star. It lives on this star's own block now, exactly like recents_menu.actions - it used to hang off the Configs node inside circular_menu.nodes, which tied this star to the all-apps ring and broke the moment that ring stopped listing Configs. Text only.",
-      "actions": [
-        {
-          "label": "KDE Connect",
-          "target": "action:kde_connect_now"
-        },
-        {
-          "label": "Animations",
-          "target": "action:toggle_animations"
-        },
-        {
-          "label": "Copy Info",
-          "target": "action:about_copy_all"
-        }
-      ],
+      "_doc_actions": "Deliberately empty. KDE Connect, Animations and Copy Info moved into ui.sections[config].pages as is_action entries, which feed the arc's inner ring AND the Configs grid from one list. The block stays because it is still the right home for an action that belongs on the STAR only - one that would be noise in the grid.",
+      "actions": [],
       "enabled": true,
       "section": "config",
       "radius_dp": 200
@@ -2859,6 +2847,28 @@
             "icon": "ic_refresh",
             "action": "action:update_all",
             "_doc_is_action": "Fires and returns — no page behind it. Puts this entry under Actions in the Configs grid and on the ArcMenu's inner arc, instead of guessing from the action: prefix (import/keyboard/constellation carry one too but DO open a page).",
+            "is_action": true
+          },
+          {
+            "_doc": "Moved here from onehand.arc_menu.actions. That block and this one BOTH fed the Canopus arc's inner ring, so the star showed four actions while the Configs grid showed one - the same list kept in two places, which is the only reason they could ever disagree. is_action entries feed BOTH surfaces, so there is one list now and no way to drift.",
+            "id": "kde_connect",
+            "label": "KDE Connect",
+            "icon": "ic_kde",
+            "action": "action:kde_connect_now",
+            "is_action": true
+          },
+          {
+            "id": "animations",
+            "label": "Animations",
+            "icon": "ic_mode_apps",
+            "action": "action:toggle_animations",
+            "is_action": true
+          },
+          {
+            "id": "copy_info",
+            "label": "Copy Info",
+            "icon": "ic_p_import",
+            "action": "action:about_copy_all",
             "is_action": true
           },
           {
