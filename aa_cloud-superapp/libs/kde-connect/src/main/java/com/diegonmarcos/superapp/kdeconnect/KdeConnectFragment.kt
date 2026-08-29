@@ -104,9 +104,6 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             setTextColor(0x99FFFFFF.toInt()); textSize = 12f; setPadding(0, 0, 0, dp(16))
         })
 
-        // ── Clipboard (first: it is the thing people come to this page for) ──
-        root.addView(buildClipboardCard(ctx))
-
         if (cfg.devices.isEmpty()) {
             root.addView(TextView(ctx).apply {
                 text = "No devices declared in build.json::ui.kde_connect.devices"
@@ -114,6 +111,10 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
             })
         }
         for (device in cfg.devices) root.addView(buildCard(ctx, device))
+
+        // ── Clipboard — right after the device cards, because everything it
+        //    does needs a paired device to be there first.
+        root.addView(buildClipboardCard(ctx))
 
         // ── Remote control (touchpad / keyboard / big-screen senders) ──────
         root.addView(buildRemoteSection(ctx))
@@ -575,71 +576,65 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
     // ── Shared card scaffolding ────────────────────────────────────────────
     /** A rounded translucent card with a bold title + dim subtitle. */
     /**
-     * Clipboard sync — the desktop's clipboard and this phone's, side by side.
+     * Clipboard — both sides, as lists rather than a single slot.
      *
      * The switch is [KdePluginPrefs] for the `clipboard` plugin, not a new
-     * preference: that flag already gates both dispatch and what we advertise
-     * in our identity packet, so it IS "sync on/off" and a second toggle could
-     * only ever disagree with it.
+     * preference: that flag already gates dispatch AND what we advertise in the
+     * identity packet, so it IS sync on/off and a second toggle could only ever
+     * disagree with it.
      *
-     * Both directions are shown because they are not symmetrical. Ours goes
-     * out on demand — Android gives an app no clipboard-changed callback it
-     * can rely on in the background, so there is nothing to hook a push onto.
-     * The host's arrives by itself whenever the desktop copies, but WRITING it
-     * here is best-effort on Android 10+, which is why the stored copy and an
-     * explicit "Apply" exist: when the automatic write is refused, the text is
-     * still here and one tap puts it on the phone.
+     * ## What "the desktop's clipboard" can mean here
+     * KDE Connect carries ONE string per clipboard packet and has no request
+     * for a peer's history — Klipper's list is not exposed over the protocol.
+     * So the desktop list is every clip it has pushed since sync was turned on,
+     * kept by [KdeClipboardStore] instead of overwritten, and "Get host" is the
+     * one pull the protocol does allow: `clipboard.connect` dated at the epoch,
+     * which any desktop with a clipboard answers because its own is newer.
+     * Ours is thinner again — Android only hands over the CURRENT clip, and
+     * only while this page is focused, so the list is what we saw while it was
+     * open. Both limits are printed on the card rather than hidden.
      */
     private fun buildClipboardCard(ctx: android.content.Context): View {
         val prefs = KdePluginPrefs(ctx)
         val col = card(ctx, "Clipboard",
-            "Share what you copy with the desktop, both ways.")
+            "Both clipboards, kept as lists — not just the last thing copied.")
 
-        // Which clipboard app receives an incoming clip. There is ONE write
-        // either way — setPrimaryClip — because that is the only cross-app
-        // clipboard API Android offers; Cloud-Keyboard's pinned lists live in
-        // its own private Room DB behind a non-exported provider, so nothing
-        // here can write a pin directly. What differs is what happens NEXT:
-        // Cloud-Keyboard listens for primary-clip changes and files the clip
-        // into its history, where it can then be pinned by hand. With the
-        // stock clipboard there is one slot and the clip simply replaces it.
-        // Said out loud here so the page does not imply a pin it cannot make.
+        // Which clipboard app receives an incoming clip. ONE setPrimaryClip
+        // either way, because that is the only cross-app clipboard API Android
+        // has; Cloud-Keyboard's pinned lists live in its own Room DB behind a
+        // non-exported provider, so nothing here can write a pin directly.
+        // What differs is what happens NEXT: Cloud-Keyboard files the clip into
+        // its history where it can be pinned, the stock clipboard just replaces
+        // its one slot. Said out loud so the card promises no pin it cannot make.
         val ours = runCatching {
             ctx.packageManager.getPackageInfo(CLOUD_KEYBOARD_PKG, 0); true
         }.getOrDefault(false)
-        col.addView(TextView(ctx).apply {
-            text = if (ours)
-                "Cloud-Keyboard is installed: an incoming clip lands in its " +
-                "clipboard history, where you can pin it. Pins are local — the " +
-                "desktop neither sends nor receives them."
-            else
-                "Stock clipboard: an incoming clip just replaces what is on the " +
-                "phone. Install Cloud-Keyboard for a history with pinned lists."
-            setTextColor(0x77FFFFFF.toInt()); textSize = 11f
-            setPadding(0, 0, 0, dp(6))
-        })
 
         val toggle = TextView(ctx).apply {
             setTextColor(0xFFFFFFFF.toInt()); textSize = 13f
-            setPadding(0, dp(2), 0, dp(6))
+            setPadding(0, dp(2), 0, dp(4))
             isClickable = true; isFocusable = true
         }
-        val hostTv = TextView(ctx).apply {
-            typeface = Typeface.MONOSPACE; textSize = 12f
-            setTextColor(0xFFE9D8FD.toInt()); setPadding(0, dp(4), 0, dp(2))
+        val note = TextView(ctx).apply {
+            text = (if (ours)
+                "Cloud-Keyboard is installed: an incoming clip lands in its history, where you can pin it. "
+            else
+                "Stock clipboard: an incoming clip replaces the single slot. Install Cloud-Keyboard for pinned lists. ") +
+                "Pins stay local — the protocol has no packet for them."
+            setTextColor(0x77FFFFFF.toInt()); textSize = 11f
+            setPadding(0, 0, 0, dp(6))
         }
-        val ourTv = TextView(ctx).apply {
+        val listTv = TextView(ctx).apply {
             typeface = Typeface.MONOSPACE; textSize = 12f
             setTextColor(0xFFFFFFFF.toInt()); setPadding(0, dp(2), 0, dp(6))
         }
 
-        /** Trim for display: a copied page of text must not push the rest of
-         *  the card off screen, and the tail is never the identifying part. */
-        fun preview(t: String): String = when {
-            t.isEmpty() -> "(empty)"
-            t.length <= 160 -> t
-            else -> t.take(160) + "… (${t.length} chars)"
-        }
+        // Which list is on screen. Kept as state rather than two panes so a
+        // long history does not push the buttons off the bottom of the card.
+        var shown = SHOW_BOTH
+
+        fun preview(t: String): String =
+            if (t.length <= 90) t else t.take(90) + "…"
         fun ago(at: Long): String {
             if (at == 0L) return "nothing received yet"
             val secs = (System.currentTimeMillis() - at) / 1000
@@ -649,41 +644,71 @@ class KdeConnectFragment : Fragment(), KdeConnectManager.Listener {
                 else -> "${secs / 3600}h ago"
             }
         }
+        fun render(title: String, items: List<String>): String =
+            if (items.isEmpty()) "$title\n  (empty)"
+            else "$title\n" + items.take(12).mapIndexed { i, t -> "  ${i + 1}. ${preview(t)}" }
+                .joinToString("\n") + (if (items.size > 12) "\n  … ${items.size - 12} more" else "")
+
         fun refresh() {
+            // Reading the clipboard is only allowed while focused, so every
+            // refresh is also our one chance to notice what is on this phone.
+            KdeClipboardStore.rememberOurs(ctx)
             val on = prefs.isEnabled(ClipboardPlugin.id)
             toggle.text = if (on) "● Sync is ON — tap to turn off"
                           else "◌ Sync is OFF — tap to turn on"
             toggle.setTextColor(if (on) 0xFF9AE6B4.toInt() else 0x99FFFFFF.toInt())
-            hostTv.text = "Desktop (${ago(KdeClipboardStore.hostAt(ctx))}):\n" +
-                preview(KdeClipboardStore.hostText(ctx))
-            ourTv.text = "This phone:\n" + preview(KdeClipboardStore.ourText(ctx))
+            val host = KdeClipboardStore.hostHistory(ctx)
+            val mine = KdeClipboardStore.ourHistory(ctx)
+            listTv.text = when (shown) {
+                SHOW_HOST -> render("Desktop  ·  ${host.size} item(s)  ·  last ${ago(KdeClipboardStore.hostAt(ctx))}", host)
+                SHOW_OURS -> render("This phone  ·  ${mine.size} item(s)", mine)
+                else -> render("Desktop  ·  ${host.size}", host.take(4)) + "\n\n" +
+                        render("This phone  ·  ${mine.size}", mine.take(4))
+            }
         }
         toggle.setOnClickListener {
             prefs.toggle(ClipboardPlugin.id)
             refresh()
             toast(if (prefs.isEnabled(ClipboardPlugin.id))
-                "Clipboard sync on — reconnect to advertise it"
-            else "Clipboard sync off")
+                "Clipboard sync on — reconnect to advertise it" else "Clipboard sync off")
         }
         refresh()
 
         col.addView(toggle)
-        col.addView(hostTv)
-        col.addView(ourTv)
+        col.addView(note)
+        col.addView(listTv)
         col.addView(btnRow(ctx,
-            "Send ours →" to {
+            "View desktop" to { shown = SHOW_HOST; refresh() },
+            "View ours" to { shown = SHOW_OURS; refresh() },
+            "Refresh" to { shown = SHOW_BOTH; refresh() },
+        ))
+        col.addView(btnRow(ctx,
+            "Send ours" to {
                 val text = KdeClipboardStore.ourText(ctx)
                 if (text.isEmpty()) toast("This phone's clipboard is empty (or Android refused the read)")
-                else { toTarget(ClipboardPlugin.build(text)); toast("Sent ${text.length} chars") }
+                else { toTarget(ClipboardPlugin.build(text)); refresh(); toast("Sent ${text.length} chars") }
             },
-            "Apply host ↓" to {
-                if (KdeClipboardStore.applyHostLocally(ctx)) { refresh(); toast("Copied to this phone") }
-                else toast("Nothing from the desktop yet")
+            "Get host" to {
+                // Epoch timestamp: we are claiming our clipboard is as old as
+                // possible, so the desktop's is newer and it answers with its
+                // own. The reply lands in ClipboardPlugin and shows up on the
+                // next refresh; there is nothing to await here.
+                toTarget(ClipboardPlugin.buildConnect(KdeClipboardStore.ourText(ctx), 0L))
+                toast("Asked the desktop — tap Refresh in a moment")
             },
-            "Refresh" to { refresh() },
+            "Merge all" to {
+                val n = KdeClipboardStore.mergeAll(ctx)
+                shown = SHOW_BOTH; refresh()
+                toast("Merged into $n entr${if (n == 1) "y" else "ies"} on both lists")
+            },
         ))
         return col
     }
+
+    /** Which clipboard list [buildClipboardCard] is showing. */
+    private val SHOW_BOTH = 0
+    private val SHOW_HOST = 1
+    private val SHOW_OURS = 2
 
     /** Our own clipboard app — see [buildClipboardCard]. */
     private val CLOUD_KEYBOARD_PKG = "com.diegonmarcos.cloudkeyboard"

@@ -1,56 +1,95 @@
 package com.diegonmarcos.superapp.kdeconnect
 
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import org.json.JSONArray
 
 /**
- * The last clipboard the desktop pushed to us, kept so the Configs › KDE page
- * can SHOW it.
+ * Both clipboards, as HISTORY rather than a single slot.
  *
- * It has to be stored rather than read back out of the system clipboard,
- * because on Android 10+ the write in [ClipboardPlugin] is best-effort: an app
- * that is not foreground (or not the default IME / focused app) is refused
- * silently. Without this the page could only ever display "whatever is on this
- * phone", which is exactly the half of the pair the user cannot see.
+ * ## Why this is a local history and not a fetch
+ * KDE Connect's clipboard plugin carries exactly one string per packet
+ * (`kdeconnect.clipboard`, and `kdeconnect.clipboard.connect` which adds a
+ * timestamp). There is NO packet in the protocol that asks a peer for its
+ * clipboard history — the desktop's Klipper history is not exposed over KDE
+ * Connect at all, so nothing on this side can pull the entries the desktop had
+ * before we started listening.
  *
- * There is no toggle of its own here — [KdePluginPrefs] already gates the
- * `clipboard` plugin for both dispatch and capability advertisement, so that
- * one switch IS "clipboard sync on/off" and a second would only be able to
- * disagree with it.
+ * What is obtainable is every clip the desktop pushes from now on, kept here
+ * instead of overwritten. That makes "the desktop's clipboard" a real list that
+ * grows as you use it, which is the same end state a fetch would reach — just
+ * forwards rather than backwards.
+ *
+ * Ours is thinner still: Android hands an app the CURRENT primary clip and
+ * only while it is focused, so our list is what we managed to observe while
+ * this page was open. [KdeClipboardStore] does not pretend otherwise; the card
+ * says so.
  */
 object KdeClipboardStore {
     private const val PREFS = "kdeconnect_clipboard"
-    private const val K_TEXT = "host_text"
+    private const val K_HOST = "host_history"
+    private const val K_OURS = "our_history"
     private const val K_AT = "host_at"
 
-    /** Remember what the peer sent (called from [ClipboardPlugin]). */
-    fun rememberHost(ctx: Context, text: String) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(K_TEXT, text).putLong(K_AT, System.currentTimeMillis()).apply()
+    /** Kept small on purpose: this is a convenience list, not an archive, and
+     *  it is read in full every time the card renders. */
+    const val CAP = 50
+
+    private fun sp(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun load(ctx: Context, key: String): MutableList<String> = runCatching {
+        val arr = JSONArray(sp(ctx).getString(key, "[]"))
+        MutableList(arr.length()) { arr.getString(it) }
+    }.getOrDefault(mutableListOf())
+
+    private fun save(ctx: Context, key: String, list: List<String>) {
+        sp(ctx).edit().putString(key, JSONArray(list.take(CAP)).toString()).apply()
     }
 
-    fun hostText(ctx: Context): String =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(K_TEXT, "").orEmpty()
+    /** Newest first, de-duplicated: re-copying something moves it up rather
+     *  than filling the list with the same string. */
+    private fun push(ctx: Context, key: String, text: String) {
+        if (text.isEmpty()) return
+        val list = load(ctx, key)
+        list.remove(text)
+        list.add(0, text)
+        save(ctx, key, list)
+    }
 
-    /** Epoch millis of the last push, 0 when nothing has arrived. */
-    fun hostAt(ctx: Context): Long =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(K_AT, 0L)
+    fun rememberHost(ctx: Context, text: String) {
+        push(ctx, K_HOST, text)
+        sp(ctx).edit().putLong(K_AT, System.currentTimeMillis()).apply()
+    }
 
-    /** This phone's clipboard. Empty when Android refuses the read — which it
-     *  does unless we are the focused app, so this is only meaningful while the
-     *  page is actually on screen. */
+    /** Record whatever is on this phone right now, if anything new. Called
+     *  when the card renders — the only moment we are reliably allowed to
+     *  read the clipboard at all. */
+    fun rememberOurs(ctx: Context) = push(ctx, K_OURS, ourText(ctx))
+
+    fun hostHistory(ctx: Context): List<String> = load(ctx, K_HOST)
+    fun ourHistory(ctx: Context): List<String> = load(ctx, K_OURS)
+    fun hostAt(ctx: Context): Long = sp(ctx).getLong(K_AT, 0L)
+
+    /** This phone's clipboard. Empty when Android refuses the read, which it
+     *  does unless we are the focused app. */
     fun ourText(ctx: Context): String = runCatching {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         cm?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
     }.getOrDefault("")
 
-    /** Put the stored host clipboard onto this phone — the manual half of the
-     *  sync, for when the automatic write was refused. */
-    fun applyHostLocally(ctx: Context): Boolean = runCatching {
-        val text = hostText(ctx)
-        if (text.isEmpty()) return false
-        (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-            ?.setPrimaryClip(ClipData.newPlainText("KDE Connect", text)) != null
-    }.getOrDefault(false)
+    /** Both lists as one, newest-first, each string once. Cheap because both
+     *  are already newest-first: interleaving would need timestamps per entry,
+     *  which the protocol does not give us for the host side. */
+    fun merged(ctx: Context): List<String> =
+        (hostHistory(ctx) + ourHistory(ctx)).distinct().take(CAP)
+
+    /** Fold the merged list into BOTH sides, so each has everything. Returns
+     *  how many entries the combined list holds. */
+    fun mergeAll(ctx: Context): Int {
+        val all = merged(ctx)
+        save(ctx, K_HOST, all)
+        save(ctx, K_OURS, all)
+        return all.size
+    }
+
 }
