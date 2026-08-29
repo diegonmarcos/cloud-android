@@ -3,7 +3,26 @@ plugins {
     id 'de.undercouch.download'
 }
 
-def getVersionCode = { -> return 2321 }
+def getVersionCode = { ->
+    // ponytail: this was a hardcoded 2321 and was never bumped in this fork, so
+    // every build produced the SAME versionCode and Android quietly refused to
+    // install the update -- landed fixes looked like they had never shipped.
+    // Derive it from the commit count so it always moves forward on its own.
+    // The 2321 base keeps it above every APK already installed in the field;
+    // the fallback is base+1 so a git-less build still beats the old constant.
+    def n = 0
+    try {
+        def out = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-list', '--count', 'HEAD'
+            standardOutput = out
+            errorOutput = new ByteArrayOutputStream()
+        }
+        n = out.toString().trim().toInteger()
+    } catch (ignored) {
+    }
+    return n > 0 ? 2321 + n : 2322
+}
 def getRevision = { -> return "a" }
 def getReleaseName = { -> return "Elopteryx" }
 // https://en.wikipedia.org/wiki/List_of_dinosaur_genera
