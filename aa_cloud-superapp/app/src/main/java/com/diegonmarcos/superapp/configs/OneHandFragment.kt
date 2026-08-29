@@ -15,6 +15,9 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.diegonmarcos.superapp.launcher.SectionPages
+import com.diegonmarcos.superapp.onehand.ArcMenu
+import com.diegonmarcos.superapp.onehand.CircularMenu
 import com.diegonmarcos.superapp.onehand.GestureAction
 import com.diegonmarcos.superapp.onehand.OneHandAction
 import com.diegonmarcos.superapp.onehand.OneHandConfig
@@ -47,10 +50,121 @@ class OneHandFragment : Fragment() {
 
     override fun onCreateView(inf: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext()
-        val pad = (16 * resources.displayMetrics.density).toInt()
+        val pad = dp(16)
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad)
         }
+
+        root.addView(title(ctx, "One-Hand"))
+        root.addView(caption(ctx,
+            "Everything reachable with the thumb alone: the three Home-screen " +
+            "stars, the edge menu that works on top of any app, and the four " +
+            "Home swipes. Content and defaults are data-driven from " +
+            "build.json::onehand — the switches and pickers below are runtime " +
+            "overrides kept in the onehand_prefs store, and each one says which " +
+            "it is."))
+
+        section(root, ctx, "Home-Screen Stars")
+        addStars(root, ctx)
+
+        section(root, ctx, "Edge Menu")
+        addEdgeMenu(root, ctx, pad)
+
+        section(root, ctx, "Home-Screen Gestures")
+        addHomeGestures(root, ctx)
+
+        return ScrollView(ctx).apply { addView(root) }
+    }
+
+    // ────────────────────────────── 1. Stars ──────────────────────────────
+
+    /**
+     * Descriptive only — the stars are wired in MainActivity and have no on/off
+     * switch here. Every card is read from the SAME config the star itself
+     * reads, so this page cannot drift from what the star draws.
+     */
+    private fun addStars(root: LinearLayout, ctx: Context) {
+        val cm = CircularMenu.config()
+
+        root.addView(caption(ctx,
+            "Three stars sit on the Home screen, one under the other: Sirius at " +
+            "the centre, Centauri midway down, Canopus just above the bottom-nav " +
+            "island. Touching one opens its menu; they are always on."))
+
+        // The one distinction the whole design rests on. Everything a star can
+        // show is either a place you GO or a thing you DO, and the ring it
+        // lands on is what tells them apart.
+        root.addView(subhead(ctx, "Two rings, two meanings"))
+        root.addView(caption(ctx,
+            "OUTER full circle — APPS / PAGES. Where you GO. A branch redraws " +
+            "the ring one level deeper, so the outer ring is a tree you walk " +
+            "with the thumb; a leaf navigates and closes. Nothing on this ring " +
+            "changes anything.\n\n" +
+            "INNER half circle — ACTIONS. What you DO. One tap fires it and the " +
+            "menu closes. An action never has children and never navigates, " +
+            "which is why it sits apart on its own smaller disc, " +
+            "${cm.ringGapDp}dp inside the outer ring — the gap IS the meaning.\n\n" +
+            "Same two rings on all three stars. Only the source of each ring " +
+            "changes, which is the whole difference between them:"))
+
+        val nodes = cm.nodes
+        starCard(ctx, root, "✦ Sirius — all apps",
+            "screen centre · radius ${cm.radiusDp}dp",
+            "The full section tree. " +
+                "${nodes.count { it.childKey != null }} of its ${nodes.size} entries " +
+                "open a deeper ring, the rest navigate straight to a page.",
+            nodes.map { it.label },
+            cm.actions.map { it.label })
+
+        starCard(ctx, root, "✦ Centauri — active apps",
+            "midway to the island · shares Canopus's half-moon fan",
+            "The last 9 Android apps you opened, newest first, with their real " +
+                "launcher icons — a live list from the system, not build.json. " +
+                "Needs Usage access (Configs › Permissions); without it the ring " +
+                "comes back empty.",
+            listOf("(the 9 most recent apps, live)"),
+            CircularMenu.actionsOf("recents_menu").map { it.label })
+
+        val arc = ArcMenu.config()
+        starCard(ctx, root, "✦ Canopus — configs",
+            "above the bottom-nav island · radius ${arc.radiusDp}dp",
+            "The pages of the \"${arc.section}\" section, so the settings you " +
+                "reach for most are one thumb-touch from Home instead of two " +
+                "taps deep.",
+            SectionPages.pagesFor(arc.section).map { it.label },
+            CircularMenu.actionsOf("arc_menu").map { it.label })
+
+        root.addView(caption(ctx,
+            "Glyph ${cm.starGlyph} and size ${cm.starSizeSp}sp are shared by all " +
+            "three (onehand.circular_menu.star), so they always match. Editing " +
+            "any ring means editing build.json and shipping an APK — these are " +
+            "baked at build time, not runtime settings."))
+    }
+
+    /** One star: name, where it sits, and its two rings spelled out. */
+    private fun starCard(
+        ctx: Context, root: LinearLayout, name: String, place: String,
+        what: String, outer: List<String>, inner: List<String>,
+    ) {
+        root.addView(subhead(ctx, name))
+        root.addView(caption(ctx, place))
+        root.addView(caption(ctx, what))
+        root.addView(caption(ctx, "  ◯ Outer — apps/pages (${outer.size}): " +
+            if (outer.isEmpty()) "—" else outer.joinToString(" · ")))
+        root.addView(caption(ctx, "  ◑ Inner — actions (${inner.size}): " +
+            if (inner.isEmpty()) "none" else inner.joinToString(" · ")))
+    }
+
+    // ───────────────────────────── 2. Edge menu ─────────────────────────────
+
+    private fun addEdgeMenu(root: LinearLayout, ctx: Context, pad: Int) {
+        val cfg = OneHandConfig.effective(ctx)
+
+        root.addView(caption(ctx,
+            "Two handles pinned to the screen edges, live on top of whatever app " +
+            "is in front. Each handle answers several gestures, and every gesture " +
+            "can be pointed at an action or at any installed app. Unlike the " +
+            "stars this needs two system permissions, so it can be off."))
 
         status = TextView(ctx)
         root.addView(status)
@@ -68,27 +182,16 @@ class OneHandFragment : Fragment() {
         }
         root.addView(toggle)
 
-        // Descriptive only — the 3 stars are wired in MainActivity, not toggled
-        // from this screen. Glyph/size shared via onehand.circular_menu.star;
-        // Centauri additionally needs Usage-access (Configs > Permissions).
-        root.addView(TextView(ctx).apply {
-            text = "Home screen has 3 stars: ✦ Sirius (full menu) · " +
-                "✦ Canopus (Configs arc) · ✦ Centauri (recent apps arc)"
-            setTextColor(0x99FFFFFF.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            setPadding(0, pad / 4, 0, pad / 2)
-        })
-
         // How the menu is summoned. Swipe (Samsung edge-panel style) is the default:
         // touch the edge handle + drag inward. A plain tap passes through to the app.
-        root.addView(android.widget.TextView(ctx).apply { text = "Activation" })
+        root.addView(subhead(ctx, "Activation"))
         val triggers = listOf(
             OneHandConfig.Trigger.SWIPE to "Hold & swipe in (Samsung edge style)",
             OneHandConfig.Trigger.LONG_PRESS to "Long-press the handle",
             OneHandConfig.Trigger.TOUCH to "Touch the handle",
         )
         root.addView(android.widget.RadioGroup(ctx).apply {
-            val current = OneHandConfig.effective(ctx).trigger
+            val current = cfg.trigger
             triggers.forEach { (t, label) ->
                 addView(android.widget.RadioButton(ctx).apply {
                     text = label; id = View.generateViewId(); isChecked = t == current
@@ -96,7 +199,62 @@ class OneHandFragment : Fragment() {
                 })
             }
         })
+        root.addView(caption(ctx,
+            "Saved as a runtime override. Swipe-in needs ${cfg.swipeThresholdDp}dp " +
+            "of inward travel before it counts; long-press needs " +
+            "${cfg.longPressMs}ms. Both come from onehand.defaults — under them " +
+            "the touch passes through to the app underneath, which is what keeps " +
+            "the handles from stealing edge swipes."))
 
+        // Two mirrored columns: left-edge handles on the left, right on the right.
+        root.addView(subhead(ctx, "Handle gestures"))
+        root.addView(caption(ctx,
+            "One block per handle, mirrored to the edge it lives on. Every row " +
+            "is a runtime override; 'None' clears it back to the build.json " +
+            "default. The app list holds your build.json favourites (★) first, " +
+            "then every launchable app on the phone."))
+        val options = buildOptions(cfg)
+        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        val leftCol = column(ctx); val rightCol = column(ctx)
+        row.addView(leftCol); row.addView(rightCol)
+        root.addView(row)
+        cfg.handles.forEach { h ->
+            val target = if (h.edge == OneHandConfig.Edge.RIGHT) rightCol else leftCol
+            addHandleEditor(target, ctx, h, options, pad)
+        }
+
+        // Full disclosure: the geometry is real and it is NOT editable here.
+        // Saying so beats letting someone hunt for a slider that was never built.
+        root.addView(subhead(ctx, "Handle placement (build-time)"))
+        root.addView(caption(ctx, cfg.handles.joinToString("\n") { h ->
+            val len = if (h.lengthDp > 0) "${h.lengthDp}dp" else "${h.lengthPct}% of the edge"
+            "  ${h.id}: ${h.edge.name.lowercase()} edge · ${h.positionPct}% down · " +
+                "$len long · ${h.thicknessDp}dp thick · ${h.transparency}% transparent" +
+                (if (h.edgeInsetDp > 0) " · inset ${h.edgeInsetDp}dp" else "")
+        }))
+        root.addView(caption(ctx,
+            "Baked in onehand.handles — no runtime override exists, so changing " +
+            "these means editing build.json. The inset is deliberate on curved " +
+            "screens: the border pixels sit on the curve where touch is " +
+            "unreliable. Gesture-nav inset: ${cfg.edgeInsetGestureDp}dp."))
+
+        // A whole feature the page never mentioned. Off by default, and with no
+        // switch anywhere, so without this block it is invisible.
+        root.addView(subhead(ctx, "Two-finger radial menu"))
+        val r = cfg.radial
+        root.addView(caption(ctx,
+            if (r.enabled)
+                "ON. Hold two fingers still for ${r.holdMs}ms anywhere " +
+                "(within ${r.slopDp}dp of drift) and a ${r.radiusDp}dp ring of " +
+                "${r.items.size} shortcuts opens under them. Independent of the " +
+                "edge handles — it has no handle to hit."
+            else
+                "OFF. A separate summon: two fingers held still for " +
+                "${r.holdMs}ms anywhere on screen open a ${r.radiusDp}dp " +
+                "ring of ${r.items.size} shortcuts, no handle needed. It has no " +
+                "runtime switch — enable onehand.radial.enabled in build.json. Needs Android 14+; the detector is observe-only below that."))
+
+        root.addView(subhead(ctx, "Troubleshooting"))
         root.addView(Switch(ctx).apply {
             text = "Show handles (debug — bright red bars)"
             isChecked = OneHandPrefs.debugVisible(ctx)
@@ -105,7 +263,9 @@ class OneHandFragment : Fragment() {
                 OneHandController.refresh(ctx)  // rebuild handles with new visibility
             }
         })
-
+        root.addView(caption(ctx,
+            "The handles are invisible by default — paint them red to find out " +
+            "where they actually are before blaming a gesture."))
         root.addView(android.widget.Button(ctx).apply {
             text = "Activate 30s (test)"
             setOnClickListener {
@@ -116,35 +276,68 @@ class OneHandFragment : Fragment() {
                     Toast.LENGTH_LONG).show()
             }
         })
+        root.addView(caption(ctx,
+            "Turns everything on for 30 seconds and off again, so a permission " +
+            "check does not leave the handles enabled."))
+    }
 
-        // Home-screen swipe actions — runtime-editable overrides of
-        // build.json::onehand.home_swipes. These fire ONLY while on the Home
-        // section (MainActivity guards on currentSection == "home"); off-home
-        // the inner fragment owns the gesture.
-        root.addView(TextView(ctx).apply {
-            text = "Home-screen swipes"
-            gravity = Gravity.CENTER; setPadding(0, pad, 0, pad / 2); textSize = 16f
-        })
+    // ─────────────────────────── 3. Home gestures ───────────────────────────
+
+    private fun addHomeGestures(root: LinearLayout, ctx: Context) {
+        // Runtime-editable overrides of build.json::onehand.home_swipes. These
+        // fire ONLY while on the Home section (MainActivity guards on
+        // currentSection == "home"); off-home the inner fragment owns the gesture.
+        root.addView(caption(ctx,
+            "Swipes on the Home screen itself — no handle, no permission, no " +
+            "star. They fire ONLY while Home is the current section: open any " +
+            "other section and the page you are on owns the gesture again, so " +
+            "these can never eat a list scroll or a map pan."))
         addHomeSwipePicker(root, ctx, "Swipe up",    { HomeSwipePrefs(ctx).up },    { HomeSwipePrefs(ctx).up = it })
         addHomeSwipePicker(root, ctx, "Swipe left",  { HomeSwipePrefs(ctx).left },  { HomeSwipePrefs(ctx).left = it })
         addHomeSwipePicker(root, ctx, "Swipe right", { HomeSwipePrefs(ctx).right }, { HomeSwipePrefs(ctx).right = it })
         addHomeSwipePicker(root, ctx, "Swipe down",  { HomeSwipePrefs(ctx).down },  { HomeSwipePrefs(ctx).down = it })
+        root.addView(caption(ctx,
+            "Runtime overrides; defaults come from onehand.home_swipes, baked " +
+            "into BuildConfig at build time."))
+    }
 
-        val cfg = OneHandConfig.effective(ctx)
-        val options = buildOptions(cfg)
+    // ──────────────────────────── small builders ────────────────────────────
 
-        // Two mirrored columns: left-edge handles on the left, right on the right.
-        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        val leftCol = column(ctx); val rightCol = column(ctx)
-        row.addView(leftCol); row.addView(rightCol)
-        root.addView(row)
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-        cfg.handles.forEach { h ->
-            val target = if (h.edge == OneHandConfig.Edge.RIGHT) rightCol else leftCol
-            addHandleEditor(target, ctx, h, options, pad)
-        }
+    private fun title(ctx: Context, t: String) = TextView(ctx).apply {
+        text = t; textSize = 22f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, 0, 0, dp(4))
+    }
 
-        return ScrollView(ctx).apply { addView(root) }
+    /** Section rule + heading — the three top-level parts of this page. */
+    private fun section(root: LinearLayout, ctx: Context, t: String) {
+        root.addView(View(ctx).apply {
+            setBackgroundColor(0x33FFFFFF)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(20); bottomMargin = dp(12)
+            }
+        })
+        root.addView(TextView(ctx).apply {
+            text = t; textSize = 17f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, dp(6))
+        })
+    }
+
+    private fun subhead(ctx: Context, t: String) = TextView(ctx).apply {
+        text = t; textSize = 15f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, dp(12), 0, dp(2))
+    }
+
+    private fun caption(ctx: Context, t: String) = TextView(ctx).apply {
+        text = t
+        setTextColor(0x99FFFFFF.toInt())
+        setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        setPadding(0, 0, 0, dp(6))
     }
 
     private fun column(ctx: Context) = LinearLayout(ctx).apply {

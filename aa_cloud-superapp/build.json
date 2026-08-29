@@ -340,11 +340,11 @@
       "_doc_actions": "Root inner ring of the ALL-APPS (Sirius) star. Drawn the way every other star draws its inner ring: text only, on a smaller disc, with no icon lookup at all - so these carry no \"icon\" key. Targets go through the normal tile dispatcher, which is why plain https, intent:// and app:// URIs all work here with no Kotlin change.",
       "actions": [
         {
-          "label": "Go Home",
-          "target": "https://www.google.com/maps/dir/?api=1&destination=Home&travelmode=driving"
+          "label": "Search",
+          "target": "action:open_search"
         },
         {
-          "label": "Share Contacts",
+          "label": "Contact Me",
           "target": "https://linktree.diegonmarcos.com/qrcode.html"
         },
         {

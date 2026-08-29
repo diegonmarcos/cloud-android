@@ -1513,6 +1513,11 @@ class MainActivity : AppCompatActivity(),
             // Cloud Notification Center — same surface the top-bar bell
             // icon opens. Wiring it here means any data-driven entry
             // (tile target / drawer action) can route to it without code.
+            // Sirius inner ring "Search" — the same sheet the top-bar search
+            // icon and the launcher shortcut open. handleShortcutIntent
+            // already routed action:open_search; the star goes through
+            // dispatchHomeAction instead, which did not.
+            actionType == "open_search" -> openSearchSheet()
             actionType == "open_notification_center" -> openNotificationCenter()
             // Configs → Keyboard now hands off to the standalone Cloud-Keyboard
             // app via extapp:cloud-keyboard (ui.external_apps[cloud-keyboard]);
