@@ -133,8 +133,8 @@
       "primary_lang": "Go",
       "build": {
         "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
-        "go_version": "1.26.4",
-        "go_sha256_linux_amd64": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
+        "go_version": "1.27.0",
+        "go_sha256_linux_amd64": "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685",
         "make_target": "intra",
         "aar_built": "build/intra/tun2socks.aar",
         "aar_out": "firestack.aar",
