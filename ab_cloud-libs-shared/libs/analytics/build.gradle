@@ -1,16 +1,27 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+    // `apply false`: resolve the plugin onto the classpath WITHOUT applying it.
+    // Application is conditional below, and a bare `apply plugin:` cannot resolve
+    // on its own — it looks at the root buildscript classpath rather than
+    // settings pluginManagement, which is how ac_cloud-ide lost the ability to
+    // resolve kotlin-gradle-plugin entirely when this was tried without it.
+    id 'org.jetbrains.kotlin.android' apply false
 }
 
-// NOTE: this module cannot be consumed by an AGP 9 project as-is. AGP 9
-// registers a 'kotlin' extension itself, so applying the Kotlin plugin here
-// fails with "Cannot add extension with name 'kotlin'". Making the apply
-// conditional does not help: the plugins{} DSL cannot be made conditional, and
-// switching to a legacy `apply plugin:` changes resolution to the root
-// buildscript classpath, which breaks consumers that declare Kotlin only via
-// settings pluginManagement (ac_cloud-ide). ac_cloud-mail is on AGP 9.2.1 and
-// is therefore NOT wired to this module — see its build.json.
+// AGP 9 has built-in Kotlin support and registers the 'kotlin' extension itself.
+// Applying the Kotlin plugin on top of it is a hard error:
+//   "The 'org.jetbrains.kotlin.android' plugin is no longer required for Kotlin
+//    support since AGP 9.0" / "Cannot add extension with name 'kotlin'"
+// while AGP 8 consumers still require the explicit apply. This repo has both
+// (mail and media-center are AGP 9; the other twelve are AGP 8), so the apply
+// has to be conditional — and the extension is what actually collides, so it is
+// what gets tested. A plugin-id check is NOT equivalent: Kotlin applied under
+// the legacy 'kotlin-android' id leaves hasPlugin() false while the extension
+// is already there.
+if (project.extensions.findByName('kotlin') == null) {
+    apply plugin: 'org.jetbrains.kotlin.android'
+}
+
 
 // Inject build.json::analytics into BuildConfig. rootDir, NOT '../../': this
 // module is shared by reference (projectDir) into every constellation app, so

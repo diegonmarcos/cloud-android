@@ -527,6 +527,7 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation project(':libs:analytics')
     //implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     def desugar_version = "2.0.4"

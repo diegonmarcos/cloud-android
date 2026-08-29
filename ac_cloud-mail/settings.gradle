@@ -22,5 +22,13 @@ dependencyResolutionManagement {
 rootProject.name = "email"
 
 include ':app', ':colorpicker', ':openpgp-api'
+
+// Shared BY REFERENCE from ab_cloud-libs-shared/ — one copy, no per-app drift.
+include ':libs:analytics'
+// ':libs:analytics' implicitly declares a ':libs' container whose default
+// projectDir is <root>/libs. This app has none, and Gradle 9 fails on a project
+// directory that does not exist. Must come AFTER the include that creates it.
+project(':libs').projectDir = new File(rootDir, '../ab_cloud-libs-shared/libs')
+project(':libs:analytics').projectDir = new File(rootDir, '../ab_cloud-libs-shared/libs/analytics')
 project(':colorpicker').projectDir = new File('colorpicker')
 project(':openpgp-api').projectDir = new File('openpgp-api')
