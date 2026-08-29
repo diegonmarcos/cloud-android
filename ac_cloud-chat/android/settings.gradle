@@ -11,3 +11,9 @@ project(':watermelondb-jsi').projectDir = new File(rootProject.projectDir, '../n
 includeBuild('../node_modules/@react-native/gradle-plugin')
 apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle")
 useExpoModules()
+
+// Shared BY REFERENCE from ab_cloud-libs-shared/ — one copy, no per-app drift.
+// This is a React Native app, so rootDir here is <app>/android/; the module
+// walks up from rootDir to find the app's build.json at <app>/build.json.
+include ':libs:analytics'
+project(':libs:analytics').projectDir = new File(rootDir, '../../ab_cloud-libs-shared/libs/analytics')

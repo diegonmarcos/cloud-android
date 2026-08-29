@@ -354,6 +354,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":libs:analytics"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.lifecycle.process)
     runtimeOnly(libs.androidx.profileinstaller)

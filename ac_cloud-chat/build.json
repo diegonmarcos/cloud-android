@@ -5,8 +5,8 @@
       "label": "Cloud Chat (Mattermost)",
       "image": "cloud-comms-chat",
       "upstream_repo": "https://github.com/mattermost/mattermost-mobile.git",
-      "tracker_dir": "ac_cloud-chat/upstream",
-      "tracker_dir_note": "vendored in-repo (2026-08-19) — full patched source committed, no network clone at build time. upstream_repo/pinned_tag are provenance only now; bump pinned_tag + re-run materialize-fork to re-vendor a newer upstream tag.",
+      "tracker_dir": "ac_cloud-chat",
+      "tracker_dir_note": "flattened 2026-08-29 — the vendored source now sits at the app root, matching every other app in this repo instead of hiding under upstream/. upstream_repo/pinned_tag stay provenance only; bump pinned_tag + re-run materialize-fork to re-vendor a newer tag. Note: the fork's provenance patches moved to fork-patches/, because patches/ at the RN project root belongs to patch-package, which postinstall runs.",
       "pinned_tag": "v2.40.0",
       "license": "Apache-2.0",
       "primary_lang": "TypeScript (React Native)",
@@ -48,6 +48,19 @@
       "draft": false,
       "prerelease": false,
       "generate_release_notes": false
+    }
+  },
+  "analytics": {
+    "_doc": "Consumed by :libs:analytics, which reads THIS file at build time and bakes the values into BuildConfig. NOTE: this is a React Native app — its gradle rootDir is android/, so the module resolves this file via ../build.json (see android/settings.gradle).",
+    "enabled": true,
+    "app": "ac_cloud-chat",
+    "umami": {
+      "endpoint": "https://analytics.diegonmarcos.com/umami",
+      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
+    },
+    "matomo": {
+      "endpoint": "https://analytics.diegonmarcos.com/matomo",
+      "site_id": "1"
     }
   }
 }

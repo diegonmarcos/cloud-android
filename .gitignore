@@ -143,10 +143,14 @@ build.log
 ## EXCEPTION: ac_cloud-vault/libs/ — the FIFTH time this blanket rule has
 !ac_cloud-vault/libs/
 !ac_cloud-vault/libs/**
-## EXCEPTION: ac_cloud-media-center/upstream/libs/ — the SIXTH time. This one
+## EXCEPTION: ac_cloud-media-center/libs/ — the SIXTH time. Path updated when
+## upstream/ was flattened to the app root (2026-08-29): the old
+## !ac_cloud-media-center/upstream/libs/ stopped matching after the move, which
+## would have let the blanket libs/ rule swallow 68 tracked files on the next
+## git add — silently, because git add never reports what it ignored. This one
 ## as !ac_cloud-media-center/libs/ would not have matched it.
-!ac_cloud-media-center/upstream/libs/
-!ac_cloud-media-center/upstream/libs/**
+!ac_cloud-media-center/libs/
+!ac_cloud-media-center/libs/**
 aa_cloud-superapp/**/*.keystore
 aa_cloud-superapp/**/*.jks
 ea_cloud-comms/**/*.keystore

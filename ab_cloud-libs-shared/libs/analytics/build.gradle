@@ -8,7 +8,20 @@ plugins {
 // it must read the CONSUMING app's build.json — a module-relative path would
 // hand every app superapp's site ids and every event would be misattributed.
 // Same reasoning as :libs:updater; see the long note in its build.gradle.
-def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+// Walk UP from rootDir to find it. Most apps keep build.json beside
+// settings.gradle so rootDir hits on the first try, but a React Native app's
+// gradle root is android/ while its build.json stays at the app root one level
+// up. Hardcoding "${rootDir}/build.json" silently excluded every such app.
+def buildJsonFile = { ->
+    def d = rootDir
+    for (int i = 0; i < 4 && d != null; i++) {
+        def f = new File(d, "build.json")
+        if (f.exists()) return f
+        d = d.parentFile
+    }
+    throw new GradleException("libs:analytics: no build.json found at or above ${rootDir}")
+}()
+def buildJson = new groovy.json.JsonSlurper().parse(buildJsonFile)
 def an = buildJson.analytics ?: [:]
 def umami  = an.umami  ?: [:]
 def matomo = an.matomo ?: [:]
