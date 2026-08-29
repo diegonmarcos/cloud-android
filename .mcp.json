@@ -1,23 +1,35 @@
 {
   "_warning": "GENERATED — DO NOT EDIT. Derived from a_solutions/*/build.json .mcp blocks by 1_cloud-configs/src/derive/derive-mcp-json.ts. Edit the service build.json, then run 1_cloud-configs/build.sh derive.",
   "_schema": "mcp-servers/v1",
-  "_doc": "Project-scoped MCP servers for Claude Code. Copied verbatim into every repo under cloud as .mcp.json via 0_apps/src/root/, so a fresh clone works with no machine-local files.",
+  "_doc": "Project-scoped MCP servers for Claude Code. In cloud, 9_others/build.sh refreshes src/apps/root/mcp.json from THIS file and deploys it to .mcp.json, so regenerating the derive is enough. In the other repos the copy under 0_apps/src/root/ is propagated by hand — nothing automates that hop, and it is how vault ended up without the cloud-infra-mcp headersHelper while cloud had it. Re-sync after changing this file.",
   "_skipped": [
-    "infra-api_c3-diego-personal-data-mcp (stdio)"
+    "infra-api_cloud-vault-mcp (stdio)"
   ],
   "mcpServers": {
-    "c3-infra-mcp": {
+    "cloud-cgc-pub-mcp": {
+      "type": "http",
+      "url": "https://mcp.diegonmarcos.com/cloud-cgc-pub-mcp/mcp"
+    },
+    "cloud-drive-mcp": {
+      "type": "http",
+      "url": "https://mcp.diegonmarcos.com/cloud-drive-mcp/mcp"
+    },
+    "cloud-infra-mcp": {
       "type": "http",
       "url": "https://mcp.diegonmarcos.com/c3-infra-mcp/mcp",
       "headersHelper": "sh \"${CLAUDE_PROJECT_DIR:-.}/.claude/mcp-auth-headers.sh\""
     },
-    "c3-services-mcp": {
+    "cloud-mail-mcp": {
+      "type": "http",
+      "url": "https://mcp.diegonmarcos.com/mail-mcp/mcp"
+    },
+    "cloud-mattermost-mcp": {
+      "type": "http",
+      "url": "https://mcp.diegonmarcos.com/mattermost-mcp/mcp"
+    },
+    "cloud-services-mcp": {
       "type": "http",
       "url": "https://mcp.diegonmarcos.com/c3-services-mcp/mcp"
-    },
-    "cloud-cgc-mcp": {
-      "type": "http",
-      "url": "https://mcp.diegonmarcos.com/cloud-cgc-mcp/mcp"
     },
     "google-personal-mcp": {
       "type": "http",
@@ -26,14 +38,6 @@
     "google-workspace-mcp": {
       "type": "http",
       "url": "https://mcp.diegonmarcos.com/g-workspace/mcp"
-    },
-    "mail-mcp": {
-      "type": "http",
-      "url": "https://mcp.diegonmarcos.com/mail-mcp/mcp"
-    },
-    "mattermost-mcp": {
-      "type": "http",
-      "url": "https://mcp.diegonmarcos.com/mattermost-mcp/mcp"
     }
   }
 }
