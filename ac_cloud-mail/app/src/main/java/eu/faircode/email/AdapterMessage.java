@@ -225,6 +225,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
     private Set<String> inlineThreads = new HashSet<>();
     private boolean filter_sent;
     private boolean filter_trash;
+    private boolean unread_only;
     private IProperties properties;
 
     private Context context;
@@ -8602,7 +8603,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
     AdapterMessage(Fragment parentFragment,
                    String type, boolean found, String searched, boolean searchedPartial, ViewType viewType,
                    boolean compact, int zoom, boolean large_buttons, String sort, boolean ascending,
-                   boolean filter_duplicates, boolean filter_sent, boolean filter_trash,
+                   boolean filter_duplicates, boolean filter_sent, boolean filter_trash, boolean unread_only,
                    final IProperties properties) {
         this.parentFragment = parentFragment;
         this.type = type;
@@ -8618,6 +8619,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
         this.filter_duplicates = filter_duplicates;
         this.filter_sent = filter_sent;
         this.filter_trash = filter_trash;
+        this.unread_only = unread_only;
         this.properties = properties;
 
         this.context = parentFragment.getContext();
@@ -9253,7 +9255,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                             String type = args.getString("type");
 
                             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-                            boolean filter_seen = prefs.getBoolean(FragmentMessages.getFilter(context, "seen", viewType, type), false);
+                            boolean filter_seen = (prefs.getBoolean(FragmentMessages.getFilter(context, "seen", viewType, type), false) || unread_only);
                             boolean filter_unflagged = prefs.getBoolean(FragmentMessages.getFilter(context, "unflagged", viewType, type), false);
                             boolean filter_snoozed = prefs.getBoolean(FragmentMessages.getFilter(context, "snoozed", viewType, type), true);
 

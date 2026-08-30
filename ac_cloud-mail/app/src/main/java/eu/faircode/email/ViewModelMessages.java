@@ -93,7 +93,8 @@ public class ViewModelMessages extends ViewModel {
             boolean threading,
             List<String> expanded,
             boolean filter_archive,
-            BoundaryCallbackMessages.SearchCriteria criteria, boolean server) {
+            BoundaryCallbackMessages.SearchCriteria criteria, boolean server,
+            boolean unread_only) {
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean cache_lists = prefs.getBoolean("cache_lists", true);
@@ -101,7 +102,7 @@ public class ViewModelMessages extends ViewModel {
         Args args = new Args(context,
                 viewType, type, category, account, folder,
                 thread, id, threading, expanded,
-                filter_archive, criteria, server);
+                filter_archive, criteria, server, unread_only);
         Log.i("Get model=" + viewType + " " + args);
         dump();
 
@@ -117,11 +118,13 @@ public class ViewModelMessages extends ViewModel {
             BoundaryCallbackMessages boundary = null;
             if (viewType == AdapterMessage.ViewType.FOLDER)
                 boundary = new BoundaryCallbackMessages(context,
-                        viewType, args.account, args.folder, true, args.criteria, REMOTE_PAGE_SIZE);
+                        viewType, args.account, args.folder, true, args.criteria, REMOTE_PAGE_SIZE,
+                        args.unread_only);
             else if (viewType == AdapterMessage.ViewType.SEARCH)
                 boundary = new BoundaryCallbackMessages(context,
                         viewType, args.account, args.folder, args.server, args.criteria,
-                        args.server ? REMOTE_PAGE_SIZE : SEARCH_PAGE_SIZE);
+                        args.server ? REMOTE_PAGE_SIZE : SEARCH_PAGE_SIZE,
+                        args.unread_only);
 
             DataSource.Factory<Integer, TupleMessageEx> pager;
             LivePagedListBuilder<Integer, TupleMessageEx> builder = null;
@@ -601,14 +604,17 @@ public class ViewModelMessages extends ViewModel {
         private boolean filter_deleted;
         private String filter_language;
         private boolean debug;
+        private boolean unread_only;
 
         Args(Context context,
              AdapterMessage.ViewType viewType,
              String type, String category, long account, long folder,
              String thread, long id, boolean threading, List<String> expanded,
              boolean filter_archive,
-             BoundaryCallbackMessages.SearchCriteria criteria, boolean server) {
+             BoundaryCallbackMessages.SearchCriteria criteria, boolean server,
+             boolean unread_only) {
 
+            this.unread_only = unread_only;
             this.type = type;
             this.category = category;
             this.account = account;
@@ -635,7 +641,7 @@ public class ViewModelMessages extends ViewModel {
             if ("sender_name".equals(this.sort1) && !DB.hasJson())
                 this.sort1 = "sender";
 
-            this.filter_seen = prefs.getBoolean(FragmentMessages.getFilter(context, "seen", viewType, type), false);
+            this.filter_seen = (prefs.getBoolean(FragmentMessages.getFilter(context, "seen", viewType, type), false) || unread_only);
             this.filter_unseen = prefs.getBoolean(FragmentMessages.getFilter(context, "unseen", viewType, type), false);
             this.filter_flagged = prefs.getBoolean(FragmentMessages.getFilter(context, "flagged", viewType, type), false);
             this.filter_unflagged = prefs.getBoolean(FragmentMessages.getFilter(context, "unflagged", viewType, type), false);
@@ -678,7 +684,8 @@ public class ViewModelMessages extends ViewModel {
                         this.filter_archive == other.filter_archive &&
                         this.filter_deleted == other.filter_deleted &&
                         Objects.equals(this.filter_language, other.filter_language) &&
-                        this.debug == other.debug);
+                        this.debug == other.debug &&
+                        this.unread_only == other.unread_only);
             } else
                 return false;
         }
@@ -699,7 +706,8 @@ public class ViewModelMessages extends ViewModel {
                     " snoozed=" + filter_snoozed +
                     " archive=" + filter_archive +
                     " language=" + filter_language +
-                    " debug=" + debug;
+                    " debug=" + debug +
+                    " unread_only=" + unread_only;
         }
     }
 

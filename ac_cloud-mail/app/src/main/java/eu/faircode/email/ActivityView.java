@@ -2810,6 +2810,11 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
         args.putString("category", intent.getStringExtra("category"));
         args.putLong("account", intent.getLongExtra("account", -1));
         args.putLong("folder", intent.getLongExtra("folder", -1));
+        // comms: set only by the unread lane's AdapterFolder rows (see
+        // FragmentUnread) -- forces this ONE FragmentMessages instance to show
+        // only unread mail, without touching the "seen" filter pref that the
+        // same folder's normal instance reads.
+        args.putBoolean("unread_only", intent.getBooleanExtra("unread_only", false));
 
         FragmentMessages fragment = new FragmentMessages();
         fragment.setArguments(args);

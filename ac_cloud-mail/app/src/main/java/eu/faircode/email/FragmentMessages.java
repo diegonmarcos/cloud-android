@@ -337,6 +337,13 @@ public class FragmentMessages extends FragmentBase
     private long id;
     private int lpos;
     private boolean filter_archive;
+    // comms: per-instance unread filter for the unread lane. Deliberately NOT
+    // backed by the "seen" filter pref (getFilter/onMenuFilter) -- that pref is
+    // shared with the folder's normal FragmentMessages instance, and writing it
+    // here would silently leave the folder filtered on unread when opened later
+    // from the All tab. Every read of the "seen" filter pref ORs in this flag
+    // instead of writing anything.
+    private boolean unread_only;
     private boolean found;
     private String searched;
     private boolean searchedPartial;
@@ -495,6 +502,7 @@ public class FragmentMessages extends FragmentBase
         id = args.getLong("id", -1);
         lpos = args.getInt("lpos", RecyclerView.NO_POSITION);
         filter_archive = args.getBoolean("filter_archive", true);
+        unread_only = args.getBoolean("unread_only", false);
         found = args.getBoolean("found", false);
         searched = args.getString("searched");
         searchedPartial = args.getBoolean("searchedPartial");
@@ -1344,7 +1352,7 @@ public class FragmentMessages extends FragmentBase
         adapter = new AdapterMessage(
                 this, type, found, searched, searchedPartial, viewType,
                 compact, zoom, large_buttons, sort, ascending,
-                filter_duplicates, filter_sent, filter_trash,
+                filter_duplicates, filter_sent, filter_trash, unread_only,
                 iProperties);
         if (viewType == AdapterMessage.ViewType.THREAD)
             adapter.setStateRestorationPolicy(RecyclerView.Adapter.StateRestorationPolicy.PREVENT);
@@ -6555,7 +6563,7 @@ public class FragmentMessages extends FragmentBase
             boolean primary_inbox = "inbox".equals(prefs.getString("startup", "unified"));
             String sort = prefs.getString(getSort(context, viewType, type), "time");
             boolean ascending = prefs.getBoolean(getSortOrder(context, viewType, type), outbox);
-            boolean filter_seen = prefs.getBoolean(getFilter(context, "seen", viewType, type), false);
+            boolean filter_seen = (prefs.getBoolean(getFilter(context, "seen", viewType, type), false) || unread_only);
             boolean filter_unseen = prefs.getBoolean(getFilter(context, "unseen", viewType, type), false);
             boolean filter_flagged = prefs.getBoolean(getFilter(context, "flagged", viewType, type), false);
             boolean filter_unflagged = prefs.getBoolean(getFilter(context, "unflagged", viewType, type), false);
@@ -7858,7 +7866,7 @@ public class FragmentMessages extends FragmentBase
         ViewModelMessages.Model vmodel = model.getModel(
                 getContext(), getViewLifecycleOwner(),
                 viewType, type, category, account, folder, thread, id, threading, expandedThreads(),
-                filter_archive, criteria, server);
+                filter_archive, criteria, server, unread_only);
 
         initialized = false;
         loading = false;
@@ -7977,7 +7985,7 @@ public class FragmentMessages extends FragmentBase
         boolean outbox = EntityFolder.OUTBOX.equals(type);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean filter_seen = prefs.getBoolean(getFilter(context, "seen", viewType, type), false);
+        boolean filter_seen = (prefs.getBoolean(getFilter(context, "seen", viewType, type), false) || unread_only);
         boolean filter_unflagged = prefs.getBoolean(getFilter(context, "unflagged", viewType, type), false);
         boolean filter_unknown = prefs.getBoolean(getFilter(context, "unknown", viewType, type), false);
         boolean language_detection = prefs.getBoolean("language_detection", false);

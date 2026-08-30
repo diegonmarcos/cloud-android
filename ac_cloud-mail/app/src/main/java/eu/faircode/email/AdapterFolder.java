@@ -92,6 +92,11 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
     private boolean subscribed_only;
     private boolean sort_unread_atop;
     private IFolderSelectedListener listener;
+    // comms: set only by the unread lane (FragmentUnread). Folded into the
+    // ACTION_VIEW_MESSAGES broadcast below rather than into a click listener,
+    // because a non-null listener disables read-only folders (see isDisabled)
+    // -- exactly what the unread lane must not do.
+    private boolean unread_only;
 
     private Context context;
     private LifecycleOwner owner;
@@ -498,12 +503,16 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                         if (selectedModel != null)
                             selectedModel.select(folder.id);
 
+                        if (unread_only)
+                            probeUnread(folder.id);
+
                         LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context);
                         lbm.sendBroadcast(
                                 new Intent(ActivityView.ACTION_VIEW_MESSAGES)
                                         .putExtra("account", folder.account)
                                         .putExtra("folder", folder.id)
-                                        .putExtra("type", folder.type));
+                                        .putExtra("type", folder.type)
+                                        .putExtra("unread_only", unread_only));
                     } else
                         listener.onFolderSelected(folder);
                 }
@@ -580,6 +589,34 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
                 return;
             DateFormat DTF = Helper.getDateTimeInstance(context, SimpleDateFormat.LONG, SimpleDateFormat.LONG);
             ToastEx.makeText(context, DTF.format(folder.last_sync), Toast.LENGTH_LONG).show();
+        }
+
+        // comms: relocated from the deleted FragmentUnreadMessages.onCreate --
+        // nudges the server read-state probe once per unread-lane folder open.
+        // Folder lookup runs in a SimpleTask so this never does DB work on the
+        // click (main) thread.
+        private void probeUnread(long fid) {
+            Bundle args = new Bundle();
+            args.putLong("folder", fid);
+
+            new SimpleTask<Void>() {
+                @Override
+                protected Void onExecute(Context context, Bundle args) {
+                    long fid = args.getLong("folder");
+
+                    DB db = DB.getInstance(context);
+                    EntityFolder folder = db.folder().getFolder(fid);
+                    if (folder != null)
+                        EntityOperation.queue(context, folder, EntityOperation.UNREAD);
+
+                    return null;
+                }
+
+                @Override
+                protected void onException(Bundle args, Throwable ex) {
+                    Log.w(ex);
+                }
+            }.execute(context, owner, args, "unread:probe");
         }
 
         @Override
@@ -1555,12 +1592,21 @@ public class AdapterFolder extends RecyclerView.Adapter<AdapterFolder.ViewHolder
     }
 
     AdapterFolder(Fragment parentFragment, long account, boolean unified, boolean primary, boolean show_compact, boolean show_hidden, boolean show_flagged, IFolderSelectedListener listener) {
-        this(parentFragment.getContext(), parentFragment.getViewLifecycleOwner(), account, unified, primary, show_compact, show_hidden, show_flagged, listener);
+        this(parentFragment, account, unified, primary, show_compact, show_hidden, show_flagged, listener, false);
+    }
+
+    AdapterFolder(Fragment parentFragment, long account, boolean unified, boolean primary, boolean show_compact, boolean show_hidden, boolean show_flagged, IFolderSelectedListener listener, boolean unread_only) {
+        this(parentFragment.getContext(), parentFragment.getViewLifecycleOwner(), account, unified, primary, show_compact, show_hidden, show_flagged, listener, unread_only);
         this.parentFragment = parentFragment;
     }
 
     AdapterFolder(Context context, LifecycleOwner owner, long account, boolean unified, boolean primary, boolean show_compact, boolean show_hidden, boolean show_flagged, IFolderSelectedListener listener) {
+        this(context, owner, account, unified, primary, show_compact, show_hidden, show_flagged, listener, false);
+    }
+
+    AdapterFolder(Context context, LifecycleOwner owner, long account, boolean unified, boolean primary, boolean show_compact, boolean show_hidden, boolean show_flagged, IFolderSelectedListener listener, boolean unread_only) {
         this.account = account;
+        this.unread_only = unread_only;
         this.unified = unified;
         this.primary = primary;
         this.show_compact = show_compact;

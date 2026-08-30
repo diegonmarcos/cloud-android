@@ -96,6 +96,7 @@ public class BoundaryCallbackMessages extends PagedList.BoundaryCallback<TupleMe
     private boolean server;
     private SearchCriteria criteria;
     private int pageSize;
+    private boolean unread_only;
 
     private IBoundaryCallbackMessages intf;
 
@@ -120,7 +121,7 @@ public class BoundaryCallbackMessages extends PagedList.BoundaryCallback<TupleMe
             Context context,
             AdapterMessage.ViewType viewType, long account, long folder,
             boolean server, SearchCriteria criteria,
-            int pageSize) {
+            int pageSize, boolean unread_only) {
         this.context = context.getApplicationContext();
         this.viewType = viewType;
         this.account = (account < 0 ? null : account);
@@ -128,6 +129,7 @@ public class BoundaryCallbackMessages extends PagedList.BoundaryCallback<TupleMe
         this.server = server;
         this.criteria = criteria;
         this.pageSize = pageSize;
+        this.unread_only = unread_only;
 
         if (this.criteria != null &&
                 (this.folder != null || server || EntityFolder.INBOX.equals(this.criteria.with_folder_type)))
@@ -468,7 +470,7 @@ public class BoundaryCallbackMessages extends PagedList.BoundaryCallback<TupleMe
                 db.folder().setFolderTotal(browsable.id, count < 0 ? null : count, new Date().getTime());
 
                 if (criteria == null) {
-                    boolean filter_seen = prefs.getBoolean(FragmentMessages.getFilter(context, "seen", viewType, browsable.type), false);
+                    boolean filter_seen = (prefs.getBoolean(FragmentMessages.getFilter(context, "seen", viewType, browsable.type), false) || unread_only);
                     boolean filter_unflagged = prefs.getBoolean(FragmentMessages.getFilter(context, "unflagged", viewType, browsable.type), false);
                     EntityLog.log(context, "Boundary filter seen=" + filter_seen + " unflagged=" + filter_unflagged);
 

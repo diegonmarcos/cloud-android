@@ -19,6 +19,8 @@ package eu.faircode.email;
     Copyright 2018-2026 by Marcel Bokhorst (M66B)
 */
 
+import android.content.SharedPreferences;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,6 +33,8 @@ import androidx.constraintlayout.widget.Group;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.preference.PreferenceManager;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -46,8 +50,13 @@ import java.util.List;
 // built around the folder TREE and folder management (create, subscribe, sync,
 // export, context menus). None of it applies here, and threading a mode flag
 // through all of it is how the first attempt at this went wrong.
-public class FragmentUnread extends FragmentBase
-        implements AdapterUnreadFolder.IUnreadFolderSelected {
+//
+// The rows themselves are the app's real AdapterFolder, not a lookalike: a
+// null listener makes AdapterFolder broadcast ActivityView.ACTION_VIEW_MESSAGES
+// on row click (see AdapterFolder.onClick), exactly as FragmentFolders' own
+// rows do, so opening a folder from here lands in the real FragmentMessages
+// for that folder with no navigation code of our own.
+public class FragmentUnread extends FragmentBase {
     private ViewGroup view;
     private SwipeRefreshLayout swipeRefresh;
     private TabLayout tabUnread;
@@ -58,9 +67,8 @@ public class FragmentUnread extends FragmentBase
 
     private long account;
     private boolean primary;
-    private boolean loaded = false;
 
-    private AdapterUnreadFolder adapter;
+    private AdapterFolder adapter;
     private ViewModelUnread model;
 
     @Override
@@ -91,9 +99,45 @@ public class FragmentUnread extends FragmentBase
         // gesture does not silently do nothing halfway through a drag.
         swipeRefresh.setEnabled(false);
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        boolean cards = prefs.getBoolean("cards", true);
+        boolean dividers = prefs.getBoolean("dividers", true);
+        boolean compact = prefs.getBoolean("compact_folders", true);
+        boolean show_hidden = false; // matches FragmentFolders: hidden folders stay hidden here too
+        boolean show_flagged = prefs.getBoolean("flagged_folders", false);
+        boolean unified = (account < 0);
+
         rvFolder.setHasFixedSize(false);
-        rvFolder.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new AdapterUnreadFolder(getContext(), this);
+        LinearLayoutManager llm = new LinearLayoutManager(getContext());
+        rvFolder.setLayoutManager(llm);
+
+        if (!cards && dividers) {
+            DividerItemDecoration itemDecorator = new DividerItemDecoration(getContext(), llm.getOrientation()) {
+                @Override
+                public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
+                    View clItem = view.findViewById(R.id.clItem);
+                    if (clItem == null || clItem.getVisibility() == View.GONE)
+                        outRect.setEmpty();
+                    else
+                        super.getItemOffsets(outRect, view, parent, state);
+                }
+            };
+            itemDecorator.setDrawable(getContext().getDrawable(R.drawable.divider));
+            rvFolder.addItemDecoration(itemDecorator);
+        }
+
+        // comms: same construction as FragmentFolders.java -- listener null is
+        // required, not incidental: it is what makes AdapterFolder broadcast
+        // ACTION_VIEW_MESSAGES on click instead of calling back into a listener
+        // (a non-null listener would also disable read-only folders, which the
+        // unread lane must not do). AdapterFolder orders and (for unified)
+        // groups the folders itself; the unread lane must not compete with that
+        // by sorting on unread count. The trailing "true" is the only thing
+        // that differs from FragmentFolders: it makes the broadcast carry
+        // unread_only=true, which ActivityView threads into FragmentMessages so
+        // the opened folder shows only its unread thread, and it queues the
+        // per-folder server read-state probe on open (see AdapterFolder).
+        adapter = new AdapterFolder(this, account, unified, primary, compact, show_hidden, show_flagged, null, true);
         rvFolder.setAdapter(adapter);
 
         // Tab 1 is selected before the listener is attached, so arriving on this
@@ -142,7 +186,6 @@ public class FragmentUnread extends FragmentBase
 
                         adapter.set(folders);
 
-                        loaded = true;
                         pbWait.setVisibility(View.GONE);
                         grpReady.setVisibility(View.VISIBLE);
                         // An empty unread list is the good outcome, not a
@@ -171,20 +214,6 @@ public class FragmentUnread extends FragmentBase
 
         FragmentTransaction ft = getParentFragmentManager().beginTransaction();
         ft.replace(R.id.content_frame, fragment).addToBackStack("folders");
-        ft.commit();
-    }
-
-    @Override
-    public void onUnreadFolderSelected(@NonNull TupleFolderEx folder) {
-        Bundle args = new Bundle();
-        args.putLong("folder", folder.id);
-        args.putString("name", folder.getDisplayName(getContext()));
-
-        FragmentUnreadMessages fragment = new FragmentUnreadMessages();
-        fragment.setArguments(args);
-
-        FragmentTransaction ft = getParentFragmentManager().beginTransaction();
-        ft.replace(R.id.content_frame, fragment).addToBackStack("unread:messages");
         ft.commit();
     }
 }
