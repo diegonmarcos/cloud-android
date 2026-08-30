@@ -162,6 +162,14 @@ object BatterySessionStats {
             // clean. PowerStateReceiver will mint a fresh one on the
             // ACTION_POWER_DISCONNECTED broadcast.
             if (unplugTs != 0L) {
+                // The discharge run just ENDED (cable went in). This is the
+                // only moment we still hold both ends of it, so archive it
+                // into the bounded history ledger before dropping the anchor.
+                BatteryHistoryStore.record(
+                    ctx, charging = false,
+                    startTs = unplugTs, startPct = unplugPct,
+                    endTs = now, endPct = curPct,
+                )
                 sp.edit().remove("unplug_ts").remove("unplug_pct").remove("anchor_source").apply()
                 unplugTs = 0L; unplugPct = -1; unplugAnchorSource = ""
             }
@@ -196,6 +204,13 @@ object BatterySessionStats {
         } else if (curPct in 0..100) {
             // Drop the plug anchor (we're no longer charging).
             if (plugTs != 0L) {
+                // Mirror of the discharge branch — the charge run ended
+                // (cable pulled); archive it before the anchor is dropped.
+                BatteryHistoryStore.record(
+                    ctx, charging = true,
+                    startTs = plugTs, startPct = plugPct,
+                    endTs = now, endPct = curPct,
+                )
                 sp.edit().remove("plug_ts").remove("plug_pct").remove("anchor_source_plug").apply()
                 plugTs = 0L; plugPct = -1; plugAnchorSource = ""
             }

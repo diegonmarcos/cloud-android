@@ -855,6 +855,17 @@ class DevControlFragment : Fragment() {
                         .show(parentFragmentManager, com.diegonmarcos.superapp.battery.EnergyUsageDialog.TAG)
                 }
             })
+            // Full historical view — the same "open the full data screen"
+            // affordance the Firewall section has. EnergyUsageDialog answers
+            // "what is draining me NOW"; this one replays every completed
+            // charge/discharge run, the per-day aggregates and the lifetime
+            // cycle counters out of BatteryHistoryStore.
+            it.addView(actionButton(ctx, "Battery History", GRAY) {
+                runCatching {
+                    com.diegonmarcos.superapp.battery.BatteryHistoryDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.battery.BatteryHistoryDialog.TAG)
+                }
+            })
         }
 
         section(ctx, column, "Memory") {
@@ -1096,6 +1107,20 @@ class DevControlFragment : Fragment() {
                 val gw = lp.routes.firstOrNull { r -> r.isDefaultRoute }?.gateway?.hostAddress
                 row(ctx, it, "Default gw", gw ?: "—")
             }
+            // Data-usage manager (:libs:datamanager DataUsageProvider over
+            // NetworkStatsManager). Same "open the full data screen" button
+            // shape the Firewall section uses. Per-app / per-transport /
+            // per-period usage; gated on the SAME usage-access grant the
+            // battery estimate and Phone smart folders already ask for, so
+            // no new permission flow — the dialog deep-links to the same
+            // settings screen Configs/About → Permissions opens.
+            it.addView(small(ctx, "Per-app, per-network, per-period data usage — read live from NetworkStatsManager (needs Usage Access)."))
+            it.addView(actionButton(ctx, "Data Usage", GRAY) {
+                runCatching {
+                    com.diegonmarcos.superapp.datamanager.DataUsageDialog()
+                        .show(parentFragmentManager, com.diegonmarcos.superapp.datamanager.DataUsageDialog.TAG)
+                }
+            })
         }
 
         section(ctx, column, "Wi-Fi") {
