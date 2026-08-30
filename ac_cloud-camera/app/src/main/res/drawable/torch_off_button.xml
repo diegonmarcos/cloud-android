@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:width="72dp"
+        android:height="72dp">
+
+        <shape android:shape="oval">
+
+            <stroke
+                android:width="4dp"
+                android:color="@android:color/white" />
+            <solid android:color="@android:color/transparent"/>
+        </shape>
+    </item>
+
+
+    <item
+        android:drawable="@drawable/torch_off_white"
+        android:gravity="center"
+        android:width="36dp"
+        android:height="36dp"/>
+
+</layer-list>

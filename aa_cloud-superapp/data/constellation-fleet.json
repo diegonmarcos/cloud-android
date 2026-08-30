@@ -50,6 +50,22 @@
       "kind": "app"
     },
     {
+      "id": "camera",
+      "label": "cloud-camera",
+      "package": "cld.camera",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-camera",
+      "tag": "latest",
+      "asset": "Cloud-Camera.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Camera.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-camera",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-camera",
+      "blocked": false,
+      "kind": "app"
+    },
+    {
       "id": "chat",
       "label": "Cloud Chat (Mattermost)",
       "package": "com.diegonmarcos.comms.chat",
