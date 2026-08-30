@@ -28,11 +28,6 @@
     "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-superapp",
     "_doc_report_url": "Where the install-failure diagnose screen POSTs its report. {app} is replaced with the fleet app id, giving c3-infra-api/pub/logs/<app-name>. Separate from log_sink_url on purpose: that one is a fire-and-forget analytics stream, this is a human-triggered bundle a person is waiting on and wants a URL back for. Empty disables the Send button and leaves Copy/Save.",
-    "_doc_report_targets": "Where the Diagnose screen can POST. A LIST, not one url: the phone that cannot reach the internet is often the one whose report you need, and the LAN box usually still answers. Send offers each entry by name and reports the HTTP code per target, so a failure to one is not a lost report. {app} is replaced with the fleet app id.",
-    "report_targets": [
-      { "id": "c3", "label": "c3-infra-api (cloud)", "url": "https://api.diegonmarcos.com/pub/logs/{app}" },
-      { "id": "surface", "label": "surface-nixos-api (LAN)", "url": "http://10.0.0.2/surface-nixos-api/logs/{app}" }
-    ],
     "report_url": "https://api.diegonmarcos.com/pub/logs/{app}",
     "enabled": true
   },

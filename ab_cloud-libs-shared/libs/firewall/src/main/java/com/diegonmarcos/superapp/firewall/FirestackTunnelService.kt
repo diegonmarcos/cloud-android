@@ -64,7 +64,7 @@ class FirestackTunnelService : VpnService() {
         tun = fd
         tunnel = runCatching {
             // Connect3(fd, tunmtu, bridge): the simplest firestack entry.
-            Intra.connect3(fd.fd, TUN_MTU, buildBridge())
+            Intra.connect3(fd.fd.toLong(), TUN_MTU.toLong(), buildBridge())
         }.onFailure { Log.e(TAG, "firestack connect failed", it) }.getOrNull()
 
         if (tunnel == null) { FirewallPrefs.setEnabled(ctx, false); teardown(); stopSelf(); return }

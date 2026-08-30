@@ -90,6 +90,14 @@ class FirestackBridgeAssembly(
     ): DNSOpts? = null
     override fun onResponse(s: DNSSummary?) = Unit
 
+    // DNSListener EMBEDS ResolverListener (backend/dnsx.go), so gomobile
+    // flattens these three onto Bridge too. Missed on the first pass because an
+    // embedded interface is a bare identifier, not a method signature — the
+    // compiler named them exactly, which is why CI is the check that matters.
+    override fun onDNSAdded(id: String?) = Unit
+    override fun onDNSRemoved(id: String?) = Unit
+    override fun onDNSStopped() = Unit
+
     // ── ProxyListener — lifecycle notifications ──────────────────────────
     override fun onProxyAdded(id: String?, handle: String?) = Unit
     override fun onProxyRemoved(id: String?, handle: String?) = Unit
