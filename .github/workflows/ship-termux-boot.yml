@@ -159,13 +159,32 @@ jobs:
 
       - name: Push APK to GHCR via ORAS
         working-directory: ${{ env.WORK_DIR }}/dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_UPDATE_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
           set -euo pipefail
           # GHCR binds a package to the repo that first pushed it and reads
           # image.source only at CREATION, so packages made under the old
-          # name still answer to cloud-infra-desktop. GHCR_TOKEN is
-          # packages-scoped; the fallback is a no-op for packages bound here.
-          echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
+          # name still answer to cloud-infra-desktop.
+          #
+          # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE PAT — each token for the
+          # one thing it can do. A repo-scoped GITHUB_TOKEN creates a package
+          # carrying the repo's visibility; the user-scoped PAT creates it
+          # PRIVATE, which in a public repo means every unauthenticated pull
+          # 401s. But GITHUB_TOKEN cannot UPDATE a package in the user
+          # namespace, which is why af6767fdb put pushes back on the PAT — and
+          # that is what left every package created since 2026-08-28 private.
+          # So the token is chosen per PACKAGE, not per repo.
+          pkg="${{ steps.asset.outputs.image }}"; pkg="${pkg##*/}"
+          if gh api "/user/packages/container/${pkg}" >/dev/null 2>&1; then
+            token="${GHCR_UPDATE_TOKEN:-$GHCR_CREATE_TOKEN}"
+          else
+            echo "ghcr: ${pkg} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+            token="$GHCR_CREATE_TOKEN"
+          fi
+          echo "$token" \
             | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           short="${GITHUB_SHA:0:8}"
           # ORAS 1.x sets the per-file media type as `file:type`, not --media-type.
