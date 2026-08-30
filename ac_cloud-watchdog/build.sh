@@ -43,13 +43,31 @@ set -euo pipefail
 # one-time click in the package settings UI. So this cannot self-heal; it warns
 # LOUDLY instead, because the failure mode otherwise is a silent 401 in the store.
 _ghcr_publish() {
+  # THE PACKAGE MUST MATCH THE REPO. A public repo whose APK is private is not
+  # a warning, it is a broken release: the constellation store pulls
+  # unauthenticated and gets 401, which reads to a user as "the app is gone".
+  #
+  # GitHub creates every new USER-owned package private regardless of the repo,
+  # links it via image.source without inheriting anything, and exposes no REST
+  # endpoint to flip it (PATCH /user/packages/... is 404 even with
+  # write:packages). So this cannot self-heal. What it CAN do is refuse to
+  # report success: the mismatch fails the build, with the one URL that fixes
+  # it, instead of leaving a 401 to be discovered by whoever tries to install.
   local image="$1"
   command -v gh >/dev/null 2>&1 || return 0
-  local vis
-  vis="$(gh api "/user/packages/container/${image}" --jq .visibility 2>/dev/null)" || return 0
-  [ "$vis" = "public" ] && return 0
-  echo "  !! GHCR package ${image} is ${vis} - unauthenticated pulls will 401." >&2
-  echo "  !! Make it public once: https://github.com/users/diegonmarcos/packages/container/${image}/settings" >&2
+  local repo_vis pkg_vis
+  repo_vis="$(gh repo view "${GITHUB_REPOSITORY:-$(_ghcr_source | sed 's|.*github.com/||')}" \
+                --json visibility --jq .visibility 2>/dev/null | tr 'A-Z' 'a-z')"
+  [ -z "$repo_vis" ] && return 0
+  pkg_vis="$(gh api "/user/packages/container/${image}" --jq .visibility 2>/dev/null)" || return 0
+  [ "$pkg_vis" = "$repo_vis" ] && return 0
+  errlog "GHCR visibility does not follow the repo."
+  errlog "  repo    ${GITHUB_REPOSITORY:-$(_ghcr_source)} is ${repo_vis}"
+  errlog "  package ${image} is ${pkg_vis} -> unauthenticated pulls 401"
+  errlog "  GitHub creates user-owned packages private and offers no API to change it."
+  errlog "  Fix once: https://github.com/users/diegonmarcos/packages/container/${image}/settings"
+  errlog "  The GH Release asset is unaffected - it IS the repo, so it already follows."
+  return 1
 }
 
 _ghcr_source() {

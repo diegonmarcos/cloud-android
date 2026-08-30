@@ -135,12 +135,22 @@ object Fleet {
             else
                 State.UpdateAvailable(installed.versionName, remote12, layer.size)
         } catch (e: GhcrClient.HttpException) {
-            if (e.code == 404)
-                installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) } ?: State.Missing()
-            else State.Error("HTTP ${e.code}")
+            // NOT INSTALLED IS A LOCAL FACT. Whether the registry answers has no
+            // bearing on it, so a failed probe must not turn "missing" into
+            // "unknown" — that hid exactly the apps the ◯ Missing filter exists
+            // to find. 404 already did the right thing; 401 and 403 did not, and
+            // GHCR answers 401/403 for a package that is private OR absent, which
+            // is the normal state of anything not yet published. cloud-watchdog
+            // (401) and cloud-infra-desktop-termux-boot (403) both vanished.
+            // Installed + unreachable registry stays an honest error: there we
+            // genuinely cannot tell whether an update is waiting.
+            installed?.let {
+                if (e.code == 404) State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes)
+                else State.Error("HTTP ${e.code}")
+            } ?: State.Missing()
         } catch (t: Throwable) {
             installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) }
-                ?: State.Error(t.message ?: t.toString())
+                ?: State.Missing()
         }
     }
 
@@ -159,6 +169,26 @@ object Fleet {
      */
     fun download(ctx: Context, app: App): File {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
+        // THE RELEASE ASSET FIRST, BECAUSE IT IS THE REPO.
+        //
+        // A GHCR package is owned by the ACCOUNT, not the repository. GitHub
+        // creates every new user-owned package private regardless of the repo
+        // it was pushed from, image.source only LINKS it, and there is no API
+        // to change it — measured, not assumed: a package created by
+        // GITHUB_TOKEN inside this public repo's own workflow came out
+        // private, and PATCH /user/packages/... 404s with write:packages.
+        //
+        // So GHCR can never follow repo visibility, and a private package on
+        // a public repo shows up here as 401 — which reads to a user as "the
+        // app is gone". A release asset has no visibility of its own: it IS
+        // the repo, so a public repo's asset is public, for every app, with
+        // nothing to click and nothing to remember.
+        //
+        // GHCR stays as the fallback because it carries a digest and a
+        // manifest, which is a stronger integrity story; the release path
+        // verifies size instead. Prefer correctness of ACCESS first — an app
+        // nobody can download is not made safer by its digest.
+        releaseDownload(ctx, app)?.let { return it }
         val client = GhcrClient(app.registry, app.namespace, app.image)
         val token = client.token()
         val layer = remoteLayer(app, client, token)
@@ -182,6 +212,51 @@ object Fleet {
         // pulling the blob again.
         client.pruneCache("fleet-${app.id}-", target)
         return target
+    }
+
+    /**
+     * The APK straight off the GH Release, or null if this app declares none
+     * or the fetch fails — in which case the caller falls through to GHCR.
+     *
+     * Null rather than throwing: a release URL that 404s is a reason to try
+     * the other channel, not a reason to fail an install the other channel
+     * could still complete.
+     */
+    private fun releaseDownload(ctx: Context, app: App): File? {
+        if (app.releaseUrl.isBlank()) return null
+        return runCatching {
+            val target = File(ctx.cacheDir, "fleet-${app.id}-release.apk")
+            val conn = (java.net.URL(app.releaseUrl).openConnection() as java.net.HttpURLConnection)
+            conn.instanceFollowRedirects = true
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 60_000
+            if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
+            val total = conn.contentLengthLong
+            UpdateProgress.update(UpdateProgress.State.Downloading(0, 0L, total))
+            var seen = 0L
+            conn.inputStream.use { input ->
+                target.outputStream().use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        if (UpdateProgress.cancelRequested) error("cancelled")
+                        val n = input.read(buf)
+                        if (n <= 0) break
+                        out.write(buf, 0, n)
+                        seen += n
+                        val pct = if (total > 0) ((seen * 100) / total).toInt().coerceIn(0, 100) else 0
+                        UpdateProgress.update(UpdateProgress.State.Downloading(pct, seen, total))
+                    }
+                }
+            }
+            // A truncated download is the failure this catches: an APK that is
+            // short is not an APK, and the installer's error for one is far
+            // less useful than saying so here.
+            if (total > 0 && target.length() != total) {
+                target.delete()
+                error("short read: ${target.length()} of $total")
+            }
+            target
+        }.getOrNull()
     }
 
     /** Hand a verified APK to the installer. Cheap; the work was the download.
