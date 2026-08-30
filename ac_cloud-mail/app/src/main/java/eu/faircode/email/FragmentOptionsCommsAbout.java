@@ -172,7 +172,9 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
                     return null; // null = up to date
 
                 File dest = new File(ctx.getCacheDir(), "updates/cloud-mail-update.apk");
-                CommsUpdateWorker.downloadApk(rel.downloadUrl, dest);
+                // comms: pass the expected size so a truncated download is caught
+                // here rather than surfacing as INSTALL_PARSE_FAILED_NOT_APK.
+                CommsUpdateWorker.downloadApk(rel.downloadUrl, dest, rel.size);
                 return dest;
             }
 

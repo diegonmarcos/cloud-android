@@ -115,9 +115,11 @@ public class CommsUpdateWorker extends Worker {
     static class ReleaseMeta {
         final String buildStamp;   // YYYYMMDD.HHMMSS from the tag — same string CI bakes into COMMS_BUILD_TIMESTAMP
         final String downloadUrl;  // browser_download_url of the matching APK asset
-        ReleaseMeta(String buildStamp, String downloadUrl) {
+        final long size;           // asset size in bytes, per the releases API
+        ReleaseMeta(String buildStamp, String downloadUrl, long size) {
             this.buildStamp = buildStamp;
             this.downloadUrl = downloadUrl;
+            this.size = size;
         }
     }
 
@@ -143,7 +145,7 @@ public class CommsUpdateWorker extends Worker {
             notifyUpdate(ctx);
             if (CommsInstaller.autoSilent(ctx)) {
                 File apk = new File(ctx.getCacheDir(), "updates/cloud-mail-update.apk");
-                downloadApk(rel.downloadUrl, apk);
+                downloadApk(rel.downloadUrl, apk, rel.size);
                 CommsInstaller.install(ctx, apk, true);
             }
             return Result.success();
@@ -197,7 +199,9 @@ public class CommsUpdateWorker extends Worker {
                 for (int i = 0; i < assets.length(); i++) {
                     JSONObject asset = assets.getJSONObject(i);
                     if (BuildConfig.COMMS_RELEASE_ASSET_NAME.equals(asset.getString("name"))) {
-                        best = new ReleaseMeta(buildStamp, asset.getString("browser_download_url"));
+                        best = new ReleaseMeta(buildStamp,
+                                asset.getString("browser_download_url"),
+                                asset.optLong("size", -1));
                         break;
                     }
                 }
@@ -216,6 +220,22 @@ public class CommsUpdateWorker extends Worker {
      * Follows the S3 redirect that GitHub always returns.
      */
     static void downloadApk(String url, File dest) throws Exception {
+        downloadApk(url, dest, -1);
+    }
+
+    /**
+     * As above, but verifies the result before anyone tries to install it.
+     *
+     * comms: this used to stream straight to dest and hand the file to the
+     * package installer unchecked. The asset is ~29MB over mobile data, so a
+     * dropped connection or a read timeout leaves a TRUNCATED zip on disk --
+     * and the installer's complaint for that is the thoroughly unhelpful
+     * "INSTALL_PARSE_FAILED_NOT_APK: Failed to load asset path", which reads
+     * like the build is broken rather than the download. Verify the byte count
+     * the releases API already gave us, confirm it opens as an APK, and delete
+     * the file if either check fails so the next run starts clean.
+     */
+    static void downloadApk(String url, File dest, long expectedSize) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(15_000);
         c.setReadTimeout(120_000);
@@ -238,9 +258,27 @@ public class CommsUpdateWorker extends Worker {
                 byte[] buf = new byte[65536];
                 int n;
                 while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
+                out.getFD().sync();
             }
         } finally {
             c.disconnect();
+        }
+
+        if (expectedSize > 0 && dest.length() != expectedSize) {
+            long got = dest.length();
+            dest.delete();
+            throw new IOException("truncated download: got " + got
+                    + " of " + expectedSize + " bytes");
+        }
+
+        // Cheap structural check: a zip whose central directory or manifest is
+        // unreadable is exactly what produces INSTALL_PARSE_FAILED_NOT_APK.
+        try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(dest)) {
+            if (zf.getEntry("AndroidManifest.xml") == null)
+                throw new IOException("no AndroidManifest.xml");
+        } catch (Throwable ex) {
+            dest.delete();
+            throw new IOException("downloaded file is not a valid APK: " + ex.getMessage());
         }
     }
 
