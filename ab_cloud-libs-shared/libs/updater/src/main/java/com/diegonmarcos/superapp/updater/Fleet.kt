@@ -341,6 +341,18 @@ object Fleet {
         val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${apk.name}")
         return try {
             apk.copyTo(stage, overwrite = true)
+            // Verify the STAGED copy, not just the download. The downloaded APK
+            // is sha-checked against the GHCR digest, but this copy is not, and
+            // it goes to external storage — where a full volume truncates it
+            // without copyTo throwing on every device. `pm install` then reports
+            // INSTALL_PARSE_FAILED_NOT_APK / "failed to load asset path", which
+            // reads like a corrupt build and sends you looking at the artifact
+            // rather than at the phone's free space.
+            if (stage.length() != apk.length()) {
+                Log.w(TAG, "shell install: staged copy is ${stage.length()} of ${apk.length()} bytes " +
+                    "(truncated — free space?); falling back to PackageInstaller")
+                return false
+            }
             // -r reinstall, -d allow version downgrade. Deliberately NOT -g: on a
             // reinstall the runtime grants already carry over, and -g fails the
             // whole install on any permission the platform won't auto-grant.
