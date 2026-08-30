@@ -1142,7 +1142,8 @@ class DevControlFragment : Fragment() {
             // ConnectivityManager / Settings. The gray button opens the control
             // screen (master toggle + per-app preset picker). The firestack
             // merge (per-app filtering + WireGuard in one tunnel) is staged at
-            // libs/firewall/phase3-firestack/ (upstreams.firestack).
+            // libs/firewall/phase3-firestack/ — staged, compiles only once
+            // firestack.aar is built from libs/firewall/firestack/.
             val fw = com.diegonmarcos.superapp.firewall.FirewallInfo.read(ctx)
             row(ctx, it, "State", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtState(fw))
             row(ctx, it, "Apps with rules", com.diegonmarcos.superapp.firewall.FirewallInfo.fmtBlocked(fw))

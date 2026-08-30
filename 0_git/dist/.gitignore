@@ -184,13 +184,17 @@ ac_cloud-media-center/**/*.jks
 ac_keyboard-dicts/
 ac_keyboard-heliboard/
 ## firestack moved INTO the module that consumes it
-## (ab_cloud-libs-shared/libs/firewall/firestack-src) and is committed there,
+## (ab_cloud-libs-shared/libs/firewall/firestack) and is committed there,
 ## so the old gitignored root clone no longer exists. What stays ignored is
 ## its BUILD OUTPUT: upstream's own bin/ (24 MB, untracked upstream too) and
 ## the gomobile work dir. The produced firestack.aar is ignored separately
 ## below, next to the module it lands in.
-ab_cloud-libs-shared/libs/firewall/firestack-src/bin/
-ab_cloud-libs-shared/libs/firewall/firestack-src/build/
+ab_cloud-libs-shared/libs/firewall/firestack/bin/
+ab_cloud-libs-shared/libs/firewall/firestack/build/
+## The built aar lands in the same folder as the source it is built from (that
+## is the path lib-apks/settings.gradle's flatDir already resolves), so it has
+## to be ignored by name or `git add -A` would commit a ~20 MB build artifact.
+ab_cloud-libs-shared/libs/firewall/firestack/*.aar
 ac_zoomies-pets/
 ac_mail-fairmail/
 ac_cal-davx5/
