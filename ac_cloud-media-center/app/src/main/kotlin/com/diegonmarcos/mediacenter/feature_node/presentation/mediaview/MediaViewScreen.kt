@@ -145,7 +145,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.util.LocalHazeStat
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.ProvideInsets
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.ViewScreenConstants.BOTTOM_BAR_HEIGHT
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.ViewScreenConstants.ImageOnly
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getMediaAppBarDate
+import com.diegonmarcos.mediacenter.core.util.getMediaAppBarDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.hazeEffectScaled
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mediaSharedElement
 import com.diegonmarcos.mediacenter.core.util.printWarning

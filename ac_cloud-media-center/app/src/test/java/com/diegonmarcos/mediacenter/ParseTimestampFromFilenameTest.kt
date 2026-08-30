@@ -1,6 +1,6 @@
 package com.diegonmarcos.mediacenter
 
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.parseTimestampFromFilename
+import com.diegonmarcos.mediacenter.core.util.parseTimestampFromFilename
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test

@@ -45,7 +45,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.InfoRow
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaMetadata
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isVideo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatMinSec
+import com.diegonmarcos.mediacenter.core.util.formatMinSec
 import com.diegonmarcos.mediacenter.core.util.formatSize
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.toBitrateString
 import androidx.compose.ui.graphics.vector.ImageVector

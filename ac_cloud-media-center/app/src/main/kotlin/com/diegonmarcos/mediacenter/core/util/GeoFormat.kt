@@ -7,6 +7,7 @@
 package com.diegonmarcos.mediacenter.core.util
 
 import android.location.Address
+import androidx.core.text.isDigitsOnly
 
 val Address.formattedAddress: String get() {
     var address = ""

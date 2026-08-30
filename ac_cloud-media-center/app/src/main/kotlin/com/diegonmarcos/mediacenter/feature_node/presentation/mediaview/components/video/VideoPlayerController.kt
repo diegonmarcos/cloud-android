@@ -93,7 +93,7 @@ import com.diegonmarcos.mediacenter.R
 import com.diegonmarcos.mediacenter.feature_node.domain.model.PlaybackSpeed
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.LocalHazeState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.hazeEffectScaled
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatMinSec
+import com.diegonmarcos.mediacenter.core.util.formatMinSec
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberGestureNavigationEnabled
 import com.diegonmarcos.mediacenter.ui.theme.isDarkTheme
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi

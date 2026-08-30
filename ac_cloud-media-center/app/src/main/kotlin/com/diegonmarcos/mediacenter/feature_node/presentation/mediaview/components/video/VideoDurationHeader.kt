@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.diegonmarcos.mediacenter.core.presentation.components.util.advancedShadow
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.rememberedDerivedState
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatMinSec
+import com.diegonmarcos.mediacenter.core.util.formatMinSec
 
 @Composable
 fun VideoDurationHeader(modifier: Modifier = Modifier, media: Media) {

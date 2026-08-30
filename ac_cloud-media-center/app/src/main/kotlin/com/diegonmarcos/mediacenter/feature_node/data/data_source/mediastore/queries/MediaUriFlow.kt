@@ -29,7 +29,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaType
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isTrashed
 import com.diegonmarcos.mediacenter.core.util.getDate
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.parseTimestampFromFilename
+import com.diegonmarcos.mediacenter.core.util.parseTimestampFromFilename
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import com.diegonmarcos.mediacenter.core.util.printWarning

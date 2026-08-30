@@ -45,7 +45,7 @@ import com.diegonmarcos.mediacenter.core.Settings.Misc.CURRENT_SETUP_VERSION
 import com.diegonmarcos.mediacenter.core.Settings.Misc.rememberSetupCompletedVersion
 import com.diegonmarcos.mediacenter.core.Settings.PREFERENCE_NAME
 import com.diegonmarcos.mediacenter.core.decoder.format.ImageReencoder
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.SystemDateFormatField
+import com.diegonmarcos.mediacenter.core.util.SystemDateFormatField
 import com.diegonmarcos.mediacenter.core.util.systemDateTimePattern
 import com.diegonmarcos.mediacenter.core.encryption.EncryptedDataStoreProvider
 import com.diegonmarcos.mediacenter.core.metrics.StartupTracer
