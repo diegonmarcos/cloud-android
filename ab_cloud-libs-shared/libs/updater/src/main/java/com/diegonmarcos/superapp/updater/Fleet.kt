@@ -214,112 +214,37 @@ object Fleet {
      * interleaving the two made every tap wait on the next app's network
      * fetch. Downloading first means the prompts run back to back.
      */
+    /**
+     * Fetch [app]'s APK from the first source that can serve it, verified.
+     *
+     * A LIST, not a chain of early returns: the two paths used to be private
+     * functions with `releaseDownload(...)?.let { return it }` between them,
+     * and nothing held them to the same contract — so one verified a digest
+     * and the other verified a length it could skip. Adding a third source is
+     * now one entry here, and it cannot be added without returning evidence.
+     *
+     * Separate from [commit] because a batch downloads everything first and
+     * installs afterwards: an install prompt blocks on the user, so
+     * interleaving made every tap wait on the next app's network fetch.
+     */
+    private val sources: List<ApkSource> = listOf(ReleaseSource, GhcrSource)
+
     fun download(ctx: Context, app: App): VerifiedApk {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
-        // THE RELEASE ASSET FIRST, BECAUSE IT IS THE REPO.
-        //
-        // A GHCR package is owned by the ACCOUNT, not the repository. GitHub
-        // creates every new user-owned package private regardless of the repo
-        // it was pushed from, image.source only LINKS it, and there is no API
-        // to change it — measured, not assumed: a package created by
-        // GITHUB_TOKEN inside this public repo's own workflow came out
-        // private, and PATCH /user/packages/... 404s with write:packages.
-        //
-        // So GHCR can never follow repo visibility, and a private package on
-        // a public repo shows up here as 401 — which reads to a user as "the
-        // app is gone". A release asset has no visibility of its own: it IS
-        // the repo, so a public repo's asset is public, for every app, with
-        // nothing to click and nothing to remember.
-        //
-        // GHCR stays as the fallback because it carries a digest and a
-        // manifest, which is a stronger integrity story; the release path
-        // verifies size instead. Prefer correctness of ACCESS first — an app
-        // nobody can download is not made safer by its digest.
-        releaseDownload(ctx, app)?.let { return it }
-        val client = GhcrClient(app.registry, app.namespace, app.image)
-        val token = client.token()
-        val layer = remoteLayer(app, client, token)
-        val target = File(ctx.cacheDir, "fleet-${app.id}-${layer.digest.substringAfter(':').take(12)}.apk")
-        UpdateProgress.update(UpdateProgress.State.Downloading(0, 0L, layer.size))
-        // Raw fleet threads aren't WorkManager — the Cancel button reaches them
-        // only through UpdateProgress.cancelRequested.
-        client.blob(layer.digest, token, target, { UpdateProgress.cancelRequested }) { bytes, total ->
-            val t = if (total > 0) total else layer.size
-            val pct = if (t > 0) ((bytes * 100) / t).toInt().coerceIn(0, 100) else 0
-            UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, t))
+        for (source in sources) {
+            val apk = source.fetch(ctx, app) ?: continue
+            Log.i(TAG, "download ${app.id}: ${source.name} → ${apk.evidence}")
+            return apk
         }
-        val verified = VerifiedApk.byDigest(target, layer.digest)
-        if (verified == null) {
-            target.delete()
-            UpdateProgress.update(UpdateProgress.State.Failed("digest mismatch for ${app.label}"))
-            error("digest mismatch for ${app.id} against ${layer.digest}")
-        }
-        // Keep the verified APK, drop this app's superseded ones. Keeping it
-        // means a retry after a failed install reuses the download instead of
-        // pulling the blob again.
-        client.pruneCache("fleet-${app.id}-", target)
-        return verified
+        error("no source could provide a verified APK for ${app.id} " +
+            "(tried ${sources.joinToString { it.name }})")
     }
 
-    /**
-     * The APK straight off the GH Release, or null if this app declares none
-     * or the fetch fails — in which case the caller falls through to GHCR.
-     *
-     * Null rather than throwing: a release URL that 404s is a reason to try
-     * the other channel, not a reason to fail an install the other channel
-     * could still complete.
-     */
-    private fun releaseDownload(ctx: Context, app: App): VerifiedApk? {
-        if (app.releaseUrl.isBlank()) return null
-        return runCatching {
-            val target = File(ctx.cacheDir, "fleet-${app.id}-release.apk")
-            val conn = (java.net.URL(app.releaseUrl).openConnection() as java.net.HttpURLConnection)
-            conn.instanceFollowRedirects = true
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 60_000
-            if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
-            val total = conn.contentLengthLong
-            UpdateProgress.update(UpdateProgress.State.Downloading(0, 0L, total))
-            var seen = 0L
-            conn.inputStream.use { input ->
-                target.outputStream().use { out ->
-                    val buf = ByteArray(64 * 1024)
-                    while (true) {
-                        if (UpdateProgress.cancelRequested) error("cancelled")
-                        val n = input.read(buf)
-                        if (n <= 0) break
-                        out.write(buf, 0, n)
-                        seen += n
-                        val pct = if (total > 0) ((seen * 100) / total).toInt().coerceIn(0, 100) else 0
-                        UpdateProgress.update(UpdateProgress.State.Downloading(pct, seen, total))
-                    }
-                }
-            }
-            // A truncated download is the failure this catches: an APK that is
-            // short is not an APK, and the installer's error for one is far
-            // less useful than saying so here.
-            //
-            // The size check USED to be guarded by `total > 0`, which made it
-            // no check at all whenever the CDN omitted Content-Length: total
-            // came back -1, the comparison was skipped, and an unverified file
-            // went to the installer. That is exactly how a 383 kB
-            // fleet-mail-release.apk — 1.3% of a 29 MB APK — reached
-            // PackageInstaller and came back
-            // "INSTALL_PARSE_FAILED_NOT_APK: Failed to load asset path".
-            // Unlike the GHCR path there is no digest here to catch it after
-            // the fact, so an unverifiable download must never be RETURNED;
-            // returning null falls through to GHCR, which does carry one.
-            // One construction, three guarantees: a declared length must
-            // exist, must match, and the bytes must actually be a zip. Returning
-            // null here falls through to GHCR, which carries a digest — an
-            // unverifiable download must never be RETURNED, because the caller
-            // cannot tell the difference once it is just a File.
-            VerifiedApk.bySize(target, total) ?: run {
-                target.delete()
-                error("release asset for ${app.id} failed verification — deferring to GHCR")
-            }
-        }.getOrNull()
-    }
+    /** [GhcrSource] needs the manifest layer; the resolution logic (ABI tag
+     *  first, then the universal one) stays here with the rest of the fleet
+     *  model rather than being duplicated into the source. */
+    internal fun remoteLayerFor(app: App, client: GhcrClient, token: String) =
+        remoteLayer(app, client, token)
 
     /** Hand a verified APK to the installer. Cheap; the work was the download.
      *  Prefers the privileged shell channel, which installs with NO dialog at
