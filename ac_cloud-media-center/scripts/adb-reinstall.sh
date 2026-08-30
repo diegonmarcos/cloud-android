@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Configuration
-PACKAGE_NAME="com.dot.gallery.debug"
-MAIN_ACTIVITY="com.dot.gallery.feature_node.presentation.main.MainActivity"
+PACKAGE_NAME="com.diegonmarcos.mediacenter.debug"
+MAIN_ACTIVITY="com.diegonmarcos.mediacenter.feature_node.presentation.main.MainActivity"
 
 # Use system ADB or fall back
 ADB=$(command -v adb || echo "/home/tazztone/Android/Sdk/platform-tools/adb")

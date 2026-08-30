@@ -25,7 +25,7 @@
 -dontwarn org.openjsse.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 
--keep class com.dot.gallery.feature_node.presentation.edit.adjustments.** { *; }
+-keep class com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.** { *; }
 -keep class com.drew.** { *; }
 -keep class java.io.** { *; }
 -keep class com.adobe.** { *; }
@@ -37,17 +37,17 @@
 -dontwarn org.tensorflow.lite.gpu.GpuDelegateFactory$Options
 
 # Keep custom Glide decoders and model loaders (HEIF/JXL/Encrypted)
--keep class com.dot.gallery.core.decoder.glide.** { *; }
+-keep class com.diegonmarcos.mediacenter.core.decoder.glide.** { *; }
 -keep class com.radzivon.bartoshyk.avif.** { *; }
 -keep class com.awxkee.jxlcoder.** { *; }
 -dontwarn com.radzivon.bartoshyk.avif.**
 -dontwarn com.awxkee.jxlcoder.**
 
 # Cloud provider models (Retrofit DTOs, Room entities, serialization)
--keep class com.dot.gallery.cloud.** { *; }
--keep class com.dot.gallery.cloud.data.entity.** { *; }
--keep class com.dot.gallery.cloud.core.** { *; }
--keep class com.dot.gallery.cloud.image.** { *; }
+-keep class com.diegonmarcos.mediacenter.cloud.** { *; }
+-keep class com.diegonmarcos.mediacenter.cloud.data.entity.** { *; }
+-keep class com.diegonmarcos.mediacenter.cloud.core.** { *; }
+-keep class com.diegonmarcos.mediacenter.cloud.image.** { *; }
 
 -dontwarn javax.el.BeanELResolver
 -dontwarn javax.el.ELContext

@@ -1,22 +1,22 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: cloud-media-center-engine <engine@diegonmarcos.com>
 Date: Thu, 30 Jul 2026 00:00:00 +0000
-Subject: [PATCH] rename package identity from com.dot.gallery to
+Subject: [PATCH] rename package identity from com.diegonmarcos.mediacenter to
  com.diegonmarcos.mediacenter
 
 Minimal first patch: gives the fork its own applicationId + content-
-provider authority, separate from upstream ReFra (com.dot.gallery).
+provider authority, separate from upstream ReFra (com.diegonmarcos.mediacenter).
 Required for the engine's identity-assert (build.json::forks.<key>
 .app_id) to pass at all — GHA runs up to 30540989541 built and signed
 a real APK, then correctly refused to publish it because its package
-was still com.dot.gallery.
+was still com.diegonmarcos.mediacenter.
 
 Three lines, all release-buildType, all the same underlying identity:
   - defaultConfig.applicationId
   - release buildType's "appProvider" manifestPlaceholder
   - release buildType's CONTENT_AUTHORITY BuildConfig field
 The latter two matter beyond the assert: an unchanged provider
-authority would collide with upstream's own com.dot.gallery Gallery
+authority would collide with upstream's own com.diegonmarcos.mediacenter Gallery
 app if both are ever installed on the same device (Android rejects
 installing two apps that export the same provider authority).
 
@@ -31,7 +31,7 @@ step 5). Do not read this patch as feature-complete.
      ndkVersion = "29.0.14033849"
  
      defaultConfig {
--        applicationId = "com.dot.gallery"
+-        applicationId = "com.diegonmarcos.mediacenter"
 +        applicationId = "com.diegonmarcos.mediacenter"
          minSdk = 29
          targetSdk = 37
@@ -40,7 +40,7 @@ step 5). Do not read this patch as feature-complete.
          }
          getByName("release") {
              manifestPlaceholders += mapOf(
--                "appProvider" to "com.dot.gallery.media_provider"
+-                "appProvider" to "com.diegonmarcos.mediacenter.media_provider"
 +                "appProvider" to "com.diegonmarcos.mediacenter.media_provider"
              )
              isMinifyEnabled = true
@@ -49,7 +49,7 @@ step 5). Do not read this patch as feature-complete.
              buildConfigField("Boolean", "WEBDAV_ENABLED", "$includeWebdav")
              buildConfigField("Boolean", "SMB_ENABLED", "$includeSmb")
              buildConfigField("Boolean", "NFS_ENABLED", "$includeNfs")
--            buildConfigField("String", "CONTENT_AUTHORITY", "\"com.dot.gallery.media_provider\"")
+-            buildConfigField("String", "CONTENT_AUTHORITY", "\"com.diegonmarcos.mediacenter.media_provider\"")
 +            buildConfigField("String", "CONTENT_AUTHORITY", "\"com.diegonmarcos.mediacenter.media_provider\"")
              buildConfigField("Boolean", "ENABLE_INDEXING", "true")
              buildConfigField("Boolean", "ALLOW_INSECURE_TLS", "true")

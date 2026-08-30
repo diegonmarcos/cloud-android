@@ -2,7 +2,7 @@
 
 Photo/video gallery app. `applicationId com.diegonmarcos.mediacenter`, forked from
 [IacobIonut01/ReFra](https://github.com/IacobIonut01/ReFra) (ex-`IacobIonut01/Gallery`,
-upstream package `com.dot.gallery`, Kotlin + Jetpack Compose, minSdk 29).
+upstream package `com.diegonmarcos.mediacenter`, Kotlin + Jetpack Compose, minSdk 29).
 Pinned at upstream tag **`5.1.1-51101-nightly`** (newest tag as of 2026-07-26 — see
 `build.json::fork.pinned_tag`; upstream ships nightlies as its release channel and
 has no recent stable tag — `4.3.0` is the last plain-semver one; review the pin

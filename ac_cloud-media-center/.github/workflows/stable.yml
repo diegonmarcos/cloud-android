@@ -202,7 +202,7 @@ jobs:
         continue-on-error: true
         with:
           serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
-          packageName: com.dot.gallery.gplay
+          packageName: com.diegonmarcos.mediacenter.gplay
           releaseFiles: app/build/outputs/bundle/universalWithMLGplay/*.aab
           track: production
           releaseName: ${{ needs.prepare.outputs.versionName }}-${{ needs.prepare.outputs.versionCode }} Release

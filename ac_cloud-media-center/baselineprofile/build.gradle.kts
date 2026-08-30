@@ -35,7 +35,7 @@ android {
             ndk.abiFilters.add("x86")
         }
     }
-    namespace = "com.dot.baselineprofile"
+    namespace = "com.diegonmarcos.mediacenter.baselineprofile"
     compileSdk = 37
 
     compileOptions {

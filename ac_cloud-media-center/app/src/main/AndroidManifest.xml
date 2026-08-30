@@ -379,7 +379,7 @@
             android:exported="false"
             tools:node="remove">
             <meta-data
-                android:name="com.dot.gallery.ui.ComposeInitializer"
+                android:name="com.diegonmarcos.mediacenter.ui.ComposeInitializer"
                 android:value="androidx.startup"
                 />
         </provider>
