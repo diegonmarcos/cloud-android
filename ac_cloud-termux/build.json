@@ -1,0 +1,46 @@
+{
+  "forks": {
+    "termux": {
+      "app_id": "com.termux",
+      "label": "Cloud Terminal (Termux)",
+      "image": "cloud-terminal",
+      "upstream_repo": "https://github.com/termux/termux-app.git",
+      "tracker_dir": "ac_cloud-termux",
+      "tracker_dir_note": "THIS IS OUR CODE. The gradle project is ac_cloud-termux/ itself, flattened at the app root like every other app here. upstream_repo/pinned_tag are provenance: they record where the tree came from, not something the build fetches. GPL provenance lives in README.md, ATTRIBUTION.md and LICENSE.",
+      "pinned_tag": "v0.118.3",
+      "license": "GPL-3.0",
+      "primary_lang": "Java",
+      "runtime": "native",
+      "priority": 2,
+      "blocked_on": null,
+      "app_id_note": "applicationId is DELIBERATELY left at upstream's. Termux compiles the prefix /data/data/com.termux/files/usr into every binary it ships, and Nix-on-Droid does the same with com.termux.nix for its Nix store, so renaming the package orphans the entire bootstrap and every package in it. We own the source and sign with our own key; we do not own the namespace. Consequence, accepted deliberately: our build REPLACES an installed upstream Termux rather than sitting beside it \u2014 same id, different signature \u2014 so the upstream one has to be uninstalled first.",
+      "build": {
+        "_doc": "Stock termux-app gradle. assembleRelease, signed with the constellation keystore like every other fork. No applicationId override on purpose \u2014 see app_id_note.",
+        "gradle_task": "assembleRelease",
+        "apk_glob": "app/build/outputs/apk/release/*.apk",
+        "signing": "keystore"
+      },
+      "comment": "Cloud Terminal (Termux) fork."
+    }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "ghcr": {
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "media_type": "application/vnd.android.package-archive"
+    },
+    "gh_release": {
+      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/cloud-comms-dialer.apk stays stable. Published by `build.sh gh-release-fork dialer` (ship-cloud-dialer.yml), which uploads dist/cloud-comms-dialer.apk with --clobber. Consumed by aa_cloud-superapp ui.external_apps[cloud-dialer].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "cloud-comms-dialer.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}
