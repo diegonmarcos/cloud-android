@@ -150,6 +150,8 @@ jobs:
         working-directory: ${{ env.WORK_DIR }}
         env:
           GITHUB_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./build.sh oras-push
 
       - name: Publish to GitHub Releases
