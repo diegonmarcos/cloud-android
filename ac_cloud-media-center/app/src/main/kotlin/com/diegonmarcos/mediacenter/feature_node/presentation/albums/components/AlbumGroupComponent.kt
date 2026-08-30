@@ -49,7 +49,7 @@ import com.diegonmarcos.mediacenter.R
 import com.diegonmarcos.mediacenter.feature_node.domain.model.AlbumGroupWithAlbums
 import com.diegonmarcos.mediacenter.feature_node.presentation.common.components.OptionItem
 import com.diegonmarcos.mediacenter.feature_node.presentation.common.components.OptionSheet
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatSize
+import com.diegonmarcos.mediacenter.core.util.formatSize
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberAppBottomSheetState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberFeedbackManager
 import kotlinx.coroutines.launch

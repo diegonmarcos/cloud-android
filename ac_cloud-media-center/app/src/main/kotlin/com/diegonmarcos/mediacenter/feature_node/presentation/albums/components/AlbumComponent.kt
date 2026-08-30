@@ -84,7 +84,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.common.components.
 import com.diegonmarcos.mediacenter.feature_node.presentation.common.components.OptionSheet
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.PickerActivityContract
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.AppBottomSheetState
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatSize
+import com.diegonmarcos.mediacenter.core.util.formatSize
 import com.diegonmarcos.mediacenter.core.util.printError
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberAppBottomSheetState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberFeedbackManager

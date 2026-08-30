@@ -63,7 +63,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.v
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Denoise
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Sharpness
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Vignette
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.overlayBitmaps
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.applyColorMatrix
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.resizeBitmap

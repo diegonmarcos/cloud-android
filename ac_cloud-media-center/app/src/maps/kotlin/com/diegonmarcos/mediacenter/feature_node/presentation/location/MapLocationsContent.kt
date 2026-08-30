@@ -78,7 +78,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.GlideInvalidation
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.LocalHazeState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.Screen
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberSurfaceCapture
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberWindowInsetsController
 import com.diegonmarcos.mediacenter.ui.theme.isDarkTheme

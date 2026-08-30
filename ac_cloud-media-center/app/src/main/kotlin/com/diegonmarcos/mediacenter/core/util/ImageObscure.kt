@@ -1,4 +1,4 @@
-package com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils
+package com.diegonmarcos.mediacenter.core.util
 
 import android.graphics.Bitmap
 import android.graphics.Canvas

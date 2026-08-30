@@ -27,7 +27,7 @@ import com.diegonmarcos.mediacenter.core.sandbox.IsolatedMetadataService.Compani
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isImage
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isVideo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formattedAddress
+import com.diegonmarcos.mediacenter.core.util.formattedAddress
 import com.diegonmarcos.mediacenter.core.util.printDebug
 import com.diegonmarcos.mediacenter.core.util.printWarning
 import kotlinx.coroutines.Dispatchers

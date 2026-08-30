@@ -2,7 +2,7 @@
  * Source
  * https://github.com/saparkhid/AndroidFileNamePicker/blob/main/javautil/FileUtils.java
  */
-package com.diegonmarcos.mediacenter.feature_node.presentation.util
+package com.diegonmarcos.mediacenter.core.util
 
 import android.annotation.SuppressLint
 import android.content.ContentUris

@@ -19,7 +19,7 @@ import androidx.room.Entity
 import com.diegonmarcos.mediacenter.core.Constants
 import com.diegonmarcos.mediacenter.feature_node.domain.util.UriSerializer
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import java.io.File

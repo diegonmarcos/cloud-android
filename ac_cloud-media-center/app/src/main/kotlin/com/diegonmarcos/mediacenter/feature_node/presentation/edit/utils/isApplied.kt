@@ -2,7 +2,7 @@ package com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils
 
 import androidx.annotation.Keep
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.Adjustment
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 
 @Keep
 fun List<Adjustment>.isApplied(variableFilterTypes: VariableFilterTypes): Boolean {

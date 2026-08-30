@@ -1,6 +1,6 @@
 package com.diegonmarcos.mediacenter.feature_node.domain.model.editor
 
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import kotlinx.serialization.Serializable
 
 @Serializable

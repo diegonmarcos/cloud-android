@@ -13,7 +13,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.Adjustment
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.EffectTool
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.adjustment.SelectableItem
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.core.SupportiveLazyLayout
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils.isApplied

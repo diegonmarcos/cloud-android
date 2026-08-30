@@ -12,7 +12,7 @@ import com.diegonmarcos.mediacenter.core.sandbox.PrivateFolderRepository
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaState
 import com.diegonmarcos.mediacenter.core.Constants
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mapMediaToItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers

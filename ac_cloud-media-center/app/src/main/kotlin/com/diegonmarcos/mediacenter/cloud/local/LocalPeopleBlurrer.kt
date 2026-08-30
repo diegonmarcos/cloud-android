@@ -17,7 +17,7 @@ import com.diegonmarcos.mediacenter.core.decoder.format.ImageReencoder
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.MarkupBrush
 import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaRepository
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils.ImageObscure
+import com.diegonmarcos.mediacenter.core.util.ImageObscure
 import com.diegonmarcos.mediacenter.core.util.printWarning
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first

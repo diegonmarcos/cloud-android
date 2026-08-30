@@ -112,7 +112,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.settings.component
 import com.diegonmarcos.mediacenter.feature_node.presentation.settings.components.SwitchPreferenceDetailScreen
 import com.diegonmarcos.mediacenter.feature_node.presentation.settings.components.rememberPreference
 import com.diegonmarcos.mediacenter.feature_node.presentation.settings.components.rememberSwitchPreference
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.getEditImageCapableApps
 import kotlin.math.roundToInt
 import com.google.accompanist.drawablepainter.rememberDrawablePainter

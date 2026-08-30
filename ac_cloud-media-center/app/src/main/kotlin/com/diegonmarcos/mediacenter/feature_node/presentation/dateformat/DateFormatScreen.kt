@@ -86,8 +86,8 @@ import com.diegonmarcos.mediacenter.core.presentation.components.NavigationBackB
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.rememberedDerivedState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.LocalHazeState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.SystemDateFormatField
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.systemDateTimePattern
+import com.diegonmarcos.mediacenter.core.util.getDate
+import com.diegonmarcos.mediacenter.core.util.systemDateTimePattern
 import com.diegonmarcos.mediacenter.ui.theme.GalleryTheme
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource

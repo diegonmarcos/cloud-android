@@ -2,7 +2,7 @@ package com.diegonmarcos.mediacenter.feature_node.domain.model.editor
 
 import android.graphics.Bitmap
 import androidx.annotation.Keep
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.sentenceCase
+import com.diegonmarcos.mediacenter.core.util.sentenceCase
 
 @Keep
 interface Adjustment {

@@ -29,19 +29,12 @@ import kotlinx.serialization.Serializable
 
 @Keep
 @Serializable
-enum class VariableFilterTypes {
-    // Legacy
-    Brightness, Contrast, Saturation, Rotate,
-    // Lighting
-    Tone, BlackPoint, WhitePoint, Highlights, Shadows, Vignette,
-    // Colour
-    Warmth, Tint, SkinTone, BlueTone, Hue, BlackWhite,
-    // Effects
-    Posterize, Edges, Borders,
-    // Actions
-    Pop, Sharpen, Denoise;
 
-    fun createFilter(value: Float): VariableFilter =
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
+
+/** Builds the concrete filter for an adjustment. Extension, not a member:
+ *  the enum is domain and must not name presentation types. */
+fun VariableFilterTypes.createFilter(value: Float): VariableFilter =
         when (this) {
             Brightness -> Brightness(value)
             Contrast -> Contrast(value)
@@ -118,4 +111,3 @@ enum class VariableFilterTypes {
             Sharpen -> Icons.Outlined.Details
             Denoise -> Icons.Outlined.Brightness4
         }
-}

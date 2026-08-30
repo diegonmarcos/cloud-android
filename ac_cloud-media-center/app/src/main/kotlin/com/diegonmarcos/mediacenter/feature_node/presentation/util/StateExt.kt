@@ -20,6 +20,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.diegonmarcos.mediacenter.core.Constants
 import com.diegonmarcos.mediacenter.core.Resource
+import com.diegonmarcos.mediacenter.core.util.getDateExt
+import com.diegonmarcos.mediacenter.core.util.getDateHeader
+import com.diegonmarcos.mediacenter.core.util.getMonth
+import com.diegonmarcos.mediacenter.core.util.getYear
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media.UriMedia
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaItem
@@ -32,7 +36,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.groupKey
 import com.diegonmarcos.mediacenter.feature_node.domain.util.selectRepresentative
 import com.diegonmarcos.mediacenter.feature_node.domain.util.sortedByRepresentative
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.rememberedDerivedState
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

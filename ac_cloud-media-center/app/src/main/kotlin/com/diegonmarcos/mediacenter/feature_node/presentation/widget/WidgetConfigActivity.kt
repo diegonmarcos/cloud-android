@@ -24,7 +24,7 @@ import com.diegonmarcos.mediacenter.core.MediaSelectorImpl
 import com.diegonmarcos.mediacenter.core.util.SetupMediaProviders
 import com.diegonmarcos.mediacenter.feature_node.domain.model.UIEvent
 import com.diegonmarcos.mediacenter.feature_node.domain.util.EventHandler
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.components.PickerScreen
 import com.diegonmarcos.mediacenter.feature_node.presentation.widget.data.WidgetBitmapLoader
 import com.diegonmarcos.mediacenter.feature_node.presentation.widget.data.WidgetPreferences

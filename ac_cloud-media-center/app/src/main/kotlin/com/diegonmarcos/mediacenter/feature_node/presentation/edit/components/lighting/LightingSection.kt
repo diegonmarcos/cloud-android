@@ -16,7 +16,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.LightingToo
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.adjustment.SelectableItem
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.core.SupportiveLazyLayout
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils.isApplied
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 
 @Composable
 fun LightingSection(

@@ -98,7 +98,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.toEditorDes
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.ImageFilter
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.PathProperties
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.TextAnnotation
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.editor.EditorNavigator
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.editor.EditorSelector
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.editor.ImageViewer

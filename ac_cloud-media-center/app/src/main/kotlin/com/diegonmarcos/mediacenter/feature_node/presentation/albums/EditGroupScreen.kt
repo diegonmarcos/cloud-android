@@ -59,7 +59,7 @@ import com.diegonmarcos.mediacenter.core.LocalMediaDistributor
 import com.diegonmarcos.mediacenter.core.presentation.components.NavigationBackButton
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Album
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.GlideInvalidation
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatSize
+import com.diegonmarcos.mediacenter.core.util.formatSize
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberFeedbackManager
 
 @OptIn(ExperimentalMaterial3Api::class)

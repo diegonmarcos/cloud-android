@@ -49,7 +49,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.MarkupBrush
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.PainterMotionEvent
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.PathProperties
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.TextAnnotation
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils.ImageObscure
+import com.diegonmarcos.mediacenter.core.util.ImageObscure
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.utils.dragMotionEvent
 import androidx.core.graphics.scale
 import kotlinx.coroutines.delay

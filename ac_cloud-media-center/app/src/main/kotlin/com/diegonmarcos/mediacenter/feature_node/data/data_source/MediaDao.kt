@@ -7,7 +7,7 @@ import androidx.room.Upsert
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media.UriMedia
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaVersion
 import com.diegonmarcos.mediacenter.feature_node.domain.model.TimelineSettings
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 import kotlinx.coroutines.flow.Flow
 
 @Dao

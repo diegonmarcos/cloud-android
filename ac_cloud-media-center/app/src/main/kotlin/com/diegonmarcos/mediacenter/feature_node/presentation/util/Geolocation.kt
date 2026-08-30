@@ -26,24 +26,3 @@ fun Geocoder.getLocation(lat: Double, long: Double, onLocationFound: (Address?) 
         onLocationFound(null)
     }
 }
-
-val Address.formattedAddress: String get() {
-    var address = ""
-    if (!featureName.isNullOrBlank() && !featureName.isDigitsOnly()) address += featureName
-    else if (!subLocality.isNullOrBlank()) address += subLocality
-    if (!locality.isNullOrBlank()) {
-        address += if (address.isEmpty()) locality
-        else ", $locality"
-    }
-    if (!countryName.isNullOrBlank()) {
-        address += if (address.isEmpty()) countryName
-        else ", $countryName"
-    }
-
-    return address
-}
-
-val Address.locationTag: String get() =
-    if (!featureName.isNullOrBlank() && !featureName.isDigitsOnly()) featureName
-    else if (!subLocality.isNullOrBlank()) subLocality
-    else locality

@@ -39,7 +39,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.PinnedAlbum
 import com.diegonmarcos.mediacenter.feature_node.domain.model.TimelineSettings
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Vault
 import com.diegonmarcos.mediacenter.feature_node.domain.util.MediaOrder
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 

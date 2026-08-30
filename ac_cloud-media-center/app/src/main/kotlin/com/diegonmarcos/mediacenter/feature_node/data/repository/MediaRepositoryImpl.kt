@@ -93,10 +93,10 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.mediaStoreVolumeNam
 import com.diegonmarcos.mediacenter.feature_node.domain.util.resolveMediaStoreVolume
 import com.diegonmarcos.mediacenter.feature_node.domain.util.migrate
 import com.diegonmarcos.mediacenter.feature_node.domain.util.toEncryptedMedia2
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia.BOTH
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia.PHOTOS
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia.VIDEOS
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia.BOTH
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia.PHOTOS
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia.VIDEOS
 import com.diegonmarcos.mediacenter.core.util.printDebug
 import com.diegonmarcos.mediacenter.core.util.printError
 import com.diegonmarcos.mediacenter.core.util.printInfo

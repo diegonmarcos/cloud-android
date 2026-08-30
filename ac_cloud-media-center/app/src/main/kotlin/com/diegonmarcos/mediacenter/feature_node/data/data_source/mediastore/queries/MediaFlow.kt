@@ -26,7 +26,7 @@ import com.diegonmarcos.mediacenter.core.util.join
 import com.diegonmarcos.mediacenter.feature_node.data.data_source.mediastore.MediaQuery
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaType
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.parseTimestampFromFilename
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf

@@ -35,7 +35,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaItem
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MosaicDisplayItem
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.rememberedDerivedState
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getCurrentAndroid
+import com.diegonmarcos.mediacenter.core.util.currentAndroidLocale
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberFeedbackManager
 import com.diegonmarcos.mediacenter.scrollbar.InternalLazyVerticalGridScrollbar
 import com.diegonmarcos.mediacenter.scrollbar.ScrollbarLayoutSide
@@ -94,7 +94,7 @@ private inline fun buildMonthSegments(
     isHeader: (Int) -> Boolean,
     timestampSecAt: (Int) -> Long,
 ): MonthSegments {
-    val locale = ComposeLocale.getCurrentAndroid()
+    val locale = currentAndroidLocale()
     val cal = Calendar.getInstance(locale)
     val currentYear = Calendar.getInstance(locale).get(Calendar.YEAR)
     val starts = ArrayList<Int>()

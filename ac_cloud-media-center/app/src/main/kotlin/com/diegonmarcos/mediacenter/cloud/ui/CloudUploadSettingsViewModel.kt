@@ -26,7 +26,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaReposito
 import com.diegonmarcos.mediacenter.feature_node.domain.util.MediaOrder
 import com.diegonmarcos.mediacenter.feature_node.domain.util.OrderType
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

@@ -105,7 +105,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
 import com.diegonmarcos.mediacenter.feature_node.presentation.albums.components.AlbumImage
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.MediaViewScreenRoute
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.rememberedDerivedState
-import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.PickerViewModel
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.AppBottomSheetState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberAppBottomSheetState

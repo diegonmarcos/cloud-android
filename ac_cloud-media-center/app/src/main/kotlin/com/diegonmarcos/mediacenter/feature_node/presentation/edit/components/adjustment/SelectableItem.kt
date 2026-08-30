@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.safeSystemGesturesPadding
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.sentenceCase
+import com.diegonmarcos.mediacenter.core.util.sentenceCase
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

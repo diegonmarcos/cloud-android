@@ -6,7 +6,7 @@ package com.diegonmarcos.mediacenter.feature_node.presentation.collection.compon
 
 import android.content.ContentUris
 import android.provider.MediaStore
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.formatSize
+import com.diegonmarcos.mediacenter.core.util.formatSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication

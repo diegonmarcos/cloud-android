@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.Adjustment
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilter
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.core.HorizontalScrubber
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.core.VerticalScrubber
 import kotlin.math.roundToInt

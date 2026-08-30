@@ -7,7 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import com.diegonmarcos.mediacenter.R
 import com.diegonmarcos.mediacenter.core.Settings.Misc.rememberExifDateFormat
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 
 @Stable
 data class MediaDateCaption(

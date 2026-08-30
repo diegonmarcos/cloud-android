@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.diegonmarcos.mediacenter.feature_node.presentation.util
+package com.diegonmarcos.mediacenter.core.util
 
 import android.content.Context
 import android.content.res.Resources
@@ -17,13 +17,12 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
 fun Long.getDateExt(): DateExt {
-    val mediaDate = Calendar.getInstance(ComposeLocale.getCurrentAndroid())
+    val mediaDate = Calendar.getInstance(currentAndroidLocale())
     mediaDate.timeInMillis = this * 1000L
     return DateExt(
-        month = mediaDate.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, ComposeLocale.getCurrentAndroid())!!,
+        month = mediaDate.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, currentAndroidLocale())!!,
         day = mediaDate.get(Calendar.DAY_OF_MONTH),
         year = mediaDate.get(Calendar.YEAR)
     )
@@ -44,23 +43,23 @@ fun getDateHeader(startDate: DateExt, endDate: DateExt): String {
 
 fun getMonth(extendedFormat: String, defaultFormat: String, date: String): String {
     return try {
-        val dateFormatExtended = SimpleDateFormat(extendedFormat, ComposeLocale.getCurrentAndroid()).parse(date)
-        val cal = Calendar.getInstance(ComposeLocale.getCurrentAndroid()).apply { timeInMillis = dateFormatExtended!!.time }
-        val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, ComposeLocale.getCurrentAndroid())!!
+        val dateFormatExtended = SimpleDateFormat(extendedFormat, currentAndroidLocale()).parse(date)
+        val cal = Calendar.getInstance(currentAndroidLocale()).apply { timeInMillis = dateFormatExtended!!.time }
+        val month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, currentAndroidLocale())!!
         val year = cal.get(Calendar.YEAR)
         "$month $year"
     } catch (e: ParseException) {
         try {
-            val dateFormat = SimpleDateFormat(defaultFormat, ComposeLocale.getCurrentAndroid()).parse(date)
-            val cal = Calendar.getInstance(ComposeLocale.getCurrentAndroid()).apply { timeInMillis = dateFormat!!.time }
-            cal.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, ComposeLocale.getCurrentAndroid())!!
+            val dateFormat = SimpleDateFormat(defaultFormat, currentAndroidLocale()).parse(date)
+            val cal = Calendar.getInstance(currentAndroidLocale()).apply { timeInMillis = dateFormat!!.time }
+            cal.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, currentAndroidLocale())!!
         } catch (e: ParseException) {
             ""
         }
     }
 }
 
-fun ComposeLocale.Companion.getCurrentAndroid(): Locale {
+fun currentAndroidLocale(): Locale {
     return ConfigurationCompat.getLocales(Resources.getSystem().configuration)[0] ?: Locale.getDefault()
 }
 
@@ -89,7 +88,7 @@ enum class SystemDateFormatField {
  * device's 12/24-hour preference. e.g. "h:mm a" or "H:mm".
  */
 fun systemTimePattern(context: Context): String {
-    val locale = ComposeLocale.getCurrentAndroid()
+    val locale = currentAndroidLocale()
     val skeleton = if (DateFormat.is24HourFormat(context)) "Hm" else "hm"
     return DateFormat.getBestDateTimePattern(locale, skeleton)
 }
@@ -99,7 +98,7 @@ fun systemTimePattern(context: Context): String {
  * (see [android.text.format.DateFormat.getBestDateTimePattern]).
  */
 fun systemDatePattern(skeleton: String): String {
-    val locale = ComposeLocale.getCurrentAndroid()
+    val locale = currentAndroidLocale()
     return DateFormat.getBestDateTimePattern(locale, skeleton)
 }
 
@@ -124,7 +123,7 @@ fun systemDateTimePattern(context: Context, field: SystemDateFormatField): Strin
 fun Long.getDate(
     format: CharSequence,
 ): String {
-    val mediaDate = Calendar.getInstance(ComposeLocale.getCurrentAndroid())
+    val mediaDate = Calendar.getInstance(currentAndroidLocale())
     mediaDate.timeInMillis = this * 1000L
     return DateFormat.format(format, mediaDate).toString()
 }
@@ -133,7 +132,7 @@ fun Long.getMediaAppBarDate(
     format: CharSequence,
     extendedFormat: CharSequence,
 ): String {
-    val locale = ComposeLocale.getCurrentAndroid()
+    val locale = currentAndroidLocale()
     val mediaDate = Calendar.getInstance(locale)
     mediaDate.timeInMillis = this * 1000L
     return if (mediaDate.get(Calendar.YEAR) < Calendar.getInstance(locale).get(Calendar.YEAR)) {
@@ -150,7 +149,7 @@ fun Long.getDate(
     stringToday: String,
     stringYesterday: String
 ): String {
-    val locale = ComposeLocale.getCurrentAndroid()
+    val locale = currentAndroidLocale()
     val currentDate = Calendar.getInstance(locale)
     currentDate.timeInMillis = System.currentTimeMillis()
     val mediaDate = Calendar.getInstance(locale)
@@ -189,9 +188,9 @@ fun Long.getDate(
 }
 
 fun Long.getMonth(): String {
-    val currentDate = Calendar.getInstance(ComposeLocale.getCurrentAndroid()).apply { timeInMillis = System.currentTimeMillis() }
-    val mediaDate = Calendar.getInstance(ComposeLocale.getCurrentAndroid()).apply { timeInMillis = this@getMonth * 1000L }
-    val month = mediaDate.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, ComposeLocale.getCurrentAndroid())!!
+    val currentDate = Calendar.getInstance(currentAndroidLocale()).apply { timeInMillis = System.currentTimeMillis() }
+    val mediaDate = Calendar.getInstance(currentAndroidLocale()).apply { timeInMillis = this@getMonth * 1000L }
+    val month = mediaDate.getDisplayName(Calendar.MONTH, Calendar.LONG_FORMAT, currentAndroidLocale())!!
     val year = mediaDate.get(Calendar.YEAR)
     return if (currentDate.get(Calendar.YEAR) != mediaDate.get(Calendar.YEAR))
         "$month $year"
@@ -199,7 +198,7 @@ fun Long.getMonth(): String {
 }
 
 fun Long.getYear(): String {
-    val mediaDate = Calendar.getInstance(ComposeLocale.getCurrentAndroid()).apply { timeInMillis = this@getYear * 1000L }
+    val mediaDate = Calendar.getInstance(currentAndroidLocale()).apply { timeInMillis = this@getYear * 1000L }
     return mediaDate.get(Calendar.YEAR).toString()
 }
 
@@ -208,7 +207,7 @@ fun Long.formatMinSec(): String {
         "00:00"
     } else {
         String.format(
-            ComposeLocale.getCurrentAndroid(),
+            currentAndroidLocale(),
             "%02d:%02d",
             TimeUnit.MILLISECONDS.toMinutes(this),
             TimeUnit.MILLISECONDS.toSeconds(this) -
@@ -280,7 +279,7 @@ class DateGrouper(
     private val stringToday: String,
     private val stringYesterday: String
 ) {
-    private val locale: Locale = ComposeLocale.getCurrentAndroid()
+    private val locale: Locale = currentAndroidLocale()
     private val currentYear: Int
     private val todayStartMillis: Long
     private val reusableCal: Calendar = Calendar.getInstance(locale)

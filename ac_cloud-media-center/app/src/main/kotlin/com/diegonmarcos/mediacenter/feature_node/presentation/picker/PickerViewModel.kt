@@ -32,7 +32,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.isImage
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isVideo
 import com.diegonmarcos.mediacenter.feature_node.presentation.privatefolder.PrivateFolderViewModel.Companion.PRIVATE_FOLDER_ALBUM_ID
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.createDecryptedTempFile
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.getDate
+import com.diegonmarcos.mediacenter.core.util.getDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mapMedia
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mapMediaToItem
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mediaFlowWithType
@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 
 @HiltViewModel
 open class PickerViewModel @Inject constructor(
@@ -334,25 +335,5 @@ open class PickerViewModel @Inject constructor(
     companion object {
         /** How long a materialized share temp file is kept before the next picker launch sweeps it. */
         private const val SHARE_TEMP_TTL_MS = 5 * 60 * 1000L
-    }
-}
-
-enum class AllowedMedia {
-    PHOTOS, VIDEOS, BOTH;
-
-    override fun toString(): String {
-        return when (this) {
-            PHOTOS -> "image%"
-            VIDEOS -> "video%"
-            BOTH -> "%/%"
-        }
-    }
-
-    fun toStringAny(): String {
-        return when (this) {
-            PHOTOS -> "image/*"
-            VIDEOS -> "video/*"
-            BOTH -> "*/*"
-        }
     }
 }

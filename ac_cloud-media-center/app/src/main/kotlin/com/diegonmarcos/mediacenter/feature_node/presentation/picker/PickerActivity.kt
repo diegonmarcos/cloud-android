@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import com.diegonmarcos.mediacenter.feature_node.domain.model.AllowedMedia
 
 class PickerActivityContract(
     private val mediaType: String = "*/*",

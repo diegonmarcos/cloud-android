@@ -22,7 +22,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.ImageFilter
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.MarkupItems
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.PathProperties
 import com.diegonmarcos.mediacenter.core.decoder.RawDevelopParams
-import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.adjustment.AdjustScrubber
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.develop.DevelopCategorySection
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.components.colour.ColourSection
