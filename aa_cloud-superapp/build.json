@@ -1465,7 +1465,9 @@
             "packages": [
               "com.anthropic.claude",
               "com.google.android.apps.bard",
-              "com.termux.nix"
+              "com.termux.nix",
+              "cld.termux.nix",
+              "cld.termux"
             ],
             "_doc_folders": "Nested folders inside a phone_app_group — render as One-UI-style folder tiles in the same grid as plain packages (2×2 mini-icon preview, tap → modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
             "folders": [
@@ -3378,6 +3380,8 @@
           "pkg:com.termux",
           "pkg:com.termux.api",
           "pkg:com.termux.nix",
+          "pkg:cld.termux",
+          "pkg:cld.termux.nix",
           "pkg:com.teslacoilsw.launcher",
           "pkg:com.ubnt.usurvey",
           "pkg:dk.tacit.android.foldersync.lite",
@@ -3408,6 +3412,7 @@
           "pkg:com.samsung.android.oneconnect",
           "pkg:io.raindrop.raindropio",
           "pkg^com.termux.",
+          "pkg^cld.termux.",
           "pkg^io.taskbar.",
           "pkg^com.aurora.store",
           "pkg^org.fdroid.",

@@ -212,7 +212,7 @@
     {
       "id": "nix-on-droid",
       "label": "Cloud Nix-on-Droid",
-      "package": "com.termux.nix",
+      "package": "cld.termux.nix",
       "alt_id": null,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
@@ -244,7 +244,7 @@
     {
       "id": "termux",
       "label": "Cloud Terminal (Termux)",
-      "package": "com.termux",
+      "package": "cld.termux",
       "alt_id": null,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
