@@ -1670,7 +1670,14 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             bindExpandWarning(message, expanded);
 
             // Message text preview
-            int textColor = (contrast ? textColorPrimary : textColorSecondary);
+            // comms: the preview follows the seen state like the rest of the row
+            // (unread = full-strength, read = muted grey). This MUST live here,
+            // not in bindSeen(): bindTo calls bindSeen() at the top and then
+            // reaches this block, so anything bindSeen set on tvPreview was
+            // overwritten one screenful later and the change looked inert.
+            int textColor = (message.unseen > 0
+                    ? (contrast ? textColorPrimary : colorUnread)
+                    : colorRead);
             // comms: a message inside an opened conversation gets one preview
             // line, so a conversation that was N lines tall while collapsed
             // shows N of its messages once it is opened. The tag has to carry
@@ -1691,7 +1698,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             }
             tvPreview.setTypeface(
                     StyleHelper.getTypeface(display_font, context),
-                    preview_italic ? Typeface.ITALIC : Typeface.NORMAL);
+                    (preview_italic ? Typeface.ITALIC : Typeface.NORMAL)
+                            | (message.unseen > 0 ? Typeface.BOLD : Typeface.NORMAL));
             tvPreview.setText(message.preview);
             tvPreview.setVisibility(preview && !TextUtils.isEmpty(message.preview) ? View.VISIBLE : View.GONE);
 
@@ -2086,12 +2094,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             if (tvSubject != null)
                 tvSubject.setTextColor(message.unseen > 0 && highlight_subject
                         ? colorSubject : colorUnseen);
-            if (tvPreview != null) {
-                tvPreview.setTextColor(colorUnseen);
-                tvPreview.setTypeface(StyleHelper.getTypeface(display_font, context),
-                        (preview_italic ? Typeface.ITALIC : Typeface.NORMAL)
-                                | (message.unseen > 0 ? Typeface.BOLD : Typeface.NORMAL));
-            }
+            // NB: tvPreview is deliberately NOT touched here -- bindTo() sets it
+            // after this method returns, so a write here would be discarded.
         }
 
         private void bindFlagged(TupleMessageEx message, boolean expanded) {
