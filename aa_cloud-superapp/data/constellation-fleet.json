@@ -108,7 +108,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Cal.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Cal.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-calendar/libs/cal",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/cal",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-cal",
       "blocked": false,
       "kind": "lib"
@@ -140,7 +140,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Contacts.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Contacts.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-contacts/libs/contacts",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/contacts",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-contacts",
       "blocked": false,
       "kind": "lib"
@@ -348,7 +348,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Maps.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Maps.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-nav/libs/maps",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/maps",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-maps",
       "blocked": false,
       "kind": "lib"
@@ -412,7 +412,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-News.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-News.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-news/libs/news",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/news",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-news",
       "blocked": false,
       "kind": "lib"
@@ -556,7 +556,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Wallet.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Wallet.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-wallet/libs/wallet",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/wallet",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-wallet",
       "blocked": false,
       "kind": "lib"

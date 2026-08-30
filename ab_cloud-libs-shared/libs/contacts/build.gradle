@@ -5,10 +5,12 @@ plugins {
 
 // The channel registry is baked into THIS module now, not only the app's
 // BuildConfig: ContactsEngine ships inside Cloud-Lib-Contacts.apk and cannot
-// see the app's. '../../build.json' resolves against this module's own
-// directory, so it stays ac_cloud-contacts/build.json whether the module is
+// see the app's. rootDir is the CONSUMING app, which is the only thing that
+// stays correct when the module moves: '../../build.json' used to mean
+// ac_cloud-contacts/build.json and, after the consolidation into
+// ab_cloud-libs-shared/libs/, silently became ab_cloud-libs-shared/build.json
 // built by the app or shared by reference into ab_cloud-libs.
-def buildJson   = new groovy.json.JsonSlurper().parse(file('../../build.json'))
+def buildJson   = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
 def channelsB64 = groovy.json.JsonOutput.toJson(buildJson.channels?.registry ?: [])
                         .bytes.encodeBase64().toString()
 

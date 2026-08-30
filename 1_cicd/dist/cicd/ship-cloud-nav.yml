@@ -44,6 +44,7 @@ on:
       - "ac_cloud-nav-v*"
     paths:
       - "ac_cloud-nav/**"
+      - "ab_cloud-libs-shared/libs/maps/**"
       # Shared BY REFERENCE from ab_cloud-libs-shared/libs/ (settings.gradle
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no

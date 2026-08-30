@@ -25,6 +25,7 @@ on:
       - "ac_cloud-calendar-v*"
     paths:
       - "ac_cloud-calendar/**"
+      - "ab_cloud-libs-shared/libs/cal/**"
       # Shared BY REFERENCE from ab_cloud-libs-shared/libs/ (settings.gradle
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no

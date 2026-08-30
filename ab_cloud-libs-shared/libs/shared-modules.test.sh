@@ -386,8 +386,17 @@ fi
 #      touching our code, and the failure lands in CI five minutes later. This
 #      is exactly how the split first broke: isAlwaysOn/isLockdownEnabled were
 #      missed because the interface was grepped instead of read.
-BACKEND_JAVA=aa_cloud-superapp/libs/net/src/main/java/com/wireguard/android/backend/Backend.java
-AIDL_CLIENT=aa_cloud-superapp/libs/net/src/main/java/com/diegonmarcos/superapp/net/AidlBackend.kt
+#      Paths derive from LIBS_ROOT: hardcoding aa_cloud-superapp/libs/net meant
+#      that after the consolidation both files were simply "not found" and the
+#      [ -f ] guard below skipped the whole rule in silence. A guard that turns
+#      a moved path into zero assertions is worse than no rule, so a missing
+#      file is now a FAIL, not a shrug.
+LIBS_ROOT=ab_cloud-libs-shared/libs
+BACKEND_JAVA=$LIBS_ROOT/net/src/main/java/com/wireguard/android/backend/Backend.java
+AIDL_CLIENT=$LIBS_ROOT/net/src/main/java/com/diegonmarcos/superapp/net/AidlBackend.kt
+if [ ! -f "$BACKEND_JAVA" ] || [ ! -f "$AIDL_CLIENT" ]; then
+    note FAIL "rule 15b cannot run: $BACKEND_JAVA or $AIDL_CLIENT is missing — a moved path silently disarms this check"
+fi
 if [ -f "$BACKEND_JAVA" ] && [ -f "$AIDL_CLIENT" ]; then
     missing=""
     while read -r m; do
