@@ -1,6 +1,6 @@
 {
   "name": "cloud-watchdog",
-  "description": "The my-watchdog panel as an Android app: a WebView showing the REAL dashboard, drawn by my-konsole-dash inside nix-on-droid and transcribed to HTML.",
+  "description": "The my-watchdog panel as an Android app: a WebView showing the REAL dashboard, drawn by my-watchdog-tui inside nix-on-droid and transcribed to HTML.",
   "category": "android",
   "build": {
     "type": "gradle",
@@ -10,7 +10,7 @@
   "watchdog": {
     "_doc": "Baked into libs:watchdog as WATCHDOG_TARGETS_JSON_B64 / _CMD. Host, port, user and the command are DATA, never Kotlin constants \u2014 the same rule cloud-ide's terminal-targets.json follows. Loopback because Android shares 127.0.0.1 across app sandboxes. Auth is key-based and the key is generated in-app: add the public line (Setup screen) to ~/.ssh/authorized_keys in the env.",
     "backend_default": "nix-on-droid",
-    "cmd": "my-konsole-dash tui",
+    "cmd": "my-watchdog-tui tui",
     "targets": {
       "backends": {
         "nix-on-droid": {

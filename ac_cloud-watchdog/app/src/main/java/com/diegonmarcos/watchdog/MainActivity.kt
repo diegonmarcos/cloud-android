@@ -18,7 +18,7 @@ import com.diegonmarcos.superapp.watchdog.WatchdogSsh
  * a second time somewhere else diverged on frames, alignment and palette —
  * slowly enough each time to look nearly right and never be.
  *
- * So it runs `my-konsole-dash tui --serve` inside nix-on-droid and keeps it: keys
+ * So it runs `my-watchdog-tui tui --serve` inside nix-on-droid and keeps it: keys
  * go down its stdin, frames come back off its stdout. So the app has every
  * command the CLI has and the exact same screen, and neither is a claim about
  * this code — the keys ARE Monitor::on_key and the screen IS the ratatui
