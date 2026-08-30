@@ -50,6 +50,19 @@ class PackageInstallerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: ""
+        // EXTRA_STATUS is a coarse bucket — STATUS_FAILURE tells you nothing
+        // about WHY. The legacy code underneath it is the exact reason
+        // (INSTALL_PARSE_FAILED_NOT_APK, INSTALL_FAILED_UPDATE_INCOMPATIBLE,
+        // …), and the platform hands it to us in every result. We were reading
+        // past it, so the one precise fact in the whole exchange was thrown
+        // away and the search moved to logcat — where it can never be, because
+        // PackageParser logs under system_server's uid and an app may only
+        // read its own. The detail was always here, not there.
+        val legacy = intent.getIntExtra("android.content.pm.extra.LEGACY_STATUS", Int.MIN_VALUE)
+        val legacyName = legacyStatusName(legacy)
+        // For a CONFLICT this names the package we collided with, which is the
+        // difference between "signature mismatch" and "someone else owns it".
+        val other = intent.getStringExtra(PackageInstaller.EXTRA_OTHER_PACKAGE_NAME).orEmpty()
         // Which app was being installed — our own (self-update) or a companion
         // (Cloud-Comms / Cloud-IDE hub). Drives an accurate success message.
         val pkg = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME).orEmpty()
@@ -145,15 +158,57 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 // Diagnose screen can only describe the right app and the right
                 // file if it is told which they were.
                 if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Failed(
-                    message.ifEmpty { label },
+                    listOfNotNull(
+                        message.ifEmpty { label },
+                        legacyName?.let { "code: $it" },
+                        other.takeIf { it.isNotBlank() }?.let { "conflicts with: $it" },
+                    ).joinToString(" · "),
                     appId = gateKey,
                     pkg = gateKey,
                     apkPath = intent.getStringExtra(EXTRA_APK_PATH).orEmpty(),
                 ))
+                // Every extra, once, at W. Cheap, bounded, and it is OUR log so
+                // the Diagnose screen picks it up — unlike the platform's.
+                Log.w(TAG, "install failed pkg=$gateKey status=$status legacy=$legacy " +
+                    "(${legacyName ?: "none"}) other=$other msg=${message.ifEmpty { "-" }} " +
+                    "extras=${intent.extras?.keySet()?.joinToString(",") ?: "-"}")
                 surface(context, "$verb failed: $label", message.ifEmpty { label },
                     severity = NotificationStore.Sev.ERROR)
             }
         }
+    }
+
+    /**
+     * The legacy INSTALL_* constants, by value. Not exposed as public API, and
+     * a bare "-100" in a toast is no better than no code at all, so the small
+     * table earns its place: these are the failures a fleet installer actually
+     * meets, and each one points somewhere different.
+     */
+    private fun legacyStatusName(code: Int): String? = when (code) {
+        Int.MIN_VALUE -> null            // extra absent — nothing to report
+        1 -> null                        // SUCCEEDED
+        -1 -> "INSTALL_FAILED_ALREADY_EXISTS"
+        -2 -> "INSTALL_FAILED_INVALID_APK"
+        -3 -> "INSTALL_FAILED_INVALID_URI"
+        -4 -> "INSTALL_FAILED_INSUFFICIENT_STORAGE"
+        -5 -> "INSTALL_FAILED_DUPLICATE_PACKAGE"
+        -7 -> "INSTALL_FAILED_UPDATE_INCOMPATIBLE (signature differs from the installed copy)"
+        -12 -> "INSTALL_FAILED_OLDER_SDK"
+        -20 -> "INSTALL_FAILED_TEST_ONLY"
+        -23 -> "INSTALL_FAILED_MISSING_SHARED_LIBRARY"
+        -25 -> "INSTALL_FAILED_VERSION_DOWNGRADE"
+        -100 -> "INSTALL_PARSE_FAILED_NOT_APK"
+        -101 -> "INSTALL_PARSE_FAILED_BAD_MANIFEST"
+        -102 -> "INSTALL_PARSE_FAILED_UNEXPECTED_EXCEPTION"
+        -103 -> "INSTALL_PARSE_FAILED_NO_CERTIFICATES"
+        -104 -> "INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES"
+        -105 -> "INSTALL_PARSE_FAILED_CERTIFICATE_ENCODING"
+        -110 -> "INSTALL_PARSE_FAILED_MANIFEST_MALFORMED"
+        -113 -> "INSTALL_FAILED_INTERNAL_ERROR"
+        -118 -> "INSTALL_FAILED_ABORTED"
+        -124 -> "INSTALL_FAILED_BAD_DEX_METADATA"
+        -127 -> "INSTALL_FAILED_DEPRECATED_SDK_VERSION"
+        else -> "legacy=$code"
     }
 
     /** True when THIS app's process is currently foreground — the only state in
