@@ -4,6 +4,24 @@ apply plugin: 'org.jetbrains.kotlin.android'
 def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
 def a = buildJson.android
 
+// versionCode MUST move on every build, or nothing lands.
+//
+// Android refuses to replace an installed APK with one whose versionCode is
+// not higher, and the fleet updater compares versions to decide there is
+// anything to offer. A constant 1 therefore makes every fix look like it did
+// not ship: the store says "installed", the install button does nothing, and
+// the bug you are staring at is a build from days ago.
+//
+// GITHUB_RUN_NUMBER because it is monotonic per workflow and needs no state:
+// a commit count would go backwards on a rebase and a timestamp would collide
+// between the two ABI legs of one run. Locally it is 0, so a hand build stays
+// at the declared base and cannot outrank a CI one by accident.
+//
+// This is the same line ac_cloud-nav, ac_cloud-ide and the rest already had —
+// this app was written from a thinner template and simply never got it.
+def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
+def codeFinal = (a.version_code as Number).intValue() + runNumber
+
 android {
     namespace 'com.diegonmarcos.watchdog'
     compileSdk a.compile_sdk
@@ -12,7 +30,7 @@ android {
         applicationId a.application_id
         minSdk        a.min_sdk
         targetSdk     a.target_sdk
-        versionCode   a.version_code
+        versionCode   codeFinal
         versionName   a.version_name
         ndk { abiFilters a.abi_filters as String[] }
     }

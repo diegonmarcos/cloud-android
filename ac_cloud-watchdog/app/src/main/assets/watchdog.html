@@ -206,35 +206,106 @@ body::after {
   transform: none !important;
   font-size: 11px;
 }
-/* The app shell. The transcript brings its own frames and colours; this is
-   only the surface it sits on and the bar that says how old it is. */
-html,body{height:100%;margin:0;background:#0b0e14;color:#c8ccd4;overflow:hidden}
-#bar{position:fixed;top:0;left:0;right:0;height:calc(46px + env(safe-area-inset-top,0px));
-  padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;gap:10px;
-  padding-left:12px;padding-right:12px;background:#101520;border-bottom:1px solid #3a3e4a;z-index:9}
-#bar b{color:#78c8ff;font-size:13px;font-weight:700}
-#bar .s{margin-left:auto;font-size:11px;color:#788091}
-#bar #env{color:#78c8ff;border-color:#3a3e4a}
-#bar button{background:none;border:1px solid #3a3e4a;border-radius:6px;color:#788091;
-  font:inherit;font-size:11px;min-width:44px;min-height:34px;cursor:pointer}
-#view{position:absolute;top:calc(46px + env(safe-area-inset-top,0px));left:0;right:0;bottom:0;
-  overflow:auto;-webkit-overflow-scrolling:touch;padding:6px}
-#view .tui{margin:0;padding:0;box-shadow:none;border-radius:0}
-#keys{position:fixed;left:0;right:0;bottom:0;z-index:9;background:#101520;
-  border-top:1px solid #3a3e4a;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
-#keys .row{display:flex;gap:4px;margin:3px 0}
-#keys button{flex:1;min-height:40px;background:#0b0e14;color:#c8ccd4;border:1px solid #3a3e4a;
-  border-radius:6px;font:inherit;font-size:11px;padding:0 2px}
-#keys button:active{background:#78c8ff;color:#0b0e14;border-color:#78c8ff}
-#keys .row[data-t="act"] button{color:#78c8ff}
+/* ── the app IS the panel ───────────────────────────────────────────────────
+   Every part of this page is drawn in the language the CLI uses, because the
+   thing it wraps is a transcript of that CLI and a chrome in a different
+   idiom makes the screen look like two products stapled together.
+
+   So: box-drawing frames rather than Material bars, a title inlaid into the
+   top edge the way draw::bbox does it, reverse video for the pressed state
+   the way a terminal marks a selection, and one monospace stack throughout.
+   Nothing here is a rounded card, a shadow, or a ripple. */
+html, body {
+  height: 100%; margin: 0; background: #0b0e14; color: #c8ccd4;
+  font-family: ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-variant-ligatures: none; overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The top line, framed like a box's upper edge with the name inlaid into it.
+   Fixed because the transcript scrolls under it. */
+#bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9;
+  padding-top: env(safe-area-inset-top, 0px);
+  display: flex; align-items: center; gap: 10px;
+  padding-left: 10px; padding-right: 10px; height: calc(44px + env(safe-area-inset-top, 0px));
+  background: #0b0e14; border-bottom: 1px solid #3a3e4a;
+}
+#bar b {
+  color: #78c8ff; font-size: 13px; font-weight: 700;
+  text-shadow: 0 0 8px rgba(120, 200, 255, .35);
+}
+/* ┤ ├ around the name, exactly as bbox() brackets a title into its border. */
+#bar b::before { content: "\2524"; color: #3a3e4a; font-weight: 400; text-shadow: none; }
+#bar b::after  { content: "\251C"; color: #3a3e4a; font-weight: 400; text-shadow: none; }
+#bar .s { margin-left: auto; font-size: 11px; color: #788091; }
+/* The blinking block the panel's own command line ends in. */
+#bar .s::after { content: "\00a0\2588"; color: #78c8ff; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { #bar .s::after { animation: none } }
+
+#bar button {
+  background: none; border: 1px solid #3a3e4a; color: #788091;
+  font: inherit; font-size: 11px; padding: 0 10px;
+  min-width: 44px; min-height: 32px; cursor: pointer;
+  border-radius: 0;                    /* terminals have corners, not radii */
+}
+#bar button:active { background: #78c8ff; color: #0b0e14; border-color: #78c8ff; }
+#bar #env { color: #78c8ff; }
+#bar #retry { color: #f0de40; border-color: #5c5423; }
+
+/* The transcript sits between them, unframed: it brings its own borders. */
+#view {
+  position: absolute; left: 0; right: 0;
+  top: calc(44px + env(safe-area-inset-top, 0px)); bottom: 0;
+  overflow: auto; -webkit-overflow-scrolling: touch; padding: 4px;
+}
+#view .tui { margin: 0; padding: 0; box-shadow: none; border-radius: 0; }
+#msg {
+  padding: 14px; color: #f0de40; white-space: pre-wrap;
+  font: inherit; font-size: 12px; line-height: 1.5;
+}
+
+/* ── the key rows ──────────────────────────────────────────────────────────
+   A framed box like every other box on the screen, with its title inlaid, and
+   keys that look like cells rather than buttons. Pressed is reverse video —
+   what a terminal does to mark a selection — not a colour wash. */
+#keys {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+  background: #0b0e14; border-top: 1px solid #3a3e4a;
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+}
+#keys::before {
+  content: "\2524keys\251C"; position: absolute; top: -8px; left: 12px;
+  background: #0b0e14; padding: 0 3px; font-size: 11px; color: #78c8ff;
+}
+#keys .row { display: flex; gap: 3px; margin: 3px 0; }
+#keys button {
+  flex: 1; min-height: 38px; padding: 0 2px;
+  background: #0b0e14; color: #c8ccd4; border: 1px solid #3a3e4a;
+  border-radius: 0; font: inherit; font-size: 11px;
+}
+#keys button:active { background: #78c8ff; color: #0b0e14; border-color: #78c8ff; }
+/* The action row is the one that changes the machine, so it carries the
+   accent the panel gives its own act menus. */
+#keys .row[data-t="act"] button { color: #78c8ff; }
+#keys .row[data-t="sort"] button,
+#keys .row[data-t="view"] button { color: #788091; }
+
 /* Off-screen but focusable: focusing it raises the soft keyboard, and every
    character typed goes down the same pipe as the buttons. */
-#sink{position:fixed;left:-9999px;width:1px;height:1px;opacity:0}
-#msg{padding:18px;color:#f0de40;font:12px ui-monospace,monospace;white-space:pre-wrap}
+#sink { position: fixed; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 </style>
 <div id="bar"><b>watchdog</b><span class="s" id="age">connecting…</span>
+<button id="retry" type="button" hidden>retry</button>
 <button id="env" type="button">env</button><button id="kb" type="button">keys</button></div>
-<div id="view"><div id="msg">connecting…</div></div>
+<!-- THE SHELL IS NOT THE DATA. Everything here exists before the first byte
+     comes back over ssh: the bar, the key rows, the frame. A terminal that
+     appears only once a remote command has answered looks broken for the whole
+     second it takes, and looks permanently broken when the answer never comes.
+     The skeleton is dimmed box-drawing so the shape of what is loading is
+     already right, rather than a spinner that shows nothing about the page. -->
+<div id="view"><pre class="tui" id="skel"></pre></div>
 
 <!-- Every key the CLI binds, reachable by thumb. The LABELS are a convenience
      for a touchscreen; the app still sends only a key name and the panel's own
@@ -313,6 +384,10 @@ window.__wdEvent = function (kind, payload) {
     document.getElementById('age').textContent = new Date().toLocaleTimeString();
     showEnv();
   } else if (kind === 'error') {
+    // Into the view only — the bar and the key rows stay where they are, so a
+    // failed connect leaves a usable app rather than an error page. Retrying
+    // is then one tap instead of a relaunch.
+    document.getElementById('retry').hidden = false;
     view.innerHTML = '<div id="msg"></div>';
     // Verbatim: "cannot connect" and "command not found" send you to two
     // different places, and collapsing them into "error" helps nobody.
@@ -324,6 +399,21 @@ window.__wdEvent = function (kind, payload) {
     document.getElementById('age').textContent = 'panel exited';
   }
 };
+
+// A skeleton the size of the grid we are about to ask for, so the page does
+// not jump when the real screen replaces it.
+function skeleton() {
+  const el = document.getElementById('skel');
+  if (!el) return;
+  const [c, r] = grid();
+  const bar = '\u2500'.repeat(Math.max(10, c - 2));
+  const mid = (t) => '\u2502' + t.padEnd(Math.max(8, c - 2)) + '\u2502';
+  const rows = ['\u256d' + bar + '\u256e'];
+  for (let i = 0; i < Math.max(3, r - 4); i++) rows.push(mid(i === 1 ? '   waiting for the panel…' : ''));
+  rows.push('\u2570' + bar + '\u256f');
+  el.textContent = rows.join('\n');
+  el.style.color = '#3a3e4a';
+}
 
 const send = k => AndroidWatchdog.key(k);
 
@@ -389,6 +479,15 @@ function fit() {
 setInterval(() => AndroidWatchdog.tick(), 2000);
 let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fit, 250); });
 
+document.getElementById('retry').onclick = () => {
+  document.getElementById('retry').hidden = true;
+  document.getElementById('age').textContent = 'connecting…';
+  skeleton();
+  const [c, r] = grid();
+  AndroidWatchdog.start(c, r);
+};
+
+skeleton();
 const [c0, r0] = grid();
 AndroidWatchdog.start(c0, r0);
 </script>
