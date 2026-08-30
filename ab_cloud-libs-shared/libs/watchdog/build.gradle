@@ -55,7 +55,15 @@ android {
     // these are for. Legacy packaging is extractNativeLibs=true.
     packagingOptions { jniLibs { useLegacyPackaging = true } }
 
-    buildFeatures { buildConfig = true }
+    // aidl = true is REQUIRED, not a preference: AGP 8 defaults it to false,
+    // so the ICloudExec interface simply is not generated and every reference
+    // to it fails as "Unresolved reference" — with no hint that a build
+    // feature is off. The Termux fork gets away without it only because it is
+    // still on AGP 4.2, where the default is the other way round.
+    buildFeatures {
+        buildConfig = true
+        aidl = true
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
