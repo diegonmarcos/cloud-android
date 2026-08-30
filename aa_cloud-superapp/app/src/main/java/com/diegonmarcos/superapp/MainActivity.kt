@@ -1092,7 +1092,7 @@ class MainActivity : AppCompatActivity(),
     private val hasDetailPane: Boolean get() = findViewById<View?>(R.id.detail_container) != null
     override fun isTwoPane(): Boolean = twoPane && hasDetailPane
 
-    override fun pushContent(content: Fragment) {
+    override fun pushContent(content: Fragment, tag: String?) {
         // Tablet master-detail: opened pages render in the right-hand DETAIL
         // pane while the master (section grid) stays visible on the left.
         // They still go on the shared back stack so Back pops the detail
@@ -1103,10 +1103,24 @@ class MainActivity : AppCompatActivity(),
         val detailShown = findViewById<View?>(R.id.detail_container)?.visibility == View.VISIBLE
         val target = if (isTwoPane() && detailShown) R.id.detail_container
                      else R.id.fragment_container
+        // Re-opening a page already somewhere on the back stack (e.g. the
+        // user drills Configs ▸ AI ▸ Back-to-grid ▸ AI again, or a drawer tap
+        // lands on the page already showing) used to ADD a second live
+        // instance on top instead of returning to the first — the old one
+        // never got destroyed, sat STOPPED in the back stack, and its
+        // registerForActivityResult launchers (AiFragment's import/export
+        // pickers, WireGuardFragment's, ProfileFragment's, …) stayed
+        // registered forever. Over a long session that grows the Activity's
+        // saved-state Bundle past Binder's ~1MB transaction limit and the
+        // next onStop() crashes with TransactionTooLargeException. Popping
+        // any existing slot for this same logical page first bounds the
+        // back stack to one entry per distinct page, no matter how many
+        // times it's revisited.
+        if (tag != null) supportFragmentManager.popBackStackImmediate(tag, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         supportFragmentManager.beginTransaction()
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
             .replace(target, content)
-            .addToBackStack(null)
+            .addToBackStack(tag)
             .commit()
     }
     override fun recordSection(id: String, label: String, icon: String) {

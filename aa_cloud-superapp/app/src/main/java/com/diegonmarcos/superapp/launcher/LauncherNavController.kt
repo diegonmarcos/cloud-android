@@ -221,7 +221,11 @@ class LauncherNavController(private val host: NavHost) {
         // (section grid) keeps owning the shell chrome, so a ShellOverride page
         // must NOT take it over there. Single-pane phones apply chrome as usual.
         if (!host.isTwoPane()) host.applyChrome(frag)
-        host.pushContent(frag)
+        // Tag by logical page, not instance: re-opening the same page (e.g.
+        // tapping Configs ▸ AI again from the drawer without pressing Back)
+        // must replace its existing back-stack slot rather than stack a
+        // second live copy — see [NavHost.pushContent].
+        host.pushContent(frag, "page:$sectionId/$pageId")
     }
 
     /**
@@ -324,7 +328,15 @@ class LauncherNavController(private val host: NavHost) {
         fun isTwoPane(): Boolean
         fun setSectionTitle(label: String)
         fun swapContent(content: Fragment, clearBackStack: Boolean)
-        fun pushContent(content: Fragment)
+        /** [tag] identifies the LOGICAL page (e.g. "page:configs/ai"), not the
+         *  Fragment instance. Passing it lets the host collapse a re-open of
+         *  the same page into its existing back-stack slot instead of stacking
+         *  a duplicate — see [pushContent]'s implementation for why that
+         *  matters: every re-open otherwise leaves a live, un-destroyed
+         *  Fragment behind, and pages that call registerForActivityResult
+         *  (AiFragment, WireGuardFragment, ProfileFragment, …) leak one launcher
+         *  registration per stale copy into the Activity's saved-state Bundle. */
+        fun pushContent(content: Fragment, tag: String? = null)
         fun applyChrome(fragment: Fragment)
         fun applyLauncherChrome()
         fun syncBottomNav(sectionId: String)
