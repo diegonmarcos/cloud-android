@@ -37,6 +37,7 @@ on:
       # globs from a file, so this list is the one place the roots repeat, and
       # shared-modules.test.sh rule 11 fails the build if it drifts.
       - "ab_cloud-libs-shared/libs/**"
+      - "ab_cloud-libs-shared/build.json"
       - "ac_cloud-calendar/libs/**"
       - "ac_cloud-contacts/libs/**"
       - "ac_cloud-nav/libs/**"

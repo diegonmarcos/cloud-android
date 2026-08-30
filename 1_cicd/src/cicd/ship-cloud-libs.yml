@@ -37,6 +37,11 @@ on:
       # globs from a file, so this list is the one place the roots repeat, and
       # shared-modules.test.sh rule 11 fails the build if it drifts.
       - "ab_cloud-libs-shared/libs/**"
+      - "ab_cloud-libs-shared/build.json"
+      # ^ nine modules fall back to this file for their BuildConfig when the
+      #   consuming repo declares no block of their own, and lib-apks is exactly
+      #   such a repo. A change here changes every lib APK, so not watching it
+      #   meant the fix for a red build did not rebuild anything.
       - "ac_cloud-calendar/libs/**"
       - "ac_cloud-contacts/libs/**"
       - "ac_cloud-nav/libs/**"
