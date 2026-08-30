@@ -203,12 +203,12 @@ class WatchdogSsh(private val ctx: Context) {
      * paints half-drawn screens the moment the far side is slow, which on a
      * throttled free-tier box is most of the time.
      */
-    inner class Panel internal constructor(private val ch: ChannelExec) {
+    inner class Panel internal constructor(private val ch: ChannelExec) : WatchdogPanel {
         private val stdin = ch.outputStream
         private val stdout = ch.inputStream.bufferedReader()
 
         /** Blocks until one whole frame has arrived. */
-        fun readFrame(): String? {
+        override fun readFrame(): String? {
             val sb = StringBuilder()
             while (true) {
                 val line = stdout.readLine() ?: return null
@@ -222,11 +222,11 @@ class WatchdogSsh(private val ctx: Context) {
             stdin.flush()
         }
 
-        fun key(name: String) = send("key:$name")
-        fun tick() = send("tick")
-        fun resize(cols: Int, rows: Int) = send("size:${cols}x$rows")
+        override fun key(name: String) = send("key:$name")
+        override fun tick() = send("tick")
+        override fun resize(cols: Int, rows: Int) = send("size:${cols}x$rows")
 
-        fun close() {
+        override fun close() {
             runCatching { send("quit") }
             runCatching { ch.disconnect() }
         }
@@ -250,8 +250,14 @@ class WatchdogSsh(private val ctx: Context) {
      */
     private fun ensureTools(backend: String): Result<Unit> = runCatching {
         val dir = REMOTE_DIR
-        for (name in listOf(BIN_DAEMON, BIN_PANEL)) {
-            val local = ctx.assets.open("bin/$name").readBytes()
+        // Source is nativeLibraryDir, not assets: the binaries moved there so
+        // this app can also RUN them itself (see WatchdogLocal). They keep
+        // their plain names on the far side — the `lib*.so` spelling buys
+        // execute permission on Android and means nothing in a shell.
+        for ((lib, name) in listOf(LIB_DAEMON to BIN_DAEMON, LIB_PANEL to BIN_PANEL)) {
+            val src = File(ctx.applicationInfo.nativeLibraryDir, lib)
+            if (!src.isFile) error("$lib missing — this build carries no binary for this device's ABI")
+            val local = src.readBytes()
             val have = exec(backend, "stat -c %s '$dir/$name' 2>/dev/null || echo 0")
                 .getOrDefault("0").trim().toLongOrNull() ?: 0L
             if (have == local.size.toLong()) continue
@@ -325,6 +331,10 @@ class WatchdogSsh(private val ctx: Context) {
         const val REMOTE_DIR = ".cache/cloud-watchdog/bin"
         const val BIN_DAEMON = "my-watchdog"
         const val BIN_PANEL = "my-watchdog-tui"
+
+        /** The same two inside the APK, named so Android will exec them. */
+        const val LIB_DAEMON = WatchdogLocal.DAEMON
+        const val LIB_PANEL = WatchdogLocal.BIN
 
         /** Must match monitor::FRAME_END on the other side. */
         const val FRAME_END = "@@WATCHDOG-FRAME-END@@"

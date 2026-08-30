@@ -391,8 +391,14 @@ window.__wdEvent = function (kind, payload) {
     view.innerHTML = '<div id="msg"></div>';
     // Verbatim: "cannot connect" and "command not found" send you to two
     // different places, and collapsing them into "error" helps nobody.
+    // The app carries its own panel, so reaching this at all means the local
+    // one could not run AND every terminal was unreachable. Say which of those
+    // it was — the key only matters for the second.
+    const envs = JSON.parse(AndroidWatchdog.backends());
     view.firstChild.textContent = payload +
-      '\n\ntried: ' + Object.keys(JSON.parse(AndroidWatchdog.backends())).join(', ') +
+      '\n\ntried: ' + Object.keys(envs).join(', ') +
+      (envs.local ? '' :
+        '\n\nthis build carries no panel for this device, so it needs a terminal') +
       '\n\nadd this to ~/.ssh/authorized_keys in the env you use:\n\n' + AndroidWatchdog.publicKey();
     document.getElementById('age').textContent = 'unreachable';
   } else if (kind === 'closed') {

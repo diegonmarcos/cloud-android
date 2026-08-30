@@ -287,3 +287,7 @@ c_devices/garmin-watchface/dist/
 
 ## Tracked here on purpose; overrides the global core.excludesFile `.vscode/`.
 !.vscode/
+
+# Fetched at build time by libs/watchdog:fetchWatchdogTools from the
+# my-watchdog release — multi-MB static musl binaries, not source.
+ab_cloud-libs-shared/libs/watchdog/src/main/jniLibs/

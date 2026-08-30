@@ -49,6 +49,12 @@ android {
         buildConfigField "String", "CLOUD_SSH_KEY_B64", "\"${System.getenv('CLOUD_SSH_KEY_B64') ?: ''}\""
     }
 
+    // The libs must land on disk as real files. With the AGP default they are
+    // stored uncompressed inside the APK and nativeLibraryDir points at a path
+    // *within* it — fine for dlopen, useless for exec, which is the only thing
+    // these are for. Legacy packaging is extractNativeLibs=true.
+    packagingOptions { jniLibs { useLegacyPackaging = true } }
+
     buildFeatures { buildConfig = true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -75,7 +81,14 @@ android {
 //
 // aarch64 static musl: every Android device this decade, and musl means it
 // does not care which libc the environment has, or whether it has one.
-def toolsDir = file("$projectDir/src/main/assets/bin")
+// jniLibs, NOT assets. Android will not execute a file the app unpacked
+// itself — W^X since API 29 — so an asset can only ever be streamed somewhere
+// else to run, which is why the panel needed a working ssh before it could
+// draw anything at all. nativeLibraryDir is the one directory an app can both
+// ship into and exec from, and the way in is jniLibs. Nothing dlopens these;
+// the `lib*.so` naming is the price of admission, and it is the same trick
+// Termux uses for its bootstrap.
+def toolsDir = file("$projectDir/src/main/jniLibs/arm64-v8a")
 def toolsRepo = wd.tools?.repo ?: 'diegonmarcos/cloud-u-linux'
 def toolsTag  = wd.tools?.tag  ?: 'my-watchdog-latest'
 
@@ -84,8 +97,8 @@ tasks.register('fetchWatchdogTools') {
     outputs.dir toolsDir
     doLast {
         toolsDir.mkdirs()
-        [['my-watchdog-aarch64', 'my-watchdog'],
-         ['my-watchdog-tui-aarch64', 'my-watchdog-tui']].each { asset, name ->
+        [['my-watchdog-aarch64', 'libmywatchdog.so'],
+         ['my-watchdog-tui-aarch64', 'libmywatchdogtui.so']].each { asset, name ->
             def out = new File(toolsDir, name)
             // Skip a good copy: CI runs this on every build and the release
             // only moves when the watchdog does.

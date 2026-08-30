@@ -31,6 +31,10 @@ class WatchdogBridge(
     private val backend: () -> String,
 ) {
 
+    /** The panel this app runs itself — the default, and the reason the UI
+     *  no longer depends on a phone having a terminal installed. */
+    private val local = WatchdogLocal(activity)
+
     // Two: one carries keys down, one is free for start/stop. The frame
     // reader gets a thread of its own, so a blocking read never holds up
     // the next keystroke — that would make the panel feel dead under load.
@@ -58,15 +62,47 @@ class WatchdogBridge(
     // on_key decides. A key table on this side would be a second one to keep
     // in step, and it would be wrong the first time a key was added.
 
-    @Volatile private var panel: WatchdogSsh.Panel? = null
+    @Volatile private var panel: WatchdogPanel? = null
     @Volatile private var reader: Thread? = null
 
-    /** Start (or restart) the panel at this device's grid. */
+    /** Where the running panel actually is, for the status bar. */
+    @Volatile private var where: String = ""
+
+    /**
+     * Start (or restart) the panel at this device's grid.
+     *
+     * LOCAL FIRST. The app carries the panel binary, so the phone's own screen
+     * needs no terminal, no sshd and no key on the device — it opens and it is
+     * there. ssh used to be the only way to reach a panel, which meant a
+     * refused connection left the app with nothing to draw and it opened on an
+     * error message instead of a UI.
+     *
+     * ssh is still the way to a panel running as a different uid or on another
+     * machine, so a pinned backend skips local entirely and a device this build
+     * has no binary for falls through to it. Both ends speak the same protocol
+     * to the same binary; only the pipe differs.
+     */
     @JavascriptInterface
     fun start(cols: Int, rows: Int) {
         pool.execute {
             stopPanel()
-            ssh.open(backend(), cols, rows).fold(
+            // "local" is a pin TO local, not away from it — picking this
+            // device in the env picker must not send us down the ssh path.
+            val pin = activity.getSharedPreferences(PREFS, 0).getString(KEY_BACKEND, null)
+            val pinned = pin != null && pin != "local"
+            val opened: Result<WatchdogPanel> = if (!pinned && local.available()) {
+                where = "local"
+                local.open(cols, rows).recoverCatching {
+                    // A binary that will not start is worth saying out loud,
+                    // but not worth being stuck on when ssh may still work.
+                    where = backend()
+                    ssh.open(backend(), cols, rows).getOrThrow()
+                }
+            } else {
+                where = backend()
+                ssh.open(backend(), cols, rows)
+            }
+            opened.fold(
                 onSuccess = { p ->
                     panel = p
                     // Frames arrive on their own thread and are pushed at the
@@ -145,12 +181,15 @@ class WatchdogBridge(
 
     /** The env actually reached, which is not always the one asked for. */
     @JavascriptInterface
-    fun activeBackend(): String = ssh.activeBackend ?: ""
+    fun activeBackend(): String = if (where == "local") "local" else (ssh.activeBackend ?: "")
 
     /** Which envs this build knows about, as JSON, for the backend picker. */
     @JavascriptInterface
     fun backends(): String {
         val o = JSONObject()
+        // First, and only when it can actually run: this is the one entry that
+        // needs nothing set up on the phone.
+        if (local.available()) o.put("local", "This device")
         ssh.backendKeys().forEach { o.put(it, ssh.label(it)) }
         return o.toString()
     }
