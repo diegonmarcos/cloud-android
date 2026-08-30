@@ -1685,7 +1685,7 @@
                 "_doc": "Cloud-Watchdog — the standalone fleet/host watchdog APK (ac_cloud-watchdog). extapp:, not app://, so a phone without it installed gets the APK offered instead of a dead tile: launchExternalApp opens com.diegonmarcos.watchdog when present, else installs ui.external_apps[id=cloud-watchdog].install_apk_url.",
                 "id": "watchdog",
                 "label": "Watchdog",
-                "icon": "ic_p_c3_health",
+                "icon": "ic_p_watchdog",
                 "target": "extapp:cloud-watchdog"
               }
             ]
