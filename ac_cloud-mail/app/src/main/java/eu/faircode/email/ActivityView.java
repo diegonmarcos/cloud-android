@@ -913,6 +913,31 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
 
         final List<NavMenuItem> menus = new ArrayList<>();
 
+        // comms: Unread is first because it is a primary navigation destination
+        // (a folder lane, like the Folders page's Unread tab), not a utility
+        // like Log/Answers/Rules/Setup below it.
+        menus.add(new NavMenuItem(R.drawable.twotone_mail_24, R.string.title_unread_tab_unread, new RunnableEx("view:unread") {
+            @Override
+            public void delegate() {
+                if (!drawerLayout.isLocked(drawerContainer))
+                    drawerLayout.closeDrawer(drawerContainer);
+
+                Bundle args = new Bundle();
+                args.putLong("account", -1L);
+                args.putBoolean("primary", false);
+
+                FragmentUnread fragment = new FragmentUnread();
+                fragment.setArguments(args);
+
+                FragmentManager fm = getSupportFragmentManager();
+                fm.popBackStack("folders", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+
+                FragmentTransaction ft = fm.beginTransaction();
+                ft.replace(R.id.content_frame, fragment).addToBackStack("folders");
+                ft.commit();
+            }
+        }));
+
         final NavMenuItem navOperations = new NavMenuItem(R.drawable.twotone_dns_24, R.string.menu_operations, new RunnableEx("view:operations") {
             @Override
             public void delegate() {

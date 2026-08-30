@@ -15,6 +15,17 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
+            <!-- comms: All | Unread switcher; "Unread" swaps in FragmentUnread -->
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabFolders"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:tabInlineLabel="true"
+                app:tabMode="fixed" />
+
             <TextView
                 android:id="@+id/tvHintActions"
                 android:layout_width="0dp"
@@ -26,7 +37,7 @@
                 android:textAppearance="@style/TextAppearance.AppCompat.Small"
                 app:layout_constraintEnd_toStartOf="@+id/ibHintActions"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toBottomOf="@id/tabFolders" />
 
             <ImageButton
                 android:id="@+id/ibHintActions"
