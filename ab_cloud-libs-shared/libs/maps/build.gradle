@@ -21,7 +21,12 @@ plugins {
 // Library modules get their OWN BuildConfig namespaced to
 // `android.namespace` below, so MapsProviders / MapsTrackingPrefs all
 // resolve `BuildConfig.UI_MAPS_*` from THIS module's generated class.
+// rootDir = the CONSUMING app (ac_cloud-nav). lib-apks builds this module too
+// and declares no `ui` of its own, so fall back to the shared root the way
+// chat/fin/health/mail/ops/voice already do — otherwise ui.maps_providers
+// dereferences null and the whole lib-APK build dies on :libs:maps.
 def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+if (buildJson.ui == null) buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def mapsProvidersJson = groovy.json.JsonOutput.toJson(buildJson.ui.maps_providers ?: [])
 def mapsProvidersB64  = mapsProvidersJson.bytes.encodeBase64().toString()
 def mapsActive        = buildJson.ui.maps_active   ?: [:]
