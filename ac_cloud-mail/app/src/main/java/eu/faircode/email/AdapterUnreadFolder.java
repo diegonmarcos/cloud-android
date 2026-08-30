@@ -70,16 +70,12 @@ public class AdapterUnreadFolder extends RecyclerView.Adapter<AdapterUnreadFolde
         Log.i("Unread: set folders=" + folders.size());
 
         List<TupleFolderEx> sorted = new ArrayList<>(folders);
-        // Most unread first, then a stable name order so equal counts do not
-        // shuffle between emissions.
-        Collections.sort(sorted, (f1, f2) -> {
-            int byUnread = Integer.compare(f2.unseen, f1.unseen);
-            if (byUnread != 0)
-                return byUnread;
-            String n1 = f1.getDisplayName(context);
-            String n2 = f2.getDisplayName(context);
-            return (n1 == null ? "" : n1).compareToIgnoreCase(n2 == null ? "" : n2);
-        });
+        // comms: the unread page must present folders in the same order as the
+        // Folders page, so a folder does not move position just because its
+        // unread count changed. Use the app's canonical folder ranking instead
+        // of sorting by unread count.
+        if (sorted.size() > 0)
+            Collections.sort(sorted, sorted.get(0).getComparator(context));
 
         DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffCallback(items, sorted), false);
         items = sorted;
