@@ -1,0 +1,41 @@
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Subject: [PATCH 2/2] rebrand: replace the Element launcher mark with original artwork
+
+Patch 1 renamed the app and its applicationId but left upstream's launcher
+artwork in place, so the build shipped Element's mark under a different name -
+which is the wrong way round for a trademark, and worse than not renaming at
+all.
+
+Deletes all 20 per-density .webp icons in appicon/element plus
+src/main/ic_launcher-playstore.png, and replaces them with an original vector
+mark: three nodes joined into a triangle (a mesh, for a federated client).
+
+Shape of the replacement, and why it is not simply drawable/:
+
+* appicon's IconPreview.kt resolves R.mipmap.ic_launcher_foreground and
+  R.mipmap.ic_launcher_monochrome. Moving those resources to drawable/ would
+  stop that module compiling, so the vectors live in mipmap-anydpi/ instead.
+  mipmap-anydpi-v26/ic_launcher.xml therefore needs no edit at all - it still
+  points at @mipmap/ic_launcher_foreground, which is now a vector.
+
+* minSdk for the FOSS/fdroid build is 24 (plugins/.../Versions.kt
+  MIN_SDK_FOSS), which predates adaptive icons, so @mipmap/ic_launcher and
+  @mipmap/ic_launcher_round still have to resolve to a single self-contained
+  drawable on API 24-25. Deleting the rasters without providing that would
+  have left the icon unresolvable there. mipmap-anydpi/ic_launcher.xml and
+  ic_launcher_round.xml are those fallbacks, backgrounds baked in; API 26+
+  never sees them because the -v26 adaptive variants win.
+
+appicon/enterprise/ is untouched: app/build.gradle.kts only pulls it in when
+isEnterpriseBuild, and the flavour we ship takes appicon.element, so none of
+that artwork reaches our APK. It stays so that branch still compiles.
+
+NOTE: this tree is VENDORED (materialize-fork's no-.git path), so this file is
+a historical record - the change is already applied in the committed source.
+---
+ appicon/element/src/main/ic_launcher-playstore.png            | deleted
+ appicon/element/src/main/res/mipmap-{m,h,x,xx,xxx}dpi/*.webp  | deleted (20)
+ appicon/element/src/main/res/mipmap-anydpi/ic_launcher.xml            | new
+ appicon/element/src/main/res/mipmap-anydpi/ic_launcher_round.xml      | new
+ appicon/element/src/main/res/mipmap-anydpi/ic_launcher_foreground.xml | new
+ appicon/element/src/main/res/mipmap-anydpi/ic_launcher_monochrome.xml | new

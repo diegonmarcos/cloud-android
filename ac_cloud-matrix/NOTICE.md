@@ -27,12 +27,16 @@ Accordingly this fork ships under its own name and package identity:
 | application name | Element X | Cloud Matrix |
 | applicationId | io.element.android.x | com.diegonmarcos.comms.matrix |
 
-**Known remaining item:** the launcher artwork still comes from the upstream
-`appicon/element/` module and has NOT been replaced. Until it is, this build
-carries Element's mark under a different name, which is the wrong way round
-for a trademark. Replacing it is tracked as the next step of this rebrand;
-`ac_cloud-vault/patches/0001` is the worked example of doing the same for
-Bitwarden's shield.
+The launcher artwork is original too. Element's mark in `appicon/element/`
+— 20 per-density `.webp` rasters plus the Play-Store `.png` — has been
+deleted, not merely renamed around, and replaced with an original vector: three
+nodes joined into a triangle, a mesh, for a federated Matrix client. No Element
+artwork is reused.
+
+`appicon/enterprise/` still holds upstream's enterprise artwork. It is never
+built into this APK — `app/build.gradle.kts` selects `appicon.enterprise` only
+when `isEnterpriseBuild`, and the FOSS/fdroid flavour we ship takes
+`appicon.element`. It is kept so that branch still compiles.
 
 ## Relationship to upstream
 

@@ -135,22 +135,12 @@ object Fleet {
             else
                 State.UpdateAvailable(installed.versionName, remote12, layer.size)
         } catch (e: GhcrClient.HttpException) {
-            // NOT INSTALLED IS A LOCAL FACT. Whether the registry answers has no
-            // bearing on it, so a failed probe must not turn "missing" into
-            // "unknown" — that hid exactly the apps the ◯ Missing filter exists
-            // to find. 404 already did the right thing; 401 and 403 did not, and
-            // GHCR answers 401/403 for a package that is private OR absent, which
-            // is the normal state of anything not yet published. cloud-watchdog
-            // (401) and cloud-infra-desktop-termux-boot (403) both vanished.
-            // Installed + unreachable registry stays an honest error: there we
-            // genuinely cannot tell whether an update is waiting.
-            installed?.let {
-                if (e.code == 404) State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes)
-                else State.Error("HTTP ${e.code}")
-            } ?: State.Missing()
+            if (e.code == 404)
+                installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) } ?: State.Missing()
+            else State.Error("HTTP ${e.code}")
         } catch (t: Throwable) {
             installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) }
-                ?: State.Missing()
+                ?: State.Error(t.message ?: t.toString())
         }
     }
 
