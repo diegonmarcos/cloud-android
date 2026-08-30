@@ -7,7 +7,7 @@ plugins {
 // BuildConfig, so the three config files are baked into THIS module. Paths are
 // relative to this module's own directory, so they stay ac_cloud-news/data/*
 // whether the module is built by the app or shared by reference into
-// ab_cloud-libs.
+// ab_cloud-libs-shared/lib-apks.
 def b64Of = { String rel ->
     def f = file(rel)
     (f.exists() ? f.text : '{}').bytes.encodeBase64().toString()

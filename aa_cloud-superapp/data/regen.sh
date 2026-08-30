@@ -60,14 +60,20 @@ regen_constellation() {
     # the same repos the glob did, plus any correctly-declared one.
     # id = dir basename sans an ac_cloud- prefix if it has one.
     local apps="[]" bj id dir
-    for bj in "$UNIX"/*/build.json; do
+    # One level deep AND one nested level: ab_cloud-libs-shared holds the two
+    # build harnesses (lib-apks, keyboard-engines) as subdirectories since the
+    # 2026-08-30 consolidation, and a root-only glob dropped them silently --
+    # the fleet fell from 51 entries to 17 with no error, taking every
+    # Cloud-Lib-*.apk out of the store. Membership stays a property of the
+    # DATA (the jq predicate below), never of the depth or the prefix.
+    for bj in "$UNIX"/*/build.json "$UNIX"/*/*/build.json; do
         [ -f "$bj" ] || continue
         jq -e '(.lib_apks != null) or (.forks != null)
                or (.android.application_id != null and .release.ghcr != null)' \
            "$bj" >/dev/null 2>&1 || continue
         dir="$(basename "$(dirname "$bj")")"; id="${dir#ac_cloud-}"
         if jq -e '.lib_apks.scan' "$bj" >/dev/null 2>&1; then
-            # ── Multi-lib repo (ab_cloud-libs) ────────────────────────────────
+            # ── Multi-lib repo (ab_cloud-libs-shared/lib-apks) ────────────────────────────────
             # One repo, one APK per library module, so it expands into MANY fleet
             # entries instead of one. The module set is not listed anywhere: it is
             # the same scan+exclude that settings.gradle and build.sh apply, so a

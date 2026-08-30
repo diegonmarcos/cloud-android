@@ -1,13 +1,13 @@
 name: "Ship → Cloud Libs APKs (one APK per library module + push to GHCR via ORAS + attach to GH Release)"
 
 # Every module in ab_cloud-libs-shared/libs/ shipped as its own installable APK.
-# ab_cloud-keyboard-libs bundles five modules into one companion APK; this is the
+# ab_cloud-libs-shared/keyboard-engines bundles five modules into one companion APK; this is the
 # general case, one package per module, so a lib can be installed and updated on
 # its own. The module set is discovered by build.json::lib_apks (scan + exclude) -
 # adding a module under ab_cloud-libs-shared/libs/ ships an APK with no edit here.
 #
 # Triggers:
-#   - push main touching ab_cloud-libs/ or ANY module under ab_cloud-libs-shared/libs/
+#   - push main touching ab_cloud-libs-shared/lib-apks/ or ANY module under ab_cloud-libs-shared/libs/
 #   - tag ab_cloud-libs-v* → release build
 #   - workflow_dispatch → manual
 
@@ -30,7 +30,7 @@ on:
     tags:
       - "ab_cloud-libs-v*"
     paths:
-      - "ab_cloud-libs/**"
+      - "ab_cloud-libs-shared/lib-apks/**"
       # Every shared module, not an enumerated subset: the whole point of this
       # repo is that it ships all of them, so any of them changing must rebuild.
       # One line per build.json::lib_apks.scan root - GitHub does not expand
@@ -50,7 +50,7 @@ permissions:
   packages: write
 
 env:
-  WORK_DIR: ab_cloud-libs
+  WORK_DIR: ab_cloud-libs-shared/lib-apks
 
 jobs:
   build_and_publish:

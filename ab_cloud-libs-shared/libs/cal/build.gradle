@@ -7,7 +7,7 @@ plugins {
 // BuildConfig, so the subscription list is baked into THIS module. The path is
 // relative to this module's own directory, so it stays
 // ac_cloud-calendar/data/calendars.json whether the module is built by the app
-// or shared by reference into ab_cloud-libs.
+// or shared by reference into ab_cloud-libs-shared/lib-apks.
 def calendarsFile = file('../../data/calendars.json')
 def calendarsB64  = (calendarsFile.exists() ? calendarsFile.text : '{}')
                         .bytes.encodeBase64().toString()
