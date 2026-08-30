@@ -285,10 +285,20 @@ a_solutions/ae-tool_termux-boot/local.properties
 ## which must never be vendored) per design.
 c_devices/garmin-watchface/dist/
 
-## Tracked here on purpose; overrides the global core.excludesFile `.vscode/`.
-!.vscode/
-
-# Fetched at build time by libs/watchdog:fetchWatchdogTools from the
-# my-watchdog release — multi-MB static musl binaries, not source.
+## Fetched at build time, never committed: the watchdog sampler + panel
+## (multi-MB static musl binaries) and the UI shell the panel generates. All
+## three come from the my-watchdog rolling release, so committing them would
+## vendor a build artifact that the release already versions.
 ab_cloud-libs-shared/libs/watchdog/src/main/jniLibs/
 ab_cloud-libs-shared/libs/watchdog/src/main/assets/watchdog-app.html
+ac_cloud-termux/app/src/main/jniLibs/
+ac_cloud-nix-on-droid/app/src/main/jniLibs/
+
+## The release keystore the fork engine copies in (signing=vault_jks_env).
+## *.jks is already ignored globally; named here so it is obvious why the path
+## exists in a build and never in the tree.
+ac_cloud-termux/app/release.jks
+ac_cloud-nix-on-droid/app/release.jks
+
+## Tracked here on purpose; overrides the global core.excludesFile `.vscode/`.
+!.vscode/

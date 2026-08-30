@@ -26,6 +26,9 @@ on:
     paths:
       - "ac_cloud-contacts/**"
       - "ab_cloud-libs-shared/libs/contacts/**"
+      # ^ libs:contacts is compiled into this APK from the shared root since the
+      #   consolidation, so it sits outside ac_cloud-contacts/** and needs its own
+      #   trigger or a change there ships no new APK.
       # Shared BY REFERENCE from ab_cloud-libs-shared/libs/ (settings.gradle
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no

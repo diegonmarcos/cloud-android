@@ -241,32 +241,9 @@ case "$CMD" in
     reg="$(_bj "['release']['ghcr']['registry']")/$(_bj "['release']['ghcr']['namespace']")"
     mt="$(_bj "['release']['ghcr']['media_type']")"
     while IFS='|' read -r n flavor asset image; do
-      # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE PAT — each token for the one
-      # thing it can do.
-      #
-      # A repo-scoped GITHUB_TOKEN creates a package carrying the repo's
-      # visibility; the user-scoped PAT creates it PRIVATE. But GITHUB_TOKEN
-      # cannot UPDATE a package in the user namespace, which is why af6767fdb
-      # reverted the wholesale switch to it 43 minutes after fab52ec0c made it
-      # — and that revert is what left every package added since 2026-08-28
-      # born private in a public repo.
-      #
-      # So the choice is per package, not per repo: the FIRST push of a new
-      # image authenticates as GITHUB_TOKEN so the package inherits the repo,
-      # every push after that uses the ambient PAT login so it can update.
-      # Measured, not assumed: cloud-lib-search was deleted and recreated by
-      # this workflow at 12:43 on 2026-08-30 and came back private under the
-      # PAT — the visibility is decided by the token that CREATES the package,
-      # and only then.
-      creds=()
-      if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
-         && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
-        log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
-        creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
-      fi
-      ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}/${image}:latest"       "${asset}:${mt}" \
+      ( cd "$DIST_DIR" && oras push "${reg}/${image}:latest"       "${asset}:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
-      ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}/${image}:sha-${SHORT}" "${asset}:${mt}" \
+      ( cd "$DIST_DIR" && oras push "${reg}/${image}:sha-${SHORT}" "${asset}:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
       _ghcr_publish "$image"
       log "pushed ${image}:latest + :sha-${SHORT}"
