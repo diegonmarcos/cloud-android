@@ -230,11 +230,23 @@ class ConstellationFragment : Fragment() {
     // ── header: Update-all / Check-all + auto-update toggle + grant ──────────
     private fun renderHeader(ctx: Context) {
         headerControls.removeAllViews()
-        // Row 1 — the two batch actions, kept apart so they read as distinct:
-        //   Update all → only apps ALREADY installed that have a newer image.
-        //   Install all → only apps not yet on the device.
+        // Row 1 — the batch actions, kept apart so they read as distinct:
+        //   Update all → this TAB's entries that are installed and outdated
+        //                (Apps tab -> apps, Libs tab -> libs).
+        //   Update ALL → apps AND libs in one pass, so the whole constellation
+        //                can be brought current without switching tabs first.
+        //                The tab-scoped button cannot express that, and doing
+        //                it by hand means remembering to visit both.
+        //   Install all → only entries not yet on the device (tab-scoped).
         headerControls.addView(buttonRow(ctx,
-            btn(ctx, "⬆  Update all", 0xFF7C3AED.toInt()) { updateAll(ctx) },
+            btn(ctx, "⬆  Update all", 0xFF7C3AED.toInt()) {
+                updateAll(ctx, if (tab == 1) "libs" else "apps", current())
+            },
+            btn(ctx, "⬆  ALL", 0xFF6B21A8.toInt()) {
+                updateAll(ctx, "apps + libs", apps + libs)
+            },
+        ))
+        headerControls.addView(buttonRow(ctx,
             btn(ctx, "⬇  Install all", 0xFF2B6CB0.toInt()) { installMissing(ctx) },
         ))
         // Row 2 — refresh statuses (full width).
@@ -491,13 +503,24 @@ class ConstellationFragment : Fragment() {
         }
     }
 
-    // "Update all" — only apps ALREADY installed that have a newer image.
-    private fun updateAll(ctx: Context) {
-        Toast.makeText(ctx, "Updating installed apps…", Toast.LENGTH_SHORT).show()
+    // "Update" — only entries ALREADY installed that have a newer image.
+    // [targets] is passed in rather than read from current(), so one button can
+    // stay tab-scoped while another spans apps + libs.
+    private fun updateAll(ctx: Context, what: String, targets: List<Fleet.App>) {
+        // Update the HOST first, through libs:updater's own channel, which does
+        // not read the fleet at all. That is what makes this button a repair
+        // tool rather than one more thing that breaks along with the list: when
+        // the baked fleet is empty — as it shipped after libs:appstore's fleet
+        // path broke in the module move — every fleet-driven action is a no-op,
+        // so the store cannot pull the very build that would repopulate it.
+        // checkNow does not care whether the fleet parsed.
+        com.diegonmarcos.superapp.updater.Updater.checkNow(ctx)
+        Toast.makeText(ctx, "Updating $what (+ SuperApp)…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-update-all") {
-            val n = Fleet.installAll(ctx, current(), Fleet.Mode.UPDATES)
+            val n = Fleet.installAll(ctx, targets, Fleet.Mode.UPDATES)
             view?.post {
-                Toast.makeText(ctx, if (n == 0) "Everything up to date" else "$n update(s) queued",
+                Toast.makeText(ctx,
+                    if (n == 0) "Everything up to date ($what)" else "$n update(s) queued",
                     Toast.LENGTH_LONG).show()
             }
             checkAll(ctx)
