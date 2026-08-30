@@ -186,9 +186,20 @@ case "$CMD" in
     # ORAS 1.x dropped --media-type; per-file media type is set via `file:type`.
     reg="$(python3 -c "import json;d=json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr'];print(f\"{d['registry']}/{d['namespace']}/{d['image']}\")")"
     mt="$(python3 -c "import json;print(json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr']['media_type'])")"
-    ( cd "$DIST_DIR" && oras push "${reg}:latest"          "Cloud-Keyboard.apk:${mt}" \
+    # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE PAT — a repo-scoped GITHUB_TOKEN
+    # creates a package carrying the repo's visibility, the user-scoped PAT
+    # creates it PRIVATE, and only the PAT can UPDATE one (af6767fdb). So the
+    # token is chosen per PACKAGE, not per repo.
+    creds=()
+    pkg="${reg##*/}"
+    if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+       && ! gh api "/user/packages/container/${pkg}" >/dev/null 2>&1; then
+      log "ghcr: ${pkg} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+      creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+    fi
+    ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}:latest"          "Cloud-Keyboard.apk:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
-    ( cd "$DIST_DIR" && oras push "${reg}:sha-${SHORT}"    "Cloud-Keyboard.apk:${mt}" \
+    ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}:sha-${SHORT}"    "Cloud-Keyboard.apk:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
     log "Pushed :latest + :sha-${SHORT}"
     ;;

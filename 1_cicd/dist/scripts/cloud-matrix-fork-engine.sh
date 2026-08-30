@@ -771,6 +771,21 @@ step_oras_push() {
   registry="$(_json '.release.ghcr.registry')"
   namespace="$(_json '.release.ghcr.namespace')"
   image="$(_json '.release.ghcr.image')"
+
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE PAT — each token for the one thing
+  # it can do. A repo-scoped GITHUB_TOKEN creates a package carrying the repo's
+  # visibility; the user-scoped PAT creates it PRIVATE, which in a public repo
+  # 401s every unauthenticated pull. But GITHUB_TOKEN cannot UPDATE a package in
+  # the user namespace (af6767fdb), so the token is chosen per PACKAGE, not per
+  # repo. Measured 2026-08-30: cloud-lib-search and cloud-lib-watchdog were
+  # deleted and recreated through this path and came back PUBLIC, after coming
+  # back private every single time the PAT created them.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
   media_type="$(_json '.release.ghcr.media_type')"
   if   [ -f "$DIST_DIR/$(_json '.release.artifact.release')" ]; then artifact="$DIST_DIR/$(_json '.release.artifact.release')"
   elif [ -f "$DIST_DIR/$(_json '.release.artifact.debug')" ];   then artifact="$DIST_DIR/$(_json '.release.artifact.debug')"
@@ -781,7 +796,7 @@ step_oras_push() {
     [ -z "$tmpl" ] && continue
     tag="$(_resolve_template "$tmpl")"; ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $aname"
-    ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" )
+    ( cd "$adir" && in_nix oras push "${creds[@]}" "$ref" "$aname:$media_type" --artifact-type "$media_type" )
   done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
 }
 

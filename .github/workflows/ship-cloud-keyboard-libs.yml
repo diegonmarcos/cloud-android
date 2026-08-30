@@ -141,6 +141,8 @@ jobs:
         env:
           BYPASS_NIX: "1"
           GITHUB_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./build.sh oras-push
 
       - name: Publish to GitHub Releases
