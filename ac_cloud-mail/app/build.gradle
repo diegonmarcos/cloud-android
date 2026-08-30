@@ -4,12 +4,37 @@ plugins {
 }
 
 def getVersionCode = { ->
-    // ponytail: this was a hardcoded 2321 and was never bumped in this fork, so
-    // every build produced the SAME versionCode and Android quietly refused to
-    // install the update -- landed fixes looked like they had never shipped.
-    // Derive it from the commit count so it always moves forward on its own.
-    // The 2321 base keeps it above every APK already installed in the field;
-    // the fallback is base+1 so a git-less build still beats the old constant.
+    // ponytail: this was a hardcoded 2321, so every build produced the SAME
+    // versionCode and Android quietly refused the update -- landed fixes looked
+    // like they had never shipped.
+    //
+    // The first attempt derived it from `git rev-list --count HEAD`, which is
+    // wrong for THIS build: CI materializes the fork by cloning at a pin and
+    // applying a patch series, so HEAD's history is one commit and the count is
+    // 1. That yielded 2321 + 1 = 2322 -- identical to the git-less fallback, so
+    // the two cases were indistinguishable and every APK published on
+    // 2026-08-30 shipped as 2322. The installed build reported "1.2322".
+    //
+    // COMMS_BUILD_TIMESTAMP is what CI already bakes into BuildConfig and into
+    // the release tag, it is monotonic, and it does not care how the tree was
+    // assembled. Minutes since 2026-01-01 plus a 3,000,000 base: comfortably
+    // above every versionCode in the field, and ~3.35M in Aug 2026, so it stays
+    // well inside the 2^31 limit for centuries.
+    def stamp = System.getenv('COMMS_BUILD_TIMESTAMP')
+    if (stamp) {
+        try {
+            def fmt = java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd.HHmmss')
+            def built = java.time.LocalDateTime.parse(stamp, fmt)
+            def base = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
+            long mins = java.time.Duration.between(base, built).toMinutes()
+            if (mins > 0)
+                return (int) (3000000L + mins)
+        } catch (ignored) {
+        }
+    }
+    // No stamp (a local build): fall back to the commit count, which IS
+    // meaningful in a normal checkout. 2400 keeps the git-less case clearly
+    // distinct from any 2321+n result, so this can never be ambiguous again.
     def n = 0
     try {
         def out = new ByteArrayOutputStream()
@@ -21,7 +46,7 @@ def getVersionCode = { ->
         n = out.toString().trim().toInteger()
     } catch (ignored) {
     }
-    return n > 0 ? 2321 + n : 2322
+    return n > 1 ? 2321 + n : 2400
 }
 def getRevision = { -> return "a" }
 def getReleaseName = { -> return "Elopteryx" }
