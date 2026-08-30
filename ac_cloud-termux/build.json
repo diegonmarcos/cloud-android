@@ -15,10 +15,18 @@
       "blocked_on": null,
       "app_id_note": "applicationId is DELIBERATELY left at upstream's. Termux compiles the prefix /data/data/com.termux/files/usr into every binary it ships, and Nix-on-Droid does the same with com.termux.nix for its Nix store, so renaming the package orphans the entire bootstrap and every package in it. We own the source and sign with our own key; we do not own the namespace. Consequence, accepted deliberately: our build REPLACES an installed upstream Termux rather than sitting beside it \u2014 same id, different signature \u2014 so the upstream one has to be uninstalled first.",
       "build": {
-        "_doc": "Stock termux-app gradle. assembleRelease, signed with the constellation keystore like every other fork. No applicationId override on purpose \u2014 see app_id_note.",
+        "_doc": "Stock termux-app gradle: assembleRelease, signed with the ONE shared constellation keystore. signing=vault_jks_env, NOT 'keystore' \u2014 that is not a mode the engine has, and an unrecognised value matches no branch and signs with the debug key instead, silently. A debug-signed build never receives the signature-level CLOUD_EXEC permission, so the bind fails the same way it does when the app is not installed at all.",
         "gradle_task": "assembleRelease",
         "apk_glob": "app/build/outputs/apk/release/*.apk",
-        "signing": "keystore"
+        "signing": "vault_jks_env",
+        "keystore_dest": "app/release.jks",
+        "signing_env": {
+          "_doc": "Consumed by _resolve_signing in the fork engine and read back by the release signingConfig added to app/build.gradle. The tokens are the engine's vocabulary \u2014 keystore_path|store_password|key_password|key_alias \u2014 and it fails loud on anything else.",
+          "TERMUX_KEYSTORE_PATH": "keystore_path",
+          "TERMUX_KEYSTORE_PASSWORD": "store_password",
+          "TERMUX_KEY_PASSWORD": "key_password",
+          "TERMUX_KEY_ALIAS": "key_alias"
+        }
       },
       "comment": "Cloud Terminal (Termux) fork."
     }

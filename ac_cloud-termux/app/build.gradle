@@ -63,7 +63,29 @@ android {
         }
     }
 
+
     signingConfigs {
+        // Release signing, from the ONE shared constellation keystore.
+        //
+        // Upstream ships only a debug config, so assembleRelease produced an
+        // unsigned APK. Ours must carry the same key as every other app here,
+        // because CLOUD_EXEC is a signature-level permission: a build signed
+        // with anything else is refused the bind exactly as if it were not
+        // installed — a silent failure indistinguishable from "not there".
+        //
+        // Values come from the environment the fork engine writes
+        // (signing=vault_jks_env, see build.json::forks.*.build.signing_env),
+        // never from a file in the tree and never a literal here.
+        release {
+            def ksPath = System.getenv('TERMUX_KEYSTORE_PATH')
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv('TERMUX_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('TERMUX_KEY_ALIAS')
+                keyPassword System.getenv('TERMUX_KEY_PASSWORD')
+            }
+        }
+
         debug {
             storeFile file('dev_keystore.jks')
             keyAlias 'alias'
@@ -74,6 +96,11 @@ android {
 
     buildTypes {
         release {
+            // Only when the engine supplied a key: an IDE build with no vault
+            // signs debug-style rather than failing, and a CI build without it
+            // would produce an unsigned APK that cannot bind — which is worth
+            // noticing at install time, not at first use.
+            if (System.getenv('TERMUX_KEYSTORE_PATH')) signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources false // Reproducible builds
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
