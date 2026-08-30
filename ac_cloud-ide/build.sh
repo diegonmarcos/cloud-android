@@ -60,7 +60,7 @@ _ghcr_publish() {
   # states it, and where it is stated it wins over the repo. Without this the
   # check would push every exception toward being published, which is a worse
   # failure than the 401 it exists to prevent.
-  want="$(_release_var '.release.ghcr.visibility')"
+  want="$(_json '.release.ghcr.visibility')"
   if [ -n "$want" ] && [ "$want" != "null" ]; then
     repo_vis="$want"
   else
@@ -195,7 +195,7 @@ step_bundle_frontend() {
 # an app that generates a key the env has never heard of.
 _resolve_ssh_key() {
   local rel vault sec
-  rel="$(_release_var '.signing.vault_ssh_key')"
+  rel="$(_json '.signing.vault_ssh_key')"
   [ -z "$rel" ] || [ "$rel" = "null" ] && rel="A0_keys/providers/android/ssh.secrets.yaml"
   vault="${VAULT_DIR:-$HOME/git/cloud-vault}"
   sec="$vault/$rel"

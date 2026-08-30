@@ -16,8 +16,9 @@
         "nix-on-droid": {
           "label": "Nix-on-Droid",
           "host": "127.0.0.1",
-          "port": 8022,
-          "user": "nix-on-droid"
+          "port": 8024,
+          "user": "nix-on-droid",
+          "_doc": "8024, read off the device, not the 8022 that was assumed: nix-on-droid's sshd_config sets Port 8024 on this phone. Data, so a phone that differs is a one-line change here."
         },
         "termux": {
           "label": "Termux",
