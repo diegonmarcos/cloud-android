@@ -1,5 +1,1156 @@
 {
   "_doc": "Shared-library config root. ab_cloud-libs-shared/ holds the modules that several apps compile by reference, so the config those modules read when the CONSUMING app declares none of its own has to live here too - not in one of the consumers. libs/voice/build.gradle reads ${rootDir}/build.json first and falls back to this file; before the modules moved out of aa_cloud-superapp/libs/ that fallback landed on aa_cloud-superapp/build.json, which is exactly the app-is-a-library-for-another-app coupling the move removed. This is NOT an app: no modules, no signing, no workflow.",
+  "ui": {
+    "_doc": "Only the slices the shared modules read through their `../../build.json` fallback. Before the consolidation that path was aa_cloud-superapp/build.json, so a lib built by a repo with no `ui` of its own (ab_cloud-libs) picked up superapp's values. The modules live here now, so the defaults do too — copied, not emptied, so a standalone lib APK bakes exactly what it baked before.",
+    "sections": [
+      {
+        "id": "mail",
+        "label": "Mail",
+        "icon": "ic_mail",
+        "module": "libs:mail",
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "jmap_default_server": "https://jmap.diegonmarcos.com",
+        "drawer_default_children": [
+          "All inboxes",
+          "+ Add account"
+        ],
+        "_doc_pages": "Mapping to FairEmail's ~38 user-visible pages. Level-1 chips host the daily-use surfaces; Settings drills into 11 FairEmail FragmentOptions* sub-tabs; More is the overflow for rarely-used / diagnostic pages. Order: Folders first (operational entry point), then Inbox, then management (Accounts hosts the JMAP login form), then settings & overflow.",
+        "pages": [
+          {
+            "id": "folders",
+            "label": "Folders",
+            "icon": "ic_p_folder",
+            "upstream": "FragmentFolders"
+          },
+          {
+            "id": "inbox",
+            "label": "Inbox",
+            "icon": "ic_p_inbox",
+            "upstream": "FragmentMessages"
+          },
+          {
+            "id": "accounts",
+            "label": "Accounts",
+            "icon": "ic_p_accounts",
+            "upstream": "FragmentAccounts",
+            "_doc": "Hosts the JMAP login form (server/email/password) — Slice A landing surface. Moved here from the section index per the data-driven nav contract: the section's bottom-nav tap shows a TileGrid; account config is a sub-page, not the index."
+          },
+          {
+            "id": "identities",
+            "label": "Identities",
+            "icon": "ic_p_identities",
+            "upstream": "FragmentIdentities"
+          },
+          {
+            "id": "rules",
+            "label": "Rules",
+            "icon": "ic_p_rules",
+            "upstream": "FragmentRules"
+          },
+          {
+            "id": "answers",
+            "label": "Answers",
+            "icon": "ic_p_reply",
+            "upstream": "FragmentAnswers"
+          },
+          {
+            "id": "contacts",
+            "label": "Contacts",
+            "icon": "ic_p_contacts",
+            "upstream": "FragmentContacts"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "FragmentOptions",
+            "sub_pages": [
+              {
+                "id": "behavior",
+                "label": "Behavior",
+                "upstream": "FragmentOptionsBehavior"
+              },
+              {
+                "id": "display",
+                "label": "Display",
+                "upstream": "FragmentOptionsDisplay"
+              },
+              {
+                "id": "sync",
+                "label": "Sync",
+                "upstream": "FragmentOptionsSynchronize"
+              },
+              {
+                "id": "notifications",
+                "label": "Notifications",
+                "upstream": "FragmentOptionsNotifications"
+              },
+              {
+                "id": "send",
+                "label": "Send",
+                "upstream": "FragmentOptionsSend"
+              },
+              {
+                "id": "connection",
+                "label": "Connection",
+                "upstream": "FragmentOptionsConnection"
+              },
+              {
+                "id": "encryption",
+                "label": "Encryption",
+                "upstream": "FragmentOptionsEncryption"
+              },
+              {
+                "id": "privacy",
+                "label": "Privacy",
+                "upstream": "FragmentOptionsPrivacy"
+              },
+              {
+                "id": "integrations",
+                "label": "Integrations",
+                "upstream": "FragmentOptionsIntegrations"
+              },
+              {
+                "id": "backup",
+                "label": "Backup",
+                "upstream": "FragmentOptionsBackup"
+              },
+              {
+                "id": "misc",
+                "label": "Misc",
+                "upstream": "FragmentOptionsMisc"
+              }
+            ]
+          },
+          {
+            "id": "more",
+            "label": "More",
+            "icon": "ic_p_more",
+            "_doc": "Overflow menu — rarely-used / diagnostic pages.",
+            "menu": [
+              {
+                "id": "order",
+                "label": "Order",
+                "upstream": "FragmentOrder"
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "upstream": "FragmentOperations"
+              },
+              {
+                "id": "logs",
+                "label": "Logs",
+                "upstream": "FragmentLogs"
+              },
+              {
+                "id": "certificates",
+                "label": "Certificates",
+                "upstream": "FragmentCertificates"
+              },
+              {
+                "id": "pro",
+                "label": "Pro",
+                "upstream": "FragmentPro"
+              },
+              {
+                "id": "legend",
+                "label": "Legend",
+                "upstream": "FragmentLegend"
+              },
+              {
+                "id": "about",
+                "label": "About",
+                "upstream": "FragmentAbout"
+              },
+              {
+                "id": "eula",
+                "label": "EULA",
+                "upstream": "FragmentEula"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "chat",
+        "label": "Chat",
+        "icon": "ic_chat",
+        "module": "libs:chat",
+        "supports_accounts": true,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Mattermost",
+          "Matrix-Bridges",
+          "All servers",
+          "+ Add server"
+        ],
+        "_doc": "Drawer-only since the bottom-nav center slot belongs to Home now. Mattermost = chat.diegonmarcos.com (mattermost-bots service); Matrix-Bridges = bridge bots (telegram/whatsapp/signal/IRC ↔ matrix).",
+        "pages": [
+          {
+            "id": "mattermost",
+            "label": "Mattermost",
+            "icon": "ic_p_chat_mattermost",
+            "upstream": "ChatMattermost",
+            "mattermost_default_server": "https://chat.diegonmarcos.com",
+            "_doc": "Hooks into mattermost-bots @ chat.diegonmarcos.com. mattermost_default_server pre-fills the login form's URL field via BuildConfig.MATTERMOST_DEFAULT_SERVER (read by libs/chat/build.gradle, same data-driven pattern as libs/mail's JMAP_DEFAULT_SERVER). Credentials are entered at runtime; nothing is baked into the APK."
+          },
+          {
+            "id": "matrix",
+            "label": "Matrix-Bridges",
+            "icon": "ic_p_chat_matrix",
+            "upstream": "ChatMatrix",
+            "_doc": "Bridge bots — Telegram / WhatsApp / Signal / IRC ↔ Matrix"
+          },
+          {
+            "id": "dms",
+            "label": "Direct messages",
+            "icon": "ic_p_chat_dms",
+            "upstream": "ChatDMs"
+          },
+          {
+            "id": "channels",
+            "label": "Channels",
+            "icon": "ic_p_chat_channels",
+            "upstream": "ChatChannels"
+          },
+          {
+            "id": "servers",
+            "label": "Servers",
+            "icon": "ic_p_chat_servers",
+            "upstream": "ChatServers"
+          },
+          {
+            "id": "add",
+            "label": "+ Add server",
+            "icon": "ic_p_add",
+            "upstream": "ChatAddServer"
+          },
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "upstream": "ChatSettings"
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "label": "C3",
+        "icon": "ic_settings",
+        "module": "libs:ops",
+        "supports_accounts": false,
+        "bottom_nav": false,
+        "drawer_default_children": [
+          "Reports",
+          "Stack",
+          "Health",
+          "Workflows"
+        ],
+        "pages": [
+          {
+            "id": "reports",
+            "label": "Reports",
+            "icon": "ic_p_c3_reports"
+          },
+          {
+            "id": "stack",
+            "label": "Stack",
+            "icon": "ic_p_c3_stack"
+          },
+          {
+            "id": "health",
+            "label": "Health",
+            "icon": "ic_p_c3_health"
+          },
+          {
+            "id": "workflows",
+            "label": "Workflows",
+            "icon": "ic_p_c3_workflows"
+          },
+          {
+            "id": "vms",
+            "label": "VMs",
+            "icon": "ic_p_c3_vms"
+          },
+          {
+            "id": "logs",
+            "label": "Logs",
+            "icon": "ic_p_logs"
+          }
+        ]
+      },
+      {
+        "_doc": "MyHealth — native Health Connect dashboard. Reads the aggregated record set Garmin Connect / Google Fit / Samsung Health / Fitbit / Oura all sync into via androidx.health.connect:connect-client (one SDK = union of every source on-device). LOCAL-ONLY: HealthStore (libs:core, SharedPreferences) caches rollups, write-rate stats, source-app breakdowns, and last-sync timestamps. ZERO network calls — no OAuth, no webhooks, no cloud ingester.",
+        "_doc_pages": "Three first-class pages: Summary (per-metric drill-in with 7d + 30d average tables), Timeline (date-picker → that day's per-metric values), Configs (Sources / Permissions / Stats / Raw / About sub-tabs + per-metric source toggles). Per-metric drill-down lives INSIDE each top-level page as Compose state — the section's drawer menu shows 3 entries, not 15.",
+        "_doc_metrics": "Data-driven metric taxonomy — read by SummaryPage / TimelinePage / ConfigsPage to render the per-metric tiles + drill-downs. Each metric maps to one-or-more Health Connect record types via `records` (matched at runtime by class simple-name) + the perm subset via `perm_keys`. Add a metric = one entry here + tile icon. Removing a metric here removes it from all 3 top-level pages.",
+        "id": "health",
+        "label": "MyHealth",
+        "icon": "ic_heart",
+        "module": null,
+        "bottom_nav": false,
+        "pages": [
+          {
+            "id": "summary",
+            "label": "Summary",
+            "icon": "ic_p_c3_reports"
+          },
+          {
+            "id": "timeline",
+            "label": "Timeline",
+            "icon": "ic_p_cal_day"
+          },
+          {
+            "id": "configs",
+            "label": "Configs",
+            "icon": "ic_settings"
+          }
+        ],
+        "_doc_taxonomy": "Metric grouping mirrors Health Connect's own UI categories (verified against es-ES locale: Actividad / Constantes vitales / Medidas corporales / Nutrición / Seguimiento del ciclo / Sueño) so the per-metric counts in MyHealth match exactly what the HC permission screen shows. Vo2Max sits under Activity (not Heart) per HC; Exercise stays under Activity (no separate Workouts category in HC). Total perms across all metrics = 34, matching HC's count when every category is granted.",
+        "metrics": [
+          {
+            "id": "activity",
+            "label": "Activity",
+            "icon": "ic_p_health_activity",
+            "records": [
+              "StepsRecord",
+              "DistanceRecord",
+              "FloorsClimbedRecord",
+              "ElevationGainedRecord",
+              "ActiveCaloriesBurnedRecord",
+              "TotalCaloriesBurnedRecord",
+              "ExerciseSessionRecord",
+              "PowerRecord",
+              "SpeedRecord",
+              "Vo2MaxRecord"
+            ],
+            "perm_keys": [
+              "READ_STEPS",
+              "READ_DISTANCE",
+              "READ_FLOORS_CLIMBED",
+              "READ_ELEVATION_GAINED",
+              "READ_ACTIVE_CALORIES_BURNED",
+              "READ_TOTAL_CALORIES_BURNED",
+              "READ_EXERCISE",
+              "READ_POWER",
+              "READ_SPEED",
+              "READ_VO2_MAX"
+            ]
+          },
+          {
+            "id": "vitals",
+            "label": "Vitals",
+            "icon": "ic_p_health_vitals",
+            "records": [
+              "HeartRateRecord",
+              "RestingHeartRateRecord",
+              "HeartRateVariabilityRmssdRecord",
+              "BloodPressureRecord",
+              "BloodGlucoseRecord",
+              "OxygenSaturationRecord",
+              "BodyTemperatureRecord",
+              "BasalBodyTemperatureRecord",
+              "RespiratoryRateRecord"
+            ],
+            "perm_keys": [
+              "READ_HEART_RATE",
+              "READ_RESTING_HEART_RATE",
+              "READ_HEART_RATE_VARIABILITY",
+              "READ_BLOOD_PRESSURE",
+              "READ_BLOOD_GLUCOSE",
+              "READ_OXYGEN_SATURATION",
+              "READ_BODY_TEMPERATURE",
+              "READ_BASAL_BODY_TEMPERATURE",
+              "READ_RESPIRATORY_RATE"
+            ]
+          },
+          {
+            "id": "body",
+            "label": "Body",
+            "icon": "ic_p_health_body",
+            "records": [
+              "WeightRecord",
+              "HeightRecord",
+              "BodyFatRecord",
+              "LeanBodyMassRecord",
+              "BoneMassRecord",
+              "BodyWaterMassRecord",
+              "BasalMetabolicRateRecord"
+            ],
+            "perm_keys": [
+              "READ_WEIGHT",
+              "READ_HEIGHT",
+              "READ_BODY_FAT",
+              "READ_LEAN_BODY_MASS",
+              "READ_BONE_MASS",
+              "READ_BODY_WATER_MASS",
+              "READ_BASAL_METABOLIC_RATE"
+            ]
+          },
+          {
+            "id": "nutrition",
+            "label": "Nutrition",
+            "icon": "ic_p_health_nutrition",
+            "records": [
+              "NutritionRecord",
+              "HydrationRecord"
+            ],
+            "perm_keys": [
+              "READ_NUTRITION",
+              "READ_HYDRATION"
+            ]
+          },
+          {
+            "id": "cycle",
+            "label": "Cycle",
+            "icon": "ic_p_health_cycle",
+            "records": [
+              "MenstruationFlowRecord",
+              "OvulationTestRecord",
+              "CervicalMucusRecord",
+              "SexualActivityRecord",
+              "IntermenstrualBleedingRecord"
+            ],
+            "perm_keys": [
+              "READ_MENSTRUATION",
+              "READ_OVULATION_TEST",
+              "READ_CERVICAL_MUCUS",
+              "READ_SEXUAL_ACTIVITY",
+              "READ_INTERMENSTRUAL_BLEEDING"
+            ]
+          },
+          {
+            "id": "sleep",
+            "label": "Sleep",
+            "icon": "ic_p_health_sleep",
+            "records": [
+              "SleepSessionRecord"
+            ],
+            "perm_keys": [
+              "READ_SLEEP"
+            ]
+          }
+        ]
+      }
+    ],
+    "kde_connect": {
+      "package": "org.kde.kdeconnect_tp",
+      "self_name": "Samsung Galaxy S21",
+      "discovery_port": 1716,
+      "prefer_wg0": true,
+      "lan_fallback": true,
+      "probe_timeout_ms": 4000,
+      "devices": [
+        {
+          "id": "surface-pro-8",
+          "label": "Surface Pro 8",
+          "wg_ip": "10.0.0.5",
+          "primary": true
+        }
+      ],
+      "_doc_plugins": "Full KDE Connect plugin catalog, shown on the KDE page. `status`=active means the `packet` IS advertised in our identity capabilities (so the desktop shows the plugin for this device) and the per-plugin toggle controls it. Two flavours of active: (a) HANDLED — a real KdePluginRegistry plugin processes the packet (ping, clipboard, findmyphone, notification, battery, share, mpris, systemvolume, runcommand, contacts, connectivity_report, lockdevice, telephony, + the request-side aliases); (b) ADVERTISED-ONLY STUB — listed + advertised for visibility/testing but with NO Kotlin handler yet, so inbound packets are ignored until a handler lands (sms, mousepad, presenter, sftp, photo, remotekeyboard, bigscreen, virtualmonitor, screenconnector, presenter_remote, sftp_browse, sms_request). The KDE page colours handled (lavender) vs advertised-only (amber). `dir` from the phone's view: in=we receive, out=we send, both. Promote a stub to handled = add a plugin in KdePluginRegistry with its id.",
+      "plugins": [
+        {
+          "id": "ping",
+          "name": "Ping",
+          "packet": "kdeconnect.ping",
+          "dir": "both",
+          "status": "active",
+          "action": "ping"
+        },
+        {
+          "id": "clipboard",
+          "name": "Clipboard sync",
+          "packet": "kdeconnect.clipboard",
+          "dir": "both",
+          "status": "active",
+          "action": "clipboard"
+        },
+        {
+          "id": "findmyphone",
+          "name": "Find my phone",
+          "packet": "kdeconnect.findmyphone.request",
+          "dir": "in",
+          "status": "active"
+        },
+        {
+          "id": "notification",
+          "name": "Notification sync",
+          "packet": "kdeconnect.notification",
+          "dir": "in",
+          "status": "active"
+        },
+        {
+          "id": "battery",
+          "name": "Battery report",
+          "packet": "kdeconnect.battery",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "mpris",
+          "name": "Media control (MPRIS)",
+          "packet": "kdeconnect.mpris",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "share",
+          "name": "Share (text/links)",
+          "packet": "kdeconnect.share.request",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "runcommand",
+          "name": "Run command",
+          "packet": "kdeconnect.runcommand",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "telephony",
+          "name": "Telephony (mute)",
+          "packet": "kdeconnect.telephony",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "sms",
+          "name": "SMS messaging",
+          "packet": "kdeconnect.sms.messages",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "mousepad",
+          "name": "Remote input",
+          "packet": "kdeconnect.mousepad.request",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "presenter",
+          "name": "Presentation remote",
+          "packet": "kdeconnect.presenter",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "lockdevice",
+          "name": "Lock device",
+          "packet": "kdeconnect.lock",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "connectivity_report",
+          "name": "Connectivity report",
+          "packet": "kdeconnect.connectivity_report",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "contacts",
+          "name": "Contacts sync",
+          "packet": "kdeconnect.contacts.response_uids_timestamps",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "sftp",
+          "name": "Remote filesystem",
+          "packet": "kdeconnect.sftp",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "systemvolume",
+          "name": "System volume",
+          "packet": "kdeconnect.systemvolume",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "remotesystemvolume",
+          "name": "Remote volume",
+          "packet": "kdeconnect.systemvolume.request",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "photo",
+          "name": "Photo capture",
+          "packet": "kdeconnect.photo.request",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "mprisremote",
+          "name": "Media remote",
+          "packet": "kdeconnect.mpris.request",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "remotekeyboard",
+          "name": "Remote keyboard",
+          "packet": "kdeconnect.remotekeyboard.echo",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "presenter_remote",
+          "name": "Presenter pointer",
+          "packet": "kdeconnect.presenter.request",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "bigscreen",
+          "name": "Big screen",
+          "packet": "kdeconnect.bigscreen.stt",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "virtualmonitor",
+          "name": "Virtual monitor",
+          "packet": "kdeconnect.virtualmonitor.request",
+          "dir": "both",
+          "status": "active"
+        },
+        {
+          "id": "findthisdevice",
+          "name": "Find this device",
+          "packet": "kdeconnect.findthisdevice",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "sftp_browse",
+          "name": "Browse filesystem",
+          "packet": "kdeconnect.sftp.request",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "screenconnector",
+          "name": "Remote desktop",
+          "packet": "kdeconnect.remotedesktop.request",
+          "dir": "out",
+          "status": "active"
+        },
+        {
+          "id": "sms_request",
+          "name": "SMS conversations",
+          "packet": "kdeconnect.sms.request_conversations",
+          "dir": "out",
+          "status": "active"
+        }
+      ],
+      "_doc_commands": "RunCommandPlugin command list — the desktop can trigger these on the phone (kdeconnect.runcommand). `type`: app=launch package `value`; url=open `value` in the browser. Data-driven; add a row, the desktop sees it. No permission needed.",
+      "commands": [
+        {
+          "key": "open-superapp",
+          "name": "Open Cloud SuperApp",
+          "type": "app",
+          "value": "com.diegonmarcos.superapp"
+        },
+        {
+          "key": "open-termux",
+          "name": "Open Termux",
+          "type": "app",
+          "value": "com.termux.nix"
+        },
+        {
+          "key": "open-cloud",
+          "name": "Open Cloud portal",
+          "type": "url",
+          "value": "https://diegonmarcos.com"
+        }
+      ]
+    },
+    "myfin_mock": {
+      "currency": "EUR",
+      "net_worth": 124850.42,
+      "month_label": "This month",
+      "month": {
+        "income": 5400.0,
+        "expenses": 3120.5,
+        "savings": 2279.5,
+        "savings_rate_pct": 42
+      },
+      "accounts": [
+        {
+          "name": "Santander Checking",
+          "type": "checking",
+          "balance": 4250.18
+        },
+        {
+          "name": "Nubank Savings",
+          "type": "savings",
+          "balance": 18900.0
+        },
+        {
+          "name": "Revolut EUR",
+          "type": "wallet",
+          "balance": 842.55
+        },
+        {
+          "name": "Wise Multi-currency",
+          "type": "wallet",
+          "balance": 2107.31
+        },
+        {
+          "name": "DEGIRO Brokerage",
+          "type": "investment",
+          "balance": 78650.2
+        },
+        {
+          "name": "BTC / ETH (Self-Custody)",
+          "type": "crypto",
+          "balance": 18200.18
+        },
+        {
+          "name": "Visa Platinum",
+          "type": "card",
+          "balance": -1840.0
+        }
+      ],
+      "top_categories": [
+        {
+          "name": "Rent",
+          "amount": 1450.0,
+          "pct": 46
+        },
+        {
+          "name": "Groceries",
+          "amount": 420.5,
+          "pct": 13
+        },
+        {
+          "name": "Restaurants",
+          "amount": 310.8,
+          "pct": 10
+        },
+        {
+          "name": "Transport",
+          "amount": 205.2,
+          "pct": 7
+        },
+        {
+          "name": "Subscriptions",
+          "amount": 189.99,
+          "pct": 6
+        }
+      ],
+      "recent_tx": [
+        {
+          "date": "2026-06-08",
+          "payee": "Edeka Supermarkt",
+          "amount": -42.18,
+          "category": "Groceries"
+        },
+        {
+          "date": "2026-06-08",
+          "payee": "Deutsche Bahn",
+          "amount": -18.5,
+          "category": "Transport"
+        },
+        {
+          "date": "2026-06-07",
+          "payee": "Salary — LEAFY GmbH",
+          "amount": 5400.0,
+          "category": "Income"
+        },
+        {
+          "date": "2026-06-07",
+          "payee": "Burgermeister Kreuzberg",
+          "amount": -12.4,
+          "category": "Restaurants"
+        },
+        {
+          "date": "2026-06-06",
+          "payee": "Spotify Premium",
+          "amount": -9.99,
+          "category": "Subscriptions"
+        },
+        {
+          "date": "2026-06-06",
+          "payee": "DEGIRO — VWCE buy",
+          "amount": -800.0,
+          "category": "Investment"
+        },
+        {
+          "date": "2026-06-05",
+          "payee": "Berlin Rent — June",
+          "amount": -1450.0,
+          "category": "Rent"
+        }
+      ]
+    }
+  },
+  "onehand": {
+    "_doc": "One-Hand edge-gesture config for libs:launcher-onehand (One Hand Operation+ style), baked into BuildConfig.ONEHAND_CONFIG_B64 by libs/launcher-onehand/build.gradle and decoded by OneHandConfig. `handles[]` = one gesture pad per screen edge. Each handle: edge (left|right|bottom), position_pct (center offset along the edge), length_pct (pad length), thickness_dp (pad width), transparency (0=invisible..100=solid debug tint), edge_inset_dp (how far INSIDE the border the pad sits, leaving the very edge free for Samsung/Termux system gestures), and a `gestures` map. You activate the pad anywhere along it, then the TILT of the inward swipe picks one of three sectors: `top`|`center`|`down` (center=straight inward). Bottom edge → `left`|`center`|`right`. Values are actions: none|back|home|recents|notifications|quick_settings|power_dialog|split_screen|lock_screen|screenshot|dismiss_shade|all_apps (API-gated ones no-op on old Android) OR `app:<package>` to launch an app. Remap anything with a one-line JSON edit or in the in-app editor — never a Kotlin change (Pillar: DATA-DRIVEN).",
+    "circular_menu": {
+      "_doc": "Sirius-star radial pie — the libs:launcher-onehand 'circular-menu', sibling to the edge-menu. Tapping the home star opens a ring of these nodes; a center arrow follows the finger, the pointed node highlights, and dragging past its ring DESCENDS into that node's children (which recenter and fan out again); releasing on a leaf navigates. Descent is RECURSIVE and arbitrary-depth: a node's `section` is its childKey — the app injects navigate(target) + iconBitmap(name) + childrenOf(key) (see app CircularMenuTree) so the lib stays app-agnostic and the tree mirrors the live sections. Example: Suite → {Cloud, Phone} → (Phone) {Home, More}; Comms/Infos → {Apps, Admin}; Labs/Configs → their pages. A node with `section:null` (Home Apps) is terminal. Star + nodes are data-driven — remap with a one-line edit, never Kotlin. TWO SEMI-CIRCLES: every level fans out as an UPWARD HALF-MOON (180° left → 270° up → 360° right) so nothing is ever drawn below the star or off the screen; radii are clamped to the viewport and derived only from the item count, so a level lays out identically every press. A descended level draws its pages on the OUTER arc (radius_dp, grown to fit the count) and its ACTIONS on a second, smaller arc ring_gap_dp below it. A child is an action when its target fires-and-returns instead of opening a page — i.e. it starts with `action:` or `extapp:` (see app CircularMenuTree.isAction), so the split is derived and no page needs a flag. A node may also declare its own `actions[]` here: extra inner-ring entries merged in on descent that are NOT pages of the section, so they never appear in the section grid or the Home row.",
+      "enabled": true,
+      "star": {
+        "glyph": "✦",
+        "size_sp": 20,
+        "show_on_section": "home",
+        "bottom_pct": 0.4,
+        "tap_pad_dp": 24
+      },
+      "radius_dp": 130,
+      "ring_gap_dp": 58,
+      "_doc_actions": "Root inner ring of the ALL-APPS (Sirius) star. Drawn the way every other star draws its inner ring: text only, on a smaller disc, with no icon lookup at all - so these carry no \"icon\" key. Targets go through the normal tile dispatcher, which is why plain https, intent:// and app:// URIs all work here with no Kotlin change.",
+      "actions": [
+        {
+          "label": "Search",
+          "target": "action:open_search"
+        },
+        {
+          "label": "Contact Me",
+          "target": "https://linktree.diegonmarcos.com/qrcode.html"
+        },
+        {
+          "label": "AI Chat",
+          "target": "intent://resolve?domain=Cloud_agent_hermes_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_hermes_bot;end"
+        },
+        {
+          "label": "Camera",
+          "target": "action:open_camera"
+        },
+        {
+          "label": "Gallery",
+          "target": "extapp:cloud-media-center"
+        }
+      ],
+      "_doc_nodes": "Outer ring of the ALL-APPS (Sirius) star: the LEAF pages, not the five parent sections. No \"section\" key on any of them, so CircularMenu leaves childKey null and a tap navigates straight to the target instead of descending a level. Configs is deliberately absent - it has its own star (Canopus/arc_menu).",
+      "nodes": [
+        {
+          "label": "Inboxes Apps",
+          "icon": "ic_chat",
+          "target": "page:communication/apps"
+        },
+        {
+          "label": "Inboxes Admin",
+          "icon": "ic_p_c3_workflows",
+          "target": "page:communication/admin"
+        },
+        {
+          "label": "Infos Apps",
+          "icon": "ic_p_logs",
+          "target": "page:infos/apps"
+        },
+        {
+          "label": "Infos Admin",
+          "icon": "ic_p_c3_workflows",
+          "target": "page:infos/admin"
+        },
+        {
+          "label": "Suite Cloud",
+          "icon": "ic_suite",
+          "target": "page:suite/cloud"
+        },
+        {
+          "label": "Suite Phone",
+          "icon": "ic_p_dialer",
+          "target": "page:suite/phone"
+        },
+        {
+          "label": "Labs Apps",
+          "icon": "ic_p_sol_tools",
+          "target": "page:tools/apps"
+        },
+        {
+          "label": "Labs Admin",
+          "icon": "ic_p_c3_stack",
+          "target": "page:tools/admin"
+        }
+      ]
+    },
+    "defaults": {
+      "length_pct": 100,
+      "length_dp": 220,
+      "thickness_dp": 32,
+      "transparency": 0,
+      "swipe_threshold_dp": 24,
+      "edge_inset_dp": 0,
+      "edge_inset_gesture_dp": 0,
+      "trigger": "swipe",
+      "long_press_ms": 300,
+      "_doc_gesture_inset": "The handle is inset from the very border for TWO reasons on Samsung: (1) CURVED-EDGE display — the border pixels are on the curve, where touch is unreliable (edge/palm rejection) + reserved by the system, so a handle AT the edge never activates. (2) GESTURE-nav back-swipe fires from the edge and races our press. Both are dodged by placing the handle on the FLAT glass past the curve. edge_inset_dp (26) applies always (covers the curve); edge_inset_gesture_dp (30) is used in gesture-nav (curve + a bit more to clear the back-gesture strip), detected via config_navBarInteractionMode. Flat-screen devices can lower edge_inset_dp toward 0.",
+      "_doc_geometry": "BOUNDED band, not full-height. length_dp=180 (>0 overrides length_pct) keeps the touch zone a ~180dp band at position_pct down the edge. Two reasons it must be bounded: (1) our handle CONSUMES touches in its area (a touchable overlay can't pass them through), so a full-height strip creates a dead vertical band down the whole edge that blocks the app underneath (e.g. Bitwarden buttons near the edge stop responding). A short band frees the rest of the edge. (2) systemGestureExclusionRects is OS-capped at 200dp/edge, so ≤180dp is FULLY excluded → reliable. Invisible (transparency 0); it lives at a consistent thumb-zone position."
+    },
+    "handles": [
+      {
+        "id": "right",
+        "edge": "right",
+        "position_pct": 50,
+        "gestures": {
+          "top": "app:com.whatsapp.w4b",
+          "top_middle": "app:com.google.android.apps.translate",
+          "center": "back",
+          "down_middle": "app:md.obsidian",
+          "down": "app:com.instagram.android"
+        }
+      },
+      {
+        "id": "left",
+        "edge": "left",
+        "position_pct": 50,
+        "gestures": {
+          "top": "app:com.x8bit.bitwarden",
+          "top_middle": "app:com.brave.browser",
+          "center": "back",
+          "down_middle": "app:com.google.android.apps.bard",
+          "down": "app:com.google.android.apps.maps"
+        }
+      }
+    ],
+    "_doc_apps": "App vocabulary offered in the per-swipe action picker (OneHandFragment). Each entry launches its package via getLaunchIntentForPackage; a package the phone doesn't have is silently skipped at fire time. Add an app = one entry — no Kotlin change.",
+    "apps": [
+      {
+        "label": "Gemini",
+        "package": "com.google.android.apps.bard"
+      },
+      {
+        "label": "Brave",
+        "package": "com.brave.browser"
+      },
+      {
+        "label": "Obsidian",
+        "package": "md.obsidian"
+      },
+      {
+        "label": "Google Translate",
+        "package": "com.google.android.apps.translate"
+      },
+      {
+        "label": "Claude",
+        "package": "com.anthropic.claude"
+      },
+      {
+        "label": "Gmail",
+        "package": "com.google.android.gm"
+      },
+      {
+        "label": "WhatsApp",
+        "package": "com.whatsapp"
+      },
+      {
+        "label": "Files",
+        "package": "com.google.android.apps.nbu.files"
+      },
+      {
+        "label": "Bitwarden",
+        "package": "com.x8bit.bitwarden"
+      },
+      {
+        "label": "WhatsApp Business",
+        "package": "com.whatsapp.w4b"
+      },
+      {
+        "label": "Instagram",
+        "package": "com.instagram.android"
+      },
+      {
+        "label": "Google Maps",
+        "package": "com.google.android.apps.maps"
+      }
+    ],
+    "_doc_radial": "Two-finger radial menu (libs:launcher-onehand, OBSERVE-ONLY via the accessibility service's onMotionEvent — needs Android 14+). Hold TWO fingers anywhere ~still for two_finger_hold_ms → a ring of icons opens at that point; release to one finger and move it to the icon (arrow follows), lift to fire. Because it only observes touches, the app underneath also sees the fingers (may pinch) — that's the cost of not intercepting. items[] are actions: `app:<pkg>` or a global action id (back|home|recents|notifications|quick_settings|...). radius_dp = ring radius; slop_dp = how far the 2-finger centroid may drift before the hold cancels.",
+    "radial": {
+      "_doc_security": "enabled=false by DEFAULT on purpose: the radial menu works by OBSERVING ALL touches system-wide (FLAG_SEND_MOTION_EVENTS), which is a genuine privacy/security capability — it can see taps anywhere, including over a password manager. Turn it on ONLY as a conscious opt-in. While disabled, the service never requests motion-event observation at all.",
+      "enabled": false,
+      "two_finger_hold_ms": 250,
+      "slop_dp": 44,
+      "radius_dp": 120,
+      "items": [
+        "app:com.brave.browser",
+        "app:com.google.android.apps.bard",
+        "app:com.google.android.apps.translate",
+        "app:md.obsidian",
+        "back",
+        "home",
+        "recents",
+        "notifications"
+      ]
+    },
+    "arc_menu": {
+      "_doc_actions": "Deliberately empty. KDE Connect, Animations and Copy Info moved into ui.sections[config].pages as is_action entries, which feed the arc's inner ring AND the Configs grid from one list. The block stays because it is still the right home for an action that belongs on the STAR only - one that would be noise in the grid.",
+      "actions": [],
+      "enabled": true,
+      "section": "config",
+      "radius_dp": 200
+    },
+    "_doc_recents_menu": "Inner ring of the ACTIVE-APPS (Centauri) star: what you do TO the recent apps, as opposed to the outer ring which launches them. Dispatched by CentaurusStar.recentsAction. Android gives a non-system launcher no way to clear another app's Overview card, so close_all/kill_bg kill BACKGROUND processes (the cards remain) and cards opens the system Overview so the user can swipe them away.",
+    "recents_menu": {
+      "actions": [
+        {
+          "label": "Close All",
+          "icon": "ic_nav_powersave",
+          "target": "recents:close_all"
+        },
+        {
+          "label": "Kill Bg",
+          "icon": "ic_nav_powersave",
+          "target": "recents:kill_bg"
+        },
+        {
+          "label": "Cards",
+          "icon": "ic_mode_apps",
+          "target": "recents:cards"
+        }
+      ]
+    },
+    "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps (Suite·Cloud tab) | open_home_apps_phone (Suite·Phone tab) | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
+    "home_swipes": {
+      "swipe_up": "action:open_home_apps_phone",
+      "swipe_left": "open_last_superapp_page",
+      "swipe_right": "open_last_android_app",
+      "swipe_down": "page:suite/phone"
+    }
+  },
+  "shizuku_diagnostics": {
+    "_doc": "Data-driven catalog of shell-domain diagnostic bundles run by libs:shizuku-adb-debug-tools. Two execution channels share this catalog (ladder, first ready wins): (1) local_server — OUR OWN app_process server (AdbShellServer) started once per boot via the adb one-liner from /api/adb/server-command; it runs in the SHELL SELinux domain (uid 2000) so dumpsys/usb/sysfs that untrusted_app is denied all work. NO third-party app. (2) Shizuku UserService — optional fallback when its app happens to be running. The lib's build.gradle base64-encodes bundles[] into BuildConfig.ADB_DIAG_BUNDLES_B64; AdbDiagnostics decodes + runs the chosen bundle, returning {bundle,label,channel,ok,results:[{id,cmd,out}]}. Adding a diagnostic = one entry here, no Kotlin edit (Pillar: DATA-DRIVEN). READ-ONLY diagnostics only — never a write/mutation.",
+    "local_server": {
+      "_doc": "OUR app_process shell-domain server. Started by `adb shell CLASSPATH=<apk> app_process /system/bin <class> <token> <port>` (the /api/adb/server-command one-liner, run once per boot via wireless debugging). Loopback + per-boot random token. This is the self-contained replacement for the Shizuku app.",
+      "port": 38099,
+      "class": "com.diegonmarcos.superapp.adbdebug.AdbShellServer",
+      "nice_name": "superapp-adb"
+    },
+    "bundles": [
+      {
+        "id": "charger",
+        "label": "Charger / USB-PD negotiation",
+        "commands": [
+          {
+            "id": "dumpsys_battery",
+            "cmd": "dumpsys battery"
+          },
+          {
+            "id": "dumpsys_usb",
+            "cmd": "dumpsys usb"
+          },
+          {
+            "id": "power_supply",
+            "cmd": "for d in /sys/class/power_supply/*; do echo \"== ${d##*/} ==\"; for f in type online present status charge_type usb_type voltage_now current_now current_max voltage_max input_current_limit constant_charge_current_max power_now temp; do v=$(cat \"$d/$f\" 2>/dev/null) && echo \"$f=$v\"; done; done"
+          },
+          {
+            "id": "typec",
+            "cmd": "for d in /sys/class/typec/port*; do echo \"== ${d##*/} ==\"; for f in power_role data_role vconn_source power_operation_mode; do v=$(cat \"$d/$f\" 2>/dev/null) && echo \"$f=$v\"; done; done"
+          },
+          {
+            "id": "props",
+            "cmd": "getprop | grep -iE 'charg|battery|usb|afc|pps|pdo|hv_charge|fast'"
+          }
+        ]
+      },
+      {
+        "id": "battery",
+        "label": "Battery state",
+        "commands": [
+          {
+            "id": "dumpsys_battery",
+            "cmd": "dumpsys battery"
+          },
+          {
+            "id": "batterystats_charged",
+            "cmd": "dumpsys batterystats --charged | sed -n '1,80p'"
+          }
+        ]
+      },
+      {
+        "id": "usb",
+        "label": "USB / gadget state",
+        "commands": [
+          {
+            "id": "dumpsys_usb",
+            "cmd": "dumpsys usb"
+          },
+          {
+            "id": "gadget_state",
+            "cmd": "for f in /sys/class/android_usb/android0/state /sys/class/udc/*/state; do echo \"$f=$(cat $f 2>/dev/null)\"; done"
+          }
+        ]
+      },
+      {
+        "id": "thermal",
+        "label": "Thermal zones (charge throttle suspect)",
+        "commands": [
+          {
+            "id": "thermal_zones",
+            "cmd": "for z in /sys/class/thermal/thermal_zone*; do t=$(cat \"$z/type\" 2>/dev/null); v=$(cat \"$z/temp\" 2>/dev/null); echo \"$t=$v\"; done"
+          },
+          {
+            "id": "dumpsys_thermal",
+            "cmd": "dumpsys thermalservice"
+          }
+        ]
+      },
+      {
+        "id": "pd",
+        "label": "USB-PD contract (typec + tcpm)",
+        "commands": [
+          {
+            "id": "typec_full",
+            "cmd": "for d in /sys/class/typec/*; do echo \"== $d ==\"; grep -sr . \"$d\" 2>/dev/null | sed 's#/sys/class/typec/##'; done"
+          },
+          {
+            "id": "tcpm_log",
+            "cmd": "dmesg 2>/dev/null | grep -iE 'tcpm|pd_|pdo|usbpd|typec' | tail -60"
+          }
+        ]
+      },
+      {
+        "id": "samsung-sfc",
+        "label": "Samsung Super Fast Charging verdict",
+        "commands": [
+          {
+            "id": "model",
+            "cmd": "getprop ro.product.model"
+          },
+          {
+            "id": "dumpsys_battery",
+            "cmd": "dumpsys battery"
+          }
+        ]
+      }
+    ],
+    "samsung_sfc": {
+      "_doc": "Data-driven inputs for the SfcVerdict parser (libs:shizuku-adb-debug-tools/SfcVerdict.kt), baked into BuildConfig.SFC_CONFIG_B64 by this module's build.gradle. The parser is PURE / JVM-testable and reads NO hardcoded device data — the model->max-watts ceiling map lives here so a new Galaxy model is a one-line JSON edit, never a Kotlin change. `device_caps` is keyed by model-number PREFIX (parser matches the longest startsWith of `ro.product.model`); value = the device's MAXIMUM wired watts (a higher-rated cable/charger cannot exceed it). `high_voltage_mv_threshold` = the dumpsys mcv / Max-charging-voltage (mV) at/above which a high-voltage fast-charge contract is considered engaged (9V = 9000). `full_level_pct` = SOC at/above which fast charge tapers, so a 'not negotiating' verdict is expected, not a fault.",
+      "high_voltage_mv_threshold": 9000,
+      "full_level_pct": 95,
+      "default_max_watts": null,
+      "device_caps": {
+        "SM-G991": 25,
+        "SM-G996": 25,
+        "SM-G998": 25,
+        "SM-S901": 25,
+        "SM-S906": 45,
+        "SM-S908": 45,
+        "SM-S911": 25,
+        "SM-S916": 45,
+        "SM-S918": 45,
+        "SM-S921": 25,
+        "SM-S926": 45,
+        "SM-S928": 45,
+        "SM-N980": 25,
+        "SM-N985": 25,
+        "SM-N986": 25
+      }
+    }
+  },
+  "android": {
+    "abi_filters": [
+      "arm64-v8a"
+    ]
+  },
   "voice": {
     "_doc": "Offline voice-input (Vosk) model registry for libs:voice, behind the keyboard VOICE toolbar key. libs/voice/build.gradle bakes this into BuildConfig.VOICE_MODELS_JSON + VOICE_DEFAULT_LANGUAGE; VoiceModelManager downloads the model for the active keyboard language lazily on first use, unzips to filesDir/vosk/<dir>, then Vosk runs fully offline (no Google/system speech IME). Add a language = one entry. Small models keep each download ~40-50MB.",
     "default_language": "en-us",
