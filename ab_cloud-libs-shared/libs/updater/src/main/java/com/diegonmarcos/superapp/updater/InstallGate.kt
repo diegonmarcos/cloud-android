@@ -1,8 +1,5 @@
-package com.diegonmarcos.superapp.updater.install
+package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.ApkInstallWorker
-import com.diegonmarcos.superapp.updater.PackageInstallerReceiver
-import com.diegonmarcos.superapp.updater.UpdateWorker
 import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch

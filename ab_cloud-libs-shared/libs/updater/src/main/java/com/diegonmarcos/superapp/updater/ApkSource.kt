@@ -1,8 +1,5 @@
-package com.diegonmarcos.superapp.updater.source
+package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.Fleet
-import com.diegonmarcos.superapp.updater.UpdateProgress
-import com.diegonmarcos.superapp.updater.apk.VerifiedApk
 import android.content.Context
 import java.io.File
 

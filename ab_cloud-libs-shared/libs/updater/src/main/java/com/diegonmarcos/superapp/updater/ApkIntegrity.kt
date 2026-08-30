@@ -1,8 +1,5 @@
-package com.diegonmarcos.superapp.updater.apk
+package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.Fleet
-import com.diegonmarcos.superapp.updater.source.GhcrClient
-import com.diegonmarcos.superapp.updater.source.UpdateChecker
 import java.io.File
 import java.security.MessageDigest
 

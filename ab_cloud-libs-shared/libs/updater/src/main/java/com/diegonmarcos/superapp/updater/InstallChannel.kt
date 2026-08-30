@@ -1,11 +1,5 @@
-package com.diegonmarcos.superapp.updater.install
+package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.Fleet
-import com.diegonmarcos.superapp.updater.PackageInstallerReceiver
-import com.diegonmarcos.superapp.updater.UpdateProgress
-import com.diegonmarcos.superapp.updater.activeShellChannel
-import com.diegonmarcos.superapp.updater.apk.VerifiedApk
-import com.diegonmarcos.superapp.updater.source.ApkSource
 import android.content.Context
 import android.util.Log
 import java.io.File

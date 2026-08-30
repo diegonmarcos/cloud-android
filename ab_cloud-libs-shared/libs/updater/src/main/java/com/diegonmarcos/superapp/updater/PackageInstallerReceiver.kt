@@ -1,6 +1,5 @@
 package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.install.InstallGate
 import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel

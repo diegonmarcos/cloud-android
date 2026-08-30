@@ -1,6 +1,5 @@
-package com.diegonmarcos.superapp.updater.source
+package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.apk.ApkIntegrity
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

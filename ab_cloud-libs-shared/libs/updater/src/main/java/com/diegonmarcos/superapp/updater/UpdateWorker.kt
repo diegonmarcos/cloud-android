@@ -1,7 +1,5 @@
 package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.install.UpdateInstaller
-import com.diegonmarcos.superapp.updater.source.UpdateChecker
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities

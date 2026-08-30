@@ -1,11 +1,5 @@
-package com.diegonmarcos.superapp.updater.install
+package com.diegonmarcos.superapp.updater
 
-import com.diegonmarcos.superapp.updater.ApkInstallWorker
-import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
-import com.diegonmarcos.superapp.updater.PackageInstallerReceiver
-import com.diegonmarcos.superapp.updater.UpdateProgress
-import com.diegonmarcos.superapp.updater.Updater
-import com.diegonmarcos.superapp.updater.apk.VerifiedApk
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
