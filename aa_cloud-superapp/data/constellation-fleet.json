@@ -60,7 +60,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Appstore.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Appstore.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/appstore",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/appstore",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-appstore",
       "blocked": false,
       "kind": "lib"
@@ -76,7 +76,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Battery.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Battery.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/battery",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/battery",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-battery",
       "blocked": false,
       "kind": "lib"
@@ -124,7 +124,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Chat.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Chat.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/chat",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/chat",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-chat",
       "blocked": false,
       "kind": "lib"
@@ -172,7 +172,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Datamanager.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Datamanager.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/datamanager",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/datamanager",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-datamanager",
       "blocked": false,
       "kind": "lib"
@@ -204,7 +204,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Feed.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Feed.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/feed",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/feed",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-feed",
       "blocked": false,
       "kind": "lib"
@@ -220,7 +220,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Fin.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Fin.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/fin",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/fin",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-fin",
       "blocked": false,
       "kind": "lib"
@@ -236,7 +236,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Firewall.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Firewall.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/firewall",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/firewall",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-firewall",
       "blocked": false,
       "kind": "lib"
@@ -252,7 +252,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Health.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Health.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/health",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/health",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-health",
       "blocked": false,
       "kind": "lib"
@@ -268,7 +268,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Kde-Connect.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Kde-Connect.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/kde-connect",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/kde-connect",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-kde-connect",
       "blocked": false,
       "kind": "lib"
@@ -284,7 +284,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Launcher-Apptabs.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Launcher-Apptabs.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/launcher-apptabs",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/launcher-apptabs",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-launcher-apptabs",
       "blocked": false,
       "kind": "lib"
@@ -300,7 +300,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Launcher-Onehand.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Launcher-Onehand.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/launcher-onehand",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/launcher-onehand",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-launcher-onehand",
       "blocked": false,
       "kind": "lib"
@@ -316,7 +316,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Launcher-Zoomies.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Launcher-Zoomies.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/launcher-zoomies",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/launcher-zoomies",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-launcher-zoomies",
       "blocked": false,
       "kind": "lib"
@@ -332,7 +332,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Mail.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Mail.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/mail",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/mail",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-mail",
       "blocked": false,
       "kind": "lib"
@@ -380,7 +380,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Net.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Net.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/net",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/net",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-net",
       "blocked": false,
       "kind": "lib"
@@ -396,7 +396,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Net-Wg.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Net-Wg.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/net-wg",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/net-wg",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-net-wg",
       "blocked": false,
       "kind": "lib"
@@ -428,8 +428,24 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Ops.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Ops.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/ops",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/ops",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-ops",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
+      "id": "lib-search",
+      "label": "Lib: search",
+      "package": "com.diegonmarcos.cloudlib.search",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-search",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Search.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Search.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/search",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-search",
       "blocked": false,
       "kind": "lib"
     },
@@ -444,7 +460,7 @@
       "tag": "latest",
       "asset": "Cloud-Lib-Shizuku-Adb-Debug-Tools.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Shizuku-Adb-Debug-Tools.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/shizuku-adb-debug-tools",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/shizuku-adb-debug-tools",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-shizuku-adb-debug-tools",
       "blocked": false,
       "kind": "lib"
@@ -542,6 +558,22 @@
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Wallet.apk",
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-wallet/libs/wallet",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-wallet",
+      "blocked": false,
+      "kind": "lib"
+    },
+    {
+      "id": "lib-watchdog",
+      "label": "Lib: watchdog",
+      "package": "com.diegonmarcos.cloudlib.watchdog",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-lib-watchdog",
+      "tag": "latest",
+      "asset": "Cloud-Lib-Watchdog.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Watchdog.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/watchdog",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-watchdog",
       "blocked": false,
       "kind": "lib"
     },
@@ -766,6 +798,22 @@
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Wallet.apk",
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-wallet",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-wallet",
+      "blocked": false,
+      "kind": "app"
+    },
+    {
+      "id": "watchdog",
+      "label": "cloud-watchdog",
+      "package": "com.diegonmarcos.watchdog",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-watchdog",
+      "tag": "latest",
+      "asset": "Cloud-Watchdog.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Watchdog.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-watchdog",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-watchdog",
       "blocked": false,
       "kind": "app"
     },

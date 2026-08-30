@@ -323,7 +323,7 @@
             },
             {
               "label": "KDE Plasma",
-              "url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp/libs/kde-connect",
+              "url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/kde-connect",
               "icon": "settings.svg",
               "item": 2
             },
