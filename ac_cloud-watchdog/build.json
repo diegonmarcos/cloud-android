@@ -72,8 +72,8 @@
       "release": "Cloud-Watchdog-release.apk"
     },
     "ghcr": {
-      "_doc": "ORAS push as an OCI artifact \u2014 the APK is a blob, not a container.",
-      "enabled": true,
+      "_doc": "DISABLED, and that is the fix rather than a workaround. A GHCR package is owned by the ACCOUNT, not the repository: GitHub creates every new user-owned package PRIVATE regardless of the repo it was pushed from, image.source only LINKS it and inherits nothing, and no API can change it (PATCH /user/packages/... 404s even with write:packages). Measured, not assumed: this package was deleted and rebuilt by GITHUB_TOKEN from inside this PUBLIC repo's own workflow and came back private. A channel that CANNOT follow repo visibility is a channel this APK does not ship on. The GH Release below has no visibility of its own \u2014 it IS the repo \u2014 so the artifact follows the repo by construction, with nothing to click and nothing to remember. Re-enable only if packages move to an ORG, where PATCH /orgs/{org}/packages/.../visibility exists and the build can actually enforce the match.",
+      "enabled": false,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "image": "cloud-watchdog",
@@ -85,7 +85,7 @@
       ]
     },
     "auto_update": {
-      "_doc": "Read at gradle eval time into BuildConfig and used by the in-app updater, same OCI flow as build.sh oras-pull. NOTE: every cloudlib APK so far ships version_code 1, so an update looks 'not landed' until it is installed by hand \u2014 bump version_code with the version_name or this channel is inert.",
+      "_doc": "The in-app updater reads release_url first (libs:updater Fleet.kt) and only falls back to GHCR, which this app no longer publishes \u2014 so updates come off the release asset, which follows repo visibility. NOTE: version_code is 1 and never bumped, so this channel is inert until it is.",
       "enabled": true,
       "tag": "latest",
       "interval_hours": 6,
