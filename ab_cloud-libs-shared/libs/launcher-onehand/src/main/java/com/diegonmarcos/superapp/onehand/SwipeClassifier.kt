@@ -7,30 +7,34 @@ import kotlin.math.hypot
 /**
  * PURE gesture math (no Android deps → JVM-testable). One Hand Operation+ model:
  * the handle activates anywhere along the edge; you swipe INWARD and the TILT of
- * that drag picks one of five sectors — top / top_middle / center / down_middle /
- * down (center = straight inward). Bottom edge → left/center/right (3 sectors).
- * `dx`/`dy` are end-minus-start pixels.
+ * that drag picks one of seven sectors — top_outer / top / top_middle / center /
+ * down_middle / down / down_outer (center = straight inward). Bottom edge →
+ * left/center/right (3 sectors). `dx`/`dy` are end-minus-start pixels.
  *
  * Angle bands (0° = straight inward, ±90° = parallel to edge):
- *   center      |a| ≤ 14°
- *   top_middle  20°..38°   (neg side)
- *   down_middle 20°..38°   (pos side)
- *   top         44°..65°   (neg side)
- *   down        44°..65°   (pos side)
+ *   center      |a| ≤ 10°
+ *   top_middle  14°..30°   (neg side)
+ *   down_middle 14°..30°   (pos side)
+ *   top         34°..50°   (neg side)
+ *   down        34°..50°   (pos side)
+ *   top_outer   54°..72°   (neg side)
+ *   down_outer  54°..72°   (pos side)
  *   dead        elsewhere → cancel
  */
 object SwipeClassifier {
-    private const val CENTER_HALF   = 14.0   // center band
-    private const val MID_MIN       = 20.0   // top_middle / down_middle band
-    private const val MID_MAX       = 38.0
-    private const val OUTER_MIN     = 44.0   // top / down band
-    private const val OUTER_MAX     = 65.0
+    private const val CENTER_HALF     = 10.0   // center band
+    private const val MID_MIN         = 14.0   // top_middle / down_middle band
+    private const val MID_MAX         = 30.0
+    private const val OUTER_MIN       = 34.0   // top / down band
+    private const val OUTER_MAX       = 50.0
+    private const val OUTERMOST_MIN   = 54.0   // top_outer / down_outer band
+    private const val OUTERMOST_MAX   = 72.0
 
     /** Sector key, or null for a dead-zone / outward / too-shallow drag (= cancel). */
     fun sector(edge: OneHandConfig.Edge, dx: Float, dy: Float): String? {
-        val (inward, lateral, neg, negMid, pos, posMid) = when (edge) {
-            OneHandConfig.Edge.RIGHT -> Axes6(-dx, dy, "top", "top_middle", "down", "down_middle")
-            OneHandConfig.Edge.LEFT -> Axes6(dx, dy, "top", "top_middle", "down", "down_middle")
+        val (inward, lateral, outerNeg, neg, negMid, posMid, pos, outerPos) = when (edge) {
+            OneHandConfig.Edge.RIGHT -> Axes8(-dx, dy, "top_outer", "top", "top_middle", "down_middle", "down", "down_outer")
+            OneHandConfig.Edge.LEFT -> Axes8(dx, dy, "top_outer", "top", "top_middle", "down_middle", "down", "down_outer")
             // Bottom edge keeps the original 3-sector model (left/center/right)
             OneHandConfig.Edge.BOTTOM -> return sectorBottom(dx, dy)
         }
@@ -41,6 +45,7 @@ object SwipeClassifier {
             a <= CENTER_HALF -> "center"
             a in MID_MIN..MID_MAX -> if (angleDeg < 0) negMid else posMid
             a in OUTER_MIN..OUTER_MAX -> if (angleDeg < 0) neg else pos
+            a in OUTERMOST_MIN..OUTERMOST_MAX -> if (angleDeg < 0) outerNeg else outerPos
             else -> null
         }
     }
@@ -64,9 +69,9 @@ object SwipeClassifier {
         return sector(edge, dx, dy)
     }
 
-    private data class Axes6(
+    private data class Axes8(
         val inward: Float, val lateral: Float,
-        val neg: String, val negMid: String,
-        val pos: String, val posMid: String,
+        val outerNeg: String, val neg: String, val negMid: String,
+        val posMid: String, val pos: String, val outerPos: String,
     )
 }

@@ -47,6 +47,10 @@ on:
       #   such a repo. A change here changes every lib APK, so not watching it
       #   meant the fix for a red build did not rebuild anything.
       - "ab_cloud-libs-shared/libs/analytics/**"
+      # The gradle project that actually assembles the lib APKs. Not watching
+      # it meant a change to the very wrapper that builds every Cloud-Lib-*.apk
+      # shipped nothing, so the store kept serving the previous build.
+      - "ab_cloud-libs/**"
       - "1_cicd/src/cicd/ship-cloud-libs.yml"
 
 permissions:

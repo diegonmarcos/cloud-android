@@ -40,6 +40,8 @@ on:
       - "ab_cloud-libs-shared/libs/voice-vosk/**"
       - "ab_cloud-libs-shared/libs/translate-mlkit/**"
       - "ab_cloud-libs-shared/libs/analytics/**"
+      # The gradle project that assembles Cloud-Keyboard-Libs.apk itself.
+      - "ab_cloud-keyboard-libs/**"
       - "1_cicd/src/cicd/ship-cloud-keyboard-libs.yml"
 
 permissions:

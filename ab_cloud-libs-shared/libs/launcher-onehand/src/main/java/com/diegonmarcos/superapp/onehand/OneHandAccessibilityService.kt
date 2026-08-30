@@ -307,7 +307,7 @@ class OneHandAccessibilityService : AccessibilityService() {
         preview?.update(downX, downY, x, y, SwipeClassifier.sector(h.edge, dx, dy), progress)
     }
 
-    /** Fan of the handle's 3 sector options for the preview, at canonical angles. */
+    /** Fan of the handle's sector options for the preview, at canonical angles. */
     private fun buildOptions(h: OneHandConfig.Handle): List<GesturePreviewView.Option> =
         OneHandConfig.slotsFor(h.edge).map { slot ->
             val action = h.gestures[slot.key]

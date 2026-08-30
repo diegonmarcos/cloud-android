@@ -116,7 +116,15 @@ regen_constellation() {
                            --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" \
                            --arg libdir "$lrel" '
                     ($rel + "/latest/download/" + $asset) as $url
-                    | $acc + [ { id: $id,
+                    # First scan root to offer a module wins. The scan roots
+                    # OVERLAP: ab_cloud-libs and ab_cloud-libs-shared/lib-apks
+                    # both harness the same consolidated ab_cloud-libs-shared/libs,
+                    # and the pre-consolidation per-app libs/ trees still exist,
+                    # so without this guard every shared module was emitted two
+                    # or three times and a plain regen turned 56 entries into
+                    # 114. One module is one lib APK is one fleet entry.
+                    | if ($acc | any(.id == $id)) then $acc else $acc + [
+                               { id: $id,
                                  label: ("Lib: " + $mod),
                                  package: $pkgid,
                                  alt_id: null,
@@ -129,7 +137,7 @@ regen_constellation() {
                                  repo_url: ($tree + "/" + $libdir + "/" + $mod),
                                  ghcr_page: ($pkg + "/" + $img),
                                  blocked: false,
-                                 kind: "lib" } ]' "$bj")"
+                                 kind: "lib" } ] end' "$bj")"
             done
         elif jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1; then
             # ── Top-level app (browser/vault/wallet/superapp/nav/ide) ─────────
@@ -211,6 +219,20 @@ regen_constellation() {
     if [ -f "$selfbj" ]; then
         apps="$(jq --argjson acc "$apps" '$acc + (.constellation.external // [])' "$selfbj")"
     fi
+
+    # One asset is one installable APK is one fleet entry. Duplicates reach
+    # here two ways: two build.json describing the same APK
+    # (ab_cloud-keyboard-libs and ab_cloud-libs-shared/keyboard-engines both
+    # publish Cloud-Keyboard-Libs.apk), and a stale .constellation.external
+    # member shadowing a scanned entry with a GHCR image that does not exist
+    # (cloud-infra-desktop-termux-boot vs the real cloud-unix-termux-boot).
+    # Either way the store would list one app twice, and in the second case the
+    # duplicate is uninstallable. Scanned entries are appended before external
+    # ones, so first-wins keeps the entry backed by a real build.json. Written
+    # as a reduce, not unique_by, because unique_by would also re-sort the fleet.
+    apps="$(jq -n --argjson apps "$apps" '
+        $apps | reduce .[] as $e ([];
+            if any(.[]; .asset == $e.asset) then . else . + [$e] end)')"
 
     jq -n --argjson apps "$apps" '{ version: 1, apps: $apps }' \
         > "$HERE/constellation-fleet.json"

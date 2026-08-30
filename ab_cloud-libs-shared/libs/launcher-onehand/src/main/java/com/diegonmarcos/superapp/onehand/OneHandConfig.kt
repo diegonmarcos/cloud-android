@@ -9,8 +9,9 @@ import org.json.JSONObject
  * DEFAULT action per sector; [effective] overlays the user's per-swipe overrides
  * from [OneHandPrefs].
  *
- * Each side handle has 3 sectors keyed `top` | `center` | `down` (center =
- * straight inward, top/down = tilt up/down). Bottom edge → `left`|`center`|`right`.
+ * Each side handle has 7 sectors keyed `top_outer` | `top` | `top_middle` |
+ * `center` | `down_middle` | `down` | `down_outer` (center = straight inward,
+ * top/down = tilt up/down). Bottom edge → `left`|`center`|`right`.
  * Gesture values are [GestureAction] strings: an action id ("back") or "app:<pkg>".
  */
 data class OneHandConfig(
@@ -54,15 +55,17 @@ data class OneHandConfig(
 
     companion object {
         /** Sectors of a handle, ordered top→down (UI + preview iterate these). Left/right
-         *  edges have 5 sectors; bottom edge keeps 3 (left/center/right). */
+         *  edges have 7 sectors; bottom edge keeps 3 (left/center/right). */
         fun slotsFor(edge: Edge): List<Slot> = when (edge) {
             Edge.BOTTOM -> listOf(Slot("left", "Left"), Slot("center", "Center"), Slot("right", "Right"))
             else -> listOf(
+                Slot("top_outer",   "Top-outer"),
                 Slot("top",         "Top"),
                 Slot("top_middle",  "Top-middle"),
                 Slot("center",      "Center"),
                 Slot("down_middle", "Down-middle"),
                 Slot("down",        "Down"),
+                Slot("down_outer",  "Down-outer"),
             )
         }
 

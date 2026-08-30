@@ -186,15 +186,19 @@ object Fleet {
      * State from the release asset, or null when this app declares none or the
      * probe fails — in which case the caller falls through to GHCR.
      *
-     * SIZE, NOT A DIGEST, AND THAT IS A REAL LIMITATION. A release asset
-     * carries no content digest over a HEAD, so "is an update waiting" is
-     * answered by comparing bytes. Two builds of the same commit differ in
-     * size rarely but can; two different commits with identical size are
-     * possible and would read as up to date. GHCR's digest is strictly better
-     * at THAT question — and strictly worse at the question underneath it,
-     * which is whether the app can be reached at all. An app the store cannot
-     * see is not made safer by the precision with which it could have compared
-     * it, so access wins and the weaker signal is stated rather than hidden.
+     * IDENTITY FIRST, SIZE ONLY AS FALLBACK. The ship engine publishes a
+     * "<asset>.sha256" sidecar next to every APK, so the exact bytes on the
+     * release can be compared against the exact bytes installed.
+     *
+     * This used to compare SIZE alone, and that silently broke the store. On
+     * 2026-08-30 several different builds all landed on exactly 32,012,393
+     * bytes; the installed APK and the release asset were different content
+     * (sha dbf86559… vs c8ff19ec…) at identical size, so this returned
+     * Installed and — because release wins over registry — gated the GHCR
+     * digest check behind it. The store reported "no update" permanently.
+     * A size compare cannot answer "are these the same bytes"; only a digest
+     * can, which is why the sidecar exists. Size remains the fallback purely
+     * for apps that have not been re-shipped with a sidecar yet.
      */
     private fun releaseStatus(app: App, installed: Installed?): State? {
         if (app.releaseUrl.isBlank()) return null
@@ -212,12 +216,40 @@ object Fleet {
         }.getOrDefault(-1L)
         if (size < 0) return null
         val i = installed ?: return State.Missing(size)
+        releaseSha256(app)?.let { remote ->
+            return if (i.sha.equals(remote, ignoreCase = true)) {
+                State.Installed(i.versionName, i.versionCode, i.sha.take(12), size)
+            } else {
+                State.UpdateAvailable(i.versionName, remote.take(12), size)
+            }
+        }
         return if (i.bytes == size) {
             State.Installed(i.versionName, i.versionCode, i.sha.take(12), size)
         } else {
             State.UpdateAvailable(i.versionName, "release", size)
         }
     }
+
+    /**
+     * The hex sha256 the ship engine published beside the release asset, or
+     * null when this app has not been re-shipped with a sidecar yet (in which
+     * case the caller falls back to the size compare). Never throws: a missing
+     * or malformed sidecar must degrade to the old behaviour, not to an error.
+     */
+    private fun releaseSha256(app: App): String? = runCatching {
+        val c = (java.net.URL(app.releaseUrl + ".sha256").openConnection()
+                as java.net.HttpURLConnection)
+        c.instanceFollowRedirects = true
+        c.connectTimeout = 10_000
+        c.readTimeout = 10_000
+        val body = if (c.responseCode in 200..299) {
+            c.inputStream.bufferedReader().use { it.readText() }
+        } else null
+        c.disconnect()
+        // Either a bare digest or the sha256sum(1) form "<hex>  <filename>".
+        body?.trim()?.substringBefore(' ')?.trim()?.lowercase()
+            ?.takeIf { s -> s.length == 64 && s.all { it in '0'..'9' || it in 'a'..'f' } }
+    }.getOrNull()
 
     /** Download the GHCR blob, verify sha, install/update [app] (foreign pkg). */
     fun install(ctx: Context, app: App) {
