@@ -245,7 +245,14 @@ fi
 #      caught 2026-08-22, when libs/devtools reached nothing but superapp.
 app_root_drift=$(python3 - <<'PYAPPROOTS'
 import json, os, re, glob
-for bj in sorted(glob.glob('ac_cloud-*/build.json')):
+# aa_/ab_ too, not just ac_: the prefix is not the invariant, "compiles a
+# module from outside its own tree" is. Scoping this to ac_cloud-* left
+# aa_cloud-superapp unchecked, and when the consolidation moved 16 of its 21
+# shared modules out of aa_cloud-superapp/libs/ into ab_cloud-libs-shared/,
+# every one of them fell outside the workflow's aa_cloud-superapp/** filter
+# with nothing to notice. A change to libs:appstore shipped no new SuperApp
+# APK while CI stayed green.
+for bj in sorted(glob.glob('a[abc]_cloud-*/build.json')):
     repo = bj.split('/')[0]
     try:
         mods_cfg = (json.load(open(bj)).get('modules') or {})
@@ -261,7 +268,8 @@ for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     # Only modules OUTSIDE this repo need their own trigger; the repo's own
     # "<repo>/**" filter already covers anything in-tree.
     mods = [m for m in mods if not m.startswith(repo + '/')]
-    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo[len('ac_cloud-'):]
+    # Strip whichever a?_cloud- prefix this repo carries.
+    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo.split('_cloud-', 1)[1]
     if not mods or not os.path.exists(wf):
         continue
     have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
