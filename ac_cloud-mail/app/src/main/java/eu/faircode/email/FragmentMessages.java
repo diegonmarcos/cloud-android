@@ -2564,6 +2564,59 @@ public class FragmentMessages extends FragmentBase
         }.execute(this, args, "messages:refresh");
     }
 
+    /**
+     * Honour a pending "mark read" when a message is collapsed.
+     *
+     * Only reachable with seen_delay != 0, where the delayed runnable in
+     * onExpand is otherwise the sole thing that can mark the message and it
+     * refuses once the message is no longer expanded. Mirrors the seen branch
+     * of taskExpand rather than duplicating its policy: the account decides
+     * (auto_seen), and IMAP still needs a uid to act on.
+     */
+    private void markSeenOnCollapse(long id) {
+        Bundle args = new Bundle();
+        args.putLong("id", id);
+
+        new SimpleTask<Void>() {
+            @Override
+            protected Void onExecute(Context context, Bundle args) {
+                long id = args.getLong("id");
+
+                DB db = DB.getInstance(context);
+                try {
+                    db.beginTransaction();
+
+                    EntityMessage message = db.message().getMessage(id);
+                    if (message == null || Boolean.TRUE.equals(message.ui_seen))
+                        return null;
+
+                    EntityAccount account = db.account().getAccount(message.account);
+                    // Boolean, not boolean: unboxing a null here would throw.
+                    if (account == null || !Boolean.TRUE.equals(account.auto_seen))
+                        return null;
+                    if (account.protocol == EntityAccount.TYPE_IMAP && message.uid == null)
+                        return null;
+
+                    // Writes ui_seen itself and queues the server sync, so the
+                    // row turns read immediately and offline.
+                    EntityOperation.queue(context, message, EntityOperation.SEEN, true);
+
+                    db.setTransactionSuccessful();
+                } finally {
+                    db.endTransaction();
+                }
+
+                ServiceSynchronize.eval(context, "seen_on_collapse");
+                return null;
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                Log.e(ex);
+            }
+        }.setLog(false).execute(this, args, "messages:seen_collapse");
+    }
+
     private void onExpunge() {
         new AlertDialog.Builder(view.getContext())
                 .setIcon(R.drawable.twotone_warning_24)
@@ -2713,6 +2766,30 @@ public class FragmentMessages extends FragmentBase
 
             if (seen_delay != 0)
                 setValue("auto_seen", message.id, true);
+
+            // comms: closing a message you had open must mark it read.
+            //
+            // With seen_delay != 0 the line above sets the "auto_seen" property
+            // on EXPAND, which is exactly the flag AdapterMessage checks before
+            // queueing the mark itself -- so the adapter's immediate path is
+            // suppressed and the postDelayed runnable becomes the only thing
+            // that can mark it. That runnable is guarded on the message still
+            // being expanded, and collapsing removes the id from "expanded"
+            // first. Close before the delay elapses and the message was never
+            // marked read at all -- not late, never: it stayed unread until a
+            // later sync brought the server's state back, which is the
+            // minutes-long lag this looked like.
+            //
+            // The delay is meant to avoid marking on an accidental tap, so it
+            // still applies while the message is OPEN. Deliberately closing one
+            // is not an accident, so the pending mark is honoured here rather
+            // than discarded.
+            if (!value && seen_delay != 0 && message.accountAutoSeen &&
+                    !Boolean.TRUE.equals(message.ui_seen) &&
+                    getValue("expanded", message.id) &&
+                    (message.uid != null || message.accountProtocol == EntityAccount.TYPE_POP))
+                markSeenOnCollapse(message.id);
+
             setValue("expanded", message.id, value);
             if (scroll)
                 setValue("scroll", message.id, true);
