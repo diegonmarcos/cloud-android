@@ -354,7 +354,13 @@ object AppDebugServer {
     /** Runs `logcat -d -t N -v threadtime`. Needs no permission because the
      *  app is reading its OWN logs — Android filters logcat by uid for
      *  unprivileged processes. That is the entire reason this server exists. */
-    private fun readLogcat(n: Int): String = runCatching {
+    /**
+     * THE own-process logcat reader. Public because it is also what the
+     * install-failure Diagnose screen embeds — there is one logcat reader in
+     * the constellation and this is it. The About page's live viewer and the
+     * /api/diagnostics/logcat route are the other two callers.
+     */
+    fun readLogcat(n: Int): String = runCatching {
         val p = Runtime.getRuntime()
             .exec(arrayOf("logcat", "-d", "-t", n.toString(), "-v", "threadtime"))
         p.inputStream.bufferedReader().readText()

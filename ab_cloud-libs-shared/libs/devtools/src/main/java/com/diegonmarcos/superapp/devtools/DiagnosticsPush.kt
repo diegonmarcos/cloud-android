@@ -89,6 +89,39 @@ object DiagnosticsPush {
 
     /** Write the bundle to public Downloads. Returns the display name on
      *  success, null on failure. */
+    /** True when a report can be sent at all — drives whether the Send button
+     *  is offered. Empty URL is a legitimate configuration (an app that does
+     *  not want to phone home), not an error. */
+    fun canReport(): Boolean = BuildConfig.DIAG_REPORT_URL.isNotBlank()
+
+    /**
+     * POST a human-triggered diagnostic report for [app] and return the HTTP
+     * status, or -1 when it could not be sent at all.
+     *
+     * Separate from [pushToCloud]: that is a fire-and-forget analytics record
+     * on a fixed stream, this is a bundle someone is standing there waiting
+     * for. Plain text, not JSON — it is read by a person first and a tool
+     * second, and wrapping it in JSON only adds escaping to something that is
+     * already a log.
+     */
+    fun postReport(app: String, body: String): Int {
+        val base = BuildConfig.DIAG_REPORT_URL
+        if (base.isBlank()) return -1
+        val url = if (base.contains("{app}")) base.replace("{app}", app) else "$base/$app"
+        return runCatching {
+            val c = URL(url).openConnection() as HttpURLConnection
+            c.requestMethod = "POST"
+            c.doOutput = true
+            c.connectTimeout = 10_000
+            c.readTimeout = 15_000
+            c.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
+            c.outputStream.use { it.write(body.toByteArray()) }
+            val code = c.responseCode
+            c.disconnect()
+            code
+        }.getOrDefault(-1)
+    }
+
     fun downloadBundle(ctx: Context, filename: String, body: String): String? = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {

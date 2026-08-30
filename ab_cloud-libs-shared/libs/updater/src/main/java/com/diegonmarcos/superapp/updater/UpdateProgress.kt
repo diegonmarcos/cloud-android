@@ -26,7 +26,19 @@ object UpdateProgress {
         object Installing : State()
         /** Install handed off — system dialog is up OR install completed. */
         object Done : State()
-        data class Failed(val message: String) : State()
+        /**
+         * [appId]/[pkg]/[apkPath] are optional context for the Diagnose screen:
+         * a fleet install knows which app it was and which file it staged, and
+         * without that the report can only describe the host app. Defaulted so
+         * every existing `Failed("...")` call site keeps compiling and simply
+         * produces a report about this app instead of the target.
+         */
+        data class Failed(
+            val message: String,
+            val appId: String = "",
+            val pkg: String = "",
+            val apkPath: String = "",
+        ) : State()
         /** User hit Cancel — overlay dismisses, worker is being torn down. */
         object Cancelled : State()
     }

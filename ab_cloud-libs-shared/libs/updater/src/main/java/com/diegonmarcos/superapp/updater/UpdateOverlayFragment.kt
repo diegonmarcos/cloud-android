@@ -30,6 +30,12 @@ class UpdateOverlayFragment : Fragment() {
     private lateinit var dismissButton: TextView
     private lateinit var cancelButton: TextView
     private lateinit var updateNowButton: TextView
+    private lateinit var diagnoseButton: TextView
+    private lateinit var actionRow: LinearLayout
+    /** Report text once collected, so Copy/Save/Send all send the SAME bytes
+     *  the user just read rather than re-collecting a slightly different one. */
+    private var report: String? = null
+    private var failed: UpdateProgress.State.Failed? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -127,6 +133,56 @@ class UpdateOverlayFragment : Fragment() {
         column.addView(titleView)
         column.addView(progressBar)
         column.addView(detailView)
+        // Diagnose — offered only on Failed. "Update failed: <platform string>"
+        // is where every one of these ends, and the platform string names a
+        // symptom, not a cause. This turns the dead end into the local state
+        // that explains it.
+        diagnoseButton = TextView(ctx).apply {
+            text = "Diagnose"
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF2A2A33.toInt())
+            setPadding(dp(24), dp(12), dp(24), dp(12))
+            isClickable = true; isFocusable = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(12) }
+            setOnClickListener { showReport(ctx) }
+        }
+        // Copy / Save / Send, revealed with the report. Three because the phone
+        // that cannot reach the network is exactly the phone you most need the
+        // report off, so Send must never be the only way out.
+        actionRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(12) }
+        }
+        fun action(label: String, onTap: () -> Unit) = TextView(ctx).apply {
+            text = label
+            gravity = Gravity.CENTER
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF3A3A45.toInt())
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            isClickable = true; isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { rightMargin = dp(8) }
+            setOnClickListener { onTap() }
+        }
+        actionRow.addView(action("Copy") { copyReport(ctx) })
+        actionRow.addView(action("Save") { saveReport(ctx) })
+        if (com.diegonmarcos.superapp.devtools.DiagnosticsPush.canReport()) {
+            actionRow.addView(action("Send") { sendReport(ctx) })
+        }
+        column.addView(diagnoseButton)
+        column.addView(actionRow)
         column.addView(cancelButton)
         column.addView(updateNowButton)
         column.addView(dismissButton)
@@ -181,6 +237,8 @@ class UpdateOverlayFragment : Fragment() {
             is UpdateProgress.State.Failed -> {
                 titleView.text = "Update failed"
                 detailView.text = state.message
+                failed = state
+                diagnoseButton.visibility = View.VISIBLE
                 dismissButton.text = "OK"
             }
         }
@@ -192,6 +250,60 @@ class UpdateOverlayFragment : Fragment() {
         UpdateProgress.batchLabel?.let { "$it\n$title" } ?: title
 
     private fun Long.toMib(): String = "%.2f".format(this / (1024.0 * 1024.0))
+    /** Collect once, show it, and swap the buttons for the export row. */
+    private fun showReport(ctx: android.content.Context) {
+        val f = failed
+        val text = report ?: InstallDiagnostics.collect(
+            ctx,
+            appId = f?.appId?.ifBlank { ctx.packageName } ?: ctx.packageName,
+            pkg = f?.pkg?.ifBlank { ctx.packageName } ?: ctx.packageName,
+            error = f?.message ?: "unknown",
+            apk = f?.apkPath?.takeIf { it.isNotBlank() }?.let { java.io.File(it) },
+        ).also { report = it }
+        titleView.text = "Diagnosis"
+        detailView.text = text
+        // The report is long; let it scroll in place rather than opening a
+        // second screen the user has to find their way back from.
+        detailView.maxLines = 18
+        detailView.movementMethod = android.text.method.ScrollingMovementMethod()
+        detailView.setTextIsSelectable(true)
+        detailView.setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        detailView.typeface = Typeface.MONOSPACE
+        diagnoseButton.visibility = View.GONE
+        actionRow.visibility = View.VISIBLE
+    }
+
+    private fun copyReport(ctx: android.content.Context) {
+        val cb = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+            as? android.content.ClipboardManager
+        cb?.setPrimaryClip(android.content.ClipData.newPlainText("diagnosis", report.orEmpty()))
+        toast(ctx, "Copied — paste it anywhere")
+    }
+
+    private fun saveReport(ctx: android.content.Context) {
+        val name = "install-diagnosis-${System.currentTimeMillis()}.txt"
+        val path = com.diegonmarcos.superapp.devtools.DiagnosticsPush
+            .downloadBundle(ctx, name, report.orEmpty())
+        toast(ctx, if (path != null) "Saved to Downloads/$name" else "Could not write to Downloads")
+    }
+
+    /** Off the main thread: this is a network POST behind a button someone
+     *  just tapped, and blocking the UI thread on it would ANR the overlay. */
+    private fun sendReport(ctx: android.content.Context) {
+        val app = failed?.appId?.ifBlank { ctx.packageName } ?: ctx.packageName
+        val body = report.orEmpty()
+        toast(ctx, "Sending…")
+        Thread {
+            val code = com.diegonmarcos.superapp.devtools.DiagnosticsPush.postReport(app, body)
+            view?.post {
+                toast(ctx, if (code in 200..299) "Sent as $app" else "Send failed (HTTP $code) — Copy or Save instead")
+            }
+        }.start()
+    }
+
+    private fun toast(ctx: android.content.Context, m: String) =
+        android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_SHORT).show()
+
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     companion object {

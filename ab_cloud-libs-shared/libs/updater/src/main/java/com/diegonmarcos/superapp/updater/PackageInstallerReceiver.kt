@@ -140,7 +140,16 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 }
                 // Resolve the overlay to a visible failure instead of leaving it
                 // stuck on "Installing…" for a companion install (installs only).
-                if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Failed(message.ifEmpty { label }))
+                // Carry the target and the staged file into the failure state:
+                // this is where INSTALL_PARSE_FAILED_NOT_APK lands, and the
+                // Diagnose screen can only describe the right app and the right
+                // file if it is told which they were.
+                if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Failed(
+                    message.ifEmpty { label },
+                    appId = gateKey,
+                    pkg = gateKey,
+                    apkPath = intent.getStringExtra(EXTRA_APK_PATH).orEmpty(),
+                ))
                 surface(context, "$verb failed: $label", message.ifEmpty { label },
                     severity = NotificationStore.Sev.ERROR)
             }

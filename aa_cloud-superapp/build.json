@@ -27,6 +27,8 @@
     "_doc": "On-device DevControlServer diagnostics → cloud sink + local download. Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by app/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store, openobserve on oci-apps) ingest, reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK (the collector relays to openobserve server-side). '{stream}' in the url is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (the 'Download logs' action still works fully); set it to the confirmed collector ingest path to enable one-tap 'Send logs to cloud'. Data-driven: change here, every app rebuild picks it up — never hardcode in Kotlin.",
     "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-superapp",
+    "_doc_report_url": "Where the install-failure diagnose screen POSTs its report. {app} is replaced with the fleet app id, giving c3-infra-api/pub/logs/<app-name>. Separate from log_sink_url on purpose: that one is a fire-and-forget analytics stream, this is a human-triggered bundle a person is waiting on and wants a URL back for. Empty disables the Send button and leaves Copy/Save.",
+    "report_url": "https://api.diegonmarcos.com/pub/logs/{app}",
     "enabled": true
   },
   "emulator": {

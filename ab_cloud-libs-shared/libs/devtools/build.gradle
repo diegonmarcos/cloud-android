@@ -14,6 +14,11 @@ def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"
 // with the code that reads it, so an app gets both or neither.
 def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
 def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-app')
+// Where the install-failure diagnose screen POSTs. {app} is substituted at
+// send time with the fleet app id. Empty = the Send button is hidden and the
+// report can still be copied or saved, which is the right degradation for a
+// phone with no network rather than a dead button.
+def diagReportUrl = (buildJson.diagnostics?.report_url ?: '')
 
 android {
     namespace 'com.diegonmarcos.superapp.devtools'
@@ -23,6 +28,7 @@ android {
         minSdk 26
         buildConfigField "String", "LOG_SINK_URL",    "\"${logSinkUrl}\""
         buildConfigField "String", "LOG_SINK_STREAM", "\"${logSinkStream}\""
+        buildConfigField "String", "DIAG_REPORT_URL", "\"${diagReportUrl}\""
     }
 
     buildFeatures { buildConfig = true }
