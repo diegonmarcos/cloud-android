@@ -18,7 +18,10 @@ android {
         applicationId 'com.diegonmarcos.cloudkeyboardlibs'
         minSdk 26
         targetSdk 35
-        versionCode 1
+        // See lib-apks/app/build.gradle: a literal 1 can never be updated.
+        versionCode (int) (3000000L + java.time.Duration.between(
+                java.time.LocalDateTime.of(2026, 1, 1, 0, 0),
+                java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)).toMinutes())
         versionName '1.0'
         // Native-library ABI filter — declared in build.json::android.abi_filters
         // so the choice stays data-driven (mirrors superapp + vault). Vosk/JNA

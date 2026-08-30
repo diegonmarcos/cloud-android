@@ -20,6 +20,36 @@ static String flavorOf(String name) {
     parts[0] + parts.drop(1).collect { it.capitalize() }.join('')
 }
 
+
+// ── versionCode ─────────────────────────────────────────────────────────────
+// build.json's android block carries no version_code, so this used to resolve
+// to null and every cloudlib.* APK shipped as versionCode 1 -- forever. An APK
+// whose versionCode never moves cannot be updated by anything that respects
+// versionCode, which is why fixes to these libs kept looking "not landed", and
+// why the Fleet updater fix could not reach the device that needed it.
+//
+// Same encoding as ac_cloud-mail so the whole fleet is comparable: minutes
+// since 2026-01-01 over a 3,000,000 base. COMMS_BUILD_TIMESTAMP when CI
+// provides one, otherwise build time -- monotonic either way, and inside the
+// 2^31 limit for centuries. An explicit build.json version_code still wins.
+def cloudVersionCode = { ->
+    if (buildJson.android.version_code)
+        return buildJson.android.version_code as int
+    def base = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
+    def built
+    def stamp = System.getenv('COMMS_BUILD_TIMESTAMP')
+    try {
+        built = stamp
+            ? java.time.LocalDateTime.parse(stamp,
+                java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd.HHmmss'))
+            : java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    } catch (ignored) {
+        built = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    }
+    long mins = java.time.Duration.between(base, built).toMinutes()
+    return mins > 0 ? (int) (3000000L + mins) : 3000000
+}
+
 android {
     namespace 'com.diegonmarcos.cloudlib'
     compileSdk buildJson.toolchain.compile_sdk
@@ -27,7 +57,7 @@ android {
     defaultConfig {
         minSdk    buildJson.android.min_sdk
         targetSdk buildJson.android.target_sdk
-        versionCode buildJson.android.version_code
+        versionCode cloudVersionCode()
         versionName buildJson.android.version_name
         ndk {
             abiFilters.addAll((buildJson.android?.abi_filters ?: ['arm64-v8a']) as List)
