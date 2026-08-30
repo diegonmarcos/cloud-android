@@ -53,6 +53,37 @@
       "prerelease": false,
       "generate_release_notes": false,
       "tag_pattern": "ac_cloud-termux-v*"
-    }
+    },
+    "variants": [
+      {
+        "_doc": "Same shape as ac_cloud-browser and every other per-ABI app here. CLOUDNAV_VARIANT selects one; the engine exports .abis as CLOUDNAV_ABIS for gradle and names the artifact from .gh_asset, so the two matrix jobs cannot overwrite each other in one dist dir.",
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "artifact_debug": "cloud-terminal.apk",
+        "gh_asset": "cloud-terminal.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
+        "artifact_debug": "cloud-terminal-x86_64.apk",
+        "gh_asset": "cloud-terminal-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ]
   }
 }

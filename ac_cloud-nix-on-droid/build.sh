@@ -82,6 +82,40 @@ _json() { prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"; }
 # safe, and closes a shell->jq injection path.
 #   _fork_json "$key" '.build.gradle_task'
 #   _fork_json "$key" ''                    # the whole fork object
+# ── ABI variant helpers ────────────────────────────────────────────────
+# Ported VERBATIM from the standard app engine (ac_cloud-watchdog/build.sh),
+# contract and key names unchanged. The forks are built per ABI like every
+# other app in the constellation, and release.variants[] is how every other app
+# already declares that — so this engine learns to read the existing shape
+# rather than gaining a vocabulary of its own.
+#
+# CLOUDNAV_VARIANT (env) selects a release.variants[] entry. Unset → every
+# helper falls back to the single-variant keys, so a fork that declares no
+# variants behaves exactly as before.
+_variant_field() {
+  local v="${CLOUDNAV_VARIANT:-}"
+  [ -z "$v" ] && return 0
+  prefer_host jq -r --arg v "$v" \
+    '(.release.variants[]? | select(.id==$v) | '"$1"') // empty' "$SCRIPT_DIR/build.json"
+}
+
+_variant_gh_asset() {
+  local n; n="$(_variant_field '.gh_asset')"
+  [ -n "$n" ] && { echo "$n"; return; }
+  _json '.release.gh_release.asset_name'
+}
+
+# Export CLOUDNAV_ABIS (CSV) for gradle from the active variant. No-op when
+# unset → gradle reads whatever the fork's own build.gradle defaults to.
+_export_variant_abis() {
+  local csv; csv="$(_variant_field '.abis | join(",")')"
+  if [ -n "$csv" ]; then
+    export CLOUDNAV_ABIS="$csv"
+    log "Variant ${CLOUDNAV_VARIANT:-}: ABIs=$csv"
+  fi
+  return 0
+}
+
 _fork_json() {
   local k="$1" sub="${2:-}"
   prefer_host jq -r --arg k "$k" ".forks[\$k]${sub} // empty" "$SCRIPT_DIR/build.json"
@@ -298,7 +332,7 @@ _step_build_single_app() {
   step_build_fork "" "$key"
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_json ".release.artifact.${variant}")"
-  [ "$DIST_DIR/cloud-nixdroid.apk" = "$out" ] || cp "$DIST_DIR/cloud-nixdroid.apk" "$out"
+  [ "$DIST_DIR/$(_variant_gh_asset)" = "$out" ] || cp "$DIST_DIR/$(_variant_gh_asset)" "$out"
   log "→ $out"
 }
 
@@ -536,15 +570,15 @@ step_build_fork() {
     [ -n "$up_url" ] && [ "$up_url" != "null" ] \
       || { errlog "fork '$key' has neither build.gradle_task nor upstream_apk.url"; exit 1; }
     mkdir -p "$DIST_DIR"
-    _fetch_upstream_apk "$key" "$up_url" "$up_sha" "$up_resign" "$DIST_DIR/cloud-nixdroid.apk" \
+    _fetch_upstream_apk "$key" "$up_url" "$up_sha" "$up_resign" "$DIST_DIR/$(_variant_gh_asset)" \
       || { errlog "build-fork[$key]: upstream APK fetch/resign failed"; exit 1; }
-    _enforce_signature "$DIST_DIR/cloud-nixdroid.apk"
+    _enforce_signature "$DIST_DIR/$(_variant_gh_asset)"
     # upstream_apk.package: the actual package in the re-signed upstream APK (may differ
     # from app_id which is aspirational for a future source fork)
     local up_pkg; up_pkg="$(_fork_json "$key" ".upstream_apk.package")"
     if [ -z "$up_pkg" ] || [ "$up_pkg" = "null" ]; then up_pkg=""; fi
-    _assert_apk_identity "$key" "$DIST_DIR/cloud-nixdroid.apk" "$up_pkg"
-    log "build-fork[$key]: upstream-APK fork ($bundle_abi) → $DIST_DIR/cloud-nixdroid.apk ($(wc -c <"$DIST_DIR/cloud-nixdroid.apk") B)"
+    _assert_apk_identity "$key" "$DIST_DIR/$(_variant_gh_asset)" "$up_pkg"
+    log "build-fork[$key]: upstream-APK fork ($bundle_abi) → $DIST_DIR/$(_variant_gh_asset) ($(wc -c <"$DIST_DIR/$(_variant_gh_asset)") B)"
     return 0
   fi
 
@@ -635,6 +669,11 @@ step_build_fork() {
     log "build-fork[$key]: $tracker → $bcmd (upstream build wrapper)"
     ( cd "$dest" && in_nix bash -lc "$bcmd" )
   else
+    # The active variant's ABIs reach gradle as CLOUDNAV_ABIS, which the
+    # fork's own build.gradle reads into ndk.abiFilters — the same hook every
+    # other app in the constellation uses. Unset (no variants declared) leaves
+    # the fork's own default alone.
+    _export_variant_abis
     log "build-fork[$key]: $tracker ./gradlew $task ${gprops[*]:-(no -P props)} (upstream-pinned toolchain)"
     ( cd "$dest" && chmod +x gradlew && in_nix ./gradlew --no-daemon "$task" "${gprops[@]}" )
   fi
@@ -651,19 +690,19 @@ step_build_fork() {
   local apks=("$dest"/$apk_glob)
   shopt -u nullglob globstar
   [ "${#apks[@]}" -ge 1 ] || { errlog "build-fork[$key]: no APK matched $apk_glob"; exit 1; }
-  cp "${apks[0]}" "$DIST_DIR/cloud-nixdroid.apk"
+  cp "${apks[0]}" "$DIST_DIR/$(_variant_gh_asset)"
   # Forks whose upstream emits an UNSIGNED apk (build.json::forks.<key>.build.
   # resign_unsigned) get resigned with the ONE shared constellation key here —
   # same key the stock-resign path uses (signature IPC + updater install chain).
   if [ "$(_fork_json "$key" ".build.resign_unsigned")" = "true" ]; then
     log "build-fork[$key]: resign unsigned build with constellation key"
-    _resign_apk "$DIST_DIR/cloud-nixdroid.apk" "$DIST_DIR/cloud-nixdroid.apk.signed" \
-      && mv "$DIST_DIR/cloud-nixdroid.apk.signed" "$DIST_DIR/cloud-nixdroid.apk" \
+    _resign_apk "$DIST_DIR/$(_variant_gh_asset)" "$DIST_DIR/$(_variant_gh_asset).signed" \
+      && mv "$DIST_DIR/$(_variant_gh_asset).signed" "$DIST_DIR/$(_variant_gh_asset)" \
       || { errlog "build-fork[$key]: resign failed"; exit 1; }
   fi
-  _enforce_signature "$DIST_DIR/cloud-nixdroid.apk"
-  _assert_apk_identity "$key" "$DIST_DIR/cloud-nixdroid.apk"
-  log "→ $DIST_DIR/cloud-nixdroid.apk ($(wc -c <"$DIST_DIR/cloud-nixdroid.apk") B)"
+  _enforce_signature "$DIST_DIR/$(_variant_gh_asset)"
+  _assert_apk_identity "$key" "$DIST_DIR/$(_variant_gh_asset)"
+  log "→ $DIST_DIR/$(_variant_gh_asset) ($(wc -c <"$DIST_DIR/$(_variant_gh_asset)") B)"
 }
 
 # ── publish-fork <key> ─────────────────────────────────────────────────
@@ -678,7 +717,7 @@ step_publish_fork() {
   registry="$(_json '.release.ghcr.registry')"
   namespace="$(_json '.release.ghcr.namespace')"
   media_type="$(_json '.release.ghcr.media_type')"
-  artifact="$DIST_DIR/cloud-nixdroid.apk"
+  artifact="$DIST_DIR/$(_variant_gh_asset)"
   [ -f "$artifact" ] || { errlog "publish-fork[$key]: $artifact missing — run build-fork first"; exit 1; }
   sha="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)}"
   # ABI-aware tag suffix — mirrors build-fork's COMMS_BUNDLE_ABI. The default
@@ -692,7 +731,7 @@ step_publish_fork() {
   for tag in latest "sha-${sha:0:8}"; do
     ref="$registry/$namespace/$image:${tag}${suffix}"
     log "publish-fork[$key]: oras push $ref"
-    ( cd "$DIST_DIR" && in_nix oras push "$ref" "cloud-nixdroid.apk:$media_type" \
+    ( cd "$DIST_DIR" && in_nix oras push "$ref" "$(_variant_gh_asset):$media_type" \
         --artifact-type "$media_type" )
   done
 }
@@ -895,14 +934,14 @@ step_gh_release_fork() {
   local rolling_tag src
   rolling_tag="$(_json '.release.gh_release.rolling_tag')"
   [ -n "$rolling_tag" ] && [ "$rolling_tag" != "null" ] || { errlog "gh-release-fork[$key]: release.gh_release.rolling_tag unset"; exit 1; }
-  src="$DIST_DIR/cloud-nixdroid.apk"
+  src="$DIST_DIR/$(_variant_gh_asset)"
   [ -f "$src" ] || { errlog "gh-release-fork[$key]: $src missing — run build-fork first"; exit 1; }
   if ! in_nix gh release view "$rolling_tag" >/dev/null 2>&1; then
     in_nix gh release create "$rolling_tag" --title "$rolling_tag" \
       --target "${GITHUB_SHA:-main}" \
       --notes "Rolling release — overwritten on every main push." --latest
   fi
-  log "gh-release-fork[$key]: upload cloud-nixdroid.apk → $rolling_tag"
+  log "gh-release-fork[$key]: upload $(_variant_gh_asset) → $rolling_tag"
   in_nix gh release upload "$rolling_tag" "$src" --clobber
 }
 

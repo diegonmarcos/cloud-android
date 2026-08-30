@@ -46,6 +46,23 @@ android {
         manifestPlaceholders.TERMUX_TASKER_APP_NAME = "Termux:Tasker"
         manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "Termux:Widget"
 
+        // ABI, from the active release.variants[] entry. Same hook as
+        // ac_cloud-nav: the engine exports CLOUDNAV_ABIS from the variant it
+        // was asked to build, so one matrix job produces the arm64 APK and the
+        // other the x86_64 one.
+        //
+        // Upstream's own `splits` block stays off (F-Droid cannot take split
+        // APKs, so it defaults to a single universal build). Filtering here
+        // instead is what every other app in this constellation does, and it
+        // is why the first build shipped one 115MB APK carrying all four ABIs.
+        ndk {
+            def abiOverride = System.getenv('CLOUDNAV_ABIS')
+            def abis = (abiOverride?.trim()) \
+                ? abiOverride.split(',').collect { it.trim() }.findAll { it } \
+                : ['arm64-v8a']
+            abiFilters.addAll(abis as List)
+        }
+
         externalNativeBuild {
             ndkBuild {
                 cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
@@ -277,14 +294,19 @@ tasks.matching { it.name.toLowerCase().contains('debug') && it.name.startsWith('
 //
 // jniLibs and not assets: nativeLibraryDir is the only directory an app can
 // both ship into and exec from. Nothing dlopens these.
-def fleetToolsDir = file("$projectDir/src/main/jniLibs/arm64-v8a")
+// Per ABI, matching the variant being built. The binaries are static musl
+// executables the exec service runs, so an x86_64 APK carrying aarch64 ones
+// would ship a terminal that cannot start the panel it was given.
+def fleetAbi   = (System.getenv('CLOUDNAV_ABIS') ?: 'arm64-v8a').split(',')[0].trim()
+def fleetArch  = fleetAbi == 'x86_64' ? 'x86_64' : 'aarch64'
+def fleetToolsDir = file("$projectDir/src/main/jniLibs/$fleetAbi")
 tasks.register('fetchFleetTools') {
     description = 'Download the watchdog sampler + panel this terminal runs for the fleet.'
     outputs.dir fleetToolsDir
     doLast {
         fleetToolsDir.mkdirs()
-        [['my-watchdog-aarch64', 'libmywatchdog.so'],
-         ['my-watchdog-tui-aarch64', 'libmywatchdogtui.so']].each { asset, name ->
+        [["my-watchdog-${fleetArch}", 'libmywatchdog.so'],
+         ["my-watchdog-tui-${fleetArch}", 'libmywatchdogtui.so']].each { asset, name ->
             def out = new File(fleetToolsDir, name)
             if (out.exists() && out.length() > 100_000) {
                 logger.lifecycle("fleet tool: ${name} cached (${out.length()} bytes)")

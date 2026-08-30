@@ -174,7 +174,27 @@ regen_constellation() {
                              image: $f.image,
                              tag: "latest",
                              asset: ($f.image + ".apk"),
-                             release_url: $rel,
+                             # A DIRECT download URL when the fork publishes to
+                             # a rolling tag, the releases page otherwise.
+                             #
+                             # This branch used to always hand back the page,
+                             # on the reasoning that forks publish
+                             # --latest=false tagged releases and so have no
+                             # stable /latest/download. True of the comms
+                             # forks; false of any fork declaring
+                             # release.gh_release.rolling_tag, which is exactly
+                             # what a stable install URL is.
+                             #
+                             # The updater does not render a page: ReleaseSource
+                             # fetched the HTML, failed to verify it, and fell
+                             # through to GHCR — whose digest then did not match
+                             # the bytes, so a missing URL surfaced as "digest
+                             # mismatch" and pointed at the wrong thing entirely.
+                             release_url: (
+                               if (.release.gh_release.rolling_tag // "") != ""
+                               then $rel + "/" + .release.gh_release.rolling_tag
+                                    + "/download/" + ($f.image + ".apk")
+                               else $rel end ),
                              repo_url: ($tree + "/" + $dir),
                              ghcr_page: ($pkg + "/" + $f.image),
                              blocked: ($f.blocked_on != null),

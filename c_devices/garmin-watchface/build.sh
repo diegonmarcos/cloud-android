@@ -193,17 +193,6 @@ step_oras_push() {
   registry="$(bj '.release.ghcr.registry')"
   namespace="$(bj '.release.ghcr.namespace')"
   image="$(_expand "$(bj '.release.ghcr.image')" "$design")"
-
-  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE PAT — a repo-scoped GITHUB_TOKEN
-  # creates a package carrying the repo's visibility, the user-scoped PAT
-  # creates it PRIVATE, and only the PAT can UPDATE one (af6767fdb). So the
-  # token is chosen per PACKAGE, not per repo.
-  local creds=()
-  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
-     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
-    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
-    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
-  fi
   media="$(bj '.release.ghcr.media_type')"
   art="$(_expand "$(bj '.release.artifact.prg')" "$design")"
   local artdir="$DIST_DIR/$design"
@@ -213,7 +202,7 @@ step_oras_push() {
     tag="$(_expand "$tag" "$design")"
     local ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $art"
-    ( cd "$artdir" && in_nix oras push "${creds[@]}" "$ref" "$art:$media" )
+    ( cd "$artdir" && in_nix oras push "$ref" "$art:$media" )
   done < <(jqr -r '.release.ghcr.tags[]' "$BUILD_JSON")
 }
 
