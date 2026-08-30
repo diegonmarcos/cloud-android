@@ -1,7 +1,7 @@
 {
   "forks": {
     "termux": {
-      "app_id": "com.termux",
+      "app_id": "cld.termux",
       "label": "Cloud Terminal (Termux)",
       "image": "cloud-terminal",
       "upstream_repo": "https://github.com/termux/termux-app.git",
@@ -13,7 +13,7 @@
       "runtime": "native",
       "priority": 2,
       "blocked_on": null,
-      "app_id_note": "applicationId is DELIBERATELY left at upstream's. Termux compiles the prefix /data/data/com.termux/files/usr into every binary it ships, and Nix-on-Droid does the same with com.termux.nix for its Nix store, so renaming the package orphans the entire bootstrap and every package in it. We own the source and sign with our own key; we do not own the namespace. Consequence, accepted deliberately: our build REPLACES an installed upstream Termux rather than sitting beside it \u2014 same id, different signature \u2014 so the upstream one has to be uninstalled first.",
+      "app_id_note": "RENAMED 2026-08-30, overriding the prior 'keep upstream id' decision: com.termux -> cld.termux, so this fork installs ALONGSIDE the official Termux app instead of colliding with it (same id + different signature previously forced the upstream app to be uninstalled first). The new id is EXACTLY the same byte length (10 chars) as the old one \u2014 mandatory, not cosmetic: Termux compiles the prefix /data/data/com.termux/files/usr into every prebuilt ELF binary in the bootstrap zip as a fixed-length string, so an equal-length substitution keeps every baked-in offset valid with a pure find+replace (the same technique other termux forks, e.g. Termux:X11, use). A shorter or longer id would require relinking every binary in the bootstrap. See app/src/main/cpp/patch_bootstrap_ids.py (invoked by the app/build.gradle patchBootstraps task) for the byte-for-byte rewrite of the downloaded bootstrap-*.zip and its hard verification gate, and TermuxConstants.TERMUX_PACKAGE_NAME / app/build.gradle applicationId+manifestPlaceholders for the source-side rename.",
       "build": {
         "_doc": "Stock termux-app gradle: assembleRelease, signed with the ONE shared constellation keystore. signing=vault_jks_env, NOT 'keystore' \u2014 that is not a mode the engine has, and an unrecognised value matches no branch and signs with the debug key instead, silently. A debug-signed build never receives the signature-level CLOUD_EXEC permission, so the bind fails the same way it does when the app is not installed at all.",
         "gradle_task": "assembleRelease",

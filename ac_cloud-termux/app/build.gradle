@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.termux"
+        applicationId "cld.termux"
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         versionCode 1002
@@ -37,8 +37,8 @@ android {
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
 
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
-        manifestPlaceholders.TERMUX_APP_NAME = "Termux"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "cld.termux"
+        manifestPlaceholders.TERMUX_APP_NAME = "Cloud Terminal (Termux)"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
         manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termux:Float"
@@ -252,9 +252,36 @@ task downloadBootstraps() {
     }
 }
 
+// This fork renames applicationId com.termux -> cld.termux (same byte
+// length, see TermuxConstants.TERMUX_PACKAGE_NAME). The bootstrap zips
+// downloaded above are upstream's, still built for com.termux, and contain
+// ELF binaries with that path baked in as a fixed-length string. This task
+// derives a patched copy (bootstrap-<arch>-cld.zip) next to each original,
+// leaving the original (and its checksum pin above) untouched so the
+// download cache keeps working. See patch_bootstrap_ids.py for the
+// byte-for-byte replacement + hard verification gate.
+task patchBootstraps() {
+    dependsOn downloadBootstraps
+    doLast {
+        def cppDir = new File(projectDir, "src/main/cpp")
+        def script = new File(cppDir, "patch_bootstrap_ids.py")
+        ["aarch64", "arm", "i686", "x86_64"].each { arch ->
+            def input = new File(cppDir, "bootstrap-" + arch + ".zip")
+            def output = new File(cppDir, "bootstrap-" + arch + "-cld.zip")
+            def result = exec {
+                commandLine "python3", script.absolutePath, input.absolutePath, output.absolutePath, "com.termux=cld.termux"
+                ignoreExitValue = true
+            }
+            if (result.exitValue != 0) {
+                throw new GradleException("patch_bootstrap_ids.py failed for " + input + " (exit " + result.exitValue + "); see log above")
+            }
+        }
+    }
+}
+
 afterEvaluate {
     android.applicationVariants.all { variant ->
-        variant.javaCompileProvider.get().dependsOn(downloadBootstraps)
+        variant.javaCompileProvider.get().dependsOn(patchBootstraps)
     }
 }
 
