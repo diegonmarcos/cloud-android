@@ -15,7 +15,7 @@ plugins {
 }
 
 // Consumer-wins-with-fallback. This module is shared BY REFERENCE into other
-// repos (ab_cloud-libs ships it as its own APK), so it must read the CONSUMING
+// repos (ab_cloud-libs-shared/lib-apks ships it as its own APK), so it must read the CONSUMING
 // app's build.json first - a module-relative path always resolves to superapp's
 // and the consumer's config would be silently ignored. The `ui` block is
 // superapp-owned content that a wrapper repo has no reason to redeclare, so when

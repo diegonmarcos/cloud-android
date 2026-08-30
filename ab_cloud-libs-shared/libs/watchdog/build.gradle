@@ -37,7 +37,7 @@ android {
         buildConfigField "String", "WATCHDOG_BACKEND_DEFAULT",  "\"${wd.backend_default ?: 'nix-on-droid'}\""
         // The command is data too. The binary lives in the env's PATH and its
         // name is a fact about that env, not about this app.
-        buildConfigField "String", "WATCHDOG_CMD", "\"${wd.cmd ?: 'my-watchdog-tui tui'}\""
+        buildConfigField "String", "WATCHDOG_CMD", "\"${wd.cmd ?: 'my-konsole-dash tui'}\""
     }
 
     buildFeatures { buildConfig = true }

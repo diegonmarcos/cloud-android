@@ -979,7 +979,7 @@ step_sync_keyboard_dicts() {
   done < <(jq -r '.keyboard_dicts.types[] | "\(.type) \(.dir)"' "$bj")
 
   log "sync-keyboard-dicts: $n dict(s) → libs/keyboard/dicts-data/ ($miss missing). ADDITIVE — run AFTER sync-heliboard."
-  log "  NOTE: ab_cloud-keyboard-libs bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
+  log "  NOTE: ab_cloud-libs-shared/keyboard-engines bundles these via assets.srcDirs; cloud-keyboard extracts from the companion at runtime."
   log "  review with: git -C $SCRIPT_DIR status -s -- libs/keyboard/dicts-data/"
   [ "$miss" -eq 0 ] || { errlog "sync-keyboard-dicts: $miss dict(s) missing — fix build.json::keyboard_dicts or update the clone"; exit 1; }
 }
