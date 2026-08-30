@@ -545,6 +545,43 @@ step_phone_install() {
   log "  Open Files app → Download → tap APK → install"
 }
 
+# Write "<f>.sha256" next to [f] — a bare 64-char lowercase hex digest, the
+# exact form Fleet.kt's releaseSha256() reads. See the "IDENTITY FIRST" note
+# on Fleet.releaseStatus() for the 2026-08-30 incident this exists to close:
+# several builds landed on the identical byte SIZE with different content,
+# so a size-only compare told the store "no update" forever. The digest is
+# the only thing that can tell two same-size builds apart.
+_sha256_sidecar() { sha256sum "$1" | awk '{print $1}' > "$1.sha256"; }
+
+# Assert release [tag] actually holds [f]'s asset AND its ".sha256" sidecar,
+# and that the remote asset size matches the local file. HARD FAILS (exit 1)
+# on any mismatch — the original bug survived precisely because a skipped or
+# stale upload was silent. Never trust "the upload command didn't error";
+# read the release back and check.
+_verify_release_asset() {
+  local tag="$1" f="$2" name; name="$(basename "$f")"
+  local list; list="$(in_nix gh release view "$tag" --json assets --jq '.assets[] | "\(.name) \(.size)"')"
+  local remote_size local_size
+  remote_size="$(awk -v n="$name" '$1==n{print $2}' <<<"$list")"
+  local_size="$(wc -c <"$f")"
+  if [ -z "$remote_size" ] || [ "$remote_size" != "$local_size" ] \
+     || ! awk -v n="$name.sha256" '$1==n{f=1} END{exit !f}' <<<"$list"; then
+    errlog "gh-release: publish verify failed for $name on $tag (remote_size=${remote_size:-missing} local_size=$local_size)"
+    exit 1
+  fi
+}
+
+# Sidecar + upload + hard-verify, in one call, for uploading [f] into an
+# already-existing release [tag] (`gh release upload`, which needs the
+# release to exist — use _sha256_sidecar directly when the asset instead
+# rides along with `gh release create`).
+_publish_release_asset() {
+  local tag="$1" f="$2"
+  _sha256_sidecar "$f"
+  in_nix gh release upload "$tag" "$f" "$f.sha256" --clobber
+  _verify_release_asset "$tag" "$f"
+}
+
 step_gh_release() {
   local enabled draft prerelease notes asset_tmpl asset rolling_tag
   enabled="$(_release_var '.release.gh_release.enabled')"
@@ -594,7 +631,7 @@ step_gh_release() {
       in_nix gh release create "${create_flags[@]}"
     fi
     # Overwrite the asset on every run.
-    in_nix gh release upload "$rolling_tag" "$DIST_DIR/$asset" --clobber
+    _publish_release_asset "$rolling_tag" "$DIST_DIR/$asset"
     # Re-affirm the Latest flag every run — GH unmarks it when another
     # release is published (or sometimes after a sibling release is
     # deleted), and /releases/latest/ depends on it. Idempotent.
@@ -616,12 +653,14 @@ step_gh_release() {
   local is_tag_push=0
   case "${GITHUB_REF:-}" in refs/tags/*) is_tag_push=1 ;; esac
   if [ "$is_tag_push" = "1" ] && [ -n "${GITHUB_REF_NAME:-}" ]; then
-    local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" --title "$GITHUB_REF_NAME")
+    _sha256_sidecar "$DIST_DIR/$asset"
+    local flags=("$GITHUB_REF_NAME" "$DIST_DIR/$asset" "$DIST_DIR/$asset.sha256" --title "$GITHUB_REF_NAME")
     [ "$draft" = "true" ]      && flags+=(--draft)
     [ "$prerelease" = "true" ] && flags+=(--prerelease)
     [ "$notes" = "true" ]      && flags+=(--generate-notes)
     log "gh release create $GITHUB_REF_NAME ← $asset"
     in_nix gh release create "${flags[@]}"
+    _verify_release_asset "$GITHUB_REF_NAME" "$DIST_DIR/$asset"
   elif [ -z "$rolling_tag" ] || [ "$rolling_tag" = "null" ]; then
     errlog "gh-release: neither rolling_tag set nor under a tag push — nothing to publish"
     exit 1

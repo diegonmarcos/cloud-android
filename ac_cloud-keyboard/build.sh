@@ -194,11 +194,22 @@ case "$CMD" in
     ;;
   gh-release)
     log "Publishing to GitHub Releases (rolling latest)…"
-    gh release upload latest "$DIST_DIR/Cloud-Keyboard.apk" --clobber 2>/dev/null \
+    # Sidecar sha256 — a same-size collision on 2026-08-30 made two distinct
+    # APK builds compare "equal" under the old size-only update check,
+    # silently hiding a real update. The in-app updater now compares this
+    # digest instead, so every publish path must emit + verify it.
+    sha256sum "$DIST_DIR/Cloud-Keyboard.apk" | awk '{print $1}' > "$DIST_DIR/Cloud-Keyboard.apk.sha256"
+    gh release upload latest "$DIST_DIR/Cloud-Keyboard.apk" "$DIST_DIR/Cloud-Keyboard.apk.sha256" --clobber 2>/dev/null \
       || gh release create latest \
            --title "Cloud Keyboard (rolling)" \
            --notes "Auto-updated from main." \
-           "$DIST_DIR/Cloud-Keyboard.apk"
+           "$DIST_DIR/Cloud-Keyboard.apk" "$DIST_DIR/Cloud-Keyboard.apk.sha256"
+    remote_size="$(gh release view latest --json assets --jq '.assets[] | select(.name=="Cloud-Keyboard.apk") | .size')"
+    local_size="$(wc -c <"$DIST_DIR/Cloud-Keyboard.apk")"
+    names="$(gh release view latest --json assets --jq '.assets[].name')"
+    echo "$names" | grep -qxF "Cloud-Keyboard.apk" && echo "$names" | grep -qxF "Cloud-Keyboard.apk.sha256" \
+      && [ -n "$remote_size" ] && [ "$remote_size" = "$local_size" ] \
+      || { errlog "gh-release: Cloud-Keyboard.apk or its .sha256 sidecar missing/size-mismatched on release latest after upload (remote=$remote_size local=$local_size)"; exit 1; }
     ;;
   help|*)
     echo "Usage: build.sh <build|release|clean|oras-push|gh-release>"

@@ -198,10 +198,25 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload latest "dist/${{ steps.asset.outputs.name }}" --clobber \
-            || gh release create latest "dist/${{ steps.asset.outputs.name }}" \
+          set -euo pipefail
+          # Sidecar sha256 — a same-size collision on 2026-08-30 made two
+          # distinct APK builds compare "equal" under the old size-only
+          # update check, silently hiding a real update. The in-app updater
+          # now compares this digest instead, so every publish path must
+          # emit + hard-verify it.
+          asset="dist/${{ steps.asset.outputs.name }}"
+          sha256sum "$asset" | awk '{print $1}' > "$asset.sha256"
+          gh release upload latest "$asset" "$asset.sha256" --clobber \
+            || gh release create latest "$asset" "$asset.sha256" \
                  --title "Cloud constellation (rolling)" \
                  --notes "Auto-updated from main."
+          name="${{ steps.asset.outputs.name }}"
+          local_size="$(wc -c <"$asset")"
+          remote_size="$(gh release view latest --json assets --jq ".assets[] | select(.name==\"$name\") | .size")"
+          names="$(gh release view latest --json assets --jq '.assets[].name')"
+          echo "$names" | grep -qxF "$name" && echo "$names" | grep -qxF "$name.sha256" \
+            && [ -n "$remote_size" ] && [ "$remote_size" = "$local_size" ] \
+            || { echo "::error::gh-release: $name or its .sha256 sidecar missing/size-mismatched on release latest after upload (remote=$remote_size local=$local_size)"; exit 1; }
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
@@ -216,7 +231,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           tag="cloud-infra-desktop-termux-boot-v$(date +%Y%m%d%H%M)"
-          gh release create "$tag" ${{ env.WORK_DIR }}/dist/*.apk \
+          # Sidecar sha256 next to every APK asset — see the rolling-release
+          # step above for the "why" (2026-08-30 same-size collision).
+          for f in ${{ env.WORK_DIR }}/dist/*.apk; do
+            sha256sum "$f" | awk '{print $1}' > "$f.sha256"
+          done
+          gh release create "$tag" ${{ env.WORK_DIR }}/dist/*.apk ${{ env.WORK_DIR }}/dist/*.apk.sha256 \
             --title "Cloud Unix Termux Boot $tag" \
             --notes "Runs ~/.termux/boot scripts in Nix-on-Droid at device boot."
+          names="$(gh release view "$tag" --json assets --jq '.assets[].name')"
+          for f in ${{ env.WORK_DIR }}/dist/*.apk; do
+            b="$(basename "$f")"
+            local_size="$(wc -c <"$f")"
+            remote_size="$(gh release view "$tag" --json assets --jq ".assets[] | select(.name==\"$b\") | .size")"
+            echo "$names" | grep -qxF "$b" && echo "$names" | grep -qxF "$b.sha256" \
+              && [ -n "$remote_size" ] && [ "$remote_size" = "$local_size" ] \
+              || { echo "::error::gh-release: $b or its .sha256 sidecar missing/size-mismatched on $tag after upload (remote=$remote_size local=$local_size)"; exit 1; }
+          done

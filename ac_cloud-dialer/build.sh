@@ -837,6 +837,30 @@ step_phone_install() {
 # single release (release.gh_release.rolling_tag, default `latest`), overwriting
 # the asset every main push so /releases/latest/download/<asset> is a stable
 # URL. Also creates an immutable per-tag release when invoked under a tag push.
+# SHA256 sidecar next to every published APK, hard-verified after upload —
+# see aa_cloud-superapp/build.sh for the full "why" (2026-08-30 same-size
+# collision that hid a real update from the store; Fleet.kt's releaseSha256
+# reads this sidecar).
+_sha256_sidecar() { sha256sum "$1" | awk '{print $1}' > "$1.sha256"; }
+_verify_release_asset() {
+  local tag="$1" f="$2" name; name="$(basename "$f")"
+  local list; list="$(in_nix gh release view "$tag" --json assets --jq '.assets[] | "\(.name) \(.size)"')"
+  local remote_size local_size
+  remote_size="$(awk -v n="$name" '$1==n{print $2}' <<<"$list")"
+  local_size="$(wc -c <"$f")"
+  if [ -z "$remote_size" ] || [ "$remote_size" != "$local_size" ] \
+     || ! awk -v n="$name.sha256" '$1==n{f=1} END{exit !f}' <<<"$list"; then
+    errlog "gh-release: publish verify failed for $name on $tag (remote_size=${remote_size:-missing} local_size=$local_size)"
+    exit 1
+  fi
+}
+_publish_release_asset() {
+  local tag="$1" f="$2"
+  _sha256_sidecar "$f"
+  in_nix gh release upload "$tag" "$f" "$f.sha256" --clobber
+  _verify_release_asset "$tag" "$f"
+}
+
 step_gh_release() {
   [ "$(_json '.release.gh_release.enabled')" = "true" ] || { log "gh-release: disabled — skip"; return 0; }
   local draft prerelease notes asset rolling_tag src_release src_debug dst
@@ -862,7 +886,7 @@ step_gh_release() {
       [ "$prerelease" = "true" ] && create_flags+=(--prerelease)
       in_nix gh release create "${create_flags[@]}"
     fi
-    in_nix gh release upload "$rolling_tag" "$dst" --clobber
+    _publish_release_asset "$rolling_tag" "$dst"
     in_nix gh release edit "$rolling_tag" --latest >/dev/null 2>&1 || true
   fi
 
@@ -872,12 +896,14 @@ step_gh_release() {
   local is_tag_push=0
   case "${GITHUB_REF:-}" in refs/tags/*) is_tag_push=1 ;; esac
   if [ "$is_tag_push" = "1" ] && [ -n "${GITHUB_REF_NAME:-}" ]; then
-    local flags=("$GITHUB_REF_NAME" "$dst" --title "$GITHUB_REF_NAME")
+    _sha256_sidecar "$dst"
+    local flags=("$GITHUB_REF_NAME" "$dst" "$dst.sha256" --title "$GITHUB_REF_NAME")
     [ "$draft" = "true" ]      && flags+=(--draft)
     [ "$prerelease" = "true" ] && flags+=(--prerelease)
     [ "$notes" = "true" ]      && flags+=(--generate-notes)
     log "gh release create $GITHUB_REF_NAME ← $asset"
     in_nix gh release create "${flags[@]}"
+    _verify_release_asset "$GITHUB_REF_NAME" "$dst"
   elif [ -z "$rolling_tag" ] || [ "$rolling_tag" = "null" ]; then
     errlog "gh-release: neither rolling_tag set nor under a tag push — nothing to publish"
     exit 1
@@ -903,7 +929,7 @@ step_gh_release_fork() {
       --notes "Rolling release — overwritten on every main push." --latest
   fi
   log "gh-release-fork[$key]: upload cloud-comms-${key}.apk → $rolling_tag"
-  in_nix gh release upload "$rolling_tag" "$src" --clobber
+  _publish_release_asset "$rolling_tag" "$src"
 }
 
 # Main-guard: allow this file to be `source`d (e.g. by tests) to exercise the

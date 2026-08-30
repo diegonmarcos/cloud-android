@@ -115,12 +115,26 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.pin.outputs.rolling_tag }}"
+          ASSET="${{ steps.pin.outputs.asset }}"
+          # Sidecar sha256 — the pin verify step above already proved this is
+          # the pinned upstream digest, so re-use it rather than re-hash. A
+          # same-size collision on 2026-08-30 made two distinct APK builds
+          # compare "equal" under the old size-only update check, silently
+          # hiding a real update; the in-app updater now compares this
+          # digest instead, so every publish path must emit + verify it.
+          echo "${{ steps.pin.outputs.sha256 }}" > "$ASSET.sha256"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --title "$TAG" --target "$GITHUB_SHA" \
               --notes "Rolling release — overwritten on every main push." --latest
           fi
-          gh release upload "$TAG" "${{ steps.pin.outputs.asset }}" --clobber
+          gh release upload "$TAG" "$ASSET" "$ASSET.sha256" --clobber
           gh release edit "$TAG" --latest >/dev/null 2>&1 || true
+          local_size="$(wc -c <"$ASSET")"
+          remote_size="$(gh release view "$TAG" --json assets --jq ".assets[] | select(.name==\"$(basename "$ASSET")\") | .size")"
+          names="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+          echo "$names" | grep -qxF "$(basename "$ASSET")" && echo "$names" | grep -qxF "$(basename "$ASSET").sha256" \
+            && [ -n "$remote_size" ] && [ "$remote_size" = "$local_size" ] \
+            || { echo "::error::gh-release: $(basename "$ASSET") or its .sha256 sidecar missing/size-mismatched on $TAG after upload (remote=$remote_size local=$local_size)"; exit 1; }
 
       - name: Push to GHCR via ORAS
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}

@@ -69,6 +69,14 @@ release_tag=$(jq -r '.tag_name' "$work/release.json")
         grep -oE '["'"'"'][^"'"'"']+["'"'"']$' | tr -d '"'"'"
 } | sed '/^$/d' | sort -u > "$work/declared.txt"
 
+# The store's own entry: this script lives in that app's data dir, so the entry
+# whose repo_url points back at that directory is "self". Derived, not spelled
+# out, so renaming the app does not silently disable the check below.
+self_dir=$(basename "$(cd -- "$here/.." && pwd)")
+self_id=$(jq -r --arg d "$self_dir" \
+    '.apps[] | select(.repo_url | endswith("/" + $d)) | .id' "$fleet" | head -1)
+echo "audit-fleet: self entry is '${self_id:-<none>}'"
+
 pass=0; fail=0; sidecars=0; : > "$work/rows.tsv"
 
 emit() { # id kind status detail
@@ -94,7 +102,7 @@ for i in $(seq 0 $((total - 1))); do
         continue
     fi
 
-    problems=()
+    problems=(); notes_rev=""
 
     # ---- check 1: the release asset is a real downloadable package ----------
     meta=$(awk -F'\t' -v n="$asset" '$1 == n {print; exit}' "$work/assets.tsv")
@@ -148,7 +156,18 @@ for i in $(seq 0 $((total - 1))); do
             title=$(jq -r '.layers[0].annotations["org.opencontainers.image.title"] // empty' "$work/m.json")
             layer_size=$(jq -r '.layers[0].size // empty' "$work/m.json")
 
-            [ -n "$rev" ] || problems+=("manifest has no org.opencontainers.image.revision")
+            # The revision annotation is load-bearing for exactly one entry:
+            # Fleet.status() short-circuits "up to date" for the store's OWN
+            # package by comparing this against BuildConfig.GIT_SHORT_SHA,
+            # because builds are not byte-reproducible and a same-commit
+            # rebuild would otherwise show a phantom update forever. Foreign
+            # entries never read it, so requiring it everywhere would fail
+            # dozens of healthy apps for an annotation nothing consumes.
+            if [ "$id" = "$self_id" ] && [ -z "$rev" ]; then
+                problems+=("manifest has no org.opencontainers.image.revision (self-update short-circuit needs it)")
+            elif [ -z "$rev" ]; then
+                notes_rev=" [no revision annotation: unused for foreign entries]"
+            fi
             [ "$mtype" = "application/vnd.android.package-archive" ] ||
                 problems+=("layer media type is '$mtype'")
             [ "$title" = "$asset" ] ||
@@ -161,7 +180,7 @@ for i in $(seq 0 $((total - 1))); do
     # wrapper whose applicationId is composed at build time from
     # lib_apks.application_id_prefix, so it appears in no checked-in file and a
     # fatal check here would fail 35 healthy entries.
-    notes=""
+    notes=""; notes_rev="${notes_rev:-}"
     grep -qxF "$pkg" "$work/declared.txt" ||
         notes=" [package '$pkg' not declared in-repo: generated wrapper or mirror]"
 
@@ -171,7 +190,7 @@ for i in $(seq 0 $((total - 1))); do
     fi
 
     if [ ${#problems[@]} -eq 0 ]; then
-        emit "$id" "$kind" PASS "rev=${rev:-?} size=${asset_size:-?} sha256sidecar=${sidecar:-NO} updated=${asset_when:-?}$notes"
+        emit "$id" "$kind" PASS "rev=${rev:-?} size=${asset_size:-?} sha256sidecar=${sidecar:-NO} updated=${asset_when:-?}$notes$notes_rev"
     else
         emit "$id" "$kind" FAIL "$(printf '%s; ' "${problems[@]}")$notes"
     fi

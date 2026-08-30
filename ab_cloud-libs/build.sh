@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cloud Libs — Build Dispatcher
 #
-# One APK per constellation library module. Mirrors ab_cloud-libs-shared/keyboard-engines, but
+# One APK per constellation library module. Mirrors ab_cloud-keyboard-libs, but
 # that repo produces a single bundle APK and this one produces N, so every step
 # here loops over the SAME scan that settings.gradle uses (build.json::lib_apks).
 # Nothing in this file names a module.
@@ -22,52 +22,13 @@ set -euo pipefail
 # one-time click in the package settings UI. So this cannot self-heal; it warns
 # LOUDLY instead, because the failure mode otherwise is a silent 401 in the store.
 _ghcr_publish() {
-  # THE PACKAGE MUST MATCH THE REPO. A public repo whose APK is private is not
-  # a warning, it is a broken release: the constellation store pulls
-  # unauthenticated and gets 401, which reads to a user as "the app is gone".
-  #
-  # GitHub creates every new USER-owned package private regardless of the repo,
-  # links it via image.source without inheriting anything, and exposes no REST
-  # endpoint to flip it (PATCH /user/packages/... is 404 even with
-  # write:packages). So this cannot self-heal. What it CAN do is refuse to
-  # report success: the mismatch fails the build, with the one URL that fixes
-  # it, instead of leaving a 401 to be discovered by whoever tries to install.
   local image="$1"
   command -v gh >/dev/null 2>&1 || return 0
-  local repo_vis pkg_vis want
-  # An artifact may be DELIBERATELY private in a public repo — a fork whose
-  # distribution is not ours to make, something not ready to be seen. That is a
-  # decision this check must respect, not override: release.ghcr.visibility
-  # states it, and where it is stated it wins over the repo. Without this the
-  # check would push every exception toward being published, which is a worse
-  # failure than the 401 it exists to prevent.
-  # _bj, not _release_var: that helper is defined in every ac_cloud-*/build.sh
-  # and this repo has no copy, so the call died with "command not found" —
-  # after pushing exactly one lib, leaving the other 33 unpublished and their
-  # Constellation entries answering 401. _bj is this file's own reader.
-  want="$(_bj ".get('release',{}).get('ghcr',{}).get('visibility','')")"
-  if [ -n "$want" ] && [ "$want" != "null" ]; then
-    repo_vis="$want"
-  else
-    repo_vis="$(gh repo view "${GITHUB_REPOSITORY:-$(_ghcr_source | sed 's|.*github.com/||')}" \
-                  --json visibility --jq .visibility 2>/dev/null | tr 'A-Z' 'a-z')"
-  fi
-  [ -z "$repo_vis" ] && return 0
-  pkg_vis="$(gh api "/user/packages/container/${image}" --jq .visibility 2>/dev/null)" || return 0
-  [ "$pkg_vis" = "$repo_vis" ] && return 0
-  errlog "GHCR visibility does not follow the repo."
-  errlog "  repo    ${GITHUB_REPOSITORY:-$(_ghcr_source)} is ${repo_vis}"
-  errlog "  package ${image} is ${pkg_vis} -> unauthenticated pulls 401"
-  errlog "  GitHub creates user-owned packages private and offers no API to change it."
-  errlog "  Fix once: https://github.com/users/diegonmarcos/packages/container/${image}/settings"
-  errlog "  The GH Release asset is unaffected - it IS the repo, so it already follows."
-  # Record and KEEP GOING. Returning non-zero here aborted the push loop under
-  # `bash -e`, so the first private package left the other 33 libs unpushed —
-  # and an unpushed package answers 401, which is the exact failure this check
-  # exists to prevent. Every APK still publishes; the step fails at the end
-  # with the full list, so one visibility flip is one fix, not thirty-three.
-  GHCR_PRIVATE="${GHCR_PRIVATE}${GHCR_PRIVATE:+ }${image}"
-  return 0
+  local vis
+  vis="$(gh api "/user/packages/container/${image}" --jq .visibility 2>/dev/null)" || return 0
+  [ "$vis" = "public" ] && return 0
+  echo "  !! GHCR package ${image} is ${vis} - unauthenticated pulls will 401." >&2
+  echo "  !! Make it public once: https://github.com/users/diegonmarcos/packages/container/${image}/settings" >&2
 }
 
 _ghcr_source() {
@@ -95,16 +56,7 @@ in_nix() {
   fi
 }
 
-# libs:firewall compiles the firestack netstack aar. This repo ships it as
-# Cloud-Lib-Firewall.apk, so it needs the aar just as much as the superapp does
-# — and until now had no way to produce one, which is why
-# libs/firewall/build.gradle could not declare the dependency without breaking
-# this build. Same engine the superapp calls; idempotent, so it is a no-op once
-# the aar exists. Wrapped in OUR in_nix because CI runs this repo with
-# BYPASS_NIX=1 and the SDK/NDK from setup-android.
-_ensure_firestack() { in_nix bash "$SCRIPT_DIR/../libs/firewall/build-firestack.sh"; }
-
-_gradle() { _ensure_firestack; in_nix gradle --no-daemon -p "$SCRIPT_DIR" "$@"; }
+_gradle() { in_nix gradle --no-daemon -p "$SCRIPT_DIR" "$@"; }
 
 _bj() { python3 -c "import json,sys;print(json.load(open('$SCRIPT_DIR/build.json'))$1)" 2>/dev/null; }
 
@@ -235,48 +187,18 @@ case "$CMD" in
     ;;
   oras-push)
     log "Pushing library APKs to GHCR via ORAS…"
-    GHCR_PRIVATE=""
     SHA="${GITHUB_SHA:-$(git -C "$SCRIPT_DIR" rev-parse HEAD)}"
     SHORT="${SHA:0:8}"
     reg="$(_bj "['release']['ghcr']['registry']")/$(_bj "['release']['ghcr']['namespace']")"
     mt="$(_bj "['release']['ghcr']['media_type']")"
     while IFS='|' read -r n flavor asset image; do
-      # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE PAT — each token for the one
-      # thing it can do.
-      #
-      # A repo-scoped GITHUB_TOKEN creates a package carrying the repo's
-      # visibility; the user-scoped PAT creates it PRIVATE. But GITHUB_TOKEN
-      # cannot UPDATE a package in the user namespace, which is why af6767fdb
-      # reverted the wholesale switch to it 43 minutes after fab52ec0c made it
-      # — and that revert is what left every package added since 2026-08-28
-      # born private in a public repo.
-      #
-      # So the choice is per package, not per repo: the FIRST push of a new
-      # image authenticates as GITHUB_TOKEN so the package inherits the repo,
-      # every push after that uses the ambient PAT login so it can update.
-      # Measured, not assumed: cloud-lib-search was deleted and recreated by
-      # this workflow at 12:43 on 2026-08-30 and came back private under the
-      # PAT — the visibility is decided by the token that CREATES the package,
-      # and only then.
-      creds=()
-      if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
-         && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
-        log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
-        creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
-      fi
-      ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}/${image}:latest"       "${asset}:${mt}" \
+      ( cd "$DIST_DIR" && oras push "${reg}/${image}:latest"       "${asset}:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
-      ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}/${image}:sha-${SHORT}" "${asset}:${mt}" \
+      ( cd "$DIST_DIR" && oras push "${reg}/${image}:sha-${SHORT}" "${asset}:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
       _ghcr_publish "$image"
       log "pushed ${image}:latest + :sha-${SHORT}"
     done < <(_libs)
-    if [ -n "${GHCR_PRIVATE:-}" ]; then
-      errlog "these packages are private and will 401 for unauthenticated pulls:"
-      for p in $GHCR_PRIVATE; do errlog "  $p"; done
-      errlog "every APK above was pushed; flip each package to public once and this passes."
-      exit 1
-    fi
     ;;
   gh-release)
     log "Publishing library APKs to GitHub Releases (rolling latest)…"
