@@ -36,4 +36,14 @@ include(":libs:panoramaviewer")
 project(":libs:panoramaviewer").projectDir = file("../ab_cloud-libs-shared/libs/panoramaviewer")
 include(":libs:scrollbar")
 project(":libs:scrollbar").projectDir = file("../ab_cloud-libs-shared/libs/scrollbar")
+
+// ':libs:<x>' implicitly declares an intermediate ':libs' project whose default
+// projectDir is <root>/libs. This app HAD one, so it never needed mapping —
+// until its four modules moved into the shared root and the directory went
+// away. Gradle 9 fails outright on a project directory that does not exist
+// ("Configuring project ':libs' without an existing directory is not allowed"),
+// which is what broke ship-cloud-media-center. Map the container at the shared
+// root; every leaf above already names its own projectDir, so this only gives
+// the container something real to point at.
+project(":libs").projectDir = file("../ab_cloud-libs-shared/libs")
 include(":ml-models")

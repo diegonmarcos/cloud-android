@@ -437,6 +437,21 @@ step_materialize_fork() {
   # (ac_cloud-<fork>/patches/). SCRIPT_DIR resolves to the invocation dir.
   local patch_dir="$SCRIPT_DIR/patches"
 
+  # Vendored-in-repo fork: tracker_dir points at a committed, already-patched
+  # plain source tree (no .git inside it) instead of a gitignored external
+  # clone. No network clone, no git am — build-fork reads straight from here.
+  # patches/ stays as historical record only; bump pinned_tag and delete $dest
+  # to force the clone+patch path below and re-vendor a newer upstream tag.
+  #
+  # Without this the clone below fails with "destination path already exists
+  # and is not an empty directory" — and worse, the reset --hard / clean -fdx
+  # that follows would run `git -C` inside a directory belonging to the OUTER
+  # repo, resetting the whole checkout to an upstream tag.
+  if [ -d "$dest" ] && [ ! -d "$dest/.git" ]; then
+    log "materialize-fork[$key]: using vendored in-repo source at $tracker (no clone, no git am)"
+    return 0
+  fi
+
   if [ ! -d "$dest/.git" ]; then
     log "materialize-fork[$key]: cloning $repo → $tracker (tag $tag)"
     # tracker_dir may be nested (ac_upstreams-sources/<name> — the canonical
