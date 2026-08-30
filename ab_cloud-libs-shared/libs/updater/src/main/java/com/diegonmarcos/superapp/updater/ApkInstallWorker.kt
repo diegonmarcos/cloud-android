@@ -1,5 +1,7 @@
 package com.diegonmarcos.superapp.updater
 
+import com.diegonmarcos.superapp.updater.apk.VerifiedApk
+import com.diegonmarcos.superapp.updater.install.UpdateInstaller
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
