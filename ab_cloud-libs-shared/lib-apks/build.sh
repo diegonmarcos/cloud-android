@@ -61,7 +61,13 @@ _ghcr_publish() {
   errlog "  GitHub creates user-owned packages private and offers no API to change it."
   errlog "  Fix once: https://github.com/users/diegonmarcos/packages/container/${image}/settings"
   errlog "  The GH Release asset is unaffected - it IS the repo, so it already follows."
-  return 1
+  # Record and KEEP GOING. Returning non-zero here aborted the push loop under
+  # `bash -e`, so the first private package left the other 33 libs unpushed —
+  # and an unpushed package answers 401, which is the exact failure this check
+  # exists to prevent. Every APK still publishes; the step fails at the end
+  # with the full list, so one visibility flip is one fix, not thirty-three.
+  GHCR_PRIVATE="${GHCR_PRIVATE}${GHCR_PRIVATE:+ }${image}"
+  return 0
 }
 
 _ghcr_source() {
@@ -229,6 +235,7 @@ case "$CMD" in
     ;;
   oras-push)
     log "Pushing library APKs to GHCR via ORAS…"
+    GHCR_PRIVATE=""
     SHA="${GITHUB_SHA:-$(git -C "$SCRIPT_DIR" rev-parse HEAD)}"
     SHORT="${SHA:0:8}"
     reg="$(_bj "['release']['ghcr']['registry']")/$(_bj "['release']['ghcr']['namespace']")"
@@ -241,6 +248,12 @@ case "$CMD" in
       _ghcr_publish "$image"
       log "pushed ${image}:latest + :sha-${SHORT}"
     done < <(_libs)
+    if [ -n "${GHCR_PRIVATE:-}" ]; then
+      errlog "these packages are private and will 401 for unauthenticated pulls:"
+      for p in $GHCR_PRIVATE; do errlog "  $p"; done
+      errlog "every APK above was pushed; flip each package to public once and this passes."
+      exit 1
+    fi
     ;;
   gh-release)
     log "Publishing library APKs to GitHub Releases (rolling latest)…"
