@@ -355,6 +355,7 @@ kotlin {
 
 dependencies {
     implementation(project(":libs:analytics"))
+    implementation(project(":libs:media-center"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.lifecycle.process)
     runtimeOnly(libs.androidx.profileinstaller)
