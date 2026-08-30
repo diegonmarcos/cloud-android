@@ -92,8 +92,9 @@ class FirestackTunnelService : VpnService() {
     private fun buildBridge(): com.celzero.firestack.intra.Bridge {
         val flow = FirewallFlowBridge(applicationContext, FirewallController.cloudVpn)
         // The aar's `Bridge` is a union interface. Compose `flow` with the
-        // remaining listeners here — see FirestackBridgeAssembly + RethinkDNS.
-        return FirestackBridgeAssembly(flow).asBridge()
+        // FirestackBridgeAssembly IS the Bridge now — the union is implemented
+        // against the vendored Go interfaces, no runner-completion step left.
+        return FirestackBridgeAssembly(flow)
     }
 
     /** RUNNER TODO(2): register the WG peer as a firestack proxy so ALLOW_VPN
