@@ -246,66 +246,23 @@ object Fleet {
     internal fun remoteLayerFor(app: App, client: GhcrClient, token: String) =
         remoteLayer(app, client, token)
 
-    /** Hand a verified APK to the installer. Cheap; the work was the download.
-     *  Prefers the privileged shell channel, which installs with NO dialog at
-     *  all; falls back to PackageInstaller (which prompts) when no channel is up. */
+    /** Hand a verified APK to the installer: the first channel that accepts it
+     *  wins. Shell first (installs with NO dialog at all), PackageInstaller
+     *  second (prompts, but always available). Cheap — the work was the
+     *  download. */
     fun commit(ctx: Context, app: App, apk: VerifiedApk) {
-        if (shellInstall(ctx, apk)) {
-            UpdateProgress.update(UpdateProgress.State.Done)
-            Log.i(TAG, "install committed via shell: ${app.label} (${app.pkg})")
-            return
+        for (channel in channels) {
+            if (channel.install(ctx, app, apk)) {
+                Log.i(TAG, "install committed via ${channel.name}: ${app.label} (${app.pkg})")
+                return
+            }
         }
-        UpdateInstaller(ctx).install(apk, app.pkg)
-        Log.i(TAG, "install committed: ${app.label} (${app.pkg})")
+        error("no install channel accepted ${app.pkg} " +
+            "(tried ${channels.joinToString { it.name }})")
     }
 
-    /** Zero-dialog install. The shell channel (Shizuku / embedded adb) runs as
-     *  uid 2000, which holds INSTALL_PACKAGES — so `pm install` neither shows the
-     *  "are you sure you want to update this app" confirm nor gives Play Protect
-     *  a chance to stack its scan prompt on top. This is the same channel the
-     *  Play-Protect toggle already uses (adbdebug.PackageVerifier).
-     *
-     *  The APK has to live somewhere shell can READ it: cacheDir is 0700
-     *  app-private, so it's staged into external files first and removed after.
-     *  Any failure at all returns false and the caller falls back to the
-     *  prompting PackageInstaller path — so this can only remove dialogs, never
-     *  break an install that used to work.
-     *
-     *  Blocking (up to ~25s); callers are already off the main thread. */
-    private fun shellInstall(ctx: Context, apk: VerifiedApk): Boolean {
-        // activeShellChannel() comes from src/shell or src/noshell depending on
-        // whether this app declares :libs:shizuku-adb-debug-tools; the stub
-        // always returns null, which is the ordinary "no channel" path below.
-        val channel = activeShellChannel(ctx) ?: return false
-        val src = apk.file
-        val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${src.name}")
-        return try {
-            src.copyTo(stage, overwrite = true)
-            // Verify the STAGED copy, not just the download. The downloaded APK
-            // is sha-checked against the GHCR digest, but this copy is not, and
-            // it goes to external storage — where a full volume truncates it
-            // without copyTo throwing on every device. `pm install` then reports
-            // INSTALL_PARSE_FAILED_NOT_APK / "failed to load asset path", which
-            // reads like a corrupt build and sends you looking at the artifact
-            // rather than at the phone's free space.
-            if (stage.length() != src.length()) {
-                Log.w(TAG, "shell install: staged copy is ${stage.length()} of ${src.length()} bytes " +
-                    "(truncated — free space?); falling back to PackageInstaller")
-                return false
-            }
-            // -r reinstall, -d allow version downgrade. Deliberately NOT -g: on a
-            // reinstall the runtime grants already carry over, and -g fails the
-            // whole install on any permission the platform won't auto-grant.
-            val out = (channel.exec(ctx, "pm install -r -d ${stage.absolutePath}") ?: "").trim()
-            Log.i(TAG, "shell install via ${channel.name()}: ${out.ifBlank { "no output" }}")
-            out.startsWith("Success")
-        } catch (t: Throwable) {
-            Log.w(TAG, "shell install unavailable, falling back to PackageInstaller", t)
-            false
-        } finally {
-            stage.delete()
-        }
-    }
+    private val channels: List<InstallChannel> = listOf(ShellInstall, SessionInstall)
+
 
     /** Which apps installAll acts on. UPDATES = only apps ALREADY installed
      *  that have a newer image ("Update all" + background auto-update — never
