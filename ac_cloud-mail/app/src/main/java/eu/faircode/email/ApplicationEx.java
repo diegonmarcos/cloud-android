@@ -1118,7 +1118,7 @@ public class ApplicationEx extends Application
 
         if (version < 2243 && "a".equals(BuildConfig.REVISION)) {
             boolean beige = prefs.getBoolean("beige", true);
-            String theme = prefs.getString("theme", "blue_orange_system");
+            String theme = prefs.getString("theme", FragmentDialogTheme.DEFAULT_THEME);
             boolean you = theme.startsWith("you_");
             if (you && beige)
                 editor.putBoolean("beige", false);
@@ -1161,6 +1161,16 @@ public class ApplicationEx extends Application
                 editor.remove("sender_ellipsize");
                 editor.remove("subject_ellipsize");
             }
+        }
+
+        if (version < 3620) {
+            // comms: cloud-mail-dark is now THE app theme, but a new default
+            // only reaches fresh installs -- every existing device already has
+            // "theme" written in prefs, so it would keep whatever upstream
+            // theme it had and our customisations would look like they never
+            // shipped (they did; nothing was reading them). Move existing
+            // installs over once, and only once.
+            editor.putString("theme", FragmentDialogTheme.DEFAULT_THEME);
         }
 
         if (version < 3569) {

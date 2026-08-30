@@ -476,6 +476,63 @@
         <item name="android:textAllCaps">true</item>
     </style>
 
+    <!-- ╔════════════════════════════════════════════════════════════════╗
+         ║  cloud-mail-dark — THE app theme.                              ║
+         ║                                                                ║
+         ║  This is ours. Every cloud-mail customisation belongs in here, ║
+         ║  not spread across upstream FairEmail's ~30 themes: those are  ║
+         ║  vendor files, so a patch to one is invisible in the other 29  ║
+         ║  and gets clobbered on the next upstream merge. Owning one     ║
+         ║  theme means our look always wins, in one reviewable block.    ║
+         ║                                                                ║
+         ║  It is the DEFAULT (see FragmentDialogTheme.getTheme) and it   ║
+         ║  ignores day/night: "cloud_mail_dark" resolves to this style   ║
+         ║  in both, so nothing silently swaps our design out at sunrise. ║
+         ║                                                                ║
+         ║  Derived from AppThemeBlackAndWhite. Add new customisations    ║
+         ║  HERE.                                                         ║
+         ╚════════════════════════════════════════════════════════════════╝ -->
+    <style name="AppThemeCloudMailDark" parent="AppThemeBaseDark">
+        <item name="themeName">black</item>
+        <item name="colorPrimary">@color/cm_surface</item>
+        <item name="colorPrimaryDark">@color/cm_background</item>
+        <item name="colorAccent">@color/cm_accent</item>
+
+        <item name="android:textColor">@color/cm_unread</item>
+        <item name="android:textColorPrimary">@color/cm_unread</item>
+        <item name="android:textColorPrimaryDisableOnly">@color/cm_unread</item>
+        <item name="android:textColorSecondary">@color/cm_read</item>
+        <item name="android:textColorTertiary">@color/cm_read</item>
+        <item name="android:textColorPrimaryInverse">@color/bw_textcolor_inverse</item>
+        <item name="android:textColorSecondaryInverse">@color/bw_textcolor_inverse</item>
+        <item name="android:textColorTertiaryInverse">@color/bw_textcolor_inverse</item>
+        <item name="android:textColorLink">@color/cm_accent</item>
+        <item name="android:textColorLinkInverse">@color/cm_accent</item>
+        <item name="android:textColorHint">@color/cm_read</item>
+        <item name="android:textColorHintInverse">@color/bw_textcolor_inverse</item>
+        <item name="android:textColorAlertDialogListItem">@color/cm_unread</item>
+        <item name="android:textColorHighlight">@color/cm_accent</item>
+        <item name="android:textColorHighlightInverse">@color/cm_accent</item>
+
+        <!-- The read/unread cue. AdapterMessage reads exactly these two for
+             the sender, subject and preview rows. -->
+        <item name="colorRead">@color/cm_read</item>
+        <item name="colorUnread">@color/cm_unread</item>
+        <item name="colorUnreadHighlight">@color/cm_accent</item>
+
+        <item name="colorSeparator">@color/cm_separator</item>
+        <item name="colorBookmark">@color/cm_accent</item>
+
+        <item name="colorFabForeground">@color/cm_background</item>
+        <item name="colorFabBackground">@color/cm_accent</item>
+
+        <item name="colorInfoForeground">@color/cm_unread</item>
+        <item name="colorInfoBackground">@color/cm_surface</item>
+
+        <item name="android:windowBackground">@drawable/background_black</item>
+        <item name="colorDrawerBackground">@color/cm_background</item>
+    </style>
+
     <style name="AppThemeBlackAndWhite" parent="AppThemeBaseDark">
         <item name="themeName">black</item>
         <item name="colorPrimary">@color/blackAndWhitePrimary</item>

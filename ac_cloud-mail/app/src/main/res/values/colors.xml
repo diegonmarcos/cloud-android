@@ -15,6 +15,20 @@
     <!-- White 87%  primary_text_default_material_dark -->
     <color name="colorUnreadDark">#ffffffff</color>
 
+    <!-- ═══ cloud-mail theme palette ═══════════════════════════════════
+         Every colour the cloud-mail-dark theme owns lives here, so the
+         customisation is one block rather than edits scattered across
+         upstream FairEmail themes (which get overwritten on every merge).
+         cm_read vs cm_unread is deliberately a real grey against a real
+         white: a dimmed white like #b3ffffff still reads as white next to
+         bold, which is what made the read/unread cue invisible. -->
+    <color name="cm_unread">#ffffffff</color>
+    <color name="cm_read">#ff9e9e9e</color>
+    <color name="cm_accent">#ff4fc3f7</color>
+    <color name="cm_background">#ff000000</color>
+    <color name="cm_surface">#ff121212</color>
+    <color name="cm_separator">#ff2a2a2a</color>
+
     <color name="colorHighlightLight">#7fffe000</color>
     <color name="colorHighlightDark">#7fffe000</color>
 

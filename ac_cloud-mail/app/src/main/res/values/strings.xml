@@ -379,6 +379,7 @@
     <string name="title_setup_theme_black">Black</string>
     <string name="title_setup_theme_white">White</string>
     <string name="title_setup_theme_black_or_white">Black or white</string>
+    <string name="title_setup_theme_cloud_mail">cloud-mail dark</string>
     <string name="title_setup_theme_black_and_white">Black and white</string>
     <string name="title_setup_theme_you" translatable="false">Material You</string>
     <string name="title_setup_theme_you_mono" translatable="false">Material You mono</string>

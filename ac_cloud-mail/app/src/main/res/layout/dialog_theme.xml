@@ -90,6 +90,14 @@
                 android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
             <RadioButton
+                android:id="@+id/rbThemeCloudMail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="6dp"
+                android:text="@string/title_setup_theme_cloud_mail"
+                android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+            <RadioButton
                 android:id="@+id/rbThemeBlackAndWhite"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

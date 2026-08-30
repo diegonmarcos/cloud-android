@@ -97,7 +97,7 @@ public class FragmentDialogTheme extends FragmentDialogBase {
 
         final Context context = getContext();
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        String theme = prefs.getString("theme", "blue_orange_system");
+        String theme = prefs.getString("theme", FragmentDialogTheme.DEFAULT_THEME);
         boolean default_light = prefs.getBoolean("default_light", false);
         boolean composer_light = prefs.getBoolean("composer_light", false);
         boolean debug = prefs.getBoolean("debug", false);
@@ -244,6 +244,9 @@ public class FragmentDialogTheme extends FragmentDialogBase {
             case "black_and_white":
                 rgTheme.check(R.id.rbThemeBlackAndWhite);
                 break;
+            case "cloud_mail_dark":
+                rgTheme.check(R.id.rbThemeCloudMail);
+                break;
 
             case "you_light":
             case "you_dark":
@@ -358,6 +361,8 @@ public class FragmentDialogTheme extends FragmentDialogBase {
                                 editor.putString("theme", "bw_system").apply();
                             else
                                 editor.putString("theme", (dark ? "black" : "white")).apply();
+                        } else if (checkedRadioButtonId == R.id.rbThemeCloudMail) {
+                            editor.putString("theme", "cloud_mail_dark").apply();
                         } else if (checkedRadioButtonId == R.id.rbThemeBlackAndWhite) {
                             editor.putString("theme", "black_and_white").apply();
                         } else if (checkedRadioButtonId == R.id.rbThemeYou) {
@@ -390,9 +395,14 @@ public class FragmentDialogTheme extends FragmentDialogBase {
                 .create();
     }
 
+    // comms: cloud-mail's own theme is the default. Every getString("theme", ...)
+    // in the app routes through this constant so the default can never drift
+    // between the six call sites that used to hardcode "blue_orange_system".
+    static final String DEFAULT_THEME = "cloud_mail_dark";
+
     static int getTheme(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        String theme = prefs.getString("theme", "blue_orange_system");
+        String theme = prefs.getString("theme", FragmentDialogTheme.DEFAULT_THEME);
         boolean composer_light = prefs.getBoolean("composer_light", false);
 
         boolean night = Helper.isNight(context);
@@ -402,6 +412,13 @@ public class FragmentDialogTheme extends FragmentDialogBase {
         EntityLog.log(context, "Activity theme=" + theme + " light=" + light + " night=" + night);
 
         switch (theme) {
+            // comms: ours resolves to the same style in day AND night. It is a
+            // dark theme by design, and a sunrise silently replacing our
+            // customisations with an upstream light theme is exactly the
+            // "our changes did not apply" failure this theme exists to end.
+            case "cloud_mail_dark":
+                return R.style.AppThemeCloudMailDark;
+
             // Light
             case "light":
             case "blue_orange_light":
@@ -655,9 +672,10 @@ public class FragmentDialogTheme extends FragmentDialogBase {
         boolean cards = prefs.getBoolean("cards", true);
         boolean beige = prefs.getBoolean("beige", true);
         boolean tabular_card_bg = prefs.getBoolean("tabular_card_bg", false);
-        String theme = prefs.getString("theme", "blue_orange_system");
+        String theme = prefs.getString("theme", FragmentDialogTheme.DEFAULT_THEME);
         boolean dark = Helper.isDarkTheme(context);
-        boolean black = (theme.endsWith("black") || "black_and_white".equals(theme));
+        boolean black = (theme.endsWith("black") || "black_and_white".equals(theme)
+                || "cloud_mail_dark".equals(theme));
         boolean solarized = theme.startsWith("solarized");
         boolean you = theme.startsWith("you_");
 

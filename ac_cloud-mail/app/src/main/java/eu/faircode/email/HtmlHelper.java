@@ -467,7 +467,7 @@ public class HtmlHelper {
 
     private static Document sanitize(Context context, Document parsed, boolean view, boolean show_images) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        String theme = prefs.getString("theme", "blue_orange_system");
+        String theme = prefs.getString("theme", FragmentDialogTheme.DEFAULT_THEME);
         boolean bw = "black_and_white".equals(theme);
         boolean background_color = (!view || (!bw && prefs.getBoolean("background_color", false)));
         boolean text_color = (!view || (!bw && prefs.getBoolean("text_color", true)));
