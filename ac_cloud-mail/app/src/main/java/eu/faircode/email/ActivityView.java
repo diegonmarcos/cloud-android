@@ -85,6 +85,7 @@ import androidx.window.layout.WindowInfoTracker;
 import androidx.window.layout.WindowLayoutInfo;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.tabs.TabLayout;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -136,6 +137,7 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
     private View vSeparatorOptions;
     private ImageButton ibExpanderAccount;
 
+    private TabLayout tlNavLane;
     private RecyclerView rvAccount;
     private ImageButton ibExpanderUnified;
 
@@ -383,6 +385,7 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
         grpOptions = drawerContainer.findViewById(R.id.grpOptions);
 
         ibExpanderAccount = drawerContainer.findViewById(R.id.ibExpanderAccount);
+        tlNavLane = drawerContainer.findViewById(R.id.tlNavLane);
         rvAccount = drawerContainer.findViewById(R.id.rvAccount);
 
         ibExpanderUnified = drawerContainer.findViewById(R.id.ibExpanderUnified);
@@ -657,6 +660,43 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
         rvUnified.setLayoutManager(new LinearLayoutManager(this));
         adapterNavUnified = new AdapterNavUnified(this, this);
         rvUnified.setAdapter(adapterNavUnified);
+
+        // comms: drawer-wide All | Unread lane, mirroring the Folders page
+        // tabs (FragmentFolders/FragmentUnread) but filtering both drawer
+        // folder lists in place instead of switching pages. Tabs are added
+        // and the initial one selected before the listener is attached, so
+        // restoring the saved lane does not itself count as a tab switch.
+        boolean nav_unread = prefs.getBoolean("nav_unread", false);
+        tlNavLane.addTab(tlNavLane.newTab().setText(R.string.title_unread_tab_all));
+        tlNavLane.addTab(tlNavLane.newTab().setText(R.string.title_unread_tab_unread));
+        TabLayout.Tab initialLane = tlNavLane.getTabAt(nav_unread ? 1 : 0);
+        if (initialLane != null)
+            initialLane.select();
+        tlNavLane.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                prefs.edit().putBoolean("nav_unread", tab.getPosition() == 1).apply();
+                // comms: route through applyNavLane rather than calling the
+                // adapters here, so the collapsed-drawer override lives in
+                // exactly one place. apply() updates the in-memory prefs map
+                // synchronously, so the read below sees the value just written.
+                applyNavLane();
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // Do nothing
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                // Do nothing
+            }
+        });
+
+        // comms: both nav adapters now exist - apply the lane's initial
+        // visibility/filter state (see applyNavLane above).
+        applyNavLane();
 
         boolean unified_system = prefs.getBoolean("unified_system", true);
         ibExpanderUnified.setImageLevel(unified_system ? 0 /* less */ : 1 /* more */);
@@ -1137,6 +1177,10 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
                 boolean expanded = (nav_account || nav_folder);
 
                 adapterNavAccount.set(accounts, nav_expanded, nav_quick);
+                // comms: a data refresh must not silently drop back to "All"
+                // (or ignore a collapsed rail forcing it) - re-apply the
+                // drawer's current lane every time via applyNavLane.
+                applyNavLane();
 
                 if (expanded && nav_quick && adapterNavAccount.hasFolders())
                     ibExpanderAccount.setImageLevel(2 /* unfold less */);
@@ -1151,6 +1195,7 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
                 if (folders == null)
                     folders = new ArrayList<>();
                 adapterNavUnified.set(folders, nav_expanded);
+                applyNavLane();
             }
         });
 
@@ -1371,6 +1416,22 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
         return prefs.getBoolean("nav_expanded_" + getOrientation(), legacy);
     }
 
+    // comms: collapsed icon rail forces the All lane display-only. Hiding
+    // tlNavLane while leaving its filter active would be a hidden filter
+    // with no visible control - the icon rail would silently drop folders
+    // with no way for the user to see why or turn it back on. This is never
+    // written to nav_unread: it's a display-mode override, not a user
+    // choice, so re-expanding the drawer restores whatever lane the user
+    // actually picked.
+    private void applyNavLane() {
+        tlNavLane.setVisibility(nav_expanded ? View.VISIBLE : View.GONE);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean unread = nav_expanded && prefs.getBoolean("nav_unread", false);
+        adapterNavAccount.setUnreadOnly(unread);
+        adapterNavUnified.setUnreadOnly(unread);
+    }
+
     private void setDrawerExpanded(boolean value) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.edit()
@@ -1394,6 +1455,8 @@ public class ActivityView extends ActivityBilling implements FragmentManager.OnB
         adapterNavUnified.setExpanded(nav_expanded);
         adapterNavMenu.setExpanded(nav_expanded);
         adapterNavMenuExtra.setExpanded(nav_expanded);
+
+        applyNavLane();
     }
 
     private boolean getDrawerPinned() {

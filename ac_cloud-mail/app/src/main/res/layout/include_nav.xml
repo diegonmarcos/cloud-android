@@ -112,6 +112,20 @@
         app:layout_constraintTop_toBottomOf="@id/vSeparatorOptions"
         app:srcCompat="@drawable/expander3" />
 
+    <!-- comms: All | Unread lane switcher for the drawer's two folder lists
+         (rvAccount, rvUnified) - mirrors the tabs on the Folders page
+         (FragmentFolders/FragmentUnread) but filters in place instead of
+         navigating to a separate page. -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tlNavLane"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ibExpanderAccount"
+        app:tabGravity="fill"
+        app:tabMode="fixed" />
+
     <eu.faircode.email.FixedRecyclerView
         android:id="@+id/rvAccount"
         android:layout_width="0dp"
@@ -120,7 +134,7 @@
         android:nestedScrollingEnabled="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/ibExpanderAccount" />
+        app:layout_constraintTop_toBottomOf="@+id/tlNavLane" />
 
     <View
         android:id="@+id/vSeparatorAccount"

@@ -68,6 +68,8 @@ public class AdapterNavUnified extends RecyclerView.Adapter<AdapterNavUnified.Vi
     private boolean show_unexposed;
 
     private boolean expanded = true;
+    private boolean unread = false;
+    private List<TupleFolderUnified> all = new ArrayList<>();
     private List<TupleFolderUnified> items = new ArrayList<>();
 
     private NumberFormat NF = NumberFormat.getNumberInstance();
@@ -258,6 +260,8 @@ public class AdapterNavUnified extends RecyclerView.Adapter<AdapterNavUnified.Vi
     public void set(@NonNull List<TupleFolderUnified> folders, boolean expanded) {
         Log.i("Set nav unified=" + folders.size());
 
+        all = folders;
+
         boolean show = false;
         Map<String, TupleFolderUnified> map = new HashMap<>();
         TupleFolderUnified unified = new TupleFolderUnified();
@@ -338,6 +342,18 @@ public class AdapterNavUnified extends RecyclerView.Adapter<AdapterNavUnified.Vi
             }
         });
 
+        // comms: nav drawer "unread" lane. Filtered AFTER the rollup above so
+        // the aggregated per-type/category counts stay correct; the sort just
+        // above already fixed the display order, so dropping rows here only
+        // changes membership, never their relative order.
+        if (unread) {
+            List<TupleFolderUnified> filtered = new ArrayList<>();
+            for (TupleFolderUnified type : types)
+                if (type.unseen > 0)
+                    filtered.add(type);
+            types = filtered;
+        }
+
         DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffCallback(items, types), false);
 
         this.expanded = expanded;
@@ -375,6 +391,13 @@ public class AdapterNavUnified extends RecyclerView.Adapter<AdapterNavUnified.Vi
     public void setExpanded(boolean expanded) {
         this.expanded = expanded;
         notifyDataSetChanged();
+    }
+
+    public void setUnreadOnly(boolean unread) {
+        if (this.unread != unread) {
+            this.unread = unread;
+            set(all, expanded);
+        }
     }
 
     private static class DiffCallback extends DiffUtil.Callback {

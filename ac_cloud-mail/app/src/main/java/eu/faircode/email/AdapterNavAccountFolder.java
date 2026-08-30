@@ -50,9 +50,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAccountFolder.ViewHolder> {
     private Context context;
@@ -74,6 +76,7 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
 
     private boolean expanded = true;
     private boolean folders = true;
+    private boolean unread = false;
     private List<TupleAccountFolder> all = new ArrayList<>();
     private List<TupleAccountFolder> items = new ArrayList<>();
 
@@ -369,6 +372,51 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
                     accounts.add(item);
         }
 
+        // comms: nav drawer "unread" lane, composed with the folders filter
+        // above rather than replacing it - both can be on at once.
+        //
+        // Folder rows and account header rows are NOT filtered by the same
+        // rule, because they don't mean the same thing by "unseen": the
+        // account-row branch of the UNION in DaoAccount gates its unseen sum
+        // on folder.count_unread (and excludes OUTBOX), while the folder-row
+        // branch has no such gate and counts every unread message in that
+        // folder. A folder with count_unread off (Junk is the classic case)
+        // can hold unread mail that never reaches its account header's
+        // count. Filtering both on item.unseen > 0 would then drop the
+        // header while keeping that folder row, leaving it floating with no
+        // caption above it. So: folder rows are dropped on their own
+        // unseen; an account header instead survives if any of ITS folder
+        // rows survived that filter (matched by account id, same field -
+        // item.id - the run-collection loop below compares). Only when
+        // there are no folder rows to begin with (folders/nav_quick off, an
+        // account-only list) is there nothing to survive on, so accounts
+        // fall back to filtering on their own unseen there.
+        if (unread) {
+            if (!folders) {
+                List<TupleAccountFolder> filtered = new ArrayList<>();
+                for (TupleAccountFolder item : accounts)
+                    if (item.unseen > 0)
+                        filtered.add(item);
+                accounts = filtered;
+            } else {
+                Set<Object> accountsWithUnread = new HashSet<>();
+                for (TupleAccountFolder item : accounts)
+                    if (item.folderName != null && item.unseen > 0)
+                        accountsWithUnread.add(item.id);
+
+                List<TupleAccountFolder> filtered = new ArrayList<>();
+                for (TupleAccountFolder item : accounts)
+                    if (item.folderName != null) {
+                        if (item.unseen > 0)
+                            filtered.add(item);
+                    } else {
+                        if (accountsWithUnread.contains(item.id))
+                            filtered.add(item);
+                    }
+                accounts = filtered;
+            }
+        }
+
         // comms: name-based folder tree. TupleAccountFolder.sort() above only
         // orders SIBLINGS (by name/order within an account) — it has no notion
         // of nesting, so a leaf can otherwise sort ahead of its own parent
@@ -507,6 +555,13 @@ public class AdapterNavAccountFolder extends RecyclerView.Adapter<AdapterNavAcco
     public void setFolders(boolean folders) {
         if (this.folders != folders) {
             this.folders = folders;
+            set(all, expanded, folders);
+        }
+    }
+
+    public void setUnreadOnly(boolean unread) {
+        if (this.unread != unread) {
+            this.unread = unread;
             set(all, expanded, folders);
         }
     }
