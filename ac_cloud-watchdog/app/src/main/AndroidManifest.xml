@@ -6,6 +6,23 @@
          ssh is not http. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Our Termux's exec service. Declared by the terminal at signature
+         level, so the system grants it silently to an APK signed with the
+         constellation key and to nothing else — there is no runtime request
+         and no dialog. -->
+    <uses-permission android:name="com.termux.permission.CLOUD_EXEC" />
+
+    <!-- WITHOUT THIS THE BIND SILENTLY FAILS.
+         Since Android 11 an app cannot see another package unless it declares
+         it, and the failure is not an error: resolveService returns null and
+         bindService returns false, exactly as they would if Termux were not
+         installed. That is the same indistinguishable-failure trap the ssh
+         path fell into, so the query is spelled out rather than inferred. -->
+    <queries>
+        <package android:name="com.termux" />
+        <package android:name="com.termux.nix" />
+    </queries>
+
     <application
         android:label="Watchdog"
         android:icon="@mipmap/ic_launcher"

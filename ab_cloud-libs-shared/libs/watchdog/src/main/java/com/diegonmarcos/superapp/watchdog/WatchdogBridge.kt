@@ -35,6 +35,9 @@ class WatchdogBridge(
      *  no longer depends on a phone having a terminal installed. */
     private val local = WatchdogLocal(activity)
 
+    /** Our Termux, bound directly. The replacement for ssh-to-loopback. */
+    private val terminal = WatchdogTerminal(activity)
+
     // Two: one carries keys down, one is free for start/stop. The frame
     // reader gets a thread of its own, so a blocking read never holds up
     // the next keystroke — that would make the panel feel dead under load.
@@ -139,6 +142,26 @@ class WatchdogBridge(
     @JavascriptInterface
     fun refresh() {
         pool.execute {
+            // The terminal first. Binding to our own Termux has ONE thing that
+            // can be wrong — whether it is installed — where ssh to loopback
+            // had four, and reported all of them as the same ECONNREFUSED.
+            // ssh stays behind it because it is the only way to another
+            // machine, which is what it was always for.
+            val viaTerminal = if (terminal.available()) {
+                terminal.exec(
+                    terminal.toolPath(BIN_PANEL) ?: "",
+                    arrayOf("snapshot"),
+                    timeoutMs = 20_000,
+                ).getOrNull()
+            } else null
+
+            if (viaTerminal != null) {
+                val js = "window.__wdRender(${JSONObject.quote(viaTerminal)})"
+                webView.post { webView.evaluateJavascript(js, null) }
+                push("fresh", "terminal")
+                return@execute
+            }
+
             ssh.snapshot(backend()).fold(
                 onSuccess = { json ->
                     val js = "window.__wdRender(${JSONObject.quote(json)})"
@@ -164,7 +187,12 @@ class WatchdogBridge(
 
     @JavascriptInterface
     fun stop() {
-        pool.execute { stopPanel() }
+        pool.execute {
+            stopPanel()
+            // Unbound with the rest: a service binding outlives the activity
+            // and keeps Termux alive for an app that has stopped looking.
+            terminal.close()
+        }
     }
 
     private fun stopPanel() {
@@ -176,6 +204,9 @@ class WatchdogBridge(
     companion object {
         const val PREFS = "watchdog"
         const val KEY_BACKEND = "backend"
+
+        /** Resolved against the terminal's own toolsDir(), never a path we assume. */
+        const val BIN_PANEL = "libmywatchdogtui.so"
     }
 
     private fun push(kind: String, payload: String) {

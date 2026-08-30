@@ -3,6 +3,7 @@ plugins {
 }
 
 android {
+
     compileSdkVersion project.properties.compileSdkVersion.toInteger()
     ndkVersion = System.getenv("JITPACK_NDK_VERSION") ?: project.properties.ndkVersion
     def appVersionName = System.getenv("TERMUX_APP_VERSION_NAME") ?: ""
@@ -104,6 +105,10 @@ android {
         }
     }
 
+    // Upstream sets this for its own bootstrap; it is now also what makes the
+    // fleet binaries runnable. Without it they are page-mapped from inside the
+    // APK, nativeLibraryDir is a path within the archive, and CloudExecService
+    // has nothing on disk to exec.
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
@@ -235,3 +240,38 @@ tasks.register('devKeystore') {
 }
 tasks.matching { it.name.toLowerCase().contains('debug') && it.name.startsWith('validateSigning') }
      .configureEach { dependsOn 'devKeystore' }
+
+// ── the fleet binaries this terminal carries ───────────────────────────────
+// The watchdog app asks this terminal to run them (see CloudExecService), and
+// a caller in another sandbox cannot write into this app's files — so they
+// ship here rather than being pushed in at runtime over ssh, which is the
+// dependency the exec service exists to remove. Shipping them together also
+// means the panel and the app driving it can never be different builds.
+//
+// jniLibs and not assets: nativeLibraryDir is the only directory an app can
+// both ship into and exec from. Nothing dlopens these.
+def fleetToolsDir = file("$projectDir/src/main/jniLibs/arm64-v8a")
+tasks.register('fetchFleetTools') {
+    description = 'Download the watchdog sampler + panel this terminal runs for the fleet.'
+    outputs.dir fleetToolsDir
+    doLast {
+        fleetToolsDir.mkdirs()
+        [['my-watchdog-aarch64', 'libmywatchdog.so'],
+         ['my-watchdog-tui-aarch64', 'libmywatchdogtui.so']].each { asset, name ->
+            def out = new File(fleetToolsDir, name)
+            if (out.exists() && out.length() > 100_000) {
+                logger.lifecycle("fleet tool: ${name} cached (${out.length()} bytes)")
+                return
+            }
+            def p = ['gh', 'release', 'download', 'my-watchdog-latest',
+                     '--repo', 'diegonmarcos/cloud-u-linux',
+                     '--pattern', asset, '--output', out.absolutePath, '--clobber'].execute()
+            p.waitForProcessOutput(System.out, System.err)
+            if (p.exitValue() != 0 || !out.exists()) {
+                throw new GradleException("could not fetch ${asset} — this terminal ships the fleet tools")
+            }
+            logger.lifecycle("fleet tool: ${name} (${out.length()} bytes)")
+        }
+    }
+}
+preBuild.dependsOn tasks.named('fetchFleetTools')

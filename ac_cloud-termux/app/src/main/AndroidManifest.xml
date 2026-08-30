@@ -20,6 +20,22 @@
         android:label="@string/permission_run_command_label"
         android:protectionLevel="dangerous" />
 
+    <!-- The constellation's own door into this terminal.
+
+         protectionLevel="signature", NOT "dangerous": RUN_COMMAND above is a
+         prompt the user can grant to anything that asks, which is right for a
+         permission meant for third-party plugins. This one is for the fleet's
+         own apps, and signature means the system grants it only to an APK
+         signed with the same key — there is no dialog to tap through and no
+         way for another app to request it. Owning both ends is what makes
+         exec-with-output safe to expose at all. -->
+    <permission
+        android:name="${TERMUX_PACKAGE_NAME}.permission.CLOUD_EXEC"
+        android:description="@string/permission_cloud_exec_description"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/permission_cloud_exec_label"
+        android:protectionLevel="signature" />
+
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -173,6 +189,18 @@
             android:permission="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND">
             <intent-filter>
                 <action android:name="${TERMUX_PACKAGE_NAME}.RUN_COMMAND" />
+            </intent-filter>
+        </service>
+
+        <!-- Exec with output, for the fleet. RUN_COMMAND above cannot do this:
+             it starts a command and returns nothing, so the output stays on
+             this side of the sandbox. This one blocks and hands it back. -->
+        <service
+            android:name=".cloud.CloudExecService"
+            android:exported="true"
+            android:permission="${TERMUX_PACKAGE_NAME}.permission.CLOUD_EXEC">
+            <intent-filter>
+                <action android:name="${TERMUX_PACKAGE_NAME}.CLOUD_EXEC" />
             </intent-filter>
         </service>
 
