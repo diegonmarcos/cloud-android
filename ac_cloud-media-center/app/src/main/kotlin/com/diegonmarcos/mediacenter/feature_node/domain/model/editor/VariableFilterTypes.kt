@@ -7,6 +7,14 @@
  */
 package com.diegonmarcos.mediacenter.feature_node.domain.model.editor
 
+import androidx.annotation.Keep
+import kotlinx.serialization.Serializable
+
+// @Keep and @Serializable came with the enum: EditorDestination.AdjustDetail
+// is serialized for navigation, so losing @Serializable would break the nav
+// argument silently at runtime rather than at compile time.
+@Keep
+@Serializable
 enum class VariableFilterTypes {
     // Legacy
     Brightness, Contrast, Saturation, Rotate,

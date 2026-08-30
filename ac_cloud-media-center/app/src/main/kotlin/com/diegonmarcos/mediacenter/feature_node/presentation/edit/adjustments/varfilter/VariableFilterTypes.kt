@@ -1,6 +1,5 @@
 package com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter
 
-import androidx.annotation.Keep
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Brightness4
 import androidx.compose.material.icons.outlined.Brightness5
@@ -25,11 +24,6 @@ import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.Waves
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilter
-import kotlinx.serialization.Serializable
-
-@Keep
-@Serializable
-
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes.*
 
