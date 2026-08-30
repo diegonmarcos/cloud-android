@@ -28,6 +28,9 @@
 
     <string name="title_comms_about" translatable="false">About</string>
     <string name="title_comms_accounts" translatable="false">Accounts</string>
+    <string name="title_comms_rules" translatable="false">Rules</string>
+    <string name="title_comms_rules_apply_all" translatable="false">Apply all rules</string>
+    <string name="title_comms_rules_applied_all" translatable="false">Applied to %1$d folder(s), %2$d message(s) affected</string>
     <string name="title_comms_app_name" translatable="false">Cloud Mail</string>
     <string name="title_comms_update_channel" translatable="false">Update channel</string>
     <string name="title_comms_check_for_updates" translatable="false">Check for updates</string>

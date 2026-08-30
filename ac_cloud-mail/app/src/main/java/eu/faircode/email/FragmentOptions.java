@@ -78,6 +78,7 @@ public class FragmentOptions extends FragmentBase {
     private static final int[] TAB_PAGES = {
             R.layout.fragment_setup,
             R.layout.fragment_accounts, // comms: Accounts shortcut tab (after Main, before Receive)
+            R.layout.fragment_rules, // comms: Rules shortcut tab (after Accounts, before Receive)
             R.layout.fragment_options_synchronize,
             R.layout.fragment_options_send,
             R.layout.fragment_options_connection,
@@ -95,6 +96,7 @@ public class FragmentOptions extends FragmentBase {
     static final int[] PAGE_TITLES = {
             R.string.title_advanced_section_main,
             R.string.title_comms_accounts, // comms: Accounts shortcut tab
+            R.string.title_comms_rules, // comms: Rules shortcut tab
             R.string.title_advanced_section_synchronize,
             R.string.title_advanced_section_send,
             R.string.title_advanced_section_connection,
@@ -112,6 +114,7 @@ public class FragmentOptions extends FragmentBase {
     static final int[] PAGE_ICONS = {
             R.drawable.twotone_home_24,
             R.drawable.twotone_account_circle_24, // comms: Accounts shortcut tab
+            R.drawable.twotone_filter_alt_24, // comms: Rules shortcut tab
             R.drawable.twotone_sync_24,
             R.drawable.twotone_send_24,
             R.drawable.twotone_cloud_24,
@@ -129,6 +132,7 @@ public class FragmentOptions extends FragmentBase {
     static final List<String> TAB_LABELS = Collections.unmodifiableList(Arrays.asList(
             "main",
             "accounts", // comms: Accounts shortcut tab
+            "comms_rules", // comms: Rules shortcut tab
             "sync",
             "send",
             "connection",
@@ -554,29 +558,39 @@ public class FragmentOptions extends FragmentBase {
                     return new FragmentSetup();
                 case 1: // comms: Accounts shortcut tab (after Main, before Receive)
                     return new FragmentAccounts();
-                case 2:
-                    return new FragmentOptionsSynchronize();
+                case 2: { // comms: Rules shortcut tab (after Accounts, before Receive)
+                    // comms: folder < 0 signals "all rules" mode to FragmentRules (see FragmentRules.onCreate)
+                    Bundle args = new Bundle();
+                    args.putLong("account", -1);
+                    args.putInt("protocol", -1);
+                    args.putLong("folder", -1);
+                    FragmentRules fragment = new FragmentRules();
+                    fragment.setArguments(args);
+                    return fragment;
+                }
                 case 3:
-                    return new FragmentOptionsSend();
+                    return new FragmentOptionsSynchronize();
                 case 4:
-                    return new FragmentOptionsConnection();
+                    return new FragmentOptionsSend();
                 case 5:
-                    return new FragmentOptionsDisplay();
+                    return new FragmentOptionsConnection();
                 case 6:
-                    return new FragmentOptionsBehavior();
+                    return new FragmentOptionsDisplay();
                 case 7:
-                    return new FragmentOptionsPrivacy();
+                    return new FragmentOptionsBehavior();
                 case 8:
-                    return new FragmentOptionsEncryption();
+                    return new FragmentOptionsPrivacy();
                 case 9:
-                    return new FragmentOptionsNotifications();
+                    return new FragmentOptionsEncryption();
                 case 10:
-                    return new FragmentOptionsIntegrations();
+                    return new FragmentOptionsNotifications();
                 case 11:
-                    return new FragmentOptionsMisc();
+                    return new FragmentOptionsIntegrations();
                 case 12:
+                    return new FragmentOptionsMisc();
+                case 13:
                     return new FragmentOptionsBackup();
-                case 13: // comms: Cloud Mail About tab
+                case 14: // comms: Cloud Mail About tab
                     return new FragmentOptionsCommsAbout();
                 default:
                     throw new IllegalArgumentException();

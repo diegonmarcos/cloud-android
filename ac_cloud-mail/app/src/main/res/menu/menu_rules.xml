@@ -45,5 +45,11 @@
             android:id="@+id/menu_delete_all"
             android:title="@string/title_rules_delete_all"
             app:showAsAction="never" />
+
+        <!-- comms: global rules list only (Settings > Rules) -->
+        <item
+            android:id="@+id/menu_apply_all"
+            android:title="@string/title_comms_rules_apply_all"
+            app:showAsAction="never" />
     </group>
 </menu>

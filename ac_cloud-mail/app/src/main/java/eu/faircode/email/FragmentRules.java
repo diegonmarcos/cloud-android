@@ -78,6 +78,7 @@ public class FragmentRules extends FragmentBase {
     private int protocol;
     private long folder;
     private String type;
+    private boolean all; // comms: true = global rules list (Settings > Rules), folder < 0
 
     private boolean cards;
     private boolean dividers;
@@ -109,6 +110,7 @@ public class FragmentRules extends FragmentBase {
         protocol = args.getInt("protocol", -1);
         folder = args.getLong("folder", -1);
         type = args.getString("type");
+        all = (folder < 0); // comms: no specific folder means "all rules"
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
         cards = prefs.getBoolean("cards", true);
@@ -118,7 +120,7 @@ public class FragmentRules extends FragmentBase {
     @Override
     @Nullable
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        setSubtitle(R.string.title_edit_rules);
+        setSubtitle(all ? R.string.title_comms_rules : R.string.title_edit_rules);
         setHasOptionsMenu(true);
 
         view = inflater.inflate(R.layout.fragment_rules, container, false);
@@ -206,7 +208,7 @@ public class FragmentRules extends FragmentBase {
         };
         rvRule.addItemDecoration(groupDecorator);
 
-        adapter = new AdapterRule(this);
+        adapter = new AdapterRule(this, all);
         rvRule.setAdapter(adapter);
 
         if (!cards) {
@@ -233,6 +235,9 @@ public class FragmentRules extends FragmentBase {
             }
         });
 
+        // comms: creating a rule needs a specific target folder, which the global list does not have
+        fab.setVisibility(all ? View.GONE : View.VISIBLE);
+
         // Initialize
         grpReady.setVisibility(View.GONE);
         pbWait.setVisibility(View.VISIBLE);
@@ -256,7 +261,7 @@ public class FragmentRules extends FragmentBase {
 
         final Context context = getContext();
         DB db = DB.getInstance(context);
-        db.rule().liveRules(folder).observe(getViewLifecycleOwner(), new Observer<List<TupleRuleEx>>() {
+        (all ? db.rule().liveRules() : db.rule().liveRules(folder)).observe(getViewLifecycleOwner(), new Observer<List<TupleRuleEx>>() {
             @Override
             public void onChanged(List<TupleRuleEx> rules) {
                 if (rules == null)
@@ -371,6 +376,11 @@ public class FragmentRules extends FragmentBase {
 
         MenuCompat.setGroupDividerEnabled(menu, true);
 
+        // comms: export/import/delete-all target one folder; the global list has no single folder to act on
+        menu.setGroupVisible(R.id.group_backup, !all);
+        menu.findItem(R.id.menu_delete_all).setVisible(!all);
+        menu.findItem(R.id.menu_apply_all).setVisible(all);
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
         String sort = prefs.getString("rule_sort", "order");
 
@@ -407,6 +417,9 @@ public class FragmentRules extends FragmentBase {
             return true;
         } else if (itemId == R.id.menu_delete_all) {
             onMenuDelete();
+            return true;
+        } else if (itemId == R.id.menu_apply_all) {
+            onMenuApplyAll();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -453,6 +466,90 @@ public class FragmentRules extends FragmentBase {
         ask.setArguments(aargs);
         ask.setTargetFragment(this, REQUEST_CLEAR);
         ask.show(getParentFragmentManager(), "rules:clear");
+    }
+
+    // comms: applies every enabled rule against its own folder's messages, folder by folder;
+    // reuses the same matches()/execute() sequence as the per-rule "Execute" action (AdapterRule)
+    private void onMenuApplyAll() {
+        new SimpleTask<int[]>() {
+            private Toast toast = null;
+
+            @Override
+            protected void onPreExecute(Bundle args) {
+                toast = ToastEx.makeText(getContext(), R.string.title_executing, Toast.LENGTH_LONG);
+                toast.show();
+            }
+
+            @Override
+            protected void onPostExecute(Bundle args) {
+                if (toast != null)
+                    toast.cancel();
+            }
+
+            @Override
+            protected int[] onExecute(Context context, Bundle args) throws Throwable {
+                DB db = DB.getInstance(context);
+
+                List<EntityRule> rules = db.rule().getEnabledRules();
+
+                int folders = 0;
+                int applied = 0;
+                Long last = null;
+                List<Long> ids = null;
+                for (EntityRule rule : rules) {
+                    if (last == null || !last.equals(rule.folder)) {
+                        last = rule.folder;
+                        ids = db.message().getMessageIdsByFolder(rule.folder);
+                        folders++;
+                    }
+
+                    if (ids == null)
+                        continue;
+
+                    for (long mid : ids) {
+                        EntityMessage message = db.message().getMessage(mid);
+                        if (message == null || message.ui_hide)
+                            continue;
+                        rule.matches(context, message, null, null);
+                    }
+
+                    for (long mid : ids)
+                        try {
+                            db.beginTransaction();
+
+                            EntityMessage message = db.message().getMessage(mid);
+                            if (message == null || message.ui_hide)
+                                continue;
+
+                            if (rule.matches(context, message, null, null))
+                                if (rule.execute(context, message, false, null))
+                                    applied++;
+
+                            db.setTransactionSuccessful();
+                        } finally {
+                            db.endTransaction();
+                        }
+                }
+
+                if (applied > 0)
+                    ServiceSynchronize.eval(context, "rules/manual");
+
+                return new int[]{folders, applied};
+            }
+
+            @Override
+            protected void onExecuted(Bundle args, int[] result) {
+                ToastEx.makeText(getContext(),
+                        getString(R.string.title_comms_rules_applied_all, result[0], result[1]),
+                        Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                boolean report = !(ex instanceof IllegalArgumentException);
+                Log.unexpectedError(getParentFragmentManager(), ex, report);
+            }
+        }.execute(this, new Bundle(), "rules:apply_all");
     }
 
     private void onExport(Intent data) {

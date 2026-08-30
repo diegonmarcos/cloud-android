@@ -72,6 +72,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
     private Context context;
     private LifecycleOwner owner;
     private LayoutInflater inflater;
+    private boolean showFolder; // comms: prefix rule name with account/folder in the global rules list
 
     private boolean debug;
     private DateFormat DF;
@@ -135,7 +136,12 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
             ivDaily.setVisibility(rule.daily ? View.VISIBLE : View.GONE);
             ivHeaders.setVisibility(needsHeaders ? View.VISIBLE : View.GONE);
             ivBody.setVisibility(needsBody ? View.VISIBLE : View.GONE);
-            tvName.setText(rule.name);
+            if (showFolder) // comms: global rules list - identify which account/folder each rule belongs to
+                tvName.setText(context.getString(R.string.title_name_count,
+                        rule.name,
+                        (rule.accountName == null ? "" : rule.accountName + "/") + rule.folderName));
+            else
+                tvName.setText(rule.name);
             tvOrder.setText(Integer.toString(rule.order));
             ivStop.setVisibility(rule.stop ? View.VISIBLE : View.INVISIBLE);
 
@@ -658,10 +664,15 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
     }
 
     AdapterRule(Fragment parentFragment) {
+        this(parentFragment, false);
+    }
+
+    AdapterRule(Fragment parentFragment, boolean showFolder) {
         this.parentFragment = parentFragment;
         this.context = parentFragment.getContext();
         this.owner = parentFragment.getViewLifecycleOwner();
         this.inflater = LayoutInflater.from(context);
+        this.showFolder = showFolder;
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         this.debug = prefs.getBoolean("debug", false);

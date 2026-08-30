@@ -62,6 +62,19 @@ public interface DaoRule {
             " WHERE rule.folder = :folder")
     LiveData<List<TupleRuleEx>> liveRules(long folder);
 
+    // comms: global rules page (Settings > Rules) - all rules across all accounts/folders
+    @Query("SELECT rule.*, folder.account, folder.name AS folderName, account.name AS accountName FROM rule" +
+            " JOIN folder ON folder.id = rule.folder" +
+            " JOIN account ON account.id = folder.account" +
+            " ORDER BY account.name COLLATE NOCASE, folder.name COLLATE NOCASE")
+    LiveData<List<TupleRuleEx>> liveRules();
+
+    // comms: used by "apply all rules" (Settings > Rules) - ordered by folder so message ids can be fetched once per folder
+    @Query("SELECT rule.* FROM rule" +
+            " WHERE rule.enabled" +
+            " ORDER BY rule.folder, rule.`order`, rule.name COLLATE NOCASE")
+    List<EntityRule> getEnabledRules();
+
     @Query("SELECT DISTINCT `group` FROM rule" +
             " WHERE NOT `group` IS NULL" +
             " ORDER by `group` COLLATE NOCASE")
