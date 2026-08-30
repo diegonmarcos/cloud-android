@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.updater.source
 
+import com.diegonmarcos.superapp.updater.BuildConfig
 import com.diegonmarcos.superapp.updater.AbiUpdateTag
 import com.diegonmarcos.superapp.updater.UpdateProgress
 import com.diegonmarcos.superapp.updater.Updater

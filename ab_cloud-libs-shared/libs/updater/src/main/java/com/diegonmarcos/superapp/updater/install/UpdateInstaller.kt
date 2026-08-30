@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.updater.install
 
+import com.diegonmarcos.superapp.updater.BuildConfig
 import com.diegonmarcos.superapp.updater.ApkInstallWorker
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.PackageInstallerReceiver
