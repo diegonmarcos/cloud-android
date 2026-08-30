@@ -1,8 +1,0 @@
-# Connect IQ project definition for the "2 Circles" design.
-# Source layout: hand-written source/ + the build-time-generated source/gen/
-# (DesignConfig.mc, emitted from design.json by ../../build.sh). resources/
-# holds strings + the launcher drawable. The manifest is alongside.
-project.manifest = manifest.xml
-
-base.sourcePath = source;source/gen
-base.resourcePath = resources

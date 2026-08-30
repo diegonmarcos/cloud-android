@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Background colour for the adaptive launcher icon. Solid black
-         matches the in-app black→purple gradient palette. -->
-    <color name="ic_launcher_background">#000000</color>
-</resources>

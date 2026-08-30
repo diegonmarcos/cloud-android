@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- libs:browser — in-app WebView host. No new permissions; INTERNET
-     is already declared in app/AndroidManifest.xml since other
-     subsystems need it. No <activity> or <service> declarations;
-     BrowserHostFragment is hosted by app/'s MainActivity. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

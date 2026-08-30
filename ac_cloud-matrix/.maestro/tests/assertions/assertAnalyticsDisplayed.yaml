@@ -1,5 +1,0 @@
-appId: ${MAESTRO_APP_ID}
----
-- extendedWaitUntil:
-    visible: "Help improve Element X dbg"
-    timeout: 10000

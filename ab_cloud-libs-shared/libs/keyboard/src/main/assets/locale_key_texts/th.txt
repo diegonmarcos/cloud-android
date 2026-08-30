@@ -1,5 +1,0 @@
-[labels]
-alphabet: กขค
-
-[number_row]
-๑ ๒ ๓ ๔ ๕ ๖ ๗ ๘ ๙ ๐

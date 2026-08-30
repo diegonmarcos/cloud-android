@@ -1,5 +1,0 @@
-[labels]
-alphabet: ㄱㄴㄷ
-
-[tlds]
-kr

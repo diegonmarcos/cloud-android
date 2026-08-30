@@ -1,3 +1,0 @@
--- Migrate DB from version 4
-
-ALTER TABLE SessionData ADD COLUMN passphrase TEXT;

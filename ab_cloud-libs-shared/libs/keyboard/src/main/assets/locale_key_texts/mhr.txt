@@ -1,8 +1,0 @@
-[popup_keys]
-" « » „ “ ”
-н ҥ
-о ӧ
-у ӱ
-
-[labels]
-alphabet: АБВ

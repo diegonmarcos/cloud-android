@@ -1,2 +1,0 @@
-// SecurePDFViewer-Bridging-Header.h
-

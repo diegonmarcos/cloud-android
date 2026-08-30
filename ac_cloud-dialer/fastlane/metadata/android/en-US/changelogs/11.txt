@@ -1,8 +1,0 @@
-Changed:
-
-• Updated translations
-
-Fixed:
-
-• It's now possible to unset custom SIM preferences 
-
