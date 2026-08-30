@@ -125,7 +125,7 @@
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) — zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
     },
     "firestack": {
-      "tracker": "ac_net-firestack",
+      "tracker": "ab_cloud-libs-shared/libs/firewall/firestack-src",
       "repo": "https://github.com/celzero/firestack.git",
       "ref": "n2",
       "license": "MPL-2.0",
@@ -148,7 +148,8 @@
           "x86_64": "android/amd64"
         }
       },
-      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build."
+      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build.",
+      "_doc_vendored": "VENDORED IN-REPO 2026-08-30, beside the module that consumes it, so the engine source is owned rather than cloned at build time - same doctrine as the app forks. Only what upstream tracks is committed (224 files, 2.4 MB); upstream's bin/ is 24 MB of build output and is not tracked there either. There is no .git inside, so the sync/clone path is skipped: presence of go.mod is what marks the tree usable. To move to a newer upstream, bump ref, delete this tree and re-run `build.sh sync-firestack`."
     },
     "ops": {
       "tracker": null,
@@ -535,7 +536,6 @@
       ]
     },
     "arc_menu": {
-      "_doc_actions": "Inner ring of the CONFIGS (Canopus) star. It lives on this star's own block now, exactly like recents_menu.actions - it used to hang off the Configs node inside circular_menu.nodes, which tied this star to the all-apps ring and broke the moment that ring stopped listing Configs. Text only.",
       "_doc_actions": "Deliberately empty. KDE Connect, Animations and Copy Info moved into ui.sections[config].pages as is_action entries, which feed the arc's inner ring AND the Configs grid from one list. The block stays because it is still the right home for an action that belongs on the STAR only - one that would be noise in the grid.",
       "actions": [],
       "enabled": true,
@@ -3144,13 +3144,34 @@
     "_doc_search_scopes": "Scope chips of the top search sheet (SearchSheetFragment). DECOUPLED from home_apps_tabs (renaming a search scope must NOT rename the Home-Apps body tabs). Each scope: `id` (also the result-group key), `label` (chip text), `kind` (which index builder populates its hits). Kinds: `cloud_apps` = cloud sections + tiles + home actions (navigable destinations); `phone_apps` = installed launchable apps (LauncherApps); `cloud_configs` = every section sub-page (config/settings/about surfaces) + cached consolidated.json service entries (tap copies the value); `phone_configs` = installed Android Settings activities enumerated from the device Settings package(s) (exported, self-labelled activities; tap launches that Settings screen — same spirit as the native Settings search). All chips ON by default; tapping toggles inclusion. Reorder/rename here — no Kotlin edit.",
     "_doc_camera_apps": "Fallback camera apps for action:open_camera, in order. The FIRST attempt is always the OS resolver for MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA, which honours whatever camera the user set as default - this list is only for when nothing answers that action (some OEM cameras do not export the filter). Ordered so the OEM's own camera wins over a third-party one; a package that is not installed is skipped.",
     "camera_apps": [
-      { "label": "Samsung Camera", "package": "com.sec.android.app.camera" },
-      { "label": "Pixel Camera",   "package": "com.google.android.GoogleCamera" },
-      { "label": "Xiaomi Camera",  "package": "com.android.camera" },
-      { "label": "OnePlus Camera", "package": "com.oneplus.camera" },
-      { "label": "Motorola Camera","package": "com.motorola.camera3" },
-      { "label": "AOSP Camera",    "package": "com.android.camera2" },
-      { "label": "Open Camera",    "package": "net.sourceforge.opencamera" }
+      {
+        "label": "Samsung Camera",
+        "package": "com.sec.android.app.camera"
+      },
+      {
+        "label": "Pixel Camera",
+        "package": "com.google.android.GoogleCamera"
+      },
+      {
+        "label": "Xiaomi Camera",
+        "package": "com.android.camera"
+      },
+      {
+        "label": "OnePlus Camera",
+        "package": "com.oneplus.camera"
+      },
+      {
+        "label": "Motorola Camera",
+        "package": "com.motorola.camera3"
+      },
+      {
+        "label": "AOSP Camera",
+        "package": "com.android.camera2"
+      },
+      {
+        "label": "Open Camera",
+        "package": "net.sourceforge.opencamera"
+      }
     ],
     "search_scopes": [
       {

@@ -183,7 +183,14 @@ ac_cloud-media-center/**/*.jks
 ## that were later lost. If any becomes a real app, whitelist it like ac_cloud-*.
 ac_keyboard-dicts/
 ac_keyboard-heliboard/
-ac_net-firestack/
+## firestack moved INTO the module that consumes it
+## (ab_cloud-libs-shared/libs/firewall/firestack-src) and is committed there,
+## so the old gitignored root clone no longer exists. What stays ignored is
+## its BUILD OUTPUT: upstream's own bin/ (24 MB, untracked upstream too) and
+## the gomobile work dir. The produced firestack.aar is ignored separately
+## below, next to the module it lands in.
+ab_cloud-libs-shared/libs/firewall/firestack-src/bin/
+ab_cloud-libs-shared/libs/firewall/firestack-src/build/
 ac_zoomies-pets/
 ac_mail-fairmail/
 ac_cal-davx5/

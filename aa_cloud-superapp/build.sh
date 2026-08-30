@@ -253,7 +253,10 @@ _ensure_firestack() {
   [ -f "$outdir/$aarout" ] && return 0
   log "firestack: aar missing → building once (libs:firewall depends on it)"
   tracker="${ANDROID_REPO:-$HOME/git/cloud-u-android}/$(_release_var '.upstreams.firestack.tracker')"
-  [ -d "$tracker/.git" ] || step_sync_firestack
+  # Vendored in-repo: no .git, so presence of the SOURCE is the test. The
+  # old `-d $tracker/.git` check would have been false forever after the
+  # move and re-cloned upstream over the committed tree on every build.
+  [ -f "$tracker/go.mod" ] || step_sync_firestack
   step_firestack
 }
 
@@ -774,7 +777,7 @@ step_firestack() {
   tags="$(_release_var '.upstreams.firestack.build.gomobile_tags')"
   gt="$(prefer_host jq -r --arg v "$variant" '.upstreams.firestack.build.gomobile_targets[$v] // .upstreams.firestack.build.gomobile_targets[""]' "$SCRIPT_DIR/build.json")"
 
-  [ -d "$tracker/.git" ] || { errlog "firestack: source missing — run: ./build.sh sync-firestack"; exit 1; }
+  [ -f "$tracker/go.mod" ] || { errlog "firestack: vendored source missing at $tracker (expected go.mod) — run: ./build.sh sync-firestack"; exit 1; }
   # The pinned Go tarball + sha in build.json are linux/amd64 (the x86 GHA
   # runner). ARM runners would need their own tarball+sha added there.
   case "$(uname -s)-$(uname -m)" in

@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# Copyright (c) 2021 RethinkDNS and its authors.
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+set -eux
+
+# refs:
+# github.com/Stremio/vlc-android-sdk/blob/d8ab13e/prepare-aar
+# gitlab.com/fdroid/fdroiddata/-/blob/81c14003f/metadata/com.tailscale.ipn.yml
+# gitlab.com/fdroid/fdroiddata/-/blob/d6c5315a/metadata/org.calyxinstitute.vpn.yml
+
+# defaults; can be overridden for ex by jitpack.yml
+PACK="${PACK:-aar}"
+# final out
+FOUT="${FOUT:-firestack.aar}"
+FSRC="${FSRC:-firestack-sources.jar}"
+FOUTSYM="${FOUTSYM:-firestack-debug-symbols.zip}"
+# build out
+BOUT="${BOUT:-build/intra/tun2socks.aar}"
+BSRC="${BSRC:-build/intra/tun2socks-sources.jar}"
+BSRCDBG="${BSRCDBG:-build/intra/tun2socks-debug-sources.jar}"
+BOUTDBG="${BOUTDBG:-build/intra/tun2socks-debug.aar}"
+BOUTSYM="${BOUTSYM:-build/intra/tun2socks-debug-symbols.zip}"
+# android sdk/ndk versions (ANDROID_NDK_LATEST_HOME is set on github)
+LATESTNDKHOME=${ANDROID_NDK_LATEST_HOME:-0}
+# default: stackoverflow.com/a/2013573
+NDKVER="${NDKVER:-0}"
+SDKVER="${SDKVER:-36}"
+
+ARG1="${1:-go}"
+ARG2="${2:-debug}"
+
+# debug
+printenv
+
+ls -ltr $ANDROID_HOME/**
+head $ANDROID_HOME/ndk-bundle/source.properties || true
+
+# gomobile picks up the latest ndk by walking the ndk dir
+# in $ANDROID_HOME (on gh-actions: /usr/local/lib/android/sdk/ndk)
+# if NDKVER is set, override gomobile's behaviour by force setting
+# $ANDROID_NDK_HOME & $ANDROID_NDK_ROOT to the requested NDK version.
+if [ "$NDKVER" != "0" ]; then
+  ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDKVER}"
+  ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"
+  export ANDROID_NDK_HOME ANDROID_NDK_ROOT
+  # ls will fail if NDKVER is missing, which is what we want!
+  ls -ltr $ANDROID_NDK_HOME
+  head $ANDROID_NDK_HOME/source.properties || true
+elif [ "$LATESTNDKHOME" != "0" ]; then
+  # use the latest NDK version, set by github actions
+  ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME}"
+  ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"
+  export ANDROID_NDK_HOME ANDROID_NDK_ROOT
+  # ls will fail if ANDROID_NDK_LATEST_HOME is missing, which is what we want!
+  ls -ltr $ANDROID_NDK_HOME
+  head $ANDROID_NDK_HOME/source.properties || true
+fi
+
+if [ "$ARG1" = "go" ]; then
+  # download from go.dev/dl
+  curl -Lso go.tar.gz https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
+  echo "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f go.tar.gz" | sha256sum -c -
+
+  # HOME=/home/jitpack
+  # PWD=/home/jitpack/build
+  # setup go, /opt isn't writeable
+  export GOPATH="$HOME/golang"
+  mkdir -p $GOPATH
+  # golang in pwd confuses "go mod", as firestack source is in the same dir
+  tar -C $GOPATH -xzf go.tar.gz
+  export GO_LANG="$GOPATH/go/bin"
+  export GO_COMPILED="$GOPATH/bin"
+  export PATH="$GO_LANG:$GO_COMPILED:$PATH"
+fi
+
+# go debug
+go version
+go env
+
+# checkout tagged branch?
+# git checkout -b "$VERSION"
+
+# gomobile aar
+
+if [ "$ARG2" = "debug" ]; then
+  # build debug only: Makefile strips debug info from .aar and packs it into symbols zip
+  make clean && make intradebug
+  ls -Rltr build
+  # rename stripped debug build to firestack.aar
+  mv ./"$BOUTDBG" ./"$FOUT"
+  mv ./"$BOUTSYM" ./"$FOUTSYM"
+  mv ./"$BSRCDBG" ./"$FSRC"
+else
+  make clean && make intra
+  ls -Rltr build
+  # rename
+  mv ./"$BOUT" ./"$FOUT"
+  mv ./"$BSRC" ./"$FSRC"
+fi
+
+# ls cwd
+ls -ltr
