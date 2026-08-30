@@ -4,10 +4,9 @@
   "category": "libs",
   "_doc": "ab_cloud-keyboard-libs bundles five modules into ONE companion APK. This repo is the general case: one APK per library module, so each lib is installable, updatable and inspectable on its own. Nothing here names a module - the set comes from scanning lib_apks.scan, so a new module in aa_cloud-superapp/libs/ ships an APK with no edit to this file (FIRE RULE #6).",
   "lib_apks": {
-    "_doc_scan": "Every directory under ANY of these paths that contains a build.gradle is a library module and gets an APK. A list because library modules live beside the app that grew them: superapp holds most, while cal/contacts/maps/news/wallet stayed in their own repos. Module names must be unique ACROSS roots - the name is both the gradle path and the applicationId suffix - and settings.gradle fails the build if two roots collide. Paths are relative to this repo's root.",
+    "_doc_scan": "Every directory under ANY of these paths that contains a build.gradle is a library module and gets an APK. A list because ab_cloud-libs-shared/libs holds every SHARED module (consolidated there 2026-08-30 - it is the only multi-consumer root), while cal/contacts/maps/news/wallet are single-app feature modules that stayed in their own repos. Module names must be unique ACROSS roots - the name is both the gradle path and the applicationId suffix - and settings.gradle fails the build if two roots collide. Paths are relative to this repo's root.",
     "scan": [
       "../ab_cloud-libs-shared/libs",
-      "../aa_cloud-superapp/libs",
       "../ac_cloud-calendar/libs",
       "../ac_cloud-contacts/libs",
       "../ac_cloud-nav/libs",
@@ -55,7 +54,7 @@
     "jdk": "17"
   },
   "modules": {
-    "_doc": "Only the wrapper lives here. The :libs:* modules are appended by settings.gradle from the lib_apks scan above, each pointing at the one canonical directory in aa_cloud-superapp/libs/.",
+    "_doc": "Only the wrapper lives here. The :libs:* modules are appended by settings.gradle from the lib_apks scan above, each pointing at the one canonical directory in ab_cloud-libs-shared/libs/.",
     "app": {},
     "libs:analytics": {
       "dir": "../ab_cloud-libs-shared/libs/analytics"

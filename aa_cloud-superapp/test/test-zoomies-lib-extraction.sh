@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Tester: zoomies pets extracted from app/ into a proper libs/launcher-zoomies module.
+# Tester: zoomies pets extracted from app/ into a proper libs:launcher-zoomies module.
 #
 # The animated status-bar pet (PetStrengthView + its vendored zoomies GIFs) used
 # to live inside app/ (and a stray empty ac_zoomies-pets/ app folder existed at
 # the unix root). zoomies is ONE library, not an app folder — this asserts the
-# extraction to aa_cloud-superapp/libs/launcher-zoomies is wired the same way as the other
+# extraction to ab_cloud-libs-shared/libs/launcher-zoomies is wired the same way as the other
 # 25 lib modules: data-driven module entry in build.json + app dependency + the
 # moved source repackaged + the consumer importing the new package.
 #
@@ -20,7 +20,21 @@ hasnt() { grep -qF "$2" "$ROOT/$1" 2>/dev/null && bad "$3 ($1)" || ok "$3"; }
 exists()   { [ -e "$ROOT/$1" ] && ok "$2" || bad "$2 ($1 missing)"; }
 absent()   { [ -e "$1" ] && bad "$2 ($1 still exists)" || ok "$2"; }
 
-LIB="libs/launcher-zoomies"
+# Resolved from build.json::modules, never hardcoded: every helper below is
+# relative to $ROOT, and this path stopped being "libs/launcher-zoomies" the
+# moment the shared modules were consolidated into ab_cloud-libs-shared/libs/.
+# Reading the same data the build reads means the tester follows the module
+# instead of having to be remembered separately.
+LIB=$(cd "$ROOT" && python3 - <<'PYLIB'
+import json
+m = json.load(open('build.json'))['modules'].get('libs:launcher-zoomies') or {}
+print(m.get('dir') or 'libs/launcher-zoomies')
+PYLIB
+)
+if [ ! -d "$ROOT/$LIB" ]; then
+    echo "FATAL: build.json points libs:launcher-zoomies at '$LIB', which does not exist under $ROOT" >&2
+    exit 1
+fi
 PET="$LIB/src/main/java/com/diegonmarcos/superapp/zoomies/PetStrengthView.kt"
 
 echo "== T1: libs/launcher-zoomies module files exist =="

@@ -1,11 +1,11 @@
 name: "Ship → Cloud Keyboard Libs APK (build + push to GHCR via ORAS + attach to GH Release)"
 
 # Companion feature-pack APK bundling libs:media (stickers/GIF), libs:translate
-# (ML Kit), and libs:voice (Vosk). Libs shared from aa_cloud-superapp/libs/ via
+# (ML Kit), and libs:voice (Vosk). Libs shared from ab_cloud-libs-shared/libs/ via
 # relative project references.
 #
 # Triggers:
-#   - push main touching ab_cloud-keyboard-libs/ or aa_cloud-superapp/libs/{media,translate,voice}/
+#   - push main touching ab_cloud-keyboard-libs/ or ab_cloud-libs-shared/libs/{media,translate,voice}/
 #   - tag ab_cloud-keyboard-libs-v* → release build
 #   - workflow_dispatch → manual
 

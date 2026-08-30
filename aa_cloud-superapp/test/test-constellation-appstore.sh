@@ -49,7 +49,7 @@ has "$ENG" "UpdateInstaller(ctx).install(apk, app.pkg)" "Fleet installs foreign 
 has "$ENG" "packageInstaller.uninstall(pkg" "Fleet uninstall via PackageInstaller"
 
 echo "== T4: UI page + navigation + worker wired =="
-has "$APP/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore/ConstellationFragment.kt" "CONSTELLATION_FLEET_B64" "ConstellationFragment reads the fleet"
+has "$(cd "$APP/.." && pwd)/ab_cloud-libs-shared/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore/ConstellationFragment.kt" "CONSTELLATION_FLEET_B64" "ConstellationFragment reads the fleet"
 has "$APP/app/src/main/java/com/diegonmarcos/superapp/MainActivity.kt" 'actionType == "constellation"' "MainActivity routes the constellation action"
 has "$APP/app/src/main/java/com/diegonmarcos/superapp/App.kt" "ConstellationWorker.start(this)" "App.onCreate starts the fleet worker"
 jq -e '.ui.sections[] | select(.id=="config") | .pages[] | select(.id=="constellation")' "$APP/build.json" >/dev/null 2>&1 \

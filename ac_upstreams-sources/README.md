@@ -15,7 +15,7 @@ fresh `unix/` clone re-create the workspace deterministically.
    <key>` clones the upstream at `build.json::forks.<key>.pinned_tag` into the
    subdir named by `forks.<key>.tracker_dir` and applies the committed patch
    series from `ea_cloud-comms/forks/<key>/patches/`. Same input → same tree.
-2. **`aa_cloud-superapp/libs/` cherry-picks** — `build.sh sync-net` etc. copy
+2. **`ab_cloud-libs-shared/libs/` cherry-picks** — `build.sh sync-net` etc. copy
    include-lists from these clones into in-tree gradle modules.
 3. **`ac_cloud-ide/` forks (wrapper)** — same materialize-fork contract as
    comms (`ac_cloud-ide/build.sh materialize-fork <key>`, registry of record =

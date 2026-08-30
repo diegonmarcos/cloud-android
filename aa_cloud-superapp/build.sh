@@ -65,6 +65,10 @@ _ghcr_source() {
 
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Every shared library module lives in ONE place (consolidated 2026-08-30).
+# The sync/vendor targets below write INTO those modules, so they resolve
+# through this single root - not $SCRIPT_DIR/libs, which no longer exists.
+LIBS_DIR="$SCRIPT_DIR/../ab_cloud-libs-shared/libs"
 DIST_DIR="$SCRIPT_DIR/dist"
 CMD="${1:-help}"
 
@@ -216,7 +220,7 @@ _resolve_media_keys() {
 _ensure_firestack() {
   local aarout outdir tracker
   aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
-  outdir="$SCRIPT_DIR/libs/firewall/firestack"
+  outdir="$LIBS_DIR/firewall/firestack"
   [ -f "$outdir/$aarout" ] && return 0
   log "firestack: aar missing → building once (libs:firewall depends on it)"
   tracker="${ANDROID_REPO:-$HOME/git/cloud-u-android}/$(_release_var '.upstreams.firestack.tracker')"
@@ -628,7 +632,7 @@ step_sync_qrcodes() {
 # pull → one `./build.sh sync-net` → clear `git diff` for review.
 step_sync_net() {
   local upstream="${ANDROID_REPO:-$HOME/git/cloud-u-android}/ac_net-wireguard/tunnel"
-  local dst="$SCRIPT_DIR/libs/net"
+  local dst="$LIBS_DIR/net"
   [ -d "$upstream" ] || { errlog "sync-net: upstream not found: $upstream (clone https://github.com/WireGuard/wireguard-android.git there, or set ANDROID_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-net: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
 
@@ -732,7 +736,7 @@ step_firestack() {
   target="$(_release_var '.upstreams.firestack.build.make_target')"
   aarbuilt="$(_release_var '.upstreams.firestack.build.aar_built')"
   aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
-  outdir="$SCRIPT_DIR/libs/firewall/firestack"
+  outdir="$LIBS_DIR/firewall/firestack"
   cache="$SCRIPT_DIR/.cache"
   # Single-ABI gomobile target for the current SUPERAPP_VARIANT (data-driven) —
   # avoids gomobile's all-ABI default (~4× time → CI timeout).
@@ -823,7 +827,7 @@ _verify_firestack_aar() {
 # `./build.sh sync-heliboard` -> clear `git diff` for review.
 step_sync_heliboard() {
   local upstream="${ANDROID_REPO:-$HOME/git/cloud-u-android}/ac_keyboard-heliboard/app/src/main"
-  local dst="$SCRIPT_DIR/libs/keyboard"
+  local dst="$LIBS_DIR/keyboard"
   [ -d "$upstream" ] || { errlog "sync-heliboard: upstream not found: $upstream (clone https://github.com/Helium314/HeliBoard.git to ${ANDROID_REPO:-$HOME/git/cloud-u-android}/ac_keyboard-heliboard, or set ANDROID_REPO=)"; exit 1; }
   command -v rsync >/dev/null 2>&1 || { errlog "sync-heliboard: rsync required (in nix-shell: nix shell nixpkgs#rsync)"; exit 1; }
 
@@ -872,7 +876,7 @@ step_sync_heliboard() {
 # license/URL text. Invoked at the end of sync-heliboard; also standalone.
 step_brand_rename() {
   local bj="$SCRIPT_DIR/build.json"
-  local resdir="$SCRIPT_DIR/libs/keyboard/src/main/res"
+  local resdir="$LIBS_DIR/keyboard/src/main/res"
   command -v jq >/dev/null 2>&1 || { errlog "brand-rename: jq required"; exit 1; }
   [ -d "$resdir" ] || { errlog "brand-rename: $resdir missing — run sync-heliboard first"; exit 1; }
 
@@ -954,7 +958,7 @@ step_sync_zoomies() {
 # ${ANDROID_REPO:-$HOME/git/cloud-u-android}/ac_keyboard-dicts (codeberg.org/Helium314/aosp-dictionaries).
 step_sync_keyboard_dicts() {
   local upstream="${ANDROID_REPO:-$HOME/git/cloud-u-android}/ac_keyboard-dicts"
-  local dst="$SCRIPT_DIR/libs/keyboard/dicts-data"  # OUT of the asset tree: only the companion bundles these; cloud-keyboard reads them at runtime
+  local dst="$LIBS_DIR/keyboard/dicts-data"  # OUT of the asset tree: only the companion bundles these; cloud-keyboard reads them at runtime
   local bj="$SCRIPT_DIR/build.json"
   [ -d "$upstream" ] || { errlog "sync-keyboard-dicts: upstream not found: $upstream (clone https://codeberg.org/Helium314/aosp-dictionaries to ${ANDROID_REPO:-$HOME/git/cloud-u-android}/ac_keyboard-dicts, or set ANDROID_REPO=)"; exit 1; }
   command -v jq >/dev/null 2>&1 || { errlog "sync-keyboard-dicts: jq required"; exit 1; }

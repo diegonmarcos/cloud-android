@@ -11,7 +11,7 @@
 # directories are all read from the build.json files, so adding a shared module
 # needs no edit to this tester.
 #
-# Run from anywhere:  bash aa_cloud-superapp/libs/shared-modules.test.sh
+# Run from anywhere:  bash ab_cloud-libs-shared/libs/shared-modules.test.sh
 set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
@@ -161,7 +161,12 @@ for bj in sorted(glob.glob('ac_cloud-*/build.json')):
     app=bj.split('/')[0]
     declared=set(json.load(open(bj)).get('modules',{}))
     for bg in glob.glob(f'{app}/*/build.gradle'):
-        for m in re.findall(r"project\(':([\w:-]+)'\)", open(bg).read()):
+        # Strip // comments first: a commented-out dependency is not a
+        # dependency, and demanding a build.json entry for one is a failure
+        # that no correct edit can clear.
+        src = '\n'.join(re.sub(r'//.*', '', ln)
+                        for ln in open(bg).read().splitlines())
+        for m in re.findall(r"project\(':([\w:-]+)'\)", src):
             if m not in declared:
                 print(f"{bg} depends on :{m}, which {bj} does not declare")
 PY
@@ -224,7 +229,7 @@ PY
 fi
 
 # 11b. The same trigger drift, one level up. An APP repo compiles shared modules
-#      BY REFERENCE out of aa_cloud-superapp/libs/ (settings.gradle re-points
+#      BY REFERENCE out of ab_cloud-libs-shared/libs/ (settings.gradle re-points
 #      projectDir there), so those sources sit OUTSIDE the repo's own path
 #      filter. Miss one and the workflow simply never fires for a shared-lib
 #      change: the app keeps shipping whatever APK was last built for an
@@ -342,8 +347,25 @@ echo
 #     without anything failing - the app would just quietly grow libwg-go.so
 #     back. Two invariants: the contract carries no native build, and no app
 #     links the engine (only ab_cloud-libs, which turns it into its own APK).
-if [ -d aa_cloud-superapp/libs/net ]; then
-    if command grep -qE 'externalNativeBuild|ndkVersion|cmake' aa_cloud-superapp/libs/net/build.gradle; then
+# The directory is DERIVED, never named: hardcoding it is what silently
+# disarmed this whole rule when the modules moved to ab_cloud-libs-shared -
+# `[ -d <vanished path> ]` is false, so all four assertions below simply
+# stopped running and the suite still said PASS. Same trap rule 11b documents.
+NET_DIR=$(python3 - <<'PYNET'
+import json, os
+cfg = json.load(open('ab_cloud-libs/build.json'))['lib_apks']
+roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
+for r in roots:
+    d = os.path.normpath(os.path.join('ab_cloud-libs', r, 'net'))
+    if os.path.isfile(os.path.join(d, 'build.gradle')):
+        print(d)
+        break
+PYNET
+)
+if [ -z "$NET_DIR" ]; then
+    note FAIL "libs:net not found under any lib_apks.scan root - this rule cannot run, and a rule that cannot run is not a passing rule"
+else
+    if command grep -qE 'externalNativeBuild|ndkVersion|cmake' "$NET_DIR/build.gradle"; then
         note FAIL "libs:net declares a native build - the engine belongs in libs:net-wg, or every consumer carries libwg-go.so again"
     else
         note ok "libs:net is contract-only (no NDK/CMake)"

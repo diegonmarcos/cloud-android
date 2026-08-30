@@ -1,4 +1,21 @@
 {
+  "modules": {
+    "_doc": "The gradle module graph, as data. settings.gradle loops over this instead of carrying a hardcoded include list, so the graph lives in exactly one place (FIRE RULE #6). `dir` shares a module BY REFERENCE from the one canonical directory: libs:analytics lives in ab_cloud-libs-shared/libs/ with every other shared module, never as a per-app copy. colorpicker and openpgp-api are vendored FairEmail subprojects that belong to this app alone, so they resolve at the default path.",
+    "app": {},
+    "colorpicker": {
+      "type": "library",
+      "comment": "Vendored FairEmail subproject (upstream com.rarepebble:colorpicker). App-local: nothing else in the constellation consumes it."
+    },
+    "openpgp-api": {
+      "type": "library",
+      "comment": "Vendored FairEmail subproject (OpenKeychain OpenPGP API). App-local, same reason as colorpicker."
+    },
+    "libs:analytics": {
+      "type": "library",
+      "dir": "../ab_cloud-libs-shared/libs/analytics",
+      "comment": "Shared BY REFERENCE - one copy for the whole constellation, no per-app drift."
+    }
+  },
   "forks": {
     "mail": {
       "app_id": "com.diegonmarcos.comms.mail",

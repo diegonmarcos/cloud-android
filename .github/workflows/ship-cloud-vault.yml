@@ -35,7 +35,7 @@ on:
       - "ac_cloud-vault-v*"
     paths:
       - "ac_cloud-vault/**"
-      # Shared BY REFERENCE from aa_cloud-superapp/libs/ (settings.gradle
+      # Shared BY REFERENCE from ab_cloud-libs-shared/libs/ (settings.gradle
       # re-points projectDir there), so these compile into this APK without
       # living in this directory. Without them a shared-lib change ships no
       # new APK here and the installed build silently goes stale.

@@ -71,7 +71,7 @@ regen_constellation() {
             # One repo, one APK per library module, so it expands into MANY fleet
             # entries instead of one. The module set is not listed anywhere: it is
             # the same scan+exclude that settings.gradle and build.sh apply, so a
-            # new module under aa_cloud-superapp/libs/ appears in the Libs tab
+            # new module under ab_cloud-libs-shared/libs/ appears in the Libs tab
             # automatically. Everything else here is derived from the dir name.
             local lroot lscan lrel lpair lexcl lprefix laprefix limgprefix lmod lasset
             lexcl="$(jq -r '(.lib_apks.exclude // {}) | keys[]' "$bj" 2>/dev/null | tr '\n' ' ')"
@@ -81,7 +81,7 @@ regen_constellation() {
             # lib_apks.scan is a LIST of roots (library modules live beside the
             # app that grew them), so flatten to "<module>|<repo-relative dir>"
             # first: the directory is what repo_url has to point at, and it is
-            # no longer always aa_cloud-superapp/libs.
+            # no longer always aa_cloud-superapp/libs (consolidated into ab_cloud-libs-shared/libs 2026-08-30).
             for lpair in $(
                 for lroot in $(jq -r '.lib_apks.scan | if type == "array" then .[] else . end' "$bj"); do
                     lscan="$(dirname "$bj")/$lroot"

@@ -119,10 +119,13 @@ build.log
 .obsidian/workspace-mobile.json
 
 ## ─── Android app trees (moved from cloud-infra-desktop 2026-08-25, ea_* -> aa_* (superapp) / ab_* (libs) / ac_* (apps)) ───
-## EXCEPTION: aa_cloud-superapp/libs/ is the gradle multi-module source tree
-## renamed from ea_superapp → aa_cloud-superapp 2026-05-30.
-!aa_cloud-superapp/libs/
-!aa_cloud-superapp/libs/**
+## EXCEPTION: ab_cloud-libs-shared/libs/ is THE gradle multi-module source tree
+## for every shared library. All 30 modules were consolidated here 2026-08-30
+## from aa_cloud-superapp/libs/ (which no longer exists) - the negation moved
+## with them, because a negation pointing at a vanished directory silently
+## stops protecting anything. Seventh time this blanket rule has needed one.
+!ab_cloud-libs-shared/libs/
+!ab_cloud-libs-shared/libs/**
 ## EXCEPTION: ac_cloud-wallet/libs/ is the gradle multi-module source tree
 ## (libs:wallet). Same pattern as aa_cloud-superapp/libs/. Added 2026-07-12.
 !ac_cloud-wallet/libs/
@@ -143,10 +146,14 @@ build.log
 ## EXCEPTION: ac_cloud-vault/libs/ — the FIFTH time this blanket rule has
 !ac_cloud-vault/libs/
 !ac_cloud-vault/libs/**
-## EXCEPTION: ac_cloud-media-center/upstream/libs/ — the SIXTH time. This one
+## EXCEPTION: ac_cloud-media-center/libs/ — the SIXTH time. Path updated when
+## upstream/ was flattened to the app root (2026-08-29): the old
+## !ac_cloud-media-center/upstream/libs/ stopped matching after the move, which
+## would have let the blanket libs/ rule swallow 68 tracked files on the next
+## git add — silently, because git add never reports what it ignored. This one
 ## as !ac_cloud-media-center/libs/ would not have matched it.
-!ac_cloud-media-center/upstream/libs/
-!ac_cloud-media-center/upstream/libs/**
+!ac_cloud-media-center/libs/
+!ac_cloud-media-center/libs/**
 aa_cloud-superapp/**/*.keystore
 aa_cloud-superapp/**/*.jks
 ea_cloud-comms/**/*.keystore
@@ -220,6 +227,19 @@ ac_cloud-contacts/build/
 ac_cloud-contacts/**/build/
 ac_cloud-contacts/.cache/
 ac_cloud-contacts/.kotlin/
+## Same for ab_cloud-libs-shared — MUST sort after its whitelist above. The
+## !ab_cloud-libs-shared/libs/** negation un-ignores EVERYTHING beneath it,
+## build/ and .cxx/ included, so without these `git add -A` stages 32,128
+## generated files: libs/net vendors a whole Go source tree under
+## build/intermediates/cxx/. Same class as the ~3M-line commit 264c09f2, and
+## the reason that one happened is that a repo was added to the whitelist and
+## never to this list. Added 2026-08-30 with the shared-module consolidation.
+ab_cloud-libs-shared/.gradle/
+ab_cloud-libs-shared/build/
+ab_cloud-libs-shared/**/build/
+ab_cloud-libs-shared/**/.cxx/
+ab_cloud-libs-shared/.cache/
+ab_cloud-libs-shared/.kotlin/
 ## ac_cloud-calendar's first local ./gradlew run surfaced it, but the gap
 ## Re-ignore Gradle/Kotlin daemon caches inside the whitelisted aa_cloud-superapp/
 aa_cloud-superapp/.cache/

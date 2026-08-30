@@ -21,14 +21,24 @@ dependencyResolutionManagement {
 
 rootProject.name = "email"
 
-include ':app', ':colorpicker', ':openpgp-api'
+// Data-driven from build.json::modules (FIRE RULE #6: never hardcode lists).
+// The include list used to live here as literals, so the module graph existed
+// in two places and neither knew about the other — which is exactly how
+// :libs:analytics came to be compiled by a build that never declared it.
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return  // skip _doc keys
+    include ":${name}"
+    // Map gradle path :libs:foo -> libs/foo/  (vs. :app -> app/), unless the
+    // module declares a `dir` in build.json. `dir` is how a module is SHARED by
+    // reference instead of copy-pasted: it lives once in ab_cloud-libs-shared/
+    // libs/ and every app points at that one directory, so a fix lands in all
+    // of them at build time and copies cannot drift.
+    def path = _spec?.dir ?: name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}
 
-// Shared BY REFERENCE from ab_cloud-libs-shared/ — one copy, no per-app drift.
-include ':libs:analytics'
 // ':libs:analytics' implicitly declares a ':libs' container whose default
 // projectDir is <root>/libs. This app has none, and Gradle 9 fails on a project
-// directory that does not exist. Must come AFTER the include that creates it.
-project(':libs').projectDir = new File(rootDir, '../ab_cloud-libs-shared/libs')
-project(':libs:analytics').projectDir = new File(rootDir, '../ab_cloud-libs-shared/libs/analytics')
-project(':colorpicker').projectDir = new File('colorpicker')
-project(':openpgp-api').projectDir = new File('openpgp-api')
+// directory that does not exist. Must come AFTER the loop that creates it.
+project(':libs').projectDir = file('../ab_cloud-libs-shared/libs')

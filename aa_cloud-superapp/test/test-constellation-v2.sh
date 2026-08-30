@@ -6,7 +6,8 @@ ROOT="$(cd "$APP/.." && pwd)"
 # updater is a shared module in ab_cloud-libs-shared, not vendored per-app.
 UPD="$ROOT/ab_cloud-libs-shared/libs/updater/src/main/java/com/diegonmarcos/superapp/updater"
 # the constellation UI moved out of app/configs into the appstore lib module.
-CFG="$APP/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore"
+# appstore is a shared module in ab_cloud-libs-shared, not vendored per-app.
+CFG="$ROOT/ab_cloud-libs-shared/libs/appstore/src/main/java/com/diegonmarcos/superapp/appstore"
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  PASS: $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }

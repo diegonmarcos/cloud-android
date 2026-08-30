@@ -10,6 +10,11 @@ on:
     branches: [main]
     paths:
       - "ac_cloud-mail/**"
+      # Shared BY REFERENCE from ab_cloud-libs-shared/libs/ (settings.gradle
+      # re-points projectDir there), so it compiles into this APK without
+      # living in this directory. Without it a shared-lib change ships no
+      # new APK here and the installed build silently goes stale.
+      - "ab_cloud-libs-shared/libs/analytics/**"
       - "1_cicd/src/scripts/cloud-mail-engine.sh"
       - "1_cicd/src/cicd/ship-cloud-mail.yml"
 
