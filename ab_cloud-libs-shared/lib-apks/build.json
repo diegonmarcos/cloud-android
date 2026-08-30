@@ -5,10 +5,12 @@
   "_doc": "ab_cloud-libs-shared/keyboard-engines bundles five modules into ONE companion APK. This repo is the general case: one APK per library module, so each lib is installable, updatable and inspectable on its own. Nothing here names a module - the set comes from scanning lib_apks.scan, so a new module in aa_cloud-superapp/libs/ ships an APK with no edit to this file (FIRE RULE #6).",
   "lib_apks": {
     "_doc_scan": "Every directory under ANY of these paths that contains a build.gradle is a library module and gets an APK. A list because ab_cloud-libs-shared/libs holds every SHARED module (consolidated there 2026-08-30 - it is the only multi-consumer root), while cal/contacts/maps/news/wallet are single-app feature modules that stayed in their own repos. Module names must be unique ACROSS roots - the name is both the gradle path and the applicationId suffix - and settings.gradle fails the build if two roots collide. Paths are relative to this repo's root.",
-    "scan": ["../libs"],
+    "scan": [
+      "../libs"
+    ],
     "_doc_exclude": "Modules that must NOT ship as a standalone APK, each with the reason. An exclusion is a claim about install-time behaviour, so it belongs in data next to the scan rule rather than as a silent skip in gradle.",
     "exclude": {
-      "cropper": "Upstream image-cropper UI for cloud-media-center, moved into the shared root with the rest of its libs/. It was never a lib APK — media-center was not a scan root — and a standalone cropper APK installs nothing anyone can open. Excluded so the shipped set is exactly what it was before the merge.",
+      "cropper": "Upstream image-cropper UI for cloud-media-center, moved into the shared root with the rest of its libs/. It was never a lib APK \u2014 media-center was not a scan root \u2014 and a standalone cropper APK installs nothing anyone can open. Excluded so the shipped set is exactly what it was before the merge.",
       "gesture": "Same: upstream gesture helper, compiled into cloud-media-center only.",
       "panoramaviewer": "Same: upstream panorama viewer, compiled into cloud-media-center only.",
       "scrollbar": "Same: upstream fast-scrollbar, compiled into cloud-media-center only.",
@@ -77,7 +79,7 @@
       "max_installs_per_pass": 3
     },
     "ghcr": {
-      "enabled": true,
+      "enabled": false,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "_doc_image": "Per-module image name is '<image_prefix><module>' - that is what build.sh pushes. `image` is the repo-level fallback that libs:updater's BuildConfig reads; it is never pushed to, because a library APK does not self-update (see auto_update below).",
@@ -87,7 +89,8 @@
       "tags": [
         "latest",
         "sha-{sha}"
-      ]
+      ],
+      "_doc": "DISABLED for the same reason ac_cloud-watchdog disabled it, and it is the fix rather than a workaround. A GHCR package is owned by the ACCOUNT, not the repository: GitHub creates every new user-owned package PRIVATE whatever repo pushed it, image.source only LINKS it, and no API can change it (PATCH /user/packages/... 404s even with write:packages). Measured: cloud-watchdog was deleted and rebuilt by GITHUB_TOKEN from inside this PUBLIC repo's own workflow and came back private. One APK per library module means one package per module, so this flow multiplies the problem: cloud-lib-watchdog 403'd and cloud-lib-search was private too. A channel that cannot follow repo visibility is one these APKs do not ship on; the GH Release asset IS the repo and follows it by construction. Re-enable only under an ORG namespace, where PATCH /orgs/{org}/packages/.../visibility exists."
     },
     "gh_release": {
       "enabled": true,
@@ -99,7 +102,7 @@
     }
   },
   "analytics": {
-    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app \u2014 give each app its own site_id once per-app sites exist in Umami/Matomo.",
     "enabled": true,
     "app": "ab_cloud-libs-shared/lib-apks",
     "umami": {
