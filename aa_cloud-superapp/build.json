@@ -1642,9 +1642,9 @@
               },
               {
                 "id": "sheets",
-                "label": "Sheets",
+                "label": "Office",
                 "icon": "ic_sheets",
-                "target": "app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F"
+                "target": "extapp:cloud-sheets"
               },
               {
                 "_doc": "Cloud Media Center — our Google-Photos/Samsung-Gallery replacement (local gallery + PhotoPrism cloud library + backup). Registered in ui.external_apps[cloud-media-center]; this tile is what makes it VISIBLE in the launcher — an external_apps entry alone only makes an app installable/openable BY ID and shows nothing. The former sibling 'photos' tile (app://com.google.android.apps.photos) was removed 2026-08-30 now that this one ships a green APK — Media Center is the sole photo entry point.",
@@ -5755,6 +5755,15 @@
         "hub_package": "com.diegonmarcos.mediacenter",
         "install_package": "com.diegonmarcos.mediacenter",
         "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/cloud-media-center.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Collabora Office (ac_cloud-sheets) — MIRRORED upstream APK, not compiled: the office engine needs Collabora's Gerrit + an NDK megabuild that no GHA runner can hold, so ship-cloud-sheets.yml downloads the official F-Droid-repo APK, verifies a PINNED sha256, and republishes it (release asset Cloud-Sheets.apk + ghcr cloud-sheets; layer digest == upstream sha256 is the byte-identity proof). Signed by COLLABORA, not us — fine for install, but it can never join signature-gated CLOUD_EXEC flows. Pin lives in ac_cloud-sheets/build.json (25.04.9.1 / vc115, 2026-08-30).",
+        "id": "cloud-sheets",
+        "label": "Collabora Office",
+        "hub_package": "com.collabora.libreoffice",
+        "install_package": "com.collabora.libreoffice",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Sheets.apk",
         "forks": {}
       }
     ],
