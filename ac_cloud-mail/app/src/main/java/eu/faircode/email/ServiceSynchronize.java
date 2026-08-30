@@ -203,6 +203,10 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                 " process=" + android.os.Process.myPid());
         super.onCreate();
 
+        // comms: a fresh service really is a new sync session, so the notification
+        // is allowed back even if it was swiped away during the previous one.
+        serviceNotificationDismissed = false;
+
         if (isBackgroundService(this))
             stopForeground(true);
         else
@@ -478,8 +482,9 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                                 NotificationManager nm =
                                         Helper.getSystemService(ServiceSynchronize.this, NotificationManager.class);
                                 if (NotificationHelper.areNotificationsEnabled(nm))
-                                    nm.notify(NotificationHelper.NOTIFICATION_SYNCHRONIZE,
-                                            getNotificationService(lastAccounts, lastOperations));
+                                    if (!serviceNotificationDismissed)
+                                        nm.notify(NotificationHelper.NOTIFICATION_SYNCHRONIZE,
+                                                getNotificationService(lastAccounts, lastOperations));
                             } catch (Throwable ex) {
 /*
                             java.lang.NullPointerException: Attempt to invoke interface method 'java.util.Iterator java.lang.Iterable.iterator()' on a null object reference
@@ -1148,6 +1153,14 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
 
             super.onStartCommand(intent, flags, startId);
 
+            if ("dismissed".equals(action)) {
+                // comms: user swiped the ongoing notification away. The service is
+                // already foreground, so skip the startForeground() below -- calling
+                // it would immediately re-post what they just dismissed.
+                serviceNotificationDismissed = true;
+                return START_STICKY;
+            }
+
             if (isBackgroundService(this))
                 stopForeground(true);
             else
@@ -1561,7 +1574,16 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                         .setCategory(NotificationCompat.CATEGORY_SERVICE)
                         .setVisibility(NotificationCompat.VISIBILITY_SECRET)
                         .setLocalOnly(true)
-                        .setOngoing(true);
+                        // comms: ongoing == non-dismissible. Android 13+ lets the
+                        // user swipe an FGS notification away; don't fight it.
+                        .setOngoing(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Intent dismissed = new Intent(this, ServiceSynchronize.class);
+            dismissed.setAction("dismissed");
+            builder.setDeleteIntent(PendingIntentCompat.getService(
+                    this, PI_SERVICE_DISMISSED, dismissed, PendingIntent.FLAG_UPDATE_CURRENT));
+        }
 
         if (lastAccounts > 0)
             builder.setContentTitle(getResources().getQuantityString(
@@ -1577,7 +1599,8 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
             builder.setSubText(getString(R.string.title_notification_waiting));
 
         Notification notification = builder.build();
-        notification.flags |= Notification.FLAG_NO_CLEAR;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+            notification.flags |= Notification.FLAG_NO_CLEAR;
         return notification;
     }
 
@@ -3203,8 +3226,9 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                                 NotificationManager nm =
                                         Helper.getSystemService(ServiceSynchronize.this, NotificationManager.class);
                                 if (NotificationHelper.areNotificationsEnabled(nm))
-                                    nm.notify(NotificationHelper.NOTIFICATION_SYNCHRONIZE,
-                                            getNotificationService(lastAccounts, lastOperations));
+                                    if (!serviceNotificationDismissed)
+                                        nm.notify(NotificationHelper.NOTIFICATION_SYNCHRONIZE,
+                                                getNotificationService(lastAccounts, lastOperations));
                             } catch (Throwable ex) {
                                 Log.w(ex);
                             }
@@ -3659,6 +3683,13 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                 Log.e(ex);
         }
     }
+
+    // comms: Android 13+ makes foreground-service notifications dismissible,
+    // but this service forced them back to non-dismissible AND re-posted on
+    // every sync state change, so swiping it away did nothing. Once the user
+    // swipes it, stay quiet until the service is actually (re)started.
+    private static volatile boolean serviceNotificationDismissed = false;
+    private static final int PI_SERVICE_DISMISSED = 100;
 
     private static boolean isBackgroundService(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
