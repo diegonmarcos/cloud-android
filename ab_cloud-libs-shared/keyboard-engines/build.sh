@@ -30,9 +30,20 @@ _ghcr_publish() {
   # it, instead of leaving a 401 to be discovered by whoever tries to install.
   local image="$1"
   command -v gh >/dev/null 2>&1 || return 0
-  local repo_vis pkg_vis
-  repo_vis="$(gh repo view "${GITHUB_REPOSITORY:-$(_ghcr_source | sed 's|.*github.com/||')}" \
-                --json visibility --jq .visibility 2>/dev/null | tr 'A-Z' 'a-z')"
+  local repo_vis pkg_vis want
+  # An artifact may be DELIBERATELY private in a public repo — a fork whose
+  # distribution is not ours to make, something not ready to be seen. That is a
+  # decision this check must respect, not override: release.ghcr.visibility
+  # states it, and where it is stated it wins over the repo. Without this the
+  # check would push every exception toward being published, which is a worse
+  # failure than the 401 it exists to prevent.
+  want="$(_release_var '.release.ghcr.visibility')"
+  if [ -n "$want" ] && [ "$want" != "null" ]; then
+    repo_vis="$want"
+  else
+    repo_vis="$(gh repo view "${GITHUB_REPOSITORY:-$(_ghcr_source | sed 's|.*github.com/||')}" \
+                  --json visibility --jq .visibility 2>/dev/null | tr 'A-Z' 'a-z')"
+  fi
   [ -z "$repo_vis" ] && return 0
   pkg_vis="$(gh api "/user/packages/container/${image}" --jq .visibility 2>/dev/null)" || return 0
   [ "$pkg_vis" = "$repo_vis" ] && return 0
