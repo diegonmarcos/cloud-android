@@ -1,6 +1,6 @@
 {
   "name": "cloud-ide",
-  "description": "Cloud-IDE — constellation of three minimally-forked upstream developer apps (Acode code editor / Amaze File Manager / Amaze File Utilities) plus a thin original hub APK. The hub switches between the forks and brokers their data (workspaces, recent files, git status, storage analysis, transfers) to Cloud-SuperApp over signature-gated AIDL + ContentProvider IPC. The shared resource is a hub-owned on-device workspace tree (not a server). Forks are declarative: pinned upstream tag + committed patch series, materialized into gitignored tracker clones at build time. Built via Nix devShell (gradle + AGP + Android SDK + node/cordova for the Acode fork).",
+  "description": "Cloud-IDE \u2014 constellation of three minimally-forked upstream developer apps (Acode code editor / Amaze File Manager / Amaze File Utilities) plus a thin original hub APK. The hub switches between the forks and brokers their data (workspaces, recent files, git status, storage analysis, transfers) to Cloud-SuperApp over signature-gated AIDL + ContentProvider IPC. The shared resource is a hub-owned on-device workspace tree (not a server). Forks are declarative: pinned upstream tag + committed patch series, materialized into gitignored tracker clones at build time. Built via Nix devShell (gradle + AGP + Android SDK + node/cordova for the Acode fork).",
   "category": "android",
   "build": {
     "type": "gradle",
@@ -8,11 +8,11 @@
   },
   "frontend_source": "../da_my-konsole/frontend",
   "engine": {
-    "_doc": "Documents the default the WebView's transport.js falls back to (window.MYK_ENGINE_URL || this) — NOT wired into the v1 hub build (no build-time substitution yet); the my-konsole engine binary itself owns the real default.",
+    "_doc": "Documents the default the WebView's transport.js falls back to (window.MYK_ENGINE_URL || this) \u2014 NOT wired into the v1 hub build (no build-time substitution yet); the my-konsole engine binary itself owns the real default.",
     "ws_url": "ws://127.0.0.1:7333"
   },
   "android": {
-    "_doc": "Hub-only application coordinates. The forks carry their OWN applicationId / version (declared per fork in build.json::forks) — they are separate APKs.",
+    "_doc": "Hub-only application coordinates. The forks carry their OWN applicationId / version (declared per fork in build.json::forks) \u2014 they are separate APKs.",
     "application_id": "com.diegonmarcos.ide",
     "compile_sdk": 35,
     "min_sdk": 26,
@@ -25,18 +25,20 @@
     ]
   },
   "signing": {
-    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key — it never generates or substitutes a random/legacy key.",
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key \u2014 it never generates or substitutes a random/legacy key.",
     "vault_keystore": "A0_keys/providers/android/release.jks",
-    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml",
+    "vault_ssh_key": "A0_keys/providers/android/ssh.secrets.yaml",
+    "_doc_ssh": "The ONE declared ssh key every constellation app uses to reach a phone terminal, resolved exactly like the ONE signing key: from the vault, sops-decrypted by build.sh::_resolve_ssh_key, baked to BuildConfig.CLOUD_SSH_KEY_B64, never hardcoded and never generated. The public half is committed in the open at cloud-u-linux/da__my-konsole/termux/authorized_keys, which is what the env provisions \u2014 so a phone trusts the key before any app is installed and there is no paste-this-line setup step. NO FALLBACK: a build without the vault fails rather than shipping an app that mints a key the phone has never heard of."
   },
   "diagnostics": {
-    "_doc": "Hub AboutActivity diagnostics → cloud sink + local download (DiagnosticsPush). Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by hub/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store) ingest reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK. '{stream}' is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (Download logs still works); set it to the confirmed collector ingest path to enable Send logs → cloud. Data-driven — never hardcode in Kotlin.",
+    "_doc": "Hub AboutActivity diagnostics \u2192 cloud sink + local download (DiagnosticsPush). Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by hub/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store) ingest reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK. '{stream}' is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (Download logs still works); set it to the confirmed collector ingest path to enable Send logs \u2192 cloud. Data-driven \u2014 never hardcode in Kotlin.",
     "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-ide-hub",
     "enabled": true
   },
   "toolchain": {
-    "_doc": "Pinned for reproducibility — all derived in flake.nix. Mirrors aa_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
+    "_doc": "Pinned for reproducibility \u2014 all derived in flake.nix. Mirrors aa_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
     "agp": "8.7.3",
     "gradle": "8.10.2",
     "kotlin": "1.9.24",
@@ -44,23 +46,23 @@
     "node": "20"
   },
   "ui": {
-    "_doc": "Hub UI defaults baked into BuildConfig. overlay_nav_bar_default: the floating cross-app wrapper bar (NavOverlayService) is DISABLED by default — Cloud-SuperApp now owns the system-wide bar. The code stays; Configs has a toggle (persisted in prefs) for users who run Cloud-IDE standalone. terminal_backend_default: which phone env the terminal SSHes into by default ('termux' or 'nix-on-droid'); the Configs 'Terminal backend' switcher overrides this per-device.",
+    "_doc": "Hub UI defaults baked into BuildConfig. overlay_nav_bar_default: the floating cross-app wrapper bar (NavOverlayService) is DISABLED by default \u2014 Cloud-SuperApp now owns the system-wide bar. The code stays; Configs has a toggle (persisted in prefs) for users who run Cloud-IDE standalone. terminal_backend_default: which phone env the terminal SSHes into by default ('termux' or 'nix-on-droid'); the Configs 'Terminal backend' switcher overrides this per-device.",
     "overlay_nav_bar_default": false,
     "terminal_backend_default": "termux"
   },
   "modules": {
-    "_doc": "Gradle module graph — settings.gradle iterates this (FIRE rule 6: never hardcode the list). Only the hub is an in-tree gradle module; the three forks are SEPARATE gradle/cordova projects living in their materialized tracker clones, built via `./build.sh build-fork <name>`, never included here.",
+    "_doc": "Gradle module graph \u2014 settings.gradle iterates this (FIRE rule 6: never hardcode the list). Only the hub is an in-tree gradle module; the three forks are SEPARATE gradle/cordova projects living in their materialized tracker clones, built via `./build.sh build-fork <name>`, never included here.",
     "hub": {
       "type": "application",
       "depends_on": [],
-      "comment": "Thin switcher + IPC broker. Original code (no upstream). Declares the signature permission, the unified IdeProvider (reads), the IIdeService AIDL (actions + push callbacks), the launcher switcher UI, and owns the shared workspace root (data/ide-endpoints.json::workspace.root_path). HUB-SHARING: the broker + updater are structurally identical to cloud-comms-hub — once both exist, extract them into a shared gradle module (see forks/../README) rather than maintaining two copies. cloud-comms scaffolded first, so Cloud-IDE consumes the extracted core; until that extraction lands, this hub mirrors the comms hub deliberately."
+      "comment": "Thin switcher + IPC broker. Original code (no upstream). Declares the signature permission, the unified IdeProvider (reads), the IIdeService AIDL (actions + push callbacks), the launcher switcher UI, and owns the shared workspace root (data/ide-endpoints.json::workspace.root_path). HUB-SHARING: the broker + updater are structurally identical to cloud-comms-hub \u2014 once both exist, extract them into a shared gradle module (see forks/../README) rather than maintaining two copies. cloud-comms scaffolded first, so Cloud-IDE consumes the extracted core; until that extraction lands, this hub mirrors the comms hub deliberately."
     },
     "libs:analytics": {
       "dir": "../ab_cloud-libs-shared/libs/analytics"
     }
   },
   "release": {
-    "_doc": "Per-APK distribution for the HUB — SAME data-driven pattern as aa_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} → git short sha, {version_name} → android.version_name.",
+    "_doc": "Per-APK distribution for the HUB \u2014 SAME data-driven pattern as aa_cloud-superapp / ea_cloud-comms build.json::release. build.sh oras-push + gh-release read this block; the GHA workflow (1_cicd/src/cicd/ship-cloud-ide.yml) only invokes those engine commands, no hardcoded registry/tag strings. The three forks publish their own OCI artifacts under their own build systems. {sha} \u2192 git short sha, {version_name} \u2192 android.version_name.",
     "abis": {
       "_doc": "ABI build axis. The hub is pure-JVM (ABI-agnostic); the ONLY native-bearing bundled app is the patched Amaze fork (Rust :file_operations). `build.sh build [abi]` / `build-fork <k> [abi]` / `bundle-forks [abi]` select one. `default:true` is what bare `build` / the CI artifact use; non-default abis get a -<abi> artifact suffix. rust_target = the rust-android-gradle cargo target key (passed as -PcloudIdeRustTargets).",
       "arm64-v8a": {
@@ -72,7 +74,7 @@
       }
     },
     "artifact": {
-      "_doc": "Path under dist/ to publish. `debug` is the daily-driver build (no ProGuard, real stacktraces, debug keystore) — THE hub app, not a side-by-side variant. asset_name matches `debug` so the engine skips a redundant copy.",
+      "_doc": "Path under dist/ to publish. `debug` is the daily-driver build (no ProGuard, real stacktraces, debug keystore) \u2014 THE hub app, not a side-by-side variant. asset_name matches `debug` so the engine skips a redundant copy.",
       "debug": "Cloud-IDE-Hub.apk",
       "release": "Cloud-IDE-Hub-release.apk"
     },
@@ -100,27 +102,27 @@
       "generate_release_notes": false
     },
     "phone_install": {
-      "_doc": "Targets for build.sh phone-install — pulls the hub APK from GHCR via curl+OCI HTTP API (no oras dep; works on aarch64 Termux without a Nix shell) and copies it where an Android file manager can see it. Override per-env via PHONE_TARGET.",
+      "_doc": "Targets for build.sh phone-install \u2014 pulls the hub APK from GHCR via curl+OCI HTTP API (no oras dep; works on aarch64 Termux without a Nix shell) and copies it where an Android file manager can see it. Override per-env via PHONE_TARGET.",
       "default_tag": "latest",
       "target_dir": "~/storage/Download",
       "asset_name": "Cloud-IDE-Hub.apk"
     },
     "auto_update": {
-      "_doc": "In-app updater config — read at gradle eval time into BuildConfig, then used by the hub's com.diegonmarcos.ide.update package at runtime (same OCI HTTP flow as build.sh oras-pull). Same registry/namespace/image as release.ghcr. The hub self-updates from cloud-ide-hub:<tag>; the forks update via the same mechanism once they publish their own images. Mirrors aa_cloud-superapp/build.json::release.auto_update.",
+      "_doc": "In-app updater config \u2014 read at gradle eval time into BuildConfig, then used by the hub's com.diegonmarcos.ide.update package at runtime (same OCI HTTP flow as build.sh oras-pull). Same registry/namespace/image as release.ghcr. The hub self-updates from cloud-ide-hub:<tag>; the forks update via the same mechanism once they publish their own images. Mirrors aa_cloud-superapp/build.json::release.auto_update.",
       "enabled": true,
       "tag": "latest",
       "interval_hours": 6,
       "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
       "require_unmetered_network": false,
       "require_charging": false,
-      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About → Permissions). 'silent' → USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' → always USER_ACTION_REQUIRED.",
+      "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About \u2192 Permissions). 'silent' \u2192 USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' \u2192 always USER_ACTION_REQUIRED.",
       "install_mode": "silent",
       "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",
       "max_installs_per_pass": 3
     }
   },
   "analytics": {
-    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app \u2014 give each app its own site_id once per-app sites exist in Umami/Matomo.",
     "enabled": true,
     "app": "ac_cloud-ide",
     "umami": {

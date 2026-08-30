@@ -37,7 +37,15 @@ android {
         buildConfigField "String", "WATCHDOG_BACKEND_DEFAULT",  "\"${wd.backend_default ?: 'nix-on-droid'}\""
         // The command is data too. The binary lives in the env's PATH and its
         // name is a fact about that env, not about this app.
-        buildConfigField "String", "WATCHDOG_CMD", "\"${wd.cmd ?: 'my-konsole-dash tui'}\""
+        buildConfigField "String", "WATCHDOG_CMD", "\"${wd.cmd ?: 'my-watchdog-tui tui'}\""
+        // The DECLARED constellation key, resolved from the vault by build.sh
+        // (_resolve_ssh_key) and handed here through the environment. Base64
+        // because a PEM has newlines and a BuildConfig string does not.
+        //
+        // Empty in an IDE build with no vault: the app then SAYS so rather than
+        // generating a key the phone has never authorized, which is the exact
+        // failure this replaced.
+        buildConfigField "String", "CLOUD_SSH_KEY_B64", "\"${System.getenv('CLOUD_SSH_KEY_B64') ?: ''}\""
     }
 
     buildFeatures { buildConfig = true }

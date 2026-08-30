@@ -106,6 +106,12 @@ android {
 
         buildConfigField "String", "ENDPOINTS_JSON_B64",          "\"${endpointsB64}\""
         buildConfigField "String", "TERMINAL_TARGETS_JSON_B64",  "\"${terminalTargetsB64}\""
+        // The DECLARED constellation key — the same one cloud-watchdog uses and
+        // the same one termux/authorized_keys provisions. cloud-ide generated
+        // its own until now, which is why its Configs screen carries a "paste
+        // this into every env" step: a generated key cannot be provisioned
+        // ahead of time. Resolved from the vault by build.sh::_resolve_ssh_key.
+        buildConfigField "String", "CLOUD_SSH_KEY_B64", "\"${System.getenv('CLOUD_SSH_KEY_B64') ?: ''}\""
         buildConfigField "String", "TERMINAL_BACKEND_DEFAULT",   "\"${buildJson.ui.terminal_backend_default}\""
         buildConfigField "String", "GIT_SHORT_SHA",    "\"${shortSha}\""
         buildConfigField "String", "LOG_SINK_URL",     "\"${logSinkUrl}\""

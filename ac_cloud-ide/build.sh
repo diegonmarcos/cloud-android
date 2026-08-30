@@ -183,6 +183,37 @@ step_bundle_frontend() {
 # FALLBACK: if the vault key / sops / age key isn't available the build FAILS
 # LOUD (exit 1) telling you to use the one shared constellation key — it never
 # generates or substitutes a random/legacy key. CI sets VAULT_DIR + SOPS_AGE_KEY.
+# ── the declared constellation ssh key ─────────────────────────────────────
+# ONE key for every app that reaches a phone terminal, resolved the same way
+# the ONE signing key is: from the vault, sops-decrypted, never hardcoded and
+# never generated. An app that mints its own key at first run cannot be
+# provisioned for — authorized_keys would have to wait for the app to exist,
+# be launched, and have its key read off a screen, once per app per phone.
+#
+# Exported as base64 so a PEM with newlines survives a BuildConfig string.
+# NO FALLBACK: without the vault the build fails rather than quietly shipping
+# an app that generates a key the env has never heard of.
+_resolve_ssh_key() {
+  local rel vault sec
+  rel="$(_release_var '.signing.vault_ssh_key')"
+  [ -z "$rel" ] || [ "$rel" = "null" ] && rel="A0_keys/providers/android/ssh.secrets.yaml"
+  vault="${VAULT_DIR:-$HOME/git/cloud-vault}"
+  sec="$vault/$rel"
+  if [ ! -f "$sec" ]; then
+    errlog "FATAL ssh key: $sec not found."
+    errlog "  Every constellation app shares ONE declared key; there is no generated fallback."
+    errlog "  Check out the vault (set VAULT_DIR if elsewhere)."
+    return 1
+  fi
+  command -v sops >/dev/null 2>&1 || { errlog "FATAL ssh key: sops not on PATH"; return 1; }
+  local priv
+  priv="$(sops -d --extract '["private_key"]' "$sec" 2>/dev/null)" || {
+    errlog "FATAL ssh key: sops could not decrypt $sec (SOPS_AGE_KEY set?)"; return 1; }
+  [ -n "$priv" ] || { errlog "FATAL ssh key: private_key is empty in $sec"; return 1; }
+  export CLOUD_SSH_KEY_B64="$(printf '%s' "$priv" | base64 -w0)"
+  log "ssh key: resolved from vault (declared, shared)"
+}
+
 _resolve_signing() {
   local ks_rel sec_rel vault ks store_pw key_pw alias_
   # CI delivery (two-secret): if the workflow already populated a valid keystore
@@ -242,6 +273,7 @@ _enforce_signature() {
   local apk="$1" bt zipalign apksigner
   [ -f "$apk" ] || { errlog "sign-enforce: missing APK $apk"; exit 1; }
   _resolve_signing
+  _resolve_ssh_key
   bt="$(ls -d "${ANDROID_HOME:-/nonexistent}"/build-tools/* 2>/dev/null | sort -V | tail -1)"
   zipalign="$bt/zipalign"; apksigner="$bt/apksigner"
   [ -x "$apksigner" ] || { errlog "sign-enforce: apksigner missing (bt=$bt)"; exit 1; }
@@ -262,6 +294,7 @@ step_build() {
   abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f2)"
   # frontend is committed under assets/frontend (self-contained) — no build-time sync
   _resolve_signing
+  _resolve_ssh_key
   log "Build: cloud-ide hub (WebView + my-konsole frontend, debug APK, abi $abi)"
   in_nix gradle :hub:assembleDebug
   mkdir -p "$DIST_DIR"
@@ -278,6 +311,7 @@ step_release() {
   abi="${abifields%%|*}"; suffix="$(echo "$abifields" | cut -d'|' -f2)"
   # frontend is committed under assets/frontend (self-contained) — no build-time sync
   _resolve_signing
+  _resolve_ssh_key
   log "Build: cloud-ide hub (WebView + my-konsole frontend, release APK, abi $abi)"
   in_nix gradle :hub:assembleRelease
   mkdir -p "$DIST_DIR"

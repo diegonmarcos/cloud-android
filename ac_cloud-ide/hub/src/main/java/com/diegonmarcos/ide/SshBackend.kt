@@ -5,7 +5,6 @@ import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.JSchException
-import com.jcraft.jsch.KeyPair
 import com.jcraft.jsch.Session
 import java.io.File
 import java.io.OutputStream
@@ -40,23 +39,56 @@ class SshBackend(private val ctx: Context) {
 
     init { ensureKeyPair() }
 
+    /**
+     * Write out the DECLARED constellation key — the same one cloud-watchdog
+     * uses and the same one termux/authorized_keys provisions.
+     *
+     * This used to generate its own, which is why the Configs screen carries a
+     * "paste this line into each env" step: a key invented at first run cannot
+     * be authorized before the app has run, so every app on every phone needed
+     * that step once. Declared, the env trusts the key before anything is
+     * installed and there is nothing to paste.
+     *
+     * Baked from the vault at build time (build.sh::_resolve_ssh_key), the
+     * same shape as the one shared signing key.
+     */
     private fun ensureKeyPair() {
-        if (privKeyFile.exists()) {
-            jsch.addIdentity(privKeyFile.absolutePath)
-            return
+        if (!privKeyFile.exists()) {
+            val pem = runCatching {
+                String(android.util.Base64.decode(BuildConfig.CLOUD_SSH_KEY_B64, android.util.Base64.DEFAULT))
+            }.getOrDefault("")
+            // NO GENERATED FALLBACK. A key the env has never authorized fails
+            // at connect with "permission denied", which reads as a broken app;
+            // naming the missing vault points at the actual cause.
+            check(pem.isNotBlank()) {
+                "no declared ssh key in this build — built without the vault " +
+                    "(build.sh::_resolve_ssh_key). This app does not generate one."
+            }
+            privKeyFile.writeText(pem)
+            privKeyFile.setReadable(false, false)
+            privKeyFile.setReadable(true, true)
         }
-        // Generate ECDSA nistp256 key — modern, compact, widely supported.
-        val kp = KeyPair.genKeyPair(jsch, KeyPair.ECDSA, 256)
-        kp.writePrivateKey(privKeyFile.absolutePath)
-        kp.writePublicKey(pubKeyFile.absolutePath, "cloud-ide-terminal")
-        kp.dispose()
         jsch.addIdentity(privKeyFile.absolutePath)
     }
 
-    /** Single authorized_keys line to paste into each env's ~/.ssh/authorized_keys. */
-    fun publicKeyOpenSsh(): String =
-        if (pubKeyFile.exists()) pubKeyFile.readText().trim()
-        else "(key not yet generated — open the terminal once first)"
+    /**
+     * The public half, for a diagnostic screen — no longer a setup step. The
+     * env is provisioned from cloud-u-linux/da__my-konsole/termux/
+     * authorized_keys; this exists so a refusal can name the key that was
+     * offered rather than just failing.
+     */
+    fun publicKeyOpenSsh(): String = PUBLIC_KEY
+
+    companion object {
+        /**
+         * Mirrored from cloud-u-linux's da__my-konsole/termux/authorized_keys
+         * and from libs:watchdog. Committed in the open in all three: a public
+         * key is not a secret, and an app that can name the key it offers can
+         * explain a refusal.
+         */
+        const val PUBLIC_KEY =
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICP/TWd0q7KEm29dOrPMX5sEn/8THgsrdHJ1NfPiKElK cloud-constellation@android"
+    }
 
     // ── Session cache ─────────────────────────────────────────────────────────
 

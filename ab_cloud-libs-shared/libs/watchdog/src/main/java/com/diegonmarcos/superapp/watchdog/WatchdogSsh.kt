@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Base64
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.JSch
-import com.jcraft.jsch.KeyPair
 import com.jcraft.jsch.Session
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -48,8 +47,7 @@ class WatchdogSsh(private val ctx: Context) {
     private val jsch = JSch()
     private var session: Session? = null
 
-    private val keyFile get() = File(ctx.filesDir, "watchdog_id_ecdsa")
-    private val pubFile get() = File(ctx.filesDir, "watchdog_id_ecdsa.pub")
+    private val keyFile get() = File(ctx.filesDir, "cloud_constellation_ed25519")
 
     /** The backends the build baked in — host, port and user are data. */
     private val targets: JSONObject by lazy {
@@ -62,24 +60,46 @@ class WatchdogSsh(private val ctx: Context) {
     fun label(key: String): String =
         targets.optJSONObject(key)?.optString("label") ?: key
 
+    /**
+     * Write out the DECLARED constellation key.
+     *
+     * Not generated. One key is shared by every app that reaches a phone
+     * terminal, so an environment can authorize it BEFORE any app has run:
+     * termux/authorized_keys in cloud-u-linux ships the public half and the
+     * installer provisions it. A key an app invents at first run cannot be
+     * provisioned for — authorized_keys would have to wait for the app to
+     * exist, be launched, and have its key read off a screen and pasted, once
+     * per app per phone, forever. That step is why this app had a setup
+     * screen; it does not need one now.
+     *
+     * The private half is baked from the vault at build time
+     * (build.sh::_resolve_ssh_key), the same shape as the one shared signing
+     * key. Written to filesDir because JSch wants a path, not bytes.
+     */
     private fun ensureKey() {
-        if (keyFile.isFile() && pubFile.isFile()) return
-        val kp = KeyPair.genKeyPair(jsch, KeyPair.ECDSA, 256)
-        kp.writePrivateKey(keyFile.absolutePath)
-        kp.writePublicKey(pubFile.absolutePath, "cloud-watchdog@android")
-        kp.dispose()
-        // The private key is inside the app sandbox already; tightening the
-        // mode as well costs nothing and means a misconfigured backup or a
-        // shared-storage bug cannot hand it out.
+        if (keyFile.isFile()) return
+        val pem = runCatching {
+            String(Base64.decode(BuildConfig.CLOUD_SSH_KEY_B64, Base64.DEFAULT))
+        }.getOrDefault("")
+        // NO FALLBACK TO A GENERATED KEY. One the env has never authorized
+        // fails at connect with "permission denied", which reads as a broken
+        // app; saying the build lacked the vault points at the actual cause.
+        check(pem.isNotBlank()) {
+            "no declared ssh key in this build — built without the vault " +
+                "(build.sh::_resolve_ssh_key). This app does not generate one."
+        }
+        keyFile.writeText(pem)
         keyFile.setReadable(false, false)
         keyFile.setReadable(true, true)
     }
 
-    /** The one line to add to ~/.ssh/authorized_keys in the target env. */
-    fun publicKeyLine(): String {
-        ensureKey()
-        return pubFile.readText().trim()
-    }
+    /**
+     * The public half, for a diagnostic screen — NOT a setup step any more.
+     * The env is provisioned from cloud-u-linux/da__my-konsole/termux/
+     * authorized_keys; this exists so an "unreachable" message can show which
+     * key was offered when that provisioning has not happened yet.
+     */
+    fun publicKeyLine(): String = PUBLIC_KEY
 
     /** Which env the live session actually reached — not which one was asked for. */
     @Volatile var activeBackend: String? = null
@@ -229,6 +249,15 @@ class WatchdogSsh(private val ctx: Context) {
     }
 
     companion object {
+        /**
+         * The declared public half, mirrored from cloud-u-linux's
+         * da__my-konsole/termux/authorized_keys. Committed in both places on
+         * purpose: a public key is not a secret, and an app that can name the
+         * key it offers can explain a refusal instead of just failing.
+         */
+        const val PUBLIC_KEY =
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICP/TWd0q7KEm29dOrPMX5sEn/8THgsrdHJ1NfPiKElK cloud-constellation@android"
+
         /** Must match monitor::FRAME_END on the other side. */
         const val FRAME_END = "@@WATCHDOG-FRAME-END@@"
 
