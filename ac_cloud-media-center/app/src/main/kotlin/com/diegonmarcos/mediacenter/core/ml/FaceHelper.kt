@@ -11,7 +11,7 @@ import ai.onnxruntime.OrtSession
 import android.graphics.Bitmap
 import android.graphics.RectF
 import androidx.core.graphics.scale
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import java.nio.FloatBuffer
 import java.util.Collections
 

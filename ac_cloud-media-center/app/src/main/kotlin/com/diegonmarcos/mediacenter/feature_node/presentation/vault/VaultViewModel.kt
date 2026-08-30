@@ -27,7 +27,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Vault
 import com.diegonmarcos.mediacenter.feature_node.domain.model.VaultState
 import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaRepository
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mapMedia
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

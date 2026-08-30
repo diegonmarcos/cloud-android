@@ -32,7 +32,7 @@ import com.diegonmarcos.mediacenter.cloud.netfs.bridge.NetFsLoopbackSource
 import com.diegonmarcos.mediacenter.core.Resource
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

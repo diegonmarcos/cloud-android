@@ -29,8 +29,8 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Category
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaCategory
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.helpers.SearchVisionHelper
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.util.dot
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.currentCoroutineContext

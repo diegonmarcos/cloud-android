@@ -91,7 +91,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.util.LocalHazeStat
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.hazeEffectScaled
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.Screen
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.launchWriteRequest
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberActivityResult
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberAppBottomSheetState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberMediaInfo

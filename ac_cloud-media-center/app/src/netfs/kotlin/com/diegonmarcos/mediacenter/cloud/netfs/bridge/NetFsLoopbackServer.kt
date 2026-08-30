@@ -10,7 +10,7 @@ import com.diegonmarcos.mediacenter.cloud.core.CloudTrace
 import com.diegonmarcos.mediacenter.cloud.core.ProviderType
 import com.diegonmarcos.mediacenter.cloud.core.ThumbnailSize
 import com.diegonmarcos.mediacenter.cloud.image.CloudFetcherRegistryHolder
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printError
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayInputStream
 import java.io.InputStream

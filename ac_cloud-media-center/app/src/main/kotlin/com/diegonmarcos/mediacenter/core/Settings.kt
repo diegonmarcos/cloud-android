@@ -63,7 +63,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.library.components
 import com.diegonmarcos.mediacenter.feature_node.presentation.location.MapAppearance
 import com.diegonmarcos.mediacenter.feature_node.presentation.mediaview.rememberedDerivedState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.Screen
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first

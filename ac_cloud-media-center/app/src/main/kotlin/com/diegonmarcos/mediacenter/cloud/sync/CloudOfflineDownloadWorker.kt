@@ -23,7 +23,7 @@ import com.diegonmarcos.mediacenter.cloud.data.dao.CloudOfflinePinDao
 import com.diegonmarcos.mediacenter.cloud.data.entity.CloudMediaEntity
 import com.diegonmarcos.mediacenter.cloud.image.CloudFetcherRegistryHolder
 import com.diegonmarcos.mediacenter.cloud.offline.CloudMediaCache
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first

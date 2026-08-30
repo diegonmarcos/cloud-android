@@ -44,7 +44,7 @@ import com.diegonmarcos.mediacenter.cloud.immich.data.dto.ImmichSharedLinkCreate
 import com.diegonmarcos.mediacenter.core.Resource
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow

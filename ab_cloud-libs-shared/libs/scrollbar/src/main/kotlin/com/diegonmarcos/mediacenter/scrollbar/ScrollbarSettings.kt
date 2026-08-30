@@ -7,7 +7,7 @@
  * (https://github.com/nanihadesuka/LazyColumnScrollbar), trimmed to the single
  * code path the Gallery timeline uses and modernised for the latest Compose APIs.
  */
-package com.dot.gallery.scrollbar
+package com.diegonmarcos.mediacenter.scrollbar
 
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing

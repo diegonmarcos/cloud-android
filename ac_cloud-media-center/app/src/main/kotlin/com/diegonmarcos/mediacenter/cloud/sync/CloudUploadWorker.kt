@@ -40,7 +40,7 @@ import com.diegonmarcos.mediacenter.cloud.data.dao.CloudUploadPrefDao
 import com.diegonmarcos.mediacenter.cloud.data.entity.CloudServerConfigEntity
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaRepository
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first

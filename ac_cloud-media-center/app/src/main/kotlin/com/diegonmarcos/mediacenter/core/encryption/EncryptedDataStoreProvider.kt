@@ -12,8 +12,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import com.diegonmarcos.mediacenter.core.dataStore
 import com.diegonmarcos.mediacenter.core.metrics.StartupTracer
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

@@ -6,7 +6,7 @@ import com.diegonmarcos.mediacenter.core.ml.ModelGroup
 import com.diegonmarcos.mediacenter.core.ml.ModelManager
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.helpers.SearchVisionHelper
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.util.dot
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject

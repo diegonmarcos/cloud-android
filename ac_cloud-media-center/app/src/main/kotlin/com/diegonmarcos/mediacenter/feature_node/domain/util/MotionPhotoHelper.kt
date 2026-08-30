@@ -8,8 +8,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.xmp.XmpDirectory
 import kotlinx.coroutines.Dispatchers

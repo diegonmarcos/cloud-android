@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: 2023-2026 IacobIacob01
  * SPDX-License-Identifier: Apache-2.0
  */
-package com.dot.gallery.scrollbar
+package com.diegonmarcos.mediacenter.scrollbar
 
 import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
 import androidx.compose.foundation.lazy.grid.LazyGridState

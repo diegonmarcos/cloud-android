@@ -87,7 +87,7 @@ import com.diegonmarcos.mediacenter.core.presentation.components.SetupButton
 import com.diegonmarcos.mediacenter.feature_node.presentation.settings.components.SettingsItem
 import com.diegonmarcos.mediacenter.feature_node.presentation.settings.components.rememberSwitchPreference
 import com.diegonmarcos.mediacenter.core.util.SdkCompat
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printError
 import com.diegonmarcos.mediacenter.feature_node.presentation.vault.components.VaultPasswordUnlockSheet
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberAppBottomSheetState
 import com.diegonmarcos.mediacenter.feature_node.presentation.vault.utils.GateMode

@@ -12,7 +12,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.search.tokenizer.C
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.util.centerCrop
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.util.normalizeL2
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.util.preProcess
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import java.nio.IntBuffer
 import java.util.Collections
 import java.util.EnumSet

@@ -1,6 +1,6 @@
 @file:Suppress("KotlinConstantConditions")
 
-package com.diegonmarcos.mediacenter.feature_node.presentation.util
+package com.diegonmarcos.mediacenter.core.util
 
 import android.util.Log
 import com.diegonmarcos.mediacenter.BuildConfig

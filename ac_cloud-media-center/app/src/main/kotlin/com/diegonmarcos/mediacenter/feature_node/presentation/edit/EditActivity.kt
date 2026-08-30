@@ -32,7 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.Crop
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.LocalHazeState
 import com.diegonmarcos.mediacenter.R
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printError
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.launchWriteRequest
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberActivityResult
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.writeRequest

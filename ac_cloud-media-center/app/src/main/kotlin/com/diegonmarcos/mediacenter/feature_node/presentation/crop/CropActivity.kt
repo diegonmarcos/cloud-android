@@ -49,7 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.mediacenter.R
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printError
 import com.diegonmarcos.mediacenter.ui.theme.GalleryTheme
 import com.smarttoolfactory.cropper.ImageCropper
 import com.smarttoolfactory.cropper.model.AspectRatio

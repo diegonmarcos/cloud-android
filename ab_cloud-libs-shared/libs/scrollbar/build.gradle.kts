@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.dot.gallery.scrollbar"
+    namespace = "com.diegonmarcos.mediacenter.scrollbar"
     compileSdk = 37
 
     defaultConfig {

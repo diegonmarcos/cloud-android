@@ -148,7 +148,7 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.util.ViewScreenCon
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.getMediaAppBarDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.hazeEffectScaled
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mediaSharedElement
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberAppBottomSheetState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberGestureNavigationEnabled
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberNavigationBarOnSides

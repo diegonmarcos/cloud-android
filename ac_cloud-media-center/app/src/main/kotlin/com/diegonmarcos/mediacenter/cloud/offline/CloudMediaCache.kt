@@ -7,7 +7,7 @@ package com.diegonmarcos.mediacenter.cloud.offline
 
 import android.content.Context
 import com.diegonmarcos.mediacenter.cloud.core.ProviderType
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.MessageDigest

@@ -20,8 +20,8 @@ import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaReposito
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
 import com.diegonmarcos.mediacenter.feature_node.presentation.search.helpers.SearchVisionHelper
 
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import com.github.panpf.sketch.asBitmapOrNull
 import com.github.panpf.sketch.decode.BitmapColorSpace
 import com.github.panpf.sketch.request.ImageRequest

@@ -31,8 +31,8 @@ import com.diegonmarcos.mediacenter.core.ml.ModelGroup
 import com.diegonmarcos.mediacenter.core.ml.ModelManager
 import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaRepository
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import com.github.panpf.sketch.asBitmapOrNull
 import com.github.panpf.sketch.decode.BitmapColorSpace
 import com.github.panpf.sketch.request.ImageRequest

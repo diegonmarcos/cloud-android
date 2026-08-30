@@ -29,8 +29,8 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Vault
 import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaRepository
 import com.diegonmarcos.mediacenter.feature_node.domain.util.MediaOrder
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printError
+import com.diegonmarcos.mediacenter.core.util.printInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

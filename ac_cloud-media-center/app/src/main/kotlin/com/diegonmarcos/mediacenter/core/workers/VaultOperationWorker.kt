@@ -66,7 +66,7 @@ class VaultOperationWorker @AssistedInject constructor(
                 val ep = EntryPointAccessors.fromApplication(appContext, com.diegonmarcos.mediacenter.core.metrics.MetricsCollectorEntryPoint::class.java)
                 ep.metrics().incSidecarRead() // reuse counter slot; ideally add dedicated skip metric later
             } catch (_: Throwable) {}
-            com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug("VaultOperationWorker skipped $skipped missing URIs")
+            com.diegonmarcos.mediacenter.core.util.printDebug("VaultOperationWorker skipped $skipped missing URIs")
         }
         if (mediaUris.isEmpty()) {
             // Nothing to do; treat as success to avoid retry loops due to deleted items.

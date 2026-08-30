@@ -97,10 +97,10 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedi
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia.BOTH
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia.PHOTOS
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia.VIDEOS
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printError
+import com.diegonmarcos.mediacenter.core.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay

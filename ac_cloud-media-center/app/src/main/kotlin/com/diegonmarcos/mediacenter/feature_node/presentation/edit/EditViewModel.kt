@@ -69,8 +69,8 @@ import com.diegonmarcos.mediacenter.feature_node.presentation.util.applyColorMat
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.resizeBitmap
 import com.diegonmarcos.mediacenter.core.workers.EditBackupWorker
 import com.diegonmarcos.mediacenter.core.workers.revertEditBackup
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printError
 import com.github.panpf.sketch.sketch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

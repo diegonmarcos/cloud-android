@@ -18,7 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.diegonmarcos.mediacenter.R
 import com.diegonmarcos.mediacenter.core.LocalEventHandler
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printError
 
 @Composable
 fun NavigationBackButton(

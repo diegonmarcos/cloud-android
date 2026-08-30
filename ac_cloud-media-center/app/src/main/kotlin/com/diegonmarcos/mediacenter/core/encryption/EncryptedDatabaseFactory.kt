@@ -18,8 +18,8 @@ import com.diegonmarcos.mediacenter.feature_node.data.data_source.migration.MIGR
 import com.diegonmarcos.mediacenter.feature_node.data.data_source.migration.MIGRATION_35_36
 import com.diegonmarcos.mediacenter.feature_node.data.data_source.migration.MIGRATION_36_37
 import com.diegonmarcos.mediacenter.feature_node.data.data_source.migration.MIGRATION_37_38
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File

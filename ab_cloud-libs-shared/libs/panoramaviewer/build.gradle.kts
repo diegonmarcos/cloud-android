@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.dot.gallery.libs.panoramaviewer"
+    namespace = "com.diegonmarcos.mediacenter.libs.panoramaviewer"
     compileSdk = 37
 
     defaultConfig {

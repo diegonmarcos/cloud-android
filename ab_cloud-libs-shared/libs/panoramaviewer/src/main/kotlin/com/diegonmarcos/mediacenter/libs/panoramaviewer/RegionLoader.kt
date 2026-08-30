@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.dot.gallery.libs.panoramaviewer
+package com.diegonmarcos.mediacenter.libs.panoramaviewer
 
 import android.content.ContentResolver
 import android.graphics.Bitmap

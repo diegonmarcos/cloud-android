@@ -16,7 +16,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaVersion
 import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaRepository
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.isMediaUpToDate
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.mediaStoreVersion
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers

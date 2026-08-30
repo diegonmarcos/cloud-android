@@ -16,7 +16,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.repository.MediaReposito
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isFavorite
 import com.diegonmarcos.mediacenter.feature_node.presentation.picker.AllowedMedia
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

@@ -27,7 +27,7 @@ import com.diegonmarcos.mediacenter.core.decoder.format.ImageReencoder
 import com.diegonmarcos.mediacenter.core.metrics.StartupTracer
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.util.getUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow

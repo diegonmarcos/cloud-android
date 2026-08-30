@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.dot.gallery.libs.panoramaviewer
+package com.diegonmarcos.mediacenter.libs.panoramaviewer
 
 import android.util.Log
-import com.dot.gallery.libs.panoramaviewer.PanoramaLog.enabled
+import com.diegonmarcos.mediacenter.libs.panoramaviewer.PanoramaLog.enabled
 
 /**
  * Toggleable debug logger for the panorama viewer library.

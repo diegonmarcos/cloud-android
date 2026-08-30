@@ -13,8 +13,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import com.diegonmarcos.mediacenter.feature_node.data.data_source.EditHistoryDao
 import com.diegonmarcos.mediacenter.feature_node.domain.model.EditedMedia
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext

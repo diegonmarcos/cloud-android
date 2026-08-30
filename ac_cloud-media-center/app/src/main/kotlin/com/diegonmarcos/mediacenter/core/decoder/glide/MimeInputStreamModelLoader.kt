@@ -50,7 +50,7 @@ class MimeInputStreamModelLoader(
                 // path once, so undecodable formats reaching the grid (e.g. RAW files MediaStore
                 // tags with a generic/unexpected MIME) can be identified.
                 if (mime != null && loggedMimes.add(mime)) {
-                    com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug("MimeInputStream: content MIME '$mime' (e.g. $uri)")
+                    com.diegonmarcos.mediacenter.core.util.printDebug("MimeInputStream: content MIME '$mime' (e.g. $uri)")
                 }
                 var rawStream = resolver.openInputStream(uri)
                 val s = rawStream
@@ -76,7 +76,7 @@ class MimeInputStreamModelLoader(
                     val sniffed = if (n > 0) ImageFormatSniffer.standardMimeFor(head, n) else null
                     if (sniffed != null) {
                         if (correctionLogged.add("$mime->$sniffed")) {
-                            com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug(
+                            com.diegonmarcos.mediacenter.core.util.printDebug(
                                 "MimeInputStream: MIME correction reported '$mime' but header is '$sniffed' (e.g. $uri)"
                             )
                         }

@@ -42,9 +42,9 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.isEncrypted
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.createDecryptedTempFile
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.resizeBitmap
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.resolveShareableUri
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printError
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printError
+import com.diegonmarcos.mediacenter.core.util.printInfo
 import ai.onnxruntime.providers.NNAPIFlags
 import java.util.EnumSet
 import kotlinx.coroutines.Dispatchers

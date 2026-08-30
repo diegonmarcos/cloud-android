@@ -13,7 +13,7 @@ import com.diegonmarcos.mediacenter.cloud.core.capabilities.RemoteMediaProvider
 import com.diegonmarcos.mediacenter.cloud.core.capabilities.ShareLinkCapableProvider
 import com.diegonmarcos.mediacenter.cloud.core.capabilities.SmartSearchCapableProvider
 import com.diegonmarcos.mediacenter.cloud.core.capabilities.SyncCapableProvider
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import javax.inject.Inject
 import javax.inject.Singleton
 

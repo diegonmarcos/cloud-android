@@ -28,8 +28,8 @@ import com.diegonmarcos.mediacenter.R
 import com.diegonmarcos.mediacenter.core.ml.DownloadInfo
 import com.diegonmarcos.mediacenter.core.ml.ModelGroup
 import com.diegonmarcos.mediacenter.core.ml.ModelManager
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printInfo
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printWarning
+import com.diegonmarcos.mediacenter.core.util.printInfo
+import com.diegonmarcos.mediacenter.core.util.printWarning
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers

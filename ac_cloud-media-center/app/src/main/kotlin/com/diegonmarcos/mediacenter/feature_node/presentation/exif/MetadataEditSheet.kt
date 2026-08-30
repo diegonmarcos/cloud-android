@@ -44,7 +44,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaMetadata
 import com.diegonmarcos.mediacenter.feature_node.domain.util.isVideo
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.AppBottomSheetState
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.launchWriteRequest
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberActivityResult
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.toastError

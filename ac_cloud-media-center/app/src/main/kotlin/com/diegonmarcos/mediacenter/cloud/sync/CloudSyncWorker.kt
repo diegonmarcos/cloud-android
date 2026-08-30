@@ -23,7 +23,7 @@ import com.diegonmarcos.mediacenter.cloud.data.dao.CloudMediaDao
 import com.diegonmarcos.mediacenter.cloud.data.dao.CloudServerConfigDao
 import com.diegonmarcos.mediacenter.cloud.data.dao.SyncStateDao
 import com.diegonmarcos.mediacenter.cloud.data.entity.SyncStateEntity
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.printDebug
+import com.diegonmarcos.mediacenter.core.util.printDebug
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
