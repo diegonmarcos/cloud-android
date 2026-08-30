@@ -85,6 +85,13 @@ public class FragmentUnread extends FragmentBase {
     @Override
     @Nullable
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        // comms: without this the fragment's onOptionsItemSelected is never
+        // called, so FragmentBase's android.R.id.home handler -- the one that
+        // turns the top-left button into a back press -- never runs and the
+        // button does nothing on this page. FragmentFolders declares the same
+        // thing at the top of its own onCreateView.
+        setHasOptionsMenu(true);
+
         view = (ViewGroup) inflater.inflate(R.layout.fragment_unread, container, false);
 
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
