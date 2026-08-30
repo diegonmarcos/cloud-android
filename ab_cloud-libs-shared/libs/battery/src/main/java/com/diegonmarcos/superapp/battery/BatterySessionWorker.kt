@@ -55,6 +55,19 @@ class BatterySessionWorker(
         // coarse background sample per tick (cheap; the screen-on
         // foreground sampler adds the fine resolution).
         runCatching { EnergyWatchdog.sample(applicationContext) }
+        // Second piggyback, same rationale: fold the current month into the
+        // permanent per-month data-usage ledger. NetworkStatsManager only
+        // retains a ~90-day rolling window, so a month never folded in
+        // before it ages out is lost for good -- and that must not depend on
+        // the user opening the Data Usage screen. The fold is idempotent and
+        // only writes when the OS actually returns bytes, so steady-state
+        // cost is one cheap query per tick. This is the ONLY reason
+        // :libs:battery depends on :libs:datamanager -- reusing this tick
+        // instead of adding a second periodic worker for a job that does
+        // meaningful work once a month.
+        runCatching {
+            com.diegonmarcos.superapp.datamanager.DataUsageHistoryStore.refresh(applicationContext)
+        }
         return Result.success()
     }
 

@@ -1309,6 +1309,16 @@ class DevControlFragment : Fragment() {
             // deep-link. Lives here next to the HTTP API it feeds.
             it.addView(small(ctx, "Self-contained ADB — enable Wireless Debugging, then pair via /api/adb/pair + /api/adb/connect:"))
             it.addView(actionButton(ctx, "Open Wireless Debugging", GRAY) { openWirelessDebuggingSettings() })
+            // Shizuku shortcut -- the Tier-2 privileged-read path (ShizukuEnergy
+            // binds through it for exact per-app mAh). Shizuku must be STARTED
+            // from its own app after every reboot, so a direct launcher here
+            // saves hunting for it in the drawer.
+            it.addView(actionButton(ctx, "Start Shizuku", GRAY) {
+                val pm = requireContext().packageManager
+                val intent = pm.getLaunchIntentForPackage(SHIZUKU_PKG)
+                if (intent != null) runCatching { startActivity(intent) }
+                else Toast.makeText(requireContext(), "Shizuku not installed", Toast.LENGTH_SHORT).show()
+            })
 
             // ── Self-contained ADB how-to (embedded adb client, no Shizuku
             //    app, no PC; works with WireGuard ON). Long-press any row to

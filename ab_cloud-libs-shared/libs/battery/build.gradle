@@ -41,6 +41,10 @@ dependencies {
     // Tier-2 privileged read: ShizukuEnergy binds IUserService /
     // ShizukuUserService, both consolidated into this lib.
     implementation project(':libs:shizuku-adb-debug-tools')
+    // BatterySessionWorker's 15-min tick also folds the current month into
+    // the permanent data-usage ledger, so the monthly history survives
+    // NetworkStatsManager's ~90-day retention without a second scheduler.
+    implementation project(':libs:datamanager')
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.fragment:fragment-ktx:1.8.5'   // EnergyUsageDialog / BatteryEstimatePopup

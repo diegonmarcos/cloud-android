@@ -12,20 +12,22 @@ import java.util.Calendar
  * data-manager (data-usage side) — the engine behind Configs/About →
  * Network → "Data Usage". Pure data, no UI, no R references.
  *
- * Everything is answered LIVE from [NetworkStatsManager], which keeps its
- * own multi-month history in system storage. We deliberately persist
- * NOTHING: any local ledger would only duplicate (and eventually
- * contradict) the OS one. That is the whole reason this file has no
- * SharedPreferences / Room, unlike its sibling BatteryHistoryStore, where
- * the OS keeps nothing.
+ * Everything here is answered LIVE from [NetworkStatsManager], which keeps
+ * its own rolling history in system storage. This file persists NOTHING —
+ * a local copy of what the OS already knows would only be a second, staler
+ * truth. The one thing the OS does NOT keep is anything older than its
+ * ~90-day retention, and that gap is exactly (and only) what
+ * [DataUsageHistoryStore] fills.
  *
  * Authorised by the same PACKAGE_USAGE_STATS special-access grant
  * [AppUsageProvider] and [AppNetworkProvider] already rely on, and that
  * the app already asks for in Configs/About → Permissions ("Set Usage
  * Access"). No new permission and no new request flow.
  *
- * subscriberId is null throughout: passing a real one requires
- * READ_PHONE_STATE and only buys per-SIM attribution we don't surface.
+ * The per-SIM section additionally uses READ_PHONE_STATE — already declared
+ * in the manifest and already listed in build.json's ui.permissions.runtime,
+ * so it too rides the existing request flow. See [mobilePerSubscription]
+ * for the platform constraint that limits how exact that split can be.
  *
  * Every query is wrapped in `runCatching` — a missing grant or an OEM
  * that throws degrades to zeroes / an empty list, never a crash.
@@ -206,6 +208,92 @@ object DataUsageProvider {
         }
         return out
     }
+
+    // ── per-SIM / eSIM ────────────────────────────────────────────────
+    /** One active subscription (physical SIM or eSIM profile). */
+    data class SubUsage(
+        val subId: Int,
+        val slot: Int,
+        val carrier: String,
+        val totals: Totals,
+        /** False when the split is an attribution rather than a measurement
+         *  — see [mobilePerSubscription]. */
+        val exact: Boolean,
+    )
+
+    /** True when READ_PHONE_STATE is held, which is what gates the
+     *  subscription list. Requested through the standard runtime flow — it
+     *  is already entry "Phone" in build.json's ui.permissions.runtime, so
+     *  Configs/About → Permissions renders and requests it already. */
+    fun hasPhoneState(ctx: Context): Boolean =
+        ctx.checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** Active subscriptions as (subId, slot, carrier). Empty without the
+     *  grant, on Wi-Fi-only hardware, or when no SIM is present. */
+    fun subscriptions(ctx: Context): List<Triple<Int, Int, String>> {
+        if (!hasPhoneState(ctx)) return emptyList()
+        val sm = ctx.getSystemService(android.telephony.SubscriptionManager::class.java)
+            ?: return emptyList()
+        return runCatching {
+            sm.activeSubscriptionInfoList.orEmpty().map {
+                Triple(it.subscriptionId, it.simSlotIndex, it.carrierName?.toString().orEmpty())
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    /**
+     * Mobile usage split per subscription.
+     *
+     * PLATFORM CONSTRAINT, stated plainly: an exact per-SIM split needs a
+     * per-subscriber NetworkStats template, which needs the subscriber id
+     * (IMSI). Since Android 10 `TelephonyManager.getSubscriberId()` is gated
+     * behind READ_PRIVILEGED_PHONE_STATE — a signature permission no
+     * sideloaded app can hold. So:
+     *
+     *   • subscriber id obtainable (older Android / permissive OEM) → one
+     *     querySummaryForDevice per subscriber. [SubUsage.exact] true.
+     *   • not obtainable and exactly ONE active subscription → all mobile
+     *     traffic belongs to it by definition. Still exact.
+     *   • not obtainable and 2+ subscriptions → we cannot split. Every
+     *     subscription is returned carrying the FULL mobile total with
+     *     [SubUsage.exact] false, and the UI says so rather than inventing
+     *     a plausible-looking division.
+     */
+    fun mobilePerSubscription(ctx: Context, start: Long, end: Long): List<SubUsage> {
+        val subs = subscriptions(ctx)
+        if (subs.isEmpty()) return emptyList()
+        val nsm = statsManager(ctx) ?: return emptyList()
+
+        val perSub = subs.mapNotNull { (subId, slot, carrier) ->
+            val imsi = subscriberId(ctx, subId) ?: return@mapNotNull null
+            val t = runCatching {
+                val b = nsm.querySummaryForDevice(
+                    ConnectivityManager.TYPE_MOBILE, imsi, start, end)
+                Totals(mobileRx = b.rxBytes, mobileTx = b.txBytes)
+            }.getOrNull() ?: return@mapNotNull null
+            SubUsage(subId, slot, carrier, t, exact = true)
+        }
+        if (perSub.size == subs.size) return perSub.sortedBy { it.slot }
+
+        // Fallback: one aggregate mobile figure carried by every subscription.
+        val all = runCatching {
+            val b = nsm.querySummaryForDevice(ConnectivityManager.TYPE_MOBILE, null, start, end)
+            Totals(mobileRx = b.rxBytes, mobileTx = b.txBytes)
+        }.getOrDefault(Totals())
+        return subs.map { (subId, slot, carrier) ->
+            SubUsage(subId, slot, carrier, all, exact = subs.size == 1)
+        }.sortedBy { it.slot }
+    }
+
+    /** IMSI for a subscription, or null on any modern Android (see
+     *  [mobilePerSubscription]). Never throws. */
+    private fun subscriberId(ctx: Context, subId: Int): String? = runCatching {
+        val tm = ctx.getSystemService(android.telephony.TelephonyManager::class.java)
+            ?.createForSubscriptionId(subId) ?: return null
+        @Suppress("DEPRECATION", "HardwareIds")
+        tm.subscriberId?.takeIf { it.isNotBlank() }
+    }.getOrNull()
 
     // ── helpers ───────────────────────────────────────────────────────
     private fun statsManager(ctx: Context): NetworkStatsManager? =
