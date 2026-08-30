@@ -2,7 +2,7 @@
 
 - **Upstream**: https://github.com/element-hq/element-x-android.git (AGPL-3.0, Kotlin + Rust matrix-sdk FFI)
 - **App id**: `com.diegonmarcos.comms.matrix`
-- **Tracker**: `ac_upstreams-sources/chat-element/`
+- **Tracker**: `ac_cloud-matrix/` (vendored in-repo)
 - **Server**: continuwuity homeserver + mautrix-whatsapp bridge. See
   `../../data/comms-endpoints.json::matrix`.
 - **Priority**: 3.

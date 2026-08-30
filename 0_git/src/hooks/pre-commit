@@ -38,7 +38,15 @@ if [ -n "$FORCED" ]; then
 fi
 
 # ── 2. path-based blocks ────────────────────────────────────────────
-BAD_PATHS=$(echo "$STAGED" | grep -E '(^|/)(\.env|\.env\..+|.*\.key$|.*\.pem$|.*\.p12$|.*\.pfx$|.*\.jks$|.*\.keystore$|.*\.token$|.*credentials.*\.json$)' || true)
+# NOTE: the credentials rule matches the FILENAME, not the whole path.
+# '.*credentials.*\.json$' also matched any json under a DIRECTORY whose name
+# contains the word - e.g. Bitwarden's Room schema dir
+# com.x8bit.bitwarden.data.credentials.datasource.disk.database/1.json, a
+# DDL-only file with no secret in it. A guard that fires on vendored upstream
+# package names gets bypassed, and a bypassed guard protects nothing. Real
+# credential files (credentials.json, gcp-credentials.json, credentials-prod
+# .json) carry the word in the basename and are still caught.
+BAD_PATHS=$(echo "$STAGED" | grep -E '(^|/)(\.env|\.env\..+|.*\.key$|.*\.pem$|.*\.p12$|.*\.pfx$|.*\.jks$|.*\.keystore$|.*\.token$|[^/]*credentials[^/]*\.json$)' || true)
 if [ -n "$BAD_PATHS" ]; then
   echo "════════════════════════════════════════════" >&2
   echo "BLOCKED: secret-pattern paths in commit" >&2

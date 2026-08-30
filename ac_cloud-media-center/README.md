@@ -7,7 +7,7 @@ Pinned at upstream tag **`5.1.1-51101-nightly`** (newest tag as of 2026-07-26 �
 `build.json::fork.pinned_tag`; upstream ships nightlies as its release channel and
 has no recent stable tag — `4.3.0` is the last plain-semver one; review the pin
 whenever upstream cuts an actual stable release). Tracker clone lives at
-(gitignored, materialized at build time) `../ac_upstreams-sources/media-refra`.
+vendored in-repo at `ac_cloud-media-center/` (no build-time clone).
 
 **Native build dependency:** upstream is not pure Kotlin/Compose — it has
 `externalNativeBuild` + CMake with JNI over libheif/libde265. NDK

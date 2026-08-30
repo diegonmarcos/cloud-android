@@ -164,11 +164,11 @@ ac_cloud-nav/**/*.keystore
 ac_cloud-nav/**/*.jks
 ## Bitwarden Android for ac_cloud-vault's `vault-bitwarden` fork, added
 ## ac_cloud-<app>/patches/ (tracked). Was covered by the old `ea_*-*/`
-## Contents ignored via /* (not the dir itself): git cannot re-include a
-## file inside an excluded directory, so the README negation below needs the
-## directory to stay traversable.
-ac_upstreams-sources/*
-!ac_upstreams-sources/README.md
+## ac_upstreams-sources/ was deleted 2026-08-30: every fork is now vendored
+## in-repo (tracker_dir points at the app's own tree), so there is no external
+## clone workspace left to ignore. Kept as a note rather than silence, because
+## the rule's absence is what a future "why is my upstream clone tracked?"
+## question will look for.
 ac_cloud-wallet/**/*.keystore
 ac_cloud-wallet/**/*.jks
 ac_cloud-browser/**/*.keystore

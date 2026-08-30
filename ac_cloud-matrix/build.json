@@ -7,8 +7,8 @@
       "label": "Messenger (Element)",
       "image": "cloud-comms-matrix",
       "upstream_repo": "https://github.com/element-hq/element-x-android.git",
-      "tracker_dir": "ac_upstreams-sources/chat-element",
-      "pinned_tag": "",
+      "tracker_dir": "ac_cloud-matrix",
+      "pinned_tag": "v26.06.2",
       "license": "AGPL-3.0",
       "primary_lang": "Kotlin",
       "runtime": "native",
@@ -30,6 +30,13 @@
             "_doc_sha256": "Re-pinned 2026-08-20. element-hq REPLACED this release asset in place: the URL now serves a2b626ec... where the pin said 33f8baf3..., and every ship-cloud-matrix run since 2026-08-18 died on the mismatch. Re-pinned only after checking provenance, not to make CI pass: the arm64-v8a asset from the SAME tag still matches its pin byte-for-byte (so the release was not wholesale re-uploaded); the new file carries the same upstream git revision 337528bce386f1731701f9ac2d0cbc190e244e02 and versionName 26.06.2 as that known-good arm64 APK; and both are signed by the same certificate, New Vector Ltd./element.io, SHA-256 6A:2F:DC:31:48:04:9C:E0:D5:C6:E8:50:10:72:3B:83:FB:20:7D:20:C7:47:7F:5C:22:AC:53:C8:77:E9:2D:47. If a future mismatch does NOT satisfy all four checks, do not re-pin - investigate."
           }
         }
+      },
+      "_doc_vendored": "Vendored in-repo 2026-08-30: the full Element X Android source lives at this repo's root, patched and committed, so nothing is cloned at build time. materialize-fork takes the vendored path (tracker_dir exists and holds no .git), patches/ is historical record only. To move to a newer upstream tag, bump pinned_tag, delete the vendored tree and let the clone+patch path re-vendor it.",
+      "build": {
+        "_doc": "Module `app`, flavor `fdroid` (dimension `store`) - the Google-free flavor, matching the release asset upstream_apk used to pin. The Rust matrix-sdk is consumed as a PREBUILT maven artifact (org.matrix.rustcomponents:sdk-android, gradle/libs.versions.toml), so this is a plain gradle build with no Rust toolchain and no cargo/NDK cross-compilation step.",
+        "gradle_task": ":app:assembleFdroidRelease",
+        "apk_glob": "app/build/outputs/apk/fdroid/release/*.apk",
+        "gradle_props": {}
       }
     }
   },

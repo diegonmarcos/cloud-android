@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FF6750A4</color>
+    <!-- Cloud Vault brand color (was Bitwarden's Primary Blue) - launcher and splash theme only -->
+    <color name="ic_launcher_background">#FF3E2472</color>
+    <color name="ic_shortcut_background">@android:color/white</color>
 </resources>

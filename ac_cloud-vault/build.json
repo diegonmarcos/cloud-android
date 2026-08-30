@@ -24,7 +24,7 @@
       "label": "Cloud Vault (Bitwarden)",
       "image": "cloud-vault-bitwarden",
       "upstream_repo": "https://github.com/bitwarden/android.git",
-      "tracker_dir": "ac_upstreams-sources/vault-bitwarden",
+      "tracker_dir": "ac_cloud-vault",
       "pinned_tag": "v2026.7.1-bwpm",
       "license": "GPL-3.0",
       "primary_lang": "Kotlin",
