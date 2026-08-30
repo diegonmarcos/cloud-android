@@ -245,6 +245,11 @@ public class FragmentDialogTheme extends FragmentDialogBase {
                 rgTheme.check(R.id.rbThemeBlackAndWhite);
                 break;
             case "cloud_mail_dark":
+                // comms: RadioGroup.check() silently CLEARS the selection (no exception, no
+                // log) if the id is not present in the inflated layout variant. dialog_theme.xml
+                // has layout-v31/ and layout-v34/ overrides that must each declare every
+                // rbTheme* radio, or the dialog opens with nothing selected on those API levels.
+                // When adding a new theme radio here, add it to ALL dialog_theme.xml variants.
                 rgTheme.check(R.id.rbThemeCloudMail);
                 break;
 
