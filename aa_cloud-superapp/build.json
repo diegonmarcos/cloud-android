@@ -53,25 +53,8 @@
     "jdk": "17"
   },
   "constellation": {
-    "_doc": "Fleet members that regen.sh cannot discover by scanning this monorepo's siblings, because they ship from a DIFFERENT repo. The scan predicate in data/regen.sh is deliberately prefix-agnostic so a repo self-registers via its own build.json, but it only reaches sibling directories of cloud-u-android. cloud-infra-desktop-termux-boot lives in cloud-infra-desktop and is released + GHCR-pushed from there by ship-cloud-infra-desktop-termux-boot.yml, so its URLs point at cloud-infra-desktop, not here. Declared as DATA rather than hardcoded in the script (FIRE RULE #6). Before the 2026-08-25 android split the scan picked this up automatically; the split made it invisible and it silently left the store.",
-    "external": [
-      {
-        "id": "cloud-infra-desktop-termux-boot",
-        "label": "cloud-infra-desktop-termux-boot",
-        "package": "com.termux.nix.boot",
-        "alt_id": null,
-        "registry": "ghcr.io",
-        "namespace": "diegonmarcos",
-        "image": "cloud-infra-desktop-termux-boot",
-        "tag": "latest",
-        "asset": "Cloud-Unix-Termux-Boot.apk",
-        "release_url": "https://github.com/diegonmarcos/cloud-infra-desktop/releases/latest/download/Cloud-Unix-Termux-Boot.apk",
-        "repo_url": "https://github.com/diegonmarcos/cloud-infra-desktop/tree/main/cloud-infra-desktop-termux-boot",
-        "ghcr_page": "https://github.com/diegonmarcos/cloud-infra-desktop/pkgs/container/cloud-infra-desktop-termux-boot",
-        "blocked": false,
-        "kind": "lib"
-      }
-    ]
+    "_doc": "Escape hatch for fleet members that ship from ANOTHER repo, which regen.sh's scan cannot reach: it walks this repo's own */build.json and */*/build.json. Kept as DATA rather than hardcoded in the script (FIRE RULE #6). Currently EMPTY. It held termux-boot until 2026-08-30, from when that tool lived in cloud-infra-desktop; it has since moved to a_solutions/ae-tool_termux-boot/ HERE, where the two-level glob already finds it - so the declaration was a stale duplicate that put the tool in the fleet twice, the scanned copy working and this one pointing at a cloud-infra-desktop package that never existed (a hard GHCR 403 DENIED, plus a 404 on its release asset). Add an entry here only for a repo that is genuinely not this one.",
+    "external": []
   },
   "upstreams": {
     "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 0_git/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",

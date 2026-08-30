@@ -59,7 +59,7 @@ regen_constellation() {
     # the store no matter what its build.json said. This predicate admits exactly
     # the same repos the glob did, plus any correctly-declared one.
     # id = dir basename sans an ac_cloud- prefix if it has one.
-    local apps="[]" bj id dir
+    local apps="[]" bj id dir reldir
     # One level deep AND one nested level: ab_cloud-libs-shared holds the two
     # build harnesses (lib-apks, keyboard-engines) as subdirectories since the
     # 2026-08-30 consolidation, and a root-only glob dropped them silently --
@@ -72,6 +72,11 @@ regen_constellation() {
                or (.android.application_id != null and .release.ghcr != null)' \
            "$bj" >/dev/null 2>&1 || continue
         dir="$(basename "$(dirname "$bj")")"; id="${dir#ac_cloud-}"
+        # repo_url must survive nesting. The glob reaches two levels, so a
+        # dir can be a_solutions/ae-tool_termux-boot - basename alone built
+        # .../tree/main/ae-tool_termux-boot, a 404. Identical to $dir for
+        # every top-level app, so nothing else moves.
+        reldir="$(realpath --relative-to="$UNIX" "$(dirname "$bj")")"
         if jq -e '.lib_apks.scan' "$bj" >/dev/null 2>&1; then
             # ── Multi-lib repo (ab_cloud-libs-shared/lib-apks) ────────────────────────────────
             # One repo, one APK per library module, so it expands into MANY fleet
@@ -129,7 +134,7 @@ regen_constellation() {
         elif jq -e '.release.ghcr.image and .android.application_id' "$bj" >/dev/null 2>&1; then
             # ── Top-level app (browser/vault/wallet/superapp/nav/ide) ─────────
             # Publishes a rolling `latest` release → stable direct-download URL.
-            apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$dir" \
+            apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$reldir" \
                        --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
                 ($rel + "/latest/download/" + .release.gh_release.asset_name) as $url
                 | $acc + [ { id: $id,
@@ -154,7 +159,7 @@ regen_constellation() {
             # identity under .forks.<key> (one real fork per dir). Forks publish
             # --latest=false tagged releases → link the releases page, not a
             # /latest/download. keystore-signed package id is preserved.
-            apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$dir" \
+            apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$reldir" \
                        --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
                 (.release.ghcr) as $cg
                 | ( .forks | to_entries
