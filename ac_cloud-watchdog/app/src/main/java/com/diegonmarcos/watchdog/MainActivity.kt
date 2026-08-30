@@ -16,9 +16,13 @@ import com.diegonmarcos.superapp.watchdog.WatchdogSsh
  * It does not parse a snapshot, lay out boxes, choose colours or know what a
  * cgroup is. The panel already draws all of that, and every attempt to draw it
  * a second time somewhere else diverged on frames, alignment and palette —
- * slowly enough each time to look nearly right and never be. So the app asks
- * `my-konsole-dash tui <cols> <rows>` inside nix-on-droid for a screen at the
- * grid THIS device has, and puts the answer on screen.
+ * slowly enough each time to look nearly right and never be.
+ *
+ * So it runs `my-konsole-dash tui --serve` inside nix-on-droid and keeps it: keys
+ * go down its stdin, frames come back off its stdout. So the app has every
+ * command the CLI has and the exact same screen, and neither is a claim about
+ * this code — the keys ARE Monitor::on_key and the screen IS the ratatui
+ * buffer. Adding a key to the panel adds it here with no work.
  *
  * The grid is computed from the WebView's own measurements rather than
  * guessed: character width comes from measuring a monospace run in the page,
@@ -29,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
     private lateinit var ssh: WatchdogSsh
+    private lateinit var bridge: WatchdogBridge
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,10 +62,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(web)
 
         ssh = WatchdogSsh(this)
-        web.addJavascriptInterface(
-            WatchdogBridge(this, web, ssh) { backend },
-            "AndroidWatchdog",
-        )
+        bridge = WatchdogBridge(this, web, ssh) { backend }
+        web.addJavascriptInterface(bridge, "AndroidWatchdog")
         web.loadUrl("file:///android_asset/watchdog.html")
     }
 
@@ -71,7 +74,13 @@ class MainActivity : AppCompatActivity() {
      */
     private var backend: String = com.diegonmarcos.superapp.watchdog.BuildConfig.WATCHDOG_BACKEND_DEFAULT
 
+    /**
+     * The panel is a process on the other side, so leaving has to end it —
+     * otherwise every launch strands a `tui --serve` on the phone and they
+     * accumulate until something notices the fan.
+     */
     override fun onDestroy() {
+        bridge.stop()
         ssh.close()
         super.onDestroy()
     }

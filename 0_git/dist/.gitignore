@@ -126,14 +126,34 @@ build.log
 ## stops protecting anything. Seventh time this blanket rule has needed one.
 !ab_cloud-libs-shared/libs/
 !ab_cloud-libs-shared/libs/**
-## The per-app libs/ exceptions for wallet, nav, calendar, news, contacts and
-## media-center are GONE because those trees are gone: every shared module now
-## lives under ab_cloud-libs-shared/libs/, whose negation above covers them. A
-## dead negation is not harmless here - it reads as "this app still has a libs/",
-## which is exactly the confusion that made this rule bite six times.
+## EXCEPTION: ac_cloud-wallet/libs/ is the gradle multi-module source tree
+## (libs:wallet). Same pattern as aa_cloud-superapp/libs/. Added 2026-07-12.
+!ac_cloud-wallet/libs/
+!ac_cloud-wallet/libs/**
+## EXCEPTION: ac_cloud-nav/libs/ is the gradle multi-module source tree
+## (libs:core, libs:maps, libs:updater). Same pattern as aa_cloud-superapp/libs/.
+!ac_cloud-nav/libs/
+!ac_cloud-nav/libs/**
+## EXCEPTION: ac_cloud-calendar/libs/ is the gradle multi-module source tree
+## (libs:core, libs:updater, libs:cal). Same pattern as aa_cloud-superapp/libs/.
+!ac_cloud-calendar/libs/
+!ac_cloud-calendar/libs/**
+## EXCEPTION: ac_cloud-news/libs/ is the gradle multi-module source tree
+!ac_cloud-news/libs/
+!ac_cloud-news/libs/**
+!ac_cloud-contacts/libs/
+!ac_cloud-contacts/libs/**
 ## EXCEPTION: ac_cloud-vault/libs/ — the FIFTH time this blanket rule has
 !ac_cloud-vault/libs/
 !ac_cloud-vault/libs/**
+## EXCEPTION: ac_cloud-media-center/libs/ — the SIXTH time. Path updated when
+## upstream/ was flattened to the app root (2026-08-29): the old
+## !ac_cloud-media-center/upstream/libs/ stopped matching after the move, which
+## would have let the blanket libs/ rule swallow 68 tracked files on the next
+## git add — silently, because git add never reports what it ignored. This one
+## as !ac_cloud-media-center/libs/ would not have matched it.
+!ac_cloud-media-center/libs/
+!ac_cloud-media-center/libs/**
 aa_cloud-superapp/**/*.keystore
 aa_cloud-superapp/**/*.jks
 ea_cloud-comms/**/*.keystore

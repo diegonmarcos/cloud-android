@@ -31,7 +31,10 @@ class WatchdogBridge(
     private val backend: () -> String,
 ) {
 
-    private val pool = Executors.newSingleThreadExecutor()
+    // Two: one carries keys down, one is free for start/stop. The frame
+    // reader gets a thread of its own, so a blocking read never holds up
+    // the next keystroke — that would make the panel feel dead under load.
+    private val pool = Executors.newFixedThreadPool(2)
 
     /**
      * Fetch one screen at [cols]x[rows].
@@ -46,6 +49,75 @@ class WatchdogBridge(
             val r = ssh.screen(backend(), cols, rows)
             reply(reqId, r.isSuccess, r.getOrElse { it.message ?: "unreachable" })
         }
+    }
+
+    // ── the live panel ────────────────────────────────────────────────────
+    // One long-lived `tui --serve` per session. Every key the CLI binds works
+    // through this and nothing here knows what any of them mean: `k`, `x`, a
+    // digit, `:` — all of them are one line down a pipe, and the panel's own
+    // on_key decides. A key table on this side would be a second one to keep
+    // in step, and it would be wrong the first time a key was added.
+
+    @Volatile private var panel: WatchdogSsh.Panel? = null
+    @Volatile private var reader: Thread? = null
+
+    /** Start (or restart) the panel at this device's grid. */
+    @JavascriptInterface
+    fun start(cols: Int, rows: Int) {
+        pool.execute {
+            stopPanel()
+            ssh.open(backend(), cols, rows).fold(
+                onSuccess = { p ->
+                    panel = p
+                    // Frames arrive on their own thread and are pushed at the
+                    // page: the panel emits one per key AND one per tick, so
+                    // the app cannot be the thing deciding when a screen is
+                    // ready — it just paints what arrives.
+                    reader = Thread {
+                        while (true) {
+                            val f = runCatching { p.readFrame() }.getOrNull() ?: break
+                            push("frame", f)
+                        }
+                        push("closed", "")
+                    }.apply { isDaemon = true; start() }
+                },
+                onFailure = { push("error", it.message ?: "unreachable") },
+            )
+        }
+    }
+
+    /** A keystroke, by name. "p", "1", "enter", "esc", "up", "f1". */
+    @JavascriptInterface
+    fun key(name: String) {
+        pool.execute { runCatching { panel?.key(name) } }
+    }
+
+    /** Refresh the data without pressing anything — the frame's `a` loop. */
+    @JavascriptInterface
+    fun tick() {
+        pool.execute { runCatching { panel?.tick() } }
+    }
+
+    /** Rotation or unfold: the panel redraws for the new grid. */
+    @JavascriptInterface
+    fun resize(cols: Int, rows: Int) {
+        pool.execute { runCatching { panel?.resize(cols, rows) } }
+    }
+
+    @JavascriptInterface
+    fun stop() {
+        pool.execute { stopPanel() }
+    }
+
+    private fun stopPanel() {
+        runCatching { panel?.close() }
+        panel = null
+        reader = null
+    }
+
+    private fun push(kind: String, payload: String) {
+        val js = "window.__wdEvent(${JSONObject.quote(kind)}, ${JSONObject.quote(payload)})"
+        webView.post { webView.evaluateJavascript(js, null) }
     }
 
     /** The authorized_keys line for the setup screen. */

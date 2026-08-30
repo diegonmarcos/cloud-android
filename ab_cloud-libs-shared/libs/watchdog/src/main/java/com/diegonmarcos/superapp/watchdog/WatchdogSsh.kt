@@ -23,11 +23,17 @@ import java.io.File
  * this way, so this is the constellation's existing answer rather than a
  * second one.
  *
- * WHY ChannelExec AND NOT A SHELL
- * This asks one question per refresh — "draw me a screen this wide" — and
- * wants the answer as a string. A pty would mean parsing a stream for a prompt
- * to know where the answer ended, which is how terminal automation usually
- * goes wrong. exec gives an exit status and a clean EOF.
+ * WHY ChannelExec AND NOT A PTY
+ * Two shapes, both exec. [screen] asks one question and reads one answer, for
+ * the static report. [open] starts `tui --serve` and keeps it: keys down its
+ * stdin, frames off its stdout, one process for the whole session so the panel
+ * keeps which tab, which sort and which row the cursor is on.
+ *
+ * Neither needs a pty, and that is the point. A pty means finding the end of
+ * an answer by watching for a prompt or a pause, which paints half-drawn
+ * screens the moment the far side is slow — and on a throttled free-tier box
+ * that is most of the time. A sentinel line the transcript cannot contain says
+ * exactly where a screen ends.
  *
  * KEYS
  * Generated here on first use and never leaving the app: an ECDSA nistp256
@@ -125,12 +131,73 @@ class WatchdogSsh(private val ctx: Context) {
     fun screen(backend: String, cols: Int, rows: Int): Result<String> =
         exec(backend, "${BuildConfig.WATCHDOG_CMD} $cols $rows")
 
+    /**
+     * A SESSION, not a request: one long-lived `tui --serve` on the far side,
+     * keys written to its stdin and frames read off its stdout.
+     *
+     * One process per session rather than one per refresh, because the panel
+     * has state — which tab, which sort, which row the cursor is on — and a
+     * fresh process per keystroke would forget all of it between presses. This
+     * is the same reason a terminal runs one program rather than re-launching
+     * it for every key.
+     *
+     * Line-oriented, so no pty is needed: a frame ends at a sentinel the
+     * transcript cannot contain, which means the reader knows the screen is
+     * COMPLETE rather than inferring it from a pause. A pause-based reader
+     * paints half-drawn screens the moment the far side is slow, which on a
+     * throttled free-tier box is most of the time.
+     */
+    inner class Panel internal constructor(private val ch: ChannelExec) {
+        private val stdin = ch.outputStream
+        private val stdout = ch.inputStream.bufferedReader()
+
+        /** Blocks until one whole frame has arrived. */
+        fun readFrame(): String? {
+            val sb = StringBuilder()
+            while (true) {
+                val line = stdout.readLine() ?: return null
+                if (line == FRAME_END) return sb.toString()
+                sb.append(line).append('\n')
+            }
+        }
+
+        private fun send(line: String) {
+            stdin.write((line + "\n").toByteArray())
+            stdin.flush()
+        }
+
+        fun key(name: String) = send("key:$name")
+        fun tick() = send("tick")
+        fun resize(cols: Int, rows: Int) = send("size:${cols}x$rows")
+
+        fun close() {
+            runCatching { send("quit") }
+            runCatching { ch.disconnect() }
+        }
+    }
+
+    /** Start the panel and hand back the channel to drive it. */
+    fun open(backend: String, cols: Int, rows: Int): Result<Panel> = runCatching {
+        val ch = connect(backend).openChannel("exec") as ChannelExec
+        ch.setCommand("${BuildConfig.WATCHDOG_CMD} --serve $cols $rows")
+        // stdin has to be a pipe we own: this is the half that carries the
+        // keystrokes, and jsch defaults it to nothing.
+        ch.setInputStream(null, true)
+        ch.setErrStream(System.err)
+        val s = Panel(ch)
+        ch.connect(CONNECT_MS)
+        s
+    }
+
     fun close() {
         session?.disconnect()
         session = null
     }
 
-    private companion object {
+    companion object {
+        /** Must match monitor::FRAME_END on the other side. */
+        const val FRAME_END = "@@WATCHDOG-FRAME-END@@"
+
         /** Loopback: a connection that has not landed in two seconds is not slow, it is absent. */
         const val CONNECT_MS = 2_000
     }

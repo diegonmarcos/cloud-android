@@ -219,54 +219,139 @@ html,body{height:100%;margin:0;background:#0b0e14;color:#c8ccd4;overflow:hidden}
 #view{position:absolute;top:calc(46px + env(safe-area-inset-top,0px));left:0;right:0;bottom:0;
   overflow:auto;-webkit-overflow-scrolling:touch;padding:6px}
 #view .tui{margin:0;padding:0;box-shadow:none;border-radius:0}
+#keys{position:fixed;left:0;right:0;bottom:0;z-index:9;background:#101520;
+  border-top:1px solid #3a3e4a;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+#keys .row{display:flex;gap:4px;margin:3px 0}
+#keys button{flex:1;min-height:40px;background:#0b0e14;color:#c8ccd4;border:1px solid #3a3e4a;
+  border-radius:6px;font:inherit;font-size:11px;padding:0 2px}
+#keys button:active{background:#78c8ff;color:#0b0e14;border-color:#78c8ff}
+#keys .row[data-t="act"] button{color:#78c8ff}
+/* Off-screen but focusable: focusing it raises the soft keyboard, and every
+   character typed goes down the same pipe as the buttons. */
+#sink{position:fixed;left:-9999px;width:1px;height:1px;opacity:0}
 #msg{padding:18px;color:#f0de40;font:12px ui-monospace,monospace;white-space:pre-wrap}
 </style>
 <div id="bar"><b>watchdog</b><span class="s" id="age">connecting…</span>
-<button id="r" type="button">refresh</button></div>
-<div id="view"><div id="msg">measuring…</div></div>
+<button id="kb" type="button">keys</button></div>
+<div id="view"><div id="msg">connecting…</div></div>
+
+<!-- Every key the CLI binds, reachable by thumb. The LABELS are a convenience
+     for a touchscreen; the app still sends only a key name and the panel's own
+     on_key decides what it means, so this bar can never disagree with the CLI
+     about behaviour — only about which keys it bothers to show. Anything not
+     here is still typeable from the soft keyboard. -->
+<div id="keys" hidden>
+  <div class="row" data-t="tabs">
+    <button data-k="p">proc</button><button data-k="o">ctr</button>
+    <button data-k="f">fleet</button><button data-k="W">fw</button>
+    <button data-k="L">logs</button><button data-k="y">hist</button>
+    <button data-k="F">files</button><button data-k="b">about</button>
+  </div>
+  <div class="row" data-t="subs">
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+  </div>
+  <div class="row" data-t="act">
+    <button data-k="k">k act</button><button data-k="x">x opt</button>
+    <button data-k="enter">enter</button><button data-k="esc">esc</button>
+    <button data-k="v">v</button><button data-k="E">E</button>
+    <button data-k=":">:</button><button data-k="m">menu</button>
+  </div>
+  <div class="row" data-t="move">
+    <button data-k="up">↑</button><button data-k="down">↓</button>
+    <button data-k="left">←</button><button data-k="right">→</button>
+    <button data-k="tab">tab</button><button data-k="backtab">⇧tab</button>
+    <button data-k="pgup">pgup</button><button data-k="pgdn">pgdn</button>
+  </div>
+  <div class="row" data-t="sort">
+    <button data-k="c">cpu</button><button data-k="M">mem</button>
+    <button data-k="d">disk</button><button data-k="n">name</button>
+    <button data-k="i">inv</button><button data-k="w">win</button>
+    <button data-k="a">auto</button><button data-k="r">refresh</button>
+  </div>
+</div>
+<input id="sink" autocapitalize="off" autocorrect="off" spellcheck="false">
 <script>
-// The grid is MEASURED, never assumed. A monospace cell is whatever this
+// The grid is MEASURED, never assumed: a monospace cell is whatever this
 // device's font makes it, and asking for a width the screen does not have is
-// how a terminal ends up either clipped or scaled into a texture.
+// how a terminal ends up clipped or shrunk into a texture.
 function cell() {
   const p = document.createElement('pre');
   p.className = 'tui';
   p.style.cssText = 'position:absolute;visibility:hidden';
   p.textContent = 'M'.repeat(100);
   document.body.appendChild(p);
-  const w = p.getBoundingClientRect().width / 100;
-  const h = p.getBoundingClientRect().height;
+  const r = p.getBoundingClientRect();
   p.remove();
-  return { w: w || 7, h: h || 14 };
+  return { w: (r.width / 100) || 7, h: r.height || 14 };
 }
-let pending = null;
-window.__wdScreen = function (id, ok, payload) {
-  if (!pending || pending.id !== id) return;   // a stale reply after a rotation
+function grid() {
+  const v = document.getElementById('view'), c = cell();
+  return [Math.max(40, Math.floor((v.clientWidth - 12) / c.w)),
+          Math.max(20, Math.floor((v.clientHeight - 12) / c.h))];
+}
+
+// Frames are PUSHED, not polled: the panel emits one per key and one per tick,
+// so the page paints what arrives rather than deciding when a screen is ready.
+window.__wdEvent = function (kind, payload) {
   const view = document.getElementById('view');
-  if (ok) {
+  if (kind === 'frame') {
     view.innerHTML = payload;
     document.getElementById('age').textContent = new Date().toLocaleTimeString();
-  } else {
-    // The reason, verbatim. "Cannot connect" and "command not found" send you
-    // to two different places, and collapsing them into "error" helps nobody.
+  } else if (kind === 'error') {
     view.innerHTML = '<div id="msg"></div>';
-    view.firstChild.textContent =
-      payload + '\n\nkey for ~/.ssh/authorized_keys:\n' + AndroidWatchdog.publicKey();
+    // Verbatim: "cannot connect" and "command not found" send you to two
+    // different places, and collapsing them into "error" helps nobody.
+    view.firstChild.textContent = payload +
+      '\n\nadd this to ~/.ssh/authorized_keys in the env:\n\n' + AndroidWatchdog.publicKey();
     document.getElementById('age').textContent = 'unreachable';
+  } else if (kind === 'closed') {
+    document.getElementById('age').textContent = 'panel exited';
   }
-  pending = null;
 };
-function refresh() {
-  const c = cell();
-  const view = document.getElementById('view');
-  const cols = Math.max(40, Math.floor((view.clientWidth  - 12) / c.w));
-  const rows = Math.max(20, Math.floor((view.clientHeight - 12) / c.h));
-  pending = { id: String(Date.now()) };
-  AndroidWatchdog.screen(pending.id, cols, rows);
+
+const send = k => AndroidWatchdog.key(k);
+
+// The key bar. One listener on the container, so adding a button is markup.
+document.getElementById('keys').addEventListener('click', e => {
+  const b = e.target.closest('button[data-k]');
+  if (b) { send(b.dataset.k); e.preventDefault(); }
+});
+document.getElementById('kb').onclick = () => {
+  const k = document.getElementById('keys');
+  k.hidden = !k.hidden;
+  // The hidden input is what makes a real keyboard usable: focusing it brings
+  // up the soft keyboard, and every character it receives goes straight down
+  // the same pipe as the buttons.
+  if (k.hidden) document.getElementById('sink').blur();
+  else document.getElementById('sink').focus();
+  fit();
+};
+
+// A physical or soft keyboard, forwarded by NAME. The panel wants "up", not an
+// escape sequence, and a WebView already reports names — so nothing here has
+// to know how a terminal encodes anything.
+const NAMED = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+                Enter:'enter', Escape:'esc', Tab:'tab', Backspace:'backspace',
+                PageUp:'pgup', PageDown:'pgdn', Home:'home', End:'end', ' ':'space' };
+addEventListener('keydown', e => {
+  const n = NAMED[e.key] || (e.key.length === 1 ? e.key : null);
+  if (!n) return;
+  if (e.shiftKey && e.key === 'Tab') { send('backtab'); e.preventDefault(); return; }
+  send(n);
+  e.preventDefault();
+});
+
+function fit() {
+  const [c, r] = grid();
+  AndroidWatchdog.resize(c, r);
 }
-document.getElementById('r').onclick = refresh;
-// Rotation and unfold change the grid, so the screen is re-asked for rather
-// than stretched — a redrawn terminal is right, a stretched one is not.
-let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(refresh, 250); });
-refresh();
+// Auto-refresh, the frame's own `a` loop. 2s is the sampler's interval; asking
+// faster would redraw the same numbers.
+setInterval(() => AndroidWatchdog.tick(), 2000);
+let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fit, 250); });
+
+const [c0, r0] = grid();
+AndroidWatchdog.start(c0, r0);
 </script>
