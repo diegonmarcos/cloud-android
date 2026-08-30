@@ -170,7 +170,14 @@ object Fleet {
                 else State.Error("HTTP ${e.code}")
             } ?: State.Missing()
         } catch (t: Throwable) {
-            installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) }
+            // An installed app whose remote check THREW must not masquerade as
+            // "Installed" — that silently hides real updates behind transient
+            // network failures. On an IPv6-only carrier (no route to 1.1.1.1)
+            // every GHCR token fetch throws UnknownHost, and the store showed
+            // "Installed" while an update sat on the release (2026-08-30).
+            // Missing stays a local fact; a failed check on an installed app
+            // is an honest Error.
+            installed?.let { State.Error("check failed: ${t.message ?: t.javaClass.simpleName}") }
                 ?: State.Missing()
         }
     }

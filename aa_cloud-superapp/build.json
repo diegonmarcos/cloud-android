@@ -27,8 +27,6 @@
     "_doc": "On-device DevControlServer diagnostics → cloud sink + local download. Baked into BuildConfig.LOG_SINK_URL / LOG_SINK_STREAM by app/build.gradle. log_sink_url is our OpenObserve (the Loki-equivalent log store, openobserve on oci-apps) ingest, reached via the PUBLIC first-party analytics collector so NO credential is embedded in the public APK (the collector relays to openobserve server-side). '{stream}' in the url is replaced with log_sink_stream at runtime. EMPTY url = cloud push disabled (the 'Download logs' action still works fully); set it to the confirmed collector ingest path to enable one-tap 'Send logs to cloud'. Data-driven: change here, every app rebuild picks it up — never hardcode in Kotlin.",
     "log_sink_url": "https://api.diegonmarcos.com/pub/analytics/openobserve",
     "log_sink_stream": "cloud-superapp",
-    "_doc_report_url": "Where the install-failure diagnose screen POSTs its report. {app} is replaced with the fleet app id, giving c3-infra-api/pub/logs/<app-name>. Separate from log_sink_url on purpose: that one is a fire-and-forget analytics stream, this is a human-triggered bundle a person is waiting on and wants a URL back for. Empty disables the Send button and leaves Copy/Save.",
-    "report_url": "https://api.diegonmarcos.com/pub/logs/{app}",
     "enabled": true
   },
   "emulator": {
@@ -53,8 +51,25 @@
     "jdk": "17"
   },
   "constellation": {
-    "_doc": "Escape hatch for fleet members that ship from ANOTHER repo, which regen.sh's scan cannot reach: it walks this repo's own */build.json and */*/build.json. Kept as DATA rather than hardcoded in the script (FIRE RULE #6). Currently EMPTY. It held termux-boot until 2026-08-30, from when that tool lived in cloud-infra-desktop; it has since moved to a_solutions/ae-tool_termux-boot/ HERE, where the two-level glob already finds it - so the declaration was a stale duplicate that put the tool in the fleet twice, the scanned copy working and this one pointing at a cloud-infra-desktop package that never existed (a hard GHCR 403 DENIED, plus a 404 on its release asset). Add an entry here only for a repo that is genuinely not this one.",
-    "external": []
+    "_doc": "Fleet members that regen.sh cannot discover by scanning this monorepo's siblings, because they ship from a DIFFERENT repo. The scan predicate in data/regen.sh is deliberately prefix-agnostic so a repo self-registers via its own build.json, but it only reaches sibling directories of cloud-u-android. cloud-infra-desktop-termux-boot lives in cloud-infra-desktop and is released + GHCR-pushed from there by ship-cloud-infra-desktop-termux-boot.yml, so its URLs point at cloud-infra-desktop, not here. Declared as DATA rather than hardcoded in the script (FIRE RULE #6). Before the 2026-08-25 android split the scan picked this up automatically; the split made it invisible and it silently left the store.",
+    "external": [
+      {
+        "id": "cloud-infra-desktop-termux-boot",
+        "label": "cloud-infra-desktop-termux-boot",
+        "package": "com.termux.nix.boot",
+        "alt_id": null,
+        "registry": "ghcr.io",
+        "namespace": "diegonmarcos",
+        "image": "cloud-infra-desktop-termux-boot",
+        "tag": "latest",
+        "asset": "Cloud-Unix-Termux-Boot.apk",
+        "release_url": "https://github.com/diegonmarcos/cloud-infra-desktop/releases/latest/download/Cloud-Unix-Termux-Boot.apk",
+        "repo_url": "https://github.com/diegonmarcos/cloud-infra-desktop/tree/main/cloud-infra-desktop-termux-boot",
+        "ghcr_page": "https://github.com/diegonmarcos/cloud-infra-desktop/pkgs/container/cloud-infra-desktop-termux-boot",
+        "blocked": false,
+        "kind": "lib"
+      }
+    ]
   },
   "upstreams": {
     "_doc": "Workspace tracking clones of upstream FOSS apps. Each lives at ../ea_<domain>-<project>/ (gitignored, see 0_git/src/gitignore ea_*-*/ rule). Refresh with `git -C ../ea_<x>-<y> pull`. Code is cherry-picked into libs/<domain>/ — NEVER built as a gradle subproject directly (they're top-level apps, not libraries).",
@@ -109,6 +124,33 @@
       "primary_lang": "Kotlin",
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) — zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
     },
+    "firestack": {
+      "tracker": "ab_cloud-libs-shared/libs/firewall/firestack-src",
+      "repo": "https://github.com/celzero/firestack.git",
+      "ref": "n2",
+      "license": "MPL-2.0",
+      "feeds_into": "libs:firewall",
+      "primary_lang": "Go",
+      "build": {
+        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
+        "go_version": "1.27.0",
+        "go_sha256_linux_amd64": "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685",
+        "make_target": "intra",
+        "aar_built": "build/intra/tun2socks.aar",
+        "aar_out": "firestack.aar",
+        "java_pkg": "com.celzero.firestack",
+        "_doc_abi": "gomobile bind defaults to ALL android ABIs (arm,arm64,x86,x86_64) — ~4× build time, blows the 30-min CI job. build.sh restricts it to the ONE ABI the SUPERAPP_VARIANT ships by overriding firestack's Makefile ANDROID23 var with a single -target. These flags MIRROR firestack Makefile's ANDROID23 (`-androidapi 23 -target=android -tags='android' -work`) minus the ABI; keep in sync on firestack bumps.",
+        "android_api": "23",
+        "gomobile_tags": "android",
+        "gomobile_targets": {
+          "": "android/arm64",
+          "arm64": "android/arm64",
+          "x86_64": "android/amd64"
+        }
+      },
+      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build.",
+      "_doc_vendored": "VENDORED IN-REPO 2026-08-30, beside the module that consumes it, so the engine source is owned rather than cloned at build time - same doctrine as the app forks. Only what upstream tracks is committed (224 files, 2.4 MB); upstream's bin/ is 24 MB of build output and is not tracked there either. There is no .git inside, so the sync/clone path is skipped: presence of go.mod is what marks the tree usable. To move to a newer upstream, bump ref, delete this tree and re-run `build.sh sync-firestack`."
+    },
     "ops": {
       "tracker": null,
       "repo": null,
@@ -122,8 +164,7 @@
       "license": null,
       "feeds_into": "libs:core",
       "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) — original code."
-    },
-    "_doc_firestack_moved": "firestack config now lives in ab_cloud-libs-shared/build.json::firestack, beside the module that consumes it. Built by ab_cloud-libs-shared/libs/firewall/build-firestack.sh, which both this repo's build.sh and lib-apks/build.sh invoke."
+    }
   },
   "modules": {
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list. Adding a new feature module = one entry here + mkdir + minimal build.gradle.",
@@ -1606,7 +1647,7 @@
                 "target": "app://com.google.android.apps.docs.editors.sheets?fallback=https%3A%2F%2Fdocs.google.com%2Fspreadsheets%2F"
               },
               {
-                "_doc": "Cloud Media Center — our Google-Photos/Samsung-Gallery replacement (local gallery + PhotoPrism cloud library + backup). Registered in ui.external_apps[cloud-media-center]; this tile is what makes it VISIBLE in the launcher — an external_apps entry alone only makes an app installable/openable BY ID and shows nothing. The former sibling 'photos' tile (app://com.google.android.apps.photos) was removed 2026-08-30 now that cloud-media-center ships a green APK — Media Center is the sole photo entry point.",
+                "_doc": "Cloud Media Center — our Google-Photos/Samsung-Gallery replacement (local gallery + PhotoPrism cloud library + backup). Registered in ui.external_apps[cloud-media-center]; this tile is what makes it VISIBLE in the launcher — an external_apps entry alone only makes an app installable/openable BY ID and shows nothing. The former sibling 'photos' tile (app://com.google.android.apps.photos) was removed 2026-08-30 now that this one ships a green APK — Media Center is the sole photo entry point.",
                 "id": "mediacenter",
                 "label": "Media Center",
                 "icon": "ic_photos",
@@ -1662,7 +1703,7 @@
                 "_doc": "Cloud-Watchdog — the standalone fleet/host watchdog APK (ac_cloud-watchdog). extapp:, not app://, so a phone without it installed gets the APK offered instead of a dead tile: launchExternalApp opens com.diegonmarcos.watchdog when present, else installs ui.external_apps[id=cloud-watchdog].install_apk_url.",
                 "id": "watchdog",
                 "label": "Watchdog",
-                "icon": "ic_p_watchdog",
+                "icon": "ic_p_c3_health",
                 "target": "extapp:cloud-watchdog"
               }
             ]
@@ -1691,10 +1732,10 @@
                 "target": "page:health/summary"
               },
               {
-                "id": "mydata",
-                "label": "MyData",
+                "id": "mysocials",
+                "label": "MySocials",
                 "icon": "ic_database",
-                "target": "https://diegonmarcos.github.io/my-data/"
+                "target": "https://diegonmarcos.github.io/mySocials/"
               }
             ]
           }
