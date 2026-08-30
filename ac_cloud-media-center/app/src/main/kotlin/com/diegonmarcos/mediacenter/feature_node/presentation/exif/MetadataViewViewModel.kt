@@ -21,16 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class MetadataDirectory(
-    val name: String,
-    val tags: List<MetadataTag>
-)
-
-data class MetadataTag(
-    val name: String,
-    val description: String
-)
+import com.diegonmarcos.mediacenter.core.metadata.MetadataDirectory
 
 data class MetadataViewState(
     val isLoading: Boolean = true,

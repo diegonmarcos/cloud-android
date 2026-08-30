@@ -27,8 +27,8 @@ import com.diegonmarcos.mediacenter.core.sandbox.IsolatedMetadataService.Compani
 import com.diegonmarcos.mediacenter.core.sandbox.IsolatedMetadataService.Companion.MSG_PARSE_IMAGE
 import com.diegonmarcos.mediacenter.core.sandbox.IsolatedMetadataService.Companion.MSG_PARSE_RAW_METADATA
 import com.diegonmarcos.mediacenter.core.sandbox.IsolatedMetadataService.Companion.MSG_PARSE_VIDEO
-import com.diegonmarcos.mediacenter.feature_node.presentation.exif.MetadataDirectory
-import com.diegonmarcos.mediacenter.feature_node.presentation.exif.MetadataTag
+import com.diegonmarcos.mediacenter.core.metadata.MetadataDirectory
+import com.diegonmarcos.mediacenter.core.metadata.MetadataTag
 import com.diegonmarcos.mediacenter.core.util.printDebug
 import com.diegonmarcos.mediacenter.core.util.printWarning
 import kotlinx.coroutines.Dispatchers

@@ -21,8 +21,8 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.Media
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaItem
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaMetadataState
 import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaState
-import com.diegonmarcos.mediacenter.feature_node.presentation.exif.MetadataDirectory
-import com.diegonmarcos.mediacenter.feature_node.presentation.exif.MetadataTag
+import com.diegonmarcos.mediacenter.core.metadata.MetadataDirectory
+import com.diegonmarcos.mediacenter.core.metadata.MetadataTag
 import com.diegonmarcos.mediacenter.feature_node.presentation.exif.MetadataViewState
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.MockedMediaDistributor
 import kotlinx.coroutines.flow.MutableStateFlow
