@@ -64,6 +64,21 @@ object InstallDiagnostics {
             // download is a valid prefix of a valid APK and looks fine until
             // the installer reads the tail. This is the cheapest way to tell
             // "the download stopped early" from "the APK is wrong".
+            // The ABIs the APK actually carries, against the ones this device
+            // accepts. INSTALL_FAILED_NO_MATCHING_ABIS says only that they did
+            // not intersect; these two lines say WHICH, and that is the whole
+            // diagnosis — an x86_64-only build published under the phone's
+            // asset name looks identical to a correct one until you read them.
+            line("apk ABIs", runCatching {
+                java.util.zip.ZipFile(apk).use { z ->
+                    z.entries().asSequence()
+                        .filter { it.name.startsWith("lib/") && it.name.endsWith(".so") }
+                        .map { it.name.split('/')[1] }.toSortedSet()
+                        .ifEmpty { sortedSetOf("(none — no native libs)") }
+                        .joinToString(",")
+                }
+            }.getOrDefault("(unreadable)"))
+            line("device ABIs", Build.SUPPORTED_ABIS.joinToString(","))
             line("zip tail ok", runCatching {
                 apk.exists() && apk.length() > 22 && java.util.zip.ZipFile(apk).use { it.size() > 0 }
             }.getOrDefault(false))

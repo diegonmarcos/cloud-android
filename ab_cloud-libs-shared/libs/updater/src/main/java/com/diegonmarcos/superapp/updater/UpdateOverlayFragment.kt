@@ -178,8 +178,12 @@ class UpdateOverlayFragment : Fragment() {
         }
         actionRow.addView(action("Copy") { copyReport(ctx) })
         actionRow.addView(action("Save") { saveReport(ctx) })
-        if (com.diegonmarcos.superapp.devtools.DiagnosticsPush.canReport()) {
-            actionRow.addView(action("Send") { sendReport(ctx) })
+        // One button per declared destination rather than a single "Send":
+        // c3-infra-api when the phone has internet, surface-nixos-api when only
+        // the LAN answers. Naming them beats a chooser dialog for two entries,
+        // and a phone with neither simply gets Copy and Save.
+        for (t in com.diegonmarcos.superapp.devtools.DiagnosticsPush.reportTargets()) {
+            actionRow.addView(action("→ ${t.id}") { sendReportTo(ctx, t) })
         }
         column.addView(diagnoseButton)
         column.addView(actionRow)
@@ -289,6 +293,22 @@ class UpdateOverlayFragment : Fragment() {
 
     /** Off the main thread: this is a network POST behind a button someone
      *  just tapped, and blocking the UI thread on it would ANR the overlay. */
+    private fun sendReportTo(
+        ctx: android.content.Context,
+        target: com.diegonmarcos.superapp.devtools.DiagnosticsPush.ReportTarget,
+    ) {
+        val app = failed?.appId?.ifBlank { ctx.packageName } ?: ctx.packageName
+        val body = report.orEmpty()
+        toast(ctx, "Sending to ${target.label}…")
+        Thread {
+            val code = com.diegonmarcos.superapp.devtools.DiagnosticsPush.postReportTo(target, app, body)
+            view?.post {
+                toast(ctx, if (code in 200..299) "Sent to ${target.label} as $app"
+                           else "${target.label} failed (HTTP $code) — try the other, or Copy/Save")
+            }
+        }.start()
+    }
+
     private fun sendReport(ctx: android.content.Context) {
         val app = failed?.appId?.ifBlank { ctx.packageName } ?: ctx.packageName
         val body = report.orEmpty()

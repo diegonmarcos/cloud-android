@@ -298,6 +298,16 @@ _step_build_single_app() {
   step_build_fork "" "$key"
   mkdir -p "$DIST_DIR"
   local out="$DIST_DIR/$(_json ".release.artifact.${variant}")"
+  # ONE artifact name per ABI. Both matrix legs (arm64-v8a, x86_64) ran
+  # _step_build_single_app and wrote the SAME filename, so the release asset was
+  # whichever finished last — x86_64, an emulator build with no arm64 native
+  # libs at all. Installing it on a phone gives
+  # INSTALL_FAILED_NO_MATCHING_ABIS. The canonical name must always be the
+  # phone build, so every non-default ABI gets a suffix.
+  local abi="${COMMS_BUNDLE_ABI:-arm64-v8a}"
+  if [ "$abi" != "arm64-v8a" ]; then
+    out="${out%.apk}-${abi}.apk"
+  fi
   [ "$DIST_DIR/cloud-comms-${key}.apk" = "$out" ] || cp "$DIST_DIR/cloud-comms-${key}.apk" "$out"
   log "→ $out"
 }
