@@ -55,7 +55,6 @@ on:
       # filter. Without them a shared-lib change ships no new APK here and
       # the installed build silently goes stale — the same gap that left
       # 16 superapp modules unwatched.
-      - "ab_cloud-libs-shared/libs/media-center/**"
       - "ab_cloud-libs-shared/libs/analytics/**"
       - "ab_cloud-libs-shared/libs/cropper/**"
       - "ab_cloud-libs-shared/libs/gesture/**"

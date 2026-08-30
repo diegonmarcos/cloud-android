@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- libs:media-center declares no components: it is the cloud data/provider
-     engine, all plain classes. Permissions and services stay in the app. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
