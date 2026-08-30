@@ -291,3 +291,4 @@ c_devices/garmin-watchface/dist/
 # Fetched at build time by libs/watchdog:fetchWatchdogTools from the
 # my-watchdog release — multi-MB static musl binaries, not source.
 ab_cloud-libs-shared/libs/watchdog/src/main/jniLibs/
+ab_cloud-libs-shared/libs/watchdog/src/main/assets/watchdog-app.html

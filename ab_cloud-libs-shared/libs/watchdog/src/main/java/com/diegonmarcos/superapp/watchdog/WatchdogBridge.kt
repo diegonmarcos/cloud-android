@@ -128,6 +128,28 @@ class WatchdogBridge(
         pool.execute { runCatching { panel?.key(name) } }
     }
 
+    /**
+     * Ask the machine for a snapshot and hand it to the page.
+     *
+     * The UI is already on screen when this runs — it shipped in the APK — so
+     * this only ever fills it in. That is the whole point of the split: the
+     * app opening and the machine answering are no longer the same event, and
+     * the second one failing is a stale dashboard rather than no dashboard.
+     */
+    @JavascriptInterface
+    fun refresh() {
+        pool.execute {
+            ssh.snapshot(backend()).fold(
+                onSuccess = { json ->
+                    val js = "window.__wdRender(${JSONObject.quote(json)})"
+                    webView.post { webView.evaluateJavascript(js, null) }
+                    push("fresh", ssh.activeBackend ?: "")
+                },
+                onFailure = { push("stale", it.message ?: "unreachable") },
+            )
+        }
+    }
+
     /** Refresh the data without pressing anything — the frame's `a` loop. */
     @JavascriptInterface
     fun tick() {

@@ -291,6 +291,23 @@ class WatchdogSsh(private val ctx: Context) {
         }
     }
 
+    /**
+     * The numbers, with no UI around them.
+     *
+     * The app carries its own interface and asks the machine only for what
+     * changes, so this is the whole of what crosses the wire on a refresh —
+     * `my-watchdog-tui snapshot`, one envelope, no page. It is also why a
+     * failure here is survivable in a way a failed `open` was not: the
+     * dashboard is already on screen, and a refresh that does not land leaves
+     * the last one there with a stale marker rather than an error where the UI
+     * should be.
+     */
+    fun snapshot(backend: String): Result<String> = runCatching {
+        ensureTools(backend).getOrThrow()
+        ensureDaemon(backend)
+        exec(backend, "'$REMOTE_DIR/$BIN_PANEL' snapshot").getOrThrow()
+    }
+
     /** Start the panel and hand back the channel to drive it. */
     fun open(backend: String, cols: Int, rows: Int): Result<Panel> = runCatching {
         ensureTools(backend).getOrThrow()

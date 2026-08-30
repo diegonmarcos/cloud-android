@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import com.diegonmarcos.superapp.watchdog.WatchdogBridge
 import com.diegonmarcos.superapp.watchdog.WatchdogSsh
@@ -18,16 +19,23 @@ import com.diegonmarcos.superapp.watchdog.WatchdogSsh
  * a second time somewhere else diverged on frames, alignment and palette —
  * slowly enough each time to look nearly right and never be.
  *
- * So it runs `my-watchdog-tui tui --serve` inside nix-on-droid and keeps it: keys
- * go down its stdin, frames come back off its stdout. So the app has every
- * command the CLI has and the exact same screen, and neither is a claim about
- * this code — the keys ARE Monitor::on_key and the screen IS the ratatui
- * buffer. Adding a key to the panel adds it here with no work.
+ * THE UI AND THE DATA ARE TWO THINGS
+ * They used to be one, and that was the bug. Every pixel came from a
+ * transcription of the panel's ratatui buffer, which meant the interface was a
+ * property of having already reached a machine — so a refused connection left
+ * nothing to draw and the app opened on an error message where a dashboard
+ * should be.
  *
- * The grid is computed from the WebView's own measurements rather than
- * guessed: character width comes from measuring a monospace run in the page,
- * so a phone, that phone rotated, and a foldable opened each get a terminal
- * that fits instead of one scaled down to a texture.
+ * Now the interface ships. `my-watchdog-tui app-shell` renders the same
+ * template the desktop report uses, against an empty machine, and that page is
+ * an asset in this APK: it opens with no network, nothing installed on the
+ * phone and nobody's sshd running. The machine is asked for numbers separately
+ * and window.__wdRender swaps them in, so a refresh that does not land leaves
+ * the last dashboard on screen instead of taking the app down with it.
+ *
+ * One template, not two: the phone and the desktop report cannot drift apart
+ * on palette, box order or which tabs exist, because neither of them draws
+ * anything this repo wrote.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -64,7 +72,20 @@ class MainActivity : AppCompatActivity() {
         ssh = WatchdogSsh(this)
         bridge = WatchdogBridge(this, web, ssh) { backend }
         web.addJavascriptInterface(bridge, "AndroidWatchdog")
-        web.loadUrl("file:///android_asset/watchdog.html")
+        // The UI, shipped. It is the page `my-watchdog-tui app-shell` renders —
+        // the same template as the desktop report, against an empty machine —
+        // so it opens instantly, with no network and nothing installed on the
+        // phone, and the drawer, the tabs and every panel frame are already
+        // there before anything has been measured.
+        web.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(v: WebView?, url: String?) {
+                // Only once the page exists: __wdRender is defined by the
+                // shell's own script, and calling it earlier is a no-op that
+                // looks exactly like an unreachable machine.
+                bridge.refresh()
+            }
+        }
+        web.loadUrl("file:///android_asset/watchdog-app.html")
     }
 
     /**
