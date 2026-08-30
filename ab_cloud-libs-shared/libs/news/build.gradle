@@ -5,17 +5,23 @@ plugins {
 
 // NewsEngine ships inside Cloud-Lib-News.apk and cannot see the app's
 // BuildConfig, so the three config files are baked into THIS module. Paths are
-// relative to this module's own directory, so they stay ac_cloud-news/data/*
-// whether the module is built by the app or shared by reference into
-// ab_cloud-libs-shared/lib-apks.
+// ${rootDir}/data/*, the CONSUMING app's data dir. These used to be
+// '../../data/*', relative to this module's own directory, and the comment
+// here claimed that kept them at ac_cloud-news/data/ "whether the module is
+// built by the app or shared by reference" — true only while the module sat
+// under ac_cloud-news/libs/. After the consolidation it resolved to
+// ab_cloud-libs-shared/data/, which does not exist, and b64Of's `f.exists()`
+// turned that into '{}' with no error: cloud-news would have shipped with no
+// topics, no sources, no media and no events. Warn rather than bake silence.
 def b64Of = { String rel ->
-    def f = file(rel)
+    def f = file("${rootDir}/data/${rel}")
+    if (!f.exists()) logger.warn("libs:news: no ${f} — baking an EMPTY ${rel}")
     (f.exists() ? f.text : '{}').bytes.encodeBase64().toString()
 }
-def topicsB64  = b64Of('../../data/topics.json')
-def sourcesB64 = b64Of('../../data/sources.json')
-def mediaB64   = b64Of('../../data/media.json')
-def eventsB64  = b64Of('../../data/events.json')
+def topicsB64  = b64Of('topics.json')
+def sourcesB64 = b64Of('sources.json')
+def mediaB64   = b64Of('media.json')
+def eventsB64  = b64Of('events.json')
 
 android {
     namespace 'com.diegonmarcos.superapp.news'
