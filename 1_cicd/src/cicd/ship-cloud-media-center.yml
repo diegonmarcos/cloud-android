@@ -50,6 +50,17 @@ on:
       - "ac_cloud-media-center-v*"
     paths:
       - "ac_cloud-media-center/**"
+      # Compiled BY REFERENCE from ab_cloud-libs-shared (settings.gradle.kts
+      # re-points projectDir there), so these sit outside this repo's own
+      # filter. Without them a shared-lib change ships no new APK here and
+      # the installed build silently goes stale — the same gap that left
+      # 16 superapp modules unwatched.
+      - "ab_cloud-libs-shared/libs/media-center/**"
+      - "ab_cloud-libs-shared/libs/analytics/**"
+      - "ab_cloud-libs-shared/libs/cropper/**"
+      - "ab_cloud-libs-shared/libs/gesture/**"
+      - "ab_cloud-libs-shared/libs/panoramaviewer/**"
+      - "ab_cloud-libs-shared/libs/scrollbar/**"
       - "1_cicd/src/cicd/ship-cloud-media-center.yml"
       - "1_cicd/src/scripts/cloud-media-center-fork-engine.sh"
       # NOTE: the generated .github/workflows/ship-cloud-media-center.yml is

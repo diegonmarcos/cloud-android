@@ -29,6 +29,12 @@ project(":libs:gesture").projectDir = file("../ab_cloud-libs-shared/libs/gesture
 // projectDir is mandatory here: the default would resolve to ./libs/analytics,
 // which is this fork's own local libs/ tree, not the shared module.
 include(":libs:analytics")
+// libs:media-center — OUR cloud provider/data engine, split out of app/ so the
+// stable half (provider contract, Room schema, Glide plumbing) versions apart
+// from the UI. Shared by reference like every other libs:* module.
+include(":libs:media-center")
+project(":libs:media-center").projectDir =
+    file("../ab_cloud-libs-shared/libs/media-center")
 project(":libs:analytics").projectDir = file("../ab_cloud-libs-shared/libs/analytics")
 include(":libs:cropper")
 project(":libs:cropper").projectDir = file("../ab_cloud-libs-shared/libs/cropper")
