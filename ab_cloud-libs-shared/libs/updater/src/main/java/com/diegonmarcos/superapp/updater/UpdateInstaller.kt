@@ -88,11 +88,27 @@ internal class UpdateInstaller(private val context: Context) {
         val sessionId = installer.createSession(params)
         try {
             installer.openSession(sessionId).use { session ->
+                // Declare the length ONCE and re-check it after the copy. The
+                // session is told to expect exactly this many bytes; if the file
+                // shrinks or vanishes mid-write — PackageInstallerReceiver deletes
+                // these by path once an install is confirmed, and external storage
+                // can fill — the session ends up holding a short base.apk and the
+                // system parser reports INSTALL_PARSE_FAILED_NOT_APK / "failed to
+                // load asset path". That reads like a corrupt build and sends you
+                // to the artifact, which is where an hour goes.
+                val expected = apk.length()
+                var written = 0L
                 apk.inputStream().use { input ->
-                    session.openWrite("base.apk", 0, apk.length()).use { output ->
-                        input.copyTo(output)
+                    session.openWrite("base.apk", 0, expected).use { output ->
+                        written = input.copyTo(output)
                         session.fsync(output)
                     }
+                }
+                if (written != expected || apk.length() != expected) {
+                    session.abandon()
+                    error("staged $written of $expected bytes for $targetPackage " +
+                        "(source now ${apk.length()}) — APK truncated or removed mid-install, " +
+                        "not a bad build")
                 }
                 val callback = PendingIntent.getBroadcast(
                     context,
