@@ -41,7 +41,11 @@ _ghcr_publish() {
   # states it, and where it is stated it wins over the repo. Without this the
   # check would push every exception toward being published, which is a worse
   # failure than the 401 it exists to prevent.
-  want="$(_release_var '.release.ghcr.visibility')"
+  # _bj, not _release_var: that helper is defined in every ac_cloud-*/build.sh
+  # and this repo has no copy, so the call died with "command not found" —
+  # after pushing exactly one lib, leaving the other 33 unpublished and their
+  # Constellation entries answering 401. _bj is this file's own reader.
+  want="$(_bj ".get('release',{}).get('ghcr',{}).get('visibility','')")"
   if [ -n "$want" ] && [ "$want" != "null" ]; then
     repo_vis="$want"
   else
