@@ -32,9 +32,10 @@ internal class UpdateInstaller(private val context: Context) {
      * Enforcing it HERE rather than at each call site is the point: a new
      * caller cannot forget to.
      */
-    fun install(apk: File, targetPackage: String = context.packageName) {
+    fun install(apk: VerifiedApk, targetPackage: String = context.packageName) {
+        Log.i(tag, "install ${apk.file.name} → $targetPackage [${apk.evidence}]")
         InstallGate.serialised(targetPackage, InstallGate.SETTLE_MS) {
-            installLocked(apk, targetPackage)
+            installLocked(apk.file, targetPackage)
         }
     }
 

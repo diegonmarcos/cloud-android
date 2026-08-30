@@ -83,7 +83,7 @@ internal class GhcrClient(
         // pure waste, and worse, the old code opened `target` for writing
         // FIRST, so a failed or cancelled retry truncated the good copy it was
         // about to replace. That is why a failed install "lost" the download.
-        if (target.isFile && runCatching { "sha256:" + sha256(target) == digest }.getOrDefault(false)) {
+        if (target.isFile && runCatching { "sha256:" + ApkIntegrity.sha256(target) == digest }.getOrDefault(false)) {
             onProgress?.invoke(target.length(), target.length())
             return
         }
@@ -141,14 +141,6 @@ internal class GhcrClient(
             ?.forEach { it.delete() }
     }
 
-    private fun sha256(f: File): String {
-        val md = java.security.MessageDigest.getInstance("SHA-256")
-        f.inputStream().use { ins ->
-            val buf = ByteArray(64 * 1024)
-            while (true) { val n = ins.read(buf); if (n < 0) break; md.update(buf, 0, n) }
-        }
-        return md.digest().joinToString("") { "%02x".format(it) }
-    }
 
     private fun openConn(url: URL, headers: Map<String, String>): HttpURLConnection =
         (url.openConnection() as HttpURLConnection).apply {

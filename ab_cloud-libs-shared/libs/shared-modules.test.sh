@@ -287,6 +287,37 @@ else
     while read -r line; do note FAIL "$line"; done <<< "$app_root_drift"
 fi
 
+# 11d. No install entry point may take a bare File. Verification used to be a
+#      convention each path re-implemented — four downloads, three installers,
+#      four different rules — and one of them guarded its only check with
+#      `if (total > 0 …)`, so a missing Content-Length turned the check off and
+#      an unverified 383 kB fragment of a 29 MB APK reached PackageInstaller.
+#      VerifiedApk exists so that is a compile error; this rule exists so nobody
+#      quietly adds a File overload back.
+#      PUBLIC entry points only: installLocked(apk: File) is the internal
+#      unwrap that runs AFTER install(VerifiedApk) has done the checking, and
+#      it is private precisely so no caller can reach it.
+inst_file=$(command grep -rnE "^ *fun install[A-Za-z]*\(([a-zA-Z]+: Context, )?apk: File" \
+    ab_cloud-libs-shared/libs/updater/src/main/java 2>/dev/null || true)
+if [ -z "$inst_file" ]; then
+    note ok "no install entry point takes a bare File (VerifiedApk only)"
+else
+    while read -r line; do
+        note FAIL "$line — install must take VerifiedApk, not File"
+    done <<< "$inst_file"
+fi
+
+# 11e. ONE sha256 in the updater. There were three, byte-identical apart from
+#      one using `n < 0` where the others used `n <= 0`.
+sha_copies=$(command grep -rc "MessageDigest.getInstance(\"SHA-256\")" \
+    ab_cloud-libs-shared/libs/updater/src/main/java --include=*.kt 2>/dev/null \
+    | command grep -v ':0$' | command wc -l)
+if [ "$sha_copies" -le 1 ]; then
+    note ok "one sha256 implementation in libs:updater ($sha_copies file)"
+else
+    note FAIL "$sha_copies files implement sha256 in libs:updater — ApkIntegrity is the one"
+fi
+
 # 12. Every PackageInstaller.createSession must have an abandonSession on the
 #     failure path IN THE SAME FILE. A session that is neither committed nor
 #     abandoned stays alive in the system across reboots and permanently burns

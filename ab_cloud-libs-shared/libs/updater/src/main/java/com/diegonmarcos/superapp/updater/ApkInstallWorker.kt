@@ -40,11 +40,22 @@ class ApkInstallWorker(
         try {
             val apk = File(applicationContext.cacheDir, "companion-$pkg.apk")
             UpdateProgress.update(UpdateProgress.State.Downloading(0, 0, 0))
+            var declared = 0L
             download(url, apk) { bytes, total ->
+                if (total > declared) declared = total
                 val pct = if (total > 0) ((bytes * 100) / total).toInt().coerceIn(0, 100) else 0
                 UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, total))
             }
-            Log.i(TAG, "downloaded $label (${apk.length()} bytes) → installing $pkg")
+            // A companion APK comes from a plain URL, so there is no digest to
+            // check it against — take the strongest evidence available: the
+            // declared length when the server gave one, otherwise structure
+            // alone. Either beats handing the installer an unexamined file,
+            // which is how a truncated download became
+            // "INSTALL_PARSE_FAILED_NOT_APK" rather than "the download stopped".
+            val verified = VerifiedApk.bySize(apk, declared)
+                ?: VerifiedApk.structural(apk)
+                ?: error("companion APK for $pkg failed verification (${apk.length()} B)")
+            Log.i(TAG, "downloaded $label (${apk.length()} bytes, ${verified.evidence}) → installing $pkg")
             // install() flips UpdateProgress to Installing and commits the
             // PackageInstaller session. Do NOT force Done here — that races the
             // async session and would overwrite the "Installing…" overlay before
@@ -52,7 +63,7 @@ class ApkInstallWorker(
             // Failed) is driven by PackageInstallerReceiver from the real
             // PackageInstaller callback, so the overlay tracks the actual
             // install lifecycle instead of flickering straight to "Done".
-            UpdateInstaller(applicationContext).install(apk, pkg)
+            UpdateInstaller(applicationContext).install(verified, pkg)
             Result.success()
         } catch (c: java.util.concurrent.CancellationException) {
             // User hit Cancel: cancelNow() already flipped state to Cancelled.

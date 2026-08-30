@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import java.io.File
-import java.security.MessageDigest
 
 /**
  * Detect whether GHCR has an APK whose sha256 differs from the currently
@@ -71,7 +70,7 @@ internal class UpdateChecker(private val context: Context) {
      *  the on-disk APK. [shouldCancel] is polled during the download so the
      *  Cancel button aborts it. Sets Downloading progress; on digest mismatch
      *  or error flips to Failed and throws. */
-    fun download(a: Available, shouldCancel: () -> Boolean = { false }): File {
+    fun download(a: Available, shouldCancel: () -> Boolean = { false }): VerifiedApk {
         try {
             val target = File(context.cacheDir, "update-${a.remoteDigest.substringAfter(':').take(12)}.apk")
             UpdateProgress.update(UpdateProgress.State.Downloading(0, 0, a.remoteSize))
@@ -80,15 +79,15 @@ internal class UpdateChecker(private val context: Context) {
                 val pct = if (totalKnown > 0) ((bytes * 100) / totalKnown).toInt().coerceIn(0, 100) else 0
                 UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, totalKnown))
             }
-            val downloadedSha = "sha256:" + sha256(target)
-            if (downloadedSha != a.remoteDigest) {
+            val verified = VerifiedApk.byDigest(target, a.remoteDigest)
+            if (verified == null) {
                 target.delete()
                 UpdateProgress.update(UpdateProgress.State.Failed(
-                    "digest mismatch: $downloadedSha != ${a.remoteDigest}"))
-                error("downloaded digest $downloadedSha != manifest ${a.remoteDigest}")
+                    "digest mismatch against ${a.remoteDigest}"))
+                error("downloaded digest != manifest ${a.remoteDigest}")
             }
             client.pruneCache("update-", target)
-            return target
+            return verified
         } catch (c: java.util.concurrent.CancellationException) {
             // Cancel button: cancelNow() already set state to Cancelled — don't
             // overwrite it with Failed. Rethrow so the worker unwinds.
@@ -109,19 +108,7 @@ internal class UpdateChecker(private val context: Context) {
         // path we can't verify the running APK against GHCR.
         val path = info.applicationInfo?.sourceDir
             ?: error("PackageManager returned null applicationInfo for ${context.packageName} — cannot compute installed APK sha256")
-        return sha256(File(path))
+        return ApkIntegrity.sha256(File(path))
     }
 
-    private fun sha256(file: File): String {
-        val md = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { stream ->
-            val buf = ByteArray(64 * 1024)
-            while (true) {
-                val n = stream.read(buf)
-                if (n <= 0) break
-                md.update(buf, 0, n)
-            }
-        }
-        return md.digest().joinToString("") { "%02x".format(it) }
-    }
 }

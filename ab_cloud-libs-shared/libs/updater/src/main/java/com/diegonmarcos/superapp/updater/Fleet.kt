@@ -10,7 +10,6 @@ import android.util.Base64
 import android.util.Log
 import org.json.JSONObject
 import java.io.File
-import java.security.MessageDigest
 
 /**
  * Constellation AppStore engine — checks / installs / updates / uninstalls
@@ -215,7 +214,7 @@ object Fleet {
      * interleaving the two made every tap wait on the next app's network
      * fetch. Downloading first means the prompts run back to back.
      */
-    fun download(ctx: Context, app: App): File {
+    fun download(ctx: Context, app: App): VerifiedApk {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         // THE RELEASE ASSET FIRST, BECAUSE IT IS THE REPO.
         //
@@ -249,17 +248,17 @@ object Fleet {
             val pct = if (t > 0) ((bytes * 100) / t).toInt().coerceIn(0, 100) else 0
             UpdateProgress.update(UpdateProgress.State.Downloading(pct, bytes, t))
         }
-        val dl = "sha256:" + sha256(target)
-        if (dl != layer.digest) {
+        val verified = VerifiedApk.byDigest(target, layer.digest)
+        if (verified == null) {
             target.delete()
             UpdateProgress.update(UpdateProgress.State.Failed("digest mismatch for ${app.label}"))
-            error("digest mismatch: $dl != ${layer.digest}")
+            error("digest mismatch for ${app.id} against ${layer.digest}")
         }
         // Keep the verified APK, drop this app's superseded ones. Keeping it
         // means a retry after a failed install reuses the download instead of
         // pulling the blob again.
         client.pruneCache("fleet-${app.id}-", target)
-        return target
+        return verified
     }
 
     /**
@@ -270,13 +269,7 @@ object Fleet {
      * the other channel, not a reason to fail an install the other channel
      * could still complete.
      */
-    /** True when [f] parses as a zip with at least one entry — the weakest
-     *  test that still separates "an APK arrived" from "something arrived". */
-    private fun looksLikeApk(f: File): Boolean = runCatching {
-        java.util.zip.ZipFile(f).use { it.size() > 0 }
-    }.getOrDefault(false)
-
-    private fun releaseDownload(ctx: Context, app: App): File? {
+    private fun releaseDownload(ctx: Context, app: App): VerifiedApk? {
         if (app.releaseUrl.isBlank()) return null
         return runCatching {
             val target = File(ctx.cacheDir, "fleet-${app.id}-release.apk")
@@ -316,30 +309,22 @@ object Fleet {
             // Unlike the GHCR path there is no digest here to catch it after
             // the fact, so an unverifiable download must never be RETURNED;
             // returning null falls through to GHCR, which does carry one.
-            if (total <= 0) {
+            // One construction, three guarantees: a declared length must
+            // exist, must match, and the bytes must actually be a zip. Returning
+            // null here falls through to GHCR, which carries a digest — an
+            // unverifiable download must never be RETURNED, because the caller
+            // cannot tell the difference once it is just a File.
+            VerifiedApk.bySize(target, total) ?: run {
                 target.delete()
-                error("no Content-Length — cannot verify, deferring to GHCR")
+                error("release asset for ${app.id} failed verification — deferring to GHCR")
             }
-            if (target.length() != total) {
-                target.delete()
-                error("short read: ${target.length()} of $total")
-            }
-            // Cheap structural check: a complete zip ends in an End Of Central
-            // Directory record. A response that is the right LENGTH but is an
-            // error page or an HTML redirect still fails here, and failing now
-            // is worth far more than failing inside the installer.
-            if (!looksLikeApk(target)) {
-                target.delete()
-                error("downloaded ${app.id} is not a zip — deferring to GHCR")
-            }
-            target
         }.getOrNull()
     }
 
     /** Hand a verified APK to the installer. Cheap; the work was the download.
      *  Prefers the privileged shell channel, which installs with NO dialog at
      *  all; falls back to PackageInstaller (which prompts) when no channel is up. */
-    fun commit(ctx: Context, app: App, apk: File) {
+    fun commit(ctx: Context, app: App, apk: VerifiedApk) {
         if (shellInstall(ctx, apk)) {
             UpdateProgress.update(UpdateProgress.State.Done)
             Log.i(TAG, "install committed via shell: ${app.label} (${app.pkg})")
@@ -362,14 +347,15 @@ object Fleet {
      *  break an install that used to work.
      *
      *  Blocking (up to ~25s); callers are already off the main thread. */
-    private fun shellInstall(ctx: Context, apk: File): Boolean {
+    private fun shellInstall(ctx: Context, apk: VerifiedApk): Boolean {
         // activeShellChannel() comes from src/shell or src/noshell depending on
         // whether this app declares :libs:shizuku-adb-debug-tools; the stub
         // always returns null, which is the ordinary "no channel" path below.
         val channel = activeShellChannel(ctx) ?: return false
-        val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${apk.name}")
+        val src = apk.file
+        val stage = File(ctx.getExternalFilesDir(null) ?: return false, "stage-${src.name}")
         return try {
-            apk.copyTo(stage, overwrite = true)
+            src.copyTo(stage, overwrite = true)
             // Verify the STAGED copy, not just the download. The downloaded APK
             // is sha-checked against the GHCR digest, but this copy is not, and
             // it goes to external storage — where a full volume truncates it
@@ -377,8 +363,8 @@ object Fleet {
             // INSTALL_PARSE_FAILED_NOT_APK / "failed to load asset path", which
             // reads like a corrupt build and sends you looking at the artifact
             // rather than at the phone's free space.
-            if (stage.length() != apk.length()) {
-                Log.w(TAG, "shell install: staged copy is ${stage.length()} of ${apk.length()} bytes " +
+            if (stage.length() != src.length()) {
+                Log.w(TAG, "shell install: staged copy is ${stage.length()} of ${src.length()} bytes " +
                     "(truncated — free space?); falling back to PackageInstaller")
                 return false
             }
@@ -541,21 +527,10 @@ object Fleet {
             else @Suppress("DEPRECATION") pi.versionCode.toLong()
             val path = pi.applicationInfo?.sourceDir
             Installed(pi.versionName ?: "—", code,
-                if (path != null) sha256(File(path)) else "",
+                if (path != null) ApkIntegrity.sha256(File(path)) else "",
                 if (path != null) File(path).length() else 0L)
         } catch (_: PackageManager.NameNotFoundException) {
             null
         }
-    }
-
-    private fun sha256(file: File): String {
-        val md = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { s ->
-            val buf = ByteArray(64 * 1024)
-            while (true) {
-                val n = s.read(buf); if (n <= 0) break; md.update(buf, 0, n)
-            }
-        }
-        return md.digest().joinToString("") { "%02x".format(it) }
     }
 }
